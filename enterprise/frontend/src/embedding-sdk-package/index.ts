@@ -57,24 +57,6 @@ export {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "./hooks/public/use-metabase-query";
-export { useAction } from "./hooks/public/use-action";
-export type {
-  ActionExecuteError,
-  ActionImplicitKind,
-  ActionKind,
-  ActionKindFromDataAppSchema,
-  ActionParameterSchema,
-  ActionParametersFromDataAppSchema,
-  ActionResultForBulk,
-  ActionResultForCreate,
-  ActionResultForDelete,
-  ActionResultForKind,
-  ActionResultForQuery,
-  ActionResultForUpdate,
-  ActionSchema,
-  AnyActionResult,
-  UseActionResult,
-} from "./hooks/public/use-action";
 /** @internal */
 export type {
   MetabaseBreakout,
