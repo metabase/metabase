@@ -94,6 +94,7 @@ export const TreemapChart = ({
       viewRootId,
       showLeafValues: settings["treemap.show_leaf_values"] ?? true,
       showParentValues: settings["treemap.show_parent_values"] ?? true,
+      gridSize,
     });
 
   const option = useMemo(() => {
@@ -147,9 +148,13 @@ export const TreemapChart = ({
     chartRef.current = chart;
   }, []);
 
-  const handleResize = useCallback((_width: number, _height: number) => {
-    hideTreemapHoverOverlay(chartRef, overlayRef);
-  }, []);
+  const handleResize = useCallback(
+    (_width: number, _height: number) => {
+      hideTreemapHoverOverlay(chartRef, overlayRef);
+      handleLabelMeasure();
+    },
+    [handleLabelMeasure],
+  );
 
   const hasChildren = Boolean(
     chartData?.tree.some((node) => node.children != null),

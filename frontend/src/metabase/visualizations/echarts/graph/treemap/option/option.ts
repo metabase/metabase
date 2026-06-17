@@ -2,6 +2,7 @@ import type { TreemapSeriesOption } from "echarts/charts";
 import { match } from "ts-pattern";
 
 import { formatPercent as formatPercentDefault } from "metabase/static-viz/lib/numbers";
+import { truncateText } from "metabase/visualizations/lib/text";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import { getTreemapColors } from "../model/colors";
@@ -19,11 +20,13 @@ import {
   TREEMAP_CHART_STYLE,
   getGroupHeaderBgTint,
   groupHeader,
+  leafBlock,
 } from "../style";
 import {
   getLeafFormatter,
   getRichLeafLabel,
   getRichUpperLabel,
+  sanitizeRichTextContent,
 } from "../style.rich";
 
 type TreemapChartSeriesOption = TreemapSeriesOption & {
@@ -287,6 +290,7 @@ function getTileLabelDefault({
 }): NonNullable<TreemapChartSeriesOption["label"]> {
   return {
     ...TREEMAP_CHART_STYLE.nodeLabels,
+    fontFamily: renderingContext.fontFamily,
     show: showLeafLabels,
     overflow: "break",
     lineOverflow: "truncate",
@@ -314,6 +318,7 @@ function getTileLabelOverride({
     formatValue,
     formatPercent,
     formatPercentOfTotal,
+    renderingContext,
   } = config;
   if (!showLeafLabels) {
     return HIDDEN_LABEL_OVERRIDE;
@@ -322,6 +327,18 @@ function getTileLabelOverride({
   if (layout == null) {
     return HIDDEN_LABEL_OVERRIDE;
   }
+  // ECharts truncation is unreliable, so we use our own trunaction logic
+  const leafName = truncateText(
+    displayName,
+    layout.width,
+    renderingContext.measureText,
+    {
+      size: leafBlock.name.fontSize,
+      family: renderingContext.fontFamily,
+      weight: leafBlock.name.fontWeight,
+    },
+  );
+
   return match(layout.detail)
     .with("none", () => HIDDEN_LABEL_OVERRIDE)
     .with("full", () => ({
@@ -330,7 +347,7 @@ function getTileLabelOverride({
         width: layout.width,
         overflow: "truncate" as const,
         formatter: getLeafFormatter(
-          displayName,
+          leafName,
           formatValue(value),
           getLeafPercentLabel({
             isDrilled,
@@ -342,7 +359,14 @@ function getTileLabelOverride({
         ),
       },
     }))
-    .otherwise(() => ({ label: { show: true, width: layout.width } }));
+    .otherwise(() => ({
+      label: {
+        show: true,
+        width: layout.width,
+        overflow: "truncate" as const,
+        formatter: sanitizeRichTextContent(leafName),
+      },
+    }));
 }
 
 function getUpperLabelDefault({

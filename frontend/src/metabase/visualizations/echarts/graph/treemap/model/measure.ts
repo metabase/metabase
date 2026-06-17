@@ -1,6 +1,6 @@
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import { TREEMAP_CHART_STYLE, groupHeader, leafBlock } from "../style";
+import { groupHeader, leafBlock } from "../style";
 
 import {
   type TreemapFormatters,
@@ -54,7 +54,7 @@ export function measureTreemapLabelLayouts({
       }
       return renderingContext.measureText(formatters.value(node.value), {
         size: leafBlock.value.fontSize,
-        family: TREEMAP_CHART_STYLE.nodeLabels.fontFamily,
+        family: renderingContext.fontFamily,
         weight: leafBlock.value.fontWeight,
       });
     },

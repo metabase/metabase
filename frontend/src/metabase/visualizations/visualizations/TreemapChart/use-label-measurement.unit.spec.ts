@@ -66,6 +66,7 @@ type HookOverrides = Partial<{
   formatters: TreemapFormatters;
   showLeafValues: boolean;
   showParentValues: boolean;
+  gridSize: { width: number; height: number };
 }>;
 
 function setup(initialProps: HookOverrides = {}) {
@@ -85,6 +86,7 @@ function setup(initialProps: HookOverrides = {}) {
         viewRootId: null,
         showLeafValues: true,
         showParentValues: true,
+        gridSize: undefined,
         ...props,
       }),
     { initialProps },
@@ -133,6 +135,23 @@ describe("useLabelMeasurement", () => {
     act(() => result.current.handleLabelMeasure());
 
     expect(result.current.labelLayout["0-1"]).toMatchObject({
+      detail: expect.not.stringMatching("none"),
+    });
+  });
+
+  it("becomes stale when gridSize changes and re-measures from the new size", () => {
+    const { result, rerender } = setup();
+
+    act(() => result.current.handleLabelMeasure());
+    expect(result.current.labelLayout["0-0"]).toMatchObject({
+      detail: expect.not.stringMatching("none"),
+    });
+
+    rerender({ gridSize: { width: 10, height: 10 } });
+    expect(result.current.labelLayout).toEqual({});
+
+    act(() => result.current.handleLabelMeasure());
+    expect(result.current.labelLayout["0-0"]).toMatchObject({
       detail: expect.not.stringMatching("none"),
     });
   });

@@ -1,5 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import { type MutableRefObject, useCallback, useState } from "react";
+import { type MutableRefObject, useCallback, useRef, useState } from "react";
 import _ from "underscore";
 
 import type { TreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
@@ -24,6 +24,7 @@ interface UseLabelMeasurementOptions {
   viewRootId: NodeId | null;
   showLeafValues: boolean;
   showParentValues: boolean;
+  gridSize?: { width: number; height: number };
 }
 
 interface MeasurementKey {
@@ -33,6 +34,7 @@ interface MeasurementKey {
   formatters: TreemapFormatters | null;
   showLeafValues: boolean;
   showParentValues: boolean;
+  gridSize?: { width: number; height: number };
 }
 
 interface MeasuredLayouts extends MeasurementKey {
@@ -47,21 +49,20 @@ const EMPTY_MEASURED: MeasuredLayouts = {
   formatters: null,
   showLeafValues: false,
   showParentValues: false,
+  gridSize: undefined,
   leafLabelLayout: {},
   parentLabelLayout: {},
 };
 
-function isMeasuredFor(
-  measured: MeasuredLayouts,
-  key: MeasurementKey,
-): boolean {
+function isMeasuredFor(measured: MeasurementKey, key: MeasurementKey): boolean {
   return (
     measured.tree === key.tree &&
     measured.viewRootId === key.viewRootId &&
     measured.renderingContext === key.renderingContext &&
     measured.formatters === key.formatters &&
     measured.showLeafValues === key.showLeafValues &&
-    measured.showParentValues === key.showParentValues
+    measured.showParentValues === key.showParentValues &&
+    _.isEqual(measured.gridSize, key.gridSize)
   );
 }
 
@@ -73,8 +74,21 @@ export function useLabelMeasurement({
   viewRootId,
   showLeafValues,
   showParentValues,
+  gridSize,
 }: UseLabelMeasurementOptions) {
   const [measured, setMeasured] = useState<MeasuredLayouts>(EMPTY_MEASURED);
+
+  const currentKey: MeasurementKey = {
+    tree,
+    viewRootId,
+    renderingContext,
+    formatters,
+    showLeafValues,
+    showParentValues,
+    gridSize,
+  };
+  const currentKeyRef = useRef(currentKey);
+  currentKeyRef.current = currentKey;
 
   const handleLabelMeasure = useCallback(() => {
     const chart = chartRef.current;
@@ -88,6 +102,7 @@ export function useLabelMeasurement({
       formatters,
       showLeafValues,
       showParentValues,
+      gridSize,
     };
     const { leafLabelLayout, parentLabelLayout } = measureTreemapLabelLayouts({
       nodes: getTreemapLayoutNodes(chart),
@@ -97,13 +112,16 @@ export function useLabelMeasurement({
       showLeafValues,
       showParentValues,
     });
-    setMeasured((prev) =>
-      isMeasuredFor(prev, key) &&
-      _.isEqual(prev.leafLabelLayout, leafLabelLayout) &&
-      _.isEqual(prev.parentLabelLayout, parentLabelLayout)
+    setMeasured((prev) => {
+      if (!isMeasuredFor(currentKeyRef.current, key)) {
+        return prev;
+      }
+      return isMeasuredFor(prev, key) &&
+        _.isEqual(prev.leafLabelLayout, leafLabelLayout) &&
+        _.isEqual(prev.parentLabelLayout, parentLabelLayout)
         ? prev
-        : { ...key, leafLabelLayout: leafLabelLayout, parentLabelLayout },
-    );
+        : { ...key, leafLabelLayout: leafLabelLayout, parentLabelLayout };
+    });
   }, [
     chartRef,
     tree,
@@ -112,17 +130,11 @@ export function useLabelMeasurement({
     viewRootId,
     showLeafValues,
     showParentValues,
+    gridSize,
   ]);
 
   // Measurements are only valid for the exact inputs they were measured at.
-  const isStale = !isMeasuredFor(measured, {
-    tree,
-    viewRootId,
-    renderingContext,
-    formatters,
-    showLeafValues,
-    showParentValues,
-  });
+  const isStale = !isMeasuredFor(measured, currentKey);
 
   return {
     labelLayout: isStale

@@ -6,14 +6,13 @@ import { TREEMAP_CHART_STYLE, groupHeader, leafBlock } from "./style";
 export function getRichLeafLabel(renderingContext: RenderingContext) {
   const color = renderingContext.getColor("white");
   const {
-    fontFamily,
     textShadowColor,
     textShadowBlur,
     textShadowOffsetX,
     textShadowOffsetY,
   } = TREEMAP_CHART_STYLE.nodeLabels;
   const shadow = {
-    fontFamily,
+    fontFamily: renderingContext.fontFamily,
     color,
     textShadowColor,
     textShadowBlur,
