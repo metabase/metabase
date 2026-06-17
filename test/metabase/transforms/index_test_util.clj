@@ -41,23 +41,16 @@
 
 (def driver-cases
   "Driver -> test case: `:indexes` to declare (covering every index method the driver supports), `:physical-indexes`
-  a `(fn [database schema table])` reading them back from the system catalog, `:expected` what it should return, and
-  `:fetched` the normalized [[metabase.driver/fetch-table-indexes]] maps (sans `:definition`) for the same indexes.
+  a `(fn [database schema table])` reading them back from the system catalog, and `:expected` what it should return.
   Target columns come from the transforms-test `transforms_products` (`category` text, `price` float)."
   {;; Postgres: standalone btree
    :postgres   {:indexes          [{:kind :btree :name "by_category" :columns [{:name "category"}]}]
                 :expected         #{"by_category"}
-                :physical-indexes postgres-indexes
-                :fetched          #{{:name "by_category" :kind :btree :access_method "btree"
-                                     :is_unique false :is_primary false :is_valid true
-                                     :key_columns ["category"] :include_columns [] :partial_predicate nil}}}
+                :physical-indexes postgres-indexes}
    ;; Redshift: inline sortkey
    :redshift   {:indexes          [{:kind :sortkey :style :interleaved :columns [{:name "category"} {:name "price"}]}]
                 :expected         {:columns ["category" "price"] :style :interleaved}
-                :physical-indexes redshift-sortkey
-                :fetched          #{{:name nil :kind :sortkey :access_method nil
-                                     :is_unique false :is_primary false :is_valid true
-                                     :key_columns ["category" "price"] :include_columns [] :partial_predicate nil}}}
+                :physical-indexes redshift-sortkey}
    ;; ClickHouse: inline order-by + standalone skip-index in one target. It echoes a single-column key/expr back in
    ;; parens, hence "(category)" and "(price)" (a multi-column key would read as a bare "a, b").
    :clickhouse {:indexes          [{:kind :order-by :columns [{:name "category"}]}
@@ -65,13 +58,7 @@
                                     :columns [{:name "price"}] :granularity 1}]
                 :expected         {:sorting-key  "(category)"
                                    :skip-indexes [{:name "by_price" :type "minmax" :expr "(price)" :granularity 1}]}
-                :physical-indexes clickhouse-indexes
-                :fetched          #{{:name "by_price" :kind :skip-index :access_method "minmax"
-                                     :is_unique false :is_primary false :is_valid true
-                                     :key_columns ["price"] :include_columns [] :partial_predicate nil}
-                                    {:name nil :kind :order-by :access_method nil
-                                     :is_unique false :is_primary false :is_valid true
-                                     :key_columns ["category"] :include_columns [] :partial_predicate nil}}}})
+                :physical-indexes clickhouse-indexes}})
 
 (defn index-test-drivers
   "Drivers that run transforms and declare any index support."
@@ -92,3 +79,69 @@
   "`indexes` rewritten to reference a non-existent column, so applying them must fail."
   [indexes]
   (mapv #(assoc % :columns [{:name "definitely_not_a_real_column"}]) indexes))
+
+(defn- idx
+  "A normalized [[metabase.driver/fetch-table-indexes]] entry (sans `:definition`) with defaults, for terse `:expected`."
+  [nm kind access-method key-columns & {:keys [unique primary include partial]
+                                        :or   {unique false primary false include [] partial nil}}]
+  {:name nm :kind kind :access_method access-method :is_unique unique :is_primary primary :is_valid true
+   :key_columns key-columns :include_columns include :partial_predicate partial})
+
+(def fetch-cases
+  "Driver -> fetch-correctness cases. Each case creates `:table` via the literal `:create` statements (popular index
+  kinds, made directly so we cover catalog shapes the apply path never produces, e.g. Postgres gin/partial), and
+  `:expected` is the set of normalized [[metabase.driver/fetch-table-indexes]] maps (sans `:definition`) it must return.
+  Index models differ, so a case carries however many indexes that driver puts on one table."
+  {:postgres
+   [{:label  "btree, unique, composite, INCLUDE, partial, gin, brin, hash, expression, and the primary key"
+     :table  "mb_fetch_pg"
+     :create ["CREATE TABLE mb_fetch_pg (id INT PRIMARY KEY, user_id INT, email TEXT, a INT, b INT, data JSONB, created_at TIMESTAMP)"
+              "CREATE INDEX fc_btree ON mb_fetch_pg (user_id)"
+              "CREATE UNIQUE INDEX fc_unique ON mb_fetch_pg (email)"
+              "CREATE INDEX fc_ab ON mb_fetch_pg (a, b)"
+              "CREATE INDEX fc_include ON mb_fetch_pg (a) INCLUDE (b, email)"
+              "CREATE INDEX fc_partial ON mb_fetch_pg (user_id) WHERE user_id IS NOT NULL"
+              "CREATE INDEX fc_gin ON mb_fetch_pg USING gin (data)"
+              "CREATE INDEX fc_brin ON mb_fetch_pg USING brin (created_at)"
+              "CREATE INDEX fc_hash ON mb_fetch_pg USING hash (email)"
+              "CREATE INDEX fc_expr ON mb_fetch_pg (lower(email))"]
+     :expected #{(idx "mb_fetch_pg_pkey" :btree "btree" ["id"] :unique true :primary true)
+                 (idx "fc_btree" :btree "btree" ["user_id"])
+                 (idx "fc_unique" :btree "btree" ["email"] :unique true)
+                 (idx "fc_ab" :btree "btree" ["a" "b"])
+                 (idx "fc_include" :btree "btree" ["a"] :include ["b" "email"])
+                 (idx "fc_partial" :btree "btree" ["user_id"] :partial "(user_id IS NOT NULL)")
+                 (idx "fc_gin" :gin "gin" ["data"])
+                 (idx "fc_brin" :brin "brin" ["created_at"])
+                 (idx "fc_hash" :hash "hash" ["email"])
+                 (idx "fc_expr" :btree "btree" [nil])}}
+    {:label "a table with no indexes returns []"
+     :table "mb_fetch_pg_empty"
+     :create ["CREATE TABLE mb_fetch_pg_empty (a INT, b INT)"]
+     :expected #{}}]
+
+   :redshift
+   [{:label  "the inline sortkey, unnamed, reconciled by kind + columns"
+     :table  "mb_fetch_rs"
+     :create ["CREATE TABLE mb_fetch_rs (a INT, b INT) COMPOUND SORTKEY (a, b)"]
+     :expected #{(idx nil :sortkey nil ["a" "b"])}}
+    {:label "a table with no sortkey returns []"
+     :table "mb_fetch_rs_empty"
+     :create ["CREATE TABLE mb_fetch_rs_empty (a INT, b INT)"]
+     :expected #{}}]
+
+   :clickhouse
+   [{:label  "the inline ORDER BY (unnamed) and named skip-indexes (minmax, set)"
+     :table  "mb_fetch_ch"
+     :create ["CREATE TABLE mb_fetch_ch (a Int64, b Int64) ENGINE = MergeTree ORDER BY (a, b)"
+              "ALTER TABLE mb_fetch_ch ADD INDEX by_minmax (a) TYPE minmax GRANULARITY 1"
+              "ALTER TABLE mb_fetch_ch MATERIALIZE INDEX by_minmax"
+              "ALTER TABLE mb_fetch_ch ADD INDEX by_set (b) TYPE set(100) GRANULARITY 1"
+              "ALTER TABLE mb_fetch_ch MATERIALIZE INDEX by_set"]
+     :expected #{(idx "by_minmax" :skip-index "minmax" ["a"])
+                 (idx "by_set" :skip-index "set" ["b"])
+                 (idx nil :order-by nil ["a" "b"])}}
+    {:label "an unsorted table returns []"
+     :table "mb_fetch_ch_empty"
+     :create ["CREATE TABLE mb_fetch_ch_empty (a Int64) ENGINE = MergeTree ORDER BY ()"]
+     :expected #{}}]})

@@ -4,8 +4,10 @@
   Per-driver cases and helpers live in [[metabase.transforms.index-test-util]]. Each test stubs
   [[metabase.transforms.execute/hydrate-transform-indexes]] to inject its case."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
@@ -127,28 +129,30 @@
                        (assoc-in transform [:target :indexes] indexes))
                       (is (= expected (physical-indexes db schema table-name))))))))))))))
 
-(deftest ^:synchronized fetch-table-indexes-reports-applied-indexes-test
-  (testing "driver/fetch-table-indexes reads a target's applied indexes back in the normalized cross-driver shape"
-    ;; The catalog-specific `:physical-indexes` readers above prove the indexes land; this proves the driver method
-    ;; that the GET /indexes API consumes reports the same indexes, normalized. Inline keys come back with :name nil.
+(deftest ^:synchronized fetch-table-indexes-correctness-test
+  (testing "fetch-table-indexes reports each driver's popular index kinds in the normalized cross-driver shape"
+    ;; The e2e tests above prove indexes Metabase *applies* land on the table; this proves the driver method the
+    ;; GET /indexes API consumes reads them back correctly, including catalog shapes the apply path can't produce
+    ;; (e.g. a Postgres gin or partial index). Indexes are created directly; nil schema uses the connection default.
     (mt/test-drivers (index-util/index-test-drivers)
-      (mt/dataset transforms-dataset/transforms-test
-        (let [{:keys [indexes fetched] :as test-case} (index-util/driver-cases driver/*driver*)]
-          (is (some? test-case) (index-util/missing-case-message driver/*driver*))
-          (when test-case
-            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-              (with-transform-cleanup! [{table-name :name :as target}
-                                        {:type     "table"
-                                         :schema   schema
-                                         :name     "idx_fetch_products"
-                                         :database (mt/id)}]
-                (mt/with-temp [:model/Transform transform {:name   "index-fetch-transform"
-                                                           :source (query-source)
-                                                           :target target}]
-                  (with-redefs [transforms.execute/hydrate-transform-indexes (constantly indexes)]
-                    (transforms.execute/execute! transform {:run-method :manual})
-                    (transforms.tu/wait-for-table table-name 10000)
-                    (is (= fetched
-                           (into #{}
-                                 (map #(dissoc % :definition))
-                                 (driver/fetch-table-indexes driver/*driver* (mt/db) schema table-name))))))))))))))
+      (let [spec  (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            cases (index-util/fetch-cases driver/*driver*)]
+        (is (some? cases) (index-util/missing-case-message driver/*driver*))
+        (doseq [{:keys [label table create expected]} cases]
+          (testing label
+            (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table)])
+            (try
+              (doseq [stmt create]
+                (jdbc/execute! spec [stmt]))
+              (is (= expected
+                     (into #{} (map #(dissoc % :definition))
+                           (driver/fetch-table-indexes driver/*driver* (mt/db) nil table))))
+              (finally
+                (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table)])))))
+        (testing "a table that does not exist returns [] rather than throwing"
+          (is (= [] (driver/fetch-table-indexes driver/*driver* (mt/db) nil "mb_fetch_does_not_exist"))))))))
+
+(deftest fetch-table-indexes-unsupported-driver-test
+  (testing "fetch-table-indexes has no safe default: a driver that can't introspect indexes throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"fetch-table-indexes is not implemented for driver :h2"
+                          (driver/fetch-table-indexes :h2 nil "public" "t")))))
