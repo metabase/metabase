@@ -1598,7 +1598,7 @@
   nil)
 
 (mr/def ::table-index
-  "One physical index from [[fetch-indexes]], normalized into a cross-driver shape."
+  "One physical index from [[fetch-table-indexes]], normalized into a cross-driver shape."
   [:map
    {:closed true}
    ;; the physical index name, or nil for an unnamed inline key
@@ -1619,12 +1619,12 @@
    ;; the catalog's own DDL/clause, the most faithful representation
    [:definition        [:maybe :string]]])
 
-(mr/def ::fetch-indexes.result
+(mr/def ::fetch-table-indexes.result
   [:sequential [:ref ::table-index]])
 
-(defmulti fetch-indexes
+(defmulti fetch-table-indexes
   "Fetch the indexes that physically exist on the transform target `table` in `schema` of `database`, as a vector of
-  normalized index maps (one per index in the warehouse catalog). Results should match `::fetch-indexes.result`.
+  normalized index maps (one per index in the warehouse catalog). Results should match `::fetch-table-indexes.result`.
 
   Callers join each index against `IndexRequest` rows: named indexes by `:name`, unnamed inline sort keys (ClickHouse
   `ORDER BY`, Redshift `SORTKEY`, with `:name nil`) by `:kind` + `:key-columns`.
@@ -1636,9 +1636,9 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod fetch-indexes :default
+(defmethod fetch-table-indexes :default
   [driver _database _schema _table]
-  (throw (ex-info (format "fetch-indexes is not implemented for driver %s" driver)
+  (throw (ex-info (format "fetch-table-indexes is not implemented for driver %s" driver)
                   {:driver driver})))
 
 (defmulti drop-table!

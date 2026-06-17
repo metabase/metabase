@@ -1448,7 +1448,7 @@
 ;; `indkey` is a 0-based `int2vector`; `indnkeyatts` (PG 11+) splits the key columns from the trailing INCLUDE
 ;; columns. A blank schema falls back to the connection's `current_schema()`. The arrays are read into Clojure vectors
 ;; via `:row-fn` while the result set is still open, so we never touch a `PgArray` after the connection closes.
-(defmethod driver/fetch-indexes :postgres
+(defmethod driver/fetch-table-indexes :postgres
   [_driver database schema table]
   (jdbc/query
    (sql-jdbc.conn/db->pooled-connection-spec database)
