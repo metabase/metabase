@@ -22,9 +22,9 @@ const { execute, isExecuting, result, error, reset } = useAction<
 
 - `actionId` — the action's numeric id, its `entity_id` string, or `null`. Find the numeric id in Metabase by opening the action editor and copying it from the URL.
 - `TParameters` — a TypeScript type describing the parameters object that will be passed to `execute`. Keys are the action's parameter slugs (the names shown in the action editor).
-- `TKind` (optional) — the action's kind literal. Pass one of `"create"`, `"update"`, `"delete"`, `"bulk"`, or `"sql"` to get a typed `result` for that single shape. Omit it and `result` defaults to a union of every possible response body (`AnyActionResult`), narrowable with `"<key>" in result`. See [Typing the response](#typing-the-response).
-- `execute(parameters)` — call this from an event handler to trigger the action. The hook does not auto-fire on mount. Resolves to the response body on success, throws on failure, or resolves to `null` if `actionId` is `null` or the SDK is not yet initialized. You can `await` it or fire and forget — the same error is written to `error` state either way, so a render-time error message will appear even without a `try`/`catch`.
-- `isExecuting` — `true` between the call and its resolution. Use it to disable the trigger and prevent double-clicks.
+- `TKind` (optional) — the action's kind literal. Pass one of `"create"`, `"update"`, `"delete"`, `"bulk"`, or `"sql"` to get a typed `result` for that single shape. If you omit `TKind`, `result` defaults to a union of every possible response body (`AnyActionResult`), which you can narrow with `"<key>" in result`. See [Typing the response](#typing-the-response).
+- `execute(parameters)` — call `execute` from an event handler to trigger the action. The hook doesn't auto-fire on mount. Resolves to the response body on success, throws on failure, or resolves to `null` if `actionId` is `null`, or the SDK isn't yet initialized. You can `await execute(parameters)` or fire and forget. The same error is written to `error` state either way, so a render-time error message will appear even without a `try`/`catch`.
+- `isExecuting` — `true` between the call and its resolution. Use `isExecuting` to disable the trigger and prevent double-clicks.
 - `result` — the response body, or `null` before the first call and after `reset()`.
 - `error` — the last thrown error, or `null`. See [Error handling](#error-handling).
 - `reset()` — clears `result` and `error`.
@@ -56,7 +56,7 @@ You can pass strings, number, and boolean parameters. For dates, pass an ISO 860
 
 #### Dates and timezones
 
-When the target column is `TIMESTAMP` without timezone, send the ISO value **without a timezone offset**, or with the `Z` suffix:
+When the target column is `TIMESTAMP` without timezone, send the ISO value either _without a timezone offset_, or with the `Z` suffix:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/actions/date-picker.tsx" snippet="timestamp-utc" %}
@@ -105,9 +105,9 @@ Example with a known kind:
 
 ### Reading the result
 
-It's common not to read the result at all (see [Refreshing data after an action](#refreshing-data-after-an-action)).
+It's common not to read the result at all (see [After an action succeeds, you must refresh the data](#after-an-action-succeeds-you-must-refresh-the-data)).
 
-But if you do read the result, specify `TKind` if you know the action's result upfront.
+But if you do read the result, specify `TKind` if you know the action's result up front.
 
 If you don't supply `TKind`, the `result` defaults to `AnyActionResult`, which is the union of every possible response body. TypeScript knows the result is one of the five known shapes, just not which one. You can then narrow with the `in` operator:
 
@@ -117,7 +117,7 @@ If you don't supply `TKind`, the `result` defaults to `AnyActionResult`, which i
 
 The union default catches mistyped reads: if the type system can't prove `result` has a key, it'll error.
 
-## Refreshing data after an action
+## After an action succeeds, you must refresh the data
 
 When an action succeeds, you'll need to refresh any data in the UI that the action could have changed, otherwise the data on screen may be stale. There is no automatic refresh.
 
@@ -143,13 +143,13 @@ The hook normalizes whatever the underlying network client throws into a clean, 
 
 `error.status` is **optional**: present for HTTP-level failures (4xx / 5xx), absent for transport-layer failures (offline, aborted) where no HTTP response was received. The actionable diagnostic for end users lives at `error.data.message`.
 
-`error.data.errors` is a per-field map (`{ <slug>: <message> }`) when the backend reports parameter-level validation failures, keyed by the same parameter slugs you pass to `execute`. For whole-request failures (e.g. a foreign-key constraint) it is an empty `{}` and the message lives in `error.data.message`.
+`error.data.errors` is a per-field map (`{ <slug>: <message> }`) when the backend reports parameter-level validation failures, keyed by the same parameter slugs you pass to `execute`. For whole-request failures (like a foreign-key constraint), it's an empty `{}` and the message lives in `error.data.message`.
 
 #### API Reference
 
 - [ActionExecuteError](./api/ActionExecuteError.html)
 
-For SQL or driver errors, `error.data.message` often includes a newline and the failing SQL statement on the next line, so render it inside an element with `white-space: pre-wrap` (a `<pre>` is fine) — a `<span>` collapses the newlines into one wall of text.
+For SQL or driver errors, `error.data.message` often includes a newline and the failing SQL statement on the next line, so render the error message inside an element with `white-space: pre-wrap` (a `<pre>` is fine). A `<span>` collapses the newlines into one wall of text.
 
 The basic example above renders `error.data.message` with a static fallback when no message was provided:
 
@@ -157,7 +157,7 @@ The basic example above renders `error.data.message` with a static fallback when
 {% include_file "{{ dirname }}/snippets/actions/basic.tsx" snippet="error-render" %}
 ```
 
-Surface the message verbatim. Don't replace it with a generic "Something went wrong" — the raw SQL / validation / permission error is what tells the user how to fix their input.
+Display the error message verbatim. Don't replace the message with a generic "Something went wrong". The raw SQL / validation / permission error is what tells the person how to fix their input.
 
 ## Related
 

@@ -43,14 +43,17 @@ function SetDiscountButtonWithoutKind({ orderId }: { orderId: number }) {
     await execute({ id: orderId, discount: 0.1 });
   };
 
+  let summary = "Apply discount";
   if (result && "rows-affected" in result) {
-    console.log(result["rows-affected"]); // typed `number`
+    // `result["rows-affected"]` is typed `number` here
+    summary = `${result["rows-affected"]} rows affected`;
   } else if (result && "created-row" in result) {
-    console.log(result["created-row"]); // typed `Record<string, RowValue>`
+    // `result["created-row"]` is typed `Record<string, RowValue>` here
+    summary = "Row created";
   }
   // [<endsnippet narrow-result>]
 
-  return <button onClick={onClick}>Apply discount</button>;
+  return <button onClick={onClick}>{summary}</button>;
 }
 
 export default function App() {

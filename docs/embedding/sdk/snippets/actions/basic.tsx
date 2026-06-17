@@ -10,9 +10,9 @@ const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://your-metabase.example.com",
 });
 
-// The numeric id of a pre-existing Metabase action.
-// You can find it in Metabase: open the action editor and copy the id
-// from the URL, or fetch it via `GET /api/action`.
+// A Metabase action's numeric id (an `entity_id` string also works).
+// To get the id, open the action editor and copy it from the URL,
+// or fetch it via `GET /api/action`.
 const SET_DISCOUNT_ACTION_ID = 42;
 
 // Declare the parameter shape the action expects. Keys are the parameter
