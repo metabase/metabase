@@ -47,6 +47,11 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
     () => getButtonLabel(query, stageIndex, expression, tc, locale),
     [query, stageIndex, expression, tc, locale],
   );
+  const columnTableName = useMemo(
+    () =>
+      getColumnTableName(query, stageIndex, expression, isLhsPicker, tableName),
+    [query, stageIndex, expression, isLhsPicker, tableName],
+  );
   const isEmpty = expression == null;
   const isLiteral =
     expression != null && Lib.isJoinConditionLHSorRHSLiteral(expression);
@@ -79,7 +84,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
       onClick={onClick}
       aria-label={isLhsPicker ? t`Left column` : t`Right column`}
     >
-      {tableName != null && !isLiteral && (
+      {columnTableName != null && !isLiteral && (
         <Text
           display="block"
           fz={11}
@@ -88,7 +93,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
           ta="left"
           fw={400}
         >
-          {tc(tableName)}
+          {tc(columnTableName)}
         </Text>
       )}
       <Text
@@ -128,4 +133,27 @@ function getButtonLabel(
   }
 
   return t`Custom expression`;
+}
+
+function getColumnTableName(
+  query: Lib.Query,
+  stageIndex: number,
+  expression: Lib.ExpressionClause | undefined,
+  isLhsPicker: boolean,
+  tableName: string | undefined,
+) {
+  // The LHS of a join condition can reference a column from the source table
+  // or a previous join, so the join condition table should be the columns
+  // table (#72823).
+  if (
+    isLhsPicker &&
+    expression != null &&
+    Lib.isJoinConditionLHSorRHSColumn(expression)
+  ) {
+    return (
+      Lib.displayInfo(query, stageIndex, expression).table?.displayName ??
+      tableName
+    );
+  }
+  return tableName;
 }
