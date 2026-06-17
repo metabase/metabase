@@ -526,26 +526,28 @@
       (test-dataset-id db-def)
       (tx/tracking-access-note)])))
 
+(defn- get-existing-tables [dataset-id]
+  (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
+                    (project-id) dataset-id)]
+    (set (map :table_name (execute! sql)))))
+
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-  ;; (delete-old-datasets-if-needed!)
+  ;; re-enable this again once things are stable; for now let's just completely
+  ;; excise this potential source of unreliability
+  (comment (delete-old-datasets-if-needed!))
   (let [dataset-id (test-dataset-id db-def)]
-    (if (database-exists?! db-def)
-      (log/info (u/format-color 'blue "Dataset already exists %s, not loading db" (pr-str dataset-id)))
-      (try
-        (log/infof "Creating dataset %s..." (pr-str dataset-id))
-        (create-dataset! dataset-id)
-        ;; now create tables and load data.
-        (doseq [tabledef table-definitions]
-          (load-tabledef! dataset-id tabledef))
-        (doseq [native-ddl (:native-ddl options)]
-          (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
-        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
-        (catch Throwable e
-          (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
-          (log/error (u/pprint-to-str 'red (Throwable->map e)))
-          (throw e))))))
+    (when-not (database-exists?! db-def)
+      (create-dataset! dataset-id))
+    ;; now create tables and load data.
+    (let [existing-tables (get-existing-tables dataset-id)]
+      (doseq [tabledef table-definitions
+              :when (not (existing-tables (:table-name tabledef)))]
+        (load-tabledef! dataset-id tabledef)))
+    (doseq [native-ddl (:native-ddl options)]
+      (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
+    (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]
