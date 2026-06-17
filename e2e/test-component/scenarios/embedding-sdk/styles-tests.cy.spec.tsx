@@ -371,9 +371,7 @@ describe("scenarios > embedding-sdk > styles", () => {
   });
 
   describe("modals, popovers and tooltips", () => {
-    // TODO: remove/adapt it when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-    it("legacy WindowModal modals should render with our styles", () => {
-      // this test renders a create dashboard modal that, at this time, is using the legacy WindowModal
+    it("standalone CreateDashboardModal should render with our styles", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
           <CreateDashboardModal />
