@@ -147,10 +147,10 @@ async function main(): Promise<void> {
   const describe = (test: FailedTest) =>
     `${test.test_name}  (${test.file_path ?? "unknown file"})`;
   quarantined.forEach((test) =>
-    console.log(`  ✓ quarantined: ${describe(test)}`),
+    console.log(`  🔒 quarantined: ${describe(test)}`),
   );
   unquarantined.forEach((test) =>
-    console.log(`  ✗ NOT quarantined: ${describe(test)}`),
+    console.log(`  🚨 NOT quarantined: ${describe(test)}`),
   );
 
   finish(
