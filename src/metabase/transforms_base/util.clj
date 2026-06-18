@@ -588,31 +588,38 @@
               (mark-index-failed! transform-id index t)
               (throw t))))))))
 
+(defn- full-create-run?
+  "True when this run recreates the target table (a `:table` run or a full-reset incremental run), so its indexes are (re)applied."
+  [transform]
+  (or (= :table (keyword (:type (:target transform))))
+      (full-incremental-run? transform)))
+
 (defn apply-target-indexes!
   "Apply the target's standalone indexes, on full-create runs only (a `:table` run or a full-reset incremental run
   recreates the table; appends keep the live table and its indexes). Runs before the run is marked succeeded, so a
   failure fails the run record."
   [transform]
   (when (and (seq (:indexes (:target transform)))
-             (or (= :table (keyword (:type (:target transform))))
-                 (full-incremental-run? transform)))
+             (full-create-run? transform))
     (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))]
       (apply-standalone-indexes! database (assoc (:target transform) :transform-id (:id transform))))))
 
 (defn verify-managed-indexes!
-  "Reconcile each managed TableIndex row against what's physically in the warehouse and set its `:status`."
+  "Reconcile each managed TableIndex row against what's physically in the warehouse and set its `:status`.
+  Only runs on full-create runs (same guard as [[apply-target-indexes!]])."
   [transform]
-  (when-let [managed (seq (t2/select :model/TableIndex :transform_id (:id transform)))]
-    (let [database  (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
-          {:keys [schema] table-name :name} (:target transform)
-          warehouse (reconcile/fetch-warehouse-indexes database schema table-name)]
-      (when (seq warehouse)
-        (let [present-keys (into #{} (map reconcile/match-key) warehouse)]
-          (doseq [row managed]
-            (let [present? (contains? present-keys (reconcile/match-key (reconcile/normalize-managed row)))]
-              (t2/update! :model/TableIndex (:id row)
-                          {:status           (if present? :succeeded :failed)
-                           :last_executed_at :%now}))))))))
+  (when (full-create-run? transform)
+    (when-let [managed (seq (t2/select :model/TableIndex :transform_id (:id transform)))]
+      (let [database  (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
+            {:keys [schema] table-name :name} (:target transform)
+            warehouse (reconcile/fetch-warehouse-indexes database schema table-name)]
+        (when (seq warehouse)
+          (let [present-keys (into #{} (map reconcile/match-key) warehouse)]
+            (doseq [row managed]
+              (let [present? (contains? present-keys (reconcile/match-key (reconcile/normalize-managed row)))]
+                (t2/update! :model/TableIndex (:id row)
+                            {:status           (if present? :succeeded :failed)
+                             :last_executed_at :%now})))))))))
 
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.

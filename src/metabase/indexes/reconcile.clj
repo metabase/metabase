@@ -34,10 +34,10 @@
 
 (defn match-key
   "Join key for an entry: `[:kind key-columns]` for unnamed-inline kinds, else the physical `:name`."
-  [{:keys [kind name key-columns]}]
+  [{:keys [kind key-columns] index-name :name}]
   (if (contains? unnamed-inline-kinds kind)
     [kind key-columns]
-    name))
+    index-name))
 
 (defn- merge-physical
   "A managed entry with a matching warehouse map's physical fields layered on (warehouse is ground truth, but a

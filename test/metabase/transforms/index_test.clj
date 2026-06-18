@@ -195,7 +195,7 @@
                   (fn [& _] [{:name "present_idx" :kind :btree :access-method "btree" :is-unique false
                               :is-primary false :is-valid true :key-columns ["x"] :include-columns []
                               :partial-predicate nil :definition "..."}])]
-      (#'metabase.transforms-base.util/verify-managed-indexes! (t2/select-one :model/Transform tid))
+      (metabase.transforms-base.util/verify-managed-indexes! (t2/select-one :model/Transform tid))
       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex present-id)))
       (is (= :failed (t2/select-one-fn :status :model/TableIndex missing-id)))
       (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex present-id))))))
