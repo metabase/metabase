@@ -555,10 +555,10 @@
                       ;; root swap is seen by every thread.
                       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
                       (with-redefs [transforms.u/try-start-unless-already-running
-                                    (fn [transform-id run-method user-id]
+                                    (fn [transform-id run-method user-id & kwargs]
                                       (on-enter)
                                       (let [[ret ex] (try
-                                                       [(original-insert transform-id run-method user-id)]
+                                                       [(apply original-insert transform-id run-method user-id kwargs)]
                                                        (catch Throwable t [nil t]))]
                                         (on-exit)
                                         (if ex (throw ex) ret)))]

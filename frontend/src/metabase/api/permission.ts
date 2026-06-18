@@ -1,11 +1,14 @@
 import type {
   BaseGroupInfo,
   CreateMembershipRequest,
+  DatabaseId,
   Group,
   GroupId,
   GroupListQuery,
   ListUserMembershipsResponse,
   Membership,
+  PermissionsGraph,
+  UpdatePermissionsGraphRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -19,6 +22,34 @@ import {
 
 export const permissionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    getPermissionsGraph: builder.query<PermissionsGraph, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/permissions/graph",
+      }),
+    }),
+    getGroupPermissionsGraph: builder.query<PermissionsGraph, GroupId>({
+      query: (groupId) => ({
+        method: "GET",
+        url: `/api/permissions/graph/group/${groupId}`,
+      }),
+    }),
+    getDatabasePermissionsGraph: builder.query<PermissionsGraph, DatabaseId>({
+      query: (databaseId) => ({
+        method: "GET",
+        url: `/api/permissions/graph/db/${databaseId}`,
+      }),
+    }),
+    updatePermissionsGraph: builder.mutation<
+      PermissionsGraph,
+      UpdatePermissionsGraphRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/permissions/graph",
+        body,
+      }),
+    }),
     listPermissionsGroups: builder.query<
       GroupListQuery[],
       { tenancy?: "external" | "internal" } | undefined
@@ -136,6 +167,10 @@ export const permissionApi = Api.injectEndpoints({
 });
 
 export const {
+  useGetPermissionsGraphQuery,
+  useGetGroupPermissionsGraphQuery,
+  useGetDatabasePermissionsGraphQuery,
+  useUpdatePermissionsGraphMutation,
   useListPermissionsGroupsQuery,
   useGetPermissionsGroupQuery,
   useCreatePermissionsGroupMutation,

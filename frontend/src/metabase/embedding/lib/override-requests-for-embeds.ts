@@ -244,8 +244,7 @@ export const rewriteEmbedPreviewUrl = async ({
 /**
  * Registers the embed-preview rewrite on the shared client. It runs after the
  * embed override handlers, so it covers both the override-produced
- * `/api/embed/...` urls and the embed endpoints called directly (e.g.
- * `EmbedApi`, `embedApi`).
+ * `/api/embed/...` urls and the embed endpoints called directly.
  *
  * Idempotent, so call sites can register it at the earliest safe moment without
  * worrying about duplicates. For public/static embeds it must run *before* the
