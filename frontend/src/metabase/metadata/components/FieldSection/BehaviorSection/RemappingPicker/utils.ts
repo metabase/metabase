@@ -84,7 +84,8 @@ function hasMappableNumeralValues(
 export function getFieldRemappedValues(
   fieldValues: FieldValue[] | undefined,
 ): Map<number, string> {
-  return new Map(getRemappings({ values: fieldValues }));
+  // assert numeric [key, value] pairs; getRemappings may yield [value] 1-tuples
+  return new Map(getRemappings({ values: fieldValues }) as [number, string][]);
 }
 
 /**

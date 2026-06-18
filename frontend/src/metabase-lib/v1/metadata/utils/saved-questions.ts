@@ -1,13 +1,31 @@
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
+import type { CardId, CollectionId, DatabaseId } from "metabase-types/api";
 
 export const SAVED_QUESTIONS_VIRTUAL_DB_ID = -1337;
 const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = "Everything else";
+
+type VirtualSchemaCollection = {
+  id?: CollectionId | null;
+  name?: string;
+  schemaName?: string;
+};
+
+type SavedQuestionCard = {
+  id: CardId;
+  name: string;
+  description?: string | null;
+  moderated_status?: string | null;
+  dataset_query?: { database?: DatabaseId | null };
+  collection?: VirtualSchemaCollection | null;
+};
 
 export const ROOT_COLLECTION_VIRTUAL_SCHEMA = getCollectionVirtualSchemaId({
   id: null,
 });
 
-export function getCollectionVirtualSchemaName(collection) {
+export function getCollectionVirtualSchemaName(
+  collection?: VirtualSchemaCollection | null,
+): string | undefined {
   const isRoot =
     !collection || collection.id === null || collection.id === "root";
   return isRoot
@@ -15,20 +33,24 @@ export function getCollectionVirtualSchemaName(collection) {
     : collection.schemaName || collection.name;
 }
 
-export function getCollectionVirtualSchemaId(collection) {
+export function getCollectionVirtualSchemaId(
+  collection?: VirtualSchemaCollection | null,
+): string {
   const collectionName = getCollectionVirtualSchemaName(collection);
   return generateSchemaId(SAVED_QUESTIONS_VIRTUAL_DB_ID, collectionName);
 }
 
-export function getQuestionVirtualTableId(id) {
+export function getQuestionVirtualTableId(id: string | number): string {
   return `card__${id}`;
 }
 
-export function isVirtualCardId(tableId) {
+export function isVirtualCardId(tableId?: unknown): boolean {
   return typeof tableId === "string" && tableId.startsWith("card__");
 }
 
-export function getQuestionIdFromVirtualTableId(tableId) {
+export function getQuestionIdFromVirtualTableId(
+  tableId: unknown,
+): number | null {
   if (typeof tableId !== "string") {
     return null;
   }
@@ -36,7 +58,7 @@ export function getQuestionIdFromVirtualTableId(tableId) {
   return Number.isSafeInteger(id) ? id : null;
 }
 
-export function convertSavedQuestionToVirtualTable(card) {
+export function convertSavedQuestionToVirtualTable(card: SavedQuestionCard) {
   return {
     id: getQuestionVirtualTableId(card.id),
     display_name: card.name,
