@@ -14,6 +14,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.tracing.core :as tracing]
@@ -67,6 +68,7 @@
      [:pinned :boolean]
      [:verified :boolean]
      [:collection_type :text]
+     [:root_collection_type :text]
      [:data_layer :text]
      [:dashboardcard_count :int]
      [:view_count :int]
@@ -152,7 +154,8 @@
   "Convert a document to a database record with a provided embedding."
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
-                     pinned dashboardcard_count view_count last_viewed_at collection_type data_layer] :as doc}]
+                     pinned dashboardcard_count view_count last_viewed_at collection_type root_collection_type
+                     data_layer] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
@@ -168,6 +171,7 @@
    :pinned              (some-> pinned to-boolean)
    :verified            (some-> verified to-boolean)
    :collection_type     collection_type
+   :root_collection_type root_collection_type
    :data_layer          data_layer
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
@@ -284,7 +288,7 @@
   (let [table-name (or table-name (model-table-name embedding-model))]
     {:embedding-model embedding-model
      :table-name table-name
-     :version 3}))
+     :version 4}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -585,6 +589,7 @@
    [:pinned :pinned]
    [:verified :verified]
    [:collection_type :collection_type]
+   [:root_collection_type :root_collection_type]
    [:data_layer :data_layer]
    [:dashboardcard_count :dashboardcard_count]
    [:view_count :view_count]
@@ -617,14 +622,15 @@
 
 (def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
 
-(defn- semantic-search-query
-  "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage."
-  [index embedding search-context]
-  (let [filters (search-filters search-context)
-        embedding-literal (format-embedding embedding)
-        ;; Inner query: pure vector search to better trigger HNSW index vs. seqscan
-        ;; TODO: only pull in necessary extra columns from configured filters
-        hnsw-query {:select (into common-search-columns
+(defn- hnsw-search-query
+  "Build the semantic vector subquery using the HNSW index, applying `filters` after candidate selection."
+  [index embedding-literal filters]
+  ;; The inner `vector_candidates` CTE is a pure vector search (ORDER BY distance LIMIT) so the planner
+  ;; uses the HNSW index. The filters only run in the outer query, so this is approximate: when the
+  ;; globally-closest rows are dominated by a cluster the filters reject, slightly-further survivors that
+  ;; would have passed the filters never enter the candidate set. `brute-force-search-query` is exact.
+  ;; TODO: only pull in necessary extra columns from configured filters
+  (let [hnsw-query {:select (into common-search-columns
                                   [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                     :from   [(keyword (:table-name index))]
                     :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
@@ -632,13 +638,52 @@
         base-query {:with [[:vector_candidates hnsw-query]]
                     :select (into common-search-columns
                                   [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                                   [:distance :semantic_score]])
+                                   [:distance :semantic_distance]])
                     :from [:vector_candidates]
                     :where [:<= :distance max-cosine-distance]
                     :order-by [[:semantic_rank :asc]]}]
     (if filters
       (update base-query :where #(into [:and] [% filters]))
       base-query)))
+
+(defn- brute-force-search-query
+  "Build the semantic vector subquery as an exact, filter-first search over the rows matching `filters`."
+  [index embedding-literal filters]
+  ;; The filtered rows and their cosine distance are computed once, inside a MATERIALIZED CTE: that fences
+  ;; the planner off the HNSW index (so the scan is exact) and stores the `distance` column, so the outer
+  ;; query reads it rather than recomputing it. The cutoff and ranking run in the outer query.
+  ;; We deliberately don't push the cutoff into the CTE to avoid materializing rows beyond it: that would
+  ;; either recompute the distance for the qual, or need a subquery optimization fence (Postgres pulls a
+  ;; plain subquery back up and re-inlines the expression) -- not worth it for an exact scan that already
+  ;; touches every filtered row.
+  (let [filtered-query (cond-> {:select (into common-search-columns
+                                              [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
+                                :from   [(keyword (:table-name index))]}
+                         filters (assoc :where filters))]
+    {:with     [[:vector_candidates filtered-query :materialized]]
+     :select   (into common-search-columns
+                     [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
+                      [:distance :semantic_distance]])
+     :from     [:vector_candidates]
+     :where    [:<= :distance max-cosine-distance]
+     :order-by [[:semantic_rank :asc]]
+     :limit    (semantic-settings/semantic-search-results-limit)}))
+
+(defn- vector-search-strategy
+  "Resolve the vector-search strategy for `search-context`, falling back to the configured default setting."
+  [search-context]
+  (or (:vector-search-strategy search-context)
+      (semantic-settings/semantic-search-vector-strategy)))
+
+(defn- semantic-search-query
+  "Build the semantic vector subquery, dispatching on the resolved [[vector-search-strategy]].
+  `:brute-force` is exact and filter-first; `:hnsw` (the default) is approximate and index-backed."
+  [index embedding search-context]
+  (let [filters           (search-filters search-context)
+        embedding-literal (format-embedding embedding)]
+    (case (vector-search-strategy search-context)
+      :brute-force (brute-force-search-query index embedding-literal filters)
+      (hnsw-search-query index embedding-literal filters))))
 
 (defn- flatten-ctes
   "Flatten nested :with clauses into a single top-level :with.
@@ -650,9 +695,10 @@
   (if-not (:with query)
     {:ctes [] :query query}
     (let [ctes (reduce
-                (fn [acc [cte-name cte-query]]
+                ;; `opts` carries any trailing CTE options (e.g. `:materialized`) so they survive hoisting.
+                (fn [acc [cte-name cte-query & opts]]
                   (let [{:keys [ctes query]} (flatten-ctes cte-query)]
-                    (into acc (conj ctes [cte-name query]))))
+                    (into acc (conj ctes (into [cte-name query] opts)))))
                 []
                 (:with query))]
       {:ctes ctes
@@ -678,6 +724,7 @@
                     :select (into
                              (mapv hybrid-select common-search-columns)
                              [[:v.semantic_rank :semantic_rank]
+                              [:v.semantic_distance :semantic_distance]
                               [:t.keyword_rank :keyword_rank]])
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
@@ -698,7 +745,7 @@
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
         full-query {:with all-ctes
-                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :keyword_rank]
+                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :semantic_distance :keyword_rank]
                     :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
@@ -721,42 +768,47 @@
             (let [decoded (decode-pgobject pgo)]
               (cond-> decoded (string? decoded) json/decode+kw)))))
 
-;; Search-models whose `mi/can-read?` is a pure function of `:collection_id`, which is
-;; already denormalized on the index row. Values are the Toucan model whose `can-read?`
-;; defmethod is invoked on a stub instance carrying only `:collection_id`.
-;;
-;;  - "card" / "metric" / "dataset" → :model/Card
-;;  - "dashboard"                   → :model/Dashboard (as of 20260420 this _could_ be
-;;                                    :model/Card for additional albeit modest perf gains
-;;                                    but choosing to not silently ride Card's semantics)
-;;  - "indexed-entity"              → :model/Card by design: the index row's
-;;                                    `collection_id` is the parent Card's (denormalized
-;;                                    via the spec's Collection join), so routing through
-;;                                    Card short-circuits the original ModelIndex → Card
-;;                                    resolution in `filter-can-read-indexed-entity`.
+(defn- compute-collection-id-only-search-models
+  "Compute search-models whose read perms are determined fully by their collection id."
+  []
+  ;; `search/specifications` must run before reading the registry: its `t2/resolve-model` calls load the
+  ;; model namespaces that populate it. Otherwise cold start caches an empty set for the JVM lifetime.
+  (let [specs                    (search/specifications)
+        registered-t2-models     (perms/collection-id-only-read-models)
+        registered-search-models (set (keys (perms/collection-based-visibility-search-models)))]
+    ;; Two sources:
+    ;; (1) string-form registrations, whose spec's `:model` is a different t2-model (e.g. ModelIndex)
+    ;;     and wouldn't be picked up by the filter below;
+    ;; (2) every spec whose `:model` was registered via the keyword form — `mi/can-read?` dispatches on
+    ;;     the t2-model, so sibling specs like "dataset"/"metric" that share `:model/Card` are covered
+    ;;     by one registration.
+    (into registered-search-models
+          (comp (filter (fn [[_ spec]] (contains? registered-t2-models (:model spec))))
+                (map key))
+          specs)))
+
 (def ^:private collection-id-only-search-models
-  {"card"           :model/Card
-   "metric"         :model/Card
-   "dataset"        :model/Card
-   "dashboard"      :model/Dashboard
-   "indexed-entity" :model/Card})
+  "Search-models whose read perms are determined fully by their collection id.
+  Wrapped in `delay` so the registry can populate before first read."
+  (delay (compute-collection-id-only-search-models)))
 
 (defn- filter-read-permitted
-  "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
+  "Returns the subset of `docs` whose t2 instances pass `mi/can-read?` for the current user."
   [docs]
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
-        ;; Fast path: the permission check depends only on `:collection_id`, which is already on the
-        ;; index row. Dedupe by `[stub-model, collection_id]` so `can-read?` runs at most once per
-        ;; (model, collection) pair instead of once per document.
-        readable? (memoize
-                   (fn [stub-model coll-id]
-                     (mi/can-read? (t2/instance stub-model {:collection_id coll-id}))))
-        fast-filtered (filterv (fn [doc]
-                                 (readable? (get collection-id-only-search-models (:model doc))
-                                            (:collection_id doc)))
-                               fast-docs)
+        fast-set @collection-id-only-search-models
+        {fast-docs true slow-docs false} (group-by #(contains? fast-set (:model %)) docs)
+        ;; Fast path: for models registered via `perms/define-collection-based-visibility!`, `mi/can-read?` is
+        ;; definitionally `(perms/can-read-via-parent-collection? (:collection_id instance))`, so we skip the
+        ;; t2/select and check perms straight from the denormalized `:collection_id` on the index row.
+        ;; Calling the shared helper means fast and slow paths run the same code for these models.
+        ;; Memoizing dedupes the perm check across docs that share a collection.
+        ;;
+        ;; Trade-off: the indexed `:collection_id` is eventually-consistent, so a moved/deleted row may appear
+        ;; in results until the next reindex. Click-through still enforces live perms.
+        coll-readable? (memoize perms/can-read-via-parent-collection?)
+        fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model docs] (group-by doc->t2-model slow-docs)
                                  t2-instance (t2/select t2-model :id [:in (map :id docs)])]
@@ -826,7 +878,8 @@
             embedding (tracing/with-span :search "search.semantic.embedding"
                         {:search.semantic/provider   (:provider embedding-model)
                          :search.semantic/model-name (:model-name embedding-model)}
-                        (embedding/get-embedding embedding-model search-string
+                        (embedding/get-embedding embedding-model
+                                                 (embedding/prefix-search-query embedding-model search-string)
                                                  {:type :query :record-tokens? true}))
             embedding-time-ms (u/since-ms timer)
 

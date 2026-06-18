@@ -8,7 +8,7 @@
 }
 
 .LighthouseColors {
-  --illustration-primary: var(--mb-color-brand);
+  --illustration-primary: var(--mb-color-core-brand);
   --illustration-secondary: var(--mb-color-illustration-brand-secondary);
   --illustration-background: var(--mb-color-background-primary);
 }

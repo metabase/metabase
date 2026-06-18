@@ -1,5 +1,5 @@
 import type { ScheduleSettings } from "./settings";
-import type { Table } from "./table";
+import type { SchemaName, Table } from "./table";
 
 import type { ISO8601Time, LongTaskStatus } from ".";
 
@@ -10,6 +10,7 @@ export type InitialSyncStatus = LongTaskStatus;
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
+  "database-enable-workspaces"?: boolean;
 };
 
 export type DatabaseFeature =
@@ -86,6 +87,9 @@ export interface Database extends DatabaseData {
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
   tables?: Table[];
+  // Populated when GET /api/database is called with include=schemas; lists
+  // schema names that contain at least one readable table.
+  schemas?: SchemaName[];
 }
 
 export interface DatabaseData {
@@ -118,6 +122,7 @@ export interface DatabaseUsageInfo {
   dataset: number;
   metric: number;
   segment: number;
+  transform: number;
 }
 
 export interface GetDatabaseRequest {
@@ -152,7 +157,7 @@ export type GetDatabaseHealthResponse =
   | { status: "error"; message: string; errors: unknown };
 
 export interface ListDatabasesRequest {
-  include?: "tables";
+  include?: "tables" | "schemas";
   saved?: boolean;
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;

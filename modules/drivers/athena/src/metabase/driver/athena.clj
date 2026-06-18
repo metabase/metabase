@@ -370,14 +370,32 @@
   {:name (str/trim (:col_name column-metadata))
    :type (str/trim (:data_type column-metadata))})
 
+;; the partition section markers and row shapes come from Hive's DESCRIBE formatter, which this
+;; output format derives from:
+;; https://github.com/apache/hive/blob/1cb455bbb6753e548e1435f4345b4e0d4644bf9f/ql/src/java/org/apache/hadoop/hive/ql/ddl/table/info/desc/formatter/TextDescTableFormatter.java#L121-L185
+(defn- partition-section-start?
+  "Whether this row of `DESCRIBE` output starts the partition section: `# Partition Information`
+  for natively-partitioned tables, or `# Partition Transform Information` for Iceberg tables."
+  [{:keys [col_name]}]
+  (str/starts-with? (str col_name) "# Partition"))
+
 (defn- remove-invalid-columns
-  "Returns a transducer."
+  "Returns a transducer that converts rows of `DESCRIBE` output into column metadata, dropping the
+  partition section and other non-column rows."
   []
-  (comp (remove #(= (:col_name %) ""))
+  ;; everything from the partition section marker on describes the partition spec rather than
+  ;; additional columns. Hive tables repeat the partition columns there with their real types;
+  ;; Iceberg tables repeat them with the partition transform (e.g. `identity`) as the type, which
+  ;; would otherwise sync as duplicate columns with no base type (#75579)
+  (comp (take-while (complement partition-section-start?))
+        (remove #(= (:col_name %) ""))
         (remove #(= (:col_name %) nil))
         (remove #(= (:data_type %) nil))
         (remove #(str/starts-with? (:col_name %) "#")) ; remove comment
-        (distinct)                                     ; driver can return twice the partitioning fields
+        ;; the partition section only repeats columns that are already in the main column list, so
+        ;; if the marker text above ever changes, keeping the first occurrence of each name still
+        ;; keeps the partition rows out
+        (m/distinct-by :col_name)
         (map describe-database->clj)))
 
 (defn- normalize-field-info

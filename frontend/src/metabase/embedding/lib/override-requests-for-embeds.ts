@@ -1,20 +1,21 @@
 import { sessionPropertiesPath } from "metabase/api";
+import { type RequestMethod, api } from "metabase/api/client";
+import { isEmbedPreview } from "metabase/embedding/config";
 import {
   PLUGIN_API,
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
 import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
-import { getEmbedBase, internalBase, publicBase } from "metabase/services";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 type EmbedType = "guest" | "static" | "public";
 
 const getBaseUrlByEmbedType = (embedType: EmbedType): string =>
   ({
-    guest: getEmbedBase(),
-    static: getEmbedBase(),
-    public: publicBase,
+    guest: "/api/embed",
+    static: "/api/embed",
+    public: "/api/public",
   })[embedType];
 
 const getIgnoreOverridePatterns = () => [
@@ -30,14 +31,14 @@ const getIgnoreOverridePatterns = () => [
  * These patterns are needed only for endpoints that have different parameter names/path/structure for `/embed`
  */
 const URL_PATTERNS = {
-  CARD_QUERY: `${internalBase}/card/:cardId/query`,
-  CARD_PIVOT_QUERY: `${internalBase}/card/pivot/:cardId/query`,
-  CARD_PARAMETER_VALUES: `${internalBase}/card/:cardId/params/:paramId/values`,
-  CARD_PARAMETER_SEARCH: `${internalBase}/card/:cardId/params/:paramId/search/:query`,
-  CARD_PARAMETER_REMAPPING: `${internalBase}/card/:cardId/params/:paramId/remapping`,
-  DASHBOARD_PARAMETER_VALUES: `${internalBase}/dashboard/:dashId/params/:paramId/values`,
-  DASHBOARD_PARAMETER_SEARCH: `${internalBase}/dashboard/:dashId/params/:paramId/search/:query`,
-  DASHBOARD_PARAMETER_REMAPPING: `${internalBase}/dashboard/:dashId/params/:paramId/remapping`,
+  CARD_QUERY: `/api/card/:cardId/query`,
+  CARD_PIVOT_QUERY: `/api/card/pivot/:cardId/query`,
+  CARD_PARAMETER_VALUES: `/api/card/:cardId/params/:paramId/values`,
+  CARD_PARAMETER_SEARCH: `/api/card/:cardId/params/:paramId/search/:query`,
+  CARD_PARAMETER_REMAPPING: `/api/card/:cardId/params/:paramId/remapping`,
+  DASHBOARD_PARAMETER_VALUES: `/api/dashboard/:dashId/params/:paramId/values`,
+  DASHBOARD_PARAMETER_SEARCH: `/api/dashboard/:dashId/params/:paramId/search/:query`,
+  DASHBOARD_PARAMETER_REMAPPING: `/api/dashboard/:dashId/params/:paramId/remapping`,
 } as const;
 
 /**
@@ -48,7 +49,7 @@ const EMBED_URL_TRANSFORMATIONS: Record<
   string,
   (data: { embedType: EmbedType }) => {
     url: string;
-    method: "GET" | "POST";
+    method: RequestMethod;
   }
 > = {
   [URL_PATTERNS.CARD_QUERY]: ({ embedType }) => ({
@@ -86,12 +87,9 @@ const EMBED_URL_TRANSFORMATIONS: Record<
 } as const;
 
 type RequestData = {
-  method: "GET" | "POST";
+  method: RequestMethod;
   url: string;
-  options: {
-    headers?: Record<string, string>;
-    hasBody: boolean;
-  } & Record<string, unknown>;
+  headers?: Record<string, string>;
 };
 
 /**
@@ -132,7 +130,7 @@ function getRequestTransformation({
   method,
   embedType,
   url,
-  options,
+  headers,
 }: RequestData & { embedType: EmbedType }): RequestData | null {
   const matchedPattern = findMatchingPattern(url);
 
@@ -146,7 +144,7 @@ function getRequestTransformation({
 
   // No transformation needed if pattern doesn't match
   if (!matchedPattern) {
-    return { method, url, options };
+    return { method, url, headers };
   }
 
   // Apply the transformation for this pattern
@@ -154,15 +152,12 @@ function getRequestTransformation({
     embedType,
   });
   if (!transformation) {
-    return { method, url, options };
+    return { method, url, headers };
   }
 
   return {
     ...transformation,
-    options: {
-      ...options,
-      hasBody: transformation.method === "POST",
-    },
+    headers,
   };
 }
 
@@ -178,8 +173,8 @@ function replaceWithEmbedBase({
 }): string {
   const baseUrl = getBaseUrlByEmbedType(embedType);
 
-  if (url.includes(internalBase) && !url.includes(baseUrl)) {
-    return url.replace(internalBase, baseUrl);
+  if (url.includes("/api") && !url.includes(baseUrl)) {
+    return url.replace("/api", baseUrl);
   }
 
   return url;
@@ -189,7 +184,7 @@ export const overrideRequests = async ({
   embedType,
   method,
   url,
-  options,
+  headers,
   data,
 }: OnBeforeRequestHandlerConfig & {
   embedType: EmbedType;
@@ -198,21 +193,17 @@ export const overrideRequests = async ({
     method,
     embedType,
     url,
-    options,
+    headers,
   });
 
   if (!transformation) {
-    return { method, url, options, data };
-  }
-
-  if (!options.headers) {
-    options.headers = {};
+    return { method, url, headers, data };
   }
 
   return {
     method: transformation.method,
     url: replaceWithEmbedBase({ embedType, url: transformation.url }),
-    options: transformation.options,
+    headers: transformation.headers ?? {},
     data,
   };
 };
@@ -233,12 +224,47 @@ const setupRemappingUrls = (embedType: EmbedType) => {
     `${baseUrl}/card/:entityIdentifier/params/${encodeURIComponent(parameterId)}/remapping`;
 };
 
+const EMBED_API_BASE_PATTERN = /^\/api\/embed(?=\/|$)/;
+const EMBED_PREVIEW_API_BASE = "/api/preview_embed";
+
+/**
+ * In an embed preview (Metabase iframed in itself) the embed endpoints live
+ * under `/api/preview_embed` instead of `/api/embed`. Rewriting the base here
+ * lets call sites hardcode `/api/embed` and stay preview-agnostic. The pattern
+ * is anchored at the start so only the base path is replaced.
+ */
+export const rewriteEmbedPreviewUrl = async ({
+  url,
+}: OnBeforeRequestHandlerConfig) => {
+  if (isEmbedPreview() && EMBED_API_BASE_PATTERN.test(url)) {
+    return { url: url.replace(EMBED_API_BASE_PATTERN, EMBED_PREVIEW_API_BASE) };
+  }
+};
+
+/**
+ * Registers the embed-preview rewrite on the shared client. It runs after the
+ * embed override handlers, so it covers both the override-produced
+ * `/api/embed/...` urls and the embed endpoints called directly.
+ *
+ * Idempotent, so call sites can register it at the earliest safe moment without
+ * worrying about duplicates. For public/static embeds it must run *before* the
+ * dashboard fetcher's effect (see `usePublicEndpoints`): React runs child
+ * effects before parent effects, so registering from a parent `useMount` would
+ * miss the very first embed request (the dashboard load).
+ */
+export const setupEmbedPreviewRewrite = () => {
+  if (!api.beforeRequestHandlers.includes(rewriteEmbedPreviewUrl)) {
+    api.beforeRequestHandlers.push(rewriteEmbedPreviewUrl);
+  }
+};
+
 /**
  * Registers a request interceptor that transforms standard API requests
  * into guest embeds API requests.
  */
 export const overrideRequestsForGuestEmbeds = () => {
   setupRemappingUrls("guest");
+  setupEmbedPreviewRewrite();
 
   PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds =
     (data) =>

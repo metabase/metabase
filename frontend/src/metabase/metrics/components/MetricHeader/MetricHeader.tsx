@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { MetricUrls } from "metabase/common/metrics/types";
 import {
   PaneHeader,
   PanelHeaderTitle,
@@ -7,8 +8,6 @@ import {
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Flex, Group } from "metabase/ui";
 import type { Card } from "metabase-types/api";
-
-import type { MetricUrls } from "../../types";
 
 import { MetricNameInput } from "./MetricNameInput";
 import { MetricTabs } from "./MetricTabs";

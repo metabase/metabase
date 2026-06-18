@@ -38,7 +38,6 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
-   [metabase.query-processor.util :as qp.util]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -308,16 +307,18 @@
           version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
       (mt/with-temp [:model/Card card-1 {:name "Card 1"
                                          :dataset_query (mt/mbql-query venues {:limit 1})}]
-        (mt/with-premium-features #{:audit-app}
-          (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
-                                {:request-options {:headers {"x-metabase-client" client-string
-                                                             "x-metabase-client-version" version-string}}}))
+        (mt/with-temporary-setting-values [synchronous-batch-updates true]
+          (mt/with-premium-features #{:audit-app}
+            (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
+                                  {:request-options {:headers {"x-metabase-client" client-string
+                                                               "x-metabase-client-version" version-string}}})))
         (is (= {:embedding_client client-string, :embedding_sdk_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_sdk_version] :model "card" :model_id (u/the-id card-1))))))))
 
 (deftest embedding-sdk-info-saves-query-execution-test
   (testing "GET /api/card with embedding headers set"
-    (binding [qp.util/*execute-async?* false]
+    ;; QueryExecutions are saved in async batches by default; save them synchronously so we can assert on them
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (mt/with-temp [:model/Card card-1 {:name "Card 1"
                                          ;; This query is just to make sure the card actually runs a query, otherwise
                                          ;; there won't be a QueryExecution record to check!
@@ -822,6 +823,41 @@
             (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
                                                                :parameters             "abc"})))))
 
+(defn- malformed-native-dataset-query
+  "Payload from #74615: legacy-envelope native query whose template-tag :dimension uses an
+  MBQL 5 field reference shape ([:field {opts} id] instead of legacy [:field id opts])."
+  []
+  {:type     :native
+   :database (mt/id)
+   :native   {:query         "SELECT COUNT(*) FROM ORDERS WHERE {{df}}"
+              :template-tags {"df" {:id           (str (random-uuid))
+                                    :name         "df"
+                                    :display-name "DF"
+                                    :type         :dimension
+                                    :widget-type  :date/range
+                                    :dimension    [:field
+                                                   {:base-type :type/DateTime}
+                                                   (mt/id :orders :created_at)]}}}})
+
+(deftest ^:parallel post-card-with-malformed-dataset-query-returns-400-test
+  (testing "POST /api/card with structurally malformed :dataset_query returns 400, not 500 (#74615)"
+    (is (=? {:cause #"(?si).*(normaliz|mbql).*"}
+            (mt/user-http-request
+             :crowberto :post 400 "card"
+             (assoc (card-with-name-and-query)
+                    :dataset_query (malformed-native-dataset-query)))))))
+
+(deftest ^:parallel put-card-with-malformed-dataset-query-returns-400-test
+  (testing "PUT /api/card/:id with structurally malformed :dataset_query returns 400, not 200 with silent data loss (#74615)"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mbql-count-query)}]
+      (is (=? {:cause #"(?si).*(normaliz|mbql).*"}
+              (mt/user-http-request
+               :crowberto :put 400 (str "card/" card-id)
+               {:dataset_query (malformed-native-dataset-query)})))
+      (testing "the existing dataset_query is preserved (not silently coerced to {})"
+        (is (= :mbql/query
+               (:lib/type (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))
+
 (deftest create-card-validation-test-2
   (testing "POST /api/card"
     (with-temp-native-card-with-params [db card]
@@ -1159,6 +1195,55 @@
               ;; Also verify the card's stored metadata in DB wasn't overwritten
               (is (= expected-names
                      (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))))
+
+(deftest updating-model-query-does-not-shift-metadata-overrides-test
+  (testing "Metadata should not shift to another column with the same name when the query changes (#60930)"
+    (let [mp                 (mt/metadata-provider)
+          orders-table       (lib.metadata/table mp (mt/id :orders))
+          products-table     (lib.metadata/table mp (mt/id :products))
+          reviews-table      (lib.metadata/table mp (mt/id :reviews))
+          orders-id          (lib.metadata/field mp (mt/id :orders :id))
+          orders-user-id     (lib.metadata/field mp (mt/id :orders :user_id))
+          orders-product-id  (lib.metadata/field mp (mt/id :orders :product_id))
+          orders-created-at  (lib.metadata/field mp (mt/id :orders :created_at))
+          products-id        (lib.metadata/field mp (mt/id :products :id))
+          products-created   (lib.metadata/field mp (mt/id :products :created_at))
+          reviews-id         (lib.metadata/field mp (mt/id :reviews :id))
+          reviews-product-id (lib.metadata/field mp (mt/id :reviews :product_id))
+          reviews-created-at (lib.metadata/field mp (mt/id :reviews :created_at))
+          join-query (fn [products-fields]
+                       (-> (lib/query mp orders-table)
+                           (lib/with-fields [orders-id orders-user-id orders-product-id orders-created-at])
+                           (lib/join (-> (lib/join-clause products-table
+                                                          [(lib/= orders-product-id products-id)])
+                                         (lib/with-join-alias "Products")
+                                         (lib/with-join-fields products-fields)))
+                           (lib/join (-> (lib/join-clause reviews-table
+                                                          [(lib/= orders-product-id reviews-product-id)])
+                                         (lib/with-join-alias "Reviews")
+                                         (lib/with-join-fields [reviews-id reviews-product-id reviews-created-at])))))
+          with-products (mt/user-http-request :crowberto :post 200 "card"
+                                              {:name                   "model 60930"
+                                               :type                   :model
+                                               :display                :table
+                                               :dataset_query          (join-query [products-id products-created])
+                                               :visualization_settings {}})
+          card-id (:id with-products)
+          without-products (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                                 {:dataset_query   (join-query :none)})]
+      (testing "columns get the correct display name after columns with the same name are removed"
+        (is (= ["ID" "User ID" "Product ID" "Created At"
+                "Reviews → ID" "Reviews → Product ID" "Reviews → Created At"]
+               (map :display_name (:result_metadata without-products))
+               (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))
+      (let [with-products-again (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                                      {:dataset_query   (join-query [products-id products-created])})]
+        (testing "columns get the correct display name after columns with the same name are added"
+          (is (= ["ID" "User ID" "Product ID" "Created At"
+                  "Products → ID" "Products → Created At"
+                  "Reviews → ID" "Reviews → Product ID" "Reviews → Created At"]
+                 (map :display_name (:result_metadata with-products-again))
+                 (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
 
 (deftest ^:parallel updating-native-card-preserves-metadata
   (testing "A trivial change in a native question should not remove result_metadata (#37009)"
@@ -2640,8 +2725,8 @@
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
       (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
-        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
-                                                                     (apply orig card-id export-format
+        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card export-format & options]
+                                                                     (apply orig card export-format
                                                                             :make-run (constantly (fn [{:keys [constraints]} _]
                                                                                                     {:constraints constraints}))
                                                                             options))]
@@ -2817,7 +2902,7 @@
           (is (verified? card))
           (is (=? {:dataset_query {:stages [{:source-table pos-int?}]}}
                   card))
-          (update-card card (update-in card [:dataset_query :stages 0 :source-table] inc))
+          (update-card card (assoc-in card [:dataset_query :stages 0 :source-table] (mt/id :checkins)))
           (is (not (verified? card)))
           (testing "The unverification edit has explanatory text"
             (is (= "Unverified due to edit"

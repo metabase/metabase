@@ -12,12 +12,11 @@ import type { FormTextInputProps } from "metabase/forms";
 import {
   Form,
   FormProvider,
-  FormRadioGroup,
   FormSubmitButton,
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, isModelWithClearableCache } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -28,10 +27,9 @@ import {
   Group,
   Icon,
   Loader,
-  Radio,
+  Select,
   Stack,
   Text,
-  Title,
   Tooltip,
 } from "metabase/ui";
 import type {
@@ -43,11 +41,13 @@ import type {
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
-import { strategyValidationSchema } from "../constants/complex";
 import { defaultCronSchedule, rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
-import { isModelWithClearableCache } from "../types";
-import { getDefaultValueForField, getLabelString } from "../utils";
+import {
+  getDefaultValueForField,
+  getLabelString,
+  strategyValidationSchema,
+} from "../utils";
 
 import PerformanceAppStyles from "./PerformanceApp.module.css";
 import S from "./StrategyForm.module.css";
@@ -255,54 +255,18 @@ const StrategyFormBody = ({
               headingId={headingId}
               showHeading={layout !== "modal"}
             />
-            {selectedStrategyType === "ttl" && (
-              <>
-                <Field
-                  title={t`Minimum query duration`}
-                  subtitle={
-                    <Text size="sm">
-                      {t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
-                    </Text>
-                  }
-                >
-                  <PositiveNumberInput
-                    strategyType="ttl"
-                    name="min_duration_seconds"
-                  />
-                </Field>
-                <Field
-                  title={t`Multiplier`}
-                  subtitle={<MultiplierFieldSubtitle />}
-                >
-                  <PositiveNumberInput strategyType="ttl" name="multiplier" />
-                </Field>
-              </>
-            )}
+            {selectedStrategyType === "ttl" && <TtlStrategyFormFields />}
             {selectedStrategyType === "duration" && (
-              <>
-                <Field title={t`Cache results for this many hours`}>
-                  <PositiveNumberInput
-                    strategyType="duration"
-                    name="duration"
-                  />
-                </Field>
-                <input type="hidden" name="unit" />
-                {["question", "dashboard"].includes(targetModel) && (
-                  <PLUGIN_CACHING.PreemptiveCachingSwitch
-                    handleSwitchToggle={handleSwitchToggle}
-                  />
-                )}
-              </>
+              <DurationStrategyFormFields
+                targetModel={targetModel}
+                onSwitchToggle={handleSwitchToggle}
+              />
             )}
             {selectedStrategyType === "schedule" && (
-              <>
-                <ScheduleStrategyFormFields />
-                {["question", "dashboard"].includes(targetModel) && (
-                  <PLUGIN_CACHING.PreemptiveCachingSwitch
-                    handleSwitchToggle={handleSwitchToggle}
-                  />
-                )}
-              </>
+              <ScheduleStrategyFormFields
+                targetModel={targetModel}
+                onSwitchToggle={handleSwitchToggle}
+              />
             )}
           </Stack>
         </Box>
@@ -439,7 +403,13 @@ const FormButtons = ({
   return null;
 };
 
-const ScheduleStrategyFormFields = () => {
+const ScheduleStrategyFormFields = ({
+  targetModel,
+  onSwitchToggle,
+}: {
+  targetModel: CacheableModel;
+  onSwitchToggle: () => void;
+}) => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
   const initialSchedule = cronToScheduleSettings(scheduleInCronFormat);
@@ -452,6 +422,8 @@ const ScheduleStrategyFormFields = () => {
     },
     [setFieldValue],
   );
+
+  // A malformed cron can't drive the Schedule UI, so show only the error.
   if (!initialSchedule) {
     return (
       <LoadingAndErrorWrapper
@@ -462,14 +434,32 @@ const ScheduleStrategyFormFields = () => {
 
   return (
     <>
-      <Schedule
-        cronString={scheduleInCronFormat || defaultCronSchedule}
-        scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
-        onScheduleChange={onScheduleChange}
-        verb={c("A verb in the imperative mood").t`Invalidate`}
-        timezone={timezone}
-        aria-label={t`Describe how often the cache should be invalidated`}
-      />
+      {/* Not a StrategyFormField: its <label> would redirect title/subtitle
+          clicks to the first Select inside Schedule. */}
+      <Stack gap="sm">
+        <Stack gap="xs">
+          <Text fw="bold" fz="md" lh="1.25rem">
+            {t`Cache invalidation schedule`}
+          </Text>
+          <Text fz="md" lh="1.25rem" c="text-secondary">
+            {t`How often to invalidate cached results.`}
+          </Text>
+        </Stack>
+        <Schedule
+          cronString={scheduleInCronFormat || defaultCronSchedule}
+          scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
+          onScheduleChange={onScheduleChange}
+          verb={c("A verb in the imperative mood").t`Invalidate`}
+          layout="horizontal"
+          timezone={timezone}
+          aria-label={t`Describe how often the cache should be invalidated`}
+        />
+      </Stack>
+      {["question", "dashboard"].includes(targetModel) && (
+        <PLUGIN_CACHING.PreemptiveCachingSwitch
+          handleSwitchToggle={onSwitchToggle}
+        />
+      )}
     </>
   );
 };
@@ -529,31 +519,6 @@ export const StrategySelectorHeading = ({
   </Stack>
 );
 
-const StrategyOption = ({
-  value,
-  title,
-  description,
-  autoFocus,
-}: {
-  value: string;
-  title?: string;
-  description?: string;
-  autoFocus?: boolean;
-}) => (
-  <Radio
-    value={value}
-    className={S.strategyOption}
-    classNames={{ description: S.radioDescription }}
-    label={
-      <Text component="strong" fw="bold" lh="1.25rem">
-        {title}
-      </Text>
-    }
-    description={description}
-    autoFocus={autoFocus}
-  />
-);
-
 const StrategySelector = ({
   targetId,
   model,
@@ -566,42 +531,123 @@ const StrategySelector = ({
   showHeading?: boolean;
 }) => {
   const { strategies } = PLUGIN_CACHING;
+  const { values, setFieldValue } = useFormikContext<CacheStrategy>();
 
-  const { values } = useFormikContext<CacheStrategy>();
+  const availableStrategies = useMemo(
+    () => (targetId === rootId ? _.omit(strategies, "inherit") : strategies),
+    [targetId, strategies],
+  );
 
-  const availableStrategies = useMemo(() => {
-    return targetId === rootId ? _.omit(strategies, "inherit") : strategies;
-  }, [targetId, strategies]);
+  const data = useMemo(
+    () =>
+      Object.entries(availableStrategies).map(([name, option]) => ({
+        value: name,
+        label: getLabelString(option.label, model) ?? name,
+      })),
+    [availableStrategies, model],
+  );
 
   return (
     <section aria-labelledby={headingId}>
-      <FormRadioGroup
-        label={
-          showHeading ? (
-            <StrategySelectorHeading headingId={headingId} />
-          ) : undefined
-        }
-        name="type"
-      >
-        <Stack mt={showHeading ? "xl" : 0} gap="md">
-          {Object.entries(availableStrategies).map(([name, option]) => (
-            <StrategyOption
-              key={name}
-              value={name}
-              title={getLabelString(option.label, model)}
-              description={
-                option.description
-                  ? getLabelString(option.description, model)
-                  : undefined
-              }
-              autoFocus={values.type === name}
-            />
-          ))}
-        </Stack>
-      </FormRadioGroup>
+      {showHeading && <StrategySelectorHeading headingId={headingId} />}
+      <Select
+        mt={showHeading ? "xl" : 0}
+        data={data}
+        value={values.type}
+        onChange={(value) => value && setFieldValue("type", value)}
+        allowDeselect={false}
+        aria-labelledby={headingId}
+        data-testid="cache-strategy-select"
+        classNames={{ option: S.option }}
+        renderOption={({ option }) => {
+          const strategy = availableStrategies[option.value];
+          if (!strategy) {
+            return option.label;
+          }
+          return (
+            <Stack gap="xs">
+              <Text fw="bold">{getLabelString(strategy.label, model)}</Text>
+              {strategy.description && (
+                <Text size="sm" c="text-secondary">
+                  {getLabelString(strategy.description, model)}
+                </Text>
+              )}
+            </Stack>
+          );
+        }}
+      />
     </section>
   );
 };
+
+const TtlStrategyFormFields = () => (
+  <>
+    <StrategyFormField
+      title={t`Minimum query duration`}
+      subtitle={
+        <Text fz="md" lh="1.25rem" c="text-secondary">
+          {t`Skip caching for queries that run faster than this.`}
+        </Text>
+      }
+      unit={c("Unit suffix shown after the minimum query duration input")
+        .t`seconds`}
+    >
+      <PositiveNumberInput strategyType="ttl" name="min_duration_seconds" />
+    </StrategyFormField>
+    <StrategyFormField
+      title={t`Multiplier`}
+      subtitle={<MultiplierFieldSubtitle />}
+      unit={c("Unit suffix shown after the cache multiplier input").t`times`}
+    >
+      <PositiveNumberInput strategyType="ttl" name="multiplier" />
+    </StrategyFormField>
+  </>
+);
+
+const MultiplierFieldSubtitle = () => (
+  <Text fz="md" lh="1.25rem" c="text-secondary">
+    {t`Cached results last this many times the query's average run time.`}{" "}
+    <Tooltip
+      multiline
+      inline={true}
+      position="bottom"
+      label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
+      maw="20rem"
+    >
+      <Text tabIndex={0} fz="md" lh="1.25rem" display="inline" c="core-brand">
+        {t`Example`}
+      </Text>
+    </Tooltip>
+  </Text>
+);
+
+const DurationStrategyFormFields = ({
+  targetModel,
+  onSwitchToggle,
+}: {
+  targetModel: CacheableModel;
+  onSwitchToggle: () => void;
+}) => (
+  <>
+    <StrategyFormField
+      title={t`Cache duration`}
+      subtitle={
+        <Text fz="md" lh="1.25rem" c="text-secondary">
+          {t`Cached results are refreshed after this period.`}
+        </Text>
+      }
+      unit={c("Unit suffix shown after the cache duration input").t`hours`}
+    >
+      <PositiveNumberInput strategyType="duration" name="duration" />
+    </StrategyFormField>
+    <input type="hidden" name="unit" />
+    {["question", "dashboard"].includes(targetModel) && (
+      <PLUGIN_CACHING.PreemptiveCachingSwitch
+        handleSwitchToggle={onSwitchToggle}
+      />
+    )}
+  </>
+);
 
 export const PositiveNumberInput = ({
   strategyType,
@@ -628,41 +674,38 @@ export const PositiveNumberInput = ({
   );
 };
 
-const Field = ({
+const StrategyFormField = ({
   title,
   subtitle,
+  unit,
   children,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
+  unit?: ReactNode;
   children: ReactNode;
 }) => {
+  const control = unit ? (
+    <Flex align="center" gap="sm">
+      {children}
+      <Text c="text-secondary" fz="md" lh="1.25rem">
+        {unit}
+      </Text>
+    </Flex>
+  ) : (
+    children
+  );
   return (
     <label>
-      <Stack gap="xs">
-        <div>
-          <Title order={4}>{title}</Title>
+      <Stack gap="sm">
+        <Stack gap="xs">
+          <Text fw="bold" fz="md" lh="1.25rem">
+            {title}
+          </Text>
           {subtitle}
-        </div>
-        {children}
+        </Stack>
+        {control}
       </Stack>
     </label>
   );
 };
-
-const MultiplierFieldSubtitle = () => (
-  <Text size="sm">
-    {t`To determine how long each cached result should stick around, we take that query's average execution time and multiply that by what you input here. The result is how many seconds the cache should remain valid for.`}{" "}
-    <Tooltip
-      multiline
-      inline={true}
-      position="bottom"
-      label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
-      maw="20rem"
-    >
-      <Text tabIndex={0} size="sm" lh="1" display="inline" c="brand">
-        {t`Example`}
-      </Text>
-    </Tooltip>
-  </Text>
-);

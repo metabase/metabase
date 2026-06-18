@@ -10,7 +10,7 @@
    [metabase.util :as u])
   (:import (java.io File)
            (org.apache.commons.io FileUtils)
-           (org.eclipse.jgit.api Git)
+           (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
 
@@ -93,9 +93,38 @@
   (let [remote-repo (apply init-remote! dir config)]
     [(->source! branch remote-repo) remote-repo]))
 
+(defn- command-timeout
+  "Reads the protected `timeout` field (in seconds) that JGit applies to a TransportCommand's
+   network operations. 0 means no timeout (JGit's default), i.e. the operation can hang forever."
+  [^TransportCommand cmd]
+  (let [f (.getDeclaredField TransportCommand "timeout")]
+    (.setAccessible f true)
+    (.getInt f cmd)))
+
 (deftest qualify-branch-test
   (is (= "refs/heads/main" (#'git/qualify-branch "main")))
   (is (= "refs/heads/main" (#'git/qualify-branch "refs/heads/main"))))
+
+(deftest call-remote-command-applies-network-timeout-test
+  (testing "Remote git operations get a positive network timeout so a stalled connection can't hang
+            the sync thread forever (GHY-3727: pull/push gets stuck at progress 0 and 0.3)"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            ^Git git (:git source)
+            cmd (.lsRemote git)]
+        (#'git/call-remote-command cmd source)
+        (is (pos? (command-timeout cmd))
+            "TransportCommand should have a positive (non-zero) timeout configured before .call")))))
+
+(deftest call-remote-command-respects-timeout-setting-test
+  (testing "The network timeout applied to remote git operations is driven by remote-sync-git-timeout-seconds"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            ^Git git (:git source)
+            cmd (.lsRemote git)]
+        (mt/with-temporary-setting-values [remote-sync-git-timeout-seconds 17]
+          (#'git/call-remote-command cmd source)
+          (is (= 17 (command-timeout cmd))))))))
 
 (deftest log
   (mt/with-temp-dir [remote-dir nil]
@@ -121,6 +150,22 @@
                                          :branches ["branch-1" "branch-2"])
           master-snapshot (source.p/snapshot master)]
       (is (= (git/commit-sha master "master") (:version master-snapshot))))))
+
+(deftest commit-sha-missing-object-is-nil-test
+  (testing "GHY-3917: a full SHA whose object isn't in the clone resolves to nil, not a phantom id"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"master.txt" "File in master"})
+            ;; JGit parses any complete 40-hex string into an ObjectId without a presence check; the
+            ;; existence guard is what turns a base commit orphaned by an upstream force-push/rebase into
+            ;; nil here instead of a later MissingObjectException when its tree is read.
+            absent-sha "0000000000000000000000000000000000000000"]
+        (is (some? (git/commit-sha master "master"))
+            "a real ref still resolves")
+        (is (nil? (git/commit-sha master absent-sha))
+            "a syntactically valid but absent full SHA resolves to nil")
+        (is (nil? (source.p/snapshot-at master absent-sha))
+            "snapshot-at returns nil for the orphaned base, so callers take the history-rewritten path")))))
 
 (deftest list-files
   (mt/with-temp-dir [remote-dir nil]
@@ -200,6 +245,116 @@
                   "master.txt"
                   "master2.txt"]
                  (git/list-files (assoc remote :version "master")))))))))
+
+(deftest apply-changes
+  (let [subdir (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master remote] (init-source! "master" remote-dir
+                                          :files {"master.txt" "root file"
+                                                  (str subdir "keep.yaml") "keep me"
+                                                  (str subdir "edit.yaml") "old content"
+                                                  (str subdir "remove.yaml") "delete me"})]
+        (testing "apply-changes! overwrites/adds upserts, removes delete-paths, and PRESERVES every other file"
+          (source.p/apply-changes! (source.p/snapshot master) "Incremental"
+                                   [{:path (str subdir "edit.yaml") :content "new content"}
+                                    {:path (str subdir "new.yaml") :content "brand new"}]
+                                   [(str subdir "remove.yaml")])
+          (is (= ["Incremental" "Initial commit"] (map :message (git/log master))))
+          (let [snap (source.p/snapshot master)]
+            (is (= [(str subdir "edit.yaml")
+                    (str subdir "keep.yaml")
+                    (str subdir "new.yaml")
+                    "master.txt"]
+                   (source.p/list-files snap))
+                "edit overwritten + new added, remove deleted; keep.yaml (managed, untouched) and master.txt preserved")
+            (is (= "new content" (source.p/read-file snap (str subdir "edit.yaml"))))
+            (is (= "brand new"   (source.p/read-file snap (str subdir "new.yaml"))))
+            (is (= "keep me"     (source.p/read-file snap (str subdir "keep.yaml")))
+                "a managed-dir file not in the write set is preserved (unlike write-files!)")
+            (is (= "root file"   (source.p/read-file snap "master.txt")))
+            (is (nil? (source.p/read-file snap (str subdir "remove.yaml")))))
+          (testing "the commit was pushed to the remote"
+            (is (= ["Incremental" "Initial commit"]
+                   (map :message (git/log (assoc remote :branch "master")))))))))))
+
+(deftest apply-changes-preserves-deep-unchanged-subtree-test
+  (testing "an incremental upsert leaves deeply-nested, unrelated subtrees untouched (carried forward by id)"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"collections/a/deep/nested/keep.yaml" "deep keep"
+                                                   "collections/a/deep/sibling.yaml"     "deep sibling"
+                                                   "collections/b/edit.yaml"             "old"
+                                                   "notes.txt"                           "root note"})]
+        (source.p/apply-changes! (source.p/snapshot master) "Incremental deep"
+                                 [{:path "collections/b/edit.yaml" :content "new"}]
+                                 [])
+        (let [snap (source.p/snapshot master)]
+          (is (= "new" (source.p/read-file snap "collections/b/edit.yaml")))
+          (is (= "deep keep" (source.p/read-file snap "collections/a/deep/nested/keep.yaml"))
+              "a deeply-nested file in an unrelated subtree is carried forward unchanged")
+          (is (= "deep sibling" (source.p/read-file snap "collections/a/deep/sibling.yaml")))
+          (is (= "root note" (source.p/read-file snap "notes.txt"))))))))
+
+(deftest write-files-reconciles-every-managed-dir-test
+  (testing "a full export wipes every managed dir not covered by the write set, keeps non-managed files, and re-adds an upsert inside a managed dir"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"collections/old/old.yaml" "old collection"
+                                                   "transforms/t1/t.yaml"     "a transform"
+                                                   "transforms/t2/t.yaml"     "another transform"
+                                                   "notes.txt"                "root note"})]
+        (source.p/write-files! (source.p/snapshot master) "Full"
+                               [{:path "collections/new/new.yaml" :content "new collection"}])
+        (let [snap (source.p/snapshot master)]
+          (is (= ["collections/new/new.yaml" "notes.txt"] (source.p/list-files snap))
+              "transforms/ (managed, no upserts) fully removed; collections/ reconciled to the write set; non-managed notes.txt preserved")
+          (is (= "new collection" (source.p/read-file snap "collections/new/new.yaml")))
+          (is (nil? (source.p/read-file snap "collections/old/old.yaml")))
+          (is (nil? (source.p/read-file snap "transforms/t1/t.yaml")))
+          (is (= "root note" (source.p/read-file snap "notes.txt"))))))))
+
+(deftest apply-changes-tolerates-missing-delete-path-test
+  (testing "apply-changes! tolerates a delete-path that doesn't exist — the upsert still applies, no error"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"collections/a/keep.yaml" "keep"})]
+        (source.p/apply-changes! (source.p/snapshot master) "Delete missing + add"
+                                 [{:path "collections/a/new.yaml" :content "new"}]
+                                 ["collections/a/gone.yaml"])
+        (let [snap (source.p/snapshot master)]
+          (is (= ["collections/a/keep.yaml" "collections/a/new.yaml"] (source.p/list-files snap)))
+          (is (= "new" (source.p/read-file snap "collections/a/new.yaml")))
+          (is (= "keep" (source.p/read-file snap "collections/a/keep.yaml"))))))))
+
+(deftest changed-files-test
+  (testing "changed-files classifies the paths whose blob differs between two commits"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"keep.txt"             "unchanged"
+                                                   "edit.txt"             "old content"
+                                                   "remove.txt"           "delete me"
+                                                   "deep/nested/keep.txt" "deep unchanged"})
+            from-version (:version (source.p/snapshot master))]
+        (source.p/apply-changes! (source.p/snapshot master) "Change set"
+                                 [{:path "edit.txt" :content "new content"}
+                                  {:path "add.txt"  :content "brand new"}]
+                                 ["remove.txt"])
+        (let [snap (source.p/snapshot master)]
+          (testing "added / modified / deleted are reported in their own buckets"
+            (is (= {:added    #{"add.txt"}
+                    :modified #{"edit.txt"}
+                    :deleted  #{"remove.txt"}}
+                   (git/changed-files snap from-version))))
+          (testing "unchanged files — including deep untouched subtrees — are not reported"
+            (let [{:keys [added modified deleted]} (git/changed-files snap from-version)
+                  touched (reduce into #{} [added modified deleted])]
+              (is (not (contains? touched "keep.txt")))
+              (is (not (contains? touched "deep/nested/keep.txt")))))
+          (testing "comparing a version against itself reports no changes"
+            (is (= {:added #{} :modified #{} :deleted #{}}
+                   (git/changed-files snap (:version snap)))))
+          (testing "an unresolvable from-version returns nil, signalling a full import"
+            (is (nil? (git/changed-files snap "no-such-ref-or-sha")))))))))
 
 (deftest write-special-collections
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
@@ -422,6 +577,27 @@
                (map :message (git/log repaired-source)))
             "Should be able to fetch after origin repair")))))
 
+(deftest get-jgit-reclones-after-local-repo-deleted-test
+  (testing "GHY-3815: if the cached local clone dir is deleted out from under us, the next
+            operation re-clones instead of returning a stale cached Git instance (which fails
+            permanently with 'origin: not found' until an instance restart)"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source remote] (init-source! "master" remote-dir :branches ["branch-1"])
+            remote-url (:remote-url source)
+            ^File local-path (#'git/repo-path {:remote-url remote-url})
+            ^Git cached-git (:git source)]
+        (is (.exists local-path) "Precondition: local clone dir exists after the initial clone")
+        (is (= ["branch-1" "master"] (source.p/branches source))
+            "Precondition: branches works before the dir is deleted")
+        (FileUtils/deleteDirectory local-path)
+        (is (not (.exists local-path)) "Local clone dir is gone")
+        (let [fresh-source (->source! "master" remote)]
+          (is (.exists local-path) "Local clone dir was re-created (re-cloned)")
+          (is (not (identical? cached-git (:git fresh-source)))
+              "A fresh Git instance is returned, not the stale cached one")
+          (is (= ["branch-1" "master"] (source.p/branches fresh-source))
+              "branches works again after the dir was deleted, without an instance restart"))))))
+
 (deftest ^:parallel credentials-provider-test
   (testing "GitHub URL uses x-access-token"
     (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]
@@ -429,3 +605,54 @@
   (testing "Bitbucket URL uses x-token-auth"
     (let [provider (#'git/credentials-provider "https://bitbucket.org/org/repo" "my-token")]
       (is (instance? UsernamePasswordCredentialsProvider provider)))))
+
+;; ---------------------------------------------------------------------------
+;; Missing remote branch tests (issue #72778)
+;; ---------------------------------------------------------------------------
+
+(defn- delete-remote-branch!
+  "Deletes a branch on the 'remote' repo used by a test."
+  [{:keys [^Git git]} ^String branch]
+  (-> (.branchDelete git)
+      (.setBranchNames ^"[Ljava.lang.String;" (into-array String [branch]))
+      (.setForce true)
+      (.call)))
+
+(deftest fetch!-prunes-deleted-remote-branches-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source remote] (init-source! "master" remote-dir :branches ["branch-1"])]
+      (is (some? (git/commit-sha source "branch-1"))
+          "Precondition: branch-1 is resolvable locally after initial clone")
+      (delete-remote-branch! remote "branch-1")
+      (git/fetch! source)
+      (is (nil? (git/commit-sha source "branch-1"))
+          "branch-1 ref is pruned locally after the remote branch is deleted")
+      (is (some? (git/commit-sha source "master"))
+          "other refs are unaffected"))))
+
+(deftest snapshot-throws-missing-branch-ex-data-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[_master remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "x"})
+          bad-source (->source! "does-not-exist" remote)]
+      (try
+        (source.p/snapshot bad-source)
+        (is false "snapshot should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= "Invalid branch: does-not-exist" (ex-message e)))
+          (is (= :missing-branch (:error-type (ex-data e))))
+          (is (= "does-not-exist" (:branch (ex-data e)))))))))
+
+(deftest snapshot-throws-missing-branch-after-remote-delete-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[_master remote] (init-source! "master" remote-dir :branches ["branch-1"])
+          source-on-branch-1 (->source! "branch-1" remote)]
+      (is (some? (source.p/snapshot source-on-branch-1))
+          "Precondition: snapshot works before the branch is deleted")
+      (delete-remote-branch! remote "branch-1")
+      (try
+        (source.p/snapshot source-on-branch-1)
+        (is false "snapshot should have thrown after the remote branch was deleted")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :missing-branch (:error-type (ex-data e))))
+          (is (= "branch-1" (:branch (ex-data e)))))))))

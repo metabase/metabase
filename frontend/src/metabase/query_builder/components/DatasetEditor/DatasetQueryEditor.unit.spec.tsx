@@ -67,7 +67,7 @@ const setup = async ({
   });
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
-  const query = question.legacyNativeQuery();
+  const query = checkNotNull(question.legacyNativeQuery());
   const DatasetQueryEditor = await importDatasetQueryEditor();
   const onSetDatabaseId = jest.fn();
 
@@ -81,6 +81,7 @@ const setup = async ({
       readOnly={readOnly}
       onResizeStop={_.noop}
       onSetDatabaseId={onSetDatabaseId}
+      setDatasetQuery={_.noop}
       isNativeEditorOpen
     />,
   );
@@ -114,7 +115,7 @@ const importDatasetQueryEditor = async () => {
 
 describe("DatasetQueryEditor", () => {
   beforeEach(() => {
-    jest.unmock("metabase/query_builder/components/NativeQueryEditor");
+    jest.unmock("metabase/querying/components/NativeQueryEditor");
   });
 
   it("renders sidebar when query tab is active", async () => {
@@ -161,6 +162,8 @@ describe("DatasetQueryEditor", () => {
         readOnly={false}
         onResizeStop={_.noop}
         onSetDatabaseId={onSetDatabaseId}
+        setDatasetQuery={_.noop}
+        isNativeEditorOpen
       />,
     );
 

@@ -2,8 +2,8 @@ import { getObjectEntries } from "metabase/utils/objects";
 
 import type {
   MetricSourceId,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerFormulaEntity,
-  MetricsViewerTabState,
 } from "../types/viewer-state";
 
 import type { MetricSlot } from "./metric-slots";
@@ -37,18 +37,20 @@ function findSiblingDimension(
  * 2. Inherit sibling dimensions for unmapped new slots.
  */
 export function remapDimensionMappings(
-  tabs: MetricsViewerTabState[],
+  dimensionBreakouts: MetricsViewerDimensionBreakoutState[],
   slotMapping: Map<number, number>,
   newEntities: MetricsViewerFormulaEntity[],
-): MetricsViewerTabState[] {
+): MetricsViewerDimensionBreakoutState[] {
   const newSlots = computeMetricSlots(newEntities);
 
-  return tabs.map((tab) => {
+  return dimensionBreakouts.map((dimensionBreakout) => {
     const newMapping: Record<number, string | null> = {};
     let changed = false;
 
     // 1. Remap existing entries from old slot index → new slot index
-    for (const [oldKey, dimId] of getObjectEntries(tab.dimensionMapping)) {
+    for (const [oldKey, dimId] of getObjectEntries(
+      dimensionBreakout.dimensionMapping,
+    )) {
       const oldSlotIndex = Number(oldKey);
       const newSlotIndex = slotMapping.get(oldSlotIndex);
       if (newSlotIndex == null) {
@@ -77,6 +79,8 @@ export function remapDimensionMappings(
       }
     }
 
-    return changed ? { ...tab, dimensionMapping: newMapping } : tab;
+    return changed
+      ? { ...dimensionBreakout, dimensionMapping: newMapping }
+      : dimensionBreakout;
   });
 }

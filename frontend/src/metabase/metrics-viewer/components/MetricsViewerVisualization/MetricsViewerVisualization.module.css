@@ -2,6 +2,24 @@
   flex: 1;
 }
 
+.gridChart {
+  position: relative;
+}
+
+.gridChartLabel {
+  position: absolute;
+  right: 0;
+  bottom: 2.75rem;
+  left: 0;
+  pointer-events: none;
+}
+
+.gridChart:has([data-legend-position="horizontal"]) .gridChartLabel {
+  /* Horizontal ChartWithLegend layouts render the legend to the left of the map,
+   * so shift labels to the map area instead of centering them across both. */
+  left: 27%;
+}
+
 .chart {
   background-color: var(--mb-color-background-primary);
   overflow: hidden;

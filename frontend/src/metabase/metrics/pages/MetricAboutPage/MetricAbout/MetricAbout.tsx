@@ -1,13 +1,10 @@
-import { useMemo } from "react";
-
-import { OverviewVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
-import { useMetricDefinition } from "metabase/metrics/common/hooks";
+import type { MetricUrls } from "metabase/common/metrics/types";
+import { MetricCardVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
+import { useCardQueryData } from "metabase/data-studio/common/hooks/use-card-query-data";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { Box, Flex, Stack } from "metabase/ui";
-import * as LibMetric from "metabase-lib/metric";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Card } from "metabase-types/api";
-
-import type { MetricUrls } from "../../../types";
 
 import { AboutVisualization } from "./AboutVisualization";
 import { DescriptionSection } from "./DescriptionSection";
@@ -20,30 +17,30 @@ interface MetricAboutProps {
 }
 
 export function MetricAbout({ card, urls }: MetricAboutProps) {
-  const { definition } = useMetricDefinition(card.id ?? null);
+  const { data, isLoading } = useCardQueryData(card);
 
-  const hasTimeDimension = useMemo(
-    () =>
-      definition
-        ? LibMetric.defaultBreakoutDimensions(definition).some(
-            LibMetric.isDateOrDateTime,
-          )
-        : false,
-    [definition],
-  );
+  // Time series → show value + change over time. Keyed off result columns, not the
+  // Lib metric definition, so metrics defined on models (name-based breakout refs) work too.
+  const cols = card.result_metadata;
+  const isTimeSeries = isDate(cols?.[0]) && isNumeric(cols?.[1]);
 
   return (
-    <Flex className={S.root} flex={1}>
+    <Flex className={S.root} flex={1} gap="md">
       <Box className={S.chartContainer} flex={1} mah={700}>
         {isNumericMetric(card) && (
           <Box className={S.exploreButtonOverlay}>
             <ExploreMetricButton cardId={card.id} />
           </Box>
         )}
-        {hasTimeDimension ? (
+        {isTimeSeries ? (
           <AboutVisualization card={card} />
         ) : (
-          <OverviewVisualization card={card} />
+          <MetricCardVisualization
+            card={card}
+            data={data}
+            isLoading={isLoading}
+            className={S.visualizationPanel}
+          />
         )}
       </Box>
       <Stack flex="0 0 360px" className={S.descriptionSection} mah={700}>

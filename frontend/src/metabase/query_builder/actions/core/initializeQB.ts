@@ -1,13 +1,13 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
-import { cardApi, snippetApi } from "metabase/api";
+import { cardApi, databaseApi, snippetApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   deserializeCard,
   parseHash,
 } from "metabase/common/utils/card";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
@@ -15,7 +15,11 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { updateMetadata } from "metabase/redux/metadata";
+import {
+  fetchDatabaseMetadata,
+  fetchTableMetadata,
+  updateMetadata,
+} from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
@@ -235,7 +239,7 @@ export async function updateTemplateTagNames(
     await Promise.all(
       query.referencedQuestionIds().map(async (id) => {
         try {
-          return await entityCompatibleQuery(
+          return await runRtkEndpoint(
             { id, ignore_error: true },
             dispatch,
             cardApi.endpoints.getCard,
@@ -286,12 +290,53 @@ async function handleQBInit(
   dispatch(resetQB());
   dispatch(cancelQuery());
 
+  // Preload the full database list up front so the data selector already has it
+  // when it mounts
+  const databasesPromise = runRtkEndpoint(
+    { "can-query": true },
+    dispatch,
+    databaseApi.endpoints.listDatabases,
+    { forceRefetch: false },
+  ).catch((error) => {
+    console.error(
+      "Failed to load database list during QB initialization",
+      error,
+    );
+  });
+
   const queryParams = location.query;
-  const cardId = Urls.extractEntityId(params.slug);
+  const isTableRoute = location.pathname?.startsWith("/table");
+  const slugEntityId = Urls.extractEntityId(params.slug);
+  // On the /table/:slug route the slug identifies a table, not a saved card.
+  const cardId = isTableRoute ? undefined : slugEntityId;
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
-  const { options, serializedCard } = parseHash(location.hash);
-  const hasCard = cardId || serializedCard;
+  let { options, serializedCard } = parseHash(location.hash);
   const currentUser = getUser(getState());
+
+  if (isTableRoute && slugEntityId != null) {
+    await dispatch(fetchTableMetadata(slugEntityId));
+    if (isStale()) {
+      return;
+    }
+    const table = getMetadata(getState()).table(slugEntityId);
+    if (!table) {
+      dispatch(setErrorPage(NOT_FOUND_ERROR));
+      return;
+    }
+    await dispatch(fetchDatabaseMetadata(table.db_id));
+    if (isStale()) {
+      return;
+    }
+    // The /table URL only carries the table id; resolve its db so the QB can
+    // build the table's default ad-hoc question, just like `?db=&table=`.
+    options = {
+      ...options,
+      db: String(table.db_id),
+      table: String(slugEntityId),
+    };
+  }
+
+  const hasCard = cardId || serializedCard;
 
   if (uiControls.queryBuilderMode === "notebook") {
     if (!canUserCreateQueries(getState())) {
@@ -423,6 +468,13 @@ async function handleQBInit(
 
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
+
+  // make sure db list is loaded
+  await databasesPromise;
+
+  if (isStale()) {
+    return;
+  }
 
   dispatch({
     type: INITIALIZE_QB,

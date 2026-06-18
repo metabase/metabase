@@ -1,12 +1,12 @@
 import type {
+  CurrentWorkspace,
+  CurrentWorkspaceDatabase,
   TableRemapping,
-  WorkspaceInstance,
-  WorkspaceInstanceDatabase,
 } from "../workspace-instance";
 
-export function createMockWorkspaceInstanceDatabase(
-  opts?: Partial<WorkspaceInstanceDatabase>,
-): WorkspaceInstanceDatabase {
+export function createMockCurrentWorkspaceDatabase(
+  opts?: Partial<CurrentWorkspaceDatabase>,
+): CurrentWorkspaceDatabase {
   return {
     input_schemas: [],
     output: { schema: null, db: null },
@@ -14,12 +14,15 @@ export function createMockWorkspaceInstanceDatabase(
   };
 }
 
-export function createMockWorkspaceInstance(
-  opts?: Partial<WorkspaceInstance>,
-): WorkspaceInstance {
+export function createMockCurrentWorkspace(
+  opts?: Partial<CurrentWorkspace>,
+): CurrentWorkspace {
   return {
     name: "Test workspace",
     databases: {},
+    // Default to a non-writable workspace so tests that don't care about
+    // lock state behave like a deployment-managed instance. Opt into the
+    // editable case with createMockCurrentWorkspace({ can_write: true }).
     can_write: false,
     ...opts,
   };

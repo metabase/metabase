@@ -8,7 +8,6 @@
    these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
    [[metabase.driver.sql-jdbc]] for more details."
   (:refer-clojure :exclude [mapv empty?])
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -17,13 +16,17 @@
    [metabase.classloader.core :as classloader]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv empty?]]
+   [metabase.util.performance :refer [empty? mapv]]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -408,34 +411,59 @@
 
 (defmethod qualified-name-components ::driver [_driver] [:schema])
 
-(defmulti describe-table-fks
-  "Return information about the foreign keys in a `table`. Required for drivers that support :metadata/key-constraints
-  but not :describe-fks. Results should match the [[metabase.sync.interface/FKMetadata]] schema."
-  {:added "0.32.0" :deprecated "0.49.0" :arglists '([driver database table])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
+(mr/def ::describe-fks.options
+  [:maybe
+   [:map
+    {:closed true}
+    [:schema-names {:optional true} [:maybe
+                                     [:or
+                                      [:sequential :string]
+                                      [:set :string]]]]
+    [:table-names  {:optional true} [:maybe
+                                     [:or
+                                      [:sequential :string]
+                                      [:set :string]]]]]])
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod describe-table-fks ::driver [_ _ _]
-  nil)
+(mr/def ::describe-fks.result
+  "Schema for the results for [[describe-fks]]; results are ordered by `fk-table-schema` and `fk-table-name` in
+  ascending order."
+  [:maybe
+   [:or
+    [:sequential [:ref :metabase.sync.interface/FKMetadataEntry]]
+    ;; reducible sequence of FK metadata entries
+    (lib.schema.common/instance-of-class clojure.lang.IReduceInit)]])
 
 (defmulti describe-fks
   "Returns a reducible collection of maps, each containing information about foreign keys.
   Takes optional keyword arguments to narrow down the results to a set of `schema-names`
   and `table-names`.
 
-  `database` should be a Lib-style `:metadata/database` (i.e., should use kebab-case keys).
+  `database` should be a Lib-style `:metadata/database` (i.e., should use kebab-case keys, and conform to the
+  `:metabase.lib.schema.metadata/database` schema).
 
-  Results match [[metabase.sync.interface/FKMetadataEntry]].
-  Results are optionally filtered by `schema-names` and `table-names` provided.
-  Results are ordered by `fk-table-schema` and `fk-table-name` in ascending order.
+  Results should match `::describe-fks.result`.
 
-  Required for drivers that support `:describe-fks`."
-  {:added "0.49.0" :arglists '([driver database & {:keys [schema-names table-names]}])}
+  Results are optionally filtered by `schema-names` and `table-names` provided; you can use the
+  `::describe-fks.options` schema for the options map.
+
+  Results should be ordered by `fk-table-schema` and `fk-table-name` in ascending order.
+
+  This method *must* be implemented for drivers that support `:metadata/key-constraints`."
+  {:added "0.49.0" :arglists '([driver database & {:keys [schema-names table-names], :as _options}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod describe-fks ::driver [_ _]
+(declare database-supports?)
+
+(mu/defmethod describe-fks ::driver :- ::describe-fks.result
+  [driver           :- :keyword
+   database         :- ::lib.schema.metadata/database
+   & {:as _options} :- ::describe-fks.options]
+  (if (database-supports? driver :metadata/key-constraints database)
+    (throw (ex-info "Drivers that support :metadata/key-constraints must implement metabase.driver/describe-fks"
+                    {:driver driver, :type ::qp.error-type/driver}))
+    (log/warnf "metabase.driver/describe-fks should not be called for a driver that does not support :metadata/key-constraints; called for %s"
+               driver))
   nil)
 
 ;;; this is no longer used but we can leave it around for not for documentation purposes. Maybe we can actually do
@@ -730,10 +758,6 @@
     ;; Does the driver support column(s) support storing index info
     :index-info
     ;;
-    ;; Does the driver support a faster `sync-fks` step by fetching all FK metadata in a single collection?
-    ;; if so, `metabase.driver/describe-fks` must be implemented instead of `metabase.driver/describe-table-fks`
-    :describe-fks
-    ;;
     ;; Does the driver support a faster `sync-fields` step by fetching all FK metadata in a single collection?
     ;; if so, `metabase.driver/describe-fields` must be implemented instead of `metabase.driver/describe-table`
     :describe-fields
@@ -970,7 +994,7 @@
   as keywords whenever possible. This provides for both unified error messages and categories which let us point
   users to the erroneous input fields.
   Error messages can also be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
-  `metabase.util.i18n/tru`.
+  [[metabase.util.i18n/tru]].
   Passed a collection of all non-nil exception messages that were thrown during connection attempt."
   {:added "0.32.0" :arglists '([this messages])}
   dispatch-on-initialized-driver
@@ -1124,23 +1148,39 @@
   nil)
 
 (defmulti substitute-native-parameters
+  "DEPRECATED: Implement [[substitute-native-parameters-method]] going forward."
+  {:added "0.34.0" :arglists '([driver legacy-mbql-native-inner-query]), :deprecated "0.62.0"}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti substitute-native-parameters-in-stage-method
+  "Implementation for [[substitute-native-parameters-in-stage]]; avoid calling this directly and
+  call [[substitute-native-parameters-in-stage]] instead. Only use this for `defmethod` method implementations."
+  {:added "0.62.0" :arglists '([driver metadata-providerable native-query-stage])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(mu/defn substitute-native-parameters-in-stage  :- ::lib.schema/stage.native
   "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
 
-    {:query         \"SELECT count(*) FROM table WHERE id = {{param}}\"
+    {:lib/type      :mbql.stage/native
+     :native         \"SELECT count(*) FROM table WHERE id = {{param}}\"
      :template-tags {:param {:name \"param\", :display-name \"Param\", :type :number}}
      :parameters    [{:type   :number
                       :target [:variable [:template-tag \"param\"]]
                       :value  2}]}
     ->
-    {:query \"SELECT count(*) FROM table WHERE id = 2\"}
+    {:native \"SELECT count(*) FROM table WHERE id = 2\", ...}
 
   Much of the implementation for this method is shared across drivers and lives in the
-  `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
-  this method.`Driver-agnostic end-to-end native parameter tests live in
+  `metabase.query-processor.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations
+  of this method. Driver-agnostic end-to-end native parameter tests live in
   [[metabase.query-processor.parameters-test]] and other namespaces."
-  {:added "0.34.0" :arglists '([driver inner-native-query])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
+  {:added "0.62.0"}
+  [driver                :- :keyword
+   metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   native-stage          :- ::lib.schema/stage.native]
+  (substitute-native-parameters-in-stage-method driver metadata-providerable native-stage))
 
 (defmulti default-field-order
   "Return how fields should be sorted by default for this database."
@@ -1291,11 +1331,20 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(mr/def ::run-transform-result
+  "Result map returned by every `run-transform!` implementation. Must carry an integer `:rows-affected` (the row count
+  the transform wrote). Open map — implementations may attach extra keys."
+  [:map
+   [:rows-affected :int]])
+
 (defmulti run-transform!
   "Runs a transform.
 
   Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
-  types."
+  types.
+
+  Implementations must return a map conforming to [[::run-transform-result]] — i.e. containing an integer
+  `:rows-affected`. Define them with `mu/defmethod ... :- ::run-transform-result` so the contract is validated."
   {:added "0.57.0",
    :arglists '([driver
                 {:keys [transform-type conn-spec query output-table] :as _transform-details}

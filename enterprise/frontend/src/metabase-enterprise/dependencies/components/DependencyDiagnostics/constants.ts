@@ -7,6 +7,7 @@ export const BROKEN_GROUP_TYPES: DependencyGroupType[] = [
   "table",
   "question",
   "model",
+  "transform",
 ];
 
 export const BROKEN_DEPENDENTS_GROUP_TYPES: DependencyGroupType[] = [

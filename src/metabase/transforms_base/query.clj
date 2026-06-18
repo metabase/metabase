@@ -4,6 +4,7 @@
    This namespace handles MBQL/native query transform execution and returns
    results in memory rather than writing to transform_run rows."
   (:require
+   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
@@ -86,7 +87,11 @@
     (when (and cancelled? (cancelled?))
       (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
     (let [db (get-in source [:query :database])
-          {driver :engine :as database} (t2/select-one :model/Database db)
+          {driver :engine :as database} (when db (t2/select-one :model/Database db))
+          _ (when-not database
+              (throw (ex-info "Source database for this transform has been deleted."
+                              {:transform-id (:id transform)
+                               :source-database-id db})))
           _ (transforms-base.u/throw-if-db-routing-enabled! transform database)
           ;; Full incremental runs (no watermark — either the first ever, or one that follows a
           ;; checkpoint-config reset) drop and recreate the table rather than appending.
@@ -126,7 +131,8 @@
                         {:driver driver, :database database, :features features})))
       (log/info "Executing transform" id "with target" (pr-str target))
       ;; Create schema if needed
-      (when-not (driver/schema-exists? driver db (:schema target))
+      (when (and (not (str/blank? (:schema target)))
+                 (not (driver/schema-exists? driver db (:schema target))))
         (driver/create-schema-if-needed! driver (:conn-spec transform-details) (:schema target)))
       ;; Check cancellation before running query
       (when (and cancelled? (cancelled?))

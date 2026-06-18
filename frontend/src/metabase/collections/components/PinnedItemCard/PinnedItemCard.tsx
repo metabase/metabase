@@ -11,7 +11,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Flex, Skeleton, Tooltip } from "metabase/ui";
+import { Card, Flex, Skeleton, Tooltip } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -27,7 +27,6 @@ import {
   Body,
   Description,
   Header,
-  ItemCard,
   ItemLink,
   Title,
 } from "./PinnedItemCard.styled";
@@ -125,10 +124,10 @@ function PinnedItemCard({
       to={item ? (modelToUrl(item) ?? "/") : undefined}
       onClick={onClick}
     >
-      <ItemCard flat>
+      <Card p={0} radius="md" shadow="none" withBorder>
         <Body>
           <Header>
-            <EntityIcon {...iconData} size="1.5rem" color="brand" />
+            <EntityIcon {...iconData} size="1.5rem" color="core-brand" />
             <ActionsContainer h={item ? undefined : "2rem"}>
               {hasActions && (
                 // This component is used within a `<Link>` component,
@@ -182,7 +181,7 @@ function PinnedItemCard({
             </>
           )}
         </Body>
-      </ItemCard>
+      </Card>
     </ItemLink>
   );
 }

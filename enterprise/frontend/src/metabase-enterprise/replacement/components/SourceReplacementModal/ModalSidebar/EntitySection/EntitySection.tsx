@@ -13,7 +13,7 @@ export function EntitySection({ icon, error, children }: EntitySectionProps) {
     <Card px="md" py="lg" withBorder shadow="none">
       <Group align="start" wrap="nowrap">
         <Box p="sm" bg="background-brand" bdrs="md">
-          <FixedSizeIcon c="brand" name={icon} />
+          <FixedSizeIcon c="core-brand" name={icon} />
         </Box>
         <Stack gap="sm" miw={0}>
           {children}

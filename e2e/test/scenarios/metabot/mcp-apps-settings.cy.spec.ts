@@ -10,7 +10,7 @@ describe("admin > MCP apps settings > Cursor install link", () => {
     cy.visit("/admin/metabot/mcp");
 
     H.main().within(() => {
-      cy.findByText("Supported MCP clients").scrollIntoView();
+      cy.findByText("Show inline charts in these MCP clients").scrollIntoView();
 
       cy.log("link is hidden by default");
       cy.findByRole("link", { name: "Install in Cursor" }).should("not.exist");
@@ -40,7 +40,9 @@ describe("admin > MCP apps settings > Cursor install link", () => {
 
           const decoded = JSON.parse(atob(config as string));
 
-          expect(decoded.url).to.eq(`${Cypress.config("baseUrl")}/api/mcp`);
+          expect(decoded.url).to.eq(
+            `${Cypress.config("baseUrl")}/api/metabase-mcp`,
+          );
         });
 
       cy.log(

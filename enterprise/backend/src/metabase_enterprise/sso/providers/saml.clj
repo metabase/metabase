@@ -65,7 +65,7 @@
     attrs))
 
 (methodical/defmethod auth-identity/authenticate :provider/saml
-  [_provider {:keys [redirect-url] :as request}]
+  [_provider {:keys [redirect-url relay-state] :as request}]
   (cond
     (not (sso-settings/saml-enabled))
     {:success? false
@@ -76,8 +76,11 @@
     (= (:request-method request) :get)
     (try
       (let [idp-url (sso-settings/saml-identity-provider-uri)
-            relay-state (when redirect-url
-                          (u/encode-base64 redirect-url))
+            ;; Callers may pass an explicit `:relay-state` (short server-side key);
+            ;; otherwise fall back to Base64-encoding the continue URL.
+            relay-state (or relay-state
+                            (when redirect-url
+                              (u/encode-base64 redirect-url)))
             response (saml/idp-redirect-response {:request-id (str "id-" (random-uuid))
                                                   :sp-name (sso-settings/saml-application-name)
                                                   :issuer (sso-settings/saml-application-name)

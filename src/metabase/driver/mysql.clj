@@ -64,7 +64,6 @@
                               :connection-impersonation               true
                               :connection-impersonation-requires-role true
                               :describe-fields                        true
-                              :describe-fks                           true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
@@ -167,18 +166,6 @@
   [conn :- (lib.schema.common/instance-of-class Connection)]
   (= (connection-flavor conn) "MariaDB"))
 
-(defn- partial-revokes-enabled?
-  [driver db]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   db
-   nil
-   (fn [^java.sql.Connection conn]
-     (let [stmt (.prepareStatement conn "SHOW VARIABLES LIKE 'partial_revokes';")
-           rset (.executeQuery stmt)]
-       (when (.next rset)
-         (= "ON" (.getString rset 2)))))))
-
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
   ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
@@ -188,12 +175,7 @@
 (defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
   [driver _feat db]
   (and (= driver :mysql)
-       (mysql? db)
-       (not (try
-              (partial-revokes-enabled? driver db)
-              (catch Exception e
-                (log/warn e "Failed to check table writable")
-                false)))))
+       (mysql? db)))
 
 (defmethod driver/database-supports? [:mysql :regex/lookaheads-and-lookbehinds]
   [driver _feat db]
@@ -464,6 +446,12 @@
   [driver [_ value]]
   (h2x/maybe-cast "CHAR" (sql.qp/->honeysql driver value)))
 
+;; MySQL/MariaDB `CAST` does not accept `TEXT` as a target type — the string cast target is
+;; `CHAR`.
+(defmethod sql.qp/->honeysql [:mysql ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "char"]))
+
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
@@ -545,14 +533,14 @@
 
 (defmethod sql.qp/date [:mysql :minute]
   [_driver _unit expr]
-  (let [format-str (if (= (h2x/database-type expr) "time")
+  (let [format-str (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
                      "%H:%i"
                      "%Y-%m-%d %H:%i")]
     (trunc-with-format format-str expr)))
 
 (defmethod sql.qp/date [:mysql :hour]
   [_driver _unit expr]
-  (let [format-str (if (= (h2x/database-type expr) "time")
+  (let [format-str (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
                      "%H"
                      "%Y-%m-%d %H")]
     (trunc-with-format format-str expr)))
@@ -707,7 +695,17 @@
    ;; removing that overhead. See also
    ;; https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-performance-extensions.html#cj-conn-prop_useLocalSessionState
    ;; and #44507
-   :useLocalSessionState true})
+   :useLocalSessionState true
+   ;; A `nil` catalog passed to `DatabaseMetaData.getTables` must mean "the current (bound) database",
+   ;; NOT "every database the user has privileges on". `active-tables` (and `describe-database` generally)
+   ;; relies on this: it passes `nil` for the catalog and trusts the driver to scope results to the
+   ;; connected DB. This is the MariaDB 2.x default, but pin it explicitly so that (a) the contract is
+   ;; documented where the next person bumping the driver will see it, and (b) a future driver upgrade
+   ;; can't silently flip the default to `false` and widen sync to sibling databases — Connector/J 8.x,
+   ;; for instance, defaults this to `false`. Pinning `true` is also why we must pass `nil` rather than
+   ;; `(.getCatalog conn)`: on Vitess/PlanetScale replica connections getCatalog returns the routing-
+   ;; qualified `<db>@replica`, which never matches the bare `TABLE_SCHEMA`. See #75929.
+   :nullCatalogMeansCurrent true})
 
 (defn- maybe-add-program-name-option [jdbc-spec additional-options-map]
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
@@ -763,18 +761,22 @@
            (sql-jdbc.common/handle-additional-options details))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
-  [driver ^java.sql.Connection conn schema-inclusion-filters schema-exclusion-filters]
-  ;; Scope describe-database to the connection's current catalog (= bound DB).
-  ;; By default `post-filtered-active-tables` passes `nil` for the catalog filter,
-  ;; which makes JDBC enumerate every DB the user has privileges on. That's wrong
-  ;; for workspace MySQL users — they own the iso DB and have GRANT SELECT on the
-  ;; canonical DB, so the iso DB's tables would leak into sync. Constraining to
-  ;; `conn.getCatalog()` means only the canonical (bound) DB's tables show up,
-  ;; regardless of what else the user can read. Also strictly more correct for
-  ;; plain MySQL: a user with GRANT on multiple DBs only configured one as the
-  ;; Metabase Database; sync should never have surfaced the others.
-  (sql-jdbc.sync/post-filtered-active-tables
-   driver conn (.getCatalog conn) schema-inclusion-filters schema-exclusion-filters))
+  [& args]
+  ;; Pass `nil` for the catalog filter (the default). Our MySQL/MariaDB JDBC driver defaults to
+  ;; `nullCatalogMeansCurrent=true`, so a `nil` catalog already scopes `getTables()` to the connection's
+  ;; current (bound) database — it does NOT enumerate every DB the user can read.
+  ;;
+  ;; Do NOT pass `(.getCatalog conn)` here. On PlanetScale/Vitess connections made with *replica*
+  ;; credentials (or any `<db>@replica`-targeted connection), `SELECT DATABASE()` — which backs
+  ;; `getCatalog()` — returns the routing-qualified name `<db>@replica`. The driver compiles a non-nil
+  ;; catalog into `WHERE TABLE_SCHEMA = '<db>@replica'`, but `information_schema` stores the bare
+  ;; `TABLE_SCHEMA = '<db>'`, so the filter matches nothing and sync sees an empty database. The `@replica`
+  ;; suffix is a Vitess routing directive, not part of the schema name, so it can never equal a real
+  ;; `TABLE_SCHEMA`. See #75929. (Verified against live PlanetScale: nil → 3 tables, getCatalog → 0.)
+  ;;
+  ;; (If no database is bound, current-DB scoping resolves to nothing and `getTables` returns zero tables;
+  ;; this fails safe and is unreachable in practice since a MySQL Database always has `:dbname`.)
+  (apply sql-jdbc.sync/post-filtered-active-tables args))
 
 (defmethod sql-jdbc.sync/excluded-schemas :mysql
   [_]
@@ -1082,6 +1084,11 @@
   (condp re-find grant
     #"^GRANT PROXY ON "
     nil
+    ;; Under `partial_revokes`, `SHOW GRANTS` emits `REVOKE ... ON ... FROM ...` lines. We ignore them and rely on the
+    ;; GRANT lines alone, which yields an optimistic view of privileges (a table revoked from may still look writable).
+    ;; In that case the edit fails at runtime rather than every table being treated as uneditable.
+    #"^REVOKE "
+    nil
     #"^GRANT (.+) ON FUNCTION "
     nil
     #"^GRANT (.+) ON PROCEDURE "
@@ -1296,6 +1303,9 @@
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- quote-schema [s] (sql.u/quote-name :mysql :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :mysql :field s))
+
 (defn- mysql-user-exists?
   "Check if a MySQL user exists."
   [conn username]
@@ -1308,19 +1318,21 @@
   (let [db-name          (driver.u/workspace-isolation-namespace-name workspace)
         user             (driver.u/workspace-isolation-user-name workspace)
         password         (driver.u/random-workspace-password)
-        escaped-password (sql.u/escape-sql password :ansi)]
+        escaped-password (sql.u/escape-sql password :ansi)
+        quoted-db        (quote-schema db-name)
+        quoted-user      (quote-field user)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (let [user-sql (if (mysql-user-exists? t-conn user)
-                       (format "ALTER USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               user escaped-password)
-                       (format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               user escaped-password))]
+                       (format "ALTER USER %s@'%%' IDENTIFIED BY '%s'"
+                               quoted-user escaped-password)
+                       (format "CREATE USER %s@'%%' IDENTIFIED BY '%s'"
+                               quoted-user escaped-password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; Create the isolated database
-                       (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
+                       (format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
                        user-sql
                        ;; Grant all privileges on the isolated database
-                       (format "GRANT ALL PRIVILEGES ON `%s`.* TO `%s`@'%%'" db-name user)]]
+                       (format "GRANT ALL PRIVILEGES ON %s.* TO %s@'%%'" quoted-db quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (try
             (.executeBatch ^Statement stmt)
@@ -1338,13 +1350,15 @@
 
 (defmethod driver/destroy-workspace-isolation! :mysql
   [_driver database workspace]
-  (let [db-name  (:schema workspace)
-        username (-> workspace :database_details :user)]
+  (let [db-name     (:schema workspace)
+        username    (-> workspace :database_details :user)
+        quoted-db   (quote-schema db-name)
+        quoted-user (quote-field username)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS `%s`" db-name)]
+        (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS %s" quoted-db)]
                       (mysql-user-exists? t-conn username)
-                      (conj (format "DROP USER IF EXISTS `%s`@'%%'" username)))]
+                      (conj (format "DROP USER IF EXISTS %s@'%%'" quoted-user)))]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
@@ -1354,11 +1368,11 @@
   is `[]` — so each entry in `schemas` is interpreted as a database name.
   Workspace-scoped users receive database-wide SELECT via `GRANT SELECT ON db.*`."
   [username schemas]
-  (let [qu               (sql.u/quote-name :mysql :field username)
+  (let [quoted-user      (quote-field username)
         source-databases (set schemas)]
     (perf/mapv (fn [db]
                  (format "GRANT SELECT ON %s.* TO %s@'%%'"
-                         (sql.u/quote-name :mysql :schema db) qu))
+                         (quote-schema db) quoted-user))
                source-databases)))
 
 (defmethod driver/grant-workspace-read-access! :mysql
@@ -1408,7 +1422,7 @@
                                                                    [(:schema test-table)])
                               (catch Exception e
                                 (throw (ex-info (tru "Failed to grant read access to database {0}: {1}"
-                                                     (:schema test-table) (ex-message e))
+                                                     (quote-schema (:schema test-table)) (ex-message e))
                                                 {:step :grant :table test-table} e)))))
                           (try
                             (driver/destroy-workspace-isolation! driver database workspace-with-details)

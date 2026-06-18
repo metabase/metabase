@@ -16,13 +16,17 @@ import { HydratedKBarSearch } from "./HydratedKBarSearch";
 import S from "./Palette.module.css";
 import { PaletteResults } from "./PaletteResults";
 
+type CommandPaletteRouteProps = {
+  disableCommandPalette?: boolean;
+};
+
 /** Command palette */
 export const Palette = withRouter((props) => {
   const isLoggedIn = useSelector((state) => !!getUser(state));
 
   const disableCommandPaletteForRoute = props.routes.some(
-    (route: PlainRoute & { disableCommandPalette?: boolean }) =>
-      route.disableCommandPalette,
+    (route: PlainRoute<CommandPaletteRouteProps>) =>
+      route.props?.disableCommandPalette,
   );
 
   useCommandPaletteBasicActions({ ...props, isLoggedIn });

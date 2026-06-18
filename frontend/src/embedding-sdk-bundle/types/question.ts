@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { QueryParams } from "metabase/query_builder/actions";
-import type { Deferred } from "metabase/utils/promise";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type InternalQuestion from "metabase-lib/v1/Question";
 import type { Card, ParameterValuesMap } from "metabase-types/api";
@@ -116,8 +115,8 @@ export type LoadSdkQuestionParams = {
 export interface NavigateToNewCardParams {
   nextCard: Card;
   previousCard: Card;
-  objectId: ObjectId;
-  cancelDeferred?: Deferred;
+  objectId?: ObjectId;
+  signal?: AbortSignal;
   drillName?: string;
 }
 

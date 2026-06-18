@@ -680,6 +680,46 @@
                     :type :category}]
                   (t2/select-one-fn :parameters :model/Card :id (:id card)))))))))
 
+(deftest cleanup-parameter-join-aliased-value-field-test
+  (let [mp                (mt/metadata-provider)
+        venue-table       (lib.metadata/table mp (mt/id :venues))
+        categories-table  (lib.metadata/table mp (mt/id :categories))
+        venue-category-id (lib.metadata/field mp (mt/id :venues :category_id))
+        categories-id     (lib.metadata/field mp (mt/id :categories :id))
+        categories-name   (lib.metadata/field mp (mt/id :categories :name))
+        venues-query      (lib/query mp venue-table)
+        source-query-1    (lib/join venues-query
+                                    (lib/join-clause categories-table
+                                                     [(lib/= venue-category-id categories-id)]))
+        source-query-2    (lib/join venues-query
+                                    (-> (lib/join-clause categories-table
+                                                         [(lib/= venue-category-id categories-id)])
+                                        (lib/with-join-fields [categories-name])))]
+    (mt/with-temp
+      [:model/Card {source-card-id :id} (mt/card-with-source-metadata-for-query source-query-1)
+       :model/Card {param-card-id :id
+                    param-card-params :parameters}  {:parameters [{:name                 "Category name"
+                                                                   :slug                 "category_name"
+                                                                   :id                   "category_name_param"
+                                                                   :type                 :string/=
+                                                                   :values_query_type    :list
+                                                                   :values_source_type   :card
+                                                                   :values_source_config {:card_id     source-card-id
+                                                                                          :value_field [:field "Categories__NAME" {:base-type "type/Text"}]}}]}]
+      (testing "saving the source card with different columns that still include the value_field keeps the parameter config"
+        (t2/update! :model/Card source-card-id (mt/card-with-source-metadata-for-query source-query-2))
+        (is (= param-card-params
+               (t2/select-one-fn :parameters :model/Card :id param-card-id))))
+      (testing "removing the join from the source card removes the parameter config"
+        (t2/update! :model/Card source-card-id (mt/card-with-source-metadata-for-query venues-query))
+        (is (= [{:name "Category name",
+                 :slug "category_name",
+                 :id "category_name_param",
+                 :type :string/=,
+                 :values_query_type :list,
+                 :values_source_type nil}]
+               (t2/select-one-fn :parameters :model/Card :id param-card-id)))))))
+
 (deftest ^:parallel descendants-test
   (testing "regular cards don't depend on anything"
     (mt/with-temp [:model/Card card {:name "some card"}]
@@ -1244,6 +1284,34 @@
           (is (some? card))
           (is (= remote-synced-coll-id (:collection_id card))))))))
 
+(defn- malformed-native-dataset-query
+  "See [[metabase.queries-rest.api.card-test/malformed-native-dataset-query]]."
+  []
+  {:type     :native
+   :database (mt/id)
+   :native   {:query         "SELECT COUNT(*) FROM ORDERS WHERE {{df}}"
+              :template-tags {"df" {:id           (str (random-uuid))
+                                    :name         "df"
+                                    :display-name "DF"
+                                    :type         :dimension
+                                    :widget-type  :date/range
+                                    :dimension    [:field
+                                                   {:base-type :type/DateTime}
+                                                   (mt/id :orders :created_at)]}}}})
+
+(deftest create-card!-with-malformed-dataset-query-throws-test
+  (testing "queries/create-card! with structurally malformed :dataset_query throws a normalization error, not a SQL constraint error (#74615)"
+    (mt/with-model-cleanup [:model/Card]
+      (is (thrown-with-msg?
+           Throwable
+           #"(?i)normaliz|MBQL"
+           (card/create-card!
+            {:name                   "Bad card"
+             :display                "table"
+             :visualization_settings {}
+             :dataset_query          (malformed-native-dataset-query)}
+            {:id (mt/user->id :rasta)}))))))
+
 (deftest update-card-remote-synced-collection-non-remote-synced-deps-test
   (testing "update-card! should throw exception when moving to remote-synced collection with non-remote-synced dependencies"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
@@ -1533,3 +1601,36 @@
               (testing "remapped values appear correctly"
                 (is (= ["Zero" "A" "B" "C" "D"]
                        (map last rows)))))))))))
+
+(defn- dependent-card [db-id source-card]
+  {:database_id   db-id
+   :dataset_query {:lib/type :mbql/query
+                   :database db-id
+                   :stages   [{:lib/type    :mbql.stage/mbql
+                               :source-card (:id source-card)}]}})
+
+(deftest cascade-database-change-to-transitive-dependents-test
+  (testing "Recursive cascade through chains of dependent cards (#74561)"
+    (mt/with-temp [:model/Database {db1-id :id} {:name "db1" :engine :h2}
+                   :model/Database {db2-id :id} {:name "db2" :engine :h2}
+                   :model/Card     model        {:type          :model
+                                                 :database_id   db1-id
+                                                 :dataset_query {:lib/type :mbql/query
+                                                                 :database db1-id
+                                                                 :stages   [{:lib/type :mbql.stage/native
+                                                                             :native   "SELECT 1"}]}}
+                   :model/Card     question1    (dependent-card db1-id model)
+                   :model/Card     question2    (dependent-card db1-id model)
+                   :model/Card     question3    (dependent-card db1-id question1)
+                   :model/Card     question4    (dependent-card db1-id question2)
+                   :model/Card     question5    (dependent-card db1-id question4)]
+      (mt/with-test-user :crowberto
+        (card/update-card! {:card-before-update model
+                            :card-updates       {:dataset_query {:lib/type :mbql/query
+                                                                 :database db2-id
+                                                                 :stages   [{:lib/type :mbql.stage/native
+                                                                             :native   "SELECT 1"}]}}}))
+      (doseq [question [question1 question2 question3 question4 question5]]
+        (let [updated-card (t2/select-one :model/Card :id (:id question))]
+          (is (= db2-id (get-in updated-card [:dataset_query :database])))
+          (is (= db2-id (:database_id updated-card))))))))

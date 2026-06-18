@@ -5,9 +5,11 @@
    [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
@@ -86,12 +88,31 @@
     (str (subs s 0 (- max-len 3)) "...")
     s))
 
+(defn- requested-scope-descriptions
+  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description}` maps for the
+   consent page, so the user sees exactly what the client is asking for. Falls back to the raw scope
+   string when a scope has no registered human-readable description. Returns nil when no scope was
+   requested."
+  [scope-param]
+  (when-let [scope-str (some-> scope-param str not-empty)]
+    (->> (str/split scope-str #"\s+")
+         (remove str/blank?)
+         distinct
+         (mapv (fn [s]
+                 {:scope        s
+                  :description  (or (some-> (api-scope/scope-description s) str) s)
+                  ;; Flag the broad first-party grant so the consent page can warn about it without
+                  ;; hardcoding the scope string in the view.
+                  :full-access? (= s oauth-server/full-access-scope)})))))
+
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
   [provider parsed approved request]
   (let [url (if approved
               (oidc/authorize provider parsed (str (:metabase-user-id request)))
               (oidc/deny-authorization provider parsed "access_denied" "User denied the request"))]
+    ;; Record an audit event for the user's decision on this client's registration.
+    (client-event/record-decision! (:client_id parsed) (:metabase-user-id request) approved)
     (-> {:status  302
          :headers {"Location" url}
          :body    ""}
@@ -191,6 +212,8 @@
                       client-id  (:client_id response)]
                   ;; Mark as dynamically registered (the library doesn't know about registration_type)
                   (proto/update-client (:client-store provider) client-id {:registration-type "dynamic"})
+                  ;; Open the audit trail for this DCR client with a pending decision.
+                  (client-event/record-registration! client-id)
                   {:status  201
                    :headers {"Content-Type" "application/json"}
                    :body    response})
@@ -238,10 +261,10 @@
                    :headers {"Content-Type" "text/html; charset=utf-8"}
                    :body    (consent-page/render-consent-page
                              {:client-name  (some-> (:client-name client) (truncate 64))
-                              :client-id    (:client_id parsed)
                               :nonce        (:nonce request)
                               :csrf-token   csrf-token
                               :params-sig   params-sig
+                              :scopes       (requested-scope-descriptions (:scope oauth-params))
                               :oauth-params oauth-params})}
                   (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
             (catch ExceptionInfo e

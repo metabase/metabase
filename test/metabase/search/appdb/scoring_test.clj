@@ -2,6 +2,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
@@ -126,6 +127,20 @@
       ;; TODO text ranking (probably in-memory
       nil)))
 
+(deftest ^:parallel exact-normalization-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "Sales,  Revenue"}
+     {:model "card" :id 2 :name "Sales Revenue Report"}]
+    (case (mdb/db-type)
+      :postgres
+      (testing "Exact matching ignores commas and collapses whitespace runs"
+        (is (= [["card" 1 "Sales,  Revenue"]
+                ["card" 2 "Sales Revenue Report"]]
+               (search-results :exact "sales revenue"))))
+      :h2
+      ;; TODO text ranking (probably in-memory)
+      nil)))
+
 (deftest ^:parallel prefix-test
   (with-index-contents
     [{:model "card" :id 1 :name "this is a prefix of something longer"}
@@ -134,6 +149,15 @@
       (is (= [["card" 1 "this is a prefix of something longer"]
               ["card" 2 "a prefix this is not, unfortunately"]]
              (search-results :prefix "this is a prefix"))))))
+
+(deftest ^:parallel prefix-normalization-test
+  (with-index-contents
+    [{:model "card" :id 1 :name "Sales, Revenue Quarterly"}
+     {:model "card" :id 2 :name "Revenue and Sales"}]
+    (testing "Prefix matching ignores commas and collapses whitespace runs"
+      (is (= [["card" 1 "Sales, Revenue Quarterly"]
+              ["card" 2 "Revenue and Sales"]]
+             (search-results :prefix "sales revenue"))))))
 
 (deftest ^:parallel model-test
   (with-index-contents
@@ -326,15 +350,14 @@
                    :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
                    :model/Collection other     {:name "non-library"    :location "/"}]
       (with-index-contents
-        [{:model "card" :id 1 :name "card plain"           :collection_id (:id other)    :collection_location (:location other)}
-         {:model "card" :id 2 :name "card in library"      :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
-         {:model "card" :id 3 :name "card in library-data" :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
-         {:model "card" :id 4 :name "card in lib-metrics"  :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
-         {:model "card" :id 5 :name "card in sub of lib"   :collection_id (:id sub)      :collection_location (:location sub)}
-         {:model "card" :id 6 :name "card in sub of sub"   :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
-         {:model "card" :id 7 :name "card in trash"        :collection_type "trash"}]
-        (let [library-id? #{2 3 4 5 6}
-              in-library? (fn [[_ id _]] (boolean (library-id? id)))]
+        [{:model "card" :id 1 :name "plain card"                    :collection_id (:id other)    :collection_location (:location other)}
+         {:model "card" :id 2 :name "lib-tree card library"         :collection_id (:id lib)      :collection_location (:location lib)      :collection_type "library"}
+         {:model "card" :id 3 :name "lib-tree card library-data"    :collection_id (:id lib-data) :collection_location (:location lib-data) :collection_type "library-data"}
+         {:model "card" :id 4 :name "lib-tree card library-metrics" :collection_id (:id lib-met)  :collection_location (:location lib-met)  :collection_type "library-metrics"}
+         {:model "card" :id 5 :name "lib-tree card sub"             :collection_id (:id sub)      :collection_location (:location sub)}
+         {:model "card" :id 6 :name "lib-tree card sub-sub"         :collection_id (:id sub-sub)  :collection_location (:location sub-sub)}
+         {:model "card" :id 7 :name "trashed card" :collection_type "trash"}]
+        (let [in-library? (fn [[_ _ nm]] (str/includes? nm "lib-tree"))]
           (testing "with positive :library weight, items inside library trees come first"
             (is (= [true true true true true false false]
                    (map in-library? (with-weights {:library 1} (search-results* "card"))))))
@@ -361,15 +384,15 @@
         (is (= 4 (-> (with-weights {:data-layer 1 :data-layer/hidden 1}
                        (search-results* "table"))
                      first second))))))
-  (testing "Metabot tier ordering: final > internal > hidden when all weights active"
+  (testing "tier ordering: final > internal > hidden under :metabot magnitudes"
     (with-index-contents
-      [{:model "table" :id 1 :name "metabot table final"    :data_layer "final"}
-       {:model "table" :id 2 :name "metabot table internal" :data_layer "internal"}
-       {:model "table" :id 3 :name "metabot table hidden"   :data_layer "hidden"}]
+      [{:model "table" :id 1 :name "foo table final"    :data_layer "final"}
+       {:model "table" :id 2 :name "foo table internal" :data_layer "internal"}
+       {:model "table" :id 3 :name "foo table hidden"   :data_layer "hidden"}]
       (is (= [1 2 3]
-             (->> (with-weights {:data-layer          1
-                                 :data-layer/final    33
-                                 :data-layer/internal 10
-                                 :data-layer/hidden   1}
-                    (search-results* "metabot table"))
+             (->> (with-weights {:data-layer          33
+                                 :data-layer/final    1
+                                 :data-layer/internal 0.3
+                                 :data-layer/hidden   0.03}
+                    (search-results* "foo table"))
                   (map second)))))))

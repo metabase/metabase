@@ -77,7 +77,7 @@ export const NameDescriptionInput = ({
             ref={sectionRef}
             wrap="nowrap"
           >
-            <Icon flex="0 0 auto" name={nameIcon} size={20} c="brand" />
+            <Icon flex="0 0 auto" name={nameIcon} size={20} c="core-brand" />
 
             {namePrefix && (
               <Ellipsified

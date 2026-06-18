@@ -13,10 +13,10 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { connect } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -401,6 +401,7 @@ export class UnconnectedDataSelector extends Component {
       selectedSchema,
       selectedTable,
       selectedField,
+      schemas,
     } = this.state;
 
     const invalidSchema =
@@ -428,6 +429,22 @@ export class UnconnectedDataSelector extends Component {
       selectedField &&
       selectedField.table.id !== selectedTable.id;
 
+    // A database with a single schema auto-selects it (see `skipSteps`). When the
+    // schema list arrives asynchronously *after* we already switched to the schema
+    // step (e.g. a freshly selected Mongo database in the native editor), that
+    // auto-selection ran against stale state and didn't advance, leaving us
+    // stranded on the schema step. Retry it now that the schema is available,
+    // but only if schema selection is truly missing in both controlled and
+    // uncontrolled usage.
+    const onStepMissingOnlySchemaSelection =
+      activeStep === SCHEMA_STEP &&
+      !selectedSchema &&
+      this.props.useOnlyAvailableSchema &&
+      !this.props.readOnly &&
+      this.props.selectedSchemaId == null &&
+      this.state.selectedSchemaId == null &&
+      schemas.length === 1;
+
     if (invalidSchema || onStepMissingSchemaAndTable) {
       await this.switchToStep(SCHEMA_STEP, {
         selectedSchemaId: null,
@@ -441,6 +458,8 @@ export class UnconnectedDataSelector extends Component {
       });
     } else if (invalidField) {
       await this.switchToStep(FIELD_STEP, { selectedFieldId: null });
+    } else if (onStepMissingOnlySchemaSelection) {
+      await this.onChangeSchema(schemas[0]);
     }
   }
 
@@ -1109,6 +1128,7 @@ function withAvailableModels(WrappedComponent) {
       calculate_available_models: true,
       limit: 0,
       models: ["dataset", "metric"],
+      context: "data-picker",
     });
     let metadata;
     if (response) {
@@ -1127,9 +1147,9 @@ function withAvailableModels(WrappedComponent) {
   };
 }
 
-function withAllDatabases(WrappedComponent) {
-  return function DataSelectorWithAllDatabases(props) {
-    useListDatabasesQuery();
+function withDatabaseList(WrappedComponent) {
+  return function DataSelectorWithDatabaseList(props) {
+    useListDatabasesQuery({ "can-query": true });
     return <WrappedComponent {...props} />;
   };
 }
@@ -1138,7 +1158,7 @@ const isListDatabasesQuerySuccess = (state, query) =>
   databaseApi.endpoints.listDatabases.select(query)(state).isSuccess;
 
 const DataSelector = _.compose(
-  withAllDatabases,
+  withDatabaseList,
   withAvailableModels,
   withSchemaFetchers,
   connect(
@@ -1179,7 +1199,7 @@ const DataSelector = _.compose(
     },
     (dispatch) => ({
       fetchDatabases: (databaseQuery) =>
-        entityCompatibleQuery(
+        runRtkEndpoint(
           { ...databaseQuery, "can-query": true },
           dispatch,
           databaseApi.endpoints.listDatabases,
@@ -1187,7 +1207,7 @@ const DataSelector = _.compose(
         ),
       fetchFields: (tableId) => dispatch(fetchTableMetadata({ id: tableId })),
       fetchQuestion: (id) =>
-        entityCompatibleQuery(
+        runRtkEndpoint(
           { id: getQuestionIdFromVirtualTableId(id) },
           dispatch,
           cardApi.endpoints.getCard,

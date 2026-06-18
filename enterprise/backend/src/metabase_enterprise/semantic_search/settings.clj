@@ -2,6 +2,7 @@
   (:require
    [metabase.llm.settings :as llm-settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.search.config :as search.config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -32,6 +33,18 @@
   :default "Snowflake/snowflake-arctic-embed-l-v2.0"
   :export? false
   :doc false)
+
+(defsetting ee-embedding-query-prefix
+  (deferred-tru
+   (str "Prefix prepended to search queries (but not indexed documents) before embedding them, as expected by "
+        "asymmetric retrieval models such as the snowflake-arctic-embed family (`query: `). It is prepended "
+        "verbatim, so include any trailing separator. Leave empty to use the default for the model family."))
+  :encryption :no
+  :visibility :settings-manager
+  :default    nil
+  :type       :string
+  :export?    false
+  :doc        false)
 
 (defsetting ee-embedding-model-dimensions
   (deferred-tru "Set the dimension size for the selected embedding model")
@@ -97,6 +110,31 @@
   :export? false
   :visibility :internal
   :doc false)
+
+(def ^:private valid-vector-search-strategies
+  "Valid semantic-search vector-search strategies, mastered in
+  [[metabase.search.config/vector-search-strategies]]."
+  (set search.config/vector-search-strategies))
+
+(defsetting semantic-search-vector-strategy
+  (deferred-tru
+   (str "Default vector-search strategy for semantic search: `hnsw` (approximate, HNSW-index-backed) or "
+        "`brute-force` (exact, applies non-vector filters first then computes cosine distance over the "
+        "survivors). Individual requests may override this via the `vector_search_strategy` API parameter."))
+  :type       :keyword
+  :default    :hnsw
+  :encryption :no
+  :export?    false
+  :visibility :internal
+  :doc        false
+  :setter     (fn [new-value]
+                (let [kw (some-> new-value keyword)]
+                  (when (and kw (not (contains? valid-vector-search-strategies kw)))
+                    (throw (ex-info (str "Invalid vector-search strategy: " (pr-str new-value)
+                                         ". Valid strategies are: " (pr-str valid-vector-search-strategies))
+                                    {:invalid-value new-value
+                                     :valid-values  valid-vector-search-strategies})))
+                  (setting/set-value-of-type! :keyword :semantic-search-vector-strategy kw))))
 
 (defsetting semantic-search-min-results-threshold
   (deferred-tru "Minimum number of semantic search results required before falling back to other engines.")
