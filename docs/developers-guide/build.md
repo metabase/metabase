@@ -163,6 +163,75 @@ The entire Metabase application is compiled and assembled into a single .jar fil
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
 
+### Build Metabase with Nix
+
+If you have Nix installed, you can build the default OSS release JAR with:
+
+```
+nix build .#
+```
+
+The built JAR is available under `result/share/java/metabase.jar`.
+
+To build a runnable wrapper around the JAR, use:
+
+```
+nix build .#metabase-wrapped
+```
+
+Then run Metabase with:
+
+```
+./result/bin/metabase
+```
+
+You can also build the Enterprise Edition JAR with:
+
+```
+nix build .#ee
+```
+
+### Update Nix build hashes after dependency changes
+
+The Nix flake uses fixed-output derivations for dependency caches. When a new feature adds dependencies, or a change updates frontend, Clojure, or Python dependencies, update the matching hash in `flake.nix` in the same PR.
+
+For frontend dependency changes, such as updates to `package.json` or `bun.lock`, set the `frontendDeps.outputHash` value in `flake.nix` to `lib.fakeHash`, then run:
+
+```
+nix build .#frontendDeps
+```
+
+The build will fail with a hash mismatch. Copy the `got:` hash from the error into `frontendDeps.outputHash`. If you use Determinate Nix, you can apply the reported hash automatically after the failed build:
+
+```
+determinate-nixd fix hashes --auto-apply
+```
+
+Then rerun:
+
+```
+nix build .#frontendDeps
+```
+
+For Clojure dependency changes, such as updates to `deps.edn` files, follow the same process with `clojureDeps.outputHash`:
+
+```
+nix build .#clojureDeps
+```
+
+For Python dependency changes in `pythonDeps`, update the wheel URL and hash in `flake.nix`. You can get the new file hash with:
+
+```
+nix store prefetch-file --hash-type sha256 <wheel-url>
+```
+
+After updating any dependency hashes, verify the release outputs still build:
+
+```
+nix build .#
+nix build .#metabase-wrapped
+```
+
 ### Build a Metabase Uberjar in a containerized environment
 
 If you want to build Metabase without installing Clojure, Java, and Node.js on your host machine, you can build the Uberjar inside a container by running:
