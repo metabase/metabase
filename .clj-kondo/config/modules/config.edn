@@ -1046,12 +1046,15 @@
 
   indexes
   {:team "Gadget"
-   :api  #{metabase.indexes.api}
+   :api  #{metabase.indexes.api
+           metabase.indexes.reconcile}
    :uses #{api
+           driver
            models
            util}
    :model-exports #{:model/TableIndex}
-   :model-imports #{:model/Transform}}
+   :model-imports #{:model/Database
+                    :model/Transform}}
 
   initialization-status
   {:team "UX West"
