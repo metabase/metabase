@@ -34,7 +34,11 @@ function bundleStatsPlugins(statsFileName) {
           entrypoints: Object.fromEntries(
             Object.entries(stats.entrypoints || {}).map(([name, entry]) => [
               name,
-              { assets: (entry.assets || []).map((asset) => ({ name: asset.name || asset })) },
+              {
+                assets: (entry.assets || []).map((asset) => ({
+                  name: asset.name || asset,
+                })),
+              },
             ]),
           ),
         }),
