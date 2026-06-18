@@ -16,7 +16,7 @@ import type {
   SdkQuestionState,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
-import { isAbortError } from "metabase/api/legacy-client";
+import { isAbortError } from "metabase/api/client";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";

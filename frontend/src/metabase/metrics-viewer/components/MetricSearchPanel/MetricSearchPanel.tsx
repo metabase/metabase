@@ -1,18 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  trackMetricsViewerMetricAdded,
+  trackMetricsViewerMetricRemoved,
+} from "metabase/metrics-viewer/analytics";
+import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import { Box, Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
-import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
+import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type {
-  MetricDefinitionEntry,
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerFormulaEntity,
-  SelectedMetric,
-  SourceColorMap,
-} from "../../types/viewer-state";
+import type { SelectedMetric } from "../../types/viewer-state";
 import type { DefinitionSource } from "../../utils/definition-sources";
 import {
   applyDefinitionToFormulaEntities,
@@ -24,36 +22,36 @@ import { MetricsFilterPills } from "../MetricsFilterPills";
 
 import S from "./MetricSearchPanel.module.css";
 
-type MetricSearchPanelProps = {
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  formulaEntities: MetricsViewerFormulaEntity[];
-  onFormulaEntitiesChange: (
-    entities: MetricsViewerFormulaEntity[],
-    slotMapping?: Map<number, number>,
-  ) => void;
-  selectedMetrics: SelectedMetric[];
-  metricColors: SourceColorMap;
-  onAddMetric: (metric: SelectedMetric) => void;
-  onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
-  onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
-  onSetBreakout: (
-    entity: MetricDefinitionEntry,
-    dimension: ProjectionClause | undefined,
-  ) => void;
-};
-
-export function MetricSearchPanel({
-  definitions,
-  formulaEntities,
-  onFormulaEntitiesChange,
-  selectedMetrics,
-  metricColors,
-  onAddMetric,
-  onRemoveMetric,
-  onSwapMetric,
-  onSetBreakout,
-}: MetricSearchPanelProps) {
+export function MetricSearchPanel() {
+  const {
+    definitions,
+    formulaEntities,
+    activeDimensionBreakout,
+    selectedMetrics,
+    sourceColors: metricColors,
+    setFormulaEntities: onFormulaEntitiesChange,
+    addMetric,
+    removeMetric,
+    swapMetric: onSwapMetric,
+    setBreakoutDimension: onSetBreakout,
+  } = useMetricsViewerContext();
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
+
+  const onAddMetric = useCallback(
+    (metric: SelectedMetric) => {
+      addMetric(metric);
+      trackMetricsViewerMetricAdded(metric.id, metric.sourceType);
+    },
+    [addMetric],
+  );
+
+  const onRemoveMetric = useCallback(
+    (metricId: number, sourceType: "metric" | "measure") => {
+      removeMetric(metricId, sourceType);
+      trackMetricsViewerMetricRemoved(metricId, sourceType);
+    },
+    [removeMetric],
+  );
 
   const definitionSources = useMemo(
     () => getDefinitionSources(formulaEntities, definitions),
@@ -89,7 +87,9 @@ export function MetricSearchPanel({
   return (
     <Stack gap="md">
       <Flex align="center" justify="space-between" mih="1.875rem">
-        <Text fw={700} size="lg">{t`Explore`}</Text>
+        <Text fw={700} size="lg" component="h1">
+          {t`Explore`}
+        </Text>
         {hasDefinitions && (
           <FilterPopover
             definitionSources={definitionSources}
@@ -99,7 +99,7 @@ export function MetricSearchPanel({
             <Button.Group>
               <Button
                 variant="light"
-                color="filter"
+                color="core-filter"
                 size="xs"
                 p="sm"
                 leftSection={
@@ -116,7 +116,7 @@ export function MetricSearchPanel({
                 <Tooltip label={toggleLabel}>
                   <Button
                     variant="light"
-                    color="filter"
+                    color="core-filter"
                     size="xs"
                     py="sm"
                     px="md"
@@ -140,6 +140,7 @@ export function MetricSearchPanel({
           <MetricSearch
             definitions={definitions}
             formulaEntities={formulaEntities}
+            activeDimensionBreakout={activeDimensionBreakout}
             onFormulaEntitiesChange={onFormulaEntitiesChange}
             selectedMetrics={selectedMetrics}
             metricColors={metricColors}

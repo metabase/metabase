@@ -44,7 +44,7 @@ export const UserTypeCell = ({
       <Box
         component="button"
         className={S.changeButton}
-        c="filter"
+        c="core-filter"
         px="xs"
         py={0}
       >

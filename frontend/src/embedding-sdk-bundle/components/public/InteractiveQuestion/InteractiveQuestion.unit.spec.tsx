@@ -44,12 +44,12 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
-import { createMockModelResult } from "metabase/browse/models/test-utils";
 import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
 import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
+  createMockModelResult,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";

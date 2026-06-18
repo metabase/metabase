@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import { FilterPickerBody } from "metabase/common/metrics/components/FilterPicker/FilterPickerBody";
 import {
   Badge,
   Box,

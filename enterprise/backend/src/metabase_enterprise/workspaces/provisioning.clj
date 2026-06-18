@@ -60,6 +60,22 @@
   (keyword "metabase-enterprise.workspaces.provisioning"
            (str "wsd-" workspace-database-id)))
 
+(defn do-with-workspace-database-lock
+  "Run `thunk` while holding the per-row cluster lock for `workspace-database-id`.
+   [[provision-single!]]/[[deprovision-single!]] take this same lock internally, so
+   the acquisition here is reentrant — it lets a caller atomically combine an app-db
+   change with provisioning under a single lock, acquired *before* the row is
+   mutated (the lock-before-mutate order the rest of the system relies on)."
+  [workspace-database-id thunk]
+  (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
+                                   :timeout-seconds provisioning-lock-timeout-seconds}
+    (thunk)))
+
+(defmacro with-workspace-database-lock
+  "Sugar over [[do-with-workspace-database-lock]]."
+  [workspace-database-id & body]
+  `(do-with-workspace-database-lock ~workspace-database-id (fn [] ~@body)))
+
 ;;; ---------------------------------------- Single-database operations -----------------------------------------------
 
 (defn provision-workspace-database!
@@ -68,8 +84,7 @@
   on success, or back to `:unprovisioned` on failure."
   [workspace-database-id provisioner]
   (try
-    (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
-                                     :timeout-seconds provisioning-lock-timeout-seconds}
+    (with-workspace-database-lock workspace-database-id
       (let [wsd (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)]
         (when-not wsd
           (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
@@ -105,8 +120,7 @@
   or back to `:provisioned` on failure."
   [workspace-database-id provisioner]
   (try
-    (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
-                                     :timeout-seconds provisioning-lock-timeout-seconds}
+    (with-workspace-database-lock workspace-database-id
       (let [wsd (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)]
         (when-not wsd
           (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
@@ -133,9 +147,9 @@
               ;; by iso namespace alone is correct.
               ;;
               ;; Rebind `*current-connectable*` to nil so the DELETE runs on a
-              ;; fresh autocommit connection outside the `with-cluster-lock` tx.
-              ;; Otherwise, when `destroy!` throws, the surrounding tx rolls back
-              ;; and undoes the DELETE.
+              ;; fresh autocommit connection outside the workspace-database lock's
+              ;; tx. Otherwise, when `destroy!` throws, the surrounding tx rolls
+              ;; back and undoes the DELETE.
               (binding [t2.connection/*current-connectable* nil]
                 (ws.remapping-cleanup/clear-mappings-for-iso! db
                                                               (:database_id wsd)

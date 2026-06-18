@@ -32,6 +32,8 @@ export const setup = (options?: {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   simpleEmbeddingEnabled?: boolean;
   showSimpleEmbedTerms?: boolean;
+  guestEmbeddingEnabled?: boolean;
+  showStaticEmbedTerms?: boolean;
   jwtReady?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
   hasEmailSetup?: boolean;
@@ -58,6 +60,8 @@ export const setup = (options?: {
     "token-features": tokenFeatures,
     "show-simple-embed-terms": options?.showSimpleEmbedTerms ?? false,
     "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
+    "show-static-embed-terms": options?.showStaticEmbedTerms ?? false,
+    "enable-embedding-static": options?.guestEmbeddingEnabled ?? false,
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
     "jwt-enabled-and-configured": options?.jwtReady ?? false,

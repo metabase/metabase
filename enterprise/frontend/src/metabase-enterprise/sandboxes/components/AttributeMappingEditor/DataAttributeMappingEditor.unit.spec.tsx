@@ -9,7 +9,10 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { DataAttributeMap } from "metabase-enterprise/sandboxes/types";
-import type { DimensionRef, GroupTableAccessPolicy } from "metabase-types/api";
+import type {
+  GroupTableAccessPolicy,
+  ParameterTarget,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -25,7 +28,7 @@ const tablePolicy: GroupTableAccessPolicy = {
   group_id: 3,
   card_id: null,
   attribute_remappings: {
-    color: ["dimension", ["field", 11]],
+    color: ["dimension", ["field", 11, null]],
   },
 };
 
@@ -36,14 +39,14 @@ const cardPolicy: GroupTableAccessPolicy = {
   group_id: 3,
   card_id: 2,
   attribute_remappings: {
-    color: ["dimension", ["field", 22]],
+    color: ["dimension", ["field", 22, null]],
   },
 };
 const policyTable = createMockTable();
 
 const options = ["type", "color", "personal", "other"];
 
-type MappingType = DataAttributeMap<DimensionRef | string | null>;
+type MappingType = DataAttributeMap<ParameterTarget | string | null>;
 
 const Wrapper = ({
   spy,
@@ -118,7 +121,7 @@ describe("DataAttributeMappingEditor", () => {
       await userEvent.click(await screen.findByText("other"));
 
       expect(onChange).toHaveBeenCalledWith({
-        other: ["dimension", ["field", 11]],
+        other: ["dimension", ["field", 11, null]],
       });
     });
   });
@@ -141,7 +144,7 @@ describe("DataAttributeMappingEditor", () => {
       await userEvent.click(await screen.findByText("other"));
 
       expect(onChange).toHaveBeenCalledWith({
-        other: ["dimension", ["field", 22]],
+        other: ["dimension", ["field", 22, null]],
       });
     });
   });

@@ -38,7 +38,7 @@ jobs:
           maildev: true
           openldap: false
           webhook: false
-          snowplow: false
+          snowplow: true
           postgres: false
           mysql: false
           mongo: false
@@ -190,7 +190,7 @@ jobs:
           maildev: true
           openldap: false
           webhook: false
-          snowplow: false
+          snowplow: true
           postgres: false
           mysql: false
           mongo: false

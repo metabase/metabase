@@ -12,7 +12,7 @@ export const InfoBody = styled.div`
 
 export const InfoIcon = styled(Icon)`
   display: block;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   width: 1.5rem;
   height: 1.5rem;
 `;
@@ -35,6 +35,6 @@ export const InfoLink = styled(Link)`
   margin-top: 2.5rem;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

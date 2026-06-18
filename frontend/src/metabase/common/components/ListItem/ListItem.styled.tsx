@@ -20,6 +20,6 @@ export const Root = styled.li<Props>`
 
 export const ListItemLink = styled(Link)`
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

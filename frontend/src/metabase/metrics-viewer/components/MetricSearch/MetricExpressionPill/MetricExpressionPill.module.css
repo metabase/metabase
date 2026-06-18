@@ -33,3 +33,7 @@
     cursor: text;
   }
 }
+
+.disabledText {
+  color: var(--mb-color-text-tertiary);
+}

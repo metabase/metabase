@@ -45,13 +45,13 @@
   font-size: inherit !important;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
 .ItemLink,
 .CollectionLink {
   :hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }

@@ -46,7 +46,6 @@
                               :database-routing                 false
                               :datetime-diff                    true
                               :describe-default-expr            true
-                              :describe-fks                     false
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
                               :describe-is-generated            false
                               :describe-is-nullable             true
@@ -390,11 +389,10 @@
   (let [sql [[(format "CREATE DATABASE IF NOT EXISTS %s;" (quote-schema schema))]]]
     (driver/execute-raw-queries! driver conn-spec sql)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :clickhouse
-  [_driver _database _table]
-  (log/warn "Clickhouse does not support foreign keys. `describe-table-fks` should not have been called!")
-  #{})
+(defmethod driver/describe-fks :clickhouse
+  [_driver _database & {:as _options}]
+  (log/warn "Clickhouse does not support foreign keys. `describe-fks` should not have been called!")
+  nil)
 
 (defmethod driver/table-known-to-not-exist? :clickhouse
   [_driver e]

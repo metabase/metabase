@@ -52,7 +52,7 @@ function ItemName({
   if (dashboardId) {
     return (
       <Flex align="center" gap="sm">
-        <Icon name="dashboard" c="brand" />
+        <Icon name="dashboard" c="core-brand" />
         <DashboardName id={dashboardId} />
       </Flex>
     );
@@ -64,7 +64,7 @@ function ItemName({
 
   return (
     <Flex align="center" gap="sm">
-      <Icon name={collectionIcon.name} c="brand" />
+      <Icon name={collectionIcon.name} c="core-brand" />
       {type === "snippet-collections" ? (
         <SnippetCollectionName id={collectionId} />
       ) : (

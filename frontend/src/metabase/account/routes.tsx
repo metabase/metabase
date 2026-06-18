@@ -1,6 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { ComponentType } from "react";
-import { IndexRedirect, Route } from "react-router";
+import { IndexRedirect, Route, type RouteComponent } from "react-router";
 
 import type { State } from "metabase/redux/store";
 
@@ -12,7 +11,7 @@ import UserProfileApp from "./profile/containers/UserProfileApp";
 
 export const getAccountRoutes = (
   _store: Store<State>,
-  IsAuthenticated: ComponentType,
+  IsAuthenticated: RouteComponent,
 ) => {
   return (
     <Route path="/account" component={IsAuthenticated}>

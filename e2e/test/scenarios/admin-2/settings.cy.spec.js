@@ -967,7 +967,7 @@ describe("scenarios > admin > settings > map settings", () => {
     // Not GeoJSON
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
-    ).type("https://metabase.com");
+    ).type("https://www.metabase.com");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -1284,7 +1284,7 @@ describe("admin > settings > nav", () => {
     cy.findByTestId("admin-layout-sidebar")
       .findByText(/api keys/i)
       .click();
-    cy.findByTestId("admin-layout-content").findByText(/No API keys here yet/i);
+    cy.findByTestId("admin-layout-content").findByText(/No API keys yet/i);
     cy.url().should("include", "/admin/settings/authentication/api-keys");
   });
 });

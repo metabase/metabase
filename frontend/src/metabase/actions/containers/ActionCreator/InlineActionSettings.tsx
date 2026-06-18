@@ -7,7 +7,7 @@ import {
   useDeleteActionPublicLinkMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { CopyWidget } from "metabase/common/components/CopyWidget";
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { FormField } from "metabase/common/components/FormField";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { TextArea } from "metabase/common/components/TextArea";
@@ -130,7 +130,7 @@ const InlineActionSettings = ({
         )}
         {action?.public_uuid && hasSharingPermission && (
           <CopyWidgetContainer>
-            <CopyWidget
+            <CopyTextInput
               value={Urls.publicAction(siteUrl, action.public_uuid)}
               aria-label={t`Public action form URL`}
             />

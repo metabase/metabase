@@ -57,6 +57,9 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
 const SET_PLUGINS_READY = "sdk/SET_PLUGINS_READY";
 export const setPluginsReady = createAction<boolean>(SET_PLUGINS_READY);
 
+const SET_SDK_TRACKER_READY = "sdk/SET_SDK_TRACKER_READY";
+export const setSdkTrackerReady = createAction<boolean>(SET_SDK_TRACKER_READY);
+
 const SET_INITIAL_DASHBOARD_TAB_ID = "sdk/SET_INITIAL_DASHBOARD_TAB_ID";
 export const setInitialDashboardTabId = createAction<DashboardTabId | null>(
   SET_INITIAL_DASHBOARD_TAB_ID,
@@ -81,6 +84,7 @@ const initialState: SdkState = {
   fetchRefreshTokenFn: null,
   pluginsReady: false,
   initialDashboardTabId: null,
+  sdkTrackerReady: false,
 };
 
 export const sdk = createReducer(initialState, (builder) => {
@@ -212,5 +216,9 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setInitialDashboardTabId, (state, action) => {
     state.initialDashboardTabId = action.payload;
+  });
+
+  builder.addCase(setSdkTrackerReady, (state, action) => {
+    state.sdkTrackerReady = action.payload;
   });
 });

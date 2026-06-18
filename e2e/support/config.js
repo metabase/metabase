@@ -126,9 +126,11 @@ const defaultConfig = {
      ********************************************************************/
 
     on("before:browser:launch", (browser = {}, launchOptions) => {
-      //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
-        launchOptions.args.push("--auto-open-devtools-for-tabs");
+        // Open dev tools in Chrome by default when in headed mode
+        if (browser.isHeaded) {
+          launchOptions.args.push("--auto-open-devtools-for-tabs");
+        }
         launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
