@@ -20,6 +20,7 @@ import type {
   ExecuteActionParams,
   ExecuteActionResult,
 } from "embedding-sdk-bundle/lib/execute-action";
+import type { CreateMetabaseQuery } from "embedding-sdk-bundle/lib/metabase-query/create-metabase-query";
 import type {
   QueryDatasetParams,
   QueryDatasetResult,
@@ -89,6 +90,7 @@ type ReduxStoreExports = {
 };
 
 type ReduxStoreUtilityFunctionExports = {
+  createMetabaseQuery: CreateMetabaseQuery;
   createDashboard: ReduxStoreUtilityFunction<
     (params: CreateDashboardValues) => Promise<MetabaseDashboard>
   >;

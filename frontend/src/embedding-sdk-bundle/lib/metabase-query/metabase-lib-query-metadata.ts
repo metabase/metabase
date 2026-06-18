@@ -1,7 +1,5 @@
 import type { Field } from "metabase-types/api";
 
-import type { TableSchema } from "../data-schema";
-
 import { getMetricId, getMetricSourceTableId, isMeasureSchema } from "./guards";
 import type { MetadataInput, Query } from "./metabase-lib-query-lib";
 import { Lib } from "./metabase-lib-query-lib";
@@ -15,6 +13,7 @@ import {
   isMetricDimensionWithFieldId,
 } from "./metabase-lib-query-utils";
 import type { MetricQueryRuntime } from "./runtime-types";
+import type { TableSchema } from "./schema";
 
 export function createLibQuery(
   metadata: MetadataInput,
@@ -127,31 +126,29 @@ export function createMetricMetadata(
   };
 }
 
-function createDatabaseMetadata(databaseId: number) {
-  return {
-    id: databaseId,
-    name: `Database ${databaseId}`,
-    engine: undefined,
-    details: {},
-    schedules: {},
-    auto_run_queries: false,
-    refingerprint: false,
-    cache_ttl: null,
-    is_sample: false,
-    is_full_sync: false,
-    is_on_demand: false,
-    is_saved_questions: false,
-    native_permissions: "write",
-    initial_sync_status: "complete",
-    features: ["basic-aggregations", "binning", "expressions"],
-    can_upload: false,
-    uploads_enabled: false,
-    uploads_schema_name: null,
-    uploads_table_prefix: null,
-    created_at: "2021-01-01T00:00:00",
-    updated_at: "2021-01-01T00:00:00",
-  };
-}
+const createDatabaseMetadata = (databaseId: number) => ({
+  id: databaseId,
+  name: `Database ${databaseId}`,
+  engine: undefined,
+  details: {},
+  schedules: {},
+  auto_run_queries: false,
+  refingerprint: false,
+  cache_ttl: null,
+  is_sample: false,
+  is_full_sync: false,
+  is_on_demand: false,
+  is_saved_questions: false,
+  native_permissions: "write",
+  initial_sync_status: "complete",
+  features: ["basic-aggregations", "binning", "expressions"],
+  can_upload: false,
+  uploads_enabled: false,
+  uploads_schema_name: null,
+  uploads_table_prefix: null,
+  created_at: "2021-01-01T00:00:00",
+  updated_at: "2021-01-01T00:00:00",
+});
 
 function createTableMetadataRecord(
   table: TableSchema,
@@ -211,9 +208,8 @@ function createFieldMetadataRecord(
   };
 }
 
-function getTableFields(table: TableSchema): FieldWithFieldId[] {
-  return Object.values(table.fields ?? {}).filter(hasFieldId);
-}
+const getTableFields = (table: TableSchema): FieldWithFieldId[] =>
+  Object.values(table.fields ?? {}).filter(hasFieldId);
 
 function getMetricDimensions(query: MetricQueryRuntime): FieldWithFieldId[] {
   if (typeof query.metric !== "object" || query.metric == null) {

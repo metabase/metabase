@@ -1,7 +1,5 @@
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
-import type { TableSchema } from "../data-schema";
-
 import {
   getMetricDatabaseId,
   getMetricId,
@@ -29,6 +27,7 @@ import {
 } from "./metabase-lib-query-normalization";
 import { buildMetricDatasetQuery } from "./metric-query-builder";
 import type { MetricQueryRuntime, TableQueryRuntime } from "./runtime-types";
+import type { TableSchema } from "./schema";
 import { buildTableDatasetQuery } from "./table-query-builder";
 import {
   validateMetricTableScopedInputs,
@@ -171,9 +170,9 @@ export function buildDatasetQueryWithMetabaseLib(
   const databaseId = getTableDatabaseId(query as TableQueryRuntime);
 
   if (databaseId == null) {
-    throw new Error(
-      "Query creation requires a generated table schema, generated metric schema, or databaseId.",
-    );
+    return buildTableDatasetQuery(
+      query as TableQueryRuntime,
+    ) as StructuredDatasetQuery;
   }
 
   return {
@@ -182,24 +181,21 @@ export function buildDatasetQueryWithMetabaseLib(
   };
 }
 
-function getGeneratedTable(query: TableQueryRuntime): TableSchema | null {
-  return typeof query.table === "object" && query.table != null
+const getGeneratedTable = (query: TableQueryRuntime): TableSchema | null =>
+  typeof query.table === "object" && query.table != null
     ? (query.table as TableSchema)
     : null;
-}
 
-function addMetricAggregation(
+const addMetricAggregation = (
   datasetQuery: StructuredDatasetQuery,
   metricId: number,
-): StructuredDatasetQuery {
-  return {
-    ...datasetQuery,
-    query: {
-      ...datasetQuery.query,
-      aggregation: [
-        ["metric", metricId],
-        ...(datasetQuery.query.aggregation ?? []),
-      ],
-    },
-  };
-}
+): StructuredDatasetQuery => ({
+  ...datasetQuery,
+  query: {
+    ...datasetQuery.query,
+    aggregation: [
+      ["metric", metricId],
+      ...(datasetQuery.query.aggregation ?? []),
+    ],
+  },
+});

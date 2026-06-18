@@ -1,36 +1,32 @@
 import type { Aggregation, StructuredDatasetQuery } from "metabase-types/api";
 
-export function normalizeMetricAggregations(
+export const normalizeMetricAggregations = (
   datasetQuery: StructuredDatasetQuery,
-): StructuredDatasetQuery {
-  return {
-    ...datasetQuery,
-    query: {
-      ...datasetQuery.query,
-      aggregation: datasetQuery.query.aggregation?.map((aggregation) => {
-        if (
-          Array.isArray(aggregation) &&
-          aggregation[0] === "measure" &&
-          aggregation.length === 2
-        ) {
-          return ["measure", {}, aggregation[1]] as Aggregation;
-        }
+): StructuredDatasetQuery => ({
+  ...datasetQuery,
+  query: {
+    ...datasetQuery.query,
+    aggregation: datasetQuery.query.aggregation?.map((aggregation) => {
+      if (
+        Array.isArray(aggregation) &&
+        aggregation[0] === "measure" &&
+        aggregation.length === 2
+      ) {
+        return ["measure", {}, aggregation[1]] as Aggregation;
+      }
 
-        return aggregation;
-      }),
-    },
-  };
-}
+      return aggregation;
+    }),
+  },
+});
 
-export function normalizeDatasetQuery(
+export const normalizeDatasetQuery = (
   datasetQuery: StructuredDatasetQuery,
-): StructuredDatasetQuery {
-  return {
-    ...datasetQuery,
-    parameters: datasetQuery.parameters ?? [],
-    query: stripFieldRefBaseTypes(datasetQuery.query),
-  };
-}
+): StructuredDatasetQuery => ({
+  ...datasetQuery,
+  parameters: datasetQuery.parameters ?? [],
+  query: stripFieldRefBaseTypes(datasetQuery.query),
+});
 
 function stripFieldRefBaseTypes<TValue>(value: TValue): TValue {
   if (Array.isArray(value)) {

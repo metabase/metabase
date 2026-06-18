@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
@@ -13,16 +20,13 @@ import type {
 import { mapQueryData } from "../data-schema";
 
 import {
-  getTableDatabaseId,
   isMetricQuery,
   isQuestionQuery,
   isTableQuery,
   isUnaryOperator,
 } from "./guards";
 import { mapDatasetQueryData } from "./map-dataset-query-data";
-import { buildDatasetQueryWithMetabaseLib } from "./metabase-lib-query-builder";
 import { stableStringifyQuery } from "./stable-query-key";
-import { buildTableDatasetQuery } from "./table-query-builder";
 import type {
   BetweenFilterOperatorForDimension,
   BreakoutOptionsArgument,
@@ -150,6 +154,33 @@ const isOrderableJavaScriptType = (
   value === "number" ||
   value === "boolean" ||
   value === "Date";
+
+const PLACEHOLDER_DATASET_QUERY: StructuredDatasetQuery = {
+  type: "query",
+  database: 0,
+  query: { "source-table": 0 },
+  parameters: [],
+};
+
+function subscribeToSdkBundleLoaded(callback: () => void) {
+  const target = typeof document === "undefined" ? null : document;
+
+  target?.addEventListener("metabase-sdk-bundle-loaded", callback);
+
+  return () => {
+    target?.removeEventListener("metabase-sdk-bundle-loaded", callback);
+  };
+}
+
+const getCreateMetabaseQueryFromBundle = () =>
+  getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createMetabaseQuery;
+
+const useCreateMetabaseQueryFromBundle = () =>
+  useSyncExternalStore(
+    subscribeToSdkBundleLoaded,
+    getCreateMetabaseQueryFromBundle,
+    () => undefined,
+  );
 
 /** @internal */
 export function filter<
@@ -279,11 +310,7 @@ const useMetabaseQueryImpl = <
           return;
         }
 
-        const datasetQuery =
-          getTableDatabaseId(currentQuery) == null
-            ? buildTableDatasetQuery(currentQuery)
-            : createMetabaseQuery(currentQuery);
-
+        const datasetQuery = createMetabaseQuery(currentQuery);
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
@@ -329,18 +356,32 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 export function useMetabaseQueryObject(
   query: TableQuery<unknown> | MetricQuery<unknown>,
 ): StructuredDatasetQuery {
+  const createQuery = useCreateMetabaseQueryFromBundle();
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
   const queryRef = useRef(query);
 
   queryRef.current = query;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
-  return useMemo(() => createMetabaseQuery(queryRef.current), [queryKey]);
+  return useMemo(
+    () =>
+      createQuery ? createQuery(queryRef.current) : PLACEHOLDER_DATASET_QUERY,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
+    [createQuery, queryKey],
+  );
 }
 
 /** @notExported createMetabaseQuery */
 export function createMetabaseQuery(
   query: TableQuery<unknown> | MetricQuery<unknown>,
 ): StructuredDatasetQuery {
-  return buildDatasetQueryWithMetabaseLib(query);
+  const createQuery = getCreateMetabaseQueryFromBundle();
+
+  if (!createQuery) {
+    throw new Error(
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Internal SDK developer error.
+      "createMetabaseQuery requires the Metabase Embedding SDK bundle to be loaded.",
+    );
+  }
+
+  return createQuery(query);
 }

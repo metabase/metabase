@@ -1,31 +1,24 @@
-import type { FieldSchema } from "../data-schema";
+import { match } from "ts-pattern";
 
 import { isTableFieldSchema } from "./guards";
+import type { FieldSchema } from "./schema";
 
 export const STAGE_INDEX = 0;
 
 export type FieldWithFieldId = FieldSchema;
 
-export function getBaseType(jsType: unknown): string {
-  switch (jsType) {
-    case "number":
-      return "type/Float";
-    case "boolean":
-      return "type/Boolean";
-    case "Date":
-      return "type/DateTime";
-    default:
-      return "type/Text";
-  }
-}
+export const getBaseType = (jsType: unknown): string =>
+  match(jsType)
+    .with("number", () => "type/Float")
+    .with("boolean", () => "type/Boolean")
+    .with("Date", () => "type/DateTime")
+    .otherwise(() => "type/Text");
 
-export function getFieldBaseType(field: FieldSchema): string {
-  return field.baseType ?? getBaseType(field.jsType);
-}
+export const getFieldBaseType = (field: FieldSchema): string =>
+  field.baseType ?? getBaseType(field.jsType);
 
-export function getFieldEffectiveType(field: FieldSchema): string {
-  return field.effectiveType ?? getFieldBaseType(field);
-}
+export const getFieldEffectiveType = (field: FieldSchema): string =>
+  field.effectiveType ?? getFieldBaseType(field);
 
 export function fieldHasTime(field: FieldSchema): boolean {
   const schemaType = field.effectiveType ?? field.baseType;
@@ -45,22 +38,18 @@ export function getFieldId(field: unknown): number | null {
   return null;
 }
 
-export function hasFieldId(
+export const hasFieldId = (
   value: unknown,
-): value is FieldSchema & { fieldId: number } {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "fieldId" in value &&
-    typeof value.fieldId === "number"
-  );
-}
+): value is FieldSchema & { fieldId: number } =>
+  typeof value === "object" &&
+  value != null &&
+  "fieldId" in value &&
+  typeof value.fieldId === "number";
 
-export function isMetricDimensionWithFieldId(
+export const isMetricDimensionWithFieldId = (
   value: unknown,
-): value is FieldSchema & { fieldId: number } {
-  return isTableFieldSchema(value) && typeof value.fieldId === "number";
-}
+): value is FieldSchema & { fieldId: number } =>
+  isTableFieldSchema(value) && typeof value.fieldId === "number";
 
 export function getObject(
   value: unknown,

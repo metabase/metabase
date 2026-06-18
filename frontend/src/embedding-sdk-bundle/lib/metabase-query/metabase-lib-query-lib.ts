@@ -1,4 +1,3 @@
-// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import * as Lib from "metabase-lib";
 
 export { Lib };

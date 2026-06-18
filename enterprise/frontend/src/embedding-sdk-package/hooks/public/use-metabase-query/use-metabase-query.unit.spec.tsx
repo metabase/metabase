@@ -1,12 +1,12 @@
 import { waitFor } from "@testing-library/react";
 
 import { render, screen } from "__support__/ui";
+import { createMetabaseQuery as createMetabaseQueryInBundle } from "embedding-sdk-bundle/lib/metabase-query/create-metabase-query";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 
-import { buildMetricDatasetQueryWithMetabaseLib } from "./metabase-lib-query-builder";
 import type { MetabaseQueryOptions } from "./use-metabase-query";
 import {
   avg,
@@ -526,6 +526,12 @@ const _invalidMetricAdHocMeasureQuery = {
 } satisfies MetabaseQueryOptions;
 
 describe("useMetabaseQuery", () => {
+  beforeEach(() => {
+    window.METABASE_EMBEDDING_SDK_BUNDLE = {
+      createMetabaseQuery: createMetabaseQueryInBundle,
+    } as typeof window.METABASE_EMBEDDING_SDK_BUNDLE;
+  });
+
   describe("createMetabaseQuery", () => {
     const expectedOrdersQuery = {
       type: "query",
@@ -735,7 +741,7 @@ describe("useMetabaseQuery", () => {
 
     it("adds source-field through the metabase-lib metric builder", () => {
       expect(
-        buildMetricDatasetQueryWithMetabaseLib({
+        createMetabaseQueryInBundle({
           metric: TEST_SCHEMA.metrics.orderCount,
           breakouts: [
             breakout(TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name),
@@ -1205,6 +1211,7 @@ function setup({
 
   renderWithSDKProviders(component, {
     metabaseEmbeddingSdkBundleExports: {
+      createMetabaseQuery: createMetabaseQueryInBundle,
       getLoginStatus,
       queryDataset,
     },

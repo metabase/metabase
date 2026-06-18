@@ -203,9 +203,8 @@ function fieldsMatch(left: unknown, right: unknown) {
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value != null;
-}
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value != null;
 
 function buildMetricDatasetBreakout(
   breakout: unknown,

@@ -152,16 +152,13 @@ export function buildLibMetricDatasetFilter(
   return null;
 }
 
-export function findLibMetric(
+export const findLibMetric = (
   query: Query,
   metricId: number,
-): MetricMetadata | null {
-  return (
-    Lib.availableMetrics(query, STAGE_INDEX).find(
-      (metricMetadata) => getDisplayInfoId(query, metricMetadata) === metricId,
-    ) ?? null
-  );
-}
+): MetricMetadata | null =>
+  Lib.availableMetrics(query, STAGE_INDEX).find(
+    (metricMetadata) => getDisplayInfoId(query, metricMetadata) === metricId,
+  ) ?? null;
 
 function buildLibFieldFilter(
   query: Query,
@@ -268,27 +265,22 @@ function findLibAggregationClause(
   return operator ? Lib.aggregationClause(operator, column) : null;
 }
 
-function findLibMeasure(
+const findLibMeasure = (
   query: Query,
   measure: unknown,
-): MeasureMetadata | null {
-  return (
-    Lib.availableMeasures(query, STAGE_INDEX).find(
-      (availableMeasure) =>
-        getDisplayInfoId(query, availableMeasure) ===
-        getObjectNumber(measure, "id"),
-    ) ?? null
-  );
-}
+): MeasureMetadata | null =>
+  Lib.availableMeasures(query, STAGE_INDEX).find(
+    (availableMeasure) =>
+      getDisplayInfoId(query, availableMeasure) ===
+      getObjectNumber(measure, "id"),
+  ) ?? null;
 
-function getDisplayInfoId(
+const getDisplayInfoId = (
   query: Query,
   metadata: MeasureMetadata | MetricMetadata,
-): unknown {
-  return (
-    Lib.displayInfo(query, STAGE_INDEX, metadata as never) as { id?: unknown }
-  ).id;
-}
+): unknown =>
+  (Lib.displayInfo(query, STAGE_INDEX, metadata as never) as { id?: unknown })
+    .id;
 
 function findLibColumnForBreakout(
   query: Query,
