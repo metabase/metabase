@@ -8,7 +8,6 @@ import {
   useRestartExplorationMutation,
   useUpdateExplorationMutation,
 } from "metabase/api/exploration";
-import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree, useTree } from "metabase/common/components/tree";
@@ -40,8 +39,6 @@ import {
   type IconProps,
   Menu,
   Stack,
-  Text,
-  Tooltip,
 } from "metabase/ui";
 import type {
   Exploration,
@@ -54,13 +51,13 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 
+import { ExplorationLastActivity } from "./ExplorationLastActivity";
 import S from "./ExplorationSidebar.module.css";
 import {
   type ExplorationTreeHeading,
   type ExplorationTreeItem,
   type ExplorationTreeNode,
   flattenTree,
-  getCompactRelativeTime,
 } from "./utils";
 
 interface ExplorationSidebarProps {
@@ -321,18 +318,7 @@ function ExplorationTreeHeading({
         {item.name}
       </Ellipsified>
       {item.data?.lastActivityAt && isSettled(item.data.status) && (
-        <Tooltip label={getFormattedTime(item.data.lastActivityAt)}>
-          <Text
-            size="md"
-            c="text-secondary"
-            lh="1rem"
-            flex="none"
-            fw={500}
-            ta="right"
-          >
-            {getCompactRelativeTime(item.data.lastActivityAt)}
-          </Text>
-        </Tooltip>
+        <ExplorationLastActivity lastActivityAt={item.data.lastActivityAt} />
       )}
       <ExplorationThreadMenu item={item} canWrite={canWrite} />
     </Box>
