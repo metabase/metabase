@@ -262,31 +262,34 @@
   Batches the work to one extraction and one update per chunk of `content-hash-batch-size` rows of a given
   model type (rather than a query and update per entity): `extract-query` returns the modeled instances for
   the chunk in one query — keeping each local `:id` so it correlates to its RemoteSyncObject row — and a
-  single CASE update writes every hash. Entities that fail to serialize are skipped."
+  single CASE update writes every hash. Runs under `serdes/with-cache` so the FK resolution inside
+  extraction (collections, databases, users, …) is memoized across entities. Entities that fail to
+  serialize are skipped."
   []
-  (let [storage-opts (serdes/storage-base-context)
-        rows         (t2/select [:model/RemoteSyncObject :id :model_type :model_id])]
-    (doseq [[model-type model-rows] (group-by :model_type rows)
-            chunk (partition-all content-hash-batch-size model-rows)
-            :let [id->rso (into {} (map (juxt :model_id :id)) chunk)
-                  extract-opts {:where [:in :id (vec (keys id->rso))] :skip-archived true}
-                  rso->hash (into {}
-                                  (keep (fn [instance]
-                                          (when-let [rso-id (id->rso (:id instance))]
-                                            (try
-                                              [rso-id (source/content-hash
-                                                       (:content (source/entity->file-spec
-                                                                  storage-opts
-                                                                  (serdes/extract-one model-type extract-opts instance))))]
-                                              (catch Exception _ nil)))))
-                                  (serdes/extract-query model-type extract-opts))]
-            :when (seq rso->hash)]
-      ;; one atomic CASE update per chunk; the honeysql expression compiles per app-db dialect
-      (t2/update! :model/RemoteSyncObject
-                  {:id [:in (vec (keys rso->hash))]}
-                  {:content_hash (into [:case]
-                                       (mapcat (fn [[rso-id h]] [[:= :id rso-id] h]))
-                                       rso->hash)}))))
+  (serdes/with-cache
+    (let [storage-opts (serdes/storage-base-context)
+          rows         (t2/select [:model/RemoteSyncObject :id :model_type :model_id])]
+      (doseq [[model-type model-rows] (group-by :model_type rows)
+              chunk (partition-all content-hash-batch-size model-rows)
+              :let [id->rso (into {} (map (juxt :model_id :id)) chunk)
+                    extract-opts {:where [:in :id (vec (keys id->rso))] :skip-archived true}
+                    rso->hash (into {}
+                                    (keep (fn [instance]
+                                            (when-let [rso-id (id->rso (:id instance))]
+                                              (try
+                                                [rso-id (source/content-hash
+                                                         (:content (source/entity->file-spec
+                                                                    storage-opts
+                                                                    (serdes/extract-one model-type extract-opts instance))))]
+                                                (catch Exception _ nil)))))
+                                    (serdes/extract-query model-type extract-opts))]
+              :when (seq rso->hash)]
+        ;; one atomic CASE update per chunk; the honeysql expression compiles per app-db dialect
+        (t2/update! :model/RemoteSyncObject
+                    {:id [:in (vec (keys rso->hash))]}
+                    {:content_hash (into [:case]
+                                         (mapcat (fn [[rso-id h]] [[:= :id rso-id] h]))
+                                         rso->hash)})))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
