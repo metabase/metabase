@@ -48,3 +48,27 @@ databaseChangeLog:
         - dropIndex:
             tableName: transform_run
             indexName: idx_transform_run_job_run_id
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:02
+      author: bronsa
+      comment: Backfill job_run_id on transform_run by matching each run to the job run whose time window contains it
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform_run
+              SET job_run_id = (
+                SELECT tjr.id
+                FROM transform_job_run tjr
+                INNER JOIN transform_job_transform_tag tjtt ON tjtt.job_id = tjr.job_id
+                INNER JOIN transform_transform_tag ttt ON ttt.tag_id = tjtt.tag_id
+                WHERE ttt.transform_id = transform_run.transform_id
+                  AND tjr.start_time <= transform_run.start_time
+                  AND (tjr.end_time IS NULL OR tjr.end_time >= COALESCE(transform_run.end_time, transform_run.start_time))
+                ORDER BY tjr.start_time DESC
+                LIMIT 1
+              )
+              WHERE transform_run.job_run_id IS NULL
+      rollback:
+        - sql:
+            sql: UPDATE transform_run SET job_run_id = NULL
