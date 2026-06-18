@@ -60,64 +60,56 @@ export type {
 } from "./types";
 
 /** @internal */
-export function count(): CountAggregationSchema {
-  return {
-    type: "count",
-    columns: [{ name: "count", displayName: "Count", jsType: "number" }],
-  };
-}
+export const count = (): CountAggregationSchema => ({
+  type: "count",
+  columns: [{ name: "count", displayName: "Count", jsType: "number" }],
+});
 
 /** @internal */
-export function sum<TDimension>(
+export const sum = <TDimension>(
   dimension: NumericAggregationDimension<TDimension>,
-): FieldAggregationSchema<"sum", NumericAggregationDimension<TDimension>> {
-  return fieldAggregation("sum", "Sum", dimension);
-}
+): FieldAggregationSchema<"sum", NumericAggregationDimension<TDimension>> =>
+  fieldAggregation("sum", "Sum", dimension);
 
 /** @internal */
-export function avg<TDimension>(
+export const avg = <TDimension>(
   dimension: NumericAggregationDimension<TDimension>,
-): FieldAggregationSchema<"avg", NumericAggregationDimension<TDimension>> {
-  return fieldAggregation("avg", "Average", dimension);
-}
+): FieldAggregationSchema<"avg", NumericAggregationDimension<TDimension>> =>
+  fieldAggregation("avg", "Average", dimension);
 
 /** @internal */
-export function median<TDimension>(
+export const median = <TDimension>(
   dimension: NumericAggregationDimension<TDimension>,
-): FieldAggregationSchema<"median", NumericAggregationDimension<TDimension>> {
-  return fieldAggregation("median", "Median", dimension);
-}
+): FieldAggregationSchema<"median", NumericAggregationDimension<TDimension>> =>
+  fieldAggregation("median", "Median", dimension);
 
 /** @internal */
-export function distinct<TDimension>(
+export const distinct = <TDimension>(
   dimension: TDimension,
-): FieldAggregationSchema<"distinct", TDimension> {
-  return fieldAggregation("distinct", "Distinct values", dimension);
-}
+): FieldAggregationSchema<"distinct", TDimension> =>
+  fieldAggregation("distinct", "Distinct values", dimension);
 
 /** @internal */
-export function min<TDimension>(
+export const min = <TDimension>(
   dimension: OrderableAggregationDimension<TDimension>,
-): FieldAggregationSchema<"min", OrderableAggregationDimension<TDimension>> {
-  return fieldAggregation("min", "Minimum", dimension);
-}
+): FieldAggregationSchema<"min", OrderableAggregationDimension<TDimension>> =>
+  fieldAggregation("min", "Minimum", dimension);
 
 /** @internal */
-export function max<TDimension>(
+export const max = <TDimension>(
   dimension: OrderableAggregationDimension<TDimension>,
-): FieldAggregationSchema<"max", OrderableAggregationDimension<TDimension>> {
-  return fieldAggregation("max", "Maximum", dimension);
-}
+): FieldAggregationSchema<"max", OrderableAggregationDimension<TDimension>> =>
+  fieldAggregation("max", "Maximum", dimension);
 
-function fieldAggregation<
+const fieldAggregation = <
   TOperator extends FieldAggregationOperator,
   TDimension,
 >(
   type: TOperator,
   displayName: string,
   dimension: TDimension,
-): FieldAggregationSchema<TOperator, TDimension> {
-  return {
+): FieldAggregationSchema<TOperator, TDimension> =>
+  ({
     type,
     dimension,
     columns: [
@@ -127,12 +119,11 @@ function fieldAggregation<
         jsType: getFieldAggregationColumnJavaScriptType(type, dimension),
       },
     ],
-  } as unknown as FieldAggregationSchema<TOperator, TDimension>;
-}
+  }) as unknown as FieldAggregationSchema<TOperator, TDimension>;
 
-function getFieldAggregationColumnName(type: FieldAggregationOperator): string {
-  return type === "distinct" ? "count" : type;
-}
+const getFieldAggregationColumnName = (
+  type: FieldAggregationOperator,
+): string => (type === "distinct" ? "count" : type);
 
 function getFieldAggregationColumnJavaScriptType(
   type: FieldAggregationOperator,
@@ -155,16 +146,13 @@ function getFieldAggregationColumnJavaScriptType(
   return "number";
 }
 
-function isOrderableJavaScriptType(
+const isOrderableJavaScriptType = (
   value: unknown,
-): value is Exclude<SchemaJavaScriptType, "unknown"> {
-  return (
-    value === "string" ||
-    value === "number" ||
-    value === "boolean" ||
-    value === "Date"
-  );
-}
+): value is Exclude<SchemaJavaScriptType, "unknown"> =>
+  value === "string" ||
+  value === "number" ||
+  value === "boolean" ||
+  value === "Date";
 
 export function filter<
   TDimension,

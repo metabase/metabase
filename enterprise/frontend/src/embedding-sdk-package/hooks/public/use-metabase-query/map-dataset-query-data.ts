@@ -5,12 +5,10 @@ import type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-questio
 import type { QueryData } from "../data-schema";
 import { mapRowsToObjects } from "../data-schema";
 
-export function mapDatasetQueryData<TRow>(
+export const mapDatasetQueryData = <TRow>(
   result: QueryQuestionResult | QueryDatasetResult | QueryMetricResult,
-): QueryData<TRow> {
-  return {
-    ...result,
-    rows: mapRowsToObjects<TRow>(result.columns, result.rows),
-    rawRows: result.rows,
-  };
-}
+): QueryData<TRow> => ({
+  ...result,
+  rows: mapRowsToObjects<TRow>(result.columns, result.rows),
+  rawRows: result.rows,
+});
