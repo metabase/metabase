@@ -39,16 +39,12 @@ For static and interactive iframe-based embedding, Metabase records query execut
 
 ### Modular embedding
 
-Both the [modular embedding (iframe)](../embedding/modular-embedding.md) and the [modular embedding SDK](../embedding/sdk/introduction.md) collect a usage event when components are rendered in your app. Each event includes:
+[Modular embedding](../embedding/modular-embedding.md) collects a usage event when components are rendered in your app. Each event includes:
 
-- Which components were used (for example, `metabase-dashboard` or `InteractiveDashboard`)
+- Which components were used (for example, a dashboard or question)
 - The component's configuration options (for example, whether downloads or drill-through are enabled)
 - The authentication method (SSO, API key, or guest)
 - Whether a custom locale is configured
-
-The modular embedding SDK also includes the SDK package version.
-
-**Timing.** The iframe transport fires once per page load after the first component is ready. The SDK transport fires once per component mount per page load.
 
 **No persistent identifiers.** Within a session, an in-memory identifier groups related events. This identifier is regenerated on every page load and is never written to cookies or localStorage — there is no persistent cross-session identifier.
 
