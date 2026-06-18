@@ -389,3 +389,19 @@
             (let [updated-table (t2/select-one :model/Table (:id existing-table))]
               (is (= :ingested (:data_authority updated-table)))
               (is (:active updated-table)))))))))
+
+(deftest remove-tables-with-too-long-names-test
+  (testing "Tables whose name is too long to store in the app DB are dropped, so they don't abort the creation pass"
+    (let [remove-too-long @#'sync-tables/remove-tables-with-too-long-names
+          database        (t2/instance :model/Database {:id 1, :name "db", :engine :h2})
+          tbl             (fn [nm] {:name nm, :schema "public"})
+          ok              (tbl "short_name")
+          too-long        (tbl (apply str (repeat 300 "a")))]
+      (testing "an over-long name is removed while the rest are kept"
+        (is (= #{ok} (remove-too-long database #{ok too-long}))))
+      (testing "everything is kept when all names fit"
+        (is (= #{ok} (remove-too-long database #{ok}))))
+      (testing "boundary: a name of exactly the max length is kept; one character longer is dropped"
+        (let [at-limit   (tbl (apply str (repeat 256 "a")))
+              over-limit (tbl (apply str (repeat 257 "a")))]
+          (is (= #{at-limit} (remove-too-long database #{at-limit over-limit}))))))))
