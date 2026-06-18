@@ -23,7 +23,8 @@
     ./bin/test-agent :only '[metabase.app-db.mysql-cascade-testcontainer-test]'"
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.test :refer :all])
+   [clojure.test :refer :all]
+   [metabase.util.log :as log])
   (:import
    (java.sql Connection DriverManager SQLException)
    (org.testcontainers DockerClientFactory)
@@ -91,13 +92,13 @@
 (defn- enabled? []
   (docker-available?))
 
-(defn- mysql-container ^GenericContainer [image native?]
+(defn- mysql-container ^GenericContainer [image opts]
   (let [c (doto (GenericContainer. (DockerImageName/parse ^String image))
             (.withExposedPorts (into-array Integer [(int mysql-port)]))
             (.withEnv "MYSQL_ALLOW_EMPTY_PASSWORD" "yes")
             (.waitingFor (Wait/forListeningPort)))]
-    (when native?
-      (.withCommand c (into-array String ["--innodb-native-foreign-keys=ON"])))
+    (when (seq opts)
+      (.withCommand c (into-array String opts)))
     c))
 
 (defn- connect ^Connection [^GenericContainer c]
@@ -116,47 +117,50 @@
              [(keyword t) (-> (jdbc/query {:connection conn} [(str "SELECT COUNT(*) AS c FROM " t)])
                               first :c long)])))
 
-(defn- run-probe!
-  "Spin a fresh container (`image`, optional native FK engine), run `statements`, fire `delete`, return
-  the row counts of `tables` afterward."
-  [{:keys [image native? statements delete tables]}]
-  (let [container (mysql-container image native?)]
+(defn- with-mysql-container
+  [{:keys [image opts]} f]
+  (let [container (mysql-container image opts)]
     (try
       (.start container)
       (with-open [conn (connect container)]
-        (doseq [stmt statements]
-          (jdbc/execute! {:connection conn} [stmt]))
-        (jdbc/execute! {:connection conn} [delete])
-        (table-counts conn tables))
+        (f {:conn conn}))
       (finally
         (.stop container)))))
 
 (deftest mysql-97-cascade-engine-test
   (if-not (enabled?)
-    (println "Skipping mysql-97-cascade-engine-test (Docker not available)")
-    (do
+    (log/info "Skipping mysql-97-cascade-engine-test (Docker not available)")
+    (let [full-case (fn [{:keys [conn]}]
+                      (doseq [stmt full-statements]
+                        (jdbc/execute! {:connection conn} [stmt]))
+                      (jdbc/execute! {:connection conn} [full-delete])
+                      (table-counts conn full-tables))]
       (testing "9.7 SQL-layer FK executor (default) — BUGGY: orphans grandchildren of all but one parent"
-        (is (= {:tbl 0 :field 49 :card 34}
-               (run-probe! {:image "mysql:9.7" :native? false
-                            :statements full-statements :delete full-delete :tables full-tables}))
+        (is (= {:tbl 0 :field 49 :card 34} (with-mysql-container
+                                             {:image "mysql:9.7"}
+                                             full-case))
             "tables fully cascade, but 49/56 fields and 34/39 cards are silently orphaned"))
       (testing "9.7 InnoDB native FK engine (--innodb-native-foreign-keys=ON) — CORRECT: full cascade"
-        (is (= {:tbl 0 :field 0 :card 0}
-               (run-probe! {:image "mysql:9.7" :native? true
-                            :statements full-statements :delete full-delete :tables full-tables}))
+        (is (= {:tbl 0 :field 0 :card 0} (with-mysql-container
+                                           {:image "mysql:9.7" :opts ["--innodb-native-foreign-keys=ON"]}
+                                           full-case))
             "everything cascades, no orphans")))))
 
 (deftest mysql-96-vs-97-cascade-regression-test
   (if-not (enabled?)
-    (println "Skipping mysql-96-vs-97-cascade-regression-test (Docker not available)")
-    (do
+    (log/info "Skipping mysql-96-vs-97-cascade-regression-test (Docker not available)")
+    (let [minimal-case (fn [{:keys [conn]}]
+                         (doseq [stmt minimal-statements]
+                           (jdbc/execute! {:connection conn} [stmt]))
+                         (jdbc/execute! {:connection conn} [minimal-delete])
+                         (table-counts conn minimal-tables))]
       (testing "9.6.0 — minimal cascade is COMPLETE (no regression; 9.6 already runs the SQL-layer FK path)"
-        (is (= {:tg 0}
-               (run-probe! {:image "mysql:9.6" :native? false
-                            :statements minimal-statements :delete minimal-delete :tables minimal-tables}))
+        (is (= {:tg 0} (with-mysql-container
+                         {:image "mysql:9.6"}
+                         minimal-case))
             "both target rows deleted"))
       (testing "9.7.0 — same schema, cascade is INCOMPLETE (regression: 1 of 2 target rows orphaned)"
-        (is (= {:tg 1}
-               (run-probe! {:image "mysql:9.7" :native? false
-                            :statements minimal-statements :delete minimal-delete :tables minimal-tables}))
+        (is (= {:tg 1} (with-mysql-container
+                         {:image "mysql:9.7"}
+                         minimal-case))
             "one target row silently survives the cascade on 9.7's SQL-layer executor")))))
