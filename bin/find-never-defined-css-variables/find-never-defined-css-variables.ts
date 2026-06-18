@@ -30,9 +30,10 @@ const shouldWhiteList = (variable: string) => {
 const knownIssues = [
   "--button-bg", // Mantine var defined for buttons and used in Button.module.css
 
-  // Mantine generates `--mantine-color-<name>-<variant>` vars at runtime for every
-  // color registered in the theme (see getMantineThemeColors). They aren't present in
-  // the static @mantine/core/styles.css this script reads, so we allow this known one.
+  // `accent-gray-light` is one of our theme colors (registered via getMantineThemeColors).
+  // Mantine derives variant vars like `--mantine-color-<color>-filled` from each registered
+  // color at runtime, so they aren't in the static @mantine/core/styles.css this script
+  // reads — hence this allow-list entry.
   "--mantine-color-accent-gray-light-filled",
 ];
 
