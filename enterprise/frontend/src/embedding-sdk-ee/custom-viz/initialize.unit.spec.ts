@@ -41,17 +41,24 @@ describe("sdkCustomVizAssetManager", () => {
     expect(url).toBe("blob:fake");
   });
 
-  it("revokes the previous blob when re-resolving for the same plugin", async () => {
-    jest.spyOn(api, "fetch").mockResolvedValue(okResponse());
-    createObjectURL
-      .mockReturnValueOnce("blob:first")
-      .mockReturnValueOnce("blob:second");
+  it("reuses the cached blob on re-resolve, without refetching or revoking", async () => {
+    const fetchSpy = jest.spyOn(api, "fetch").mockResolvedValue(okResponse());
+    createObjectURL.mockReturnValue("blob:cached");
 
-    await sdkCustomVizAssetManager.resolveCustomVizAssetUrl(7, "icon.svg");
+    const first = await sdkCustomVizAssetManager.resolveCustomVizAssetUrl(
+      7,
+      "icon.svg",
+    );
+    const second = await sdkCustomVizAssetManager.resolveCustomVizAssetUrl(
+      7,
+      "icon.svg",
+    );
+
+    expect(first).toBe("blob:cached");
+    expect(second).toBe("blob:cached");
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
     expect(revokeObjectURL).not.toHaveBeenCalled();
-
-    await sdkCustomVizAssetManager.resolveCustomVizAssetUrl(7, "icon.svg");
-    expect(revokeObjectURL).toHaveBeenCalledWith("blob:first");
   });
 
   it("falls back to the plain asset URL when the fetch rejects", async () => {

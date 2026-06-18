@@ -1,14 +1,19 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { api } from "metabase/api/client";
+import type { IconData } from "metabase/common/utils/icon";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import {
+  getCustomPluginIdentifier,
+  getPluginAssetUrl,
+} from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
+  CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -20,8 +25,8 @@ import {
   loadCustomVizPlugin as eeLoadCustomVizPlugin,
   useAutoLoadCustomVizPlugin as eeUseAutoLoadCustomVizPlugin,
   useCustomVizPlugins as eeUseCustomVizPlugins,
-  useCustomVizPluginsIcon as eeUseCustomVizPluginsIcon,
   unregisterCustomVizDisplay,
+  useCustomVizPlugins,
 } from "../../metabase-enterprise/custom_viz/custom-viz-plugins";
 import { isWidgetMount } from "../../metabase-enterprise/custom_viz/widget-mount";
 
@@ -55,7 +60,11 @@ function isCustomVizAllowed(
   );
 }
 
-const iconObjectUrls = new Map<CustomVizPluginId, string>();
+const pluginToIconBlob = new Map<CustomVizPluginId, string>();
+const pluginToIconBlobPromise = new Map<
+  CustomVizPluginId,
+  Promise<string | undefined>
+>();
 
 // A cross-origin `<img>` can't carry the session header, so we fetch the icon
 // with the auth in the headers and hand back a same-origin `blob:` url.
@@ -67,33 +76,38 @@ export const sdkCustomVizAssetManager = {
     if (!assetPath) {
       return undefined;
     }
-    try {
-      const res = await api.fetch({
-        method: "GET",
-        url: `/api/ee/custom-viz-plugin/${pluginId}/asset`,
-        params: { path: assetPath },
-      });
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const objectUrl = URL.createObjectURL(await res.blob());
-      const previous = assetObjectUrls.get(pluginId);
-      assetObjectUrls.set(pluginId, objectUrl);
-      // if there was a previous asset, revoke it
-      if (previous) {
-        URL.revokeObjectURL(previous);
-      }
-      return objectUrl;
-    } catch {
-      return getPluginAssetUrl(pluginId, assetPath);
+    let promise = pluginToIconBlobPromise.get(pluginId);
+    if (!promise) {
+      promise = (async () => {
+        try {
+          const res = await api.fetch({
+            method: "GET",
+            url: `/api/ee/custom-viz-plugin/${pluginId}/asset`,
+            params: { path: assetPath },
+          });
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const objectUrl = URL.createObjectURL(await res.blob());
+          pluginToIconBlob.set(pluginId, objectUrl);
+          return objectUrl;
+        } catch {
+          // Drop the failed promise so a later call can retry
+          pluginToIconBlobPromise.delete(pluginId);
+          return getPluginAssetUrl(pluginId, assetPath);
+        }
+      })();
+      pluginToIconBlobPromise.set(pluginId, promise);
     }
+    return promise;
   },
   releaseCustomVizAsset: (pluginId: number) => {
-    const objectUrl = assetObjectUrls.get(pluginId);
+    const objectUrl = pluginToIconBlob.get(pluginId);
     if (objectUrl) {
       URL.revokeObjectURL(objectUrl);
-      assetObjectUrls.delete(pluginId);
     }
+    pluginToIconBlob.delete(pluginId);
+    pluginToIconBlobPromise.delete(pluginId);
   },
 };
 
@@ -183,14 +197,81 @@ export function initializeSdkCustomVizPlugin() {
     },
 
     useCustomVizPluginsIcon: () => {
+      const [blobs, setBlobs] = useState(new Map<CustomVizPluginId, string>());
       const allowlist = useAllowlist();
-      const getIcon = eeUseCustomVizPluginsIcon();
-      return (display: VisualizationDisplay) => {
-        if (!isCustomVizAllowed(display, allowlist)) {
-          return { icon: undefined, isLoading: false };
-        }
-        return getIcon(display);
-      };
+
+      const { plugins, isLoading } = useCustomVizPlugins();
+
+      const allowlistKey = JSON.stringify(allowlist); // stable reference as the array can be a new one on every render
+
+      useEffect(() => {
+        let cancelled = false;
+        const toResolve = (plugins ?? []).filter(
+          (plugin) =>
+            isCustomVizAllowed(getCustomPluginIdentifier(plugin), allowlist) &&
+            plugin.icon,
+        );
+        Promise.all(
+          toResolve.map(
+            async (plugin) =>
+              [
+                plugin.id,
+                await sdkCustomVizAssetManager.resolveCustomVizAssetUrl(
+                  plugin.id,
+                  plugin.icon,
+                ),
+              ] as const,
+          ),
+        ).then((entries) => {
+          if (!cancelled) {
+            setBlobs(
+              new Map(
+                entries.filter(
+                  (entry): entry is [CustomVizPluginId, string] =>
+                    entry[1] != null,
+                ),
+              ),
+            );
+          }
+        });
+        return () => {
+          cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- allowlistKey stands in for `allowlist`
+      }, [plugins, allowlistKey]);
+
+      return useCallback(
+        (
+          display: VisualizationDisplay,
+        ): { icon: IconData | undefined; isLoading: boolean } => {
+          if (isLoading) {
+            return { icon: undefined, isLoading: true };
+          }
+          const currentPlugin = plugins?.find(
+            (plugin) => getCustomPluginIdentifier(plugin) === display,
+          );
+
+          // not an allowed custom-viz plugin: no icon
+          if (!currentPlugin || !isCustomVizAllowed(display, allowlist)) {
+            return { icon: undefined, isLoading: false };
+          }
+
+          // resolved blob is ready: use it
+          const blobUrl = blobs.get(currentPlugin.id);
+          if (blobUrl) {
+            return {
+              icon: { name: "unknown", iconUrl: blobUrl },
+              isLoading: false,
+            };
+          }
+
+          // otherwise still loading (the effect is resolving it), unless the
+          // plugin has no icon to resolve at all
+          return { icon: undefined, isLoading: Boolean(currentPlugin.icon) };
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- allowlistKey stands in for `allowlist`
+        [plugins, isLoading, allowlistKey, blobs],
+      );
     },
     getPluginAssetUrl,
     isCustomVizDisplay,
