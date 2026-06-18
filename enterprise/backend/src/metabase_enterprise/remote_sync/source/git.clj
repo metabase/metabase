@@ -156,10 +156,15 @@
   Takes a source map containing a :git Git instance and :commit-ish (the ref to resolve). Can optionally take a
   second commit-ish argument which overrides the :commit-ish from the source map.
 
-  Returns the full commit SHA string, or nil if the commit-ish cannot be resolved."
+  Returns the full commit SHA string, or nil if the commit-ish cannot be resolved — including a full SHA
+  whose object is absent from the local clone (e.g. a base commit orphaned by an upstream force-push or
+  rebase). JGit parses a complete SHA into an ObjectId without checking the object exists, so the
+  existence check is what makes orphaned bases resolve to nil rather than blowing up on a later read."
   [{:keys [^Git git]} ^String commit-ish]
-  (when-let [ref (.resolve (.getRepository git) commit-ish)]
-    (.name ref)))
+  (let [repo (.getRepository git)]
+    (when-let [object-id (.resolve repo commit-ish)]
+      (when (.has (.getObjectDatabase repo) object-id)
+        (.name object-id)))))
 
 (defn log
   "Retrieves the commit history log for a branch.

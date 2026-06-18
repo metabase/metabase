@@ -1,5 +1,4 @@
-.SnippetButton {
-  color: var(--mb-color-core-brand);
+.SnippetButton[data-variant="subtle"] {
   background-color: var(--mb-color-background-secondary);
   margin-top: 0.5rem;
 

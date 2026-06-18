@@ -42,7 +42,7 @@
         "@popperjs/core": "^2.11.8",
         "@react-oauth/google": "^0.11.1",
         "@reduxjs/toolkit": "^2.5.0",
-        "@snowplow/browser-tracker": "^3.1.6",
+        "@snowplow/browser-tracker": "3.2.0",
         "@tanstack/react-table": "^8.21.3",
         "@tanstack/react-virtual": "^3.13.2",
         "@tippyjs/react": "^4.2.6",
@@ -1474,11 +1474,11 @@
 
     "@sinonjs/fake-timers": ["@sinonjs/fake-timers@9.1.2", "", { "dependencies": { "@sinonjs/commons": "^1.7.0" } }, "sha512-BPS4ynJW/o92PUR4wgriz2Ud5gpST5vz6GQfMixEDK0Z8ZCUv2M7SkBLykH56T++Xs+8ln9zTGbOvNGIe02/jw=="],
 
-    "@snowplow/browser-tracker": ["@snowplow/browser-tracker@3.1.6", "", { "dependencies": { "@snowplow/browser-tracker-core": "3.1.6", "@snowplow/tracker-core": "3.1.6", "tslib": "^2.3.0" } }, "sha512-6VY/3cgEvRzE6u52n0OSZR9pSjFzud4cICNIZrH2YVcF8/lCrHKscatBVffALrLShSglSB4FZPG9CtfPCAivow=="],
+    "@snowplow/browser-tracker": ["@snowplow/browser-tracker@3.2.0", "", { "dependencies": { "@snowplow/browser-tracker-core": "3.2.0", "@snowplow/tracker-core": "3.2.0", "tslib": "^2.3.0" } }, "sha512-k9oabjXpM7qIYM5CnMu1EZ/CbbffBKBK1TJTMJaf2k1F3Xplbyqx9DssN1NzgX+lH9Gc22n+yow+czRyppZOCg=="],
 
-    "@snowplow/browser-tracker-core": ["@snowplow/browser-tracker-core@3.1.6", "", { "dependencies": { "@snowplow/tracker-core": "3.1.6", "sha1": "^1.1.1", "tslib": "^2.3.0", "uuid": "^3.4.0" } }, "sha512-IOsQaI5EOaaOHxxgIGAeSZIR7oM8sre0dDjgBwqsUFpQgpha2/c5mP0ui59hXhBzGFlXA+10wml50OXx/YwMCw=="],
+    "@snowplow/browser-tracker-core": ["@snowplow/browser-tracker-core@3.2.0", "", { "dependencies": { "@snowplow/tracker-core": "3.2.0", "sha1": "^1.1.1", "tslib": "^2.3.0", "uuid": "^3.4.0" } }, "sha512-20mrp4OtyzXJMrvDjDmiddKnDUjccg3jOzmK/sNIv8jwPNleHct/MTV1dBo8aTkzxR2jcwL55AqnrD4XIQYDVg=="],
 
-    "@snowplow/tracker-core": ["@snowplow/tracker-core@3.1.6", "", { "dependencies": { "tslib": "^2.3.0", "uuid": "^3.4.0" } }, "sha512-b2O1xXEqQRzuhIol+3mhk9Xvz/smiW+6pQ3W1fVWonXrYoKtTyak2K+98phj2e0V+H/jUXeviH8adLEdbRkCYA=="],
+    "@snowplow/tracker-core": ["@snowplow/tracker-core@3.2.0", "", { "dependencies": { "tslib": "^2.3.0", "uuid": "^3.4.0" } }, "sha512-EsOs8HlWPp3SIFn3TSG5Eo8l/QEU0ZyHVIlvmoQT3fOdsWZVrTK9IlrWi/sA0S43tVxpHKLuiEKgmQIrQXuVyw=="],
 
     "@storybook/addon-a11y": ["@storybook/addon-a11y@8.5.0", "", { "dependencies": { "@storybook/addon-highlight": "8.5.0", "@storybook/test": "8.5.0", "axe-core": "^4.2.0", "vitest-axe": "^0.1.0" } }, "sha512-dTKlnhOaDsAXxkmHz7m6/qb98IENoaXTCG3fXo2iwJ1xT27fZF+i8fz8oQprLAN5r7xlnz66ARJvEIKJ+Lxjgw=="],
 
@@ -5740,13 +5740,13 @@
 
     "@rushstack/ts-command-line/argparse": ["argparse@1.0.10", "", { "dependencies": { "sprintf-js": "~1.0.2" } }, "sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg=="],
 
-    "@snowplow/browser-tracker/tslib": ["tslib@2.3.1", "", {}, "sha512-77EbyPPpMz+FRFRuAFlWMtmgUWGe9UOG2Z25NqCwiIjRhOf5iKGuzSe5P2w1laq+FkRy4p+PCuVkJSGkzTEKVw=="],
+    "@snowplow/browser-tracker/tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 
-    "@snowplow/browser-tracker-core/tslib": ["tslib@2.3.1", "", {}, "sha512-77EbyPPpMz+FRFRuAFlWMtmgUWGe9UOG2Z25NqCwiIjRhOf5iKGuzSe5P2w1laq+FkRy4p+PCuVkJSGkzTEKVw=="],
+    "@snowplow/browser-tracker-core/tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 
     "@snowplow/browser-tracker-core/uuid": ["uuid@3.4.0", "", { "bin": { "uuid": "./bin/uuid" } }, "sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A=="],
 
-    "@snowplow/tracker-core/tslib": ["tslib@2.3.1", "", {}, "sha512-77EbyPPpMz+FRFRuAFlWMtmgUWGe9UOG2Z25NqCwiIjRhOf5iKGuzSe5P2w1laq+FkRy4p+PCuVkJSGkzTEKVw=="],
+    "@snowplow/tracker-core/tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 
     "@snowplow/tracker-core/uuid": ["uuid@3.4.0", "", { "bin": { "uuid": "./bin/uuid" } }, "sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A=="],
 

@@ -1,4 +1,4 @@
-import { getCanonicalRowKey } from "./mapping";
+import { getCanonicalRowKey } from "./region-codes";
 
 describe("getCanonicalRowKey", () => {
   it("should convert US state names to their iso2 codes", () => {

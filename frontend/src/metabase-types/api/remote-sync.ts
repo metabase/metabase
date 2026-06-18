@@ -73,6 +73,14 @@ export type RemoteSyncMergeSummary = {
   removed: number;
 };
 
+/** Remote content a force push would discard (vs. a merge, which folds it in). */
+export type ForcePushCasualties = {
+  /** Entities present on the remote but not in this instance's export — removed entirely. */
+  deleted: string[];
+  /** Entities whose remote-side edits since the last sync would be replaced by this instance's version. */
+  overwritten: string[];
+};
+
 /** Dry-run preview of what pushing the current state would do, given the live remote branch. */
 export type ExportPreflightResponse = {
   /** Whether the remote branch has advanced beyond the last synced version. */
@@ -82,6 +90,8 @@ export type ExportPreflightResponse = {
   /** Human-readable labels of the entities that conflict (empty when clean). */
   conflicts: string[];
   summary: RemoteSyncMergeSummary;
+  /** Remote content a force push would permanently discard. */
+  force_push_casualties: ForcePushCasualties;
   /** "history-rewritten" when the remote was force-pushed/rebased so no merge base exists. */
   reason: string | null;
 };
