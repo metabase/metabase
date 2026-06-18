@@ -291,8 +291,8 @@ export class ApiClient extends EventEmitter<EventMap> {
    * RTK Query entry point with explicit body/params semantics. Reads and parses
    * the body, throwing `{ status, data }` on a non-2xx response. Pass
    * `rawResponse: true` to resolve with the raw `Response` instead. Pass
-   * `retry: true` for the legacy retry-on-transient-failure behavior used by
-   * the GET/POST helpers; RTK callers leave it off.
+   * `retry: true` to retry on transient transport failures (used by
+   * fire-and-forget callers like internal analytics); RTK callers leave it off.
    */
   async request<Raw extends boolean = false>(
     options: {
@@ -326,81 +326,6 @@ export class ApiClient extends EventEmitter<EventMap> {
     const init = await this._prepareRequest(options);
     return this._fetch(init);
   }
-
-  /**
-   * Builds a legacy `GET`/`POST`/`PUT`/`DELETE` helper bound to a URL template.
-   * Legacy callers pack URL `:tag` values and body fields into a single
-   * `rawData` bag, which flows through middleware as `data` — letting handlers
-   * like the embed URL override substitute `:tag` tokens from fields that
-   * morally live in the body. After URL-tag substitution the leftover bag
-   * becomes the JSON body (POST/PUT) or the querystring (GET/DELETE).
-   * FormData / URLSearchParams sidestep this and go through as-is.
-   *
-   * @deprecated Call `api.request(...)` directly with explicit `body`/`params`.
-   * TODO: remove once `metabase/services` and the remaining legacy callers
-   * (see `rg "from .metabase/api/legacy-client.""`) move to `api.request`.
-   */
-  private makeMethod(method: RequestMethod, retry: boolean) {
-    const hasBody = method === "POST" || method === "PUT";
-    return (urlTemplate: string, methodOptions: RequestOptions = {}) =>
-      async <Raw extends boolean = false>(
-        rawData: any = {},
-        invocationOptions: RequestOptions<Raw> = {},
-      ): Promise<Raw extends true ? Response : any> => {
-        const options = { ...methodOptions, ...invocationOptions };
-        const headers = {
-          ...methodOptions.headers,
-          ...invocationOptions.headers,
-        };
-
-        if (rawData instanceof FormData || rawData instanceof URLSearchParams) {
-          const resolved = await this._resolveOptions({
-            url: urlTemplate,
-            method,
-            headers,
-            data: {},
-          });
-          // Let the browser set Content-Type with the multipart boundary
-          // (FormData) or urlencoded charset (URLSearchParams).
-          delete resolved.headers["Content-Type"];
-          return this._dispatch(
-            { ...options, ...resolved, body: rawData },
-            retry,
-          ) as any;
-        }
-
-        const resolved = await this._resolveOptions({
-          url: urlTemplate,
-          method,
-          headers,
-          data: rawData,
-        });
-
-        let body: BodyInit | undefined = undefined;
-        if (hasBody && resolved.method !== "GET") {
-          // Leftover bag → JSON body. Middleware saw the whole bag, so embed
-          // URL `:token` etc. were already substituted from it.
-          body = JSON.stringify(resolved.data);
-        } else {
-          // GET (including POST/PUT overridden to GET by middleware) and
-          // DELETE: leftover bag goes to the querystring. `fetch` rejects
-          // GET-with-body, so the override POST→GET embed case lands here too
-          // — matching the old XHR path that silently dropped the body.
-          appendQueryParameters(resolved.url, resolved.data);
-        }
-
-        return this._dispatch({ ...options, ...resolved, body }, retry) as any;
-      };
-  }
-
-  /** @deprecated Use `api.request({ method: "GET", ... })` instead. */
-  GET = this.makeMethod("GET", true);
-  /** @deprecated Use `api.request({ method: "POST", ... })` instead. */
-  POST = this.makeMethod("POST", true);
-  /** @deprecated Use `api.request({ method: "PUT", ... })` instead. */
-  PUT = this.makeMethod("PUT", false);
-  /** @deprecated Use `api.request({ method: "DELETE", ... })` instead. */
-  DELETE = this.makeMethod("DELETE", false);
 }
 
 export const api = new ApiClient();
