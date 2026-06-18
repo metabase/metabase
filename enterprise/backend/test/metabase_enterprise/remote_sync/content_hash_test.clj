@@ -13,8 +13,11 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as sync-object]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.events.core :as events]
@@ -190,3 +193,158 @@
       (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
           "Content matching the baseline must clear a stale dirty flag")
       (is (not (sync-object/dirty?))))))
+
+;;; ------------------------------------------- export integration -------------------------------------------
+;;; These run a real export! to a mock source — which records the content_hash baseline through the actual
+;;; export path (full/incremental) — then fire a no-op update and assert it stays synced. Unlike the
+;;; consumer tests above (which seed the hash directly), these exercise the export-side baseline recording.
+
+(defn- export-baseline-then-noop-status!
+  "Seeds `create`-status RemoteSyncObject `seeds` (so export has something to write), runs a real export! to
+   a mock source (recording content_hash baselines), then publishes a no-op event and returns the resulting
+   status of [model-type model-id]. `target` is {:model-type :model-id :topic :object :payload}."
+  [seeds {:keys [model-type model-id topic object payload]}]
+  (mt/with-model-cleanup [:model/RemoteSyncTask]
+    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+      (t2/delete! :model/RemoteSyncObject)
+      (doseq [seed seeds]
+        (t2/insert! :model/RemoteSyncObject (merge {:status "create" :status_changed_at (t/offset-date-time)} seed)))
+      (let [mock-source (test-helpers/create-mock-source)
+            result      (impl/export! (source.p/snapshot mock-source) task-id "Initial export")]
+        (is (= :success (:status result)) (str "export should succeed: " result))
+        (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))
+            (str model-type " should be synced after export")))
+      (events/publish-event! topic (merge {:object object :user-id (mt/user->id :rasta)} payload))
+      (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))))
+
+(deftest card-export-then-noop-stays-synced-test
+  (testing "After a real export, a no-op Card update stays synced (GHY-3933)"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
+        (is (= "synced"
+               (export-baseline-then-noop-status!
+                [{:model_type "Collection" :model_id (:id coll) :model_name "RS"}
+                 {:model_type "Card" :model_id (:id card) :model_name "Card" :model_collection_id (:id coll)}]
+                {:model-type "Card" :model-id (:id card) :topic :event/card-update :object card
+                 :payload {:previous-object card}})))))))
+
+(deftest dashboard-export-then-noop-stays-synced-test
+  (testing "After a real export, a no-op Dashboard update stays synced (GHY-3933)"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Dashboard dash {:name "Dash" :collection_id (:id coll)}]
+        (is (= "synced"
+               (export-baseline-then-noop-status!
+                [{:model_type "Collection" :model_id (:id coll) :model_name "RS"}
+                 {:model_type "Dashboard" :model_id (:id dash) :model_name "Dash" :model_collection_id (:id coll)}]
+                {:model-type "Dashboard" :model-id (:id dash) :topic :event/dashboard-update :object dash})))))))
+
+(deftest document-export-then-noop-stays-synced-test
+  (testing "After a real export, a no-op Document update stays synced (GHY-3933)"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Document doc {:collection_id (u/the-id coll)}]
+        (is (= "synced"
+               (export-baseline-then-noop-status!
+                [{:model_type "Collection" :model_id (:id coll) :model_name "RS"}
+                 {:model_type "Document" :model_id (:id doc) :model_name "Doc" :model_collection_id (:id coll)}]
+                {:model-type "Document" :model-id (:id doc) :topic :event/document-update :object doc})))))))
+
+(deftest timeline-export-then-noop-stays-synced-test
+  (testing "After a real export, a no-op Timeline update stays synced (GHY-3933)"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Timeline tl {:name "TL" :collection_id (:id coll)}]
+        (is (= "synced"
+               (export-baseline-then-noop-status!
+                [{:model_type "Collection" :model_id (:id coll) :model_name "RS"}
+                 {:model_type "Timeline" :model_id (:id tl) :model_name "TL" :model_collection_id (:id coll)}]
+                {:model-type "Timeline" :model-id (:id tl) :topic :event/timeline-update :object tl})))))))
+
+(deftest collection-export-then-noop-stays-synced-test
+  (testing "After a real export, a no-op Collection update stays synced (GHY-3933)"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS" :location "/"}]
+        (is (= "synced"
+               (export-baseline-then-noop-status!
+                [{:model_type "Collection" :model_id (:id coll) :model_name "RS"}]
+                {:model-type "Collection" :model-id (:id coll) :topic :event/collection-update :object coll})))))))
+
+(deftest transform-tag-export-then-noop-stays-synced-test
+  (testing "After a real export, a no-op TransformTag update stays synced (GHY-3933)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms true remote-sync-enabled true]
+        (mt/with-temp [:model/TransformTag tag {:name "Tag"}]
+          (is (= "synced"
+                 (export-baseline-then-noop-status!
+                  [{:model_type "TransformTag" :model_id (:id tag) :model_name "Tag"}]
+                  {:model-type "TransformTag" :model-id (:id tag) :topic :event/transform-tag-update :object tag}))))))))
+
+(deftest python-library-export-then-noop-stays-synced-test
+  (testing "After a real export, a no-op PythonLibrary update stays synced (GHY-3933)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms true remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/PythonLibrary]
+          (let [lib (t2/insert-returning-instance! :model/PythonLibrary {:path "lib.py" :source "# x"})]
+            (is (= "synced"
+                   (export-baseline-then-noop-status!
+                    [{:model_type "PythonLibrary" :model_id (:id lib) :model_name "lib.py"}]
+                    {:model-type "PythonLibrary" :model-id (:id lib) :topic :event/python-library-update :object lib})))))))))
+
+;;; ------------------------------------------- import integration -------------------------------------------
+;;; These import a snapshot from a mock source — which records the content_hash baseline through the actual
+;;; import path (`record-content-hashes!`) — then fire a no-op update and assert it stays synced. This is the
+;;; "right after a pull" scenario from GHY-3933.
+
+(defn- import-then-noop-status!
+  "Imports `files` from a mock source (recording content_hash baselines via the import path), looks up the
+   imported entity with `lookup` (a 0-arg thunk returning the instance), publishes a no-op `topic`, and
+   returns the resulting RemoteSyncObject status. `payload-fn` (optional) returns extra event payload."
+  [files model-type lookup topic & {:keys [payload-fn]}]
+  (mt/with-model-cleanup [:model/RemoteSyncTask]
+    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+          ms      (test-helpers/create-mock-source :initial-files files)
+          result  (impl/import! (source.p/snapshot ms) task-id :force? true :force-deletion? true)]
+      (is (= :success (:status result)) (str "import should succeed: " result))
+      (let [entity   (lookup)
+            model-id (:id entity)]
+        (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)))
+            (str model-type " should be synced after import"))
+        (events/publish-event! topic (merge {:object entity :user-id (mt/user->id :rasta)}
+                                            (when payload-fn (payload-fn entity))))
+        (:status (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))))))
+
+(deftest transform-import-then-noop-stays-synced-test
+  (testing "After a real import, a no-op Transform update stays synced (GHY-3933)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/Transform :model/Collection]
+          ;; the transform YAML references the "test-data (h2)" database by name; force it to load so the
+          ;; import resolves the reference regardless of test order.
+          (mt/db)
+          (let [coll-eid "transforms-coll-xxxxx"
+                tr-eid   "test-transform-xxxxxx"
+                files {"main" {"collections/transforms/transforms/transforms.yaml"
+                               (test-helpers/generate-collection-yaml coll-eid "Transforms" :namespace "transforms")
+                               "collections/transforms/transforms/test_transform.yaml"
+                               (test-helpers/generate-transform-yaml tr-eid "Test Transform" :collection-id coll-eid)}}]
+            (is (= "synced"
+                   (import-then-noop-status!
+                    files "Transform"
+                    #(t2/select-one :model/Transform :entity_id tr-eid)
+                    :event/transform-update)))))))))
+
+(deftest transform-tag-import-then-noop-stays-synced-test
+  (testing "After a real import, a no-op TransformTag update stays synced (GHY-3933)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/TransformTag]
+          (let [tag-eid "test-transform-tag-xx"
+                files {"main" {"transforms/transform_tags/test_tag.yaml"
+                               (test-helpers/generate-transform-tag-yaml tag-eid "Test Tag")}}]
+            (is (= "synced"
+                   (import-then-noop-status!
+                    files "TransformTag"
+                    #(t2/select-one :model/TransformTag :entity_id tag-eid)
+                    :event/transform-tag-update)))))))))
