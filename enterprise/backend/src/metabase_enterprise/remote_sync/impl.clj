@@ -250,6 +250,17 @@
         (t2/update! :model/RemoteSyncObject :model_type model-type :model_id id
                     {:file_path path})))))
 
+(defn- record-content-hashes!
+  "Records each row's current serialized-content hash on its RemoteSyncObject, establishing the baseline
+  against which later update events are compared (see `remote-sync.events/resolve-status`). Used after a
+  full export or an import. `rows` is a seq of maps with `:id`, `:model_type`, and `:model_id`. Skips rows
+  whose entity can't be serialized (e.g. a removed entity that no longer exists)."
+  [rows]
+  (doseq [{:keys [id model_type model_id]} rows
+          :let [hash (source/row->content-hash {:model_type model_type :model_id model_id})]
+          :when hash]
+    (t2/update! :model/RemoteSyncObject id {:content_hash hash})))
+
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
    `remote-sync-branch` setting has since drifted to a different value. Used as a
@@ -292,6 +303,9 @@
       ;; Record the actual repo path each entity was read from, so later renames/deletes resolve the
       ;; real file and stay on the incremental export fast-path.
       (record-exported-paths! (source.ingestable/cached-file-paths base-ingestable))
+      ;; Record each entity's serialized-content hash (from the live DB entity, matching how update events
+      ;; recompute it) so a post-pull edit that doesn't change the content doesn't mark it dirty.
+      (record-content-hashes! (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
       (when finalize! (finalize!)))
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms))
@@ -587,7 +601,7 @@
                  (= (:eid @info) (:file-eid @info))))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
          :upserts [(:spec @info)]
-         :synced [{:id (:id row) :file_path (:new-path @info)}]}
+         :synced [{:id (:id row) :file_path (:new-path @info) :content_hash (source/content-hash (:content (:spec @info)))}]}
 
         ;; in-place update: at its stored path, or (no stored path) the repo file at
         ;; new-path is already this entity — overwrite.
@@ -597,7 +611,7 @@
                       (= (:eid @info) (:file-eid @info)))))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
          :upserts [(:spec @info)]
-         :synced [{:id (:id row) :file_path (:new-path @info)}]}
+         :synced [{:id (:id row) :file_path (:new-path @info) :content_hash (source/content-hash (:content (:spec @info)))}]}
 
         ;; rename: update whose stored path differs from new path. Write the
         ;; new file and delete the old one.
@@ -608,7 +622,7 @@
                  (= (:eid @info) (:file-eid @info))))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
          :upserts [(:spec @info)]
-         :synced [{:id (:id row) :file_path (:new-path @info)}]
+         :synced [{:id (:id row) :file_path (:new-path @info) :content_hash (source/content-hash (:content (:spec @info)))}]
          :delete-paths [file_path]}
 
         ;; any other create/update case (e.g. the target path is occupied by a different entity) needs
@@ -675,7 +689,8 @@
     (let [{:keys [version entries]} (source/store! models snapshot task-id message)]
       (remote-sync.task/set-version! task-id version)
       (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
-      (record-exported-paths! entries))
+      (record-exported-paths! entries)
+      (record-content-hashes! (t2/select [:model/RemoteSyncObject :id :model_type :model_id])))
     {:status :success}))
 
 (defn export!
@@ -757,9 +772,10 @@
               (remote-sync.task/update-progress! task-id 0.3)
               (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
                 (remote-sync.task/set-version! task-id written-version))
-              (doseq [{:keys [id file_path]} synced]
+              (doseq [{:keys [id file_path content_hash]} synced]
                 (t2/update! :model/RemoteSyncObject :id id
-                            {:status "synced" :file_path file_path :status_changed_at sync-timestamp}))
+                            {:status "synced" :file_path file_path :content_hash content_hash
+                             :status_changed_at sync-timestamp}))
               (when (seq removed-ids)
                 (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
               (log/infof "Remote sync incremental export: wrote %d, deleted %d"

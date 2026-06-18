@@ -1,11 +1,14 @@
 (ns metabase-enterprise.remote-sync.source
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.ingestable :as ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
@@ -61,6 +64,20 @@
   {:path    (remote-sync-path opts entity)
    :content (yaml/generate-string (serialization/serialization-deep-sort entity)
                                   {:dumper-options {:flow-style :block :split-lines false}})})
+
+(defn content-hash
+  "SHA-256 (hex) of a serialized YAML `content` string."
+  [^String content]
+  (codecs/bytes->hex (buddy-hash/sha256 content)))
+
+(defn row->content-hash
+  "SHA-256 (hex) of the serialized YAML for the entity named by `row` (a map with `:model_type` and
+  `:model_id`), or nil if the entity can't be extracted/serialized. Always hashes the live DB entity's
+  serialization (never the bytes on disk), so the value matches at every sync point and in the event
+  consumer regardless of YAML-on-disk formatting drift."
+  [row]
+  (when-let [entity (first (spec/extract-entities-for-rows [row]))]
+    (content-hash (:content (entity->file-spec (serdes/storage-base-context) entity)))))
 
 (defn serialize-specs
   "Serializes a stream of entities into an eager vector of `{:path :content}` file specs. Reports progress

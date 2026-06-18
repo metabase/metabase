@@ -17,6 +17,7 @@
    - NativeQuerySnippet, snippets-namespace Collections (when Library is remote-synced)"
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
@@ -60,6 +61,19 @@
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
+(defn- resolve-status
+  "Suppresses a no-op 'update': returns \"synced\" when `status` is \"update\" and the entity's current
+   serialized form is unchanged from the baseline `content_hash` recorded on `existing`. Otherwise returns
+   `status` unchanged. This keeps the dirty indicator tracking the serialized content, not the mere arrival
+   of an update event (e.g. editing a transform's schedule, or any no-op re-save, leaves it synced)."
+  [model-type model-id status existing]
+  (if (and (= "update" status)
+           (:content_hash existing)
+           (= (:content_hash existing)
+              (source/row->content-hash {:model_type model-type :model_id model-id})))
+    "synced"
+    status))
+
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change.
 
@@ -93,7 +107,7 @@
       (not (= "create" (:status existing)))
       (let [model-details (hydrate-details-fn model-id)]
         (t2/update! :model/RemoteSyncObject (:id existing)
-                    {:status status
+                    {:status (resolve-status model-type model-id status existing)
                      :status_changed_at (t/offset-date-time)
                      :model_name (:name model-details)
                      :model_collection_id (:collection_id model-details)
@@ -129,7 +143,7 @@
       (let [model-details (spec/hydrate-model-details model-spec model-id)
             fields        (spec/build-sync-object-fields model-spec model-details)]
         (t2/update! :model/RemoteSyncObject (:id existing)
-                    (merge {:status            status
+                    (merge {:status            (resolve-status model-type model-id status existing)
                             :status_changed_at (t/offset-date-time)}
                            fields))))))
 
