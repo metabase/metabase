@@ -60,10 +60,6 @@ const failedPluginHashes = new Map<
  * question with this display falls back to the default visualization on
  * the next render (and a future `loadCustomVizPlugin` call re-fetches
  * and re-registers instead of returning the cached registration).
- *
- * Used by `useAutoLoadCustomVizPlugin` when a plugin disappears from the
- * installed list, and by the SDK gating layer when the identifier is not in
- * `allowedCustomVisualizations`.
  */
 export function unregisterCustomVizDisplay(display: VisualizationDisplay) {
   if (visualizations.has(display)) {
