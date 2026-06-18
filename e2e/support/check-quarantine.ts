@@ -19,7 +19,6 @@
 // the same Cypress title array, so the comparison here is exact.
 
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 
 const {
   CI_CONDUCTOR_WEBHOOK_URL,
@@ -85,11 +84,7 @@ function readFailedTests(file: string): FailedTest[] {
   try {
     raw = readFileSync(file, "utf8");
   } catch {
-    // Log cwd too: if the recorder and this step disagree on where the file
-    // lives, the mismatch is then obvious side by side. DEV-2082.
-    console.log(
-      `[quarantine] no failures file at ${resolve(file)} (cwd=${process.cwd()}); nothing to gate.`,
-    );
+    console.log(`[quarantine] no failures file at ${file}; nothing to gate.`);
     return [];
   }
 

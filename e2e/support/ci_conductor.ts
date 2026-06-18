@@ -1,5 +1,5 @@
 import { appendFileSync, mkdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname } from "node:path";
 
 import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
 
@@ -319,12 +319,6 @@ export function recordFailedTestsForQuarantine(tests: ConductorTest[]): void {
         .join("\n") + "\n";
     mkdirSync(dirname(QUARANTINE_FAILURES_FILE), { recursive: true });
     appendFileSync(QUARANTINE_FAILURES_FILE, lines);
-    // Log where we wrote so the gate's input is auditable — and so a cwd/path
-    // mismatch between this (Cypress plugins) process and the gate step is
-    // obvious in CI. resolve() makes the absolute target explicit. DEV-2082.
-    console.log(
-      `[quarantine] recorded ${broken.length} failure(s) to ${resolve(QUARANTINE_FAILURES_FILE)} (cwd=${process.cwd()})`,
-    );
   } catch (error) {
     console.error("[quarantine] failed to record failures", error);
   }
