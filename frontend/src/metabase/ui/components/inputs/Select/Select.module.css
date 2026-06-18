@@ -26,16 +26,6 @@
   }
 }
 
-.Select {
-  &:has(.SelectLabel),
-  &:has(.SelectDescription),
-  &:has(.SelectError) {
-    .SelectWrapper {
-      margin-top: var(--mb-spacing-xs);
-    }
-  }
-}
-
 .SelectInput {
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-background-primary);
@@ -92,8 +82,6 @@
   --combobox-option-padding: 0;
 
   color: var(--mb-color-text-primary);
-  font-size: var(--select-item-font-size);
-  line-height: var(--select-item-line-height);
   margin-top: 1px;
 
   &:hover {
@@ -139,8 +127,6 @@
 .SelectItemsNothingFound {
   color: var(--mb-color-text-tertiary);
   padding: var(--mantine-spacing-sm);
-  font-size: var(--select-item-font-size);
-  line-height: var(--select-item-line-height);
 }
 
 .SelectItems_Options {

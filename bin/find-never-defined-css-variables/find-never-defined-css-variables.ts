@@ -28,15 +28,12 @@ const shouldWhiteList = (variable: string) => {
 
 // These are variables that were found by the script but were temporarily allowed to get this script + mantine v7 merged
 const knownIssues = [
-  "--mb-bolor-text-error",
-  "--mb-bolor-text-medium",
-  "--mb-color-accent-3",
-  "--mb-spacing-xs",
-  "--mb-text-text-dark",
-  "--multiselect-pill-font-size",
-  "--select-item-font-size",
-  "--select-item-line-height",
   "--button-bg", // Mantine var defined for buttons and used in Button.module.css
+
+  // Mantine generates `--mantine-color-<name>-<variant>` vars at runtime for every
+  // color registered in the theme (see getMantineThemeColors). They aren't present in
+  // the static @mantine/core/styles.css this script reads, so we allow this known one.
+  "--mantine-color-accent-gray-light-filled",
 ];
 
 interface UsageMap {
@@ -83,10 +80,21 @@ const extractVariableUsages = (filePath: string): Set<string> => {
 export const extractVariableUsagesFromFileContent = (
   content: string,
 ): Set<string> => {
-  const pattern = /var\((--[a-zA-Z0-9-]+)\)/g;
-  const matches = Array.from(content.matchAll(pattern)).map(match => match[1]);
+  const pattern = /var\(\s*(--[a-zA-Z0-9-]+)\s*([,)])/g;
 
-  return new Set(matches);
+  const usages = Array.from(content.matchAll(pattern)).flatMap(match => {
+    const [, variable, terminator] = match;
+    const hasFallback = terminator === ",";
+
+    // A bare `var(--x)` must resolve to a defined variable. A `var(--x, fallback)`
+    // is safe by construction — unless it's one of our `--mb-*` design-system
+    // primitives, which are expected to always be defined
+    const shouldValidate = !hasFallback || variable.startsWith("--mb-");
+
+    return shouldValidate ? [variable] : [];
+  });
+
+  return new Set(usages);
 };
 
 const main = () => {
