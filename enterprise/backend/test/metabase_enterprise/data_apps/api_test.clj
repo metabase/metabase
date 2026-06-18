@@ -29,9 +29,12 @@
    :read-file  (fn [p] (get path->content p))})
 
 (defn- app-config
-  "Render a per-app data_app.yml from `{:name :slug :path}`."
-  [{:keys [name slug path]}]
-  (format "name: %s\nslug: %s\npath: %s\n" name slug path))
+  "Render a per-app data_app.yml from `{:name :slug :path :allowed_hosts}`."
+  [{:keys [name slug path allowed_hosts]}]
+  (str (format "name: %s\nslug: %s\npath: %s\n" name slug path)
+       (when (seq allowed_hosts)
+         (apply str "allowed_hosts:\n"
+                (map #(format "  - %s\n" %) allowed_hosts)))))
 
 (defn- app-files
   "Repo files for one data app under `data_apps/<dir>/`: its data_app.yml plus a
@@ -75,6 +78,26 @@
                (str (mt/user-real-request :crowberto :get 200 "data-app/demo/bundle"))
                "BUNDLE")))))))
 
+(deftest bundle-includes-allowed-hosts-header-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp]
+      (t2/insert! :model/DataApp
+                  :name          "demo"
+                  :display_name  "Demo"
+                  :bundle_path   "data_apps/demo/index.js"
+                  :bundle        (.getBytes "BUNDLE" "UTF-8")
+                  :bundle_hash   "abc123"
+                  :allowed_hosts ["https://api.example.com"])
+      (testing "the bundle response carries the app's allowed_hosts as a JSON header"
+        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "data-app/demo/bundle")]
+          (is (= "[\"https://api.example.com\"]"
+                 (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"])))))
+      (testing "an app with no allowed_hosts still sends the header as an empty JSON array"
+        (t2/update! :model/DataApp :name "demo" {:allowed_hosts []})
+        (let [resp (mt/user-http-request-full-response :crowberto :get 200 "data-app/demo/bundle")]
+          (is (= "[]"
+                 (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))))
+
 ;;; ----------------------------------------------------- Sync -----------------------------------------------------
 
 (deftest import-materializes-apps-test
@@ -91,6 +114,19 @@
         (is (true? (:enabled sales)))
         (is (= fake-sha (:last_synced_sha sales)))
         (is (nil? (:sync_error sales)))))))
+
+(deftest import-stores-allowed-hosts-test
+  (mt/with-model-cleanup [:model/DataApp]
+    (testing "allowed_hosts from data_app.yml are persisted on the row"
+      (data-app.sync/import-from-snapshot!
+       (snapshot (app-files "sales" {:name "Sales" :slug "sales" :path "dist/index.js" :bundle "B"
+                                     :allowed_hosts ["https://api.example.com" "https://*.acme.com"]})))
+      (is (= ["https://api.example.com" "https://*.acme.com"]
+             (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))
+    (testing "re-syncing without allowed_hosts clears them to an empty list"
+      (data-app.sync/import-from-snapshot!
+       (snapshot (app-files "sales" {:name "Sales" :slug "sales" :path "dist/index.js" :bundle "B"})))
+      (is (= [] (:allowed_hosts (t2/select-one :model/DataApp :name "sales")))))))
 
 (deftest import-prunes-removed-apps-test
   (mt/with-model-cleanup [:model/DataApp]
