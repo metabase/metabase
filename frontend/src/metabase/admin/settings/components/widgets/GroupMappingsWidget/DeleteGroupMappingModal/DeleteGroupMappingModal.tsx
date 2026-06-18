@@ -8,7 +8,7 @@ import type {
 import { Modal } from "metabase/common/components/Modal";
 import { ModalFooter } from "metabase/common/components/ModalContent";
 import { Radio } from "metabase/common/components/Radio";
-import { Box, Button } from "metabase/ui";
+import { Box, Button, Text } from "metabase/ui";
 
 export type DeleteGroupMappingModalProps = {
   name: string;
@@ -59,10 +59,15 @@ export const DeleteGroupMappingModal = ({
   return (
     <Modal>
       <div>
-        <Box component="h2" p="xl">{t`Remove this group mapping?`}</Box>
-        <Box component="p" px="xl">
+        <Text
+          component="h2"
+          size="xl"
+          fw="bold"
+          p="xl"
+        >{t`Remove this group mapping?`}</Text>
+        <Text component="p" px="xl">
           {subtitle}
-        </Box>
+        </Text>
         <Box px="xl" py="xs">
           <p>{whatShouldHappenText}</p>
 
