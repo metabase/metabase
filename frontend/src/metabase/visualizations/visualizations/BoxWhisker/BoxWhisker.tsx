@@ -71,7 +71,7 @@ function BoxWhiskerInner({ rawSeries, settings }: VisualizationProps) {
             xAxisIndex: 0,
             start: 0,
             end: scrollEnd,
-            bottom: 0,
+            bottom: 10,
             height: 20,
           },
           {
@@ -88,7 +88,7 @@ function BoxWhiskerInner({ rawSeries, settings }: VisualizationProps) {
         left: 60,
         right: 20,
         top: 20,
-        bottom: shouldScroll ? 70 : 40,
+        bottom: shouldScroll ? 80 : 40,
         containLabel: true,
       },
       xAxis: {
@@ -126,7 +126,9 @@ function BoxWhiskerInner({ rawSeries, settings }: VisualizationProps) {
       tooltip: {
         trigger: "item" as const,
         formatter: (params: { name: string; data: number[] }) => {
-          const [min, lower, median, upper, max] = params.data;
+          // ECharts boxplot prepends the category index to params.data,
+          // so the values arrive as [catIndex, min, lower, median, upper, max].
+          const [, min, lower, median, upper, max] = params.data;
           const label = params.name ? `<b>${params.name}</b><br/>` : "";
           return (
             label +
@@ -158,6 +160,8 @@ const fieldPickerDef = {
   useRawSeries: true,
   dashboard: false,
   getDefault: () => undefined,
+  // don't auto-open every dropdown at once when the fields are unset
+  autoOpenWhenUnset: false,
 };
 
 const BOX_WHISKER_DEFINITION: VisualizationDefinition = {

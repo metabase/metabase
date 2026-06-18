@@ -35,7 +35,17 @@ ENV CYPRESS_INSTALL_BINARY=0
 # install frontend dependencies
 RUN bun install --frozen-lockfile
 
-RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh ${VERSION:+:version \"$VERSION\"}
+# The build downloads Maven/npm dependencies and can hit transient TLS/network
+# failures (e.g. SSLSocketImpl errors during dep resolution). Retry a few times
+# so a single network blip doesn't fail the whole image build.
+RUN for attempt in 1 2 3 4 5; do \
+        echo "=== build.sh attempt $attempt ==="; \
+        INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh ${VERSION:+:version \"$VERSION\"} && break; \
+        status=$?; \
+        if [ "$attempt" = "5" ]; then echo "build.sh failed after $attempt attempts"; exit $status; fi; \
+        echo "build.sh failed (exit $status), retrying in 15s..."; \
+        sleep 15; \
+    done
 
 # ###################
 # # STAGE 2: runner
