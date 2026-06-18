@@ -171,6 +171,7 @@ type LeftHeaderCellProps = TopHeaderCellProps & {
   rowIndex: string[];
   settings: VisualizationSettings;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  isNativeQuery?: boolean;
 };
 
 export const LeftHeaderCell = ({
@@ -181,8 +182,14 @@ export const LeftHeaderCell = ({
   settings,
   onUpdateVisualizationSettings,
   onResize,
+  isNativeQuery,
 }: LeftHeaderCellProps) => {
-  const { value, isSubtotal, hasSubtotal, depth, path, clicked } = item;
+  const { value, isSubtotal, hasSubtotal, depth, path, clicked, span } = item;
+
+  // For native SQL queries there are no subtotal rows, but rows at depth 0
+  // that span multiple child rows should still be collapsible.
+  const showToggle =
+    isSubtotal || hasSubtotal || (isNativeQuery && depth === 0 && span > 1);
 
   return (
     <Cell
@@ -196,14 +203,14 @@ export const LeftHeaderCell = ({
       onClick={getCellClickHandler(clicked)}
       onResize={onResize}
       icon={
-        (isSubtotal || hasSubtotal) && (
+        showToggle && (
           <RowToggleIcon
             data-testid={`${item.rawValue}-toggle-button`}
             value={path}
             settings={settings}
             updateSettings={onUpdateVisualizationSettings}
             hideUnlessCollapsed={isSubtotal}
-            rowIndex={rowIndex} // used to get a list of "other" paths when open one item in a collapsed column
+            rowIndex={rowIndex}
           />
         )
       }

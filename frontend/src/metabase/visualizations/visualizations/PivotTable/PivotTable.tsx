@@ -532,6 +532,9 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                               }
                               settings={settings}
                               getCellClickHandler={getCellClickHandler}
+                              isNativeQuery={data.cols.some(
+                                (col) => col.source === "native",
+                              )}
                             />
                           )}
                           cellSizeAndPositionGetter={({ index }) =>
