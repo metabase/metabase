@@ -1,6 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
+import type { WithRouterProps } from "react-router";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
@@ -15,7 +16,7 @@ import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import { RouterProvider } from "metabase/router";
+import { RouterContext } from "metabase/router";
 import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { PieChart } from "metabase/visualizations/visualizations/PieChart";
@@ -52,12 +53,16 @@ const store = getStore(
   storeMiddleware,
 ) as unknown as Store<State>;
 
+const mockRouterContext = {
+  location: { pathname: "/document/1", query: {} },
+} as WithRouterProps;
+
 const StoryDecorator = (Story: StoryFn) => {
   return (
     <MetabaseReduxProvider store={store}>
-      <RouterProvider>
+      <RouterContext.Provider value={mockRouterContext}>
         <Story />
-      </RouterProvider>
+      </RouterContext.Provider>
     </MetabaseReduxProvider>
   );
 };
