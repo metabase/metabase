@@ -13,7 +13,7 @@
   width: 100%;
   padding: var(--mantine-spacing-sm);
   font-size: var(--mantine-font-size-md);
-  line-height: var(--mantine-line-height-lg);
+  line-height: var(--mantine-line-height-md);
   background-color: transparent;
   color: var(--mb-color-text-primary);
   transition:

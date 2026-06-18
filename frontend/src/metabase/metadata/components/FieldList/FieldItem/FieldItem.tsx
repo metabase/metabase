@@ -154,7 +154,7 @@ const FieldItemBase = ({
         </Group>
 
         <Box
-          className={cx(S.input, S.description)}
+          className={S.input}
           component={EditableText}
           initialValue={field.description ?? ""}
           isMultiline
@@ -164,7 +164,7 @@ const FieldItemBase = ({
           mt={rem(-3)}
           mx={rem(-2)}
           px={rem(1)}
-          py={0}
+          py={rem(2)}
           placeholder={t`No description yet`}
           tabIndex={undefined} // override the default 0 which breaks a11y
           isDisabled={readOnly}
