@@ -1,6 +1,8 @@
+import Color from "color";
 import _ from "underscore";
 
 import * as Pivot from "cljs/metabase.pivot.js";
+import { color as mbColor } from "metabase/ui/colors";
 import { formatValue } from "metabase/utils/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
@@ -81,6 +83,16 @@ export function multiLevelPivot(data, settings) {
       .filter((index) => index !== -1),
   );
 
+  // The CLJS pivot engine requires at least one value column and at least one
+  // row or column index. Without them it tries to access out-of-bounds indexes
+  // and throws "No item N in vector of length M".
+  if (
+    valueIndexes.length === 0 ||
+    (rowIndexes.length === 0 && columnIndexes.length === 0)
+  ) {
+    return null;
+  }
+
   const columnSettings = columns.map((column) => settings.column(column));
 
   // pivot tables have a lot of repeated values, so we use memoized formatters for each column
@@ -97,17 +109,41 @@ export function multiLevelPivot(data, settings) {
     ),
   );
 
+  // Build a set of column names whose number_style is "percent" for the heatmap.
+  const percentColNames = new Set(
+    columns
+      .filter((col, i) => columnSettings[i]?.["number_style"] === "percent")
+      .map((col) => col.name),
+  );
+
   // makeCellBackgroundGetter is wrapped in another callback because `rows` is
   // computed in CLJS by metabase.pivot.core/get-rows-from-pivot-data, and we
   // want to avoid an extra round trip to CLJS (this can probably be improved,
   // maybe by computing background color right before rendering)
   const makeColorGetter = (rows) => {
-    return makeCellBackgroundGetter(
+    const conditionalFormatter = makeCellBackgroundGetter(
       rows,
       columns,
       settings["table.column_formatting"] ?? [],
       true,
     );
+    return (value, rowIndex, colName) => {
+      const conditional = conditionalFormatter(value, rowIndex, colName);
+      if (conditional) {
+        return conditional;
+      }
+      if (
+        percentColNames.has(colName) &&
+        typeof value === "number" &&
+        isFinite(value)
+      ) {
+        const clamped = Math.max(0, Math.min(1, value));
+        return Color(mbColor("brand"))
+          .mix(Color("white"), 1 - clamped)
+          .hex();
+      }
+      return null;
+    };
   };
 
   try {

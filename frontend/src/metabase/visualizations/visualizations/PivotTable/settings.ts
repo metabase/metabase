@@ -72,7 +72,12 @@ export const settings = {
       const { rows, value } = settings[COLLAPSED_ROWS_SETTING] || {};
       const { rows: currentRows } = settings[COLUMN_SPLIT_SETTING] || {};
       if (!_.isEqual(rows, currentRows)) {
-        return { value: [], rows: currentRows };
+        // For questions with 2+ row columns (e.g. native SQL with a breakdown),
+        // collapse the first level by default so the table is not overwhelming.
+        const isNativeQuery = data.cols.some((col) => col.source === "native");
+        const defaultCollapsed =
+          isNativeQuery && (currentRows?.length ?? 0) >= 2 ? [1] : [];
+        return { value: defaultCollapsed, rows: currentRows };
       }
       return { rows, value };
     },
