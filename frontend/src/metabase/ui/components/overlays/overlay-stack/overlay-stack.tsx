@@ -10,28 +10,31 @@ import { useLatest } from "react-use";
 
 import { OverlayStackContext } from "./overlay-stack-provider";
 
-const useOverlayStackStore = () => {
-  const store = useContext(OverlayStackContext);
-  if (!store) {
+const useOverlayStackContext = () => {
+  const context = useContext(OverlayStackContext);
+  if (!context) {
     throw new Error(
       "Overlay components must be rendered within an OverlayStackProvider",
     );
   }
-  return store;
+  return context;
 };
 
 const useIsTopmost = (opened: boolean) => {
   const id = useId();
-  const store = useOverlayStackStore();
-  const currentStack = useSyncExternalStore(store.subscribe, store.getStack);
+  const context = useOverlayStackContext();
+  const currentStack = useSyncExternalStore(
+    context.subscribe,
+    context.getStack,
+  );
 
   useEffect(() => {
     if (!opened) {
       return;
     }
-    store.push(id);
-    return () => store.remove(id);
-  }, [opened, id, store]);
+    context.push(id);
+    return () => context.remove(id);
+  }, [opened, id, context]);
 
   return opened && currentStack.at(-1) === id;
 };

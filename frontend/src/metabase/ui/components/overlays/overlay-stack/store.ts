@@ -1,11 +1,11 @@
-export type OverlayStackStore = {
+export type OverlayStackContextStore = {
   subscribe: (listener: () => void) => () => void;
   getStack: () => string[];
   push: (id: string) => void;
   remove: (id: string) => void;
 };
 
-export const createOverlayStackStore = (): OverlayStackStore => {
+export const createOverlayStackStore = (): OverlayStackContextStore => {
   let stack: string[] = [];
   const listeners = new Set<() => void>();
 
