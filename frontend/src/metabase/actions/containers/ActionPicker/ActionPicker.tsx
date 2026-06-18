@@ -7,7 +7,7 @@ import { useListActionsQuery, useSearchQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { Modal } from "metabase/ui";
+import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -140,6 +140,7 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       <Modal
+        {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
         opened={isActionCreatorOpen}
         onClose={closeModal}
         size="95%"

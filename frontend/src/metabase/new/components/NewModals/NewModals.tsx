@@ -23,7 +23,7 @@ import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
-import { Modal } from "metabase/ui";
+import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
@@ -92,12 +92,12 @@ export const NewModals = withRouter((props: WithRouterProps) => {
     case "action":
       return (
         <Modal
+          {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
           opened
           onClose={handleModalClose}
-          size="85%"
+          size="95%"
           withCloseButton={false}
           padding={0}
-          transitionProps={{ duration: 0 }}
         >
           <ActionCreator
             onClose={handleModalClose}

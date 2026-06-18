@@ -10,7 +10,7 @@ import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useDispatch } from "metabase/redux";
-import { Modal } from "metabase/ui";
+import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -163,6 +163,7 @@ function ActionVizForm({
           onCancel={() => setShowFormModal(false)}
         />
         <Modal
+          {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
           opened={showEditModal}
           data-testid="action-editor-modal"
           onClose={closeEditModal}
