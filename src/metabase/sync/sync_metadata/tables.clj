@@ -181,19 +181,31 @@
   option either: `name` is the real warehouse table name used to generate SQL."
   256)
 
+(def ^:private table-schema-max-length
+  "Maximum length of the `metabase_table.schema` column in the application DB (a `varchar(254)`). Tables in a
+  schema/dataset whose name is longer than this can't be stored — BigQuery dataset names, for instance, can be up to
+  1024 characters."
+  254)
+
+(defn- table-name-or-schema-too-long?
+  "Whether `table`'s name or schema is too long to store in the application DB (see `table-name-max-length` /
+  `table-schema-max-length`)."
+  [{table-name :name, table-schema :schema}]
+  (or (< table-name-max-length (count table-name))
+      (< table-schema-max-length (count (or table-schema "")))))
+
 (mu/defn- remove-tables-with-too-long-names :- [:set i/DatabaseMetadataTable]
-  "Drop any tables in `db-metadata-tables` whose name is too long to store in the application DB (see
-  `table-name-max-length`), logging a warning. A single over-long table name would otherwise abort creation of all
-  remaining new tables for the database."
+  "Drop any tables in `db-metadata-tables` whose name or schema is too long to store in the application DB (see
+  `table-name-max-length` / `table-schema-max-length`), logging a warning. A single over-long table name or schema
+  would otherwise abort creation of all remaining new tables for the database."
   [database           :- i/DatabaseInstance
    db-metadata-tables :- [:set i/DatabaseMetadataTable]]
-  (let [{too-long true, ok false} (group-by #(> (count (:name %)) table-name-max-length) db-metadata-tables)]
+  (let [{too-long true, ok false} (group-by table-name-or-schema-too-long? db-metadata-tables)]
     (when (seq too-long)
-      (log/warnf "Skipping %d Table(s) in %s whose name exceeds %d characters: %s"
+      (log/warnf "Skipping %d Table(s) in %s whose name or schema is too long to store: %s"
                  (count too-long)
                  (sync-util/name-for-logging database)
-                 table-name-max-length
-                 (pr-str (sort (map :name too-long)))))
+                 (pr-str (sort (map (fn [{:keys [schema name]}] (str schema "." name)) too-long)))))
     (set ok)))
 
 (mu/defn- create-or-reactivate-tables!

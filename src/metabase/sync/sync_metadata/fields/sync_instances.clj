@@ -42,7 +42,7 @@
   entire chunk of Fields it lands in and prevent the rest of the Table from syncing."
   [table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
-  (let [{too-long true, ok false} (group-by #(> (count (:name %)) field-name-max-length) db-metadata)]
+  (let [{too-long true, ok false} (group-by #(< field-name-max-length (count (:name %))) db-metadata)]
     (when (seq too-long)
       (log/warnf "Skipping %d Field(s) in %s whose name exceeds %d characters: %s"
                  (count too-long)

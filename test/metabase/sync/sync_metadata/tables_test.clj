@@ -404,4 +404,11 @@
       (testing "boundary: a name of exactly the max length is kept; one character longer is dropped"
         (let [at-limit   (tbl (apply str (repeat 256 "a")))
               over-limit (tbl (apply str (repeat 257 "a")))]
+          (is (= #{at-limit} (remove-too-long database #{at-limit over-limit})))))
+      (testing "a table whose schema (dataset) name is too long is also dropped"
+        (let [long-schema {:name "t", :schema (apply str (repeat 300 "s"))}]
+          (is (= #{ok} (remove-too-long database #{ok long-schema})))))
+      (testing "boundary: a schema of exactly the max length is kept; one character longer is dropped"
+        (let [at-limit   {:name "t1", :schema (apply str (repeat 254 "s"))}
+              over-limit {:name "t2", :schema (apply str (repeat 255 "s"))}]
           (is (= #{at-limit} (remove-too-long database #{at-limit over-limit}))))))))
