@@ -301,6 +301,7 @@ describe(
         cy.intercept("GET", "/api/action/*").as("getAction");
 
         cy.intercept("PUT", "/api/action/*").as("updateAction");
+        cy.intercept("POST", "/api/action/*/execute").as("executeAction");
         cy.intercept("POST", "/api/action").as("createAction");
         cy.intercept("POST", "/api/action/*/public_link").as(
           "enableActionSharing",
@@ -801,6 +802,9 @@ describe(
           cy.findByLabelText(TEST_PARAMETER.name).type("1");
           cy.button(SAMPLE_QUERY_ACTION.name).click();
 
+          // Wait for the impersonated execute round-trip before asserting; under load it can exceed the
+          // default 4s, so anchor on the request rather than the rendered error text.
+          cy.wait("@executeAction");
           cy.findByText(
             "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
           );
