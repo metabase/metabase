@@ -53,7 +53,23 @@
    "transforms-basic"
    "transforms-advanced"
    "transforms-basic-metered"
-   "transforms-advanced-metered"])
+   "transforms-advanced-metered"
+   "dwh-rent"
+   "etl-connections"])
+
+(def ^:private add-on-bundles
+  "Product types whose purchase provisions additional add-ons in the same upsert call. Purchasing
+  Storage (`dwh-rent`) also provisions `etl-connections`, mirroring the store's storage purchase flow."
+  {"dwh-rent" [{:product-type "dwh-rent" :prepaid-units 0}
+               {:product-type "etl-connections" :prepaid-units 1}]})
+
+(defn- add-ons-for-purchase
+  "Add-ons to upsert for a given `product-type`. Bundled product types (see `add-on-bundles`) expand
+  into multiple add-ons; everything else is a single add-on carrying the requested `quantity`."
+  [product-type quantity]
+  (or (add-on-bundles product-type)
+      [(cond-> {:product-type product-type}
+         quantity (assoc :prepaid-units quantity))]))
 
 (defn- handle-store-api-error
   "Handle exceptions from Store API calls and return appropriate error response."
@@ -145,12 +161,18 @@
          (premium-features/enable-python-transforms?))
     response-not-eligible
 
+    (and (= product-type "dwh-rent")
+         (premium-features/has-attached-dwh?))
+    response-not-eligible
+
     :else
     (try
-      (let [add-on (cond-> {:product-type product-type}
-                     quantity (assoc :prepaid-units quantity))]
-        (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on add-on}, :user-id api/*current-user-id*})
-        (hm.client/call :change-add-ons :upsert-add-ons [add-on]))
+      (let [add-ons (add-ons-for-purchase product-type quantity)
+            ;; Single-product purchases keep the original `{:add-on {...}}` audit shape; bundled
+            ;; purchases (Storage) record the full vector.
+            audit-add-on (if (= (count add-ons) 1) (first add-ons) add-ons)]
+        (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on audit-add-on}, :user-id api/*current-user-id*})
+        (hm.client/call :change-add-ons :upsert-add-ons add-ons))
       (premium-features/clear-cache!)
       response-success-empty
       (catch Exception e

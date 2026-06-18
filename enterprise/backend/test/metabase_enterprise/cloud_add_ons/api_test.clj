@@ -83,6 +83,43 @@
             (is (=? {}
                     (mt/user-http-request :crowberto :post 200 (str "ee/cloud-add-ons/" product-type) {})))))))))
 
+(deftest ^:sequential post-dwh-rent-test
+  (testing "POST /api/ee/cloud-add-ons/dwh-rent"
+    (testing "requires superuser"
+      (mt/with-premium-features #{}
+        (is (=? "You don't have permissions to do that."
+                (mt/user-http-request :rasta :post 403 "ee/cloud-add-ons/dwh-rent" {})))))
+    (testing "requires token feature 'hosting'"
+      (mt/with-premium-features #{}
+        (is (=? "Can only access Store API for Metabase Cloud instances."
+                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/dwh-rent" {})))))
+    (testing "not eligible if storage is already attached"
+      (mt/with-premium-features #{:hosting :attached-dwh}
+        (is (=? "Can only purchase add-ons for eligible subscriptions."
+                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/dwh-rent" {})))))
+    (testing "succeeds, provisioning dwh-rent and etl-connections together"
+      (mt/with-premium-features #{:hosting :audit-app}
+        (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
+              {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
+          (with-redefs [hm.client/call                store-api-proxy
+                        premium-features/clear-cache! clear-token-cache-proxy]
+            (is (=? {}
+                    (mt/user-http-request :crowberto :post 200 "ee/cloud-add-ons/dwh-rent" {})))
+            (is (= [{:args [:change-add-ons
+                            :upsert-add-ons
+                            [{:product-type "dwh-rent" :prepaid-units 0}
+                             {:product-type "etl-connections" :prepaid-units 1}]]
+                     :ret  nil}]
+                   @store-api-calls))
+            (is (not-empty @clear-token-cache-calls)
+                "Token cache was cleared")
+            (testing "audit log records both provisioned add-ons"
+              (let [{:keys [details user_id]} (mt/latest-audit-log-entry "cloud-add-on-purchase")]
+                (is (= (mt/user->id :crowberto) user_id))
+                (is (= {:add-on [{:product-type "dwh-rent" :prepaid-units 0}
+                                 {:product-type "etl-connections" :prepaid-units 1}]}
+                       details))))))))))
+
 (deftest ^:sequential delete-product-type-test
   (testing "DELETE /api/ee/cloud-add-ons/metabase-ai-managed"
     (testing "requires superuser"
