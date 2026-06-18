@@ -39,6 +39,8 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
+    // Remove persisted row settings when changing the grouping
+    eraseDependencies: ["treemap.rows"],
     getDefault: ([{ data }]) => {
       const firstDimension = data.cols.find(
         (col) => isDimension(col) && !isMetric(col),

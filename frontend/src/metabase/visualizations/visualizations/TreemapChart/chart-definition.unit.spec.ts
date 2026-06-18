@@ -1,6 +1,9 @@
 import { checkNotNull } from "metabase/utils/types";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { getComputedSettings } from "metabase/visualizations/lib/settings";
+import {
+  getComputedSettings,
+  getSettingsWidgets,
+} from "metabase/visualizations/lib/settings";
 import type { RowValues } from "metabase-types/api/dataset";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
@@ -372,6 +375,30 @@ describe("TREEMAP_CHART_DEFINITION", () => {
         "treemap.sub_grouping",
         "treemap.value",
       ]);
+    });
+
+    it("erases saved rows when the grouping column changes", () => {
+      const groupingSetting = checkNotNull(
+        TREEMAP_CHART_DEFINITION.settings?.["treemap.grouping"],
+      );
+      const onChangeSettings = jest.fn();
+      const widgets = getSettingsWidgets(
+        { "treemap.grouping": groupingSetting },
+        { "treemap.grouping": "Category" },
+        { "treemap.grouping": "Category" },
+        rawSeries,
+        onChangeSettings,
+      );
+      const groupingWidget = checkNotNull(
+        widgets.find((widget) => widget.id === "treemap.grouping"),
+      );
+
+      groupingWidget.onChange?.("Region");
+
+      expect(onChangeSettings).toHaveBeenCalledWith(
+        { "treemap.grouping": "Region", "treemap.rows": null },
+        undefined,
+      );
     });
 
     it("renames a treemap row through nested series settings", () => {
