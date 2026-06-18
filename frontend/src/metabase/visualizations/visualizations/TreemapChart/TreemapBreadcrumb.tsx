@@ -14,7 +14,7 @@ export function TreemapBreadcrumb({
   onBackClick,
 }: TreemapBreadcrumbProps) {
   return (
-    <Group data-testid="treemap-breadcrumb" px="xl" pt={24} gap="sm">
+    <Group data-testid="treemap-breadcrumb" gap="sm">
       <Label groupLabel={groupLabel} onBackClick={onBackClick} />
       <Text fw={400} lh="md">
         {value}

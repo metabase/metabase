@@ -234,15 +234,17 @@ export const TreemapChart = ({
       gap={isCompact ? "md" : 28}
     >
       {breadcrumb && formatters && (
-        <TreemapBreadcrumb
-          groupLabel={breadcrumb.groupLabel}
-          value={formatters.value(breadcrumb.value)}
-          onBackClick={handleBreadcrumbBack}
-        />
+        <Box px={isDashboard ? "md" : "xl"} pt={isDashboard ? 12 : 24}>
+          <TreemapBreadcrumb
+            groupLabel={breadcrumb.groupLabel}
+            value={formatters.value(breadcrumb.value)}
+            onBackClick={handleBreadcrumbBack}
+          />
+        </Box>
       )}
       <Box
         className={S.root}
-        p={getChartPadding(isCompact)}
+        p={getChartPadding(isDashboard)}
         w="100%"
         style={{ flex: 1, minHeight: 0 }}
       >

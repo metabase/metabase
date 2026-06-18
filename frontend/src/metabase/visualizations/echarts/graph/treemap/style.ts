@@ -44,8 +44,9 @@ export function getGroupHeaderBgTint(
     .string();
 }
 
-export function getChartPadding(isCompact: boolean) {
-  return isCompact ? "0 24px 24px 24px" : `0rem 2rem 2rem 2rem`;
+export function getChartPadding(isDashboard: boolean) {
+  const side = isDashboard ? "1rem" : "2rem";
+  return `0 ${side} ${side} ${side}`;
 }
 
 export const TREEMAP_HOVER_OVERLAY_FILL = Color("black")
