@@ -1,5 +1,4 @@
 /* eslint-env node */
-/* eslint-disable import/no-commonjs */
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 
 const EMIT_BUNDLE_STATS = process.env.EMIT_BUNDLE_STATS === "true";
