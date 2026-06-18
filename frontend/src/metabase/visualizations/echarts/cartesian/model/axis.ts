@@ -680,6 +680,35 @@ const getFormatUnit = (
 
   return dimensionColumn.unit;
 };
+
+const isDateColumn = (column: DatasetColumn) => {
+  return (
+    (column.effective_type ?? column.base_type)?.startsWith("type/Date") ??
+    false
+  );
+};
+
+const getCategoryXAxisColumn = (
+  column: DatasetColumn,
+  dataset: ChartDataset,
+) => {
+  if (!isDateColumn(column) || isAbsoluteDateTimeUnit(column.unit)) {
+    return column;
+  }
+
+  const xValues = dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
+  if (xValues.every((value) => tryGetDate(value) == null)) {
+    return column;
+  }
+
+  const dataTimeSeriesInterval = computeTimeseriesDataInterval(xValues, null);
+  const formatUnit = dataTimeSeriesInterval
+    ? getFormatUnit(column, dataTimeSeriesInterval)
+    : column.unit;
+
+  return formatUnit ? { ...column, unit: formatUnit } : column;
+};
+
 export function getTimeSeriesXAxisModel(
   dimensionModel: DimensionModel,
   rawSeries: RawSeries,
@@ -826,7 +855,7 @@ export function getXAxisModel(
     );
   }
 
-  const column = dimensionModel.column;
+  const column = getCategoryXAxisColumn(dimensionModel.column, dataset);
   const columnSettings =
     column != null ? (settings.column?.(column) ?? {}) : {};
 
