@@ -5,9 +5,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest create-sql-query-output-test
   (testing "create_sql_query output includes preamble, query XML, and query-ID-aware instructions"
@@ -144,6 +146,130 @@
               (is (string? output))
               (is (str/starts-with? instructions "The SQL query has a syntax error"))
               (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
+
+;;; ---------------------------------------- entity-usage ----------------------------------------
+
+(deftest create-sql-query-entity-usage-success-test
+  (testing "create_sql_query success path emits :entity-usage with the database and any {{#N}} card refs"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+          (let [result (agent-sql/create-sql-query-tool
+                        {:database_id db-id
+                         :sql_query   "SELECT * FROM {{#42}} JOIN {{#43-slug}} t ON t.id = 1"
+                         :title       "Results"})
+                eu     (get-in result [:structured-output :entity-usage])]
+            (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+            (is (= [] (:output eu)))
+            (is (= [{:type "database" :id db-id}
+                    {:type "card"     :id 42}
+                    {:type "card"     :id 43}]
+                   (:input eu)))))))))
+
+(deftest create-sql-query-entity-usage-physical-tables-test
+  (testing "create_sql_query success path captures directly-named physical tables (sqlglot) and {{#N}} card refs (text parse), without leaking a referenced card's source tables"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id   (mt/id)
+                        :dataset_query (mt/native-query {:query "SELECT * FROM checkins"})}]
+          (let [result (agent-sql/create-sql-query-tool
+                        {:database_id (mt/id)
+                         :sql_query   (format "SELECT * FROM venues v JOIN {{#%d}} c ON true" card-id)
+                         :title       "Results"})
+                eu     (get-in result [:structured-output :entity-usage])
+                input  (set (:input eu))]
+            (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+            (is (= [] (:output eu)))
+            (is (contains? input {:type "database" :id (mt/id)}))
+            (is (contains? input {:type "card" :id card-id}))
+            (is (contains? input {:type "table" :id (mt/id :venues)}))
+            (is (not (contains? input {:type "table" :id (mt/id :checkins)}))
+                "the referenced card's underlying table must not leak into the authored set")))))))
+
+(deftest create-sql-query-entity-usage-validation-error-test
+  (testing "create_sql_query validation-error path still emits :entity-usage with the database"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
+          (let [result (agent-sql/create-sql-query-tool
+                        {:database_id db-id
+                         :sql_query   "SELECT ="
+                         :title       "Results"})
+                eu     (get-in result [:structured-output :entity-usage])]
+            (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+            (is (= [{:type "database" :id db-id}] (:input eu)))
+            (is (= [] (:output eu)))))))))
+
+(deftest edit-sql-query-entity-usage-success-test
+  (testing "edit_sql_query success path emits :entity-usage with the in-memory database and any {{#N}} in the edited SQL"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
+          (mt/with-db db
+            (let [mp       (mt/metadata-provider)
+                  query-id "test-edit-eu"
+                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT * FROM t")
+                                                                 lib/->legacy-MBQL)}}})
+                  result   (binding [shared/*memory-atom* memory]
+                             (agent-sql/edit-sql-query-tool
+                              {:query_id  query-id
+                               :checklist "- [x] checked"
+                               :edits     [{:old_string "SELECT *"
+                                            :new_string "SELECT * FROM {{#7}}"}]
+                               :title     "Results"}))
+                  eu       (get-in result [:structured-output :entity-usage])]
+              (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+              (is (= [{:type "database" :id db-id}
+                      {:type "card"     :id 7}]
+                     (:input eu)))
+              (is (= [] (:output eu))))))))))
+
+(deftest replace-sql-query-entity-usage-success-test
+  (testing "replace_sql_query success path emits :entity-usage with the in-memory database and any {{#N}} in new SQL"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
+          (mt/with-db db
+            (let [mp       (mt/metadata-provider)
+                  query-id "test-replace-eu"
+                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT 1")
+                                                                 lib/->legacy-MBQL)}}})
+                  result   (binding [shared/*memory-atom* memory]
+                             (agent-sql/replace-sql-query-tool
+                              {:query_id  query-id
+                               :checklist "- [x] checked"
+                               :new_query "SELECT * FROM {{#9}}"
+                               :title     "Results"}))
+                  eu       (get-in result [:structured-output :entity-usage])]
+              (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+              (is (= [{:type "database" :id db-id}
+                      {:type "card"     :id 9}]
+                     (:input eu)))
+              (is (= [] (:output eu))))))))))
+
+(deftest replace-sql-query-entity-usage-validation-error-test
+  (testing "replace_sql_query validation-error path still emits :entity-usage with the in-memory database and {{#N}} from the new SQL"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :postgres}]
+          (mt/with-db db
+            (let [mp       (mt/metadata-provider)
+                  query-id "test-replace-eu-err"
+                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT 1")
+                                                                 lib/->legacy-MBQL)}}})
+                  result   (binding [shared/*memory-atom* memory]
+                             (agent-sql/replace-sql-query-tool
+                              {:query_id  query-id
+                               :checklist "- [x] checked"
+                               :new_query "SELECT = FROM {{#13}}"
+                               :title     "Results"}))
+                  eu       (get-in result [:structured-output :entity-usage])]
+              (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+              (is (= [{:type "database" :id db-id}
+                      {:type "card"     :id 13}]
+                     (:input eu)))
+              (is (= [] (:output eu))))))))))
 
 (deftest edit-sql-query-inline-viz-test
   (testing "edit_sql_query surfaces results inline in the NLQ profile and navigate otherwise"

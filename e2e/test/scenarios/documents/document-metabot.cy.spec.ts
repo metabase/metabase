@@ -56,9 +56,15 @@ describe("documents > metabot (#73690)", () => {
       idAlias: "documentId",
     });
 
+    cy.intercept("POST", "/api/metabot/document/generate-content").as(
+      "generateContent",
+    );
+
     H.visitDocument("@documentId");
 
     cy.findByRole("button", { name: "Run" }).click();
+
+    cy.wait("@generateContent");
 
     H.getDocumentCard(GENERATED_CARD_NAME).should("be.visible");
     H.documentContent().should(

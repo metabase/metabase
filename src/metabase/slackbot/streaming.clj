@@ -178,6 +178,16 @@
            request-prompt team-id thread-ts]}]
   (let [message         (metabot.envelope/user-message prompt)
         ai-proxy?       (metabot/metabase-provider? (metabot.settings/llm-metabot-provider))
+        capabilities    (compute-capabilities)
+        ;; Enrich context *before* `start-turn!` so the user-row's
+        ;; prompt-context block reflects the post-enrichment shape. Slack flows
+        ;; don't populate `:user_is_viewing`, but `:mentioned_refs` (parsed
+        ;; from the prompt text) lands on the row either way.
+        context         (metabot.context/create-context
+                         {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
+                          :capabilities               capabilities
+                          :slack_channel_id           channel-id}
+                         {:metabot-id metabot.config/internal-metabot-id})
         ;; Persist a placeholder assistant row up front so its `created_at` pins
         ;; turn ordering before any retry can sneak in earlier-timestamped rows.
         ;; `:user-id` stamps the author on both rows so participation-based
@@ -189,10 +199,10 @@
                                          :slack-thread-ts thread-ts
                                          :slack-msg-id    req-slack-msg-id
                                          :user-id         api/*current-user-id*
-                                         :ai-proxy?       ai-proxy?)
+                                         :ai-proxy?       ai-proxy?
+                                         :context         context)
         data-idx        (volatile! -1)
         request-message (metabot.envelope/user-message (or request-prompt prompt))
-        capabilities    (compute-capabilities)
         thread-history  (thread->history thread bot-user-id conversation-id)
         history         (into (vec thread-history) extra-history)
         context         (metabot.context/create-context
@@ -258,12 +268,17 @@
         ;; UPDATE the placeholder with whatever parts we collected, even if the
         ;; pipeline threw. Raw native parts (not the lossy AI-SDK-message
         ;; round-trip) preserve tool-output :structured-output for analytics.
-        (metabot.persistence/finalize-assistant-turn!
-         conversation-id assistant-msg-id
-         (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
-         :profile-id   "slackbot"
-         :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
-         :error        (some-> @thrown metabot.persistence/throwable->error-payload))))
+        ;; Error precedence mirrors the HTTP path (thrown > streamed `:error`
+        ;; part, no aborted tier — Slack has no client-cancel): the agent loop
+        ;; catches provider/tool errors internally and streams an `:error` part
+        ;; without throwing, so `@thrown` alone misses the dominant error shape.
+        (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)]
+          (metabot.persistence/finalize-assistant-turn!
+           conversation-id assistant-msg-id combined-parts
+           :profile-id   "slackbot"
+           :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
+           :error        (or (some-> @thrown metabot.persistence/throwable->error-payload)
+                             (:error (u/seek #(= :error (:type %)) combined-parts)))))))
     {:msg-id      assistant-msg-id
      :external-id assistant-external-id}))
 

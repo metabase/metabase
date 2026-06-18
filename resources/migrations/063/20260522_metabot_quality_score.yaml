@@ -1,0 +1,47 @@
+## Persisted columns for the Metabot conversation quality score.
+
+databaseChangeLog:
+  - changeSet:
+      id: v63.2026-05-22T10:00:00
+      author: tylerplude
+      comment: Add quality_score column to metabot_conversation
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: quality_score
+                  type: double
+                  remarks: Quality score composite in [0, 1], 1 = healthy. NULL = not yet scored.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v63.2026-05-22T10:00:01
+      author: tylerplude
+      comment: Add quality_breakdown JSON column to metabot_conversation
+      changes:
+        - addColumn:
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: quality_breakdown
+                  type: ${text.type}
+                  remarks: JSON-encoded breakdown of the composite — version, quality_score, per-subscore metric values (null = not applicable), and diagnostics (counts, termination, entity counts). Unscoreable conversations get a sentinel {version, unscoreable} payload.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v63.2026-05-22T10:00:02
+      author: tylerplude
+      comment: Add quality_attribution JSON column to metabot_message
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: quality_attribution
+                  type: ${text.type}
+                  remarks: JSON-encoded per-turn attribution of the conversation breakdown onto this row. Overwritten each finalize-assistant-turn!; the conversation's last assistant row's value is canonical.
+                  constraints:
+                    nullable: true

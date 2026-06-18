@@ -38,6 +38,7 @@
          (str "\n\nOptions:\n" (str/join "\n" (map #(str "- " %) options))))))
 
 (mu/defn ^{:tool-name "ask_for_sql_clarification"
+           :tool-type :utility
            :scope     scope/agent-sql-read}
   ask-for-sql-clarification-tool
   "Ask the user for clarification about their SQL query request.

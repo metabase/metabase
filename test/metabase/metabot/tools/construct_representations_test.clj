@@ -12,9 +12,13 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
-   [metabase.models.serialization :as serdes]))
+   [metabase.metabot.tools.entity-usage :as entity-usage]
+   [metabase.models.serialization :as serdes]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -145,6 +149,40 @@
           (let [d (ex-data e)]
             (is (true? (:agent-error? d)))
             (is (= :unknown-table (:error d)))))))))
+
+(deftest construct-notebook-query-tool-stamps-agent-error-as-invalid-test
+  (testing (str "an agent-input error (unknown table) is not thrown — the wrapper returns a "
+                "normal result that relays the validation message to the LLM verbatim and "
+                "stamps :artifact-valid false, so the quality score's artifact-validity-share "
+                "counts the failed authoring attempt without overloading the :error channel")
+    (with-mp-and-stubs!
+      (fn []
+        (let [bad-query    (query-data
+                            {"lib/type" "mbql/query"
+                             "database" "Sample"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" ["Sample" "PUBLIC" "DOES_NOT_EXIST"]
+                                          "aggregation"  [["count" {}]]}]})
+              result       (construct/construct-notebook-query-tool {:query bad-query :title "Results"})
+              expected-msg (try
+                             (construct/execute-representations-query bad-query)
+                             (catch clojure.lang.ExceptionInfo inner
+                               (ex-message inner)))]
+          (is (false? (get-in result [:structured-output :artifact-valid])))
+          (is (= construct/empty-entity-usage
+                 (get-in result [:structured-output :entity-usage])))
+          (testing "message fidelity is preserved for the LLM"
+            (is (= expected-msg (:output result)))))))))
+
+(deftest construct-notebook-query-tool-genuine-exception-returns-fallback-test
+  (testing (str "a genuine (non-agent) exception is still caught and returned as a normal "
+                "{:output \"Failed to construct...\"} result with empty entity-usage, not re-thrown")
+    (with-redefs [construct/execute-representations-query
+                  (fn [_] (throw (Exception. "boom")))]
+      (let [result (construct/construct-notebook-query-tool {:query {} :title "Results"})]
+        (is (= "Failed to construct notebook query: boom" (:output result)))
+        (is (= construct/empty-entity-usage
+               (get-in result [:structured-output :entity-usage])))))))
 
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"
@@ -809,3 +847,140 @@
               opts      (nth field-ref 1)]
           (is (= "TOTAL" (nth field-ref 2)))
           (is (= "type/Float" (get opts "base-type"))))))))
+
+;;; ============================================================
+;;; entity-usage (BOT-1569)
+;;; ============================================================
+
+(deftest execute-representations-query-attaches-entity-usage-test
+  (testing "happy path puts a schema-valid :entity-usage on :structured-output"
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]}]}))
+              eu     (get-in result [:structured-output :entity-usage])]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= {:input  [{:type "database" :id 1}
+                           {:type "table"    :id 10}]
+                  :output []}
+                 eu)))))))
+
+(deftest query->entity-usage-source-table-test
+  (testing "source-table contributes a :table entry alongside the :database entry"
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]}]}))
+              eu     (construct/query->entity-usage
+                      (get-in result [:structured-output :query]))]
+          (is (= {:input  [{:type "database" :id 1}
+                           {:type "table"    :id 10}]
+                  :output []}
+                 eu)))))))
+
+(deftest query->entity-usage-implicit-join-target-table-excluded-test
+  (testing "an implicit-join breakout field surfaces the source table and the field, but not the join-target table"
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]
+                                     "breakout"     [["field" {}
+                                                      ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}))
+              eu     (construct/query->entity-usage
+                      (get-in result [:structured-output :query]))]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= {:input  [{:type "database" :id 1}
+                           {:type "table"    :id 10}
+                           {:type "field"    :id 201}]
+                  :output []}
+                 eu)))))))
+
+(deftest query->entity-usage-source-card-test
+  (testing "source-card contributes a catch-all `card` entry — subtype is NOT resolved"
+    (with-card-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "fields"      [["field" {} "TOTAL"]]
+                                     "limit"       5}]}))
+              eu     (construct/query->entity-usage
+                      (get-in result [:structured-output :query]))]
+          (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+          (is (= {:input  [{:type "database" :id 1}
+                           {:type "card"     :id 500}]
+                  :output []}
+                 eu))
+          (is (every? #(not= "model" (:type %)) (:input eu))
+              "source-card type stays `card`, never `model`/`question`/`metric`"))))))
+
+(deftest query->entity-usage-metric-base-table-excluded-test
+  (testing "a metric's base source table is not an authored table; the metric and breakout field are"
+    (let [metric-id    100
+          metric-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+          mp           (-> meta/metadata-provider
+                           (lib.tu/metadata-provider-with-card-from-query metric-id metric-query {:type :metric}))
+          query        (-> (lib/query mp (meta/table-metadata :orders))
+                           (lib/aggregate (lib.metadata/metric mp metric-id))
+                           (lib/breakout (meta/field-metadata :orders :created-at)))
+          eu           (construct/query->entity-usage query)]
+      (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+      (is (= {:input  [{:type "database" :id (meta/id)}
+                       {:type "card"     :id metric-id}
+                       {:type "metric"   :id metric-id}
+                       {:type "field"    :id (meta/id :orders :created-at)}]
+              :output []}
+             eu)
+          "the metric's base table (orders) is absent; the metric and field remain")
+      (is (every? #(not= "table" (:type %)) (:input eu))
+          "the metric's base table is not emitted as an authored `table`"))))
+
+(deftest query->entity-usage-metric-source-card-excluded-test
+  (testing "a metric's source card (model) is not an authored card; the metric itself remains"
+    (let [model-id     200
+          model-query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp-model     (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider model-id model-query {:type :model})
+          metric-id    100
+          metric-query (-> (lib/query mp-model (lib.metadata/card mp-model model-id))
+                           (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+          mp*          (lib.tu/metadata-provider-with-card-from-query mp-model metric-id metric-query {:type :metric})
+          query        (-> (lib/query mp* (lib.metadata/card mp* model-id))
+                           (lib/aggregate (lib.metadata/metric mp* metric-id)))
+          eu           (construct/query->entity-usage query)]
+      (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+      (is (= {:input  [{:type "database" :id (meta/id)}
+                       {:type "card"     :id metric-id}
+                       {:type "metric"   :id metric-id}]
+              :output []}
+             eu)
+          "the metric's source model is absent; the metric remains under both `card` and `metric` types")))
+  (testing "a non-metric query on the same model still records the source card"
+    (let [model-id    200
+          model-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp*         (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider model-id model-query {:type :model})
+          query       (-> (lib/query mp* (lib.metadata/card mp* model-id))
+                          (lib/aggregate (lib/count)))
+          eu          (construct/query->entity-usage query)]
+      (is (= {:input  [{:type "database" :id (meta/id)}
+                       {:type "card"     :id model-id}]
+              :output []}
+             eu)))))

@@ -12,6 +12,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -262,6 +263,48 @@
         cols  (lib/returned-columns query)]
     (mapv #(tools.u/->result-column query %) cols)))
 
+;;; ---------------------------------------- Entity usage ----------------------------------------
+
+(def empty-entity-usage
+  "Placeholder `:entity-usage` for construct-family error branches with no resolved
+  query in scope. The success path uses [[query->entity-usage]]."
+  {:input [] :output []})
+
+(defn query->entity-usage
+  "Produce an `:entity-usage` map from a resolved pMBQL query.
+
+  Tables and cards are the ones the author named directly: non-metric `:source-table`s /
+  `:source-card`s, table template tags, and `{{#N}}` card template tags. An entity reached only
+  because the author referenced something else — e.g. a field's implicit-join target — is
+  deliberately excluded, since the author referenced the field or metric, not its source.
+  Metric ids are also included under the `card` type,
+  `:field` refs come from [[lib/all-field-ids]], and the query's own `:database` id is
+  prepended. Card subtypes (model / question / metric) are NOT resolved — `\"card\"` is used as
+  the catch-all type, matching how the SQL tools emit `{{#N}}` template-tag refs. `:measure`,
+  `:segment`, and `:snippet` references are dropped because they are not present in the
+  entity-usage vocabulary.
+
+  Authoring construct-family tools have no `:output` entities, so the output vector is
+  always empty."
+  [pmbql-query]
+  (let [{:keys [metric]} (lib/all-referenced-entity-ids [pmbql-query])
+        card      (into #{} cat [(lib/all-non-metric-source-card-ids pmbql-query)
+                                 (keep :card-id (lib/all-template-tags pmbql-query))
+                                 metric])
+        table-ids (into #{} cat [(lib/all-non-metric-source-table-ids pmbql-query)
+                                 (lib/all-template-tag-table-ids pmbql-query)])
+        field-ids (lib/all-field-ids pmbql-query)
+        entry     (fn [type id] {:type type :id id})
+        sorted    (fn [ids] (sort (seq ids)))]
+    {:input  (vec (concat
+                   (when-let [db (:database pmbql-query)]
+                     [(entry "database" db)])
+                   (for [id (sorted table-ids)] (entry "table"  id))
+                   (for [id (sorted card)]      (entry "card"   id))
+                   (for [id (sorted metric)]    (entry "metric" id))
+                   (for [id (sorted field-ids)] (entry "field" id))))
+     :output []}))
+
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
 (defn- as-agent-input-error
@@ -346,7 +389,8 @@
         {:structured-output {:query-id       query-id
                              :query          pmbql-query
                              :query-json     exported-repr
-                             :result-columns (result-columns-for-query pmbql-query mp)}
+                             :result-columns (result-columns-for-query pmbql-query mp)
+                             :entity-usage   (query->entity-usage pmbql-query)}
          :instructions      (instructions/query-created-instructions-for query-id)})
       (catch clojure.lang.ExceptionInfo e
         ;; Permission failures are not LLM-input repair errors. Preserve the original 403 so
@@ -407,6 +451,7 @@
 ;;; ---------------------------------------- Main tool ----------------------------------------
 
 (mu/defn ^{:tool-name "construct_notebook_query"
+           :tool-type :authoring
            :scope     scope/agent-notebook-create}
   construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table.
@@ -442,36 +487,42 @@
                  (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
                  "- If creating multiple charts, present all chart links"))
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
-           :data-parts        (when results-url
-                                [(streaming/viz-part
-                                  {:inline?   (shared/inline-viz-capable?)
-                                   :entity-id (:chart-id chart-result)
-                                   :query-id  (:query-id structured)
-                                   :query     (links/->legacy-mbql (:query structured))
-                                   :display   chart-type
-                                   :title     title
-                                   :link      results-url})])
-           :structured-output full-structured
-           :instructions      instruction-text})
+          (entity-usage/stamp-artifact-valid
+           {:output (str "<result>\n" chart-xml "\n</result>\n"
+                         "<instructions>\n" instruction-text "\n</instructions>")
+            :data-parts        (when results-url
+                                 [(streaming/viz-part
+                                   {:inline?   (shared/inline-viz-capable?)
+                                    :entity-id (:chart-id chart-result)
+                                    :query-id  (:query-id structured)
+                                    :query     (links/->legacy-mbql (:query structured))
+                                    :display   chart-type
+                                    :title     title
+                                    :link      results-url})])
+            :structured-output full-structured
+            :instructions      instruction-text}
+           true))
         ;; query-result may already have :output (error) or only :structured-output
         (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
           (let [query-xml        (llm-shape/query->xml (structured->query-data s))
                 instruction-text (instructions/query-created-instructions-for (:query-id s))]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
+            (-> (entity-usage/entity-usage-on-result
+                 (assoc query-result
+                        :output (str "<result>\n" query-xml "\n</result>\n"
+                                     "<instructions>\n" instruction-text "\n</instructions>"))
+                 (get s :entity-usage empty-entity-usage))
+                (entity-usage/stamp-artifact-valid true)))
+          (-> (entity-usage/entity-usage-on-result query-result empty-entity-usage)
+              (entity-usage/stamp-artifact-valid false)))))
     (catch Exception e
       (if (:agent-error? (ex-data e))
-        ;; Expected agent-facing signal (bad LLM input: unknown table, unknown schema,
-        ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
-        ;; is the tool's result and the LLM is expected to self-correct on the next turn.
-        (do
-          (log/debug e "construct_notebook_query returned agent-error to the LLM")
-          {:output (ex-message e)})
+        ;; Agent error: relay the message and stamp the artifact invalid (not the :error channel).
+        (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} empty-entity-usage)
+            (entity-usage/stamp-artifact-valid false))
         ;; Genuine unexpected failure — keep full stacktrace.
         (do
           (log/error e "Failed to construct notebook query")
-          {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})))))
+          (-> (entity-usage/entity-usage-on-result
+               {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}
+               empty-entity-usage)
+              (entity-usage/stamp-artifact-valid false)))))))

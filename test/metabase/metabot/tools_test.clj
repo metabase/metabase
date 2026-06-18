@@ -2,13 +2,16 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.config.core :as config]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (deftest all-tools-test
   (testing "profile tools are vars with required metadata"
@@ -207,6 +210,125 @@
       (is (fn? (:fn (get wrapped-tools "search"))))
       (is (map? (get wrapped-tools "construct_notebook_query")))
       (is (fn? (:fn (get wrapped-tools "construct_notebook_query")))))))
+
+(defn- ->fake-tool
+  [meta-map f]
+  (with-meta f meta-map))
+
+(deftest registration-assertion-rejects-missing-tool-type-test
+  (testing "tool without :tool-type metadata throws on registration"
+    (let [tool-var (->fake-tool {:tool-name "fake_no_type"
+                                 :schema    [:=> [:cat :map] :map]}
+                                (fn [_] {:output "ok"}))]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"missing or has invalid :tool-type"
+           (agent-tools/wrap-tools-with-state {"fake_no_type" tool-var} (atom {}) nil nil))))))
+
+(deftest registration-assertion-rejects-invalid-tool-type-test
+  (testing "tool with an unknown :tool-type value throws on registration"
+    (let [tool-var (->fake-tool {:tool-name "fake_bogus_type"
+                                 :tool-type :bogus
+                                 :schema    [:=> [:cat :map] :map]}
+                                (fn [_] {:output "ok"}))]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"missing or has invalid :tool-type"
+           (agent-tools/wrap-tools-with-state {"fake_bogus_type" tool-var} (atom {}) nil nil))))))
+
+(deftest registration-assertion-accepts-valid-tool-type-test
+  (testing "tool with a valid :tool-type wraps successfully"
+    (let [tool-var (->fake-tool {:tool-name "fake_valid"
+                                 :tool-type :discovery
+                                 :schema    [:=> [:cat :map] :map]}
+                                (fn [_] {:structured-output {:entity-usage {:input [] :output []}}}))
+          wrapped  (agent-tools/wrap-tools-with-state {"fake_valid" tool-var} (atom {}) nil nil)]
+      (is (map? (get wrapped "fake_valid")))
+      (is (fn? (get-in wrapped ["fake_valid" :fn]))))))
+
+(deftest registration-assertion-covers-every-registered-profile-tool-test
+  (testing "every tool registered in any profile has valid :tool-type metadata"
+    ;; Phase 3e closed the opt-in gate, so wrap-tools-with-state asserts on
+    ;; every tool. Wrapping each profile's full tool set proves no profile
+    ;; ships a tool missing :tool-type.
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (doseq [[profile-id profile] @@#'profiles/*profiles
+              :let [tool-vars (:tools profile)
+                    tools-map (into {} (map (fn [v] [(:tool-name (meta v)) v]) tool-vars))]]
+        (testing (str "profile " profile-id)
+          (is (map? (agent-tools/wrap-tools-with-state tools-map (atom {}) nil profile-id))))))))
+
+(deftest entity-usage-validation-throws-on-bad-output-in-test-mode-test
+  (testing "a tool whose result violates its :tool-type contract throws when invoked"
+    ;; :discovery tool that fails to emit :entity-usage — validator should
+    ;; flag missing-required-but-missing
+    (let [tool-var   (->fake-tool {:tool-name "fake_discovery"
+                                   :tool-type :discovery
+                                   :schema    [:=> [:cat :map] :map]}
+                                  (fn [_] {:output "no entity-usage here"}))
+          wrapped-fn (get-in (agent-tools/wrap-tools-with-state
+                              {"fake_discovery" tool-var} (atom {}) nil nil)
+                             ["fake_discovery" :fn])]
+      (is (thrown-with-msg?
+           ExceptionInfo
+           #"entity-usage violation"
+           (wrapped-fn {}))))))
+
+(deftest entity-usage-validation-throws-in-every-non-prod-mode-test
+  (testing "the tripwire fires in any non-prod run-mode (e2e included), not just dev/test"
+    ;; Guards against the `(or is-dev? is-test?)` form, which let :e2e runs
+    ;; silently skip the throw and warn-log a tool-author shape bug instead.
+    (let [tool-var   (->fake-tool {:tool-name "fake_discovery_e2e"
+                                   :tool-type :discovery
+                                   :schema    [:=> [:cat :map] :map]}
+                                  (fn [_] {:output "no entity-usage here"}))
+          wrapped-fn (get-in (agent-tools/wrap-tools-with-state
+                              {"fake_discovery_e2e" tool-var} (atom {}) nil nil)
+                             ["fake_discovery_e2e" :fn])]
+      (with-redefs [config/is-prod? false]
+        (is (thrown-with-msg? ExceptionInfo #"entity-usage violation"
+                              (wrapped-fn {})))))))
+
+(deftest entity-usage-validation-warns-but-does-not-throw-in-prod-test
+  (testing "in prod a tool-author shape bug warn-logs and returns the result unchanged"
+    (let [bad-result {:output "no entity-usage here"}
+          tool-var   (->fake-tool {:tool-name "fake_discovery_prod"
+                                   :tool-type :discovery
+                                   :schema    [:=> [:cat :map] :map]}
+                                  (fn [_] bad-result))
+          wrapped-fn (get-in (agent-tools/wrap-tools-with-state
+                              {"fake_discovery_prod" tool-var} (atom {}) nil nil)
+                             ["fake_discovery_prod" :fn])]
+      (with-redefs [config/is-prod? true]
+        (is (= bad-result (wrapped-fn {})))))))
+
+(deftest entity-usage-validation-passes-valid-output-test
+  (testing "a tool whose result satisfies its :tool-type contract executes cleanly"
+    (let [result     {:output "ok"
+                      :structured-output {:entity-usage {:input  []
+                                                         :output [{:type "table" :id 1}]}}}
+          tool-var   (->fake-tool {:tool-name "fake_discovery_ok"
+                                   :tool-type :discovery
+                                   :schema    [:=> [:cat :map] :map]}
+                                  (fn [_] result))
+          wrapped-fn (get-in (agent-tools/wrap-tools-with-state
+                              {"fake_discovery_ok" tool-var} (atom {}) nil nil)
+                             ["fake_discovery_ok" :fn])]
+      (is (= result (wrapped-fn {}))))))
+
+(deftest entity-usage-validation-skipped-on-scope-denial-test
+  (testing "scope denial short-circuits before validation, so a denied call does not throw a false missing-entity-usage error"
+    (let [tool-var   (->fake-tool {:tool-name "fake_scoped_discovery"
+                                   :tool-type :discovery
+                                   :schema    [:=> [:cat :map] :map]
+                                   :scope     "agent:sql:create"}
+                                  (fn [_] {:output "would also be invalid had we reached it"}))
+          wrapped-fn (get-in (agent-tools/wrap-tools-with-state
+                              {"fake_scoped_discovery" tool-var} (atom {}) nil nil)
+                             ["fake_scoped_discovery" :fn])]
+      (binding [scope/*current-user-scope* #{}]
+        (let [result (wrapped-fn {})]
+          (is (re-find #"do not have permission" (:output result))))))))
 
 (deftest inline-viz-capable-test
   (testing "only the nlq profile emits inline visualizations"

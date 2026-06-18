@@ -110,6 +110,7 @@
                          [:priority [:enum "high" "medium" "low"]]]]]])
 
 (mu/defn ^{:tool-name "todo_write"
+           :tool-type :utility
            :scope     scope/agent-todo-write}
   todo-write-tool
   "Create and manage a structured task list.
@@ -132,6 +133,7 @@
         {:output (str "Failed to update todo list: " (or (ex-message e) "Unknown error"))}))))
 
 (mu/defn ^{:tool-name "todo_read"
+           :tool-type :utility
            :scope     scope/agent-todo-read}
   todo-read-tool
   "Read the current todo list from memory.

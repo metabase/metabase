@@ -55,7 +55,11 @@
     (assoc result :output (format-fn structured))
     result))
 
+;; Snippets are not part of the closed `entity-types` vocabulary in
+;; `metabase.metabot.tools.entity-usage`, so this tool has nothing to record
+;; under `:entity-usage` and is classified `:utility` accordingly.
 (mu/defn ^{:tool-name    "list_snippets"
+           :tool-type    :utility
            :scope        scope/agent-snippets-read}
   list-snippets-tool
   "List all SQL snippets available in the Metabase instance.
@@ -67,6 +71,7 @@
   (add-output (get-snippets {}) format-snippet-list-output))
 
 (mu/defn ^{:tool-name    "get_snippet_details"
+           :tool-type    :utility
            :scope        scope/agent-snippets-read}
   get-snippet-details-tool
   "Get the full details of a SQL snippet including its content.

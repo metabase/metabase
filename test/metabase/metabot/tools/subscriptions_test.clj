@@ -114,7 +114,10 @@
                           {:dashboard_id  dash-id
                            :slack_channel "data-team"
                            :schedule      {:frequency "daily" :hour 9}})]
-              (is (= {:output "success"} result)))))))))
+              (is (= "success" (:output result)))
+              (is (= {:entity-usage {:input  [{:type "dashboard" :id dash-id}]
+                                     :output []}}
+                     (:structured-output result))))))))))
 
 (deftest create-dashboard-subscription-slack-monthly-schedule-test
   (testing "Slack subscription with monthly schedule → success"
@@ -135,7 +138,7 @@
                            :schedule      {:frequency    "monthly"
                                            :day_of_month "last-sunday"
                                            :hour         7}})]
-              (is (= {:output "success"} result)))))))))
+              (is (= "success" (:output result))))))))))
 
 (deftest create-dashboard-subscription-slack-required-test
   (testing "empty slack_channel → error"
@@ -146,7 +149,7 @@
                         {:dashboard_id  dash-id
                          :slack_channel ""
                          :schedule      {:frequency "daily" :hour 9}})]
-            (is (= {:error "slack_channel is required"} result))))))))
+            (is (= "slack_channel is required" (:error result)))))))))
 
 (deftest create-dashboard-subscription-slack-not-configured-test
   (testing "Slack not configured → error"
@@ -157,8 +160,8 @@
                         {:dashboard_id  dash-id
                          :slack_channel "data-team"
                          :schedule      {:frequency "daily" :hour 9}})]
-            (is (= {:error "slack is not configured. Ask an admin to connect slack in Metabase settings."}
-                   result))))))))
+            (is (= "slack is not configured. Ask an admin to connect slack in Metabase settings."
+                   (:error result)))))))))
 
 (deftest create-dashboard-subscription-slack-channel-not-found-test
   (testing "nonexistent Slack channel → error"
@@ -175,4 +178,19 @@
                         {:dashboard_id  dash-id
                          :slack_channel "no-such-channel"
                          :schedule      {:frequency "daily" :hour 9}})]
-            (is (= {:error "no slack channel found with this name"} result))))))))
+            (is (= "no slack channel found with this name" (:error result)))))))))
+
+;;; ----------------------------------- entity-usage ----------------------------------------
+
+(deftest create-dashboard-subscription-entity-usage-test
+  (testing "every result path carries :entity-usage with the dashboard ref under :structured-output"
+    (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
+                                (fn [_] {:output "success"})]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [result (agent-subscriptions/create-dashboard-subscription-tool
+                      {:dashboard_id 42
+                       :email        "test@example.com"
+                       :schedule     {:frequency "daily" :hour 9}})]
+          (is (= {:entity-usage {:input  [{:type "dashboard" :id 42}]
+                                 :output []}}
+                 (:structured-output result))))))))

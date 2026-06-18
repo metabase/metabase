@@ -44,6 +44,26 @@
   [query :- ::lib.schema/query]
   (stage-values-set query (keep :source-table)))
 
+(defn- stage-aggregates-metric?
+  "True if any aggregation clause in `stage` references a metric."
+  [stage]
+  (boolean
+   (match/match-one (:aggregation stage)
+     [:metric _ _] true)))
+
+(mu/defn all-non-metric-source-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
+  "Like [[all-source-table-ids]], but omits the `:source-table` of any metric-aggregating stage —
+  that source is fixed by the metric definition, not chosen in its own right."
+  [query :- ::lib.schema/query]
+  (stage-values-set query (comp (remove stage-aggregates-metric?)
+                                (keep :source-table))))
+
+(mu/defn all-non-metric-source-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
+  "The `:source-card` analog of [[all-non-metric-source-table-ids]]."
+  [query :- ::lib.schema/query]
+  (stage-values-set query (comp (remove stage-aggregates-metric?)
+                                (keep :source-card))))
+
 (mu/defn all-template-tags-map :- [:maybe ::lib.schema.template-tag/template-tag-map]
   "Return a combined template tags map for all native stages of a `query`."
   [query :- ::lib.schema/query]

@@ -36,6 +36,54 @@
                                                $checkins.user-id
                                                &U.users.id]}]})))))))
 
+(deftest ^:parallel all-non-metric-source-table-ids-test
+  (let [metric-id    100
+        metric-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        mp           (-> meta/metadata-provider
+                         (lib.tu/metadata-provider-with-card-from-query metric-id metric-query {:type :metric}))]
+    (testing "a stage that aggregates a metric does not contribute its source table"
+      (let [query (-> (lib/query mp (meta/table-metadata :orders))
+                      (lib/aggregate (lib.metadata/metric mp metric-id)))]
+        (is (= #{(meta/id :orders)} (lib.walk.util/all-source-table-ids query))
+            "all-source-table-ids still returns the metric's base table")
+        (is (nil? (lib.walk.util/all-non-metric-source-table-ids query))
+            "all-non-metric-source-table-ids omits the metric's base table")))
+    (testing "a stage with a non-metric aggregation contributes its source table"
+      (let [query (-> (lib/query mp (meta/table-metadata :orders))
+                      (lib/aggregate (lib/count)))]
+        (is (= #{(meta/id :orders)} (lib.walk.util/all-non-metric-source-table-ids query)))))
+    (testing "only the metric-bearing stage's source table is dropped; a joined table is kept"
+      (let [query (-> (lib/query mp (meta/table-metadata :orders))
+                      (lib/join (meta/table-metadata :products))
+                      (lib/aggregate (lib.metadata/metric mp metric-id)))]
+        (is (= #{(meta/id :orders) (meta/id :products)} (lib.walk.util/all-source-table-ids query)))
+        (is (= #{(meta/id :products)} (lib.walk.util/all-non-metric-source-table-ids query)))))))
+
+(deftest ^:parallel all-non-metric-source-card-ids-test
+  (let [model-id     200
+        model-query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        mp-model     (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider model-id model-query {:type :model})
+        metric-id    100
+        metric-query (-> (lib/query mp-model (lib.metadata/card mp-model model-id))
+                         (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        mp           (lib.tu/metadata-provider-with-card-from-query mp-model metric-id metric-query {:type :metric})]
+    (testing "a stage that aggregates a metric does not contribute its source card"
+      (let [query (-> (lib/query mp (lib.metadata/card mp model-id))
+                      (lib/aggregate (lib.metadata/metric mp metric-id)))]
+        (is (= #{model-id metric-id} (lib.walk.util/all-source-card-ids query))
+            "all-source-card-ids still returns the metric's source card (plus the metric ref)")
+        (is (nil? (lib.walk.util/all-non-metric-source-card-ids query))
+            "all-non-metric-source-card-ids omits the metric's source card")))
+    (testing "a stage with a non-metric aggregation contributes its source card"
+      (let [query (-> (lib/query mp (lib.metadata/card mp model-id))
+                      (lib/aggregate (lib/count)))]
+        (is (= #{model-id} (lib.walk.util/all-non-metric-source-card-ids query)))))
+    (testing "a metric ref alone never contributes a card id — only stage :source-card values count"
+      (let [query (-> (lib/query mp (meta/table-metadata :orders))
+                      (lib/aggregate (lib.metadata/metric mp metric-id)))]
+        (is (nil? (lib.walk.util/all-non-metric-source-card-ids query)))))))
+
 (deftest ^:parallel all-field-ids-test
   (mu/disable-enforcement
     (is (= #{1 2}

@@ -1654,11 +1654,14 @@
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids
+  all-non-metric-source-card-ids
+  all-non-metric-source-table-ids
   all-segment-ids
   all-source-card-ids
   all-source-table-ids
   all-template-tag-field-ids
   all-template-tag-snippet-ids
+  all-template-tag-table-ids
   all-template-tags
   all-template-tags-map
   all-template-tags-id->field-ids

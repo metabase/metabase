@@ -35,6 +35,7 @@
 (deftest ^:parallel wrapped-tool-scope-enforcement-test
   (let [tool-var    (with-meta (fn [_args] {:output "success"})
                                {:tool-name "test_tool"
+                                :tool-type :utility
                                 :schema    [:=> [:cat :map] :map]
                                 :scope     "agent:sql:create"})
         tools-map   {"test_tool" tool-var}
@@ -65,6 +66,7 @@
 (deftest ^:parallel wrapped-tool-no-scope-test
   (let [tool-var    (with-meta (fn [_args] {:output "no-scope-tool"})
                                {:tool-name "legacy_tool"
+                                :tool-type :utility
                                 :schema    [:=> [:cat :map] :map]})
         tools-map   {"legacy_tool" tool-var}
         memory-atom (atom {})

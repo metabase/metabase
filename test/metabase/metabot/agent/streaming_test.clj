@@ -68,6 +68,31 @@
       (is (= "state" (:data-type part)))
       (is (= state (:data part))))))
 
+(deftest terminal-state-part-projects-finish-reason-to-categorical-test
+  (testing "agent-loop finish-reasons project to the persisted categorical
+            consumed by the quality-score temporal layer
+            (notes/bot-1569/quality-score-impl.md §I)"
+    (doseq [[reason expected] {:max-iterations "iter_cap"
+                               :final-response "final_response"
+                               :stop           "model_signaled_done"
+                               :empty-response "error"}]
+      (testing (str reason)
+        (let [part (streaming/terminal-state-part reason)]
+          (is (= :data (:type part)))
+          (is (= "terminal_state" (:data-type part)))
+          (is (= 1 (:version part)))
+          (is (= {:reason expected} (:data part)))))))
+  (testing "unknown reasons fall through to \"error\" — the conservative
+            classification for concern signal 6"
+    (is (= {:reason "error"}
+           (:data (streaming/terminal-state-part :something-unmapped))))))
+
+(deftest terminal-state-part-is-persistable-data-part-test
+  (testing "terminal_state passes persistable-data-part?; it must land in
+            metabot_message.data for temporal.clj to read it back"
+    (is (true? (streaming/persistable-data-part?
+                (streaming/terminal-state-part :stop))))))
+
 ;;; New Data Part Types (AI Service Parity)
 
 (deftest todo-list-part-test

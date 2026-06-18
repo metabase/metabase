@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
+   [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as mb.api]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
@@ -39,7 +40,13 @@
 (deftest native-agent-streaming-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
-      (with-redefs [config/is-dev? true]
+      ;; `:user_recently_viewed` is enriched server-side from the shared
+      ;; `recent_views` app-DB table (independent of the request `:context`),
+      ;; which this test's `with-model-cleanup` doesn't reset — so stub the
+      ;; recents source to keep that prompt-context sub-channel deterministically
+      ;; empty rather than depending on whatever :rasta last viewed.
+      (with-redefs [config/is-dev?            true
+                    activity-feed/get-recents (fn [& _] {:recents []})]
         (let [conversation-id    (str (random-uuid))
               question           {:role "user" :content "Test native streaming"}
               historical-message {:role "user" :content "previous message"}]
@@ -77,13 +84,30 @@
                     (is (str/includes? (last lines) "promptTokens")))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
-                  ;; Native agent stores parts in raw format
+                  ;; Native agent stores parts in raw format. The user row's `:data`
+                  ;; carries a second `prompt-context` block (a snapshot of the
+                  ;; enriched context the LLM saw at turn start). `:user_is_viewing`
+                  ;; and `:mentioned_refs` are empty because the request passed
+                  ;; `:context {}` with no mentions; `:user_recently_viewed` is empty
+                  ;; because the recents source is stubbed above.
                   (is (=? [{:total_tokens 0
                             :role         :user
-                            :data         [{:role "user" :content (:content question)}]}
+                            :data         [{:role "user" :content (:content question)}
+                                           {:type                 "prompt-context"
+                                            :user_is_viewing      []
+                                            :user_recently_viewed []
+                                            :mentioned_refs       []}]}
                            {:total_tokens pos-int?
                             :role         :assistant
-                            :data         [{:type "text" :text "Hello from native agent!"}]}]
+                            ;; Assistant row's `:data` now carries the
+                            ;; `terminal_state` data part alongside the text
+                            ;; reply — it's persistable (not the `state` type
+                            ;; that's salvaged onto the conversation row) and
+                            ;; is read by the quality-score temporal layer.
+                            :data         [{:type "text" :text "Hello from native agent!"}
+                                           {:type      "data"
+                                            :data-type "terminal_state"
+                                            :data      {:reason "model_signaled_done"}}]}]
                           messages)))))))))))
 
 (defn ^:private sse-event
@@ -884,7 +908,7 @@
             (t2/delete! :model/MetabotMessage :conversation_id conv-id)
             (t2/delete! :model/MetabotConversation :id conv-id)))))))
 
-(deftest strip-tool-output-bloat-test
+(deftest strip-tool-output-bloat-drops-transient-keys-test
   (testing "drops transient keys and structured-output fields outside the persisted subset"
     (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
            (metabot.persistence/strip-tool-output-bloat
@@ -893,7 +917,9 @@
              :result {:output            "<result>XML</result>"
                       :resources         [{:id 1 :name "Orders" :columns [{:field_values [1 2 3]}]}]
                       :structured-output {:result-type :search :data [{:id 1}]}
-                      :data-parts        [{:type :data :data-type "navigate_to"}]}}))))
+                      :data-parts        [{:type :data :data-type "navigate_to"}]}})))))
+
+(deftest strip-tool-output-bloat-keeps-query-subset-test
   (testing "keeps the query-related subset of :structured-output for analytics extraction"
     (let [query-map {:database 1 :type :native :native {:query "SELECT 1"}}]
       (is (= {:type   :tool-output
@@ -913,7 +939,9 @@
                                             :database      1
                                             :resources     [{:field_values [1 2 3]}]
                                             :reactions     [:noop]}
-                        :data-parts        [{:type :data}]}})))))
+                        :data-parts        [{:type :data}]}}))))))
+
+(deftest strip-tool-output-bloat-preserves-snake-case-alias-test
   (testing "preserves the snake-case :structured_output alias when present"
     (is (= {:type   :tool-output
             :id     "call-snake"
@@ -925,16 +953,35 @@
              :result {:output            "<result>...</result>"
                       :structured_output {:query-id      "qid-2"
                                           :query-content "SELECT 2"
-                                          :extra-bloat   [1 2 3]}}}))))
+                                          :extra-bloat   [1 2 3]}}})))))
+
+(deftest strip-tool-output-bloat-leaves-non-tool-output-untouched-test
   (testing "leaves non-tool-output parts untouched"
     (let [text-part {:type :text :text "hello"}]
-      (is (= text-part (metabot.persistence/strip-tool-output-bloat text-part)))))
+      (is (= text-part (metabot.persistence/strip-tool-output-bloat text-part))))))
+
+(deftest strip-tool-output-bloat-handles-no-output-key-test
   (testing "handles result with no :output key and no query-related structured-output"
     (is (= {:type :tool-output :id "call-2" :result {}}
            (metabot.persistence/strip-tool-output-bloat
             {:type   :tool-output
              :id     "call-2"
              :result {:structured-output {:some "data"}}})))))
+
+(deftest strip-tool-output-bloat-preserves-entity-usage-test
+  (testing "preserves :entity-usage inside :structured-output"
+    (let [eu {:input  [{:type "database" :id 1}]
+              :output [{:type "table" :id 9 :metadata {:rank 0}}]}]
+      (is (= {:type   :tool-output
+              :id     "call-eu"
+              :result {:output            "<result>...</result>"
+                       :structured-output {:entity-usage eu}}}
+             (metabot.persistence/strip-tool-output-bloat
+              {:type   :tool-output
+               :id     "call-eu"
+               :result {:output            "<result>...</result>"
+                        :structured-output {:entity-usage eu
+                                            :bulk-bloat   (vec (range 1000))}}}))))))
 
 (defn- legacy-query
   "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."

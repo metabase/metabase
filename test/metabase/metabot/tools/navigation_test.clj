@@ -2,7 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.navigation :as navigate]))
+   [metabase.metabot.tools.entity-usage :as entity-usage]
+   [metabase.metabot.tools.navigation :as navigate]
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest page->path-test
   (testing "page navigation produces correct paths"
@@ -158,3 +161,30 @@
            #"Unknown entity type"
            (navigate/navigate {:destination {:entity_type "unknown" :entity_id 1}
                                :memory-atom memory-atom}))))))
+
+;;; ----------------------------------- entity-usage ----------------------------------------
+
+(deftest navigate-user-entity-usage-test
+  (testing "entity destination populates :input with the referenced entity"
+    (binding [shared/*memory-atom* (atom {:state {:queries {} :charts {}}})]
+      (let [result (navigate/navigate-user-tool
+                    {:destination {:entity_type "model" :entity_id 42}})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (= [{:type "model" :id 42}] (:input eu)))
+        (is (= [] (:output eu))))))
+  (testing "page destination produces empty :input"
+    (binding [shared/*memory-atom* (atom {:state {:queries {} :charts {}}})]
+      (let [result (navigate/navigate-user-tool
+                    {:destination {:page "notebook_editor"}})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (= [] (:input eu)))
+        (is (= [] (:output eu))))))
+  (testing "query_id destination (memory-only) produces empty :input"
+    (let [query       {:lib/type :mbql/query :database 1 :stages [{:lib/type :mbql.stage/mbql :source-table 10}]}
+          memory-atom (atom {:state {:queries {"q1" query} :charts {}}})]
+      (binding [shared/*memory-atom* memory-atom]
+        (let [result (navigate/navigate-user-tool
+                      {:destination {:query_id "q1"}})
+              eu     (get-in result [:structured-output :entity-usage])]
+          (is (= [] (:input eu))))))))

@@ -320,6 +320,25 @@
      "<instructions>"
      instructions/search-result-instructions "</instructions>")))
 
+(defn- hit->entity-usage-output
+  "Project one search hit into an :entity-usage :output entry. :metadata.rank is the hit's 0-based position in the final list (matching search-results->xml order), so consumers can join ranks to LLM-visible XML positions. :verified/:database_id included only when the source schema carries them."
+  [rank {:keys [type id verified database_id]}]
+  {:type     type
+   :id       id
+   :metadata (cond-> {:rank rank
+                      :uri  (llm-shape/metabase-uri type id)}
+               (some? verified)    (assoc :verified verified)
+               (some? database_id) (assoc :database_id database_id))})
+
+(defn- search-entity-usage
+  "Build the :entity-usage map for a search result's :structured-output. :input is empty (search takes query strings, not entity refs); :output mirrors results in rank order."
+  [results]
+  {:input  []
+   :output (vec (map-indexed hit->entity-usage-output results))})
+
+(def ^:private empty-entity-usage
+  {:input [] :output []})
+
 (defn- invalid-entity-types
   [entity-types allowed]
   (when (seq entity-types)
@@ -352,8 +371,9 @@
 (defn- do-search
   [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
-    {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
-                  ". Allowed types: " (str/join ", " allowed-types) ".")}
+    {:output            (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
+                             ". Allowed types: " (str/join ", " allowed-types) ".")
+     :structured-output {:entity-usage empty-entity-usage}}
     (try
       (let [results (search (merge {:semantic-queries semantic_queries
                                     :term-queries    keyword_queries
@@ -362,13 +382,15 @@
                                     :limit           (min max-search-limit
                                                           (or limit default-search-limit))}
                                    search-opts))]
-        {:output (format-search-output results)
-         :structured-output {:result-type :search
-                             :data results
-                             :total_count (count results)}})
+        {:output            (format-search-output results)
+         :structured-output {:result-type  :search
+                             :data         results
+                             :total_count  (count results)
+                             :entity-usage (search-entity-usage results)}})
       (catch Exception e
         (log/error e (str "Error in " label))
-        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
+        {:output            (str "Search failed: " (or (ex-message e) "Unknown error"))
+         :structured-output {:entity-usage empty-entity-usage}}))))
 
 (def ^:private search-schema
   [:map {:closed true}
@@ -379,6 +401,7 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
+           :tool-type :discovery
            :scope     scope/agent-search}
   search-tool
   "Find tables, models, metrics, dashboards, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
@@ -395,6 +418,7 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
+           :tool-type :discovery
            :scope     scope/agent-search}
   sql-search-tool
   "Find SQL-queryable data sources (tables and models) within a specific database by topic."
@@ -410,6 +434,7 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
+           :tool-type :discovery
            :scope     scope/agent-search}
   nlq-search-tool
   "Find NLQ-queryable data sources (tables, models, metrics, saved questions) by topic, to build a visualization from."
@@ -426,6 +451,7 @@
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
 (mu/defn ^{:tool-name "search"
+           :tool-type :discovery
            :scope     scope/agent-search}
   transform-search-tool
   "Find transforms, plus the tables and models around them, by topic."

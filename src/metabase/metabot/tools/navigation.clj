@@ -146,7 +146,18 @@
                   [:map {:closed true}
                    [:chart_id :string]]]]])
 
+(defn- destination-entity-usage
+  "Build `:entity-usage` for a `navigate_user` call from its `destination` arg.
+  Entity-typed destinations (`{:entity_type ... :entity_id ...}`) record the
+  referenced entity; page and memory-pointer destinations record `[]`."
+  [{:keys [entity_type entity_id]}]
+  {:input  (if (and entity_type entity_id)
+             [{:type entity_type :id entity_id}]
+             [])
+   :output []})
+
 (mu/defn ^{:tool-name    "navigate_user"
+           :tool-type    :authoring
            :scope        scope/agent-viz-navigate
            :capabilities #{:frontend-navigate-user-v1}}
   navigate-user-tool
@@ -157,16 +168,18 @@
   - Entities: table, model, question, metric, dashboard
   - Query results or charts from the current conversation"
   [{:keys [destination]} :- navigation-schema]
-  (try
-    (let [result (navigate {:destination destination
-                            :memory-atom shared/*memory-atom*})
-          structured (:structured-output result)
-          reactions (:reactions result)]
-      (cond-> {:output (:message structured)
-               :structured-output structured}
-        (seq reactions) (assoc :reactions reactions)))
-    (catch Exception e
-      (log/error e "Error navigating")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to navigate: " (or (ex-message e) "Unknown error"))}))))
+  (let [entity-usage (destination-entity-usage destination)]
+    (try
+      (let [result (navigate {:destination destination
+                              :memory-atom shared/*memory-atom*})
+            structured (assoc (:structured-output result) :entity-usage entity-usage)
+            reactions (:reactions result)]
+        (cond-> {:output (:message structured)
+                 :structured-output structured}
+          (seq reactions) (assoc :reactions reactions)))
+      (catch Exception e
+        (log/error e "Error navigating")
+        (-> (if (:agent-error? (ex-data e))
+              {:output (ex-message e)}
+              {:output (str "Failed to navigate: " (or (ex-message e) "Unknown error"))})
+            (update :structured-output (fnil assoc {}) :entity-usage entity-usage))))))

@@ -10,6 +10,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -31,6 +32,7 @@
     [:maybe [:enum "table" "bar" "line" "pie" "area" "row" "scatter" "funnel"]]]])
 
 (mu/defn ^{:tool-name "construct_notebook_query"
+           :tool-type :authoring
            :scope     scope/agent-notebook-create}
   slackbot-construct-notebook-query-tool
   "Construct a notebook query from a metric, model, or table. The query results will be
@@ -49,15 +51,22 @@
                                        :link  metabase-link}
                                 title   (assoc :title title)
                                 display (assoc :display display))]
-          {:structured-output structured
-           :instructions (str "Query created. The visualization will be posted as a separate "
-                              "follow-up message in the thread with the query results. "
-                              "Use future tense when referring to results — they haven't "
-                              "appeared yet when the user sees your text.")
-           :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]})
-        query-result))
+          (entity-usage/stamp-artifact-valid
+           {:structured-output structured
+            :instructions (str "Query created. The visualization will be posted as a separate "
+                               "follow-up message in the thread with the query results. "
+                               "Use future tense when referring to results — they haven't "
+                               "appeared yet when the user sees your text.")
+            :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]}
+           true))
+        (-> (entity-usage/entity-usage-on-result query-result
+                                                 (get structured :entity-usage construct/empty-entity-usage))
+            (entity-usage/stamp-artifact-valid false))))
     (catch Exception e
       (log/error e "Failed to construct slackbot notebook query")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}))))
+      (-> (entity-usage/entity-usage-on-result
+           (if (:agent-error? (ex-data e))
+             {:output (ex-message e)}
+             {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})
+           construct/empty-entity-usage)
+          (entity-usage/stamp-artifact-valid false)))))

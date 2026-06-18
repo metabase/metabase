@@ -6,6 +6,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
@@ -135,6 +136,7 @@ If any required information is missing, ask the user for it rather than assuming
                [:day_of_month {:optional true} [:maybe :string]]]]])
 
 (mu/defn ^{:tool-name "create_dashboard_subscription"
+           :tool-type :authoring
            :scope     scope/agent-dashboard-subscribe}
   create-dashboard-subscription-tool
   "Create a dashboard subscription to send regular updates via email or Slack.
@@ -146,20 +148,25 @@ If any required information is missing, ask the user for it rather than assuming
   If the email address is incomplete or missing a part like the TLD,
   ask the user for clarification before proceeding."
   [{:keys [dashboard_id email slack_channel schedule]} :- subscription-schema]
-  (try
-    (create-dashboard-subscription
-     {:dashboard-id  dashboard_id
-      :email         email
-      :slack-channel slack_channel
-      :schedule      (-> schedule
-                         (update :frequency keyword)
-                         (cond->
-                          (:day_of_week schedule)  (-> (assoc :day-of-week (keyword (:day_of_week schedule)))
-                                                       (dissoc :day_of_week))
-                          (:day_of_month schedule) (-> (assoc :day-of-month (keyword (:day_of_month schedule)))
-                                                       (dissoc :day_of_month))))})
-    (catch Exception e
-      (log/error e "Error creating dashboard subscription")
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))
+  (let [entity-usage {:input  [{:type "dashboard" :id dashboard_id}]
+                      :output []}
+        attach-eu    #(entity-usage/entity-usage-on-result % entity-usage)]
+    (try
+      (attach-eu
+       (create-dashboard-subscription
+        {:dashboard-id  dashboard_id
+         :email         email
+         :slack-channel slack_channel
+         :schedule      (-> schedule
+                            (update :frequency keyword)
+                            (cond->
+                             (:day_of_week schedule)  (-> (assoc :day-of-week (keyword (:day_of_week schedule)))
+                                                          (dissoc :day_of_week))
+                             (:day_of_month schedule) (-> (assoc :day-of-month (keyword (:day_of_month schedule)))
+                                                          (dissoc :day_of_month))))}))
+      (catch Exception e
+        (log/error e "Error creating dashboard subscription")
+        (attach-eu
+         (if (:agent-error? (ex-data e))
+           {:output (ex-message e)}
+           {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))))

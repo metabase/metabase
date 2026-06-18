@@ -2,9 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools :as agent-tools]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.search :as search]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -12,6 +16,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel reciprocal-rank-fusion-test
@@ -495,3 +500,121 @@
                                     (map (comp first #(str/split % #"\s") :name))))]
             (is (= ["Bookmarked" "Regular"] (query)))
             (is (= ["Regular" "Bookmarked"] (query {:bookmarked -1})))))))))
+
+;;; ---------------------------------------- entity-usage --------------------------------------------
+
+(deftest hit->entity-usage-output-test
+  (testing "table hit (no :verified, has :database_id) omits :verified, includes :database_id"
+    (is (= {:type "table" :id 5
+            :metadata {:rank 2 :uri "metabase://table/5" :database_id 42}}
+           (#'search/hit->entity-usage-output
+            2 {:type "table" :id 5 :name "Orders" :database_id 42}))))
+  (testing "question hit with verified=true includes both :verified and :database_id"
+    (is (= {:type "question" :id 38
+            :metadata {:rank 0 :uri "metabase://question/38" :verified true :database_id 9}}
+           (#'search/hit->entity-usage-output
+            0 {:type "question" :id 38 :name "Q1" :verified true :database_id 9}))))
+  (testing "dashboard hit with verified=false still includes :verified (some? false → true)"
+    (is (= {:type "dashboard" :id 7
+            :metadata {:rank 1 :uri "metabase://dashboard/7" :verified false}}
+           (#'search/hit->entity-usage-output
+            1 {:type "dashboard" :id 7 :name "D1" :verified false}))))
+  (testing "database hit (neither :verified nor :database_id) collapses metadata to rank+uri only"
+    (is (= {:type "database" :id 3
+            :metadata {:rank 0 :uri "metabase://database/3"}}
+           (#'search/hit->entity-usage-output
+            0 {:type "database" :id 3 :name "Prod"})))))
+
+(deftest search-entity-usage-test
+  (testing ":input is always empty, :output ranks mirror input order"
+    (let [results [{:type "table"     :id 1 :database_id 9}
+                   {:type "question"  :id 2 :verified true :database_id 9}
+                   {:type "dashboard" :id 3 :verified false}]
+          eu      (#'search/search-entity-usage results)]
+      (is (= [] (:input eu)))
+      (is (= [0 1 2] (mapv #(get-in % [:metadata :rank]) (:output eu))))
+      (is (= ["table" "question" "dashboard"] (mapv :type (:output eu))))
+      (is (= [1 2 3] (mapv :id (:output eu))))))
+  (testing "result shape satisfies entity-usage-schema"
+    (let [results [{:type "table" :id 1 :database_id 9}
+                   {:type "dashboard" :id 2 :verified false}]]
+      (is (nil? (mr/explain entity-usage/entity-usage-schema
+                            (#'search/search-entity-usage results))))))
+  (testing "empty results yield empty :output"
+    (is (= {:input [] :output []}
+           (#'search/search-entity-usage [])))))
+
+(deftest do-search-attaches-entity-usage-on-success-test
+  (testing "success path emits valid :entity-usage with one :output entry per surfaced hit"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user?    (fn [] false)
+                    api/*current-user-id*    1]
+        (mt/with-dynamic-fn-redefs
+          [search-core/search (fn [_]
+                                {:data [{:model "table"     :id 11 :table_name "orders"
+                                         :name "Orders"     :description nil
+                                         :database_id 42    :table_schema "public"}
+                                        {:model "dashboard" :id 22
+                                         :name "Sales Dash" :description nil
+                                         :verified true     :collection nil}]})]
+          (let [eu (-> (search/search-tool {:keyword_queries ["x"]})
+                       (get-in [:structured-output :entity-usage]))]
+            (is (= [] (:input eu)))
+            (is (= 2 (count (:output eu))))
+            (is (= ["table" "dashboard"] (mapv :type (:output eu))))
+            (is (= [0 1] (mapv #(get-in % [:metadata :rank]) (:output eu))))
+            (is (= "metabase://table/11" (get-in (first (:output eu)) [:metadata :uri])))
+            (is (= 42 (get-in (first (:output eu)) [:metadata :database_id])))
+            (is (true? (get-in (second (:output eu)) [:metadata :verified])))
+            (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))))))))
+
+(deftest do-search-emits-entity-usage-on-invalid-entity-types-test
+  (testing "invalid entity_types path still emits an (empty) :entity-usage so the validator stays satisfied"
+    ;; The public tool schemas align with their allowed-types sets, so this
+    ;; defensive branch in do-search is only reachable by direct invocation —
+    ;; called out by drilling into the private fn here.
+    (let [result (#'search/do-search "search"
+                                     (sorted-set "model" "table")
+                                     {}
+                                     {:keyword_queries ["x"]
+                                      :entity_types    ["dashboard"]})]
+      (is (str/includes? (:output result) "Invalid entity_types"))
+      (is (= {:input [] :output []}
+             (get-in result [:structured-output :entity-usage]))))))
+
+(deftest do-search-emits-entity-usage-on-exception-test
+  (testing "exception path still emits an (empty) :entity-usage so the validator stays satisfied"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user?    (fn [] false)
+                    api/*current-user-id*    1]
+        (mt/with-dynamic-fn-redefs
+          [search-core/search (fn [_] (throw (ex-info "boom" {})))]
+          (let [result (search/search-tool {:keyword_queries ["x"]})]
+            (is (str/starts-with? (:output result) "Search failed:"))
+            (is (= {:input [] :output []}
+                   (get-in result [:structured-output :entity-usage])))))))))
+
+(deftest wrapped-search-tools-pass-entity-usage-validator-test
+  (testing "each of the four search vars, once wrapped via wrap-tools-with-state, returns a result the validator accepts"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user?    (fn [] false)
+                    api/*current-user-id*    1]
+        (binding [scope/*current-user-scope* api-scope/unrestricted]
+          (mt/with-dynamic-fn-redefs
+            [search-core/search (fn [_] {:data []})]
+            (doseq [[tool-var args] [[#'search/search-tool          {:keyword_queries ["x"]}]
+                                     [#'search/sql-search-tool      {:keyword_queries ["x"] :database_id 1}]
+                                     [#'search/nlq-search-tool      {:keyword_queries ["x"]}]
+                                     [#'search/transform-search-tool {:keyword_queries ["x"]}]]]
+              (testing (str "wrapped " (-> tool-var symbol name))
+                (let [wrapped (-> (agent-tools/wrap-tools-with-state
+                                   {"search" tool-var} (atom {}) nil nil)
+                                  (get "search")
+                                  :fn)
+                      result  (wrapped args)
+                      eu      (get-in result [:structured-output :entity-usage])]
+                  (is (= {:input [] :output []} eu))
+                  (is (nil? (entity-usage/validate-result :discovery result))))))))))))

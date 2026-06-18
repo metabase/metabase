@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.notification.api :as notification.api]
@@ -139,12 +140,18 @@ NEVER tell the user you have created an alert without actually calling the creat
    [:send_once {:optional true :default false} :boolean]])
 
 (mu/defn ^{:tool-name           "create_alert"
+           :tool-type           :authoring
            :scope               scope/agent-alert-create
            :system-instructions create-alert-system-instructions}
   create-alert-tool
   "Create an alert based on a saved question's results on a recurring schedule."
   [{:keys [card_id send_condition schedule send_once]} :- alert-schema]
-  (let [slack-channel-id (:slack_channel_id (shared/current-context))]
+  ;; `card_id` references a saved question card. Recorded under the catch-all
+  ;; `card` type — consumers join to `report_card.type` to resolve subtype.
+  (let [entity-usage     {:input  [{:type "card" :id card_id}]
+                          :output []}
+        attach-eu        #(entity-usage/entity-usage-on-result % entity-usage)
+        slack-channel-id (:slack_channel_id (shared/current-context))]
     (when-not slack-channel-id
       (throw (ex-info "This tool can only be used from a Slack channel"
                       {:agent-error? true})))
@@ -154,9 +161,11 @@ NEVER tell the user you have created an alert without actually calling the creat
                                   :schedule       schedule
                                   :send-once      (boolean send_once)
                                   :slack-channel  slack-channel-id})]
-        (if (:error result)
-          {:output (:error result)}
-          {:output (or (:output result) "Alert created successfully.")}))
+        (attach-eu
+         (if (:error result)
+           {:output (:error result)}
+           {:output (or (:output result) "Alert created successfully.")})))
       (catch Exception e
         (log/error e "Failed to create alert")
-        {:output (str "Failed to create alert: " (or (ex-message e) "Unknown error"))}))))
+        (attach-eu
+         {:output (str "Failed to create alert: " (or (ex-message e) "Unknown error"))})))))

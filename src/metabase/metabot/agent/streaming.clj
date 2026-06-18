@@ -21,6 +21,9 @@
 (def generated-entity-type "AI-SDK data type for generated entities." "generated_entity")
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
+(def terminal-state-type
+  "AI-SDK data type for the agent loop's terminal state, persisted on every successful loop exit and read by the quality-score temporal layer. Distinct from metabot_message.error: error is *why* a turn failed, terminal-state is *how* the loop exited."
+  "terminal_state")
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -136,6 +139,22 @@
    :data-type static-viz-type
    :version 1
    :data value})
+
+(def ^:private finish-reason->terminal-state
+  "Maps the agent loop's finish-reason keyword to the persisted terminal-state categorical consumed by the quality-score temporal layer."
+  {:max-iterations :iter_cap
+   :final-response :final_response
+   :stop           :model_signaled_done
+   :empty-response :error})
+
+(defn terminal-state-part
+  "Create a TERMINAL_STATE data part. Projects the raw finish-reason keyword to the persisted categorical via finish-reason->terminal-state; unknown reasons fall through to error."
+  [reason]
+  (let [terminal (get finish-reason->terminal-state reason :error)]
+    {:type      :data
+     :data-type terminal-state-type
+     :version   1
+     :data      {:reason (name terminal)}}))
 
 (defn generated-entity-part
   "Create a GENERATED_ENTITY data part for streaming. `entity` is a map describing

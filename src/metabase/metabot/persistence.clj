@@ -1,11 +1,13 @@
 (ns metabase.metabot.persistence
   "Persistence for Metabot conversations and messages."
   (:require
+   [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.quality.core :as quality.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
@@ -18,10 +20,9 @@
 (set! *warn-on-reflection* true)
 
 (def persisted-structured-output-keys
-  "Subset of `:structured-output` that must survive persistence so
-  `metabase-enterprise.metabot-analytics.queries` can surface generated
-  queries on the admin detail page."
-  [:query-id :query-content :query :database :chart-type])
+  "Subset of :structured-output that must survive persistence: query keys feed metabase-enterprise.metabot-analytics.queries (admin detail page); :entity-usage is the per-call entity record read by observability consumers; :artifact-valid is the authoring tools' outcome stamp read by the quality pipeline's artifact-validity-share metric."
+  [:query-id :query-content :query :database :chart-type
+   :entity-usage :artifact-valid])
 
 (defn- trim-structured-output [structured]
   (when (map? structured)
@@ -30,11 +31,12 @@
 (defn strip-tool-output-bloat
   "For :tool-output parts, keep `:output` and a trimmed `:structured-output` in
   the result map. Both LLM adapters only read `(get-in part [:result :output])`
-  when replaying history, so `:output` is all they need. The analytics extractor,
-  however, reads a small subset of `:structured-output` off persisted messages
-  (see `persisted-structured-output-keys`), so we keep those four keys and drop
-  everything else (`:resources`, `:data-parts`, `:reactions`, …) — that's where
-  the bulk of the bloat lives."
+  when replaying history, so `:output` is all they need. The analytics extractor
+  and entity-usage observability consumers, however, read a small subset of
+  `:structured-output` off persisted messages (see
+  `persisted-structured-output-keys`), so we keep those keys and drop everything
+  else (`:resources`, `:data-parts`, `:reactions`, …) — that's where the bulk
+  of the bloat lives."
   [{:keys [type] :as part}]
   (if (= :tool-output type)
     (update part :result
@@ -112,6 +114,102 @@
              (do (vreset! pending part)
                  (if prev (rf result prev) result)))))))))
 
+;;; ---------------------------------------- Prompt-context snapshot ----------------------------------------
+;;;
+;;; A snapshot of what the LLM saw via context injection at the start of a turn.
+;;; Persisted as the second element of the user-row's `:data` vector — a typed
+;;; `{:type "prompt-context" ...}` block — so the user message remains
+;;; `data[0]` (the existing single-element shape) and chat rendering stays
+;;; unchanged (the block falls through `convert-content-block` to nil).
+
+(def ^:private viewing-item-keep-keys
+  "Top-level keys kept when projecting a :user_is_viewing item for persistence; everything else (notably the bulk :query and :chart_configs) is dropped."
+  [:type :id :name :description :sql_engine :database_id :error :source_type])
+
+(def ^:private viewing-source-keep-keys
+  "Sub-keys kept from a transform item's :source; the :source-tables/:source-database refs identify what the LLM saw without the query body."
+  [:type :source-database :source-tables])
+
+(defn- project-used-table
+  "Project a `:used_tables` entry down to a small reference shape — drops the
+  hydrated `:fields` and `:metrics` lists, which are the bulk of the entry."
+  [t]
+  (when (map? t)
+    (cond-> {}
+      (some? (:id t))              (assoc :id (:id t))
+      (some? (:name t))            (assoc :name (:name t))
+      (some? (:database_schema t)) (assoc :schema (:database_schema t)))))
+
+(defn- project-viewing-item
+  "Project a single `:user_is_viewing` item into its persistence shape."
+  [item]
+  (when (map? item)
+    (cond-> (select-keys item viewing-item-keep-keys)
+      (seq (:used_tables item))
+      (assoc :used_tables (into [] (keep project-used-table) (:used_tables item)))
+
+      (map? (:source item))
+      (assoc :source (select-keys (:source item) viewing-source-keep-keys)))))
+
+(defn project-viewing-context-for-persist
+  "Drop bulk fields (`:query` map, per-field `:fields` lists, `:chart_configs`)
+  from `:user_is_viewing` items before persistence. Returns a vector (possibly
+  empty) so consumers don't have to distinguish nil from absent."
+  [user-is-viewing]
+  (into [] (keep project-viewing-item) user-is-viewing))
+
+(defn project-recent-views-for-persist
+  "Project recent-views entries to {:id :name :description :type} for persistence (add-recent-views already produces this shape)."
+  [user-recently-viewed]
+  (into [] (keep #(when (map? %)
+                    (select-keys % [:id :name :description :type])))
+        user-recently-viewed))
+
+(def ^:private metabase-uri-re
+  "Matches metabase://<entity-type>/<id> URIs in user text. The 8 entity types must stay in sync with the FE's METABASE_PROTOCOL_ENTITY_MODELS (frontend/src/metabase/metabot/utils/links.ts). Catches both markdown-link and bare-URI forms."
+  #"metabase://(question|dashboard|collection|document|model|database|table|transform)/(\d+)")
+
+(defn parse-mentioned-refs
+  "Pull metabase://type/id refs from user-message text. Tolerates nil/non-string. Returns {:type :id} maps in source order, duplicates preserved; ids too large for a Long are dropped (no real entity has one)."
+  [user-message-content]
+  (if (string? user-message-content)
+    (->> (re-seq metabase-uri-re user-message-content)
+         (into [] (keep (fn [[_ entity-type id-str]]
+                          (when-let [id (parse-long id-str)]
+                            {:type entity-type
+                             :id   id})))))
+    []))
+
+(defn- user-message->text
+  "Extract a plain-text body from a user-message map. Supports both the simple
+  `{:content \"...\"}` shape and the OpenAI-style content-parts vector
+  (`{:content [{:type \"text\" :text \"...\"}]}`). Returns an empty string
+  when nothing extractable is present so `parse-mentioned-refs` sees a
+  stable type."
+  [user-message]
+  (let [c (:content user-message)]
+    (cond
+      (string? c) c
+      (sequential? c)
+      (->> c
+           (keep (fn [part]
+                   (cond
+                     (string? part)           part
+                     (map? part)              (:text part))))
+           (str/join " "))
+      :else "")))
+
+(defn build-prompt-context-block
+  "Compose the prompt-context block for the user-row's :data vector. Returns nil when context is nil (block omitted). A non-nil context with empty channels still yields a present block with empty vectors — distinguishing \"recorded empty context\" from \"never recorded.\""
+  [context user-message]
+  (when (some? context)
+    {:type                 "prompt-context"
+     :user_is_viewing      (project-viewing-context-for-persist
+                            (:user_is_viewing context))
+     :user_recently_viewed (project-recent-views-for-persist
+                            (:user_recently_viewed context))
+     :mentioned_refs       (parse-mentioned-refs (user-message->text user-message))}))
+
 (defn start-turn!
   "Atomically begin a turn: upsert the conversation row, insert the user-message row,
   and insert a placeholder assistant row. The placeholder's `created_at` is pinned
@@ -138,12 +236,14 @@
      it so the assistant row's `user_id` stays NULL. Falls back to
      `api/*current-user-id*` when omitted.
   - `:ai-proxy?` — override; otherwise derived from `llm-metabot-provider`.
+  - :context — the *enriched* per-turn context (what create-context returns). When non-nil, a {:type \"prompt-context\"} snapshot block is appended as data[1] (user message stays at data[0], so rendering is unchanged). See build-prompt-context-block.
 
   Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str>}`."
   [conversation-id profile-id user-message
    & {:keys [hostname pii-info
              channel-id slack-msg-id slack-team-id slack-thread-ts
-             user-id ai-proxy?]}]
+             user-id ai-proxy?
+             context]}]
   (let [;; Originator: explicit `:user-id` wins; otherwise fall back to the
         ;; auth-bound dynamic. Used for both the conversation `user_id` (on
         ;; first insert) and the user-message row's `user_id`.
@@ -151,7 +251,10 @@
         ai-proxy?              (if (some? ai-proxy?)
                                  ai-proxy?
                                  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
-        assistant-external-id  (str (random-uuid))]
+        assistant-external-id  (str (random-uuid))
+        prompt-context-block   (build-prompt-context-block context user-message)
+        user-row-data          (cond-> [user-message]
+                                 prompt-context-block (conj prompt-context-block))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
     ;; The user-message and assistant-placeholder rows share `created_at` because
@@ -182,7 +285,7 @@
                                     (assoc :slack_thread_ts slack-thread-ts))))
       (t2/insert! :model/MetabotMessage
                   (cond-> {:conversation_id conversation-id
-                           :data            [user-message]
+                           :data            user-row-data
                            :role            :user
                            :profile_id      profile-id
                            :external_id     (str (random-uuid))
@@ -258,6 +361,12 @@
                            :error        (safe-encode-error error)}
                     slack-msg-id (assoc :slack_msg_id slack-msg-id)
                     channel-id   (assoc :channel_id channel-id))))
+    ;; Quality-score pipeline. Runs *after* the message UPDATE commits: on Postgres a SQL failure inside scoring would abort the enclosing transaction and roll back the user-visible UPDATE even if caught. Outside the tx a scoring failure can only lose the score. The try/catch guards any throw escaping score-conversation!'s inner guard.
+    (try
+      (quality.core/score-conversation! conversation-id)
+      (catch Throwable t
+        (log/error t "score-conversation! escaped the inner guard"
+                   {:conversation-id conversation-id})))
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE transaction commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
@@ -312,7 +421,12 @@
        :status "ended"}
 
       ;; Data part: {:type "data" :data-type "navigate_to" :version 1 :data ...}
-      (= "data" block-type)
+      ;; The `terminal_state` data type is persistence-only (read by the
+      ;; quality-score temporal layer) and has no FE rendering, so we skip it
+      ;; here rather than emitting a `data_part` chat message the FE's
+      ;; exhaustive pattern-match would warn on.
+      (and (= "data" block-type)
+           (not= streaming/terminal-state-type (:data-type block)))
       (cond-> {:id   (str (random-uuid))
                :role "agent"
                :type "data_part"

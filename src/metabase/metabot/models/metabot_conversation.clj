@@ -13,7 +13,8 @@
   (derive :metabase/model))
 
 (t2/deftransforms :model/MetabotConversation
-  {:state mi/transform-json})
+  {:state             mi/transform-json
+   :quality_breakdown mi/transform-json})
 
 (defn participant?
   "True if `user-id` has sent at least one message in `conversation-id`."

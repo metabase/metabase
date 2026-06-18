@@ -191,11 +191,12 @@
        (not (has-final-response? parts))))
 
 (defn- finish-reason
-  "Determine why the agent loop stopped."
+  "Why the agent loop stopped. A final response or no tool calls means the agent chose to stop — those win over the iteration cap; only pending tool calls at the cap force-stop."
   [iteration max-iterations parts]
   (cond
-    (>= iteration max-iterations) :max-iterations
     (has-final-response? parts)   :final-response
+    (not (has-tool-calls? parts)) :stop
+    (>= iteration max-iterations) :max-iterations
     :else                         :stop))
 
 ;;; Call LLM
@@ -502,7 +503,12 @@
                      :all-parts parts}))
       (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
-        (assoc loop-state :status :done :result (rf result (final-state-part @memory-atom)))
+        ;; Degenerate completion: LLM returned zero AISDK parts. Still emit a terminal-state-part so the exit reason is persisted like every other exit.
+        (assoc loop-state
+               :status :done
+               :result (-> result
+                           (rf (streaming/terminal-state-part :empty-response))
+                           (rf (final-state-part @memory-atom))))
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
@@ -514,13 +520,16 @@
             (assoc loop-state :result result' :iteration (inc iteration))
 
             :else
-            (do (log/info "Agent loop complete"
-                          {:iterations iteration
-                           ;; TODO: decide if we want this reason to float up to frontend
-                           :reason     (finish-reason iteration max-iter parts)})
-                (assoc loop-state
-                       :status :done
-                       :result (rf result' (final-state-part @memory-atom))))))))))
+            (let [reason (finish-reason iteration max-iter parts)]
+              (log/info "Agent loop complete"
+                        {:iterations iteration
+                         ;; TODO: decide if we want this reason to float up to frontend
+                         :reason     reason})
+              (assoc loop-state
+                     :status :done
+                     :result (-> result'
+                                 (rf (streaming/terminal-state-part reason))
+                                 (rf (final-state-part @memory-atom)))))))))))
 
 ;;; Public API
 
@@ -644,6 +653,9 @@
 
                       :else
                       (log/errorf e "Agent loop error: %s" msg)))
-                  (rf init (error-part e)))
+                  ;; Emit a terminal-state part alongside the error: the quality pipeline keys "instrumented" off terminal_state presence, so without it a loop failure looks pre-instrumentation rather than an error termination.
+                  (-> init
+                      (rf (error-part e))
+                      (rf (streaming/terminal-state-part :error))))
                 (finally
                   (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))
