@@ -96,13 +96,15 @@
 (defn complete-sync-task!
   "Marks a sync task as completed.
 
-  Takes the ID of the sync task to mark as completed.
+  Takes the ID of the sync task to mark as completed and an optional human-readable message describing the
+  outcome (shown to the user when the task finishes).
 
   Returns the number of rows updated (should be 1 if successful)."
-  [task-id]
+  [task-id & [message]]
   (t2/update! :model/RemoteSyncTask task-id
               {:progress 1.0
-               :ended_at (mi/now)}))
+               :ended_at (mi/now)
+               :message message}))
 
 (defn fail-sync-task!
   "Marks a sync task as failed.

@@ -154,6 +154,20 @@
           (is (= source-version (:version result)))
           (is (re-find #"Skipping import.*matches last imported version" (:message result))))))))
 
+(deftest handle-task-result!-stores-success-message-test
+  (testing "handle-task-result! records the success result's :message on the task (GHY-3747)"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                             {:sync_task_type "import"
+                                              :initiated_by (mt/user->id :rasta)})]
+        (impl/handle-task-result! {:status :success
+                                   :message "Successfully reloaded from git repository"}
+                                  task-id)
+        (let [task (t2/select-one :model/RemoteSyncTask :id task-id)]
+          (is (some? (:ended_at task)))
+          (is (= "Successfully reloaded from git repository" (:message task)))
+          (is (= :successful (:status (t2/hydrate task :status)))))))))
+
 (deftest import!-proceeds-when-version-matches-with-force-test
   (testing "import! proceeds with import when source version matches last imported version but force? is true"
     (mt/with-model-cleanup [:model/Collection :model/RemoteSyncTask]

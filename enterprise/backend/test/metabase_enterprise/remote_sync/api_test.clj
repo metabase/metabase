@@ -699,6 +699,17 @@
                :ended_at some?}
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
+(deftest current-task-returns-success-message-test
+  (testing "GET /api/ee/remote-sync/current-task returns the outcome message for a completed task (GHY-3747)"
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "import"
+                                                   :last_progress_report_at :%now
+                                                   :started_at :%now}]
+      (remote-sync.task/complete-sync-task! id "Successfully reloaded from git repository")
+      (is (=? {:status "successful"
+               :ended_at some?
+               :message "Successfully reloaded from git repository"}
+              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
+
 (deftest current-task-returns-error-for-failed-task-test
   (testing "GET /api/ee/remote-sync/current-task returns error message for failed task"
     (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"

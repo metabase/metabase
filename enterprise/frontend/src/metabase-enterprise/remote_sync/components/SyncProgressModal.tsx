@@ -13,6 +13,8 @@ interface SyncProgressModalProps {
   progress: number;
   isError: boolean;
   errorMessage: string;
+  isSuccess: boolean;
+  message: string;
   onDismiss: () => void;
 }
 
@@ -21,6 +23,8 @@ export function SyncProgressModal({
   taskType,
   isError,
   errorMessage,
+  isSuccess,
+  message,
   onDismiss,
 }: SyncProgressModalProps) {
   const canCancel = useSelector(getUserIsAdmin);
@@ -72,6 +76,25 @@ export function SyncProgressModal({
     );
   }
 
+  if (isSuccess) {
+    const { successTitle, successFallback } = getModalContent(taskType);
+
+    return (
+      <Modal onClose={onDismiss} opened size="md" title={successTitle}>
+        <Stack mt="md" gap="md">
+          <Text>{message || successFallback}</Text>
+          <Group justify="flex-end">
+            <Button
+              data-testid="sync-success-close-button"
+              onClick={onDismiss}
+              variant="filled"
+            >{t`Close`}</Button>
+          </Group>
+        </Stack>
+      </Modal>
+    );
+  }
+
   const { title, progressLabel } = getModalContent(taskType);
 
   return (
@@ -105,16 +128,25 @@ export function SyncProgressModal({
 
 const getModalContent = (
   taskType: RemoteSyncTaskType,
-): { title: string; progressLabel: string } => {
+): {
+  title: string;
+  progressLabel: string;
+  successTitle: string;
+  successFallback: string;
+} => {
   if (taskType === "import") {
     return {
       title: t`Pulling from Git`,
       progressLabel: t`Importing content…`,
+      successTitle: t`Pull complete`,
+      successFallback: t`Successfully pulled changes from Git.`,
     };
   }
 
   return {
     title: t`Pushing to Git`,
     progressLabel: t`Exporting content…`,
+    successTitle: t`Push complete`,
+    successFallback: t`Successfully pushed changes to Git.`,
   };
 };

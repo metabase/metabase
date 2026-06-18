@@ -15,6 +15,8 @@ const setup = ({
   progress = 0.5,
   isError = false,
   errorMessage = "",
+  isSuccess = false,
+  message = "",
   isAdmin = true,
   onDismiss = jest.fn(),
   cancelResponse,
@@ -23,6 +25,8 @@ const setup = ({
   progress?: number;
   isError?: boolean;
   errorMessage?: string;
+  isSuccess?: boolean;
+  message?: string;
   isAdmin?: boolean;
   onDismiss?: jest.Mock;
   cancelResponse?: { status?: number; body?: any; delay?: number };
@@ -39,6 +43,8 @@ const setup = ({
         progress={progress}
         isError={isError}
         errorMessage={errorMessage}
+        isSuccess={isSuccess}
+        message={message}
         onDismiss={onDismiss}
       />,
       {
@@ -116,6 +122,53 @@ describe("SyncProgressModal", () => {
       setup({ isError: true, onDismiss });
 
       await userEvent.click(screen.getByTestId("sync-error-close-button"));
+
+      expect(onDismiss).toHaveBeenCalled();
+    });
+  });
+
+  describe("success state", () => {
+    it("should show the server message for a successful import", () => {
+      setup({
+        taskType: "import",
+        isSuccess: true,
+        message: "Imported 12 items.",
+      });
+
+      expect(screen.getByText("Pull complete")).toBeInTheDocument();
+      expect(screen.getByText("Imported 12 items.")).toBeInTheDocument();
+    });
+
+    it("should fall back to a generic message when the server sends none", () => {
+      setup({ taskType: "import", isSuccess: true, message: "" });
+
+      expect(
+        screen.getByText("Successfully pulled changes from Git."),
+      ).toBeInTheDocument();
+    });
+
+    it("should use export-specific copy for a successful export", () => {
+      setup({ taskType: "export", isSuccess: true, message: "" });
+
+      expect(screen.getByText("Push complete")).toBeInTheDocument();
+      expect(
+        screen.getByText("Successfully pushed changes to Git."),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show a cancel button in the success state", () => {
+      setup({ isSuccess: true, isAdmin: true });
+
+      expect(
+        screen.queryByRole("button", { name: "Cancel" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should call onDismiss when the close button is clicked", async () => {
+      const onDismiss = jest.fn();
+      setup({ isSuccess: true, onDismiss });
+
+      await userEvent.click(screen.getByTestId("sync-success-close-button"));
 
       expect(onDismiss).toHaveBeenCalled();
     });

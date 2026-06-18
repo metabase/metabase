@@ -144,6 +144,8 @@ export type RemoteSyncTask = {
   ended_at: string | null;
   last_progress_report_at: string | null;
   error_message: string | null;
+  /** Human-readable message describing the task outcome, shown when the task finishes. */
+  message?: string | null;
   initiated_by: UserId;
   conflicts?: string[];
 };

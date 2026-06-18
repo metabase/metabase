@@ -1,0 +1,22 @@
+## Add message column to remote_sync_task for end-of-task confirmation copy (GHY-3747)
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-06-18T00:00:00
+      author: ericnormand
+      comment: Add remote_sync_task.message, a general-purpose human-readable message describing the task outcome (e.g. the success confirmation shown when an import/export finishes)
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: message
+                  type: ${text.type}
+                  remarks: Human-readable message describing the task outcome, shown to the user when the task finishes
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: remote_sync_task
+            columnName: message

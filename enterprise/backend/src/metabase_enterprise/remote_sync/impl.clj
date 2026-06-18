@@ -950,7 +950,7 @@
                   :success (do
                              (when branch
                                (settings/remote-sync-branch! branch))
-                             (remote-sync.task/complete-sync-task! task-id))
+                             (remote-sync.task/complete-sync-task! task-id (:message result)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))

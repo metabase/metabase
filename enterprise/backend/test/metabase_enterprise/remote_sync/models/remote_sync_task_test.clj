@@ -91,6 +91,15 @@
       (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (= 1.0 (:progress completed-task)))
         (is (some? (:ended_at completed-task)))
+        (is (nil? (:error_message completed-task)))
+        (is (nil? (:message completed-task)))))))
+
+(deftest complete-sync-task-stores-outcome-message-test
+  (testing "stores the outcome message when one is provided"
+    (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+      (rst/complete-sync-task! (:id task) "Successfully reloaded from git repository")
+      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (is (= "Successfully reloaded from git repository" (:message completed-task)))
         (is (nil? (:error_message completed-task)))))))
 
 ;;; ------------------------------------------------------------------------------------------------
