@@ -13,6 +13,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.skills :as skills]
+   [metabase.search.engine :as search.engine]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
 
@@ -157,6 +158,10 @@
       (let [sql-dialect          (or (get context :sql_dialect)
                                      (get context :sql-dialect))
             {:keys [always-on catalog]} (skills/build-skill-manifest profile (keys tools) capabilities)
+            ;; Runtime gate for engine-aware search guidance in the system prompt.
+            ;; `supported-engine?` accounts for the premium feature flag, the user setting, and the
+            ;; configured URL — matching exactly what the search call path will actually use.
+            has-semantic-search? (boolean (search.engine/supported-engine? :search.engine/semantic))
             current-user-info    (or (get context :current_user_info)
                                      (get context :current-user-info))
             current-time         (or (get context :current_time)
@@ -181,6 +186,7 @@
                                   :first_day_of_week        first-day-of-week
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
+                                  :has_semantic_search      has-semantic-search?
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
                                   ;; an empty vector as truthy, which would render the "# Available
                                   ;; skills … load the skill(s) you need" header with nothing to

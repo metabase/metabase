@@ -136,54 +136,30 @@
   []
   {:message "pong"})
 
-(defn- coerce-query-list
-  "Defensive coercion for `/v1/search`'s query arguments. Some MCP clients (notably
-   Codex) serialize array args through a string layer, so a caller that intended to
-   send `[\"orders\"]` may actually send `\"[\\\"orders\\\"]\"`. Accept either shape:
-   an array is returned as-is; a string that parses as a JSON array of non-blank
-   strings is unwrapped; any other string is treated as a single-element query."
-  [v]
-  (cond
-    (nil? v)        nil
-    (sequential? v) v
-    (string? v)     (or (try
-                          (let [parsed (json/decode+kw v)]
-                            (when (and (sequential? parsed)
-                                       (every? #(and (string? %) (not (str/blank? %))) parsed))
-                              parsed))
-                          (catch Exception _ nil))
-                        [v])
-    :else           v))
-
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
   "Search for tables, models, metrics, saved questions, dashboards, and collections.
 
-  Supports both term-based and semantic search queries. Results are ranked using
-  Reciprocal Rank Fusion when both query types are provided."
+  Hybrid keyword + semantic search. The backend runs the query through both engines
+  in parallel and fuses the two — callers provide one query string, not paraphrases."
   {:scope metabot/agent-search
    :tool  {:name "search"
            :title "Search Metabase Content"
            :description (str "Search for tables, models, metrics, saved questions, dashboards, and collections "
                              "in Metabase. "
-                             "Use term_queries for keyword search or semantic_queries for natural language search. "
-                             "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
+                             "Provide a single `query` string — the backend runs hybrid "
+                             "keyword + semantic matching internally; no need to send "
+                             "paraphrases. Example: query: \"orders by region\".")
            :annotations {:read-only? true}}}
   [_route-params
    _query-params
-   {term-queries     :term_queries
-    semantic-queries :semantic_queries}
+   {:keys [query]}
    :- [:map
-       [:term_queries {:optional true
-                       :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
-        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
-       [:semantic_queries {:optional true
-                           :tool/description "Natural-language search queries as an array of strings, for example [\"how much revenue did we make\"]."}
-        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]]]
+       [:query {:tool/description "Search query string. Phrase it as a short noun phrase or question fragment, e.g. \"orders by region\" or \"monthly active users\"."}
+        ms/NonBlankString]]]
   (let [results (metabot-search/search
-                 {:term-queries     (or (coerce-query-list term-queries) [])
-                  :semantic-queries (or (coerce-query-list semantic-queries) [])
-                  :entity-types     ["table" "metric" "model" "question" "dashboard" "collection"]
-                  :limit            (or (request/limit) 50)})]
+                 {:query        query
+                  :entity-types ["table" "metric" "model" "question" "dashboard" "collection"]
+                  :limit        (or (request/limit) 50)})]
     {:data        results
      :total_count (count results)}))
 

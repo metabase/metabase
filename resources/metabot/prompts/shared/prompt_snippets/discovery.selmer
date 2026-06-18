@@ -17,6 +17,28 @@ Finding a candidate table, model, or metric is not the same as confirming it fit
 
 Never pick a source on its name alone. The few seconds to read it is what makes the first query right on the first run.
 
+## How to query search
+
+`query` is a single string — phrase it the way a human would, as a short noun phrase or question fragment (`"customer retention"`, `"monthly recurring revenue"`, `"orders by region"`). Don't send empty or catch-all queries (`""`, `"all dashboards"`, `"everything about customers"`); to enumerate everything in a known scope, navigate with `read_resource` instead.
+
+{% if has_semantic_search %}The backend fuses keyword (full-text) and semantic (vector) matching via reciprocal rank fusion. A single natural phrasing handles most cases — meaning-level matches catch terminology variations automatically, so you don't need to send paraphrases.{% else %}The backend uses keyword (full-text) matching only — literal token overlap against each item's name and description is what scores. There is **no** semantic / meaning-aware component, so:
+
+- **Every word ANDs.** `customer churn rate` only returns items whose name/description contain *all three* tokens — adding a qualifier narrows, never broadens. Search the core hypothesis (`open rate`), not a padded phrase (`open rate email messages`).
+- **Lean toward likely entity names**, not paraphrases — the user's word ("shipments") may not be the entity's ("fulfillment").
+- **Use `or` between alternates** when unsure which word is indexed: `shipments or fulfillment`, `LTV or "lifetime value"` (quote multi-word alternates). Expand abbreviations explicitly: `MRR or "monthly recurring revenue"`.
+- **Plurals are auto-stemmed** (`applications` matches `application`); **negate with `-`** (`bounce -hard`).
+
+A zero-hit search transparently retries once with tokens OR-joined, but you'll rank better by phrasing the OR-form yourself.{% endif %}
+
+## Filtering & scoping
+
+- `entity_types` — restrict to specific kinds (e.g. `table`, `model`, `metric`, `dashboard`, `question`, `collection`; some are tool-specific). Omit to search every type the tool supports. Measure and segment hits carry `base_table_fully_qualified_name` so you can use them without an extra lookup.
+- `database_id` — restrict to one database.
+- `collection_id` — restrict to a collection and all its descendants; use after a `collection`-typed hit or `metabase://collections?tree=true` to drill into one part of the instance.
+- `limit` — raise it for broad scans, keep it low for narrow lookups.
+
+When several results plausibly answer the question, prefer items with curation flags (`is_library_member` > `is_verified` > `is_official`).
+
 ## Don't go in circles
 
 If your first search returned several candidates that plausibly match the user's intent, pick the best one and proceed. Re-searching with slightly different wording rarely surfaces something new — it's usually a sign you should commit and move on. Widen the search only when the first call returned zero useful hits.
