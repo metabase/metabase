@@ -133,7 +133,8 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
   });
 
-  describe("initialVisualization", () => {
+  // temporarily disabled (npretto 2026-06-18): we're experimenting with another approach that would not require this new prop
+  describe.skip("initialVisualization", () => {
     it("applies a custom visualization as the initial visualization when enabled", () => {
       cy.get<CardId>("@defaultDisplayQuestionId").then((questionId) => {
         mountSdkContent(

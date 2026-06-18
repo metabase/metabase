@@ -61,7 +61,6 @@ type StaticQuestionBaseProps = PropsWithChildren<
     | "withDownloads"
     | "withAlerts"
     | "title"
-    | "initialVisualization"
   >
 >;
 
@@ -129,7 +128,6 @@ const StaticQuestionInner = (
     withDownloads,
     withAlerts,
     title = false, // Hidden by default for backwards-compatibility.
-    initialVisualization,
     children,
   } = normalizedProps;
 
@@ -169,7 +167,6 @@ const StaticQuestionInner = (
       hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
       withAlerts={withAlerts}
-      initialVisualization={initialVisualization}
     >
       {children ?? (
         <FlexibleSizeComponent

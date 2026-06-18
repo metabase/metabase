@@ -62,7 +62,6 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
     | "targetCollection"
     | "initialCollection"
     | "onRun"
-    | "initialVisualization"
   >;
 
 /**
@@ -84,7 +83,13 @@ export type DrillThroughQuestionProps = Omit<
  * @category InteractiveQuestion
  */
 export type SdkQuestionProps = SdkQuestionDefaultViewProps &
-  Omit<SdkQuestionProviderProps, "componentPlugins"> & {
+  // TEMP: initialVisualization is disabled at the public boundary. The internal
+  // plumbing (provider, use-load-question, run-question-query) is kept; re-enable
+  // by removing it from this Omit and restoring the prop forwarding below.
+  Omit<
+    SdkQuestionProviderProps,
+    "componentPlugins" | "initialVisualization"
+  > & {
     plugins?: SdkQuestionProviderProps["componentPlugins"];
   };
 
@@ -158,7 +163,6 @@ export const _SdkQuestion = ({
   withChartTypeSelector = true,
   withEditorButton = true,
   onVisualizationChange,
-  initialVisualization,
 }: SdkQuestionProps): JSX.Element | null => {
   const drillThroughQuestionProps: DrillThroughQuestionProps = {
     height,
@@ -214,7 +218,6 @@ export const _SdkQuestion = ({
         navigateToNewCard={navigateToNewCard}
         onDrillThrough={onDrillThrough}
         onVisualizationChange={onVisualizationChange}
-        initialVisualization={initialVisualization}
       >
         {children ?? (
           <SdkQuestionDefaultView
