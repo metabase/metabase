@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import { Box, Center, Flex, Loader, Text } from "metabase/ui";
+import { Box, Center, Flex, Loader, Text, Title } from "metabase/ui";
 
 import { EnableEmbeddingPrompt } from "./EnableEmbeddingPrompt";
 import { PreviewResourcePicker } from "./PreviewResourcePicker";
@@ -28,7 +28,7 @@ export function PreviewPanel({ settings }: { settings: MetabaseTheme }) {
     <Flex direction="column" flex={1} bg="background-secondary">
       <Box p="xl" pb="sm">
         <Flex align="center" justify="space-between" gap="md">
-          <Text fw={700} fz="xl">{t`Theme preview`}</Text>
+          <Title order={2}>{t`Theme preview`}</Title>
           {isEmbeddingReady && resource && (
             <PreviewResourcePicker
               resource={resource}
