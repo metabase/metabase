@@ -70,7 +70,7 @@
     ;; SQLite `:details` only need a filesystem path. URL-decode in case it got URL-encoded from a JAR `URL`.
     ;; The bundled file is read-only.
     :sqlite {:db (codec/url-decode dest-path), :read-only? true}
-    ;; H2 connects to the file by path (sans the `.mv.db` suffix). Writable so e2e upload tests keep working.
+    ;; H2 connects to the file by path (sans the `.mv.db` suffix).
     :h2     {:db (-> (str "file:" dest-path)
                      (str/replace #"\.mv\.db$" "")
                      codec/url-decode
