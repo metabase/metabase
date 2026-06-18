@@ -1,5 +1,5 @@
 (ns metabase.query-processor.streaming
-  (:refer-clojure :exclude [every? some mapv not-empty])
+  (:refer-clojure :exclude [every? mapv not-empty some])
   (:require
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
@@ -17,11 +17,10 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? mapv some not-empty]])
+   [metabase.util.performance :refer [mapv not-empty some]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
-   (metabase.server.streaming_response StreamingResponse)
    (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
