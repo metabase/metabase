@@ -33,7 +33,7 @@ function ActionButtonView({
   disabled,
   icon,
   tooltip,
-  isFullHeight,
+  isFullHeight = false,
   onClick,
   focus,
 }: ActionButtonViewProps) {
@@ -46,7 +46,7 @@ function ActionButtonView({
     <Button
       className={S.actionButton}
       p={0}
-      h={isFullHeight !== false ? "100%" : undefined}
+      h={isFullHeight ? "100%" : undefined}
       bd={focus ? "2px solid var(--mb-color-focus)" : undefined}
       variant={buttonVariant}
       color={color}
