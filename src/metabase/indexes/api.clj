@@ -6,6 +6,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.indexes.reconcile :as reconcile]
    [metabase.indexes.schema :as schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -27,6 +28,31 @@
    [:updated_at :any]
    [:last_executed_at [:maybe :any]]])
 
+(def ^:private MergedIndex
+  [:map
+   [:name              [:maybe ms/NonBlankString]]
+   [:kind              :keyword]
+   [:access-method     [:maybe :string]]
+   [:is-unique         :boolean]
+   [:is-primary        :boolean]
+   [:is-valid          :boolean]
+   [:key-columns       [:sequential [:maybe :string]]]
+   [:include-columns   [:sequential [:maybe :string]]]
+   [:partial-predicate [:maybe :string]]
+   [:definition        [:maybe :string]]
+   [:metabase_managed     :boolean]
+   [:present_in_warehouse :boolean]
+   ;; lifecycle -- present only on managed entries
+   [:id               {:optional true} ms/PositiveInt]
+   [:transform_id     {:optional true} ms/PositiveInt]
+   [:structured       {:optional true} ::schema/index-structured]
+   [:status           {:optional true} [:enum :pending :running :succeeded :failed :dropped]]
+   [:error_message    {:optional true} [:maybe :string]]
+   [:created_by       {:optional true} [:maybe ms/PositiveInt]]
+   [:created_at       {:optional true} :any]
+   [:updated_at       {:optional true} :any]
+   [:last_executed_at {:optional true} [:maybe :any]]])
+
 (defn- index-name
   "Physical index name for a structured index: a named kind's own `:name`, else a stable name from its `:kind` (so a
   transform holds at most one sortkey/order-by/etc, enforced by the unique constraint)."
@@ -43,12 +69,19 @@
   [{:keys [transform_id]}]
   (api/write-check :model/Transform transform_id))
 
-(api.macros/defendpoint :get "/" :- [:map [:data [:sequential TableIndex]]]
-  "List the managed indexes for a transform."
+(api.macros/defendpoint :get "/" :- [:map [:data [:sequential MergedIndex]]]
+  "List a transform's index hints: Metabase-managed indexes merged with the indexes physically present in the
+  warehouse. Each entry is flagged `:metabase_managed` and `:present_in_warehouse`."
   [_route-params
    {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
   (api/read-check :model/Transform transform-id)
-  {:data (t2/select :model/TableIndex :transform_id transform-id {:order-by [[:id :asc]]})})
+  (let [transform (t2/select-one :model/Transform transform-id)
+        {:keys [database schema] table-name :name} (:target transform)
+        managed   (t2/select :model/TableIndex :transform_id transform-id {:order-by [[:id :asc]]})
+        warehouse (when database
+                    (reconcile/fetch-warehouse-indexes
+                     (t2/select-one :model/Database database) schema table-name))]
+    {:data (reconcile/merge-indexes managed (or warehouse []))}))
 
 (api.macros/defendpoint :get "/:id" :- TableIndex
   "Fetch a single managed index (e.g. to poll its status)."

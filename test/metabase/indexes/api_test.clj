@@ -1,8 +1,10 @@
 (ns metabase.indexes.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver]
    [metabase.test :as mt]
-   [metabase.transforms.query-test-util :as query-test-util]))
+   [metabase.transforms.query-test-util :as query-test-util]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,14 +26,15 @@
         (is (= "pending" (:status created)))
         (is (= transform-id (:transform_id created)))
         (is (= "by_cat" (:index_name created)))
-        (testing "GET lists it for the transform"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
-                                                     (str "indexes?transform-id=" transform-id))]
-            (is (= [(:id created)] (map :id data)))))
-        (testing "the listed index carries no mirrored table_id"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
-                                                     (str "indexes?transform-id=" transform-id))]
-            (is (not (contains? (first data) :table_id)))))
+        (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] [])]
+          (testing "GET lists it for the transform"
+            (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
+                                                       (str "indexes?transform-id=" transform-id))]
+              (is (= [(:id created)] (map :id data)))))
+          (testing "the listed index carries no mirrored table_id"
+            (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
+                                                       (str "indexes?transform-id=" transform-id))]
+              (is (not (contains? (first data) :table_id))))))
         (testing "GET /:id fetches one (status poll)"
           (is (= "by_cat" (:index_name (mt/user-http-request :crowberto :get 200
                                                              (str "indexes/" (:id created)))))))
@@ -41,9 +44,35 @@
             (is (= "price" (-> updated :structured :columns first :name)))))
         (testing "DELETE removes it"
           (mt/user-http-request :crowberto :delete 204 (str "indexes/" (:id created)))
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
-                                                     (str "indexes?transform-id=" transform-id))]
-            (is (empty? data))))))))
+          (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] [])]
+            (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
+                                                       (str "indexes?transform-id=" transform-id))]
+              (is (empty? data)))))))))
+
+(deftest merged-list-test
+  (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
+    (let [created (mt/user-http-request :crowberto :post 200 "indexes"
+                                        {:transform_id transform-id :structured btree})
+          ;; one warehouse index matching the managed one by name, plus a DBA-made one
+          wh [{:name "by_cat" :kind :btree :access-method "btree" :is-unique false :is-primary false
+               :is-valid true :key-columns ["name"] :include-columns [] :partial-predicate nil :definition "..."}
+              {:name "dba_made" :kind :btree :access-method "btree" :is-unique false :is-primary false
+               :is-valid true :key-columns ["price"] :include-columns [] :partial-predicate nil :definition "..."}]]
+      (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] wh)]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
+                                                   (str "indexes?transform-id=" transform-id))
+              by-name (group-by :name data)]
+          (testing "managed index is flagged managed + present"
+            (let [e (first (get by-name "by_cat"))]
+              (is (true? (:metabase_managed e)))
+              (is (true? (:present_in_warehouse e)))
+              (is (= (:id created) (:id e)))))
+          (testing "DBA index appears, unmanaged"
+            (let [e (first (get by-name "dba_made"))]
+              (is (false? (:metabase_managed e)))
+              (is (true? (:present_in_warehouse e)))))
+          (testing "nothing unmanaged was persisted"
+            (is (= 1 (count (t2/select :model/TableIndex :transform_id transform-id))))))))))
 
 (deftest requires-transform-write-test
   (testing "a user without write access to the transform cannot manage its indexes"
