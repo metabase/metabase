@@ -199,6 +199,42 @@ describe("SyncProgressModal", () => {
       ).toBeInTheDocument();
     });
 
+    it("should fall back to generic pull copy when a pulled outcome is missing fields", () => {
+      setup({
+        taskType: "import",
+        isSuccess: true,
+        outcome: { kind: "pulled" } as unknown as RemoteSyncOutcome,
+      });
+
+      expect(
+        screen.getByText("Successfully pulled changes."),
+      ).toBeInTheDocument();
+    });
+
+    it("should fall back to generic push copy when a pushed outcome is missing fields", () => {
+      setup({
+        taskType: "export",
+        isSuccess: true,
+        outcome: { kind: "pushed", count: 3 } as unknown as RemoteSyncOutcome,
+      });
+
+      expect(
+        screen.getByText("Successfully pushed changes."),
+      ).toBeInTheDocument();
+    });
+
+    it("should fall back to combined pull-and-push copy when a merged outcome is missing fields", () => {
+      setup({
+        taskType: "export",
+        isSuccess: true,
+        outcome: { kind: "merged", pulled: 1 } as unknown as RemoteSyncOutcome,
+      });
+
+      expect(
+        screen.getByText("Successfully pulled and pushed changes."),
+      ).toBeInTheDocument();
+    });
+
     it("should not show a cancel button in the success state", () => {
       setup({ isSuccess: true, isAdmin: true });
 
