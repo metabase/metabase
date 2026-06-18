@@ -23,7 +23,7 @@
       (is (= "/2/7/" (remap {2 2} "/2/7/"))))))
 
 (defn- sample-database-db []
-  {:details (#'metabase.sample-data.impl/try-to-extract-sample-database!)
+  {:details (#'metabase.sample-data.impl/try-to-extract-sample-database! :sqlite)
    :engine  :sqlite
    :name    "Sample Database"})
 

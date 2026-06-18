@@ -24,7 +24,7 @@
   feature enabled."
   [thunk]
   (mt/with-premium-features #{:sandboxes}
-    (mt/with-temp [:model/Database db {:details (#'sample-data/try-to-extract-sample-database!)
+    (mt/with-temp [:model/Database db {:details (#'sample-data/try-to-extract-sample-database! :sqlite)
                                        :engine  :sqlite
                                        :name    "Sample Database"}]
       (sync/sync-database! db)

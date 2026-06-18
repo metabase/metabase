@@ -24,7 +24,7 @@
   "Sample DB is SQLite-backed and always read-only: `try-to-extract-sample-database!` returns details with
   `:read-only? true`, which the SQLite driver honors by opening the connection in read-only `open_mode`."
   []
-  {:details (#'sample-data/try-to-extract-sample-database!)
+  {:details (#'sample-data/try-to-extract-sample-database! :sqlite)
    :engine  :sqlite
    :name    "Sample Database"})
 
