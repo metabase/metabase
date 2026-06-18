@@ -6,8 +6,17 @@ import type { TreemapTree } from "../model/types";
 
 import { getTreemapChartOption } from "./option";
 
+// getTextColorForBackground parses these through the `color` library, so they
+// must be real, parseable colors rather than the bare key.
+const MOCK_COLORS: Record<string, string> = {
+  "text-primary": "#4c5773",
+  "text-primary-inverse": "#ffffff",
+  "text-secondary": "#949aab",
+  white: "#ffffff",
+};
+
 const renderingContext: RenderingContext = {
-  getColor: (name) => name,
+  getColor: (name) => MOCK_COLORS[name] ?? name,
   measureText: () => 0,
   measureTextHeight: () => 0,
   fontFamily: "",
@@ -79,17 +88,19 @@ describe("getTreemapChartOption", () => {
     const [a, b, c, d] = series.data[0].children ?? [];
     expect(a.label).toEqual({ show: false });
     expect(b.label).toEqual({ show: false });
-    expect(c.label).toEqual({
+    expect(c.label).toMatchObject({
       show: true,
       width: 80,
       overflow: "truncate",
       formatter: "C",
+      color: expect.any(String),
     });
-    expect(d.label).toEqual({
+    expect(d.label).toMatchObject({
       show: true,
       width: 120,
       overflow: "truncate",
       formatter: `{name|D}\n{value|$5}\n{pct|${formatPercent(0.05)}}`,
+      color: expect.any(String),
     });
   });
 
@@ -118,11 +129,12 @@ describe("getTreemapChartOption", () => {
       renderingContext,
     });
 
-    expect(series.data[0].children?.[0].label).toEqual({
+    expect(series.data[0].children?.[0].label).toMatchObject({
       show: true,
       width: 120,
       overflow: "truncate",
       formatter: `{name|A}\n{value|$60}\n{pct|${formatPercent(0.6)}}`,
+      color: expect.any(String),
     });
   });
 
