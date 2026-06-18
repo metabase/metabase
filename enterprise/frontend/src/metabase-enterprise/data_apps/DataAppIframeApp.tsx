@@ -63,15 +63,15 @@ class BundleErrorBoundary extends Component<
  * as `{ component, theme }`.
  */
 function BundleHost({ name }: { name: string }) {
-  const { loaded, failed } = useDataAppBundle(name);
+  const { data, failed } = useDataAppBundle(name);
 
   // On failure we report the error up to the host `AppView` (see
   // `reportErrorToParent`), which renders the themed failure screen in its own
   // realm and unmounts this iframe. Until that handoff lands we show a neutral
   // loader — never an in-frame error screen, which would flash mis-themed.
   let content: ReactNode;
-  if (loaded && !failed) {
-    const AppComponent = loaded.component;
+  if (data && !failed) {
+    const AppComponent = data.component;
     content = (
       <BundleErrorBoundary>
         <AppComponent />
@@ -85,7 +85,7 @@ function BundleHost({ name }: { name: string }) {
     );
   }
 
-  return <DataAppProvider theme={loaded?.theme}>{content}</DataAppProvider>;
+  return <DataAppProvider theme={data?.theme}>{content}</DataAppProvider>;
 }
 
 /**

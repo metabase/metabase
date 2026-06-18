@@ -24,16 +24,16 @@ export interface LoadedApp {
  * renders in the meantime (the bundle vs. a neutral loader).
  */
 export function useDataAppBundle(name: string): {
-  loaded: LoadedApp | null;
+  data: LoadedApp | null;
   failed: boolean;
 } {
-  const [loaded, setLoaded] = useState<LoadedApp | null>(null);
+  const [data, setData] = useState<LoadedApp | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    setLoaded(null);
+    setData(null);
     setFailed(false);
 
     const load = async () => {
@@ -45,7 +45,7 @@ export function useDataAppBundle(name: string): {
 
       const { component, theme } = instantiateDataAppBundle(code, name, window);
 
-      setLoaded({ component, theme });
+      setData({ component, theme });
     };
 
     load().catch((error: unknown) => {
@@ -91,5 +91,5 @@ export function useDataAppBundle(name: string): {
     return () => window.removeEventListener("error", onError);
   }, []);
 
-  return { loaded, failed };
+  return { data, failed };
 }
