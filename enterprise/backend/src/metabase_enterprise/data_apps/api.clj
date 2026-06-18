@@ -61,6 +61,7 @@
    [:display_name    ms/NonBlankString]
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
+   [:allowed_hosts   [:maybe [:sequential :string]]]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]

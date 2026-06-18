@@ -1,6 +1,14 @@
+import { useState } from "react";
 import { t } from "ttag";
 
-import { Group, Stack, Text } from "metabase/ui";
+import {
+  Collapse,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
 
@@ -9,6 +17,55 @@ import { DataAppIcon } from "./DataAppIcon";
 type Props = {
   app: DataApp;
 };
+
+function AllowedHosts({ app }: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const hosts = app.allowed_hosts ?? [];
+
+  if (hosts.length === 0) {
+    return (
+      <Group gap="xs" align="center">
+        <Text size="sm" c="text-tertiary">
+          {t`Allowed hosts`}
+        </Text>
+        <Text size="sm" c="text-tertiary" fs="italic">
+          {t`None`}
+        </Text>
+      </Group>
+    );
+  }
+
+  return (
+    <Stack gap={4}>
+      <UnstyledButton
+        onClick={() => setIsOpen((open) => !open)}
+        aria-expanded={isOpen}
+      >
+        <Group gap={6} align="center" wrap="nowrap">
+          <Icon name={isOpen ? "chevrondown" : "chevronright"} size={12} />
+          <Text size="sm" c="text-tertiary">
+            {t`Allowed hosts (${hosts.length})`}
+          </Text>
+        </Group>
+      </UnstyledButton>
+      <Collapse in={isOpen}>
+        <Stack gap={2} pl="lg">
+          {hosts.map((host, index) => (
+            <Text
+              key={`${index}-${host}`}
+              size="sm"
+              ff="monospace"
+              c="text-secondary"
+            >
+              {host}
+            </Text>
+          ))}
+        </Stack>
+      </Collapse>
+    </Stack>
+  );
+}
 
 function SyncStatus({ app }: Props) {
   if (app.sync_error) {
@@ -66,6 +123,7 @@ export function DataAppSummary({ app }: Props) {
           </Text>
           <SyncStatus app={app} />
         </Group>
+        <AllowedHosts app={app} />
       </Stack>
     </Group>
   );
