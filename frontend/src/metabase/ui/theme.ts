@@ -120,34 +120,34 @@ export const getThemeOverrides = (
   headings: {
     sizes: {
       h1: {
+        fontSize: rem(27),
+        lineHeight: rem(32),
+        fontWeight: "600",
+      },
+      h2: {
         fontSize: rem(21),
         lineHeight: rem(27),
         fontWeight: "600",
       },
-      h2: {
+      h3: {
         fontSize: rem(18),
         lineHeight: rem(24),
         fontWeight: "600",
       },
-      h3: {
+      h4: {
         fontSize: rem(16),
         lineHeight: rem(22),
         fontWeight: "600",
       },
-      h4: {
+      h5: {
         fontSize: rem(14),
         lineHeight: rem(18),
-        fontWeight: "600",
-      },
-      h5: {
-        fontSize: rem(12),
-        lineHeight: rem(16),
         fontWeight: "600",
       },
       h6: {
         fontSize: rem(12),
         lineHeight: rem(16),
-        fontWeight: "400",
+        fontWeight: "600",
       },
     },
   },
