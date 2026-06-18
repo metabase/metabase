@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
+import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { Box, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
 import { isCartesianChart } from "metabase/visualizations";
@@ -37,6 +39,23 @@ interface ExplorationGroupVisualizationProps {
 
 const STACK_PANEL_HEIGHT = 64;
 
+function ErrorComponent() {
+  return (
+    <Stack
+      align="center"
+      justify="center"
+      flex={1}
+      gap="sm"
+      ta="center"
+      role="alert"
+      aria-live="polite"
+    >
+      <Icon name="warning" c="error" size={32} />
+      <Text fw="bold">{t`Something’s gone wrong.`}</Text>
+    </Stack>
+  );
+}
+
 export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
@@ -58,7 +77,9 @@ export function ExplorationGroupVisualization(
         bdrs="md"
         p="lg"
       >
-        <ExplorationGroupVisualizationBody {...props} />
+        <ErrorBoundary errorComponent={ErrorComponent}>
+          <ExplorationGroupVisualizationBody {...props} />
+        </ErrorBoundary>
       </Stack>
     </Stack>
   );
@@ -205,6 +226,26 @@ function ExplorationGroupVisualizationChart({
     );
   }
 
+  if (seriesGroups.length === 0) {
+    return (
+      <>
+        <ExplorationVisualizationHeader name={groupName} />
+        <Stack
+          align="center"
+          justify="center"
+          flex={1}
+          gap="sm"
+          ta="center"
+          role="alert"
+          aria-live="polite"
+        >
+          <Icon name="warning" c="error" size={32} />
+          <Text fw="bold">{t`We couldn't find any data to display.`}</Text>
+        </Stack>
+      </>
+    );
+  }
+
   return (
     <>
       <ExplorationVisualizationHeader
@@ -276,7 +317,7 @@ function ExplorationCartesianChart({
     >
       {label && <Text size="lg">{label}</Text>}
       <Box flex={1} mih={0}>
-        <Visualization rawSeries={series} className={S.chart} />
+        <ExplorationVisualization rawSeries={series} className={S.chart} />
       </Box>
     </Stack>
   );
@@ -302,7 +343,7 @@ function ExplorationHeatMap({
     <Stack gap="sm">
       {label && <Text size="lg">{label}</Text>}
       <Box h={tableHeight}>
-        <Visualization rawSeries={series} className={S.chart} />
+        <ExplorationVisualization rawSeries={series} className={S.chart} />
       </Box>
     </Stack>
   );
@@ -357,9 +398,32 @@ function ExplorationMap({ series, label, legendItems }: ExplorationMapProps) {
       )}
       {series.map((s) => (
         <Box key={s.card.id} flex={1} mih="10rem">
-          <Visualization rawSeries={[s]} className={S.chart} />
+          <ExplorationVisualization rawSeries={[s]} className={S.chart} />
         </Box>
       ))}
     </Stack>
+  );
+}
+
+interface ExplorationVisualizationProps {
+  rawSeries: SingleSeries[];
+  className?: string;
+}
+
+export function ExplorationVisualization({
+  rawSeries,
+  className,
+}: ExplorationVisualizationProps) {
+  const [warnings, setWarnings] = useState<string[]>([]);
+
+  return (
+    <Box w="100%" h="100%" pos="relative">
+      <Warnings warnings={warnings} className={S.warnings} size={18} />
+      <Visualization
+        rawSeries={rawSeries}
+        className={className}
+        onUpdateWarnings={setWarnings}
+      />
+    </Box>
   );
 }

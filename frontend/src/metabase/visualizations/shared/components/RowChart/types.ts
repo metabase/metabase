@@ -23,6 +23,7 @@ export type BarData<TDatum, TSeriesInfo = unknown> = {
   datumIndex: number;
   series: Series<TDatum, TSeriesInfo>;
   seriesIndex: number;
+  color?: string;
 };
 
 export type SeriesData<TDatum, TSeriesInfo = unknown> = {

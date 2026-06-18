@@ -4,6 +4,7 @@ import type {
   YAXisOption,
 } from "echarts/types/dist/shared";
 
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import { GRAPH_COLORS_SETTINGS } from "metabase/visualizations/lib/settings/graph";
@@ -165,7 +166,13 @@ describe("graph._dimension_value_colors (explorations per-bar colors)", () => {
     expect(computed["graph._dimension_value_colors"]).toEqual(colors);
   });
 
-  const DIMENSION_COLORS = { open: "#111111", closed: "#222222" };
+  const NULL_COLOR = "#333333";
+  const DIMENSION_COLORS = {
+    open: "#111111",
+    closed: "#222222",
+    [NULL_DISPLAY_VALUE]: NULL_COLOR,
+    null: NULL_COLOR,
+  };
 
   function setupCategoricalBar() {
     const categoricalSeries: SingleSeries = {
@@ -173,6 +180,7 @@ describe("graph._dimension_value_colors (explorations per-bar colors)", () => {
       data: createMockDatasetData({
         rows: [
           ["open", 200],
+          [null, 100],
           ["closed", 300],
         ],
         cols: [
@@ -219,7 +227,8 @@ describe("graph._dimension_value_colors (explorations per-bar colors)", () => {
     expect(typeof color).toBe("function");
     const colorFn = color as (params: CallbackDataParams) => string;
     expect(colorFn({ dataIndex: 0 } as CallbackDataParams)).toBe("#111111");
-    expect(colorFn({ dataIndex: 1 } as CallbackDataParams)).toBe("#222222");
+    expect(colorFn({ dataIndex: 1 } as CallbackDataParams)).toBe(NULL_COLOR);
+    expect(colorFn({ dataIndex: 2 } as CallbackDataParams)).toBe("#222222");
 
     // Hover (emphasis) inherits each bar's own per-point color. A function here
     // would render the bar black (ECharts doesn't resolve functional emphasis
@@ -242,10 +251,21 @@ describe("graph._dimension_value_colors (explorations per-bar colors)", () => {
       getMarkerColorClass("#111111"),
     );
 
-    const closedTooltip = getTooltipModel(
+    const nullTooltip = getTooltipModel(
       chartModel,
       settings,
       1,
+      "bar",
+      seriesDataKey,
+    );
+    expect(nullTooltip?.rows[0].markerColorClass).toBe(
+      getMarkerColorClass(NULL_COLOR),
+    );
+
+    const closedTooltip = getTooltipModel(
+      chartModel,
+      settings,
+      2,
       "bar",
       seriesDataKey,
     );

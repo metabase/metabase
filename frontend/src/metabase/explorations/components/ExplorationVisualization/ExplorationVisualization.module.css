@@ -74,3 +74,12 @@
   grid-template-columns: 1fr;
   grid-template-rows: minmax(22rem, 1fr) auto;
 }
+
+.warnings {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  margin-top: var(--mantine-spacing-md);
+  margin-right: var(--mantine-spacing-md);
+}

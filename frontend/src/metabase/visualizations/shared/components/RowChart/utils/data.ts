@@ -19,6 +19,7 @@ export const calculateNonStackedBars = <TDatum>(
   multipleSeries: Series<TDatum, SeriesInfo>[],
   seriesColors: Record<string, string>,
   xScaleType: ContinuousScaleType,
+  dimensionValueColors?: Record<string, string>,
 ) => {
   const defaultXValue = xScaleType === "log" ? 1 : 0;
   return multipleSeries.map((series, seriesIndex) => {
@@ -40,6 +41,7 @@ export const calculateNonStackedBars = <TDatum>(
           datumIndex,
           series,
           seriesIndex,
+          color: dimensionValueColors?.[String(yValue)],
         };
       },
     );

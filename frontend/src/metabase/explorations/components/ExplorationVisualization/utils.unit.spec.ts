@@ -26,7 +26,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  buildSeries,
+  buildSeriesGroup,
   buildSeriesGroups,
   getDocumentsForDocumentMenu,
   getHeatMapSeries,
@@ -72,6 +72,77 @@ function makeHeatMapSeries(name: string, rows: RowValues[]): SingleSeries {
   };
 }
 
+/** Matches MIN_ROWS_TO_SHOW_LINE_OR_BAR in utils.ts */
+const MIN_ROWS_TO_SHOW_LINE_OR_BAR = 3;
+
+function makeTsRows(count: number): RowValues[] {
+  return Array.from({ length: count }, (_, i) => [
+    `2025-01-${String(i + 1).padStart(2, "0")}`,
+    i + 1,
+  ]);
+}
+
+function makeCategoricalRows(
+  categories: RowValues,
+  valueFn: (index: number) => number = (index) => index + 1,
+): RowValues[] {
+  return categories.map((category, index) => [category, valueFn(index)]);
+}
+
+function ensureCategoriesAboveRowFallbackThreshold(
+  categories: string[],
+): string[] {
+  if (categories.length > MIN_ROWS_TO_SHOW_LINE_OR_BAR) {
+    return categories;
+  }
+  const result = [...categories];
+  for (let i = 0; result.length <= MIN_ROWS_TO_SHOW_LINE_OR_BAR; i++) {
+    result.push(`__extra-${i}`);
+  }
+  return result;
+}
+
+const TS_COL = createMockColumn({
+  name: "ts",
+  base_type: "type/DateTime",
+});
+const COUNT_COL = createMockColumn({
+  name: "count",
+  base_type: "type/Integer",
+});
+const CATEGORY_COL = createMockColumn({
+  name: "category",
+  base_type: "type/Text",
+});
+const STATE_COL = createMockColumn({
+  name: "state",
+  base_type: "type/Text",
+  semantic_type: "type/State",
+});
+
+/** Enough rows to keep line/bar charts (above the row-fallback threshold). */
+const tsDataset = makeDataset([TS_COL, COUNT_COL], makeTsRows(4));
+const categoricalDataset = makeDataset(
+  [CATEGORY_COL, COUNT_COL],
+  makeCategoricalRows(["A", "B", "C", "D"]),
+);
+const stateDataset = makeDataset([STATE_COL, COUNT_COL], [["CA", 10]]);
+const timeFacetDataset = makeDataset(
+  [CATEGORY_COL, TS_COL, COUNT_COL],
+  makeTsRows(4).map((row) => ["A", row[0], row[1]]),
+);
+
+/** Small datasets that trigger the row-chart fallback (at or below threshold). */
+const smallTsDataset = makeDataset([TS_COL, COUNT_COL], makeTsRows(1));
+const smallCategoricalDataset = makeDataset(
+  [CATEGORY_COL, COUNT_COL],
+  makeCategoricalRows(["A"]),
+);
+const smallTimeFacetDataset = makeDataset(
+  [CATEGORY_COL, TS_COL, COUNT_COL],
+  [["A", "2025-01-01", 1]],
+);
+
 describe("getHeatMapSeries", () => {
   it("labels the Segment column with the real segment name", () => {
     const { data } = getHeatMapSeries({
@@ -85,7 +156,7 @@ describe("getHeatMapSeries", () => {
         { name: "Enterprise", color: "#88BF4D" },
         { name: "SMB", color: "#A989C5" },
       ],
-    });
+    })[0];
 
     const segmentColumn = data.rows.map((row) => row[row.length - 1]);
     expect(segmentColumn).toEqual(["(All)", "Enterprise", "SMB"]);
@@ -267,20 +338,6 @@ describe("getMostInterestingTimelineId", () => {
 });
 
 describe("chartsForDocumentEmbed (via buildSeriesGroups)", () => {
-  const stateCol = createMockColumn({
-    name: "state",
-    base_type: "type/Text",
-    semantic_type: "type/State",
-  });
-  const countCol = createMockColumn({
-    name: "count",
-    base_type: "type/Integer",
-  });
-  const tsCol = createMockColumn({ name: "ts", base_type: "type/DateTime" });
-
-  const stateDataset = makeDataset([stateCol, countCol], [["CA", 10]]);
-  const tsDataset = makeDataset([tsCol, countCol], [["2025-01-01", 1]]);
-
   function getChartsForDocumentEmbed(
     queries: ExplorationQuery[],
     datasets: Dataset[],
@@ -436,7 +493,7 @@ describe("buildSeries (display selection)", () => {
         dataset: d,
       })),
     ];
-    return buildSeries({
+    return buildSeriesGroup({
       queriesWithDatasets: group,
       selectedTimelineId: null,
     });
@@ -444,14 +501,7 @@ describe("buildSeries (display selection)", () => {
 
   it("disables cartesian axis labels by default", () => {
     const query = makeQuery({ id: 1 });
-    const dataset = makeDataset(
-      [
-        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
-        createMockColumn({ name: "count", base_type: "type/Integer" }),
-      ],
-      [["2025-01-01", 1]],
-    );
-    const group = buildOneSeries(query, dataset);
+    const group = buildOneSeries(query, tsDataset);
     const settings = group.series[0].card.visualization_settings;
     expect(settings["graph.x_axis.labels_enabled"]).toBe(false);
     expect(settings["graph.y_axis.labels_enabled"]).toBe(false);
@@ -459,15 +509,7 @@ describe("buildSeries (display selection)", () => {
 
   it("enables the x-axis label for the 3-column time-facet shape", () => {
     const query = makeQuery({ id: 1, query_type: "time-facet" });
-    const dataset = makeDataset(
-      [
-        createMockColumn({ name: "category", base_type: "type/Text" }),
-        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
-        createMockColumn({ name: "count", base_type: "type/Integer" }),
-      ],
-      [["A", "2025-01-01", 1]],
-    );
-    const group = buildOneSeries(query, dataset);
+    const group = buildOneSeries(query, timeFacetDataset);
     const settings = group.series[0].card.visualization_settings;
     expect(settings["graph.x_axis.labels_enabled"]).toBe(true);
     expect(settings["graph.y_axis.labels_enabled"]).toBe(false);
@@ -475,14 +517,7 @@ describe("buildSeries (display selection)", () => {
 
   it("picks line with split panels for a 2-column timeseries dataset", () => {
     const query = makeQuery({ id: 1 });
-    const dataset = makeDataset(
-      [
-        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
-        createMockColumn({ name: "count", base_type: "type/Integer" }),
-      ],
-      [["2025-01-01", 1]],
-    );
-    const group = buildOneSeries(query, dataset);
+    const group = buildOneSeries(query, tsDataset);
     expect(group.series[0].card.display).toBe("line");
     expect(
       group.series[0].card.visualization_settings["graph.split_panels"],
@@ -532,16 +567,9 @@ describe("buildSeries (display selection)", () => {
 
   it("picks bar for a 2-column categorical dataset", () => {
     const query = makeQuery({ id: 1 });
-    const dataset = makeDataset(
-      [
-        createMockColumn({ name: "category", base_type: "type/Text" }),
-        createMockColumn({ name: "count", base_type: "type/Integer" }),
-      ],
-      [["A", 1]],
-    );
-    const group = buildOneSeries(query, dataset);
+    const group = buildOneSeries(query, categoricalDataset);
     expect(group.series[0].card.display).toBe("bar");
-    // No category color map was supplied (buildSeries called without
+    // No category color map was supplied (buildSeriesGroup called without
     // `categoryColors`), so the bar keeps default coloring — a strict no-op.
     expect(
       group.series[0].card.visualization_settings[
@@ -561,7 +589,7 @@ describe("buildSeries (display selection)", () => {
       ],
       [["A", 1]],
     );
-    const group = buildSeries({
+    const group = buildSeriesGroup({
       queriesWithDatasets: queries.map((q) => ({ ...q, dataset: categorical })),
       selectedTimelineId: null,
     });
@@ -569,26 +597,15 @@ describe("buildSeries (display selection)", () => {
   });
 
   it("assigns distinct map color ramps per segment name", () => {
-    const dataset = makeDataset(
-      [
-        createMockColumn({
-          name: "state",
-          base_type: "type/Text",
-          semantic_type: "type/State",
-        }),
-        createMockColumn({ name: "count", base_type: "type/Integer" }),
-      ],
-      [["CA", 10]],
-    );
-    const group = buildSeries({
+    const group = buildSeriesGroup({
       queriesWithDatasets: [
         {
           ...makeQuery({ id: 1, segment_id: 1, segment_name: "US" }),
-          dataset,
+          dataset: stateDataset,
         },
         {
           ...makeQuery({ id: 2, segment_id: 2, segment_name: "EU" }),
-          dataset,
+          dataset: stateDataset,
         },
       ],
       selectedTimelineId: null,
@@ -600,22 +617,62 @@ describe("buildSeries (display selection)", () => {
   });
 });
 
+describe("row chart fallback (via buildSeriesGroup)", () => {
+  function buildOneSeries(
+    query: ExplorationQuery,
+    dataset: Dataset,
+    extraQueriesInGroup: { query: ExplorationQuery; dataset: Dataset }[] = [],
+  ) {
+    const group = [
+      { ...query, dataset },
+      ...extraQueriesInGroup.map(({ query: q, dataset: d }) => ({
+        ...q,
+        dataset: d,
+      })),
+    ];
+    return buildSeriesGroup({
+      queriesWithDatasets: group,
+      selectedTimelineId: null,
+    });
+  }
+
+  it("falls back to row for a small timeseries dataset", () => {
+    const group = buildOneSeries(makeQuery({ id: 1 }), smallTsDataset);
+    expect(group.series[0].card.display).toBe("row");
+  });
+
+  it("falls back to row for a small categorical bar dataset", () => {
+    const group = buildOneSeries(makeQuery({ id: 1 }), smallCategoricalDataset);
+    expect(group.series[0].card.display).toBe("row");
+  });
+
+  it("falls back to row for a small time-facet dataset (counts unique dates)", () => {
+    const group = buildOneSeries(
+      makeQuery({ id: 1, query_type: "time-facet" }),
+      smallTimeFacetDataset,
+    );
+    expect(group.series[0].card.display).toBe("row");
+  });
+
+  it("falls back to row in document embed charts", () => {
+    const charts = buildSeriesGroups({
+      queries: [makeQuery({ id: 1, name: "Q1", dimension_id: "dim-1" })],
+      datasets: [smallTsDataset],
+      selectedTimelineId: null,
+    }).chartsForDocumentEmbed;
+
+    expect(charts).toHaveLength(1);
+    expect(charts[0].display).toBe("row");
+  });
+});
+
 describe("buildSeriesGroups", () => {
   it("groups queries by dimension_id and query_type", () => {
     const datasets = [
+      tsDataset,
       makeDataset(
-        [
-          createMockColumn({ name: "ts", base_type: "type/DateTime" }),
-          createMockColumn({ name: "count", base_type: "type/Integer" }),
-        ],
-        [["2025-01-01", 1]],
-      ),
-      makeDataset(
-        [
-          createMockColumn({ name: "ts", base_type: "type/DateTime" }),
-          createMockColumn({ name: "count", base_type: "type/Integer" }),
-        ],
-        [["2025-01-01", 2]],
+        [TS_COL, COUNT_COL],
+        makeTsRows(4).map((row) => [row[0], 2]),
       ),
     ];
     const queries = [
@@ -631,13 +688,6 @@ describe("buildSeriesGroups", () => {
   });
 
   it('picks "two-small-charts-down" for the temporal pattern trio', () => {
-    const tsDataset = makeDataset(
-      [
-        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
-        createMockColumn({ name: "count", base_type: "type/Integer" }),
-      ],
-      [["2025-01-01", 1]],
-    );
     const queries = [
       makeQuery({ id: 1, dimension_id: "dim-1", query_type: "default" }),
       makeQuery({
@@ -660,21 +710,6 @@ describe("buildSeriesGroups", () => {
   });
 
   it("assigns chart labels in labeled layouts and disables cartesian axis labels", () => {
-    const tsDataset = makeDataset(
-      [
-        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
-        createMockColumn({ name: "count", base_type: "type/Integer" }),
-      ],
-      [["2025-01-01", 1]],
-    );
-    const timeFacetDataset = makeDataset(
-      [
-        createMockColumn({ name: "category", base_type: "type/Text" }),
-        createMockColumn({ name: "ts", base_type: "type/DateTime" }),
-        createMockColumn({ name: "count", base_type: "type/Integer" }),
-      ],
-      [["A", "2025-01-01", 1]],
-    );
     const queries = [
       makeQuery({ id: 1, dimension_id: "dim-1", query_type: "default" }),
       makeQuery({
@@ -716,12 +751,13 @@ describe("category color matching (via buildSeriesGroups)", () => {
     createMockColumn({ name: "count", base_type: "type/Integer" });
 
   function barAndLineGroups(
-    categories: RowValues,
+    categories: string[],
     { withOverTime = true }: { withOverTime?: boolean } = {},
   ) {
+    const barCategories = ensureCategoriesAboveRowFallbackThreshold(categories);
     const barDataset = makeDataset(
       [STATE_COL(), COUNT_COL()],
-      categories.map((c, i) => [c, (i + 1) * 10]),
+      barCategories.map((category, index) => [category, (index + 1) * 10]),
     );
     const queries: ExplorationQuery[] = [
       makeQuery({ id: 1, dimension_id: "dim-state", query_type: "default" }),
@@ -731,7 +767,11 @@ describe("category color matching (via buildSeriesGroups)", () => {
     if (withOverTime) {
       const lineDataset = makeDataset(
         [STATE_COL(), TS_COL(), COUNT_COL()],
-        categories.map((c, i) => [c, "2025-01-01", (i + 1) * 2]),
+        barCategories.map((category, index) => [
+          category,
+          `2025-01-${String(index + 1).padStart(2, "0")}`,
+          (index + 1) * 2,
+        ]),
       );
       queries.push(
         makeQuery({
@@ -751,12 +791,13 @@ describe("category color matching (via buildSeriesGroups)", () => {
     return {
       bar: seriesGroups.find((g) => g.series[0].card.display === "bar"),
       line: seriesGroups.find((g) => g.series[0].card.display === "line"),
+      barCategories,
     };
   }
 
   it("colors bar categories with getColorsForValues, matching the over-time line", () => {
-    const { bar, line } = barAndLineGroups(["open", "closed"]);
-    const expected = getColorsForValues(["open", "closed"]);
+    const { bar, line, barCategories } = barAndLineGroups(["open", "closed"]);
+    const expected = getColorsForValues(barCategories);
 
     const barColors =
       bar?.series[0].card.visualization_settings[
@@ -780,11 +821,11 @@ describe("category color matching (via buildSeriesGroups)", () => {
   });
 
   it("colors bars from their own values when there is no over-time group", () => {
-    const { bar, line } = barAndLineGroups(["open", "closed"], {
+    const { bar, line, barCategories } = barAndLineGroups(["open", "closed"], {
       withOverTime: false,
     });
     expect(line).toBeUndefined();
-    const expected = getColorsForValues(["open", "closed"]);
+    const expected = getColorsForValues(barCategories);
     const barColors =
       bar?.series[0].card.visualization_settings[
         "graph._dimension_value_colors"
@@ -813,6 +854,8 @@ describe("category color matching (via buildSeriesGroups)", () => {
       [
         [5, 10],
         [null, 20],
+        [7, 30],
+        [9, 40],
       ],
     );
     // A numeric bar is colored only with an over-time companion, so include one.
@@ -820,7 +863,9 @@ describe("category color matching (via buildSeriesGroups)", () => {
       [numericCol(), TS_COL(), COUNT_COL()],
       [
         [5, "2025-01-01", 1],
-        [null, "2025-01-01", 2],
+        [null, "2025-01-02", 2],
+        [7, "2025-01-03", 3],
+        [9, "2025-01-04", 4],
       ],
     );
     const { seriesGroups } = buildSeriesGroups({
@@ -879,6 +924,7 @@ describe("category color matching (via buildSeriesGroups)", () => {
         ["a", 1],
         ["b", 2],
         ["c", 3],
+        ["d", 4],
       ],
     );
     // The over-time rows present the breakout values in a different order.
@@ -886,8 +932,9 @@ describe("category color matching (via buildSeriesGroups)", () => {
       [STATE_COL(), TS_COL(), COUNT_COL()],
       [
         ["c", "2025-01-01", 1],
-        ["a", "2025-01-01", 2],
-        ["b", "2025-01-01", 3],
+        ["a", "2025-01-02", 2],
+        ["b", "2025-01-03", 3],
+        ["d", "2025-01-04", 4],
       ],
     );
     const { seriesGroups } = buildSeriesGroups({
@@ -919,6 +966,7 @@ describe("category color matching (via buildSeriesGroups)", () => {
       "a",
       "b",
       "c",
+      "d",
     ]);
   });
 
@@ -938,14 +986,16 @@ describe("category color matching (via buildSeriesGroups)", () => {
         [0.75, 99],
         [0, 50],
         [1.5, 10],
+        [2.25, 5],
       ],
     );
     const lineDataset = makeDataset(
       [ratingCol(), TS_COL(), COUNT_COL()],
       [
         [1.5, "2025-01-01", 1],
-        [0, "2025-01-01", 2],
-        [0.75, "2025-01-01", 3],
+        [0, "2025-01-02", 2],
+        [0.75, "2025-01-03", 3],
+        [2.25, "2025-01-04", 4],
       ],
     );
     const { seriesGroups } = buildSeriesGroups({
@@ -968,7 +1018,7 @@ describe("category color matching (via buildSeriesGroups)", () => {
     // values (binned ranges), in the bar's order (0, 0.75, 1.5) — so they match
     // the line's series models even though the bar's x-axis shows plain numbers.
     const lineCol = line!.series[0].data.cols[0];
-    const expectedKeys = [0, 0.75, 1.5].map((v) =>
+    const expectedKeys = [0, 0.75, 1.5, 2.25].map((v) =>
       formatBreakoutValue(v, lineCol),
     );
     const order =
@@ -995,6 +1045,9 @@ describe("category color matching (via buildSeriesGroups)", () => {
     expect(barColors?.["1.5"]).toBe(
       order?.find((o) => o.key === expectedKeys[2])?.color,
     );
+    expect(barColors?.["2.25"]).toBe(
+      order?.find((o) => o.key === expectedKeys[3])?.color,
+    );
   });
 
   it("does not per-color a standalone binned bar (no over-time companion)", () => {
@@ -1012,6 +1065,7 @@ describe("category color matching (via buildSeriesGroups)", () => {
         [0, 50],
         [0.75, 99],
         [1.5, 10],
+        [2.25, 5],
       ],
     );
     const { seriesGroups } = buildSeriesGroups({
@@ -1059,6 +1113,7 @@ describe("category color matching (via buildSeriesGroups)", () => {
       [
         ["TX", 108000],
         ["MN", 65000],
+        ["CO", 40000],
         ["(Other)", 900000],
       ],
     );
@@ -1091,6 +1146,7 @@ describe("category color matching (via buildSeriesGroups)", () => {
     );
     expect(barColors?.["TX"]).toBe(colorScale(108000));
     expect(barColors?.["MN"]).toBe(colorScale(65000));
+    expect(barColors?.["CO"]).toBe(colorScale(40000));
     expect(barColors?.["(Other)"]).toBe(colorScale(900000));
     // Distinct value buckets get distinct colors.
     expect(barColors?.["TX"]).not.toBe(barColors?.["MN"]);
@@ -1102,6 +1158,8 @@ describe("category color matching (via buildSeriesGroups)", () => {
       [
         ["open", 10],
         ["closed", 20],
+        ["pending", 30],
+        ["archived", 40],
       ],
     );
     const dayDataset = makeDataset(
@@ -1109,6 +1167,8 @@ describe("category color matching (via buildSeriesGroups)", () => {
       [
         ["Sunday", 5],
         ["Monday", 6],
+        ["Tuesday", 7],
+        ["Wednesday", 8],
       ],
     );
     const { seriesGroups } = buildSeriesGroups({
