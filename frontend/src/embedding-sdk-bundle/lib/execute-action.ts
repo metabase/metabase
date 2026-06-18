@@ -1,6 +1,6 @@
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { SdkActionId } from "embedding-sdk-bundle/types/action";
-import { POST } from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 
 type ActionParametersPayload = Record<string, unknown>;
 
@@ -33,5 +33,9 @@ export const executeAction =
     actionId,
     parameters = {},
   }: ExecuteActionParams): Promise<ExecuteActionResult> => {
-    return await POST(`/api/action/${actionId}/execute`)({ parameters });
+    return (await api.request({
+      method: "POST",
+      url: `/api/action/${actionId}/execute`,
+      body: { parameters },
+    })) as ExecuteActionResult;
   };
