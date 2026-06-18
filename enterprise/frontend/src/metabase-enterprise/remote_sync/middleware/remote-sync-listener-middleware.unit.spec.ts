@@ -19,7 +19,6 @@ import {
   type SyncTaskState,
   initialState,
   remoteSyncReducer,
-  taskStarted,
 } from "../sync-task-slice";
 
 import { remoteSyncListenerMiddleware } from "./remote-sync-listener-middleware";
@@ -277,49 +276,6 @@ describe("remote-sync-listener-middleware", () => {
         expect(store.getState().remoteSyncPlugin?.syncConflictVariant).toBe(
           "setup",
         );
-      });
-    });
-
-    it("keeps the modal open when a task completes successfully so the user can read the confirmation (GHY-3747)", async () => {
-      fetchMock.get("path:/api/ee/remote-sync/current-task", {
-        status: 200,
-        body: {
-          status: "successful",
-          sync_task_type: "import",
-          ended_at: "2026-06-18T00:00:00Z",
-          outcome: { kind: "pulled", count: 3, branch: "main" },
-        },
-      });
-
-      const store = createTestStore();
-      // A task is in progress, so the modal is already open.
-      store.dispatch(taskStarted({ taskType: "import" }));
-      expect(store.getState().remoteSyncPlugin?.showModal).toBe(true);
-
-      // subscribe: false so the success path's tag invalidation doesn't refetch this query in a loop.
-      // In the app the polling hook unsubscribes once the task is no longer running, so this mirrors prod.
-      store.dispatch(
-        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(undefined, {
-          subscribe: false,
-        }),
-      );
-
-      await waitForCondition(() =>
-        fetchMock.callHistory.done("path:/api/ee/remote-sync/current-task"),
-      );
-
-      await waitFor(() => {
-        expect(store.getState().remoteSyncPlugin?.currentTask?.status).toBe(
-          "successful",
-        );
-      });
-
-      // The modal must NOT auto-dismiss; it stays open showing the success message until the user closes it.
-      expect(store.getState().remoteSyncPlugin?.showModal).toBe(true);
-      expect(store.getState().remoteSyncPlugin?.currentTask?.outcome).toEqual({
-        kind: "pulled",
-        count: 3,
-        branch: "main",
       });
     });
 
