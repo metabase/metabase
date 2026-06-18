@@ -15,7 +15,6 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -496,16 +495,15 @@
                          [:id {:optional true} ms/PositiveInt]
                          [:type {:optional true} ::deps.dependency-types/dependency-types]]]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
-  (lib-be/with-metadata-provider-cache
-    (let [starting-nodes [[type id]]
-          upstream-graph (readable-graph-dependencies {:include-archived-items :all})
-          downstream-graph (graph/cached-graph (readable-graph-dependents))
-          edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all}))
-          nodes (into (set starting-nodes)
-                      (graph/transitive upstream-graph starting-nodes))
-          edges (graph/edges-between edge-graph nodes)]
-      {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false})
-       :edges edges})))
+  (let [starting-nodes [[type id]]
+        upstream-graph (readable-graph-dependencies {:include-archived-items :all})
+        downstream-graph (graph/cached-graph (readable-graph-dependents))
+        edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all}))
+        nodes (into (set starting-nodes)
+                    (graph/transitive upstream-graph starting-nodes))
+        edges (graph/edges-between edge-graph nodes)]
+    {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false})
+     :edges edges}))
 
 (def ^:private sort-directions
   "Valid sort directions for dependency item endpoints."
@@ -609,37 +607,36 @@
          sort-column :name
          sort-direction :asc}} :- dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
-  (lib-be/with-metadata-provider-cache
-    (let [downstream-graph (graph/cached-graph (readable-graph-dependents {:broken broken}))
-          nodes (-> (graph/children-of downstream-graph [[type id]])
-                    (get [type id]))
-          dep-types-set (cond
-                          (nil? dependent-types) deps.dependency-types/dependency-types
-                          (sequential? dependent-types) (set dependent-types)
-                          :else #{dependent-types})
-          card-types-set (cond
-                           (nil? dependent-card-types) lib.schema.metadata/card-types
-                           (sequential? dependent-card-types) (set dependent-card-types)
-                           :else #{dependent-card-types})
-          dependents-filter
-          (comp
-           ;; Filter by dependent types and card types
-           (filter (fn [node]
-                     (and (or (nil? dep-types-set)
-                              (contains? dep-types-set (:type node)))
-                          (or (not= (:type node) :card)
-                              (nil? card-types-set)
-                              (contains? card-types-set (-> node :data :type))))))
-           ;; Filter out personal collections unless explicitly included
-           (if include-personal-collections
-             identity
-             (remove in-personal-collection?))
-           ;; Filter by query (sandboxes are excluded since they have no name or location)
-           (if query
-             (filter #(entity-matches-query? % query))
-             identity))]
-      (-> (into [] dependents-filter (expanded-nodes downstream-graph nodes {:include-errors? false}))
-          (sort-dependents sort-column sort-direction)))))
+  (let [downstream-graph (graph/cached-graph (readable-graph-dependents {:broken broken}))
+        nodes (-> (graph/children-of downstream-graph [[type id]])
+                  (get [type id]))
+        dep-types-set (cond
+                        (nil? dependent-types) deps.dependency-types/dependency-types
+                        (sequential? dependent-types) (set dependent-types)
+                        :else #{dependent-types})
+        card-types-set (cond
+                         (nil? dependent-card-types) lib.schema.metadata/card-types
+                         (sequential? dependent-card-types) (set dependent-card-types)
+                         :else #{dependent-card-types})
+        dependents-filter
+        (comp
+         ;; Filter by dependent types and card types
+         (filter (fn [node]
+                   (and (or (nil? dep-types-set)
+                            (contains? dep-types-set (:type node)))
+                        (or (not= (:type node) :card)
+                            (nil? card-types-set)
+                            (contains? card-types-set (-> node :data :type))))))
+         ;; Filter out personal collections unless explicitly included
+         (if include-personal-collections
+           identity
+           (remove in-personal-collection?))
+         ;; Filter by query (sandboxes are excluded since they have no name or location)
+         (if query
+           (filter #(entity-matches-query? % query))
+           identity))]
+    (-> (into [] dependents-filter (expanded-nodes downstream-graph nodes {:include-errors? false}))
+        (sort-dependents sort-column sort-direction))))
 
 (defn- entity-type-config
   [entity-type]
@@ -1011,51 +1008,50 @@
          sort-column :name
          sort-direction :asc}} :- broken-dependents-args]
   (api/read-check (deps.dependency-types/dependency-type->model entity-type) id)
-  (lib-be/with-metadata-provider-cache
-    (let [normalize-types (fn normalize-types [types]
-                            (if (keyword? types)
-                              [(name types)]
-                              (not-empty (map name types))))
-          dep-types (normalize-types dependent-types)
-          card-types (normalize-types dependent-card-types)
-          where-clause (cond-> [:and
-                                [:= :afe.source_entity_type (name entity-type)]
-                                [:= :afe.source_entity_id id]
-                                [:= :af.result false]
-                                (visible-entities-filter-clause
-                                 :afe.analyzed_entity_type
-                                 :afe.analyzed_entity_id
-                                 {:include-archived-items :exclude})]
-                         dep-types  (conj [:in :afe.analyzed_entity_type dep-types])
-                         card-types (conj [:or
-                                           [:!= :afe.analyzed_entity_type [:inline "card"]]
-                                           [:in :rc.type card-types]]))
-          broken-entity-pairs
-          (t2/query (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type]
-                                               [:afe.analyzed_entity_id :entity_id]]
-                             :from [[:analysis_finding_error :afe]]
-                             :join [[:analysis_finding :af]
-                                    [:and
-                                     [:= :af.analyzed_entity_type :afe.analyzed_entity_type]
-                                     [:= :af.analyzed_entity_id :afe.analyzed_entity_id]]]
-                             :where where-clause}
-                      card-types (assoc :left-join [[:report_card :rc]
-                                                    [:and
-                                                     [:= :afe.analyzed_entity_type [:inline "card"]]
-                                                     [:= :rc.id :afe.analyzed_entity_id]]])))
-          nodes (map (fn [{:keys [entity_type entity_id]}]
-                       [(keyword entity_type) entity_id])
-                     broken-entity-pairs)
-          nodes-by-type (-> (group-by first nodes)
-                            (update-vals #(map second %)))]
-      (-> (into [] (cond-> (map (fn [[[entity-type entity-id] entity]]
-                                  {:id entity-id
-                                   :type entity-type
-                                   :data (-> (select-keys entity (entity-keys entity-type))
-                                             (update-vals format-subentity))}))
-                     (not include-personal-collections) (comp (remove in-personal-collection?)))
-                (fetch-and-hydrate-nodes nodes-by-type))
-          (sort-dependents sort-column sort-direction)))))
+  (let [normalize-types (fn normalize-types [types]
+                          (if (keyword? types)
+                            [(name types)]
+                            (not-empty (map name types))))
+        dep-types (normalize-types dependent-types)
+        card-types (normalize-types dependent-card-types)
+        where-clause (cond-> [:and
+                              [:= :afe.source_entity_type (name entity-type)]
+                              [:= :afe.source_entity_id id]
+                              [:= :af.result false]
+                              (visible-entities-filter-clause
+                               :afe.analyzed_entity_type
+                               :afe.analyzed_entity_id
+                               {:include-archived-items :exclude})]
+                       dep-types  (conj [:in :afe.analyzed_entity_type dep-types])
+                       card-types (conj [:or
+                                         [:!= :afe.analyzed_entity_type [:inline "card"]]
+                                         [:in :rc.type card-types]]))
+        broken-entity-pairs
+        (t2/query (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type]
+                                             [:afe.analyzed_entity_id :entity_id]]
+                           :from [[:analysis_finding_error :afe]]
+                           :join [[:analysis_finding :af]
+                                  [:and
+                                   [:= :af.analyzed_entity_type :afe.analyzed_entity_type]
+                                   [:= :af.analyzed_entity_id :afe.analyzed_entity_id]]]
+                           :where where-clause}
+                    card-types (assoc :left-join [[:report_card :rc]
+                                                  [:and
+                                                   [:= :afe.analyzed_entity_type [:inline "card"]]
+                                                   [:= :rc.id :afe.analyzed_entity_id]]])))
+        nodes (map (fn [{:keys [entity_type entity_id]}]
+                     [(keyword entity_type) entity_id])
+                   broken-entity-pairs)
+        nodes-by-type (-> (group-by first nodes)
+                          (update-vals #(map second %)))]
+    (-> (into [] (cond-> (map (fn [[[entity-type entity-id] entity]]
+                                {:id entity-id
+                                 :type entity-type
+                                 :data (-> (select-keys entity (entity-keys entity-type))
+                                           (update-vals format-subentity))}))
+                   (not include-personal-collections) (comp (remove in-personal-collection?)))
+              (fetch-and-hydrate-nodes nodes-by-type))
+        (sort-dependents sort-column sort-direction))))
 
 (api.macros/defendpoint :get "/backfill-status" :- [:map
                                                     [:complete :boolean]]

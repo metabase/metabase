@@ -956,3 +956,57 @@
                              :breakout    (symbol "nil #_\"key is not present.\"")
                              :fields      (symbol "nil #_\"key is not present.\"")}]}
                   second-result)))))))
+
+(deftest ^:parallel partial-dimensions-fill-from-row-test
+  (testing "underlying-records drill fills in missing breakout-sourced row entries when the
+            FE provides only some of the dimensions (#73803)"
+    ;; Models a card where stage 1 has agg+breakouts (count by created-at:month, state); stage 2
+    ;; adds a filter `state = "AK"`. On the FE the scatter only puts CREATED_AT in graph.dimensions,
+    ;; so the click context's :dimensions has just CREATED_AT — STATE is present in :row but, at
+    ;; the last stage, its column metadata shows :source/previous-stage / :source :fields rather
+    ;; than a breakout. The drill must still apply STATE = clicked-value to the underlying records.
+    (let [base       (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (-> (meta/field-metadata :people :created-at)
+                                           (lib/with-temporal-bucket :month)))
+                         (lib/breakout (meta/field-metadata :people :state))
+                         lib/append-stage)
+          base-cols  (lib/returned-columns base)
+          created-at (lib.tu.notebook/find-col-with-spec
+                      base base-cols {} {:display-name "Created At: Month"})
+          state-col  (lib.tu.notebook/find-col-with-spec
+                      base base-cols {} {:display-name "State"})
+          count-col  (lib.tu.notebook/find-col-with-spec
+                      base base-cols {} {:display-name "Count"})
+          query      (lib/filter base (lib/= state-col "AK"))
+          context    {:column     count-col
+                      :column-ref (lib/ref count-col)
+                      :value      4
+                      :row        [{:column     created-at
+                                    :column-ref (lib/ref created-at)
+                                    :value      "2026-07-01T00:00:00Z"}
+                                   {:column     state-col
+                                    :column-ref (lib/ref state-col)
+                                    :value      "AK"}
+                                   {:column     count-col
+                                    :column-ref (lib/ref count-col)
+                                    :value      4}]
+                      :dimensions [{:column     created-at
+                                    :column-ref (lib/ref created-at)
+                                    :value      "2026-07-01T00:00:00Z"}]}
+          drill      (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                   (lib/available-drill-thrus query context))
+          _          (is (some? drill))
+          result     (lib/drill-thru query drill)]
+      (is (=? {:stages [{:source-table (meta/id :people)
+                         :filters      [[:between {}
+                                         [:field {:temporal-unit :month} (meta/id :people :created-at)]
+                                         string?
+                                         string?]
+                                        [:= {}
+                                         [:field {} (meta/id :people :state)]
+                                         "AK"]]
+                         :aggregation  (symbol "nil #_\"key is not present.\"")
+                         :breakout     (symbol "nil #_\"key is not present.\"")
+                         :fields       (symbol "nil #_\"key is not present.\"")}]}
+              result)))))

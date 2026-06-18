@@ -107,6 +107,7 @@ Start with one of the quickstarts, then see these pages for more info on compone
 - [Questions](./questions.md)
 - [AI chat](./ai-chat.md)
 - [Dashboards](./dashboards.md)
+- [Actions](./actions.md)
 - [Appearance](../appearance.md)
 - [Collections](./collections.md)
 - [Plugins](./plugins.md)

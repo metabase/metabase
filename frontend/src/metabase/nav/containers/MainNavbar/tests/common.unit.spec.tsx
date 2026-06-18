@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 
 import { screen, within } from "__support__/ui";
-import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { ROOT_COLLECTION } from "metabase/collections/constants";
 import * as Urls from "metabase/urls";
 import {
   createMockCard,
   createMockDashboard,
+  createMockModelResult,
   createMockUser,
 } from "metabase-types/api/mocks";
 
