@@ -131,11 +131,5 @@ function makeDecoyNode(pluginId: CustomVizPluginId, node: Node): Node {
     return node;
   }
 
-  if (!isEmbeddingSdk()) {
-    // we don't want to spam the host app with errors
-    console.error(
-      `[plugin ${pluginId}] swapped out-of-scope ${describeNode(node)} with decoy`,
-    );
-  }
   return decoy;
 }
