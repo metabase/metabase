@@ -232,18 +232,18 @@
 (deftest ^:parallel arithmetic-expression-type-of-test
   (testing "Make sure we can calculate correct type information for arithmetic expression"
     (let [field [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]
-      (testing "+, -, and * should return common ancestor type of all args")
-      (doseq [tag   [:+ :- :*]
-              arg-2 [1 1.0]
-              :let  [clause [tag {:lib/uuid (str (random-uuid))} field arg-2]]]
-        (testing (str \newline (pr-str clause))
-          (testing "assume :type/Number for refs with unknown types (#29946)"
-            (is (= :type/Number
-                   (lib.schema.expression/type-of clause))))
-          (is (= (condp = arg-2
-                   1   :type/Integer
-                   1.0 :type/Float)
-                 (lib/type-of (lib.tu/venues-query) clause)))))
+      (testing "+, -, and * should return common ancestor type of all args"
+        (doseq [tag   [:+ :- :*]
+                arg-2 [1 1.0]
+                :let  [clause [tag {:lib/uuid (str (random-uuid))} field arg-2]]]
+          (testing (str \newline (pr-str clause))
+            (testing "assume :type/Number for refs with unknown types (#29946)"
+              (is (= :type/Number
+                     (lib.schema.expression/type-of clause))))
+            (is (= (condp = arg-2
+                     1   :type/Integer
+                     1.0 :type/Float)
+                   (lib/type-of (lib.tu/venues-query) clause))))))
       (testing "/ should always return type/Float"
         (doseq [arg-2 [1 1.0]
                 :let  [clause [:/ {:lib/uuid (str (random-uuid))} field arg-2]]]

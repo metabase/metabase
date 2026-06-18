@@ -12,13 +12,24 @@ The Linear issue is the input. Everything else is reasoning over files.
 - **Max 3 attempts.** One attempt = diagnose → fix → push → 2 stress runs → interpret.
   After 3 failed attempts, stop and hand back.
 - **Branch existence is the go/no-go gate.** Before starting, check whether the remote branch
-  `automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>` already exists (Phase 0). If it does, a run
+  `automated-e2e-flake-fix-<LINEAR_ID>` already exists (Phase 0). If it does, a run
   is already in flight (or already landed a fix) → **stop, do nothing**. If it doesn't,
   proceed through the whole loop and push without pausing for confirmation. This runs
   identically whether a human or automation triggered the command.
 - **Linear access:** prefer the Linear MCP (`mcp__linear__*`); if it's unavailable (e.g.
   headless CI), fall back to the Linear REST/GraphQL API with a token — for both reads and
   comment writes.
+- **Always write to the *resolved* issue, never the raw `$ARGUMENTS` ref.** Issues are born
+  `DEV-####` and **re-keyed when moved to another team** (`DEV-2180` → `UXW-4514`). `get_issue`
+  resolves the old ref (it's redirect-aware), but `list_comments`/`save_comment` with the stale
+  ref **404**. Capture the issue's UUID + current identifier in Phase 0 and use the **UUID** for
+  every Linear read/write.
+- **Heartbeat — post progress at every phase boundary.** It's the only run-visibility in
+  headless CI (the GH job log isn't streamed live), so never skip it. Prefer ONE rolling comment
+  (record its id in the state file, update it in place); if your write path can't update, post
+  terse per-phase comments instead. Update at: run start (+ `GITHUB_ACTIONS_RUN_URL` if set),
+  diagnosis done (#1 reason + hypothesis), branch pushed + **both stress run URLs**, and each
+  attempt's verdict.
 - **Each attempt triggers TWO stress runs in parallel** — `enable_network_throttling=true`
   and `=false` — on the same branch/commit. The fix is verified only if **both** pass.
 - **CI is the source of truth.** No local Cypress runs, no `bin/` stress scripts.
@@ -31,18 +42,29 @@ The Linear issue is the input. Everything else is reasoning over files.
 ## Phase 0 — Resolve the target
 
 1. Parse `$ARGUMENTS`:
-   - If it's a Linear ref (`DEV-####` or a Linear URL) → `mcp__linear__get_issue`. Trunk
-     titles these `Quarantined Test: <suite> > <test name>`. Extract the **exact test
-     name** (the part after `> ` — this is the grep string) and the **suite**. Read the
-     body for failure detail / screenshots / stack, and capture the **ranked failure
-     reasons** (Trunk lists them "most common" first) — #1 is what you fix first (Phase 1).
+   - If it's a Linear ref (`DEV-####` or a Linear URL) → `mcp__linear__get_issue`. **Capture the
+     issue's UUID + current identifier + team** from the response and use them for all later
+     Linear ops (the ref you were handed may be stale — see the Linear-access rule). Read the
+     body for failure detail / screenshots / stack, and capture the **ranked failure reasons**
+     (Trunk lists them "most common" first) — #1 is what you fix first (Phase 1).
+   - **Derive the grep from the FULL Trunk test title, verbatim.** Trunk's `Test:` field is the
+     complete runtime title (e.g. `data model > data studio Undos allows to undo every action`).
+     Use the **whole string** as the grep — do **not** split on `>` or reduce it to the leaf
+     `it()` name. The `>` is often part of a `describe.each("… > %s")` template, not a separator,
+     and the discriminator (`data studio` vs `admin`) lives mid-title; dropping it makes the grep
+     match sibling parameterizations and burn the stress run on the wrong (non-flaky) branch.
    - Otherwise treat it as a spec path or fuzzy test name (fallback; no Linear context).
-2. **Compute the branch name + dedup gate (this is the go decision).** The branch name is
-   derived **only** from the Linear ref, never the test name:
-   `automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>` (e.g. `DEV-2181` →
+2. **Compute the branch name + dedup gate (this is the go decision).** `<LINEAR_ID>` is the **bare**
+   dispatched Linear identifier (e.g. `DEV-2180`) — the same value the workflow uses to build the
+   branch (`automated-e2e-flake-fix-<LINEAR_ID>`). If `$ARGUMENTS` is a Linear **URL**, extract the
+   `DEV-####` identifier from it first — a URL contains `/` and is not a valid branch component.
+   The branch name is derived **only** from `<LINEAR_ID>`, and it's the **dispatched** identifier —
+   never the re-keyed canonical id (so dedup stays stable across a team move) and never the test
+   name:
+   `automated-e2e-flake-fix-<LINEAR_ID>` (e.g. `DEV-2181` →
    `automated-e2e-flake-fix-DEV-2181`). Check whether it already exists on the remote:
    ```bash
-   git ls-remote --exit-code --heads origin automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
+   git ls-remote --exit-code --heads origin automated-e2e-flake-fix-<LINEAR_ID>
    ```
    - **Exists (exit 0)** → a run is already in flight or already landed a fix → **stop, do
      nothing.** This is the whole dedup mechanism.
@@ -50,23 +72,32 @@ The Linear issue is the input. Everything else is reasoning over files.
      confirmation.
    (On the no-Linear fallback path there's no ref to build the name from; that path stays
    interactive and is for local debugging only.)
-3. **Resolve the spec file** from the exact test name:
+3. **Resolve the spec file** using the leaf `it()` name (just to locate the file):
    ```bash
-   grep -rl "<exact test name>" e2e/test/scenarios
+   grep -rl "<leaf it() name>" e2e/test/scenarios
    ```
-   Require **exactly one** match. If 0 or >1, stop and ask the user to disambiguate. (Try
-   a shorter unique substring of the test name if the literal has special characters.)
+   Require **exactly one** *file* match. If 0 or >1, stop and ask the user to disambiguate. (Try
+   a shorter unique substring if the literal has special characters.) The **grep** passed to the
+   stress run is still the **full title** from step 1 — the leaf name is only for finding the file.
+   - **Watch for parameterized suites.** A single source `it()` under `describe.each(...)` /
+     `forEach` expands into **N runtime tests** (one per parameter), so one source match does
+     **not** mean one runtime test. Confirm the full-title grep targets exactly the flaky
+     parameterization (its discriminator must be present), or the stress run also executes the
+     non-flaky siblings — slow, and it dilutes `burn_in`.
 4. **Decide `qa_db`:** scan the spec / its `describe` for external-DB helpers
    (postgres/mysql/mongo-writable) or an `@external` tag → `true`, else `false`.
-5. **Write the state file** `local/claude/e2e-flake-fix/<TEAM_SLUG>-<ISSUE_NUMBER>.md`:
+5. **Write the state file** `local/claude/e2e-flake-fix/<LINEAR_ID>.md`:
    ```markdown
    # Flake fix: <test name>
-   - linear: <DEV-#### or n/a>
+   - linear_ref (dispatched): <DEV-#### or n/a>
+   - linear_uuid: <issue UUID — use for ALL Linear writes>
+   - linear_current_id: <e.g. UXW-#### — current identifier>
+   - heartbeat_comment_id: <set after the first progress comment>
    - spec: <spec path>
-   - test_name (grep): <exact test name>
+   - grep (full Trunk title): <full runtime title — NOT the leaf it() name>
    - qa_db: <true|false>
    - edition: ee
-   - branch: automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
+   - branch: automated-e2e-flake-fix-<LINEAR_ID>
    - attempt: 0 / 3
 
    ## Failure reasons (Trunk, ranked — fix #1 first)
@@ -105,7 +136,7 @@ The Linear issue is the input. Everything else is reasoning over files.
 
 - On **attempt 1 only**, create the branch computed in Phase 0 (dashes only, no `/`):
   ```bash
-  git switch -c automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
+  git switch -c automated-e2e-flake-fix-<LINEAR_ID>
   ```
   On later attempts, keep committing to the same branch.
 - Apply a **minimal** fix:
@@ -116,16 +147,17 @@ The Linear issue is the input. Everything else is reasoning over files.
     ordering). When you do, write the evidence for that conviction in the state file and
     keep the **blast radius minimal**.
 
-## Phase 2.5 — Share the diagnosis on Linear (offer before pushing)
+## Phase 2.5 — Share the diagnosis on Linear (before pushing)
 
-- Once you have a confirmed root cause and a fix in hand, **before** the push/CI gate,
-  offer to post the **debugging story** as a comment on the Linear issue. Draft it and
-  show it to the user; post via `mcp__linear__save_comment` only if they accept (let them
-  edit first). Keep it a tight narrative: the observed failure, the root cause (why the
-  request never fires), and the fix. Skip silently if there's no Linear issue (spec/test
-  fallback path).
-- This is a separate, earlier offer from the Phase 5 PR/closeout comment — the value here
-  is capturing the *why* while it's fresh, independent of whether CI later confirms.
+- Once you have a confirmed root cause and a fix in hand, **before** the push/CI gate, post
+  the **debugging story** to the resolved issue (this doubles as the diagnosis heartbeat).
+  Keep it a tight narrative: the observed failure, the root cause (why the request never
+  fires), and the fix. Skip silently only if there's no Linear issue (spec/test fallback path).
+- **Interactive vs headless:** when a human is driving interactively, draft it and let them
+  edit/approve first. When running **non-interactively** (headless CI, or the invocation says
+  not to ask), **just post it — never wait for an approval that can't come.**
+- This is separate from the Phase 5 closeout comment — the value here is capturing the *why*
+  while it's fresh, independent of whether CI later confirms.
 
 ## Phase 3 — Push + stress (burn_in=50, fail_fast=true)
 
@@ -169,7 +201,7 @@ TRIGGERED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 for throttle in true false; do
   gh workflow run e2e-stress-test-flake-fix.yml --ref <branch> \
     -f spec="<spec path>" \
-    -f grep="<exact test name>" \
+    -f grep="<full Trunk title from Phase 0 — NOT the leaf it() name>" \
     -f burn_in="50" \
     -f mb_edition="ee" \
     -f qa_db="<true|false>" \
@@ -223,10 +255,11 @@ done
   *necessary but not sufficient*: it proves the test is stable, not that the root cause was
   fixed rather than masked. The human owns the merge decision.
   The PR description **must follow this exact order**: (1) the **first line is ALWAYS
-  `Resolves <DEV-####>`**, then (2) the root cause / fix / stress-test sections. The PR body
+  `Resolves <current-identifier>`** (the **current** key from Phase 0, e.g. `UXW-####` — a stale
+  `DEV-####` may fail to link), then (2) the root cause / fix / stress-test sections. The PR body
   **must always include both stress-test runs** as links with their pass results:
   ```markdown
-  Resolves <DEV-####>
+  Resolves <current-identifier>
 
   ## Root cause
   <one paragraph>
@@ -250,7 +283,7 @@ done
 
 - **Always — attach the run log to Linear (regardless of outcome).** As the final step on
   both the fixed and exhausted paths, post the full state file
-  `local/claude/e2e-flake-fix/<TEAM_SLUG>-<ISSUE_NUMBER>.md` to the Linear issue as a comment titled
+  `local/claude/e2e-flake-fix/<LINEAR_ID>.md` to the Linear issue as a comment titled
   **"🤖 Flake-fix run log (audit trail)"** (fence it so it renders verbatim). This is the
   end-to-end audit trail — every hypothesis, fix, commit, run URL, and verdict — kept for a
   human reviewer and as a learning artifact even when the fix didn't land. Skip only on the
