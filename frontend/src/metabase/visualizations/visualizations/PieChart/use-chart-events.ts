@@ -32,6 +32,7 @@ export const getTooltipModel = (
   sliceKeyPath: string[],
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
+  settings: VisualizationProps["settings"],
 ): EChartsTooltipModel => {
   const { sliceTreeNode, nodes } = getSliceTreeNodesFromPath(
     chartModel.sliceTree,
@@ -72,10 +73,15 @@ export const getTooltipModel = (
     };
   });
 
+  const columnTitle = sliceTreeNode.column
+    ? (settings.column?.(sliceTreeNode.column)?.["column_title"] ??
+      sliceTreeNode.column.display_name)
+    : undefined;
+
   return {
     header:
       nodes.length === 1
-        ? sliceTreeNode.column?.display_name
+        ? columnTitle
         : nodes
             .slice(0, -1)
             .map((node) => node.name)
