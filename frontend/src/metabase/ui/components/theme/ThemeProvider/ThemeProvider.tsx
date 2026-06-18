@@ -11,7 +11,6 @@ import { getCspNonce } from "metabase/utils/csp";
 import type { ColorSettings } from "metabase-types/api";
 
 import { getThemeOverrides } from "../../../theme";
-import { OverlayStackProvider } from "../../overlays/overlay-stack";
 import { useColorScheme } from "../ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
@@ -107,9 +106,7 @@ export const ThemeProvider = ({
       withGlobalClasses={withGlobalClasses}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
-        <DatesProvider>
-          <OverlayStackProvider>{children}</OverlayStackProvider>
-        </DatesProvider>
+        <DatesProvider>{children}</DatesProvider>
       </_CompatibilityEmotionThemeProvider>
     </MantineProvider>
   );
