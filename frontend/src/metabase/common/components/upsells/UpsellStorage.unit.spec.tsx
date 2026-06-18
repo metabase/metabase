@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupPropertiesEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabaseListEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -35,6 +38,7 @@ const setup = ({
   };
 
   setupPropertiesEndpoints(createMockSettings(settingValues));
+  setupDatabaseListEndpoint([]);
   fetchMock.get("path:/api/ee/cloud-add-ons/addons", addOns);
   fetchMock.post("path:/api/ee/cloud-add-ons/dwh-rent", 200);
 
@@ -71,10 +75,16 @@ describe("UpsellStorage", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Add" }));
 
     expect(
-      await screen.findByText("1M stored rows included for free"),
+      await screen.findByText(
+        "Get a fully managed data warehouse. Upload CSV files and sync with Google Sheets.",
+      ),
     ).toBeInTheDocument();
-    // $0.000002 per row * 1M rows = $2
-    expect(screen.getByText(/\$2 per 1M of stored rows/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /You will not be charged until you reach 1M stored rows/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Add storage" }));
 
