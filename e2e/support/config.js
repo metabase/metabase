@@ -221,6 +221,7 @@ const defaultConfig = {
             console.log(
               "[quarantine-diag]",
               spec.relative,
+              `cwd=${process.cwd()}`,
               JSON.stringify(diag),
             );
           }

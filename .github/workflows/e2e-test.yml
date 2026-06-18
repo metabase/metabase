@@ -59,6 +59,11 @@ jobs:
     name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
     env:
       MB_EDITION: ${{ inputs.edition }}
+      # Absolute path for the quarantine failures file (DEV-2082). The after:spec
+      # recorder runs in Cypress' plugins process, whose cwd differs from the
+      # workspace where the gate step runs; an absolute path anchored to the
+      # workspace makes both agree regardless of cwd.
+      QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
       # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
