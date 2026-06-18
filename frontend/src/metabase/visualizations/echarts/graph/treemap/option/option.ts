@@ -94,6 +94,8 @@ export function getTreemapChartOption(config: TreemapChartOptionConfig): {
   const groupLevel: NonNullable<TreemapSeriesOption["levels"]>[number] = {
     itemStyle: { borderWidth: 0, gapWidth: 1 },
     upperLabel: groupUpperLabel,
+    // no label by default for groups; this is overridden on per-group basis
+    label: { show: false },
   };
 
   const series: TreemapChartSeriesOption = {
@@ -356,7 +358,7 @@ function getTileLabelOverride({
     ? getTextColorForBackground(backgroundColor, renderingContext.getColor)
     : undefined;
   const leafLabelStyle = getLeafLabelStyle(renderingContext, textColor);
-  // ECharts truncation is unreliable, so we use our own trunaction logic
+  // ECharts truncation is unreliable, so we use our own truncation logic
   const leafName = truncateText(
     displayName,
     layout.width,
