@@ -29,24 +29,15 @@
    [:last_executed_at [:maybe :any]]])
 
 (def ^:private MergedIndex
+  "A merged-list index entry. Both Metabase-managed and database-managed (DBA) indexes share this shape; a DBA index
+  is just an index without the app-DB bookkeeping (`:id`, `:created_by`, `:created_at`, `:updated_at`)."
   [:map
-   [:name              [:maybe ms/NonBlankString]]
-   [:kind              :keyword]
-   [:access-method     [:maybe :string]]
-   [:is-unique         :boolean]
-   [:is-primary        :boolean]
-   [:is-valid          :boolean]
-   [:key-columns       [:sequential [:maybe :string]]]
-   [:include-columns   [:sequential [:maybe :string]]]
-   [:partial-predicate [:maybe :string]]
-   [:definition        [:maybe :string]]
-   [:metabase_managed     :boolean]
-   [:present_in_warehouse :boolean]
-   ;; lifecycle -- present only on managed entries
+   [:metabase_managed  :boolean]
+   [:transform_id      ms/PositiveInt]
+   [:structured        ::schema/index-structured]
+   [:status            [:enum :pending :running :succeeded :failed :dropped]]
+   ;; managed-only -- absent on DBA indexes
    [:id               {:optional true} ms/PositiveInt]
-   [:transform_id     {:optional true} ms/PositiveInt]
-   [:structured       {:optional true} ::schema/index-structured]
-   [:status           {:optional true} [:enum :pending :running :succeeded :failed :dropped]]
    [:error_message    {:optional true} [:maybe :string]]
    [:created_by       {:optional true} [:maybe ms/PositiveInt]]
    [:created_at       {:optional true} :any]
@@ -71,7 +62,7 @@
 
 (api.macros/defendpoint :get "/" :- [:map [:data [:sequential MergedIndex]]]
   "List a transform's index hints: Metabase-managed indexes merged with the indexes physically present in the
-  warehouse. Each entry is flagged `:metabase_managed` and `:present_in_warehouse`."
+  warehouse. Each entry is flagged `:metabase_managed` -- false for an index a DBA created by hand."
   [_route-params
    {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
   (api/read-check :model/Transform transform-id)
@@ -81,7 +72,7 @@
         warehouse (when database
                     (reconcile/fetch-warehouse-indexes
                      (t2/select-one :model/Database database) schema table-name))]
-    {:data (reconcile/merge-indexes managed (or warehouse []))}))
+    {:data (reconcile/merge-indexes transform-id managed (or warehouse []))}))
 
 (api.macros/defendpoint :get "/:id" :- TableIndex
   "Fetch a single managed index (e.g. to poll its status)."

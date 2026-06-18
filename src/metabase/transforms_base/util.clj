@@ -616,7 +616,7 @@
         (when (seq warehouse)
           (let [present-keys (into #{} (map reconcile/match-key) warehouse)]
             (doseq [row managed]
-              (let [present? (contains? present-keys (reconcile/match-key (reconcile/normalize-managed row)))]
+              (let [present? (contains? present-keys (reconcile/managed-match-key row))]
                 (t2/update! :model/TableIndex (:id row)
                             {:status           (if present? :succeeded :failed)
                              :last_executed_at :%now})))))))))

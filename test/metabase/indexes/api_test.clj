@@ -61,16 +61,17 @@
       (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] wh)]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
                                                    (str "indexes?transform-id=" transform-id))
-              by-name (group-by :name data)]
-          (testing "managed index is flagged managed + present"
+              by-name (group-by #(get-in % [:structured :name]) data)]
+          (testing "the managed index renders from its stored structured, flagged managed"
             (let [e (first (get by-name "by_cat"))]
               (is (true? (:metabase_managed e)))
-              (is (true? (:present_in_warehouse e)))
               (is (= (:id created) (:id e)))))
-          (testing "DBA index appears, unmanaged"
+          (testing "the DBA index appears, unmanaged, converted from the warehouse, no app-DB bookkeeping"
             (let [e (first (get by-name "dba_made"))]
               (is (false? (:metabase_managed e)))
-              (is (true? (:present_in_warehouse e)))))
+              (is (= "succeeded" (:status e)))
+              (is (nil? (:id e)))
+              (is (= "price" (-> e :structured :columns first :name)))))
           (testing "nothing unmanaged was persisted"
             (is (= 1 (count (t2/select :model/TableIndex :transform_id transform-id))))))))))
 
