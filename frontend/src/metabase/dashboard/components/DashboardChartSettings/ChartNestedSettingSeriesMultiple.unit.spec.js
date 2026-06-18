@@ -1,11 +1,14 @@
-// these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
+// Exercises the multi-series settings UI (ChartNestedSettingSeries)
+// It lives here because widget is only shown in dashboard context
+// so it can only be rendered through DashboardChartSettings.
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { DashboardChartSettings } from "metabase/dashboard/components/DashboardChartSettings";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import registerVisualizations from "metabase/visualizations/register";
 import { createMockCard } from "metabase-types/api/mocks";
+
+import { DashboardChartSettings } from "./DashboardChartSettings";
 
 registerVisualizations();
 

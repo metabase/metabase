@@ -7,10 +7,9 @@ import ActionParametersInputForm, {
 } from "metabase/actions/containers/ActionParametersInputForm";
 import { useActionInitialValues } from "metabase/actions/hooks/use-action-initial-values";
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
-import { actionApi } from "metabase/api";
+import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useDispatch } from "metabase/redux";
-import { PublicApi } from "metabase/services";
 import { Modal } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
@@ -97,11 +96,15 @@ function ActionVizForm({
     }
 
     if (getDashboardType(dashboard.id) === "public") {
-      return PublicApi.prefetchDashcardValues({
-        dashboardId: dashboard.id,
-        dashcardId: dashcard.id,
-        parameters: JSON.stringify(dashcardParamValues),
-      });
+      return runRtkEndpoint(
+        {
+          dashboardId: dashboard.id,
+          dashcardId: dashcard.id,
+          parameters: JSON.stringify(dashcardParamValues),
+        },
+        dispatch,
+        publicApi.endpoints.prefetchPublicDashcardValues,
+      );
     }
 
     return runRtkEndpoint(
