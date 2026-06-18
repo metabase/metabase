@@ -101,7 +101,7 @@ export const sdkCustomVizAssetManager = {
     }
     return promise;
   },
-  releaseCustomVizAsset: (pluginId: number) => {
+  releaseCustomVizAsset: (pluginId: CustomVizPluginId) => {
     const objectUrl = pluginToIconBlob.get(pluginId);
     if (objectUrl) {
       URL.revokeObjectURL(objectUrl);

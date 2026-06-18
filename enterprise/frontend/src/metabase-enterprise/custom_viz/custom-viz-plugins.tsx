@@ -45,7 +45,7 @@ import { usePluginMount } from "./use-plugin-mount";
 // Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
 // bundle (or a dev server reload) produced new bytes.
 const loadedPlugins = new Map<
-  number,
+  CustomVizPluginId,
   { identifier: string; hash: string | null }
 >();
 

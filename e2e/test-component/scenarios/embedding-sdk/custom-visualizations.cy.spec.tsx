@@ -12,6 +12,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import type { CardId } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -62,7 +63,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
   });
 
   it("renders the custom visualization when the identifier is in allowedCustomVisualizations", () => {
-    cy.get<number>("@questionId").then((questionId) => {
+    cy.get<CardId>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
         sdkProviderProps: {
           allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
@@ -77,7 +78,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
   });
 
   it("allows selecting the custom visualization from the chart type dropdown", () => {
-    cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+    cy.get<CardId>("@defaultDisplayQuestionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
         sdkProviderProps: {
           allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
@@ -103,7 +104,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
   });
 
   it("falls back to the default visualization when the prop is omitted", () => {
-    cy.get<number>("@questionId").then((questionId) => {
+    cy.get<CardId>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
         sdkProviderProps: {
           allowedCustomVisualizations: undefined,
@@ -118,7 +119,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
   });
 
   it("falls back to the default visualization when allowedCustomVisualizations is empty", () => {
-    cy.get<number>("@questionId").then((questionId) => {
+    cy.get<CardId>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
         sdkProviderProps: {
           allowedCustomVisualizations: [],
@@ -134,7 +135,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
 
   describe("initialVisualization", () => {
     it("applies a custom visualization as the initial visualization when enabled", () => {
-      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+      cy.get<CardId>("@defaultDisplayQuestionId").then((questionId) => {
         mountSdkContent(
           <InteractiveQuestion
             questionId={questionId}
@@ -166,7 +167,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
 
     it("applies a regular visualization as the initial visualization", () => {
-      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+      cy.get<CardId>("@defaultDisplayQuestionId").then((questionId) => {
         mountSdkContent(
           <InteractiveQuestion
             questionId={questionId}
@@ -186,7 +187,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
 
     it("applies the custom visualization when it is both the saved display and the initial visualization", () => {
-      cy.get<number>("@questionId").then((questionId) => {
+      cy.get<CardId>("@questionId").then((questionId) => {
         mountSdkContent(
           <InteractiveQuestion
             questionId={questionId}
@@ -208,7 +209,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
 
     it("applies a regular initial visualization over a saved custom display", () => {
-      cy.get<number>("@questionId").then((questionId) => {
+      cy.get<CardId>("@questionId").then((questionId) => {
         mountSdkContent(
           <InteractiveQuestion
             questionId={questionId}
@@ -230,7 +231,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
 
     it("falls back to the saved visualization when the custom viz is not enabled", () => {
-      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+      cy.get<CardId>("@defaultDisplayQuestionId").then((questionId) => {
         mountSdkContent(
           <InteractiveQuestion
             questionId={questionId}
@@ -246,7 +247,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
 
     it("falls back to the saved visualization when the custom viz doesn't exist", () => {
-      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+      cy.get<CardId>("@defaultDisplayQuestionId").then((questionId) => {
         mountSdkContent(
           <InteractiveQuestion
             questionId={questionId}
@@ -269,7 +270,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
 
   describe("allowlist via allowedCustomVisualizations", () => {
     it("renders the custom visualization when the identifier is in the allowlist", () => {
-      cy.get<number>("@questionId").then((questionId) => {
+      cy.get<CardId>("@questionId").then((questionId) => {
         mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
           sdkProviderProps: {
             allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
@@ -283,7 +284,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
 
     it("falls back to the default visualization when the identifier is not in the allowlist", () => {
-      cy.get<number>("@questionId").then((questionId) => {
+      cy.get<CardId>("@questionId").then((questionId) => {
         mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
           sdkProviderProps: {
             allowedCustomVisualizations: ["some-other-plugin"],
@@ -298,7 +299,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
 
     it("falls back to the default visualization when the allowlist is empty", () => {
-      cy.get<number>("@questionId").then((questionId) => {
+      cy.get<CardId>("@questionId").then((questionId) => {
         mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
           sdkProviderProps: {
             allowedCustomVisualizations: [],
