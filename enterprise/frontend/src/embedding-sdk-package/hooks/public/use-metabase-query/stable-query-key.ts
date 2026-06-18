@@ -1,6 +1,5 @@
-export function stableStringifyQuery(query: unknown) {
-  return JSON.stringify(sortQueryObject(query));
-}
+export const stableStringifyQuery = (query: unknown) =>
+  JSON.stringify(sortQueryObject(query));
 
 function sortQueryObject(value: unknown): unknown {
   if (value === null || typeof value !== "object") {

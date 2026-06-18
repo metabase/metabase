@@ -19,36 +19,26 @@ import type {
   TableQueryRuntime,
 } from "./runtime-types";
 
-export function isQuestionQuery(
+export const isQuestionQuery = (
   query: MetabaseQueryRuntime,
-): query is QuestionQueryRuntime {
-  return query.questionId != null;
-}
+): query is QuestionQueryRuntime => query.questionId != null;
 
-export function isTableQuery(
+export const isTableQuery = (
   query: MetabaseQueryRuntime,
-): query is TableQueryRuntime {
-  return getTableId(query) != null;
-}
+): query is TableQueryRuntime => getTableId(query) != null;
 
-export function isMetricQuery(
+export const isMetricQuery = (
   query: MetabaseQueryRuntime,
-): query is MetricQueryRuntime {
-  return getMetricId(query) != null;
-}
+): query is MetricQueryRuntime => getMetricId(query) != null;
 
-export function isUnaryOperator(operator: string) {
-  return (
-    operator === "is-empty" ||
-    operator === "not-empty" ||
-    operator === "is-null" ||
-    operator === "not-null"
-  );
-}
+export const isUnaryOperator = (operator: string) =>
+  operator === "is-empty" ||
+  operator === "not-empty" ||
+  operator === "is-null" ||
+  operator === "not-null";
 
-export function isNotNull<TValue>(value: TValue | null): value is TValue {
-  return value !== null;
-}
+export const isNotNull = <TValue>(value: TValue | null): value is TValue =>
+  value !== null;
 
 export function getMetricId(query: unknown): ID | null {
   if (typeof query !== "object" || query == null) {
@@ -94,135 +84,104 @@ export function getTableDatabaseId(query: TableQueryRuntime): ID | null {
   return null;
 }
 
-export function getMetricMappedTableIds(
+export const getMetricMappedTableIds = (
   query: MetricQueryRuntime,
-): readonly number[] | null {
-  return isMetricReference(query.metric) ? query.metric.mappedTableIds : null;
-}
+): readonly number[] | null =>
+  isMetricReference(query.metric) ? query.metric.mappedTableIds : null;
 
-export function getMetricDatabaseId(query: MetricQueryRuntime): ID | null {
-  return isMetricReference(query.metric) && query.metric.databaseId != null
+export const getMetricDatabaseId = (query: MetricQueryRuntime): ID | null =>
+  isMetricReference(query.metric) && query.metric.databaseId != null
     ? query.metric.databaseId
     : null;
-}
 
-export function getMetricSourceTableId(query: MetricQueryRuntime): ID | null {
-  return isMetricReference(query.metric) && query.metric.sourceTableId != null
+export const getMetricSourceTableId = (query: MetricQueryRuntime): ID | null =>
+  isMetricReference(query.metric) && query.metric.sourceTableId != null
     ? query.metric.sourceTableId
     : null;
-}
 
-export function isDimensionFilter(
+export const isDimensionFilter = (
   value: unknown,
-): value is DimensionFilterRuntime {
-  return typeof value === "object" && value != null && "dimension" in value;
-}
+): value is DimensionFilterRuntime =>
+  typeof value === "object" && value != null && "dimension" in value;
 
-export function isMetricDimensionFilter(
+export const isMetricDimensionFilter = (
   value: unknown,
-): value is MetricDimensionFilterRuntime {
-  return isDimensionFilter(value) && isMetricDimensionSchema(value.dimension);
-}
+): value is MetricDimensionFilterRuntime =>
+  isDimensionFilter(value) && isMetricDimensionSchema(value.dimension);
 
-export function isTableDimensionFilter(
+export const isTableDimensionFilter = (
   value: unknown,
-): value is DimensionFilterRuntime & { dimension: FieldSchema } {
-  return isDimensionFilter(value) && isTableFieldSchema(value.dimension);
-}
+): value is DimensionFilterRuntime & { dimension: FieldSchema } =>
+  isDimensionFilter(value) && isTableFieldSchema(value.dimension);
 
-export function isSegmentSchema(
+export const isSegmentSchema = (
   value: unknown,
-): value is SegmentReferenceRuntime {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "kind" in value &&
-    value.kind === "segment"
-  );
-}
+): value is SegmentReferenceRuntime =>
+  typeof value === "object" &&
+  value != null &&
+  "kind" in value &&
+  value.kind === "segment";
 
-export function isMeasureSchema(
+export const isMeasureSchema = (
   value: unknown,
-): value is MeasureReferenceRuntime {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "kind" in value &&
-    value.kind === "measure"
-  );
-}
+): value is MeasureReferenceRuntime =>
+  typeof value === "object" &&
+  value != null &&
+  "kind" in value &&
+  value.kind === "measure";
 
-export function isCountAggregation(
+export const isCountAggregation = (
   value: unknown,
-): value is CountAggregationRuntime {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "type" in value &&
-    value.type === "count"
-  );
-}
+): value is CountAggregationRuntime =>
+  typeof value === "object" &&
+  value != null &&
+  "type" in value &&
+  value.type === "count";
 
-export function isFieldAggregation(
+export const isFieldAggregation = (
   value: unknown,
-): value is FieldAggregationRuntime {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "type" in value &&
-    "dimension" in value &&
-    (value.type === "sum" ||
-      value.type === "avg" ||
-      value.type === "median" ||
-      value.type === "distinct" ||
-      value.type === "min" ||
-      value.type === "max")
-  );
-}
+): value is FieldAggregationRuntime =>
+  typeof value === "object" &&
+  value != null &&
+  "type" in value &&
+  "dimension" in value &&
+  (value.type === "sum" ||
+    value.type === "avg" ||
+    value.type === "median" ||
+    value.type === "distinct" ||
+    value.type === "min" ||
+    value.type === "max");
 
-export function isMetricReference(
+export const isMetricReference = (
   value: unknown,
-): value is MetricReferenceRuntime {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "id" in value &&
-    "mappedTableIds" in value &&
-    Array.isArray(value.mappedTableIds)
-  );
-}
+): value is MetricReferenceRuntime =>
+  typeof value === "object" &&
+  value != null &&
+  "id" in value &&
+  "mappedTableIds" in value &&
+  Array.isArray(value.mappedTableIds);
 
-function isTableReference(value: unknown): value is TableSchema {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "id" in value &&
-    "databaseId" in value
-  );
-}
+const isTableReference = (value: unknown): value is TableSchema =>
+  typeof value === "object" &&
+  value != null &&
+  "id" in value &&
+  "databaseId" in value;
 
-export function isFieldSchema(
+export const isFieldSchema = (
   value: unknown,
-): value is FieldSchema | MetricDimensionSchema {
-  return isTableFieldSchema(value) || isMetricDimensionSchema(value);
-}
+): value is FieldSchema | MetricDimensionSchema =>
+  isTableFieldSchema(value) || isMetricDimensionSchema(value);
 
-export function isTableFieldSchema(value: unknown): value is FieldSchema {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    !("metricId" in value) &&
-    ("fieldId" in value || "id" in value)
-  );
-}
+export const isTableFieldSchema = (value: unknown): value is FieldSchema =>
+  typeof value === "object" &&
+  value != null &&
+  !("metricId" in value) &&
+  ("fieldId" in value || "id" in value);
 
-export function isMetricDimensionSchema(
+export const isMetricDimensionSchema = (
   value: unknown,
-): value is MetricDimensionSchema {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "metricId" in value &&
-    "id" in value
-  );
-}
+): value is MetricDimensionSchema =>
+  typeof value === "object" &&
+  value != null &&
+  "metricId" in value &&
+  "id" in value;
