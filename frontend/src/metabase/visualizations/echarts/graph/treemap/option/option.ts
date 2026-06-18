@@ -420,6 +420,7 @@ function getUpperLabelDefault({
     fontWeight: groupHeader.fontWeight,
     lineHeight: height,
     padding: [0, groupHeader.paddingX],
+    overflow: "truncate",
   };
 }
 
