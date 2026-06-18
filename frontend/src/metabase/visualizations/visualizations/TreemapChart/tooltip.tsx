@@ -1,3 +1,4 @@
+import type { EChartsType } from "echarts/core";
 import type { TooltipOption } from "echarts/types/dist/shared";
 import _ from "underscore";
 
@@ -8,9 +9,13 @@ import {
   type TreemapInlineValueIds,
   getTreemapTooltipContext,
   getTreemapTooltipModel,
+  isGroupHeaderNode,
+  isPointerBelowGroupHeader,
   isTreemapTooltipSuppressed,
 } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
+import { getTreemapNodeRectById } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import type {
+  ChartPointer,
   TreemapNode,
   TreemapTree,
 } from "metabase/visualizations/echarts/graph/treemap/model/types";
@@ -28,6 +33,9 @@ export function getTreemapTooltipOption(
   getViewRootId: () => string | null,
   getIsClicked: () => boolean,
   getIsAnimating: () => boolean,
+  getChart: () => EChartsType | undefined,
+  getPointer: () => ChartPointer | null,
+  headerHeight: number,
   inlineValueIds: TreemapInlineValueIds,
   groupingHeader?: string,
 ): TooltipOption {
@@ -54,6 +62,19 @@ export function getTreemapTooltipOption(
         isTreemapTooltipSuppressed(id, viewRootId, isTwoLevel, inlineValueIds)
       ) {
         return "";
+      }
+
+      if (isGroupHeaderNode(id, viewRootId, isTwoLevel)) {
+        const chart = getChart();
+        const pointer = getPointer();
+        const rect = chart ? getTreemapNodeRectById(chart, id) : null;
+        if (
+          rect == null ||
+          pointer == null ||
+          isPointerBelowGroupHeader(rect, pointer, headerHeight)
+        ) {
+          return "";
+        }
       }
       const context = getTreemapTooltipContext(
         tree,

@@ -16,7 +16,10 @@ import { shouldShowParentLabels } from "metabase/visualizations/echarts/graph/tr
 import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
 import { isOverview } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
-import { getChartPadding } from "metabase/visualizations/echarts/graph/treemap/style";
+import {
+  getChartPadding,
+  groupHeader,
+} from "metabase/visualizations/echarts/graph/treemap/style";
 import {
   useCloseTooltipOnScroll,
   useInjectSeriesColorsClasses,
@@ -31,6 +34,7 @@ import { dispatchTreemapViewRoot, useChartEvents } from "./events";
 import { type TreemapHoverOverlay, hideTreemapHoverOverlay } from "./overlay";
 import { getTreemapTooltipOption } from "./tooltip";
 import { useLabelMeasurement } from "./use-label-measurement";
+import { usePointerTracking } from "./use-pointer-tracking";
 import { useTreemapNavigation } from "./use-treemap-navigation";
 
 export const TreemapChart = ({
@@ -53,6 +57,8 @@ export const TreemapChart = ({
   const overlayRef = useRef<TreemapHoverOverlay | null>(null);
   const isAnimatingRef = useRef(false);
   const clickedRef = useLatest(clicked);
+
+  const { zrEventHandlers, getPointer } = usePointerTracking();
 
   const chartData = useMemo(() => {
     const cols = rawSeriesWithRemappings[0]?.data?.cols ?? [];
@@ -105,11 +111,12 @@ export const TreemapChart = ({
       return null;
     }
     const { tree, colors, treemapColumns } = chartData;
+    const showParentLabels = shouldShowParentLabels(gridSize, settings);
     const seriesOption = getTreemapChartOption({
       tree,
       colors,
       isDrilled: viewRootId !== null,
-      showParentLabels: shouldShowParentLabels(gridSize, settings),
+      showParentLabels,
       showLeafLabels,
       isCompact,
       labelLayout,
@@ -118,6 +125,12 @@ export const TreemapChart = ({
       formatPercent: formatters.percent,
       renderingContext,
     });
+
+    const headerHeight = showParentLabels
+      ? isCompact
+        ? groupHeader.compactHeight
+        : groupHeader.height
+      : 0;
 
     return {
       ...seriesOption,
@@ -130,6 +143,9 @@ export const TreemapChart = ({
         () => viewRootIdRef.current,
         () => clickedRef.current != null,
         () => isAnimatingRef.current,
+        () => chartRef.current,
+        getPointer,
+        headerHeight,
         getTreemapInlineValueIds(labelLayout, parentLabelLayout),
         treemapColumns.grouping.column.display_name,
       ),
@@ -146,6 +162,7 @@ export const TreemapChart = ({
     parentLabelLayout,
     renderingContext,
     clickedRef,
+    getPointer,
   ]);
 
   const handleInit = useCallback((chart: EChartsType) => {
@@ -252,6 +269,7 @@ export const TreemapChart = ({
           ref={containerRef}
           option={option}
           eventHandlers={allEventHandlers}
+          zrEventHandlers={zrEventHandlers}
           onInit={handleInit}
           onResize={handleResize}
         />

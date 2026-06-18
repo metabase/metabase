@@ -8,7 +8,12 @@ import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 
 import type { ParentLabelLayout, TreemapLabelLayout } from "./labels";
 import { getSiblings, isOverview, parseTreemapNodeId } from "./tree";
-import type { TreemapNode, TreemapTree } from "./types";
+import type {
+  ChartPointer,
+  TreemapNode,
+  TreemapRect,
+  TreemapTree,
+} from "./types";
 import { getTreemapTotal } from "./value";
 
 export interface TreemapTooltipContext {
@@ -48,10 +53,7 @@ export function isTreemapTooltipSuppressed(
   isTwoLevel: boolean,
   { fullLeafIds, valuePercentHeaderIds }: TreemapInlineValueIds,
 ): boolean {
-  const { leafIndex } = parseTreemapNodeId(id);
-  const isGroupHeader =
-    isOverview(viewRootId) && isTwoLevel && leafIndex == null;
-  if (isGroupHeader) {
+  if (isGroupHeaderNode(id, viewRootId, isTwoLevel)) {
     return valuePercentHeaderIds.has(id);
   }
   return fullLeafIds.has(id);
@@ -136,4 +138,21 @@ export function getTreemapTooltipModel(
         ? { name: t`Total`, values: [formatValue(total), formatPercent(1)] }
         : undefined,
   };
+}
+
+export function isGroupHeaderNode(
+  id: string,
+  viewRootId: string | null,
+  isTwoLevel: boolean,
+): boolean {
+  const { leafIndex } = parseTreemapNodeId(id);
+  return isOverview(viewRootId) && isTwoLevel && leafIndex == null;
+}
+
+export function isPointerBelowGroupHeader(
+  rect: TreemapRect,
+  pointer: ChartPointer,
+  headerHeight: number,
+): boolean {
+  return pointer.y > rect.y + headerHeight;
 }

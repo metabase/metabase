@@ -48,6 +48,11 @@ export interface TreemapRect {
   height: number;
 }
 
+export interface ChartPointer {
+  x: number;
+  y: number;
+}
+
 export interface TreemapLayoutNode {
   id: string /* encodes path: ("0", "0-1") */;
   rect: { width: number; height: number };
