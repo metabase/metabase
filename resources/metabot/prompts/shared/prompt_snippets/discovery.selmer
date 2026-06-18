@@ -17,27 +17,44 @@ Finding a candidate table, model, or metric is not the same as confirming it fit
 
 Never pick a source on its name alone. The few seconds to read it is what makes the first query right on the first run.
 
-## How to query search
+## How search matches your query
 
-`query` is a single string — phrase it the way a human would, as a short noun phrase or question fragment (`"customer retention"`, `"monthly recurring revenue"`, `"orders by region"`). Don't send empty or catch-all queries (`""`, `"all dashboards"`, `"everything about customers"`); to enumerate everything in a known scope, navigate with `read_resource` instead.
+{% if has_semantic_search %}Every query runs through **two matchers in parallel** and the results are fused (so you get the union of both):
 
-{% if has_semantic_search %}The backend fuses keyword (full-text) and semantic (vector) matching via reciprocal rank fusion. A single natural phrasing handles most cases — meaning-level matches catch terminology variations automatically, so you don't need to send paraphrases.{% else %}The backend uses keyword (full-text) matching only — literal token overlap against each item's name and description is what scores. There is **no** semantic / meaning-aware component, so:
+1. **Meaning (vector) match** — embeds your whole query and finds entities whose *meaning* is close, even with no shared words. This catches synonyms, paraphrases, and other-language phrasings automatically (`"shipments"` can surface an entity named *Fulfillment*; `"how much did we make"` can surface *Revenue*). You do **not** need to enumerate synonyms.
+2. **Keyword (full-text) match** — literal token overlap against names and descriptions, using the operator DSL below. This is what reliably catches exact names, codes, and rare abbreviations the meaning-match may not encode.
 
-- **Every word ANDs.** `customer churn rate` only returns items whose name/description contain *all three* tokens — adding a qualifier narrows, never broadens. Search the core hypothesis (`open rate`), not a padded phrase (`open rate email messages`).
-- **Lean toward likely entity names**, not paraphrases — the user's word ("shipments") may not be the entity's ("fulfillment").
-- **Use `or` between alternates** when unsure which word is indexed: `shipments or fulfillment`, `LTV or "lifetime value"` (quote multi-word alternates). Expand abbreviations explicitly: `MRR or "monthly recurring revenue"`.
-- **Plurals are auto-stemmed** (`applications` matches `application`); **negate with `-`** (`bounce -hard`).
+Lead with a natural noun phrase or short question and let the meaning-match do the work; reach for the keyword operators only to pin down exact/rare terms.{% else %}Search uses **keyword (full-text) matching only** — there is no meaning awareness. Only literal token overlap against each entity's name and description scores, parsed with the operator DSL below. Because there's no synonym understanding, **you** must supply alternate wordings and abbreviations yourself, and lean toward the entity's likely real name rather than the user's phrasing (`"shipments"` won't match an entity named *Fulfillment* — search `shipments or fulfillment`).{% endif %}
 
-A zero-hit search transparently retries once with tokens OR-joined, but you'll rank better by phrasing the OR-form yourself.{% endif %}
+## Query operators
+
+These drive the keyword match{% if has_semantic_search %} (one half of every search){% endif %}. Matching is case-insensitive and common word endings are stemmed (`orders` matches `order`).
+
+- **Spaces = AND.** `customer churn rate` requires *all three* tokens to appear — each extra word narrows, never broadens. Search the core hypothesis, not a padded phrase.
+- **`or` = alternatives.** `shipments or fulfillment`, `LTV or "lifetime value"`. Use it for synonyms/abbreviations you're unsure are indexed.
+- **`"exact phrase"`** matches those words adjacent and in order: `"monthly recurring revenue"`.
+- **`-word` excludes:** `bounce -hard`.
+- **Trailing word is a prefix:** a fragment like `rev` matches `revenue` (only the last word completes).
+
+{% if has_semantic_search %}**These operators only shape the keyword half.** The meaning-match embeds your query *literally* and ignores operator semantics, and results are the union of both halves — so an operator that restricts the keyword half doesn't restrict the meaning half. In practice:
+- `"exact phrase"` and rare/exact tokens compose well — they sharpen the keyword half toward a precise hit.
+- **Negation is unreliable:** `-word` drops the token from the keyword half, but the meaning-match has no notion of "not" and can surface the excluded thing anyway. Don't rely on `-` to exclude; filter it out yourself when reading results.
+- **`or` is wasted effort:** the meaning-match already handles synonyms and paraphrases, and the literal word "or" just dilutes the embedding. Use one natural phrasing instead of OR-listing synonyms.{% else %}If a query returns nothing, the tool retries once with the tokens `or`-joined as a safety net — but you'll get better-ranked results by writing the `or`-form yourself with the actual synonyms you suspect.{% endif %}
+
+## What is and isn't searched
+
+Search only looks at each entity's **name and description** (plus a table's display name) — **not** its column/field names, and **not** the SQL text of native queries. Collections match on **name only**. So search by the concept's *title*, then use `read_resource` on a hit's `uri` to inspect its fields, columns, or contents. To find a table by a column it contains, navigate the database with `read_resource` rather than searching.
 
 ## Filtering & scoping
 
-- `entity_types` — restrict to specific kinds (e.g. `table`, `model`, `metric`, `dashboard`, `question`, `collection`; some are tool-specific). Omit to search every type the tool supports. Measure and segment hits carry `base_table_fully_qualified_name` so you can use them without an extra lookup.
+- `entity_types` — restrict to specific kinds (`table`, `model`, `metric`, `dashboard`, `question`, `collection`; availability varies by tool). Omit to search every type the tool supports. Measure and segment hits carry `base_table_fully_qualified_name` so you can use them without an extra lookup.
 - `database_id` — restrict to one database.
 - `collection_id` — restrict to a collection and all its descendants; use after a `collection`-typed hit or `metabase://collections?tree=true` to drill into one part of the instance.
 - `limit` — raise it for broad scans, keep it low for narrow lookups.
 
-When several results plausibly answer the question, prefer items with curation flags (`is_library_member` > `is_verified` > `is_official`).
+{% if has_semantic_search %}Heavy `entity_types`/`database_id` filtering can cause the meaning-match to miss relevant items (it samples nearest neighbors first, then filters). If a tightly-filtered search comes back thin, widen the filter and triage the results yourself, or raise `limit`.
+
+{% endif %}When several results plausibly answer the question, prefer items with curation flags (`is_library_member` > `is_verified` > `is_official`).
 
 ## Don't go in circles
 
