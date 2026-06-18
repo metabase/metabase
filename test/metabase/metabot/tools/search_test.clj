@@ -388,6 +388,35 @@
                   (is (nil? (get-in no-desc-dash [:collection :description])))
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
 
+(deftest library-membership-test
+  (testing "library_member reflects real curation, gated on the :library feature"
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Collection {lib-coll-id :id}      {:name "Lib Coll" :type "library"}
+                     :model/Collection {official-coll-id :id} {:name "Official Coll" :authority_level "official"}
+                     :model/Database   {db-id :id}            {}
+                     :model/Table      {final-table-id :id}    {:db_id db-id :data_layer :final}
+                     :model/Table      {internal-table-id :id} {:db_id db-id :data_layer :internal}]
+        (testing "collection items: true when the root collection is a library type, not merely shared/official"
+          (let [by-id (->> (#'search/enrich-with-collection-paths
+                            [{:type "model" :id 1 :collection {:id lib-coll-id}}
+                             {:type "model" :id 2 :collection {:id official-coll-id}}])
+                           (into {} (map (juxt :id identity))))]
+            (is (true?  (:library_member (by-id 1))) "item in a library collection")
+            (is (false? (:library_member (by-id 2))) "item in an official (non-library) collection")))
+        (testing "tables: true only when the data layer is :final"
+          (let [by-id (->> (#'search/enrich-tables-with-data-layer
+                            [{:type "table" :id final-table-id}
+                             {:type "table" :id internal-table-id}])
+                           (into {} (map (juxt :id identity))))]
+            (is (true?  (:library_member (by-id final-table-id)))    ":final tables are library members")
+            (is (false? (:library_member (by-id internal-table-id))) ":internal tables are not"))))))
+  (testing "without the :library feature, tables are not flagged"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {t-id :id} {:db_id db-id :data_layer :final}]
+        (is (nil? (:library_member (first (#'search/enrich-tables-with-data-layer
+                                           [{:type "table" :id t-id}])))))))))
+
 (deftest enrich-with-portable-entity-ids-test
   (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
     (mt/with-test-user :crowberto

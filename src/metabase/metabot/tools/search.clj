@@ -141,13 +141,23 @@
   (when (and location (not= "/" location))
     (->> (str/split location #"/") (remove str/blank?) (keep parse-long))))
 
+(def ^:private library-collection-types
+  "Collection `:type` values that make up the curated library. A result is a library member
+   when its *root* (top-level) collection is one of these — matching the search `:library`
+   scorer, which keys off `root_collection_type` (see `metabase.search.scoring/library-score-expr`)."
+  #{"library" "library-data" "library-metrics"})
+
 (defn- enrich-with-collection-paths
-  "Stamp each result with :collection_path (and :full_path for collection results) and
-   :library_member (boolean, gated by the :library premium feature).
+  "Stamp each collection-bearing result with :collection_path (and :full_path for collection
+   results) and :library_member (boolean, gated by the :library premium feature).
 
    :collection_path is the slash-joined chain of ancestor names ending in the result's
    collection name (e.g. \"Marketing/Q4 Reports/Email\"). For collection-typed results,
-   the same string is also exposed as :full_path."
+   the same string is also exposed as :full_path.
+
+   :library_member is true when the result's top-level (root) collection is a library-type
+   collection. Tables have no collection; their library membership is set from the data layer
+   by [[enrich-tables-with-data-layer]]."
   [results]
   (let [direct-ids   (->> results (keep result-collection-id) distinct)
         ;; Bulk-fetch :location for direct ids so we can chase ancestors.
@@ -156,7 +166,7 @@
         ancestor-id-set  (->> direct-locations (mapcat ancestor-ids) (into #{}))
         all-ids          (into (set direct-ids) ancestor-id-set)
         coll-rows    (when (seq all-ids)
-                       (t2/select [:model/Collection :id :name :location :personal_owner_id]
+                       (t2/select [:model/Collection :id :name :location :type]
                                   :id [:in all-ids]))
         id->row      (into {} (map (juxt :id identity)) coll-rows)
         path-of      (fn [coll-id]
@@ -165,10 +175,15 @@
                                                    (keep #(get-in id->row [% :name])))]
                            (str/join "/" (concat ancestor-names [name])))))
         library?     (premium-features/has-feature? :library)
+        ;; A collection's root is its top-level ancestor, or itself when it's already top-level.
+        root-type-of (fn [coll-id]
+                       (let [root-id (or (first (ancestor-ids (get-in id->row [coll-id :location])))
+                                         coll-id)]
+                         (get-in id->row [root-id :type])))
         library-of   (fn [coll-id]
                        (boolean (and library?
                                      coll-id
-                                     (nil? (get-in id->row [coll-id :personal_owner_id])))))]
+                                     (library-collection-types (root-type-of coll-id)))))]
     (mapv (fn [r]
             (let [cid  (result-collection-id r)
                   path (when cid (path-of cid))]
@@ -177,6 +192,21 @@
                 (and path (collection-result? r)) (assoc :full_path path)
                 cid  (assoc :library_member (library-of cid)))))
           results)))
+
+(defn- enrich-tables-with-data-layer
+  "Tables aren't in collections, so their library membership comes from the data layer instead:
+   a table is a library member when its `data_layer` is `:final` (the published tier). Gated by
+   the :library premium feature, mirroring [[enrich-with-collection-paths]]."
+  [results]
+  (let [table-ids (->> results (filter #(= "table" (:type %))) (keep :id) distinct)
+        id->layer (when (and (premium-features/has-feature? :library) (seq table-ids))
+                    (t2/select-fn->fn :id :data_layer :model/Table :id [:in table-ids]))]
+    (if id->layer
+      (mapv (fn [r]
+              (cond-> r
+                (= "table" (:type r)) (assoc :library_member (= :final (id->layer (:id r))))))
+            results)
+      results)))
 
 (defn- enrich-with-database-engines
   "Fetch and merge database engine + name info for search results that have database IDs.
@@ -417,6 +447,7 @@
          (map postprocess-search-result)
          enrich-with-collection-descriptions
          enrich-with-collection-paths
+         enrich-tables-with-data-layer
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-base-tables
