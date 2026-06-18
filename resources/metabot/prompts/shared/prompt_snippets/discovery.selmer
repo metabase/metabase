@@ -54,7 +54,7 @@ Search only looks at each entity's **name and description** (plus a table's disp
 
 {% if has_semantic_search %}Heavy `entity_types`/`database_id` filtering can cause the meaning-match to miss relevant items (it samples nearest neighbors first, then filters). If a tightly-filtered search comes back thin, widen the filter and triage the results yourself, or raise `limit`.
 
-{% endif %}When several results plausibly answer the question, prefer items with curation flags (`is_library_member` > `is_verified` > `is_official`).
+{% endif %}When several results plausibly answer the question, prefer curated items: `is_library_member` is the strongest signal (the governed library — curated content, plus tables published to the data library), then `is_official` / `is_verified`.
 
 ## Don't go in circles
 

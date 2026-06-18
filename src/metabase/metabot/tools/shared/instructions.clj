@@ -10,10 +10,14 @@ path, database, etc.). Surface order blends text relevance with curator boost �
 lean curated, but you do your own triage from name + path + flags.
 
 How to use a result:
-- Curation attributes: `is_verified=\"true\"` (explicit moderation, strongest signal),
-  `is_official=\"true\"` (in an official collection), `is_library_member=\"true\"`
-  (in a curated published collection), `is_container=\"true\"` (a collection or dashboard
-  you can drill into).
+- Curation flags (when several results fit, prefer the more curated one):
+  - `is_library_member=\"true\"` — the strongest signal: the item is part of the governed
+    Library (a curated model/metric/dashboard in a Library collection, or a table published
+    to the data library). Reach for these first.
+  - `is_official=\"true\"` — lives in an official collection; `is_verified=\"true\"` — passed
+    explicit moderation review. Both are good second-tier signals.
+  - `is_container=\"true\"` — a collection or dashboard you can drill into.
+  - No flags isn't disqualifying — plenty of valid data is uncurated; just prefer curated when it fits.
 - Picked a promising hit → call `read_resource` on its `uri` for fields/sources/items.
 - Picked a container → `read_resource` its `uri` to enumerate members instead of re-searching.
 - Got ambiguous results → list the plausible candidates with their links and ask the user.
