@@ -106,6 +106,37 @@
             (.save doc baos)
             (is (pos? (count (.toByteArray baos))))))))))
 
+(defn- last-non-stroking-color
+  "The operands of the last non-stroking colour operator (`r g b sc`) in a page's content stream, as a vector of
+  doubles -- i.e. the fill colour left in effect at the end of drawing. nil when none was set."
+  [^PDPage page]
+  (let [content (slurp (.getContents page) :encoding "ISO-8859-1")
+        colors  (re-seq #"([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\s+sc\b" content)]
+    (some->> (last colors) rest (mapv #(Double/parseDouble %)))))
+
+;; not ^:parallel: exercises the real PDFBox content-stream + font registry, which the deftest linter treats as
+;; side-effecting
+(deftest ^:synchronized header-tab-title-color-test
+  (testing "the tab title is drawn in black, not the gray left over from the parameter values above it"
+    (with-open [doc (PDDocument.)]
+      (binding [font/*fonts*     (#'font/load-fonts! doc)
+                pdf/*link-rects* (atom [])]
+        (let [page (PDPage. PDRectangle/A4)
+              _    (.addPage doc page)
+              ;; one parameter so a gray value is drawn just before the tab title; the tab title sets no colour of
+              ;; its own, so it inherits whatever the parameter table left behind
+              tbl  (#'pdf/layout-param-table [{:name "Category" :value "Gadget"}] 500.0 36.0)]
+          (with-open [cs (PDPageContentStream. doc page)]
+            (#'pdf/draw-header! cs 841.89 500.0 {:dashboard-title "Dash"
+                                                 :param-table     tbl
+                                                 :tab-title       "Overview"}))
+          ;; the last fill colour set while drawing the header (the tab title sets none) must be black -- before the
+          ;; fix draw-param-table! leaves it at body-color gray (~0.42 0.45 0.50)
+          (let [color (last-non-stroking-color page)]
+            (is (some? color) "the header set a non-stroking colour")
+            (is (every? #(< % 0.01) color)
+                "draw-param-table! must restore black so the tab title isn't drawn gray")))))))
+
 ;; --------------------------------------------------------------------------------------------
 ;; `segment` -- greedy streaming grouping transducer
 ;; --------------------------------------------------------------------------------------------
@@ -312,6 +343,49 @@
       (is (nil? (#'pdf/resolve-inline-params {:inline_parameters []} params))))
     (testing "an inline id that only has an unset parameter -> nil"
       (is (nil? (#'pdf/resolve-inline-params {:inline_parameters ["c"]} params))))))
+
+(deftest ^:parallel non-default-parameters-test
+  ;; The header filter bar should list only parameters the viewer actually changed -- a parameter sitting at its
+  ;; default conveys nothing and shouldn't reserve (or fill) header space. Query filtering still applies defaults;
+  ;; this is display-only.
+  (let [dash {:parameters [{:id "a" :name "A" :type "string/=" :default "x"}
+                           {:id "b" :name "B" :type "string/="}              ; no default
+                           {:id "c" :name "C" :type "string/=" :default "z"}]}]
+    (testing "no overrides -> nothing shown (every valued parameter is just its default)"
+      (is (= [] (#'pdf/non-default-parameters dash []))))
+    (testing "an override that differs from the default is kept (and :default is dropped, :value set)"
+      (is (= [{:id "a" :name "A" :type "string/=" :value "OVERRIDE"}]
+             (#'pdf/non-default-parameters dash [{:id "a" :value "OVERRIDE"}]))))
+    (testing "an override equal to the parameter's default is dropped"
+      (is (= [] (#'pdf/non-default-parameters dash [{:id "c" :value "z"}]))))
+    (testing "a value on a parameter with no default is kept"
+      (is (= ["B"] (mapv :name (#'pdf/non-default-parameters dash [{:id "b" :value "v"}])))))))
+
+(deftest ^:parallel pages-for-section-tab-title-test
+  ;; A tabbed dashboard reserves header space for the tab title; the first page must actually carry the title (under
+  ;; the :tab-title key draw-header! reads) so the reserved space is drawn, not left blank.
+  (let [dims    {:unit 21.8 :rows 35 :rect PDRectangle/A4}
+        section {:tab-name "Overview" :cells [{:row 0 :col 0 :size_x 12 :size_y 4 :kind :card}]}]
+    (testing "tabbed section's first page carries the dashboard title + tab title and reserves header space"
+      (let [page (first (#'pdf/pages-for-section section 0 dims true "My Dash" nil))]
+        (is (= "My Dash"  (:dashboard-title page)))
+        (is (= "Overview" (:tab-title page)))
+        (is (pos? (#'pdf/header-height page)))
+        ;; the grid takes only the rows that fit below the header -- fewer than a full page
+        (is (< (:rows page) (:rows dims)))))
+    (testing "later tab sections carry their tab title but not the dashboard title"
+      (let [page (first (#'pdf/pages-for-section section 1 dims true "My Dash" nil))]
+        (is (nil? (:dashboard-title page)))
+        (is (= "Overview" (:tab-title page)))))
+    (testing "an untabbed render (a lone tab) draws no tab title, so its header is shorter and leaves more grid rows"
+      ;; render-dashboard-to-pdf passes tabbed?=false when there's <= 1 tab, so a single-tab dashboard doesn't
+      ;; get a (UI-hidden) tab title or its reserved space
+      (let [tabbed   (first (#'pdf/pages-for-section section 0 dims true  "My Dash" nil))
+            untabbed (first (#'pdf/pages-for-section section 0 dims false "My Dash" nil))]
+        (is (nil? (:tab-title untabbed)))
+        (is (= "My Dash" (:dashboard-title untabbed)))
+        (is (< (#'pdf/header-height untabbed) (#'pdf/header-height tabbed)))
+        (is (>= (:rows untabbed) (:rows tabbed)))))))
 
 (deftest ^:parallel visual-order-test
   (testing "left-to-right text is returned unchanged (no bidi processing)"

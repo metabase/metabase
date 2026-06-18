@@ -8,10 +8,10 @@
   breaks when the next card won't fit in the remaining vertical space. That leaves the bottom of the page blank
   rather than splitting a card across pages.
 
-  Paper is selectable between A4 (treated as 24x35 units) and Letter (24x32); units are square, so A4 leaves a little
-  unused space at the bottom of each page. The first page spends some vertical cells on the dashboard title, and each
-  tab's first page spends cells on the tab heading; the number of cells consumed is derived from the header font sizes
-  (see `header-block-pt` / `rows-for-pt`).
+  Paper is selectable between A4 and Letter; grid cells are square (width = content width / 24 columns). The
+  dashboard title, parameters, and tab heading sit at the top of their page and take exactly the height they need
+  -- not rounded up to a whole grid row (see `header-height`). Whatever vertical space remains below the header
+  holds the dashboard grid, fitting as many rows as there is room for.
 
   Chart/query card bodies are rendered via the same static-viz pipeline the subscription emails use -- rectangular
   charts to exactly fill their grid rectangle, other types fit preserving aspect -- with the card title drawn natively
@@ -96,10 +96,16 @@
   [font-pt]
   (+ (* font-pt common/line-height-factor) common/header-pad-pt))
 
-(defn- rows-for-pt
-  "How many *whole* grid rows are needed to hold `pt` points of vertical space."
-  [pt unit]
-  (long (Math/ceil (double (/ pt unit)))))
+(defn- header-height
+  "Exact height in points the header occupies on a page: the dashboard title, parameter table, and/or tab title that
+  the page carries (whichever keys are present -- the same ones [[draw-header!]] draws). The dashboard grid starts
+  right below this, so the header takes only the space it needs rather than rounding up to a whole grid row."
+  [{:keys [dashboard-title param-table tab-title]}]
+  (cond-> 0.0
+    dashboard-title (+ (header-block-pt common/dashboard-title-pt))
+    ;; matches what draw-param-table! advances: its row heights plus a small trailing gap
+    param-table     (+ (:height param-table) 4.0)
+    tab-title       (+ (header-block-pt common/tab-title-pt))))
 
 (defn- paper-dims
   [paper-key]
@@ -460,27 +466,24 @@
 ;; --------------------------------------------------------------------------------------------
 
 (defn- paginate
-  "Stateful transducer for greedily packing input *cells* (sorted, row-normalized dashboard contents) into pages of
-  `total-rows` usable rows.
-
-  The first page of the section reserves `first-header-rows` for the dashboard/tab heading; continuation pages
-  reserve none. A card that won't fit in the current page's remaining rows starts a new page; we never split a card
+  "Stateful transducer for greedily packing input *cells* (sorted, row-normalized dashboard contents) into pages.
+  The first page holds `first-page-rows` grid rows (what's left under the header); continuation pages hold
+  `cont-rows`. A card that won't fit in the current page's remaining rows starts a new page; we never split a card
   across pages. Each page records its `:base` row so cells can be positioned relative to the top of the page's card
-  area."
-  [total-rows first-header-rows]
+  area, and its row capacity in `:rows`."
+  [first-page-rows cont-rows]
   (let [first? (volatile! true)]
     (typeset/segment
      (fn
-       ([c]                                     ; open a page
-        (let [hr (if @first? first-header-rows 0)]
+       ([c]                            ; open a page
+        (let [cap (if @first? first-page-rows cont-rows)]
           (vreset! first? false)
-          {:base        (:row c)
-           :cards       [c]
-           :header-rows hr}))
-       ([{:keys [base header-rows] :as page} c] ; add this cell, or start a new page
+          {:base  (:row c)
+           :cards [c]
+           :rows  cap}))
+       ([{:keys [base rows] :as page} c] ; add this cell, or start a new page
         (let [cbot (+ (:row c) (:size_y c))]
-          (if (<= (- cbot base)
-                  (- total-rows header-rows))
+          (if (<= (- cbot base) rows)
             (update page :cards conj c)
             ::typeset/reject)))))))
 
@@ -488,23 +491,19 @@
   "Produce positioned pages for one section (a tab, or the whole untabbed dashboard). `idx` is the section's index;
   only the very first section's first page carries the dashboard title, and (when tabbed) every section's first page
   carries the tab title."
-  [section idx {:keys [unit rows]} tabbed? dash-name param-table param-rows]
-  (let [dash-rows (rows-for-pt (header-block-pt common/dashboard-title-pt) unit)
-        tab-rows  (rows-for-pt (header-block-pt common/tab-title-pt)       unit)
-        ;; the parameter table shows once, on the dashboard's very first page (section 0)
-        first-hdr (cond-> 0
-                    (zero? idx) (+ dash-rows param-rows)
-                    tabbed?     (+ tab-rows))]
-    (into [] (comp (paginate rows first-hdr)
-                   (map-indexed
-                    (fn [pi page]
-                      (merge page
-                             (when (and (zero? idx)
-                                        (zero? pi))
-                               {:dashboard-title dash-name
-                                :param-table     param-table})
-                             (when (and tabbed? (zero? pi))
-                               {:tab-name section})))))
+  [section idx {:keys [unit rows ^PDRectangle rect]} tabbed? dash-name param-table]
+  (let [content-h (- (.getHeight rect) (* 2.0 common/margin))
+        ;; the header this section's first page carries: dashboard title + parameters on the very first page
+        ;; (section 0), tab title on every tabbed section's first page. Same keys [[draw-header!]] reads.
+        header    (cond-> {}
+                    (zero? idx) (assoc :dashboard-title dash-name :param-table param-table)
+                    tabbed?     (assoc :tab-title (:tab-name section)))
+        ;; the grid takes whatever rows fit below the header; continuation pages get the full height
+        first-rows (max 1 (long (Math/floor (/ (- content-h (header-height header)) unit))))]
+    (into [] (comp (paginate first-rows rows)
+                   (map-indexed (fn [pi page]
+                                  (cond-> page
+                                    (zero? pi) (merge header)))))
           (:cells section))))
 
 ;; --------------------------------------------------------------------------------------------
@@ -654,15 +653,6 @@
        :rows    rows
        :height  (transduce (map :height) + 0.0 rows)})))
 
-(defn- param-table-rows
-  "Whole grid rows the parameter table consumes (0 when there is none)."
-  [table unit]
-  (if table
-    (rows-for-pt (+ (:height table)
-                    common/header-pad-pt)
-                 unit)
-    0))
-
 (defn- lines-rtl?
   "Given a seq of lines, check if the first line starts with RTL characters."
   [lines]
@@ -673,17 +663,19 @@
 
   Returns the y below it."
   [^PDPageContentStream cs table top-y]
-  (let [{:keys [name-x name-w value-x value-w rows]} table]
-    (- (reduce (fn [y {:keys [name-lines value-lines height] :as _row}]
-                 (let [bottom (- y height 1.0)]
-                   (draw-item-lines! cs name-lines name-x name-w y bottom common/param-pt
-                                     (lines-rtl? name-lines) nil name-x nil)
-                   (draw-item-lines! cs value-lines value-x value-w y bottom common/param-pt
-                                     (lines-rtl? value-lines) nil value-x nil)
-                   (- y height)))
-               top-y
-               rows)
-       4.0)))
+  (let [{:keys [name-x name-w value-x value-w rows]} table
+        y (reduce (fn [y {:keys [name-lines value-lines height] :as _row}]
+                    (let [bottom (- y height 1.0)]
+                      (draw-item-lines! cs name-lines name-x name-w y bottom common/param-pt
+                                        (lines-rtl? name-lines) nil name-x nil)
+                      (draw-item-lines! cs value-lines value-x value-w y bottom common/param-pt
+                                        (lines-rtl? value-lines) nil value-x nil)
+                      (- y height)))
+                  top-y
+                  rows)]
+    ;; values are drawn gray; restore black so a following header line (e.g. a tab title) isn't tinted gray
+    (.setNonStrokingColor cs Color/BLACK)
+    (- y 4.0)))
 
 (defn- inline-param-lines
   "Wrapped item-lines for a card's inline parameters, flowing inline as `Name: value`, `Name2: value2`,
@@ -1221,7 +1213,7 @@
         _             (.addPage doc pg)
         ph            (.getHeight rect)
         cs            (PDPageContentStream. doc pg)
-        card-area-top (- ph common/margin (* (:header-rows page) unit))]
+        card-area-top (- ph common/margin (header-height page))]
     (binding [*link-rects* (atom [])]
       (try
         (draw-header! cs ph (* common/grid-cols unit) page)
@@ -1276,6 +1268,22 @@
              (some? default-value) (assoc :value default-value)
              (by-id (:id p))       (merge (by-id (:id p))))))))
 
+(defn- non-default-parameters
+  "The dashboard parameters worth showing in the header filter bar: those whose effective value differs from the
+  parameter's own `:default` -- i.e. the ones the subscriber actually changed. Default-valued (and unset) parameters
+  convey nothing the dashboard's defaults don't already imply, so they're left out (which also keeps the header from
+  reserving space for them). Display-only: [[resolve-parameters]] still applies defaults for query filtering."
+  [dashboard provided]
+  (let [by-id (into {} (map (juxt :id identity)) provided)]
+    (vec (for [{default-value :default :as p} (:parameters dashboard)
+               :let  [value (if (contains? by-id (:id p))
+                              (:value (by-id (:id p)))
+                              default-value)]
+               :when (and (some? value)
+                          (not= value default-value))]
+           (-> (dissoc p :default)
+               (assoc :value value))))))
+
 (defn render-dashboard-to-pdf
   "Render the dashboard with `dashboard-id` to PDF bytes, running queries as user `user-id`. `parameters` is a vector
   of dashboard parameter overrides; `[]` to use the dashboard's own parameter defaults.
@@ -1289,7 +1297,9 @@
            dash     (t2/select-one :model/Dashboard :id dashboard-id)
            tabs     (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})
            dcs      (t2/hydrate (t2/select :model/DashboardCard :dashboard_id dashboard-id) :card)
-           tabbed?  (boolean (seq tabs))
+           ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in
+           ;; the UI, so the PDF shouldn't draw (or reserve space for) its title either
+           tabbed?  (> (count tabs) 1)
            by-tab   (group-by :dashboard_tab_id dcs)
            resolved (resolve-parameters dash parameters)
            sections (if tabbed?
@@ -1310,10 +1320,10 @@
                    font/*em-width*    (memo/memo font/raw-em-width-inner)]
            (let [content-w   (* common/grid-cols (:unit dims))
                  inline-ids  (into #{} (mapcat :inline_parameters) dcs)
-                 param-table (layout-param-table (dashboard-param-entries resolved inline-ids) content-w common/margin)
-                 param-rows  (param-table-rows param-table (:unit dims))]
+                 param-table (layout-param-table (dashboard-param-entries (non-default-parameters dash parameters) inline-ids)
+                                                 content-w common/margin)]
              (doseq [[idx section] (m/indexed sections)
-                     page          (pages-for-section section idx dims tabbed? (:name dash) param-table param-rows)]
+                     page          (pages-for-section section idx dims tabbed? (:name dash) param-table)]
                (render-page! doc dims timezone page)))
            (when (zero? (.getNumberOfPages doc))
              (.addPage doc (PDPage. ^PDRectangle (:rect dims))))
@@ -1335,8 +1345,17 @@
 
 (comment
   ;; main dashboard = 1, the i18n sample dashboard = 18
-  (binding [*debug-boxes* false]
-    (render-dashboard-to-pdf-file 1 1 [{:id "b1a2d47f"
+  (binding [*debug-boxes* true]
+    (render-dashboard-to-pdf-file 1 1 [{:id "81cd957"
+                                        :value "past1months"
+                                        :type "date/all-options"}
+                                       {:id "9d9cddd4"
+                                        :value ["Doohickey", "Gizmo"]
+                                        :type "string/="}
+                                       {:id "1ebab259" #_vendor
+                                        :value nil
+                                        :type "string/="}
+                                       {:id "b1a2d47f" #_max-discount-on-card
                                         :value [0]
                                         :type "number/<="}]
-                                  "/tmp/dash-debug7.pdf")))
+                                  "/tmp/dash-debug9.pdf")))
