@@ -280,12 +280,12 @@
                                               (catch Exception _ nil)))))
                                   (serdes/extract-query model-type extract-opts))]
             :when (seq rso->hash)]
-      ;; one atomic CASE update per chunk (same cross-driver pattern as queries.models.query)
-      (t2/query {:update (t2/table-name :model/RemoteSyncObject)
-                 :set    {:content_hash (into [:case]
-                                              (mapcat (fn [[rso-id h]] [[:= :id rso-id] h]))
-                                              rso->hash)}
-                 :where  [:in :id (vec (keys rso->hash))]}))))
+      ;; one atomic CASE update per chunk; the honeysql expression compiles per app-db dialect
+      (t2/update! :model/RemoteSyncObject
+                  {:id [:in (vec (keys rso->hash))]}
+                  {:content_hash (into [:case]
+                                       (mapcat (fn [[rso-id h]] [[:= :id rso-id] h]))
+                                       rso->hash)}))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
