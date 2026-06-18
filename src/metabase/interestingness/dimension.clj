@@ -170,12 +170,44 @@
           :else
           {:score 0.8 :reason "short structured text"})))))
 
+(defn usage
+  "Score a dimension by how often it has actually been used as a breakout in real queries,
+   *relative to a high-usage baseline for this instance*. The field's breakout-execution count
+   and the baseline (the 95th percentile of per-field breakout totals) are injected as
+   `[:usage :breakout-count]` and `[:usage :baseline-breakout-count]` (from usage-metadata
+   `source_dimension_daily`).
+
+   Scoring against a per-instance baseline makes the signal self-calibrating: it scales up on
+   busy instances and down on quiet ones rather than comparing to a hard-coded volume, so the
+   same raw count means more on a low-traffic instance. Using p95 rather than the raw max keeps
+   one runaway dashboard from compressing every other dimension's score. The ratio is taken in
+   log space so the heavy tail of query volume doesn't crush mid-usage dimensions.
+
+   Usage only ever boosts. Returns neutral 0.5 when there's no signal — the field was never
+   broken out (count nil/0), or there's no usage anywhere yet to scale against (baseline nil/0).
+   Any dimension at or above the baseline (roughly the top 5%) scores 1.0."
+  [field]
+  (let [n        (get-in field [:usage :breakout-count])
+        baseline (get-in field [:usage :baseline-breakout-count])]
+    (cond
+      (or (nil? n) (<= n 0))
+      {:score 0.5 :reason "no breakout usage"}
+
+      (or (nil? baseline) (<= baseline 0))
+      {:score 0.5 :reason "no usage baseline"}
+
+      :else
+      (let [ratio (/ (Math/log (inc (double n))) (Math/log (inc (double baseline))))]
+        {:score  (min 1.0 (+ 0.5 (* 0.5 ratio)))
+         :reason (str n " breakout uses (log-scaled to " (long (* 100 ratio)) "% of p95 baseline " baseline ")")}))))
+
 ;;; -------------------------------------------------- Weight profiles --------------------------------------------------
 
 (def canonical-dimension-weights
   "Canonical weight profile for scoring a field as a *dimension* (breakout column).
    Persisted as `dimension_interestingness` on metabase_field. Rewards structural
-   cleanliness, good bucket counts, category/temporal types, and balanced distributions."
+   cleanliness, good bucket counts, category/temporal types, balanced distributions,
+   and real-world breakout usage."
   {impl/type-penalty       0.30
    cardinality             0.20
    impl/nullness           0.10
@@ -183,7 +215,8 @@
    temporal-range          0.05
    text-structure          0.05
    impl/distribution-shape 0.15
-   impl/numeric-variance   0.05})
+   impl/numeric-variance   0.05
+   usage                   0.15})
 
 (defn dimension-interestingness
   "Return the canonical `dimension_interestingness` score for `field`.

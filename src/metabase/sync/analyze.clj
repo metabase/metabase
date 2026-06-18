@@ -9,6 +9,7 @@
    [metabase.sync.analyze.interestingness :as sync.interestingness]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
+   [metabase.usage-metadata.core :as usage-metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -76,7 +77,7 @@
   (sync.fingerprint/fingerprint-table! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)
-  (sync.interestingness/score-fields! table)
+  (sync.interestingness/score-fields! table (usage-metadata/breakout-count-baseline))
   (update-fields-last-analyzed! table))
 
 (defn- maybe-log-progress [progress-bar-fn]

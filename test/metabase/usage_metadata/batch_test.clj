@@ -320,6 +320,31 @@
           (delete-query-executions-for-day! day)
           (delete-day! day))))))
 
+(deftest delete-expired-rollups!-reports-pruned-dimension-fields-test
+  ;; Old days are chosen far from the April days other batch tests use so the instance-wide prune
+  ;; doesn't disturb them (and this test isn't :parallel).
+  (let [old-day  (t/local-date "2026-03-01")
+        field-id 999999]
+    (try
+      (delete-day! old-day)
+      (t2/insert! :model/SourceDimensionDaily
+                  {:source_type    :table
+                   :source_id      1
+                   :ownership_mode :direct
+                   :field_id       field-id
+                   :temporal_unit  nil
+                   :binning        nil
+                   :bucket_date    old-day
+                   :count          7})
+      (let [result (usage-metadata.batch/delete-expired-rollups! 30 (t/local-date "2026-04-01"))]
+        (testing "returns the cutoff day and the dimension fields whose rows were pruned"
+          (is (= (t/local-date "2026-03-02") (:cutoff-day result)))
+          (is (contains? (:pruned-dimension-fields result) field-id)))
+        (testing "the expired rollup row is actually deleted"
+          (is (= 0 (t2/count :model/SourceDimensionDaily :bucket_date old-day)))))
+      (finally
+        (delete-day! old-day)))))
+
 (deftest process-day!-skips-rows-when-normalize-query-throws-test
   (testing "a row whose query throws inside normalize-query is counted as :normalize-error
             and does not block the rest of the day from rolling up"

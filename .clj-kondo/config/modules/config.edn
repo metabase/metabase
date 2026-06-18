@@ -2199,6 +2199,7 @@
            task
            task-history
            tracing
+           usage-metadata
            util
            warehouse-schema
            warehouses
@@ -2438,7 +2439,8 @@
 
   usage-metadata
   {:team "UX West"
-   :api  #{metabase.usage-metadata.init}
+   :api  #{metabase.usage-metadata.core
+           metabase.usage-metadata.init}
    :model-imports #{:model/Card
                     :model/Field
                     :model/Query
@@ -2446,6 +2448,7 @@
                     :model/Segment
                     :model/Table}
    :uses #{app-db
+           interestingness
            lib
            lib-be
            models
