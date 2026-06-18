@@ -16,7 +16,6 @@ import {
   applyMetricMeasures,
   buildLibMetricDatasetFilter,
   buildLibTableFilter,
-  findLibMetric,
 } from "./metabase-lib-query-clauses";
 import { Lib } from "./metabase-lib-query-lib";
 import {
@@ -28,7 +27,6 @@ import {
   normalizeDatasetQuery,
   normalizeMetricAggregations,
 } from "./metabase-lib-query-normalization";
-import { STAGE_INDEX } from "./metabase-lib-query-utils";
 import { buildMetricDatasetQuery } from "./metric-query-builder";
 import type { MetricQueryRuntime, TableQueryRuntime } from "./runtime-types";
 import { buildTableDatasetQuery } from "./table-query-builder";
@@ -118,14 +116,6 @@ export function buildMetricDatasetQueryWithMetabaseLib(
     Number(sourceTableId),
   );
 
-  const metric = findLibMetric(libQuery, Number(metricId));
-
-  if (!metric) {
-    return null;
-  }
-
-  libQuery = Lib.aggregate(libQuery, STAGE_INDEX, metric);
-
   const queryWithMeasures = applyMetricMeasures(libQuery, query.measures);
 
   if (!queryWithMeasures) {
@@ -152,10 +142,13 @@ export function buildMetricDatasetQueryWithMetabaseLib(
     return null;
   }
 
-  return normalizeMetricAggregations(
-    normalizeDatasetQuery(
-      Lib.toLegacyQuery(queryWithBreakouts) as StructuredDatasetQuery,
+  return addMetricAggregation(
+    normalizeMetricAggregations(
+      normalizeDatasetQuery(
+        Lib.toLegacyQuery(queryWithBreakouts) as StructuredDatasetQuery,
+      ),
     ),
+    Number(metricId),
   );
 }
 
@@ -193,4 +186,20 @@ function getGeneratedTable(query: TableQueryRuntime): TableSchema | null {
   return typeof query.table === "object" && query.table != null
     ? (query.table as TableSchema)
     : null;
+}
+
+function addMetricAggregation(
+  datasetQuery: StructuredDatasetQuery,
+  metricId: number,
+): StructuredDatasetQuery {
+  return {
+    ...datasetQuery,
+    query: {
+      ...datasetQuery.query,
+      aggregation: [
+        ["metric", metricId],
+        ...(datasetQuery.query.aggregation ?? []),
+      ],
+    },
+  };
 }

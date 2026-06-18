@@ -6,6 +6,7 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 
+import { buildMetricDatasetQueryWithMetabaseLib } from "./metabase-lib-query-builder";
 import type { MetabaseQueryOptions } from "./use-metabase-query";
 import {
   avg,
@@ -46,6 +47,15 @@ const TEST_TABLES = {
         name: "created_at",
         displayName: "Created At",
         jsType: "Date",
+        baseType: "type/DateTime",
+      },
+      orderDate: {
+        fieldId: 105,
+        tableId: 1,
+        name: "order_date",
+        displayName: "Order Date",
+        jsType: "Date",
+        baseType: "type/Date",
       },
       amount: {
         fieldId: 102,
@@ -141,6 +151,7 @@ const TEST_SCHEMA = {
           status: TEST_TABLES.orders.fields.status,
           amount: TEST_TABLES.orders.fields.amount,
           createdAt: TEST_TABLES.orders.fields.createdAt,
+          orderDate: TEST_TABLES.orders.fields.orderDate,
         },
         franchises: {
           name: {
@@ -162,6 +173,7 @@ const TEST_SCHEMA = {
           status: TEST_TABLES.orders.fields.status,
           amount: TEST_TABLES.orders.fields.amount,
           createdAt: TEST_TABLES.orders.fields.createdAt,
+          orderDate: TEST_TABLES.orders.fields.orderDate,
         },
       },
       mappedTableIds: [1],
@@ -177,6 +189,7 @@ const TEST_SCHEMA = {
           status: TEST_TABLES.orders.fields.status,
           amount: TEST_TABLES.orders.fields.amount,
           createdAt: TEST_TABLES.orders.fields.createdAt,
+          orderDate: TEST_TABLES.orders.fields.orderDate,
         },
       },
       mappedTableIds: [1],
@@ -602,6 +615,44 @@ describe("useMetabaseQuery", () => {
       });
     });
 
+    it("does not force minute bucketing for date filters", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            filter(
+              TEST_SCHEMA.tables.orders.fields.orderDate,
+              "=",
+              "2026-06-18",
+            ),
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          filter: ["=", ["field", 105, {}], "2026-06-18"],
+        },
+      });
+    });
+
+    it("uses effective or base type to preserve time for datetime filters", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            filter(
+              TEST_SCHEMA.tables.orders.fields.createdAt,
+              "=",
+              new Date(2026, 5, 18, 12, 30),
+            ),
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          filter: ["=", ["field", 103, {}], "2026-06-18T12:30:00"],
+        },
+      });
+    });
+
     it("supports field aggregation object literals", () => {
       expect(
         createMetabaseQuery({
@@ -653,6 +704,38 @@ describe("useMetabaseQuery", () => {
     it("adds source-field when metric dimensions reference an implicitly joined table", () => {
       expect(
         createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          breakouts: [
+            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name),
+          ],
+          filters: [
+            filter(
+              TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name,
+              "=",
+              "West Coast Boba",
+            ),
+          ],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["metric", 34]],
+          filter: [
+            "=",
+            ["field", 301, { "source-field": 106 }],
+            "West Coast Boba",
+          ],
+          breakout: [["field", 301, { "source-field": 106 }]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("adds source-field through the metabase-lib metric builder", () => {
+      expect(
+        buildMetricDatasetQueryWithMetabaseLib({
           metric: TEST_SCHEMA.metrics.orderCount,
           breakouts: [
             breakout(TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name),

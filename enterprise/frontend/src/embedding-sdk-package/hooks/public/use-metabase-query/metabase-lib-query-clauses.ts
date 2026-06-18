@@ -21,6 +21,9 @@ import type {
 import { Lib } from "./metabase-lib-query-lib";
 import {
   STAGE_INDEX,
+  fieldHasTime,
+  getFieldBaseType,
+  getFieldEffectiveType,
   getFieldId,
   getObjectNumber,
   getObjectString,
@@ -206,7 +209,9 @@ function buildLibFieldFilter(
       operator: filter.operator as never,
       column,
       values: values.map((value) => new Date(value as string | number | Date)),
-      hasTime: true,
+      hasTime: isTableFieldSchema(filter.dimension)
+        ? fieldHasTime(filter.dimension)
+        : false,
     });
   }
 
@@ -321,6 +326,28 @@ function findLibColumn(query: Query, field: unknown): ColumnMetadata | null {
   const fieldId = getFieldId(field);
 
   if (fieldId != null) {
+    const sourceFieldId = getObjectNumber(field, "sourceFieldId");
+
+    if (sourceFieldId != null) {
+      return Lib.fromLegacyColumn(query, STAGE_INDEX, {
+        id: fieldId,
+        name: getObjectString(field, "name") ?? String(fieldId),
+        display_name:
+          getObjectString(field, "displayName") ??
+          getObjectString(field, "name") ??
+          String(fieldId),
+        source: "fields",
+        fk_field_id: sourceFieldId,
+        base_type: isTableFieldSchema(field)
+          ? getFieldBaseType(field)
+          : undefined,
+        effective_type: isTableFieldSchema(field)
+          ? getFieldEffectiveType(field)
+          : undefined,
+        field_ref: ["field", fieldId, { "source-field": sourceFieldId }],
+      });
+    }
+
     return Lib.fieldMetadata(query, fieldId);
   }
 

@@ -40,8 +40,8 @@
                       :comment [:key :entityId :description :verified]}
    :table            {:runtime [:kind :id :name :databaseId :fields :segments :measures]
                       :comment [:key :entityId :description :databaseName :schemaName :tableName]}
-   :field            {:runtime [:name :jsType :fieldId :tableId :defaultTemporalBucket]
-                      :comment [:key :id :displayName :description :baseType :effectiveType :semanticType :unit]}
+   :field            {:runtime [:name :jsType :fieldId :tableId :baseType :effectiveType :defaultTemporalBucket]
+                      :comment [:key :displayName :description :semanticType :unit]}
    :segment          {:runtime [:kind :id :tableId :name]
                       :comment [:key :entityId :description]}
    :measure          {:runtime [:kind :id :tableId :name :columns]
@@ -50,8 +50,8 @@
                                 :mappedTableIds :columns :dimensions]
                       :comment [:key :entityId :description :verified :sourceTable]}
    :metric-dimension {:runtime [:id :fieldId :metricId :tableId :sourceFieldId
-                                :name :jsType :defaultTemporalBucket]
-                      :comment [:key :displayName :description :baseType :effectiveType :semanticType :unit]}
+                                :name :jsType :baseType :effectiveType :defaultTemporalBucket]
+                      :comment [:key :displayName :description :semanticType :unit]}
    :column           {:runtime [:name :jsType]
                       :comment [:displayName :description :baseType :effectiveType :semanticType :unit]}})
 

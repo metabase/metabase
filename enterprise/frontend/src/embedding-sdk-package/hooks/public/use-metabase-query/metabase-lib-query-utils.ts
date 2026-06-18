@@ -19,6 +19,20 @@ export function getBaseType(jsType: unknown): string {
   }
 }
 
+export function getFieldBaseType(field: FieldSchema): string {
+  return field.baseType ?? getBaseType(field.jsType);
+}
+
+export function getFieldEffectiveType(field: FieldSchema): string {
+  return field.effectiveType ?? getFieldBaseType(field);
+}
+
+export function fieldHasTime(field: FieldSchema): boolean {
+  const schemaType = field.effectiveType ?? field.baseType;
+
+  return typeof schemaType === "string" && schemaType.includes("DateTime");
+}
+
 export function getFieldId(field: unknown): number | null {
   if (hasFieldId(field)) {
     return field.fieldId;

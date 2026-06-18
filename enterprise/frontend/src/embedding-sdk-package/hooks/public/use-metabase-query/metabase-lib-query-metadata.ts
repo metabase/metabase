@@ -7,7 +7,8 @@ import type { MetadataInput, Query } from "./metabase-lib-query-lib";
 import { Lib } from "./metabase-lib-query-lib";
 import type { FieldWithFieldId } from "./metabase-lib-query-utils";
 import {
-  getBaseType,
+  getFieldBaseType,
+  getFieldEffectiveType,
   getFieldId,
   getObject,
   hasFieldId,
@@ -102,7 +103,7 @@ export function createMetricMetadata(
         dimensions: getMetricDimensions(query).map((dimension) => ({
           id: String(dimension.id ?? dimension.fieldId),
           display_name: dimension.displayName ?? dimension.name,
-          effective_type: getBaseType(dimension.jsType),
+          effective_type: getFieldEffectiveType(dimension),
           semantic_type: null,
           sources:
             typeof dimension.fieldId === "number"
@@ -190,8 +191,8 @@ function createFieldMetadataRecord(
     display_name: field.displayName ?? field.name,
     description: field.description ?? null,
     database_type: "",
-    base_type: getBaseType(field.jsType),
-    effective_type: getBaseType(field.jsType),
+    base_type: getFieldBaseType(field),
+    effective_type: getFieldEffectiveType(field),
     semantic_type: null,
     active: true,
     visibility_type: "normal",

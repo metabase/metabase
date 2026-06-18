@@ -320,7 +320,7 @@
     (is (str/includes? body "fieldId: 3970"))
     (is (str/includes? body "tableId: 10"))
     (is (not (str/includes? body "displayName: \"Payment Method\"")))
-    (is (not (str/includes? body "baseType: \"type/Text\"")))
+    (is (str/includes? body "baseType: \"type/Text\""))
     (is (str/includes? body (str "/" "/ Description: Total order revenue")))
     (is (str/includes? body "databaseId: 1"))
     (is (str/includes? body "sourceTableId: 10"))
