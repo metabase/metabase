@@ -355,8 +355,8 @@
   audit-app
   {:team "UX West"
    :api  #{metabase.audit-app.core
-           metabase.audit-app.impl
            metabase.audit-app.init}
+   :friends #{enterprise/memoize-monitor}
    :uses #{api
            app-db
            events
@@ -3422,10 +3422,10 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
-           metabase-enterprise.serialization.dump
            metabase-enterprise.serialization.init
            metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
+   :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
            app-db
