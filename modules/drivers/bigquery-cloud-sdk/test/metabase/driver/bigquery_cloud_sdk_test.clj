@@ -34,7 +34,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.cloud.bigquery BigQuery BigQueryException Field Field$Mode LegacySQLTypeName Schema TableResult)
+   (com.google.cloud.bigquery BigQuery BigQueryException Field FieldValue FieldValue$Attribute FieldValueList TableResult)
    (com.google.cloud.http HttpTransportOptions)))
 
 (set! *warn-on-reflection* true)
@@ -126,35 +126,51 @@
             ;; TODO Temporarily disabling due to flakiness (#33140)
             #_(is (= 4 @pages-retrieved))))))))
 
-(defn- field-array
-  "A typed `Field[]`. The hint lets the compiler pick the `Field...`/`Schema` overloads of `Field/of`,
-  `Field/newBuilder`, and `Schema/of` without reflection."
-  ^"[Lcom.google.cloud.bigquery.Field;" [fields]
-  (into-array Field fields))
+(def ^:private ^"[Lcom.google.cloud.bigquery.Field;" no-fields
+  (make-array Field 0))
 
-(deftest ^:parallel sample-page-size-type-aware-test
-  (let [field-bytes  @#'bigquery/field-estimated-bytes
-        page-size    @#'bigquery/sample-page-size
-        no-sub       (field-array [])
-        scalar       (Field/of "n" LegacySQLTypeName/INTEGER no-sub)
-        text         (Field/of "s" LegacySQLTypeName/STRING no-sub)
-        repeated-str (-> (Field/newBuilder "arr" LegacySQLTypeName/STRING no-sub)
-                         (.setMode Field$Mode/REPEATED)
-                         (.build))
-        record       (Field/of "rec" LegacySQLTypeName/RECORD (field-array [scalar text]))]
-    (testing "heavier types get larger per-cell estimates"
-      (is (< (field-bytes scalar) (field-bytes text)))
-      (is (< (field-bytes text) (field-bytes repeated-str)))
-      (is (< (field-bytes scalar) (field-bytes record))))
-    (testing "narrow scalar tables sample the maximum page"
-      (is (= table-rows-sample/max-sample-rows
-             (page-size (Schema/of (field-array [scalar scalar scalar]))))))
-    (testing "heavy / nested columns shrink the page well below the max"
-      (is (< (page-size (Schema/of (field-array [scalar repeated-str record])))
-             table-rows-sample/max-sample-rows)))
-    (testing "page size is always at least 1, even for an extremely heavy schema"
-      (binding [bigquery/*sample-page-byte-budget* 1]
-        (is (= 1 (page-size (Schema/of (field-array [record])))))))))
+(defn- field-value-list
+  "A `FieldValueList` of `cells` with no backing schema (rows from `tabledata.list` are matched by position)."
+  ^FieldValueList [cells]
+  (FieldValueList/of ^java.util.List (vec cells) no-fields))
+
+(defn- prim-cell
+  "A primitive (scalar) `FieldValue`, as `tabledata.list` returns them (everything comes back as a String)."
+  ^FieldValue [v]
+  (FieldValue/of FieldValue$Attribute/PRIMITIVE v))
+
+(defn- repeated-cell
+  "A REPEATED `FieldValue` wrapping `cells` (a `FieldValueList`), as nested/array columns come back."
+  ^FieldValue [cells]
+  (FieldValue/of FieldValue$Attribute/REPEATED (field-value-list cells)))
+
+(deftest ^:parallel field-value-bytes-test
+  (let [field-value-bytes @#'bigquery/field-value-bytes
+        row-bytes         @#'bigquery/row-bytes]
+    (testing "a cell's measured size grows with its actual string length, not its type"
+      (is (< (field-value-bytes (prim-cell "x"))
+             (field-value-bytes (prim-cell (apply str (repeat 1000 "x")))))))
+    (testing "a null cell falls back to the per-cell overhead (no NPE)"
+      (is (pos? (field-value-bytes (prim-cell nil)))))
+    (testing "a REPEATED/RECORD cell sums its children, so it costs more than a scalar"
+      (is (< (field-value-bytes (prim-cell "abc"))
+             (field-value-bytes (repeated-cell [(prim-cell "abc") (prim-cell "abc") (prim-cell "abc")])))))
+    (testing "row-bytes sums its cells"
+      (is (= (+ (field-value-bytes (prim-cell "aa")) (field-value-bytes (prim-cell "bbb")))
+             (row-bytes (field-value-list [(prim-cell "aa") (prim-cell "bbb")])))))))
+
+(deftest ^:parallel next-sample-page-size-test
+  (let [next-size @#'bigquery/next-sample-page-size]
+    (testing "page size = budget / measured-avg-bytes-per-row"
+      ;; 50 rows totalling 500 bytes -> avg 10 -> 1000/10 = 100
+      (is (= 100 (next-size 1000 500 50 1000000))))
+    (testing "heavier rows sample fewer rows per page"
+      (is (< (next-size 1000 1000 10 1000000)    ; avg 100 -> 10 rows
+             (next-size 1000 100 10 1000000))))  ; avg 10  -> 100 rows
+    (testing "page size is at least 1, even when a single row exceeds the whole budget"
+      (is (= 1 (next-size 100 10000 1 1000000))))
+    (testing "page size never exceeds the remaining row budget"
+      (is (= 5 (next-size 1000000000 10 10 5))))))
 
 ;; These look like the macros from metabase.query-processor.expressions-test
 ;; but conform to bigquery naming rules

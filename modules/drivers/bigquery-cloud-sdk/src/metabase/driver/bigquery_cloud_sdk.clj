@@ -535,52 +535,97 @@
 (declare reducible-bigquery-results)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          Sizing sample pages by type                                           |
+;;; |                                        Sizing sample pages by measurement                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; `tabledata.list` returns whole rows (it can't project columns in this SDK), and the parsed page is held in memory
 ;;; while we fingerprint it. A wide table, or a narrow one with heavy columns (large text, BYTES, JSON, or nested
-;;; RECORD/REPEATED) can make a page huge and OOM sync. We can't know exact sizes, so we estimate a per-row byte cost
-;;; from column types and request proportionally fewer rows per page for heavier tables.
-
-(def ^:private scalar-field-estimated-bytes
-  "Per-cell estimate for fixed-width scalar columns (numbers, booleans, temporals)."
-  16)
-
-(def ^:private text-field-estimated-bytes
-  "Per-cell estimate for `:type/Text` and unknown (`:type/*`, e.g. BYTES/GEOGRAPHY) columns."
-  2048)
-
-(def ^:private large-field-estimated-bytes
-  "Per-cell estimate for `:type/Large` columns: nested RECORDs (`:type/Dictionary`), arrays/REPEATED (`:type/Array`),
-  and JSON (`:type/JSON`). These dominate the per-row cost, so weighting them high makes their tables sample small
-  pages."
-  262144)
-
-(defn- field-estimated-bytes
-  "Rough per-cell byte estimate for `field`, used only to size sample pages. Weighted by the Metabase base type so
-  variable-length and nested/collection types cost far more than fixed-width scalars."
-  ^long [^Field field]
-  (let [[_ base-type] (field->database+base-type field)]
-    (cond
-      (isa? base-type :type/Large) large-field-estimated-bytes
-      (or (isa? base-type :type/Text)
-          (= base-type :type/*))   text-field-estimated-bytes
-      :else                        scalar-field-estimated-bytes)))
+;;; RECORD/REPEATED) can make a page huge and OOM sync. Rather than guess a per-row cost from column types (which is
+;;; wildly inaccurate -- a TEXT column may hold 5 bytes or 5 MB), we *measure* it: fetch a small probe page, then
+;;; recompute the next page size from the average bytes/row actually seen, so each page targets a fixed byte budget.
 
 (def ^:private ^:dynamic *sample-page-byte-budget*
-  "Target estimated bytes per sample page. Page size = budget / estimated-row-bytes, clamped to [1, max-sample-rows].
-  Kept well under the server's ~10 MB `tabledata.list` page cap to leave headroom for JVM object expansion when the
-  page is parsed."
+  "Target measured bytes per `tabledata.list` sample page. The next page size is `budget / measured-bytes-per-row`,
+  clamped to [1, remaining]. Kept well under the server's ~10 MB page cap to leave headroom for JVM object expansion
+  when the page is parsed."
   (* 4 1024 1024))
 
-(defn- sample-page-size
-  "Rows to request per `tabledata.list` page, derived from `schema`'s column types so heavy tables fetch fewer rows.
-  Clamped to [1, max-sample-rows]."
-  ^long [^Schema schema]
-  (let [row-bytes (transduce (map field-estimated-bytes) + 0 (.getFields schema))]
-    (-> (quot (long *sample-page-byte-budget*) (max 1 (long row-bytes)))
+(def ^:private sample-probe-rows
+  "Rows to request for the first (probe) page, before we've measured the table's real row size. Small enough to stay
+  within the budget even for heavy rows, but not 1 -- a handful averages out per-row size variance."
+  10)
+
+(def ^:private sample-cell-overhead-bytes
+  "Approximate JVM footprint of a single parsed cell beyond its character data (the `FieldValue` wrapper plus boxing).
+  Added per cell so the budget tracks in-memory size, not just the wire bytes."
+  64)
+
+(defn- field-value-bytes
+  "Measured (not type-estimated) in-memory size of one parsed cell. `tabledata.list` returns scalars as Strings, so
+  the character count is a faithful proxy; REPEATED/RECORD values (a `FieldValueList`/`List` of cells) are summed
+  recursively."
+  ^long [^FieldValue cell]
+  (let [v (.getValue cell)]
+    (cond
+      (instance? java.util.List v) (reduce (fn [^long acc c] (+ acc (field-value-bytes c)))
+                                           sample-cell-overhead-bytes
+                                           v)
+      (string? v)                  (+ sample-cell-overhead-bytes (.length ^String v))
+      :else                        sample-cell-overhead-bytes)))
+
+(defn- row-bytes
+  "Measured in-memory size of one fetched row."
+  ^long [^FieldValueList row]
+  (reduce (fn [^long acc cell] (+ acc (field-value-bytes cell))) 0 row))
+
+(defn- next-sample-page-size
+  "Rows to request for the next page given the average measured bytes/row so far, targeting `budget` bytes/page.
+  Clamped to [1, `remaining`]."
+  ^long [^long budget ^long measured-bytes ^long measured-rows ^long remaining]
+  (let [avg-row-bytes (max 1 (quot measured-bytes (max 1 measured-rows)))]
+    (-> (quot budget avg-row-bytes)
         (max 1)
-        (min table-rows-sample/max-sample-rows))))
+        (min remaining))))
+
+(defn- reducible-sample-pages
+  "An `IReduceInit` over up to `max-rows` rows of `bq-table`, fetched via `tabledata.list`. The first page is a small
+  probe (`sample-probe-rows`); after each page the next page size is recomputed from the *measured* average bytes/row
+  to target `*sample-page-byte-budget*` per page -- so heavy tables fetch fewer rows per page without relying on
+  column-type estimates. Pages are walked manually (re-issuing `.list` with the page token) because `.getNextPage`
+  reuses the original request's page size, which would pin us to the tiny probe size forever."
+  [^Table bq-table ^long max-rows]
+  (let [budget (long *sample-page-byte-budget*)]
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (loop [acc        init
+               token      nil
+               page-size  (long sample-probe-rows)
+               seen       0
+               seen-bytes 0]
+          (let [remaining (- max-rows seen)]
+            (if (or (reduced? acc) (<= remaining 0))
+              (unreduced acc)
+              (let [opts (cond-> [(BigQuery$TableDataListOption/pageSize (min page-size remaining))]
+                           token (conj (BigQuery$TableDataListOption/pageToken token)))
+                    page (.list bq-table (u/varargs BigQuery$TableDataListOption opts))
+                    _    (*page-callback*)
+                    res  (reduce (fn [[acc page-bytes page-n] ^FieldValueList row]
+                                   (let [acc' (rf acc row)]
+                                     (if (reduced? acc')
+                                       (reduced [acc' page-bytes page-n])
+                                       [acc' (+ (long page-bytes) (row-bytes row)) (inc (long page-n))])))
+                                 [acc 0 0]
+                                 (.getValues page))
+                    [acc' page-bytes page-n] (unreduced res)
+                    seen'       (+ seen (long page-n))
+                    seen-bytes' (+ seen-bytes (long page-bytes))
+                    token'      (.getNextPageToken page)]
+                (if (or (reduced? acc') (str/blank? token') (zero? (long page-n)))
+                  (unreduced acc')
+                  (recur acc'
+                         token'
+                         (next-sample-page-size budget seen-bytes' seen' (- max-rows seen'))
+                         seen'
+                         seen-bytes'))))))))))
 
 (defn- sample-table
   "Process a sample of rows of fields corresponding to the Metabase fields
@@ -596,17 +641,14 @@
   (let [^Schema schema (.. bq-table getDefinition getSchema)
         field-idxs     (mapv :database_position fields)
         all-parsers    (get-field-parsers schema)
-        parsers        (mapv all-parsers field-idxs)
-        page           (.list bq-table (u/varargs BigQuery$TableDataListOption
-                                         [(BigQuery$TableDataListOption/pageSize (sample-page-size schema))]))]
+        parsers        (mapv all-parsers field-idxs)]
     (transduce
-     (comp (take table-rows-sample/max-sample-rows)
-           (map (partial extract-fingerprint field-idxs parsers)))
+     (map (partial extract-fingerprint field-idxs parsers))
      ;; Instead of passing on fields, we could recalculate the
      ;; metadata from the schema, but that probably makes no
      ;; difference and currently the metadata is ignored anyway.
      (rff {:cols fields})
-     (reducible-bigquery-results page nil (constantly nil)))))
+     (reducible-sample-pages bq-table table-rows-sample/max-sample-rows))))
 
 (defn- ingestion-time-partitioned-table?
   [table-id]
