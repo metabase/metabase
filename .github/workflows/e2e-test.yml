@@ -59,6 +59,11 @@ jobs:
     name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
     env:
       MB_EDITION: ${{ inputs.edition }}
+      # Absolute path for the quarantine failures file (DEV-2082). The after:spec
+      # recorder runs in Cypress' plugins process, whose cwd differs from the
+      # workspace where the gate step runs; an absolute path anchored to the
+      # workspace makes both agree regardless of cwd.
+      QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
       # Sensitive env vars (tokens, secrets) starting with `CYPRESS_` are accessed via async `cy.env()`
       # Example: `cy.env(["FOO"]).then(({ FOO }) => ...)`
       # For non-sensitive config, use `Cypress.expose()` in cypress config instead (synchronous)
@@ -211,6 +216,21 @@ jobs:
           variant: e2e-tests
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ inputs.specs && steps.tagged-e2e.outcome || steps.split-e2e.outcome }}
+
+      # Quarantine gate (DEV-2082). Compare this job's ultimate test failures
+      # (recorded by after:spec into ./target/quarantine-failures.jsonl) against
+      # ci-conductor's quarantine list and decide whether the job should pass:
+      # pass if every failure is quarantined, fail if any isn't. This mirrors
+      # what Trunk's analytics-uploader does for us today. Runs in dry-run mode
+      # for now (QUARANTINE_DRY_RUN defaults to true) — it only prints the
+      # verdict and never fails the job. `continue-on-error` is belt-and-braces
+      # while it's observational; drop both it and the dry run to enforce.
+      - name: Quarantine gate (dry run)
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 2
+        shell: bash
+        run: bun e2e/support/check-quarantine.ts
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v7

@@ -10,6 +10,7 @@ import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
 
 import {
   extractFailedTests,
+  recordFailedTestsForQuarantine,
   reportFailedTestsToConductor,
 } from "./ci_conductor";
 import * as ciTasks from "./ci_tasks";
@@ -198,7 +199,10 @@ const defaultConfig = {
         // a hard backstop around everything — extraction, payload build, and
         // the request. The reporter also handles its own errors internally.
         try {
-          await reportFailedTestsToConductor(extractFailedTests(spec, results));
+          const failedTests = extractFailedTests(spec, results);
+          // Persist ultimate failures for the post-run quarantine gate (DEV-2082).
+          recordFailedTestsForQuarantine(failedTests);
+          await reportFailedTestsToConductor(failedTests);
         } catch (error) {
           console.error("[ci-conductor] reporting failed (ignored)", error);
         }

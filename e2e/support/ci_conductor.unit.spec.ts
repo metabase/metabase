@@ -1,3 +1,7 @@
+import { existsSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { extractFailedTests, resolveScreenshotPath } from "./ci_conductor";
 
 // jest.mock is hoisted; the mocked default must be referenced via a `mock`-
@@ -640,6 +644,107 @@ describe("reportFailedTestsToConductor", () => {
       reportFailedTestsToConductor(oneTest),
     ).resolves.toBeUndefined();
     expect(console.error).toHaveBeenCalled();
+    (console.error as jest.Mock).mockRestore();
+  });
+});
+
+describe("recordFailedTestsForQuarantine", () => {
+  const failuresFile = join(tmpdir(), `q-failures-${process.pid}.jsonl`);
+
+  afterEach(() => {
+    if (existsSync(failuresFile)) {
+      rmSync(failuresFile);
+    }
+  });
+
+  // The recorder reads QUARANTINE_FAILURES_FILE at import time, so point it at
+  // a temp file by re-importing the module with that env applied.
+  const load = () => loadConductor({ QUARANTINE_FAILURES_FILE: failuresFile });
+
+  const readLines = () =>
+    readFileSync(failuresFile, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+
+  it("records only ultimate failures (not flakes or passes), one per line", async () => {
+    const { recordFailedTestsForQuarantine } = await load();
+
+    const results = makeResults({
+      tests: [
+        test(["scenarios > foo", "passes"], ["passed"]),
+        test(["scenarios > foo", "flakes then passes"], ["failed", "passed"]),
+        test(["scenarios > foo", "stays broken"], ["failed", "failed"], "boom"),
+      ],
+    });
+
+    recordFailedTestsForQuarantine(extractFailedTests(spec, results));
+
+    expect(readLines()).toEqual([
+      {
+        test_name: "stays broken",
+        test_path: "scenarios > foo",
+        file_path: "e2e/test/scenarios/foo/foo.cy.spec.ts",
+      },
+    ]);
+  });
+
+  it("appends across calls so the whole job's failures accumulate", async () => {
+    const { recordFailedTestsForQuarantine } = await load();
+
+    recordFailedTestsForQuarantine(
+      extractFailedTests(
+        spec,
+        makeResults({ tests: [test(["A", "one"], ["failed", "failed"], "x")] }),
+      ),
+    );
+    recordFailedTestsForQuarantine(
+      extractFailedTests(
+        spec,
+        makeResults({ tests: [test(["B", "two"], ["failed", "failed"], "y")] }),
+      ),
+    );
+
+    expect(readLines().map((t) => t.test_name)).toEqual(["one", "two"]);
+  });
+
+  it("writes nothing when there are no ultimate failures", async () => {
+    const { recordFailedTestsForQuarantine } = await load();
+
+    recordFailedTestsForQuarantine(
+      extractFailedTests(
+        spec,
+        makeResults({
+          tests: [
+            test(["A", "ok"], ["passed"]),
+            test(["A", "flaky"], ["failed", "passed"]),
+          ],
+        }),
+      ),
+    );
+
+    expect(existsSync(failuresFile)).toBe(false);
+  });
+
+  it("never throws when the file can't be written", async () => {
+    // A NUL byte in the path makes the fs calls throw; the recorder must swallow it.
+    const { recordFailedTestsForQuarantine } = await loadConductor({
+      QUARANTINE_FAILURES_FILE: "/tmp/\0/nope.jsonl",
+    });
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(() =>
+      recordFailedTestsForQuarantine([
+        {
+          name: "n",
+          path: "p",
+          file: "f",
+          status: "failure",
+          attempts: [{ state: "failed" }],
+        },
+      ] as Parameters<typeof recordFailedTestsForQuarantine>[0]),
+    ).not.toThrow();
+
     (console.error as jest.Mock).mockRestore();
   });
 });
