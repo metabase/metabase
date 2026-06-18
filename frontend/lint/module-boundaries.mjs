@@ -25,7 +25,6 @@ const elements = [
     type: "lib",
     name: "types",
     pattern: "frontend/src/metabase-types/*/**",
-    enforceOutgoing: false,
   }),
   createElement({ type: "lib", name: "utils" }),
 
@@ -49,6 +48,7 @@ const elements = [
 
   // shared
   createElement({ type: "shared", name: "account" }),
+  createElement({ type: "shared", name: "actions" }),
   createElement({ type: "shared", name: "api" }),
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
@@ -66,11 +66,33 @@ const elements = [
   createElement({ type: "shared", name: "databases" }),
   createElement({ type: "shared", name: "detail-view" }),
   createElement({ type: "shared", name: "documents" }),
+  createElement({
+    type: "shared",
+    name: "embed",
+    pattern: "frontend/src/embed/**",
+  }),
   createElement({ type: "shared", name: "embedding", enforceOutgoing: false }),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk",
+    enforceOutgoing: false,
+  }),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk-bundle",
+    pattern: "frontend/src/embedding-sdk-bundle/**",
+    enforceOutgoing: false,
+  }),
   createElement({
     type: "shared",
     name: "embedding-ee",
     pattern: "enterprise/frontend/src/embedding/**",
+  }),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk-ee",
+    pattern: "enterprise/frontend/src/embedding-sdk-ee/**",
+    enforceOutgoing: false,
   }),
   createElement({
     type: "shared",
@@ -80,7 +102,7 @@ const elements = [
   createElement({
     type: "shared",
     name: "embedding-sdk-shared",
-    pattern: "frontend/src/embedding-sdk-shared/**",
+    pattern: "frontend/src/embedding-sdk-shared/{**,.storybook/**}",
   }),
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "history" }),
@@ -96,23 +118,25 @@ const elements = [
   createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
+  createElement({ type: "shared", name: "nav" }),
   createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
   createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "pulse" }),
-  createElement({ type: "shared", name: "querying", enforceOutgoing: false }),
+  createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "questions" }),
   createElement({ type: "shared", name: "redux" }),
+  createElement({ type: "shared", name: "rich_text_editing" }),
   createElement({ type: "shared", name: "router" }),
   createElement({
     type: "shared",
     name: "schema",
     pattern: "frontend/src/metabase/schema.js",
     mode: "full",
-    enforceOutgoing: false,
   }),
+  createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
@@ -149,6 +173,7 @@ const elements = [
     "frontend/src/metabase/app-embed-sdk.tsx",
     "frontend/src/metabase/app-main.js",
     "frontend/src/metabase/app-embed.ts",
+    "frontend/src/metabase/app-embed-mcp.tsx",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
@@ -180,18 +205,40 @@ const elements = [
     type: "app",
     name: "nav",
     pattern: "frontend/src/metabase/app/nav/**",
-    enforceOutgoing: true,
   }),
   // static-viz must come after the app entries rather than in the
   // alphabetical shared list: its entry point (static-viz/index.tsx) is app
   // tier, and the first matching element wins.
   createElement({ type: "shared", name: "static-viz" }),
-  // catch-all for unmoduled files - must be last
+
+  // Loose files living directly under frontend/src/metabase that have not yet
+  // been pulled into a module folder.
   createElement({
     type: "shared",
-    name: "other",
-    pattern: "frontend/src/*/**",
-    enforceOutgoing: false,
+    name: "cljs-dev-tools",
+    pattern: [
+      "frontend/src/metabase/dev.ts",
+      "frontend/src/metabase/dev-noop.ts",
+    ],
+    mode: "full",
+  }),
+  createElement({
+    type: "shared",
+    name: "error-boundary",
+    pattern: "frontend/src/metabase/ErrorBoundary.tsx",
+    mode: "full",
+  }),
+  createElement({
+    type: "shared",
+    name: "routes-stable-id-aware",
+    pattern: "frontend/src/metabase/routes-stable-id-aware.tsx",
+    mode: "full",
+  }),
+  createElement({
+    type: "shared",
+    name: "redux-store",
+    pattern: "frontend/src/metabase/store.js",
+    mode: "full",
   }),
 ];
 
