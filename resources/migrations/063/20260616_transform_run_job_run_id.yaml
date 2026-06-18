@@ -68,6 +68,7 @@ databaseChangeLog:
                 INNER JOIN transform_job_transform_tag job_tag ON job_tag.tag_id = tag.tag_id
                 INNER JOIN transform_job_run job_run ON job_run.job_id = job_tag.job_id
                 WHERE run.job_run_id IS NULL
+                  AND job_run.run_method = run.run_method
                   AND job_run.start_time <= run.start_time
                   AND (job_run.end_time IS NULL OR job_run.end_time >= COALESCE(run.end_time, run.start_time))
                 ORDER BY run.id, job_run.start_time DESC
@@ -86,6 +87,7 @@ databaseChangeLog:
                 INNER JOIN transform_job_transform_tag job_tag ON job_tag.job_id = job_run.job_id
                 INNER JOIN transform_transform_tag tag ON tag.tag_id = job_tag.tag_id
                 WHERE tag.transform_id = transform_run.transform_id
+                  AND job_run.run_method = transform_run.run_method
                   AND job_run.start_time <= transform_run.start_time
                   AND (job_run.end_time IS NULL OR job_run.end_time >= COALESCE(transform_run.end_time, transform_run.start_time))
                 ORDER BY job_run.start_time DESC
