@@ -126,29 +126,35 @@
             ;; TODO Temporarily disabling due to flakiness (#33140)
             #_(is (= 4 @pages-retrieved))))))))
 
+(defn- field-array
+  "A typed `Field[]`. The hint lets the compiler pick the `Field...`/`Schema` overloads of `Field/of`,
+  `Field/newBuilder`, and `Schema/of` without reflection."
+  ^"[Lcom.google.cloud.bigquery.Field;" [fields]
+  (into-array Field fields))
+
 (deftest ^:parallel sample-page-size-type-aware-test
   (let [field-bytes  @#'bigquery/field-estimated-bytes
         page-size    @#'bigquery/sample-page-size
-        no-sub       (into-array Field [])
+        no-sub       (field-array [])
         scalar       (Field/of "n" LegacySQLTypeName/INTEGER no-sub)
         text         (Field/of "s" LegacySQLTypeName/STRING no-sub)
         repeated-str (-> (Field/newBuilder "arr" LegacySQLTypeName/STRING no-sub)
                          (.setMode Field$Mode/REPEATED)
                          (.build))
-        record       (Field/of "rec" LegacySQLTypeName/RECORD (into-array Field [scalar text]))]
+        record       (Field/of "rec" LegacySQLTypeName/RECORD (field-array [scalar text]))]
     (testing "heavier types get larger per-cell estimates"
       (is (< (field-bytes scalar) (field-bytes text)))
       (is (< (field-bytes text) (field-bytes repeated-str)))
       (is (< (field-bytes scalar) (field-bytes record))))
     (testing "narrow scalar tables sample the maximum page"
       (is (= table-rows-sample/max-sample-rows
-             (page-size (Schema/of (into-array Field [scalar scalar scalar]))))))
+             (page-size (Schema/of (field-array [scalar scalar scalar]))))))
     (testing "heavy / nested columns shrink the page well below the max"
-      (is (< (page-size (Schema/of (into-array Field [scalar repeated-str record])))
+      (is (< (page-size (Schema/of (field-array [scalar repeated-str record])))
              table-rows-sample/max-sample-rows)))
     (testing "page size is always at least 1, even for an extremely heavy schema"
       (binding [bigquery/*sample-page-byte-budget* 1]
-        (is (= 1 (page-size (Schema/of (into-array Field [record])))))))))
+        (is (= 1 (page-size (Schema/of (field-array [record])))))))))
 
 ;; These look like the macros from metabase.query-processor.expressions-test
 ;; but conform to bigquery naming rules
