@@ -120,6 +120,7 @@
                            (log/info "Executing job transform" (pr-str transform-id))
                            (transforms.execute/execute! transform {:run-method run-method
                                                                    :user-id    user-id
+                                                                   :job-run-id run-id
                                                                    ;; lets the coordinator cancel exactly the run
                                                                    ;; this worker started (see [[cancel-worker!]])
                                                                    :on-start   #(deliver started-run-id %)})
