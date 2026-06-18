@@ -54,10 +54,7 @@ function isCustomVizAllowed(
   display: string | undefined,
   allowlist: string[],
 ): boolean {
-  return (
-    isCustomVizDisplay(display) &&
-    allowlist.includes(display.slice("custom:".length))
-  );
+  return isCustomVizDisplay(display) && allowlist.includes(display);
 }
 
 const pluginToIconBlob = new Map<CustomVizPluginId, string>();
@@ -124,7 +121,7 @@ export function initializeSdkCustomVizPlugin() {
       options: LoadCustomVizPluginOptions = {},
     ) => {
       // We should only be calling this for allowed plugins, but this checks again to be safer
-      if (!getAllowlist().includes(plugin.identifier)) {
+      if (!getAllowlist().includes(getCustomPluginIdentifier(plugin))) {
         return Promise.resolve(null);
       }
       return eeLoadCustomVizPlugin(plugin, {
@@ -189,7 +186,9 @@ export function initializeSdkCustomVizPlugin() {
       // those effects in a render loop.
       const plugins = useMemo(
         () =>
-          result.plugins?.filter((p) => allowlist.includes(p.identifier)) ?? [],
+          result.plugins?.filter((p) =>
+            allowlist.includes(getCustomPluginIdentifier(p)),
+          ) ?? [],
         // eslint-disable-next-line react-hooks/exhaustive-deps -- allowlistKey stands in for `allowlist`
         [result.plugins, allowlistKey],
       );

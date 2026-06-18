@@ -66,7 +66,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     cy.get<CardId>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
         sdkProviderProps: {
-          allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+          allowedCustomVisualizations: [CUSTOM_VIZ_DISPLAY],
         },
       });
     });
@@ -81,7 +81,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     cy.get<CardId>("@defaultDisplayQuestionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
         sdkProviderProps: {
-          allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+          allowedCustomVisualizations: [CUSTOM_VIZ_DISPLAY],
         },
       });
     });
@@ -143,7 +143,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
           />,
           {
             sdkProviderProps: {
-              allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+              allowedCustomVisualizations: [CUSTOM_VIZ_DISPLAY],
             },
           },
         );
@@ -195,7 +195,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
           />,
           {
             sdkProviderProps: {
-              allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+              allowedCustomVisualizations: [CUSTOM_VIZ_DISPLAY],
             },
           },
         );
@@ -217,7 +217,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
           />,
           {
             sdkProviderProps: {
-              allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+              allowedCustomVisualizations: [CUSTOM_VIZ_DISPLAY],
             },
           },
         );
@@ -255,7 +255,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
           />,
           {
             sdkProviderProps: {
-              allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+              allowedCustomVisualizations: [CUSTOM_VIZ_DISPLAY],
             },
           },
         );
@@ -273,7 +273,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
       cy.get<CardId>("@questionId").then((questionId) => {
         mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
           sdkProviderProps: {
-            allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+            allowedCustomVisualizations: [CUSTOM_VIZ_DISPLAY],
           },
         });
       });
@@ -287,7 +287,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
       cy.get<CardId>("@questionId").then((questionId) => {
         mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
           sdkProviderProps: {
-            allowedCustomVisualizations: ["some-other-plugin"],
+            allowedCustomVisualizations: ["custom:some-other-plugin"],
           },
         });
       });
