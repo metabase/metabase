@@ -312,14 +312,39 @@
               (skip-index-type-sql type type-args) (or granularity 1))]
      [(format "ALTER TABLE %s MATERIALIZE INDEX %s" target idx)]]))
 
+(defn- strip-wrapping-parens
+  "Drop one balanced `(...)` that wraps the whole expression (a skip-index `expr` has one, a sorting key doesn't). Only
+  strips when the opening paren's match is the final char, so `lower(email)` is left intact."
+  [^String s]
+  (if (and (str/starts-with? s "(")
+           (loop [i 1, depth 1]
+             (when (< i (count s))
+               (let [depth (case (.charAt s i) \( (inc depth) \) (dec depth) depth)]
+                 (if (zero? depth) (= i (dec (count s))) (recur (inc i) depth))))))
+    (subs s 1 (dec (count s)))
+    s))
+
+(defn- split-top-level-commas
+  "Split on commas that aren't nested in parens, so a function key like `toStartOfInterval(d, INTERVAL 1 DAY)` stays one
+  element instead of being torn at its inner comma."
+  [^String s]
+  (loop [i 0, depth 0, start 0, acc []]
+    (if (< i (count s))
+      (case (.charAt s i)
+        \( (recur (inc i) (inc depth) start acc)
+        \) (recur (inc i) (dec depth) start acc)
+        \, (if (zero? depth)
+             (recur (inc i) depth (inc i) (conj acc (subs s start i)))
+             (recur (inc i) depth start acc))
+        (recur (inc i) depth start acc))
+      (conj acc (subs s start)))))
+
 (defn- expr->columns
-  "Best-effort split of a ClickHouse key expression into column names: strip a surrounding paren wrapper (skip-index
-  exprs have one, sorting keys don't), then split on commas. A real expression like `lower(email)` stays one element."
+  "Best-effort split of a ClickHouse key expression into its top-level columns/expressions. Strips a wrapping paren, then
+  splits on top-level commas only; a real expression like `lower(email)` stays one element."
   [expr]
-  (when (perf/not-empty expr)
-    (-> (str/replace expr #"^\(|\)$" "")
-        (str/split #",")
-        (->> (perf/mapv str/trim)))))
+  (when-let [s (perf/not-empty expr)]
+    (perf/mapv str/trim (split-top-level-commas (strip-wrapping-parens s)))))
 
 ;; Named skip-indexes come from `system.data_skipping_indices`; the inline MergeTree sorting key
 ;; (`system.tables.sorting_key`) is emitted with `:name nil`. Blank `schema` falls back to `currentDatabase()`.

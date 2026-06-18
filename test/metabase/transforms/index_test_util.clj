@@ -104,7 +104,8 @@
               "CREATE INDEX fc_gin ON mb_fetch_pg USING gin (data)"
               "CREATE INDEX fc_brin ON mb_fetch_pg USING brin (created_at)"
               "CREATE INDEX fc_hash ON mb_fetch_pg USING hash (email)"
-              "CREATE INDEX fc_expr ON mb_fetch_pg (lower(email))"]
+              "CREATE INDEX fc_expr ON mb_fetch_pg (lower(email))"
+              "CREATE INDEX fc_mixed ON mb_fetch_pg (user_id, lower(email))"]
      :expected #{(idx "mb_fetch_pg_pkey" :btree "btree" ["id"] :unique true :primary true)
                  (idx "fc_btree" :btree "btree" ["user_id"])
                  (idx "fc_unique" :btree "btree" ["email"] :unique true)
@@ -114,16 +115,22 @@
                  (idx "fc_gin" :gin "gin" ["data"])
                  (idx "fc_brin" :brin "brin" ["created_at"])
                  (idx "fc_hash" :hash "hash" ["email"])
-                 (idx "fc_expr" :btree "btree" [nil])}}
+                 (idx "fc_expr" :btree "btree" [nil])
+                 ;; mixed column + expression: order preserved, the expression element is nil
+                 (idx "fc_mixed" :btree "btree" ["user_id" nil])}}
     {:label "a table with no indexes returns []"
      :table "mb_fetch_pg_empty"
      :create ["CREATE TABLE mb_fetch_pg_empty (a INT, b INT)"]
      :expected #{}}]
 
    :redshift
-   [{:label  "the inline sortkey, unnamed, reconciled by kind + columns"
+   [{:label  "the inline compound sortkey, unnamed, reconciled by kind + columns"
      :table  "mb_fetch_rs"
      :create ["CREATE TABLE mb_fetch_rs (a INT, b INT) COMPOUND SORTKEY (a, b)"]
+     :expected #{(idx nil :sortkey nil ["a" "b"])}}
+    {:label  "an interleaved sortkey, whose sortkey positions are negative, still orders by abs() position"
+     :table  "mb_fetch_rs_interleaved"
+     :create ["CREATE TABLE mb_fetch_rs_interleaved (a INT, b INT) INTERLEAVED SORTKEY (a, b)"]
      :expected #{(idx nil :sortkey nil ["a" "b"])}}
     {:label "a table with no sortkey returns []"
      :table "mb_fetch_rs_empty"
@@ -141,6 +148,14 @@
      :expected #{(idx "by_minmax" :skip-index "minmax" ["a"])
                  (idx "by_set" :skip-index "set" ["b"])
                  (idx nil :order-by nil ["a" "b"])}}
+    {:label  "expression keys: a wrapped single-expr skip-index and an ORDER BY whose function key has an inner comma"
+     :table  "mb_fetch_ch_expr"
+     :create ["CREATE TABLE mb_fetch_ch_expr (a Int64, b Int64, s String) ENGINE = MergeTree ORDER BY (a, cityHash64(s, b))"
+              "ALTER TABLE mb_fetch_ch_expr ADD INDEX ix_lower (lower(s)) TYPE set(100) GRANULARITY 1"
+              "ALTER TABLE mb_fetch_ch_expr MATERIALIZE INDEX ix_lower"]
+     ;; ClickHouse stores these verbatim: skip-index `expr` = `(lower(s))`, `sorting_key` = `a, cityHash64(s, b)`.
+     :expected #{(idx "ix_lower" :skip-index "set" ["lower(s)"])
+                 (idx nil :order-by nil ["a" "cityHash64(s, b)"])}}
     {:label "an unsorted table returns []"
      :table "mb_fetch_ch_empty"
      :create ["CREATE TABLE mb_fetch_ch_empty (a Int64) ENGINE = MergeTree ORDER BY ()"]
