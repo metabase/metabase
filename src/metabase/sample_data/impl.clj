@@ -76,21 +76,10 @@
                      codec/url-decode
                      (str ";USER=GUEST;PASSWORD=guest"))}))
 
-(defn- point-sqlite-native-lib-at-plugins-dir!
-  "Tell sqlite-jdbc to extract its native library into the plugins dir instead of `java.io.tmpdir`.
-  `java.io.tmpdir` is shared and predictable on multi-tenant hosts; the plugins dir is per-instance and
-  writable. We set a global JVM property because that is the only knob sqlite-jdbc exposes. Honor an
-  operator-provided `-Dorg.sqlite.tmpdir` rather than clobbering it. Must run before the first SQLite
-  connection is opened (the native lib is extracted lazily on first connection)."
-  []
-  (when (str/blank? (System/getProperty "org.sqlite.tmpdir"))
-    (System/setProperty "org.sqlite.tmpdir" (str (plugins/plugins-dir)))))
-
 (defn- try-to-extract-sample-database!
   "Extracts the sample database out of the JAR to the plugins dir and returns a db-details map. SQLite-JDBC
    requires a real file on disk, so the plugins-dir-must-be-writable assumption is load-bearing."
   []
-  (point-sqlite-native-lib-at-plugins-dir!)
   (let [filename (sample-database-filename)
         ^URL resource (io/resource filename)]
     (when-not resource
