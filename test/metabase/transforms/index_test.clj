@@ -75,6 +75,32 @@
           (when test-case
             (test-declared-indexes! test-case python-source)))))))
 
+(deftest ^:synchronized managed-indexes-verified-against-warehouse-after-run-test
+  (testing "real managed index rows are created by the run and then verified :succeeded against the warehouse"
+    ;; Reuses the driver create-index cases, but instead of stubbing hydrate-transform-indexes it persists real
+    ;; :model/TableIndex rows. The run reads them (real hydrate), applies them, and verify-managed-indexes! confirms
+    ;; each landed via fetch-table-indexes -- the whole create-then-verify loop on a live warehouse.
+    (mt/test-drivers (index-util/index-test-drivers)
+      (mt/dataset transforms-dataset/transforms-test
+        (let [{:keys [indexes]} (index-util/driver-cases driver/*driver*)
+              schema            (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (with-transform-cleanup! [{table-name :name :as target}
+                                    {:type "table" :schema schema :name "idx_verify_products" :database (mt/id)}]
+            (mt/with-temp [:model/Transform {tid :id :as transform} {:name   "index-verify-transform"
+                                                                     :source (query-source)
+                                                                     :target target}]
+              (doseq [idx indexes]
+                (t2/insert! :model/TableIndex {:transform_id tid
+                                               :index_name   (or (:name idx) (name (:kind idx)))
+                                               :structured   idx}))
+              (transforms.execute/execute! transform {:run-method :manual})
+              (transforms.tu/wait-for-table table-name 10000)
+              (testing "every managed row is verified succeeded"
+                (is (= #{:succeeded} (t2/select-fn-set :status :model/TableIndex :transform_id tid))))
+              (testing "GET /indexes lists them, flagged metabase_managed"
+                (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "indexes?transform-id=" tid))]
+                  (is (= (count indexes) (count (filter :metabase_managed data)))))))))))))
+
 (deftest ^:synchronized declared-index-failure-fails-the-run-test
   (testing "a bad index declaration fails the whole run instead of being silently skipped"
     ;; The index points at a missing column, so creation fails (inline: the CTAS; standalone: the CREATE INDEX).

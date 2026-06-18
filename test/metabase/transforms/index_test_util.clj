@@ -115,9 +115,9 @@
                  (idx "fc_gin" :gin "gin" ["data"])
                  (idx "fc_brin" :brin "brin" ["created_at"])
                  (idx "fc_hash" :hash "hash" ["email"])
-                 (idx "fc_expr" :btree "btree" [nil])
-                 ;; mixed column + expression: order preserved, the expression element is nil
-                 (idx "fc_mixed" :btree "btree" ["user_id" nil])}}
+                 (idx "fc_expr" :btree "btree" ["lower(email)"])
+                 ;; mixed column + expression: order preserved, the expression carries its text
+                 (idx "fc_mixed" :btree "btree" ["user_id" "lower(email)"])}}
     {:label "a table with no indexes returns []"
      :table "mb_fetch_pg_empty"
      :create ["CREATE TABLE mb_fetch_pg_empty (a INT, b INT)"]
@@ -127,13 +127,11 @@
    [{:label  "the inline compound sortkey, unnamed, reconciled by kind + columns"
      :table  "mb_fetch_rs"
      :create ["CREATE TABLE mb_fetch_rs (a INT, b INT) COMPOUND SORTKEY (a, b)"]
-     :expected #{(idx nil :sortkey nil ["a" "b"])}}
+     :expected #{(idx nil :sortkey "compound" ["a" "b"])}}
     {:label  "an interleaved sortkey, whose sortkey positions are negative, still orders by abs() position"
      :table  "mb_fetch_rs_interleaved"
      :create ["CREATE TABLE mb_fetch_rs_interleaved (a INT, b INT) INTERLEAVED SORTKEY (a, b)"]
-     ;; same normalized shape as the compound case, so `:definition` is the only signal it's interleaved.
-     :definition-contains "INTERLEAVED"
-     :expected #{(idx nil :sortkey nil ["a" "b"])}}
+     :expected #{(idx nil :sortkey "interleaved" ["a" "b"])}}
     {:label "a table with no sortkey returns []"
      :table "mb_fetch_rs_empty"
      :create ["CREATE TABLE mb_fetch_rs_empty (a INT, b INT)"]

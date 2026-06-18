@@ -19,7 +19,7 @@
    :is-valid true :key-columns ["name"] :include-columns [] :partial-predicate nil :definition "CREATE INDEX by_cat ..."})
 
 (def ^:private wh-sortkey
-  {:name nil :kind :sortkey :access-method nil :is-unique false :is-primary false
+  {:name nil :kind :sortkey :access-method "compound" :is-unique false :is-primary false
    :is-valid true :key-columns ["a" "b"] :include-columns [] :partial-predicate nil :definition nil})
 
 (def ^:private wh-dba
@@ -40,16 +40,19 @@
            (reconcile/warehouse->structured wh-dba)))
     (is (= {:kind :btree :name "by_cat" :columns [{:name "name"}] :unique true}
            (reconcile/warehouse->structured wh-btree))))
-  (testing "sortkey style is unrecoverable, defaults to :compound"
+  (testing "sortkey style rides on :access-method, converted deterministically"
     (is (= {:kind :sortkey :style :compound :columns [{:name "a"} {:name "b"}]}
-           (reconcile/warehouse->structured wh-sortkey))))
+           (reconcile/warehouse->structured wh-sortkey)))
+    (is (= {:kind :sortkey :style :interleaved :columns [{:name "a"} {:name "b"}]}
+           (reconcile/warehouse->structured (assoc wh-sortkey :access-method "interleaved")))))
   (testing "skip-index type comes from the access-method"
     (is (= {:kind :skip-index :name "by_minmax" :columns [{:name "a"}] :type :minmax}
            (reconcile/warehouse->structured
             {:name "by_minmax" :kind :skip-index :access-method "minmax" :key-columns ["a"]}))))
-  (testing "an expression-only index (no column names) can't be represented -> nil"
-    (is (nil? (reconcile/warehouse->structured
-               {:name "fc_expr" :kind :btree :access-method "btree" :key-columns [nil]})))))
+  (testing "an expression key column carries its text as the column name"
+    (is (= {:kind :btree :name "fc_expr" :columns [{:name "lower(email)"}]}
+           (reconcile/warehouse->structured
+            {:name "fc_expr" :kind :btree :access-method "btree" :key-columns ["lower(email)"]})))))
 
 (deftest merge-indexes-test
   (testing "managed-only: rendered from its stored structured, flagged managed"
