@@ -173,6 +173,14 @@ export type AddCardToDashboardOpts = NewDashCardOpts & {
 export const addCardToDashboard =
   ({ dashId, tabId, cardId }: AddCardToDashboardOpts) =>
   async (dispatch: Dispatch, getState: GetState) => {
+    dispatch(
+      setDashboardAttributes({
+        id: dashId,
+        attributes: {},
+        isAddingCard: true,
+      }),
+    );
+
     const cached = cardApi.endpoints.getCard.select({ id: cardId })(
       getState(),
     ).data;
@@ -182,10 +190,16 @@ export const addCardToDashboard =
         { id: cardId },
         dispatch,
         cardApi.endpoints.getCard,
-        {
-          forceRefetch: false,
-        },
+        { forceRefetch: false },
       ));
+
+    dispatch(
+      setDashboardAttributes({
+        id: dashId,
+        attributes: {},
+        isAddingCard: false,
+      }),
+    );
 
     const dashcardId = generateTemporaryDashcardId();
     const dashcard = dispatch(

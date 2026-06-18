@@ -60,6 +60,7 @@ export type StoreDashboard = Omit<Dashboard, "dashcards" | "tabs"> & {
   dashcards: DashCardId[];
   tabs?: StoreDashboardTab[];
   isDirty?: boolean;
+  isAddingCard?: boolean;
 };
 
 export type StoreDashcard = DashboardCard & {

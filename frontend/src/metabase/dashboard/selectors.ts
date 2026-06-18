@@ -336,7 +336,7 @@ export const getIsDirty = createSelector(
       return false;
     }
 
-    if (dashboard.isDirty) {
+    if (dashboard.isDirty || dashboard.isAddingCard) {
       return true;
     }
 

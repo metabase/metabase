@@ -284,6 +284,7 @@ function newDashboard(
   before: StoreDashboard,
   after: Partial<Dashboard>,
   isDirty: boolean,
+  isAddingCard?: boolean,
 ): StoreDashboard {
   return {
     ...before,
@@ -292,6 +293,7 @@ function newDashboard(
     ...omit(after, "dashcards", "tabs"),
     embedding_params: syncParametersAndEmbeddingParams(before, after),
     isDirty,
+    ...(isAddingCard !== undefined && { isAddingCard }),
   };
 }
 
@@ -305,10 +307,18 @@ export const dashboards = createReducer(
       }))
       .addCase(
         setDashboardAttributes,
-        (state, { payload: { id, attributes, isDirty = true } }) => {
+        (
+          state,
+          { payload: { id, attributes, isDirty = true, isAddingCard } },
+        ) => {
           // Cast to avoid infinite type instantiation error.
           const dashboards = state as Record<string, StoreDashboard>;
-          dashboards[id] = newDashboard(dashboards[id], attributes, isDirty);
+          dashboards[id] = newDashboard(
+            dashboards[id],
+            attributes,
+            isDirty,
+            isAddingCard,
+          );
         },
       )
       .addCase(addCardToDash, (state, { payload: dashcard }) => {

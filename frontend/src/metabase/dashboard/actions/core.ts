@@ -38,6 +38,7 @@ export type SetDashboardAttributesOpts = {
   id: DashboardId;
   attributes: Partial<Dashboard>;
   isDirty?: boolean;
+  isAddingCard?: boolean;
 };
 export const SET_DASHBOARD_ATTRIBUTES =
   "metabase/dashboard/SET_DASHBOARD_ATTRIBUTES";
