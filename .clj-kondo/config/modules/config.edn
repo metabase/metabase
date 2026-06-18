@@ -1828,6 +1828,7 @@
            premium-features
            queries
            query-permissions
+           request
            server
            settings
            system
