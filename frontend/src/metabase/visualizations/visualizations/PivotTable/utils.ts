@@ -97,6 +97,7 @@ export function isColumnValid(col: DatasetColumn) {
   return (
     col.source === "aggregation" ||
     col.source === "breakout" ||
+    col.source === "native" ||
     isPivotGroupColumn(col)
   );
 }
@@ -228,13 +229,15 @@ export function checkRenderable(
   settings: VisualizationSettings,
   query?: NativeQuery | null,
 ) {
-  if (data.cols.some((col) => col.source === "native")) {
-    throw new Error(
-      t`Pivot tables are only supported for questions built in the query builder.`,
-    );
-  }
-  if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
+  const isNativeQuery = data.cols.some((col) => col.source === "native");
+  if (
+    !isNativeQuery &&
+    (data.cols.length < 2 || !data.cols.every(isColumnValid))
+  ) {
     throw new Error(t`Pivot tables can only be used with aggregated queries.`);
+  }
+  if (data.cols.length < 2) {
+    throw new Error(t`Pivot tables require at least 2 columns.`);
   }
   if (!databaseSupportsPivotTables(query)) {
     throw new Error(t`This database does not support pivot tables.`);

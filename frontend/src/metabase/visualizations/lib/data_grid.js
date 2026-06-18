@@ -17,6 +17,44 @@ export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
 export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
+// For native SQL queries the backend never adds the pivot-grouping column.
+// We synthesize it here so the CLJS pivot engine can process the data.
+function addPivotGroupingToNativeData(data, columnSplit) {
+  const {
+    rows: rowColNames = [],
+    columns: colColNames = [],
+    values: valueColNames = [],
+  } = columnSplit;
+  const breakoutNames = new Set([...rowColNames, ...colColNames]);
+
+  // Re-tag columns so split-pivot-data can count breakouts correctly.
+  // native source → "breakout" for row/col dims, "aggregation" for measures.
+  const taggedCols = data.cols.map((col) => {
+    if (col.source !== "native") {
+      return col;
+    }
+    if (breakoutNames.has(col.name)) {
+      return { ...col, source: "breakout" };
+    }
+    if (valueColNames.includes(col.name)) {
+      return { ...col, source: "aggregation" };
+    }
+    return col;
+  });
+
+  // Append pivot-grouping column (value 0 = all breakouts active, no subtotals).
+  const pivotGroupCol = {
+    name: "pivot-grouping",
+    display_name: "pivot-grouping",
+    base_type: "type/Integer",
+    source: "native",
+  };
+  const cols = [...taggedCols, pivotGroupCol];
+  const rows = data.rows.map((row) => [...row, 0]);
+
+  return { ...data, cols, rows };
+}
+
 export function multiLevelPivot(data, settings) {
   if (!settings[COLUMN_SPLIT_SETTING]) {
     return null;
@@ -26,7 +64,12 @@ export function multiLevelPivot(data, settings) {
     data.cols,
   );
 
-  const columns = Pivot.columns_without_pivot_group(data.cols);
+  const isNativeQuery = data.cols.some((col) => col.source === "native");
+  const processedData = isNativeQuery
+    ? addPivotGroupingToNativeData(data, columnSplit)
+    : data;
+
+  const columns = Pivot.columns_without_pivot_group(processedData.cols);
 
   const {
     columns: columnIndexes,
@@ -75,7 +118,7 @@ export function multiLevelPivot(data, settings) {
       topHeaderItems,
       getRowSection,
     } = Pivot.process_pivot_table(
-      data,
+      processedData,
       rowIndexes,
       columnIndexes,
       valueIndexes,

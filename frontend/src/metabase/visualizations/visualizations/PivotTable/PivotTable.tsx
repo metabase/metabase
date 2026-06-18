@@ -183,7 +183,13 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     ]);
 
     const pivoted = useMemo(() => {
-      if (data == null || !data.cols.some(isPivotGroupColumn)) {
+      if (data == null) {
+        return null;
+      }
+      const isNativeQuery = data.cols.some((col) => col.source === "native");
+      // For structured queries the backend adds a pivot-grouping column; for
+      // native SQL queries we synthesize it inside multiLevelPivot.
+      if (!isNativeQuery && !data.cols.some(isPivotGroupColumn)) {
         return null;
       }
 
