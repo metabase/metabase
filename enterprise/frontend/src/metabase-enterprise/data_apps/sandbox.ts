@@ -2,40 +2,8 @@ import createVirtualEnvironment from "@locker/near-membrane-dom";
 import * as React from "react";
 import * as ReactJsxRuntime from "react/jsx-runtime";
 
-import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
-import { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
-import { CreateQuestion } from "embedding-sdk-bundle/components/public/CreateQuestion";
-import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
-import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
-import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
-import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
-import {
-  EditableDashboard,
-  InteractiveDashboard,
-  StaticDashboard,
-} from "embedding-sdk-bundle/components/public/dashboard";
-import {
-  DataAppLink,
-  DataAppRouter,
-  useDataAppLocation,
-} from "embedding-sdk-bundle/lib/data-app/router";
-import { useAction } from "embedding-sdk-package/hooks/public/use-action";
-import {
-  avg,
-  breakout,
-  count,
-  createMetabaseQuery,
-  distinct,
-  filter,
-  max,
-  median,
-  min,
-  sum,
-  useMetabaseQuery,
-  useMetabaseQueryObject,
-} from "embedding-sdk-package/hooks/public/use-metabase-query";
-import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
-import { defineMetabaseTheme } from "embedding-sdk-package/lib/public/define-metabase-theme";
+import * as sdkExports from "embedding-sdk-package";
+import * as dataAppExports from "embedding-sdk-package/data-app";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import { makeDistortionCallback } from "./sandbox/distortions";
@@ -73,46 +41,12 @@ export function createDataAppSandbox(
         React,
         __react_jsx_runtime__: ReactJsxRuntime,
         __metabase_sdk__: {
-          // Custom actions
-          useAction,
-
-          // Query helpers
-          avg,
-          count,
-          distinct,
-          max,
-          median,
-          min,
-          sum,
-          // Configuration helpers
-          defineMetabaseAuthConfig,
-          defineMetabaseTheme,
-          // Question components
-          InteractiveQuestion,
-          StaticQuestion,
-          SdkQuestion,
-          CreateQuestion,
-          MetabotQuestion,
-          // Dashboard components
-          EditableDashboard,
-          InteractiveDashboard,
-          StaticDashboard,
-          CreateDashboardModal,
-          // Collection
-          CollectionBrowser,
+          ...sdkExports,
+          // Below we can set fallbacks to `sdkExports` exports that were renamed/removed to prevent breaking changes
         },
         __metabase_data_app__: {
-          // Routing
-          DataAppRouter,
-          DataAppLink,
-          useDataAppLocation,
-
-          // Query helpers
-          breakout,
-          createMetabaseQuery,
-          filter,
-          useMetabaseQuery,
-          useMetabaseQueryObject,
+          ...dataAppExports,
+          // Below we can set fallbacks to `dataAppExports` exports that were renamed/removed to prevent breaking changes
         },
         get __dataAppFactory__() {
           return captured;
