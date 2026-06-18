@@ -361,7 +361,7 @@ export type VisualizationSettings = {
 
   // Treemap settings
   "treemap.grouping"?: string;
-  "treemap.sub_grouping"?: string;
+  "treemap.sub_grouping"?: string | null;
   "treemap.value"?: string;
   "treemap.rows"?: TreemapRow[];
   "treemap.show_parent_labels"?: boolean;

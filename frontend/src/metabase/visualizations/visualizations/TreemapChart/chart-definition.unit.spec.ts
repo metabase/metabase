@@ -258,8 +258,12 @@ describe("TREEMAP_CHART_DEFINITION", () => {
         () => undefined,
       );
 
-      expect(options?.map(({ value }) => value)).toContain("SubCategory");
-      expect(options?.map(({ value }) => value)).not.toContain("Category");
+      expect(options?.map(({ value }: { value: string }) => value)).toContain(
+        "SubCategory",
+      );
+      expect(
+        options?.map(({ value }: { value: string }) => value),
+      ).not.toContain("Category");
     });
 
     it("keeps sub-grouping unset when explicitly cleared", () => {
