@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsApi, StoreApi } from "metabase/services";
+import { premiumFeaturesApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { useDispatch } from "metabase/redux";
+import { SettingsApi } from "metabase/services";
 import { reload } from "metabase/utils/dom";
 import type { TokenStatus } from "metabase-types/api";
 
@@ -13,6 +16,7 @@ const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check 
 const UNABLE_TO_VALIDATE_TOKEN = t`We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers.`;
 
 export const useLicense = (onActivated?: () => void) => {
+  const dispatch = useDispatch();
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>();
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -54,7 +58,13 @@ export const useLicense = (onActivated?: () => void) => {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        setTokenStatus(await StoreApi.tokenStatus());
+        setTokenStatus(
+          await runRtkEndpoint(
+            undefined,
+            dispatch,
+            premiumFeaturesApi.endpoints.getTokenStatus,
+          ),
+        );
       } catch (e) {
         if ((e as any).status !== 404) {
           setError(UNABLE_TO_VALIDATE_TOKEN);
@@ -65,7 +75,7 @@ export const useLicense = (onActivated?: () => void) => {
     };
 
     fetchStatus();
-  }, []);
+  }, [dispatch]);
 
   return {
     isUpdating,
