@@ -31,6 +31,13 @@ jobs:
       # JSON array of spec paths, consumed by the matrix below.
       specs: ${{ steps.detect.outputs.specs }}
       should_run: ${{ steps.detect.outputs.should_run }}
+      # Optional burn-50 / burn-100 labels bump the burn-in count beyond the default of
+      # 20; if both are present, burn-100 wins. `contains()` on the labels array is the
+      # same pattern as the job's `if:` gate above — no shell, no array stringification.
+      burn_in: >-
+        ${{ contains(github.event.pull_request.labels.*.name, 'burn-100') && '100'
+            || contains(github.event.pull_request.labels.*.name, 'burn-50') && '50'
+            || '20' }}
     steps:
       - name: Detect changed Cypress spec files
         id: detect
@@ -38,7 +45,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
+        run: | # sh
           # List every file in the PR, drop deletions, then keep only regular e2e Cypress
           # specs: paths under e2e/ ending in .cy.spec.{js,ts,tsx}, excluding the
           # embedding-SDK component specs under e2e/test-component/ (those use a different
@@ -67,6 +74,8 @@ jobs:
           echo "specs=${SPECS_JSON}" >> "$GITHUB_OUTPUT"
           echo "should_run=true" >> "$GITHUB_OUTPUT"
 
+          echo "Note: you can use the burn-50 or burn-100 labels to increase the burn-in count from the default of 20." >> $GITHUB_STEP_SUMMARY
+
   stress-test:
     name: Stress test
     needs: detect-changed-specs
@@ -83,7 +92,7 @@ jobs:
     secrets: inherit
     with:
       spec: ${{ matrix.spec }}
-      burn_in: 20
+      burn_in: ${{ needs.detect-changed-specs.outputs.burn_in }}
       qa_db: true
       mb_edition: ee
       build_jar: true
