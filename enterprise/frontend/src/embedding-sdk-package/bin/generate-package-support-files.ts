@@ -48,38 +48,6 @@ export * from "./data-app.esm.js";
 writeToFile("data-app.cjs", dataApp_cjs);
 writeToFile("data-app.js", dataApp_js);
 
-const dataApp_dts = `
-import {
-  DataAppRouter as _DataAppRouter,
-  DataAppLink as _DataAppLink,
-  useDataAppLocation as _useDataAppLocation,
-  breakout as _breakout,
-  createMetabaseQuery as _createMetabaseQuery,
-  filter as _filter,
-  useMetabaseQuery as _useMetabaseQuery,
-  useMetabaseQueryObject as _useMetabaseQueryObject,
-} from './index.d.ts';
-import type {
-  MetabaseBreakout as _MetabaseBreakout,
-  MetabaseQueryOptions as _MetabaseQueryOptions,
-  UseMetabaseQueryResult as _UseMetabaseQueryResult,
-} from './index.d.ts';
-
-export declare const DataAppRouter: typeof _DataAppRouter;
-export declare const DataAppLink: typeof _DataAppLink;
-export declare const useDataAppLocation: typeof _useDataAppLocation;
-export declare const breakout: typeof _breakout;
-export declare const createMetabaseQuery: typeof _createMetabaseQuery;
-export declare const filter: typeof _filter;
-export declare const useMetabaseQuery: typeof _useMetabaseQuery;
-export declare const useMetabaseQueryObject: typeof _useMetabaseQueryObject;
-export type MetabaseBreakout = _MetabaseBreakout;
-export type MetabaseQueryOptions = _MetabaseQueryOptions;
-export type UseMetabaseQueryResult = _UseMetabaseQueryResult;
-`.trim();
-
-writeToFile("data-app.d.ts", dataApp_dts);
-
 // Development mode entry point.
 // When the host app bundler resolves the "development" exports condition,
 // this file sets a window global so the SDK bundle can detect dev mode.
