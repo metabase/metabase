@@ -247,8 +247,6 @@
                                  [:= :status [:inline "succeeded"]]]
                       :group-by [:transform_id]}))))
 
-(def ^:private timestamp-constraint transforms.models.u/timestamp-constraint)
-
 (defn- paged-runs-join-clause
   "Returns a `:left-join` clause for transform runs sort columns that require joining other tables."
   [{:keys [sort-column]}]
@@ -261,10 +259,10 @@
   [{:keys [start-time end-time run-methods transform-ids transform-tag-ids statuses user-id]}]
   (let [where-cond (cond-> []
                      (some? start-time)
-                     (conj (timestamp-constraint :start_time start-time))
+                     (conj (transforms.models.u/timestamp-constraint :start_time start-time))
 
                      (some? end-time)
-                     (conj (timestamp-constraint :end_time end-time))
+                     (conj (transforms.models.u/timestamp-constraint :end_time end-time))
 
                      (seq run-methods)
                      (conj [:in :run_method (set run-methods)])
