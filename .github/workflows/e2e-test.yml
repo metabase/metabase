@@ -37,10 +37,11 @@ env:
   HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
   PR_NUMBER: ${{ github.event.pull_request.number || '' }}
   JOB_NAME: ${{ inputs.name }}
-  # ci-conductor failed-tests reporting (DEV-1999). Secret holds the webhooks
-  # base URL (".../webhooks"); the reporter appends the endpoint. Callers pass
+  # ci-conductor reporting (DEV-1999). Secret holds the base origin
+  # (e.g. "https://conductor.<host>"); each consumer appends the path it needs
+  # (the reporter POSTs to "/webhooks/failed-tests"). Callers pass
   # `secrets: inherit`; reporting no-ops when it's unset.
-  CI_CONDUCTOR_WEBHOOK_URL: ${{ secrets.CI_CONDUCTOR_WEBHOOK_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
   # Shared secret sent as the `x-internal-secret` header to authenticate.
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
   REPO_ID: ${{ github.event.repository.id }}

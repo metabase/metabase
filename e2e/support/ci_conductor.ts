@@ -11,13 +11,13 @@ import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
  * than waiting for the whole job to finish — lets failures be tied back to the
  * CI run (and through it the PR / release branch) before the job completes.
  *
- * The webhooks base URL is only supplied via env in CI, so local runs no-op.
+ * The base URL is only supplied via env in CI, so local runs no-op.
  *
  * See DEV-1999.
  */
 
 const {
-  CI_CONDUCTOR_WEBHOOK_URL,
+  CI_CONDUCTOR_BASE_URL,
   CI_CONDUCTOR_WEBHOOK_SECRET,
   CI_CONDUCTOR_DRY_RUN,
   REPO_ID,
@@ -281,7 +281,7 @@ export function extractFailedTests(
 export async function reportFailedTestsToConductor(
   tests: ConductorTest[],
 ): Promise<void> {
-  if (tests.length === 0 || (!CI_CONDUCTOR_WEBHOOK_URL && !isDryRun)) {
+  if (tests.length === 0 || (!CI_CONDUCTOR_BASE_URL && !isDryRun)) {
     return;
   }
 
@@ -336,14 +336,15 @@ export async function reportFailedTestsToConductor(
       return;
     }
 
-    if (!CI_CONDUCTOR_WEBHOOK_URL) {
+    if (!CI_CONDUCTOR_BASE_URL) {
       // already excluded by the guard above; this also narrows the type
       return;
     }
 
-    // CI_CONDUCTOR_WEBHOOK_URL holds the webhooks *base* (e.g. ".../webhooks");
-    // we append the specific endpoint so the same secret can serve others later.
-    const endpoint = `${CI_CONDUCTOR_WEBHOOK_URL.replace(/\/+$/, "")}/failed-tests`;
+    // CI_CONDUCTOR_BASE_URL holds the ci-conductor base origin (e.g.
+    // "https://conductor.<host>"); we append this endpoint's path. Other
+    // consumers (e.g. the quarantine gate's /api/quarantine) build their own.
+    const endpoint = `${CI_CONDUCTOR_BASE_URL.replace(/\/+$/, "")}/webhooks/failed-tests`;
 
     // ci-conductor authenticates this endpoint via the x-internal-secret header.
     const headers: Record<string, string> = {

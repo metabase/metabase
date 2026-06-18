@@ -349,7 +349,7 @@ describe("resolveScreenshotPath", () => {
 });
 
 describe("reportFailedTestsToConductor", () => {
-  const url = "https://conductor.example/webhooks";
+  const url = "https://conductor.example";
   const endpoint = "https://conductor.example/webhooks/failed-tests";
   const oneTest = [{ name: "a test", file: "foo.cy.spec.ts" }];
 
@@ -358,9 +358,9 @@ describe("reportFailedTestsToConductor", () => {
     mockFetch.mockResolvedValue({ ok: true, status: 200, statusText: "OK" });
   });
 
-  it("no-ops when the webhook URL is not configured", async () => {
+  it("no-ops when the base URL is not configured", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: undefined,
+      CI_CONDUCTOR_BASE_URL: undefined,
     });
 
     await reportFailedTestsToConductor(oneTest);
@@ -369,7 +369,7 @@ describe("reportFailedTestsToConductor", () => {
 
   it("no-ops when there are no failures to report", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
     });
 
     await reportFailedTestsToConductor([]);
@@ -378,7 +378,7 @@ describe("reportFailedTestsToConductor", () => {
 
   it("POSTs the failures with parsed numeric ids and forwarded tests", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
       REPO_ID: "123",
       GITHUB_RUN_ID: "456",
       GITHUB_RUN_ATTEMPT: "2",
@@ -411,7 +411,7 @@ describe("reportFailedTestsToConductor", () => {
 
   it("prefers COMMIT_SHA/TARGET_BRANCH but falls back to the ambient GITHUB_* vars", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
       COMMIT_SHA: undefined,
       GITHUB_SHA: "ambient-sha",
       TARGET_BRANCH: undefined,
@@ -427,7 +427,7 @@ describe("reportFailedTestsToConductor", () => {
 
   it("sends null attempt, sha, target_branch, and retries when their envs are missing", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
       GITHUB_RUN_ATTEMPT: undefined,
       CYPRESS_RETRIES: undefined,
       COMMIT_SHA: undefined,
@@ -447,7 +447,7 @@ describe("reportFailedTestsToConductor", () => {
 
   it("sends the x-internal-secret header when the secret is configured", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
       CI_CONDUCTOR_WEBHOOK_SECRET: "s3cr3t",
     });
 
@@ -460,7 +460,7 @@ describe("reportFailedTestsToConductor", () => {
 
   it("omits the secret header when no secret is configured", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
       CI_CONDUCTOR_WEBHOOK_SECRET: undefined,
     });
 
@@ -473,7 +473,7 @@ describe("reportFailedTestsToConductor", () => {
 
   it("appends the endpoint regardless of a trailing slash on the base URL", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: `${url}/`,
+      CI_CONDUCTOR_BASE_URL: `${url}/`,
     });
 
     await reportFailedTestsToConductor(oneTest);
@@ -482,7 +482,7 @@ describe("reportFailedTestsToConductor", () => {
 
   it("uses JOB_ID env when set (populated by the resolve-job-id action)", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
       JOB_ID: "789",
     });
 
@@ -492,7 +492,7 @@ describe("reportFailedTestsToConductor", () => {
 
   it("sends a null job_id when JOB_ID is missing or non-numeric", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
       JOB_ID: "not-a-number",
     });
 
@@ -502,7 +502,7 @@ describe("reportFailedTestsToConductor", () => {
 
   it("sends null ids when the env vars are missing or non-numeric", async () => {
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
       REPO_ID: undefined,
       GITHUB_RUN_ID: "not-a-number",
     });
@@ -519,7 +519,7 @@ describe("reportFailedTestsToConductor", () => {
     mockFetch.mockRejectedValue(new Error("network down"));
 
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
     });
 
     await expect(
@@ -534,7 +534,7 @@ describe("reportFailedTestsToConductor", () => {
 
     const { reportFailedTestsToConductor } = await loadConductor({
       CI_CONDUCTOR_DRY_RUN: "true",
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
       REPO_ID: "123",
     });
 
@@ -548,12 +548,12 @@ describe("reportFailedTestsToConductor", () => {
     logSpy.mockRestore();
   });
 
-  it("logs in dry-run mode even when no webhook URL is configured", async () => {
+  it("logs in dry-run mode even when no base URL is configured", async () => {
     const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
 
     const { reportFailedTestsToConductor } = await loadConductor({
       CI_CONDUCTOR_DRY_RUN: "true",
-      CI_CONDUCTOR_WEBHOOK_URL: undefined,
+      CI_CONDUCTOR_BASE_URL: undefined,
     });
 
     await reportFailedTestsToConductor(oneTest);
@@ -572,7 +572,7 @@ describe("reportFailedTestsToConductor", () => {
     });
 
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
     });
 
     await reportFailedTestsToConductor(oneTest);
@@ -589,7 +589,7 @@ describe("reportFailedTestsToConductor", () => {
     fs.writeFileSync(file, bytes);
     try {
       const { reportFailedTestsToConductor } = await loadConductor({
-        CI_CONDUCTOR_WEBHOOK_URL: url,
+        CI_CONDUCTOR_BASE_URL: url,
       });
       await reportFailedTestsToConductor([
         { name: "t", file: "f.cy.spec.ts", screenshotPath: file },
@@ -607,7 +607,7 @@ describe("reportFailedTestsToConductor", () => {
   it("omits the screenshot (and screenshotPath) when the file can't be read", async () => {
     const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
     });
 
     await reportFailedTestsToConductor([
@@ -633,7 +633,7 @@ describe("reportFailedTestsToConductor", () => {
     });
 
     const { reportFailedTestsToConductor } = await loadConductor({
-      CI_CONDUCTOR_WEBHOOK_URL: url,
+      CI_CONDUCTOR_BASE_URL: url,
     });
 
     await expect(
