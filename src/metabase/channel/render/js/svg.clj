@@ -58,10 +58,15 @@
   (let [base-controller (Pools/utilizationController 1.0 3 3)]
     (Pool. (reify IPool$Generator
              (generate [_ _]
-               ;; Generate a tuple of the engine and the expiry timestamp.
+               ;; Generate a tuple of the context and the expiry timestamp.
                [(load-viz-bundle (js.engine/context))
                 (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
-             (destroy [_ _ _v]))
+             (destroy [_ _ [^Context ctx _expiry]]
+               ;; Close the context when it's disposed from the pool (expiry/shutdown). Without this, each disposed
+               ;; static-viz context (~130 MB) leaks its native memory: GraalVM only releases it on `close`, not on GC.
+               (try
+                 (.close ctx true) ;; force close - can't wait for running code
+                 (catch Exception _))))
            ;; Wrap the utilization controller with a modification that doesn't allow the pool to go below 1 instance.
            (reify IPool$Controller
              (shouldIncrement [_ k a b] (.shouldIncrement base-controller k a b))

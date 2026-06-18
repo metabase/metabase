@@ -129,6 +129,27 @@ describe("getDatasetParams - embed question (token-based)", () => {
   });
 });
 
+describe("getDatasetParams - public question (uuid-based)", () => {
+  const PUBLIC_UUID = "11111111-2222-3333-4444-555555555555";
+  const question = new Question(createMockCard({ id: 1 }), undefined);
+  const result = createMockDataset();
+
+  it("forwards format_rows and pivot_results to the public question endpoint (#75545)", () => {
+    const downloadParams = getDatasetParams({
+      type: "xlsx",
+      question,
+      result,
+      uuid: PUBLIC_UUID,
+      enableFormatting: true,
+      enablePivot: true,
+    });
+
+    const url = new URLSearchParams(downloadParams.params);
+    expect(url.get("format_rows")).toBe("true");
+    expect(url.get("pivot_results")).toBe("true");
+  });
+});
+
 describe("getChartFileName", () => {
   beforeEach(() => {
     jest.useFakeTimers();

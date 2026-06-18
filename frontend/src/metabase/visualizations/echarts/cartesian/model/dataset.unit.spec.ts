@@ -919,6 +919,24 @@ describe("dataset transform functions", () => {
       expect(result[2][X_AXIS_DATA_KEY]).toBe("2022-03-01");
     });
 
+    it("should sort valid dates and move null dates to the end", () => {
+      const dataset = [
+        { [X_AXIS_DATA_KEY]: "2022-03-01", [seriesKey]: 10 },
+        { [X_AXIS_DATA_KEY]: null, [seriesKey]: 2 },
+        { [X_AXIS_DATA_KEY]: "2022-01-01", [seriesKey]: 5 },
+        { [X_AXIS_DATA_KEY]: "2022-02-01", [seriesKey]: 8 },
+      ];
+
+      const result = sortDataset(dataset, "timeseries");
+
+      expect(result.map((datum) => datum[X_AXIS_DATA_KEY])).toEqual([
+        "2022-01-01",
+        "2022-02-01",
+        "2022-03-01",
+        null,
+      ]);
+    });
+
     it.each(numericScale)("should sort numeric datasets", (xAxisScale) => {
       const dataset = [
         { [X_AXIS_DATA_KEY]: 1000, [seriesKey]: 10 },

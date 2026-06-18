@@ -23,7 +23,7 @@
    (java.time Duration)
    (java.util Map Set)
    (java.util.concurrent TimeUnit TimeoutException)
-   (org.graalvm.polyglot Context HostAccess)
+   (org.graalvm.polyglot Context Engine HostAccess)
    (org.graalvm.polyglot.io FileSystem IOAccess)))
 
 (set! *warn-on-reflection* true)
@@ -224,10 +224,24 @@
         (.close raw-ctx true)
         false))))
 
+(defonce ^:private
+  ^{:doc "A single GraalVM `Engine` shared by every pooled Python context. The engine owns the Truffle runtime and the
+          (parsed/compiled) code cache; sharing it across contexts means recycling a context on its TTL no longer
+          recreates an engine or re-loads sqlglot into a fresh code cache. That per-context engine state is the dominant
+          native-memory cost and, because contexts churn on a 10-minute TTL and GraalPy doesn't reliably return all of
+          it to the OS on close, a major source of the native-memory growth. The engine is a process-lifetime singleton
+          (it is intentionally never closed)."}
+  shared-python-engine
+  (delay
+    (.. (Engine/newBuilder)
+        (option "engine.WarnInterpreterOnly" "false")
+        (build))))
+
 (defn- create-graalvm-context
   "Create a new GraalVM Python context configured for sqlglot.
 
   The context is configured with:
+  - The shared [[shared-python-engine]] (so contexts share one Truffle runtime + code cache)
   - PythonPath pointing to python-sources (contains sql_tools.py and sqlglot)
   - Full host access (needed for JSON serialization)
   - Read-only filesystem (sources loaded directly from classpath/jar, no disk extraction in prod)"
@@ -237,7 +251,7 @@
                       (fileSystem fs)
                       (build))
         builder   (.. (Context/newBuilder (into-array String ["python"]))
-                      (option "engine.WarnInterpreterOnly" "false")
+                      (engine @shared-python-engine)
                       (option "python.PythonPath" python-path)
                       (allowHostAccess HostAccess/ALL)
                       (allowIO io-access))

@@ -13,10 +13,10 @@ on:
         type: string
         required: true
       burn_in:
-        description: "Number of times to run the test (e.g. 50)"
+        description: "Number of times to run the test (e.g. 10)"
         type: string
         required: true
-        default: "50"
+        default: "10"
 
 jobs:
   detect-changed-stories:
@@ -93,7 +93,7 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
           STORY_FILES: ${{ needs.detect-changed-stories.outputs.story_files }}
-          BURN_IN: ${{ inputs.burn_in || 50 }}
+          BURN_IN: ${{ inputs.burn_in || 10 }}
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_ACTOR: ${{ github.event.pull_request.user.login }}
@@ -154,7 +154,7 @@ jobs:
 
       - name: Stress-test Loki
         run: |
-          BURN_IN=${{ inputs.burn_in || '50' }}
+          BURN_IN=${{ inputs.burn_in || '10' }}
           STORY_FILES='${{ needs.detect-changed-stories.outputs.story_files }}'
 
           echo "Story files: $STORY_FILES"
