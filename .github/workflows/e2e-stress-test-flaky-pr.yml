@@ -5,8 +5,8 @@ name: E2E Stress Test (flaky-test-fix PR)
 # test, prove it by burning the changed spec(s) in many times before review.
 #
 # Mirrors loki-stress-test-flake-fix.yml: a detect job finds the changed specs, then a
-# matrix fans each one out into its own run of the reusable e2e-stress-test-flake-fix
-# workflow.
+# matrix fans each one out — twice, once with network throttling and once without — into
+# its own run of the reusable e2e-stress-test-flake-fix workflow.
 
 on:
   pull_request:
@@ -72,10 +72,13 @@ jobs:
     needs: detect-changed-specs
     if: needs.detect-changed-specs.outputs.should_run == 'true'
     strategy:
-      # Don't let one flaky spec cancel the burn-in of the others.
+      # Don't let one flaky spec (or one throttling regime) cancel the burn-in of the others.
       fail-fast: false
       matrix:
         spec: ${{ fromJson(needs.detect-changed-specs.outputs.specs) }}
+        # Burn each spec in both regimes — flakes often only reproduce under one of the two
+        # timing conditions. Cross-producing with `spec` yields two runs per changed spec.
+        enable_network_throttling: [true, false]
     uses: ./.github/workflows/e2e-stress-test-flake-fix.yml
     secrets: inherit
     with:
@@ -84,3 +87,4 @@ jobs:
       qa_db: true
       mb_edition: ee
       build_jar: true
+      enable_network_throttling: ${{ matrix.enable_network_throttling }}
