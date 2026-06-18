@@ -51,9 +51,10 @@ export const ViewButton = ({
       {icon && <Icon name={icon} size={iconSize} />}
       {children && (
         <span
-          className={
-            labelBreakpoint === "sm" ? cx(CS.hide, CS.smShow) : undefined
-          }
+          className={cx(
+            S.label,
+            labelBreakpoint === "sm" && [CS.hide, CS.smShow],
+          )}
         >
           {children}
         </span>
