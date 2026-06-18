@@ -57,6 +57,17 @@ function isCustomVizAllowed(
   return isCustomVizDisplay(display) && allowlist.includes(display);
 }
 
+const warnedUnknownCustomViz = new Set<string>();
+function warnUnknownCustomViz(display: string) {
+  if (!warnedUnknownCustomViz.has(display)) {
+    warnedUnknownCustomViz.add(display);
+    console.warn(
+      `Custom visualization "${display}" was requested but no matching ` +
+        `installed plugin was found. Check the name and that the plugin is uploaded.`,
+    );
+  }
+}
+
 const pluginToIconBlob = new Map<CustomVizPluginId, string>();
 const pluginToIconBlobPromise = new Map<
   CustomVizPluginId,
@@ -146,6 +157,7 @@ export function initializeSdkCustomVizPlugin() {
         const plugins = await action.unwrap();
         const plugin = plugins.find((p) => p.identifier === identifier);
         if (!plugin) {
+          warnUnknownCustomViz(display);
           return null;
         }
         return await eeLoadCustomVizPlugin(plugin, {
@@ -192,6 +204,21 @@ export function initializeSdkCustomVizPlugin() {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- allowlistKey stands in for `allowlist`
         [result.plugins, allowlistKey],
       );
+
+      // Warn the developers of the host app if they're passing a custom viz that we haven't found in the instance
+      useEffect(() => {
+        if (result.isLoading || !result.plugins) {
+          return;
+        }
+        const installed: string[] = result.plugins.map((p) =>
+          getCustomPluginIdentifier(p),
+        );
+        allowlist
+          .filter((name) => !installed.includes(name))
+          .forEach(warnUnknownCustomViz);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- allowlistKey stands in for `allowlist`
+      }, [result.plugins, result.isLoading, allowlistKey]);
+
       return { ...result, plugins };
     },
 
