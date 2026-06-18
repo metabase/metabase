@@ -103,7 +103,7 @@ export function isColumnValid(col: DatasetColumn) {
 }
 
 export function isFormattablePivotColumn(column: DatasetColumn) {
-  return column.source === "aggregation";
+  return column.source === "aggregation" || column.source === "native";
 }
 
 interface GetLeftHeaderWidthsProps {
