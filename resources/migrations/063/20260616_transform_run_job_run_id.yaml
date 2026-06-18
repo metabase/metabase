@@ -60,17 +60,17 @@ databaseChangeLog:
             dbms: postgresql
             sql: >-
               WITH matches AS (
-                SELECT DISTINCT ON (tr.id)
-                  tr.id AS transform_run_id,
+                SELECT DISTINCT ON (run.id)
+                  run.id AS transform_run_id,
                   job_run.id AS job_run_id
-                FROM transform_run tr
-                INNER JOIN transform_transform_tag tag ON tag.transform_id = tr.transform_id
+                FROM transform_run run
+                INNER JOIN transform_transform_tag tag ON tag.transform_id = run.transform_id
                 INNER JOIN transform_job_transform_tag job_tag ON job_tag.tag_id = tag.tag_id
                 INNER JOIN transform_job_run job_run ON job_run.job_id = job_tag.job_id
-                WHERE tr.job_run_id IS NULL
-                  AND job_run.start_time <= tr.start_time
-                  AND (job_run.end_time IS NULL OR job_run.end_time >= COALESCE(tr.end_time, tr.start_time))
-                ORDER BY tr.id, job_run.start_time DESC
+                WHERE run.job_run_id IS NULL
+                  AND job_run.start_time <= run.start_time
+                  AND (job_run.end_time IS NULL OR job_run.end_time >= COALESCE(run.end_time, run.start_time))
+                ORDER BY run.id, job_run.start_time DESC
               )
               UPDATE transform_run
               SET job_run_id = matches.job_run_id
