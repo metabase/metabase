@@ -22,7 +22,7 @@ import {
   getDimensionReferenceWithoutBaseType,
   isDimensionReferenceWithOptions,
 } from "metabase-lib/v1/references";
-import { isDimension } from "metabase-lib/v1/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
@@ -119,9 +119,14 @@ export const settings = {
       );
       let setting: PivotTableColumnSplitSetting;
       if (storedValue == null) {
+        const isNativeQuery = columnsToPartition.some(
+          (col) => col.source === "native",
+        );
         const [dimensions, values] = _.partition(
           columnsToPartition,
-          isDimension,
+          isNativeQuery
+            ? (col) => col.source === "native" && !isMetric(col)
+            : isDimension,
         );
         const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
           getIn(col, ["fingerprint", "global", "distinct-count"]),

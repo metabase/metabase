@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { isDimension } from "metabase-lib/v1/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { PivotTableSettingLabel } from "./PivotTable.styled";
@@ -11,10 +11,15 @@ export interface Partition {
   title: React.ReactNode;
 }
 
+// For native SQL queries, numeric/metric columns should go to Measures (values),
+// not Rows/Columns. This filter allows native columns only if they are non-metric.
+const isDimensionForNative = (col: DatasetColumn) =>
+  col.source === "native" ? !isMetric(col) : isDimension(col);
+
 export const partitions: Partition[] = [
   {
     name: "rows",
-    columnFilter: isDimension,
+    columnFilter: isDimensionForNative,
     title: (
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
@@ -22,7 +27,7 @@ export const partitions: Partition[] = [
   },
   {
     name: "columns",
-    columnFilter: isDimension,
+    columnFilter: isDimensionForNative,
     title: (
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Columns`}</PivotTableSettingLabel>
