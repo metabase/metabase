@@ -289,6 +289,7 @@
                     :model/Database
                     :model/Dimension
                     :model/Document
+                    :model/Exploration
                     :model/Measure
                     :model/ModelIndexValue
                     :model/NativeQuerySnippet
@@ -921,6 +922,7 @@
                     :model/DashboardTab
                     :model/Dimension
                     :model/Document
+                    :model/Exploration
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/PermissionsGroup
@@ -1006,6 +1008,7 @@
            metabot
            metrics
            models
+           permissions
            queries
            query-permissions
            query-processor

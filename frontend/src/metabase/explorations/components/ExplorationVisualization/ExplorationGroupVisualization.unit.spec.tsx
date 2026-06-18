@@ -36,13 +36,15 @@ jest.mock("metabase/visualizations/components/Visualization", () => {
   return { __esModule: true, default: Visualization };
 });
 
-// Stub the per-query result hook so we can drive datasets from each test.
+// Stub the per-query result hook so we can drive datasets (and errors) from each test.
 const mockDatasetsByQueryId = new Map<number, Dataset | undefined>();
+const mockErrorsByQueryId = new Map<number, unknown>();
 jest.mock("metabase/api/exploration", () => ({
   __esModule: true,
   useGetExplorationQueryResultQuery: (id: number) => ({
     currentData: mockDatasetsByQueryId.get(id),
-    isLoading: !mockDatasetsByQueryId.has(id),
+    error: mockErrorsByQueryId.get(id),
+    isLoading: !mockDatasetsByQueryId.has(id) && !mockErrorsByQueryId.has(id),
   }),
   useAppendChartToDocumentMutation: () => [jest.fn()],
   useCreateExplorationDocumentMutation: () => [jest.fn()],
@@ -109,6 +111,7 @@ const group = createGroup({
 interface SetupOpts {
   queries: ExplorationQuery[];
   datasets?: Map<number, Dataset>;
+  errors?: Map<number, unknown>;
   availableTimelines?: Timeline[];
   interestingTimelineIds?: ReadonlySet<number>;
 }
@@ -116,13 +119,20 @@ interface SetupOpts {
 function setup({
   queries,
   datasets,
+  errors,
   availableTimelines = [],
   interestingTimelineIds,
 }: SetupOpts) {
   mockDatasetsByQueryId.clear();
+  mockErrorsByQueryId.clear();
   if (datasets) {
     for (const [id, ds] of datasets) {
       mockDatasetsByQueryId.set(id, ds);
+    }
+  }
+  if (errors) {
+    for (const [id, err] of errors) {
+      mockErrorsByQueryId.set(id, err);
     }
   }
 
@@ -144,6 +154,24 @@ function setup({
 describe("ExplorationGroupVisualization", () => {
   afterEach(() => {
     mockDatasetsByQueryId.clear();
+    mockErrorsByQueryId.clear();
+  });
+
+  it("shows a permission message (not the loading skeleton) when a settled query's result fetch is forbidden", () => {
+    setup({
+      queries: [
+        createQuery({ id: 101, name: "Q1", status: "done" }),
+        createQuery({ id: 102, name: "Q2", status: "done" }),
+      ],
+      // 101 streams fine, 102's cached result is gated by the viewer's data-access lens
+      datasets: new Map([[101, makeTimeseriesDataset()]]),
+      errors: new Map([[102, { status: 403 }]]),
+    });
+
+    expect(
+      screen.getByText("You don't have permission to view these results."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
   });
 
   it("renders the aggregated error pane when any query has errored", () => {
