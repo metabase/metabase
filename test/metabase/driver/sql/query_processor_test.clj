@@ -1258,12 +1258,11 @@
       "(SELECT 'string with \n ; -- ends \n on new line')"
 
       ;; String containing semicolon followed by double dash followed by THE _comment or semicolon or end of input_.
-      ;; TODO: Enable when better sql parsing solution is found in the [[sql.qp/make-nestable-sql]]].
-      ;; Tech debt issue: #39401
-      #_#_"SELECT 'string with \n ; -- ending on the same line';"
-        "(SELECT 'string with \n ; -- ending on the same line')"
-      #_#_"SELECT 'string with \n ; -- ending on the same line';\n-- comment"
-        "(SELECT 'string with \n ; -- ending on the same line')"
+      "SELECT 'string with \n ; -- ending on the same line';"
+      "(SELECT 'string with \n ; -- ending on the same line')"
+
+      "SELECT 'string with \n ; -- ending on the same line';\n-- comment"
+      "(SELECT 'string with \n ; -- ending on the same line')"
 
       ;; String containing just `--` without `;` works
       "SELECT 'string with \n -- ending on the same line';"
