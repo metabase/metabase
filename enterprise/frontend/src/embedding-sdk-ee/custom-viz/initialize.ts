@@ -61,7 +61,7 @@ const iconObjectUrls = new Map<CustomVizPluginId, string>();
 // with the auth in the headers and hand back a same-origin `blob:` url.
 export const sdkCustomVizAssetManager = {
   resolveCustomVizAssetUrl: async (
-    pluginId: number,
+    pluginId: CustomVizPluginId,
     assetPath: string | null | undefined,
   ): Promise<string | undefined> => {
     if (!assetPath) {
