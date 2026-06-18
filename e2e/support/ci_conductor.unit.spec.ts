@@ -139,6 +139,47 @@ describe("extractFailedTests", () => {
     });
   });
 
+  it("classifies by the final state, not by every-attempt-failed (DEV-2082 regression)", () => {
+    // A retried failure can arrive with an attempts array that isn't uniformly
+    // "failed" (Cypress' shape). The final `state` is authoritative, so this is
+    // a "failure" — the old every-attempt-failed check misread it as a "flake".
+    const results = makeResults({
+      tests: [
+        {
+          title: ["a", "broken with odd attempts"],
+          state: "failed",
+          displayError: "boom",
+          duration: 100,
+          attempts: [{ state: "failed" }, { state: "unknown" }],
+        },
+      ] as unknown as CypressCommandLine.RunResult["tests"],
+    });
+
+    expect(extractFailedTests(spec, results)[0]).toMatchObject({
+      name: "broken with odd attempts",
+      status: "failure",
+    });
+  });
+
+  it("includes a broken test (final state failed) even with an empty attempts array", () => {
+    const results = makeResults({
+      tests: [
+        {
+          title: ["a", "broken no attempts"],
+          state: "failed",
+          displayError: "boom",
+          duration: 100,
+          attempts: [],
+        },
+      ] as unknown as CypressCommandLine.RunResult["tests"],
+    });
+
+    expect(extractFailedTests(spec, results)[0]).toMatchObject({
+      name: "broken no attempts",
+      status: "failure",
+    });
+  });
+
   it("excludes healthy, pending, and skipped tests", () => {
     const results = makeResults({
       tests: [
@@ -683,6 +724,32 @@ describe("recordFailedTestsForQuarantine", () => {
     expect(readLines()).toEqual([
       {
         test_name: "stays broken",
+        test_path: "scenarios > foo",
+        file_path: "e2e/test/scenarios/foo/foo.cy.spec.ts",
+      },
+    ]);
+  });
+
+  it("records a failure whose attempts array isn't uniformly failed (DEV-2082)", async () => {
+    const { recordFailedTestsForQuarantine } = await load();
+
+    const results = makeResults({
+      tests: [
+        {
+          title: ["scenarios > foo", "stays broken on retry"],
+          state: "failed",
+          displayError: "boom",
+          duration: 100,
+          attempts: [{ state: "failed" }, { state: "unknown" }],
+        },
+      ] as unknown as CypressCommandLine.RunResult["tests"],
+    });
+
+    recordFailedTestsForQuarantine(extractFailedTests(spec, results));
+
+    expect(readLines()).toEqual([
+      {
+        test_name: "stays broken on retry",
         test_path: "scenarios > foo",
         file_path: "e2e/test/scenarios/foo/foo.cy.spec.ts",
       },

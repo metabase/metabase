@@ -201,6 +201,30 @@ const defaultConfig = {
         // a hard backstop around everything — extraction, payload build, and
         // the request. The reporter also handles its own errors internally.
         try {
+          // TEMP DIAGNOSTIC (DEV-2082): dump the raw Cypress per-test shape for
+          // any test that failed or had a failed attempt, so we can confirm
+          // Cypress 15's actual after:spec `state`/`attempts` structure for
+          // retried failures. Remove once the quarantine classification is
+          // verified against a real CI failure.
+          const diag = (results?.tests ?? [])
+            .filter(
+              (t) =>
+                t.state === "failed" ||
+                (t.attempts ?? []).some((a) => a.state === "failed"),
+            )
+            .map((t) => ({
+              title: t.title,
+              state: t.state,
+              attempts: (t.attempts ?? []).map((a) => a.state),
+            }));
+          if (diag.length > 0) {
+            console.log(
+              "[quarantine-diag]",
+              spec.relative,
+              JSON.stringify(diag),
+            );
+          }
+
           const failedTests = extractFailedTests(spec, results);
           // Persist ultimate failures for the post-run quarantine gate (DEV-2082).
           recordFailedTestsForQuarantine(failedTests);
