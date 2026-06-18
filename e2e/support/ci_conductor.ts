@@ -76,26 +76,19 @@ type ConductorTest = {
 };
 
 /**
- * Classify a test. The test's *final* state is authoritative: it's what
- * mocha/JUnit (and Trunk) count as a failure, and — unlike the per-attempt
- * `state` — it's reliable across Cypress' retry shapes. A retried failure can
- * arrive with an `attempts` array that isn't uniformly "failed", which used to
- * misclassify a hard failure as a "flake" (DEV-2082). So:
- *   - finalState "failed"                  -> "failure"
- *   - finalState "passed", ≥1 failed attempt -> "flake" (recovered on retry)
- *   - finalState "passed", no failed attempt -> "passed"
- * The attempts array is only consulted to tell a clean pass from a flake.
+ * Classify a test from its attempts: "passed" if every attempt passed,
+ * "failure" if every attempt failed, "flake" if it failed at least once but
+ * ultimately passed on retry. Callers only pass tests that ran (a non-empty
+ * attempts array of passes and/or fails), never pending/skipped.
  */
 function classifyStatus(
-  finalState: string | undefined,
   attempts: { state: string }[],
 ): "failure" | "flake" | "passed" {
-  if (finalState === "failed") {
-    return "failure";
+  if (attempts.every((attempt) => attempt.state === "passed")) {
+    return "passed";
   }
-  return attempts.some((attempt) => attempt.state === "failed")
-    ? "flake"
-    : "passed";
+  const allFailed = attempts.every((attempt) => attempt.state === "failed");
+  return allFailed ? "failure" : "flake";
 }
 
 /**
@@ -202,11 +195,11 @@ function encodeScreenshot(filePath: string): string | undefined {
 }
 
 /**
- * Pull the reportable tests out of a single spec's run results. Classification
- * keys off each test's authoritative final `state`: we include "broken" tests
- * (final state failed) and "flaky" ones (final state passed but ≥1 attempt
- * failed). On a re-run (GITHUB_RUN_ATTEMPT > 1) we additionally include tests
- * that passed cleanly, so conductor can see a previously-failing test recover.
+ * Pull the reportable tests out of a single spec's run results. We always
+ * include any test that had at least one failed attempt — so both "broken"
+ * (every attempt failed) and "flaky" (failed at least once, passed on retry)
+ * are reported. On a re-run (GITHUB_RUN_ATTEMPT > 1) we additionally include
+ * tests that passed, so conductor can see a previously-failing test recover.
  * Pending/skipped tests are never reported. Each row carries a derived `status`
  * ("failure" | "flake" | "passed"); see `classifyStatus`.
  *
@@ -232,16 +225,13 @@ export function extractFailedTests(
   const tests = (results?.tests ?? [])
     .filter((test) => {
       const attempts = test.attempts ?? [];
-      const everFailed = attempts.some((attempt) => attempt.state === "failed");
-      // The final state is authoritative (see classifyStatus). Report a test
-      // that ultimately failed, or flaked (passed on retry after a failed
-      // attempt). On a re-run we additionally report a clean pass so conductor
-      // can see a previously-failing test recover. Pending/skipped (any other
-      // final state) are never reported.
-      const isFailure = test.state === "failed";
-      const isFlake = test.state === "passed" && everFailed;
-      const isCleanPass = test.state === "passed" && !everFailed;
-      return isFailure || isFlake || (isRerun && isCleanPass);
+      const failed = attempts.some((attempt) => attempt.state === "failed");
+      // A test "passed" only if it ran and every attempt passed — this excludes
+      // pending/skipped tests, which we never report.
+      const passed =
+        attempts.length > 0 &&
+        attempts.every((attempt) => attempt.state === "passed");
+      return failed || (isRerun && passed);
     })
     .map((test) => {
       const titlePath = test.title ?? [];
@@ -262,7 +252,7 @@ export function extractFailedTests(
         file,
         duration: test.duration,
         attempts,
-        status: classifyStatus(test.state, attempts),
+        status: classifyStatus(attempts),
         message: test.displayError ?? null,
         ...(screenshotPath ? { screenshotPath } : {}),
       };
