@@ -556,7 +556,19 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       H.editDashboard();
+
+      cy.get("@targetDashboardId").then((targetDashboardId) => {
+        cy.intercept("GET", `/api/dashboard/${targetDashboardId}`).as(
+          "loadTargetDashboard",
+        );
+      });
+
       H.getDashboardCard().realHover().icon("click").click();
+      // Wait for the click-behavior sidebar to finish loading the target dashboard; its load
+      // triggers the tab migration that dirties the dashboard, so Save then issues a request.
+      cy.wait("@loadTargetDashboard");
+      cy.get("aside").findByText(TARGET_DASHBOARD.name).should("be.visible");
+
       cy.get("aside")
         .findByLabelText("Select a dashboard tab")
         .should("not.exist");
