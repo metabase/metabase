@@ -36,7 +36,7 @@ export const RecentsListContent = ({
 }: RecentsListContentProps) => {
   const { getRef, cursorIndex } = useListKeyboardNavigation<
     RecentItem,
-    HTMLButtonElement
+    HTMLDivElement
   >({
     list: results,
     onEnter: (item: RecentItem) => onClick?.(item),
@@ -75,7 +75,6 @@ export const RecentsListContent = ({
               data-testid="recently-viewed-item"
               ref={getRef(item)}
               key={getItemKey(item)}
-              component="button"
               onClick={() => onClick?.(item)}
               isActive={isActive}
               isSelected={cursorIndex === index}

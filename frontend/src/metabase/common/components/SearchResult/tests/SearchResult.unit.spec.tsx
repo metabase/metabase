@@ -6,7 +6,12 @@ import {
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  getIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
 import { createWrappedSearchResult } from "metabase/common/components/SearchResult/tests/util";
 import { modelToUrl } from "metabase/urls";
@@ -90,6 +95,19 @@ describe("SearchResult", () => {
     const expectedPath = modelToUrl(TEST_RESULT_QUESTION);
 
     expect(history?.getCurrentLocation().pathname).toEqual(expectedPath);
+  });
+
+  it("renders the result as a link and lets the browser open a modified click in a new tab", () => {
+    const { history } = setup({ result: TEST_RESULT_QUESTION });
+
+    const title = screen.getByTestId("search-result-item-name");
+    expect(title).toHaveAttribute("href", modelToUrl(TEST_RESULT_QUESTION));
+
+    fireEvent.click(title, { metaKey: true });
+
+    // a ⌘/ctrl-click must not navigate in-app; the browser opens the new tab
+    // via the href instead
+    expect(history?.getCurrentLocation().pathname).toBe("/");
   });
 
   describe("indexed entities", () => {

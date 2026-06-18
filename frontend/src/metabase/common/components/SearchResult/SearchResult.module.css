@@ -1,0 +1,80 @@
+.root {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  justify-content: center;
+  align-items: start;
+  gap: var(--mantine-spacing-sm) 0.75rem;
+}
+
+.active {
+  border-radius: var(--mantine-radius-md);
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+    cursor: pointer;
+  }
+
+  &:focus-within {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.selected {
+  color: var(--mb-color-core-brand);
+  background-color: var(--mb-color-background-hover);
+}
+
+/* parent state drives the title color; the title can't know it on its own */
+.active:hover .title,
+.selected .title {
+  color: var(--mb-color-core-brand);
+}
+
+.title {
+  line-height: unset;
+  color: var(--mb-color-text-primary);
+
+  &:hover,
+  &:focus,
+  &:focus-visible {
+    color: var(--mb-color-core-brand);
+    text-decoration: none;
+    outline: 0;
+  }
+
+  /* When the title is a real link, stretch its hit area over the whole row
+     (positioned by .root) so middle/ctrl-click opens the result in a new tab
+     from anywhere on the row. Interactive children sit above this overlay via
+     position: relative. */
+  &[href]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+}
+
+.nameSection {
+  overflow: hidden;
+}
+
+.loadingSection {
+  grid-row: 1 / span 1;
+  grid-column: 3;
+}
+
+.xraySection {
+  grid-row: 1 / span 1;
+  grid-column: 4;
+}
+
+.description {
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  white-space: pre-line;
+  font-size: var(--mantine-font-size-sm);
+}
