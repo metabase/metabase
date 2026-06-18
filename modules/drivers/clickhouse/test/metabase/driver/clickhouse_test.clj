@@ -42,8 +42,8 @@
       "a"                   ["a"]
       "(lower(s))"          ["lower(s)"]               ; wrapped single expression, not truncated
       "a, cityHash64(s, b)" ["a" "cityHash64(s, b)"]   ; function key's inner comma is not a split point
-      ""                    nil
-      nil                   nil)))
+      ""                    []                         ; blank -> [], so :key-columns stays schema-valid
+      nil                   [])))
 
 (deftest ^:parallel clickhouse-version
   (mt/test-driver :clickhouse

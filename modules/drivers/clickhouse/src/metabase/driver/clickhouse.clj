@@ -343,8 +343,9 @@
   "Best-effort split of a ClickHouse key expression into its top-level columns/expressions. Strips a wrapping paren, then
   splits on top-level commas only; a real expression like `lower(email)` stays one element."
   [expr]
-  (when-let [s (perf/not-empty expr)]
-    (perf/mapv str/trim (split-top-level-commas (strip-wrapping-parens s)))))
+  (if-let [s (perf/not-empty expr)]
+    (perf/mapv str/trim (split-top-level-commas (strip-wrapping-parens s)))
+    []))
 
 ;; Named skip-indexes come from `system.data_skipping_indices`; the inline MergeTree sorting key
 ;; (`system.tables.sorting_key`) is emitted with `:name nil`. Blank `schema` falls back to `currentDatabase()`.
