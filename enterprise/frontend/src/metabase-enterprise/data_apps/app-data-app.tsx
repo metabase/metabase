@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 
-import { api } from "metabase/api/client";
-import registerVisualizations from "metabase/visualizations/register";
+import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 import { DataAppIframeApp } from "./DataAppIframeApp";
 
@@ -12,19 +12,18 @@ import { DataAppIframeApp } from "./DataAppIframeApp";
  * app's React tree. It reads the data-app `:name` from the URL, fetches the
  * bundle, instantiates it inside a Near Membrane sandbox bound to *this*
  * window, and renders the resulting component.
- *
- * No `MetabaseProvider`/Redux/Router scaffolding is bundled at the iframe
- * top level — the data-app bundle is expected to wrap itself in the
- * `MetabaseProvider` endowment, which sets up the SDK Redux store and
- * theme on demand.
  */
 
-api.basename = (window.MetabaseRoot ?? "").replace(/\/+$/, "");
+EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+
+// Register the full SDK bundle surface in-process (no separately-loaded
+// `main.bundle.js` request) so everything the data-app sandbox endows resolves
+// against it — the query primitives the package hooks dereference and the
+// implementations the package component facades look up at render time.
+window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
 
 function _init() {
   document.body.style.margin = "0";
-
-  registerVisualizations();
 
   const rootElement = document.getElementById("root");
 
