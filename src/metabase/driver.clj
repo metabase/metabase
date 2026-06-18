@@ -1623,15 +1623,12 @@
   [:sequential [:ref ::table-index]])
 
 (defmulti fetch-table-indexes
-  "Fetch the indexes that physically exist on the transform target `table` in `schema` of `database`, as a vector of
-  normalized index maps (one per index in the warehouse catalog). Results should match `::fetch-table-indexes.result`.
+  "Fetch the physical indexes on `table` in `schema` of `database`, one normalized map per catalog index, matching
+  `::fetch-table-indexes.result`. Inline sort keys (ClickHouse `ORDER BY`, Redshift `SORTKEY`) have `:name nil`.
 
-  Callers join each index against `IndexRequest` rows: named indexes by `:name`, unnamed inline sort keys (ClickHouse
-  `ORDER BY`, Redshift `SORTKEY`, with `:name nil`) by `:kind` + `:key-columns`.
-
-  This is the index-manager read side, and is distinct from [[describe-table-indexes]]/[[describe-indexes]]: those are
-  the sync-side methods that capture only single-column indexes to flag fields as indexed, whereas this returns the
-  full physical detail (uniqueness, partial predicate, INCLUDE columns, key order, raw DDL)."
+  The index-manager read side. Distinct from the sync-side [[describe-table-indexes]]/[[describe-indexes]], which
+  capture only single-column indexes to flag fields as indexed; this returns full physical detail (uniqueness, partial
+  predicate, INCLUDE columns, key order, raw DDL)."
   {:added "0.63.0", :arglists '([driver database schema table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
