@@ -133,7 +133,7 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get(".leaflet-marker-icon").eq(2).as("blastoiseMarker");
     cy.get("@blastoiseMarker").trigger("mousemove");
-    H.popover().findByText("Blastoise").should("be.visible");
+    H.tooltip().findByText("Blastoise").should("be.visible");
   });
 
   it("should preserve zoom and pan after resize (metabase#11211)", () => {
