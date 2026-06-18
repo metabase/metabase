@@ -1150,10 +1150,16 @@
                                              [:in :perm_type (mapv u/qualified-name perm-types)]]})
           ;; Index: {[group_id perm_type] → db-level-perm-row}
           db-level-idx   (into {} (map (fn [p] [[(:group_id p) (:perm_type p)] p]) db-level-perms))
-          ;; Batch SELECT #2: all existing table-level permissions for this DB
-          ;; (needed for schema-permission-value logic and going-granular expansion)
+          ;; Batch SELECT #2: distinct table-level permission values for this DB
+          ;; (needed for schema-permission-value logic and going-granular expansion).
+          ;; `schema-vals-idx` only needs the set of distinct perm-values per
+          ;; (group, perm-type, schema). Selecting DISTINCT on those four columns
+          ;; keeps the result bounded by groups × perm-types × schemas × values
+          ;; instead of growing with the table count, which can be millions of
+          ;; rows on databases with very many tables (see #76077).
           table-perms    (t2/select :model/DataPermissions
-                                    {:where [:and
+                                    {:select-distinct [:group_id :perm_type :schema_name :perm_value]
+                                     :where [:and
                                              [:= :db_id db-id]
                                              [:not= :table_id nil]
                                              [:in :group_id group-ids]
