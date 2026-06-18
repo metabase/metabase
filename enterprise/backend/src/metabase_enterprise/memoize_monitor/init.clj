@@ -91,20 +91,19 @@
   measurement Java agent, so it only runs when [[memory-measurement-available?]]; otherwise `:bytes` and `:measure-ms`
   are nil. `:bytes` is also nil if measurement throws. `:measure-ms` is the time spent producing the estimate."
   [cache-var]
-  (when-let [cache (cache-object @cache-var)]
-    (let [entries (count cache)
-          [bytes measure-ms] (when memory-measurement-available?
-                               (let [start-ns (System/nanoTime)
-                                     bytes    (try
-                                                (estimate-cache-bytes cache entries)
-                                                (catch Throwable e
-                                                  (log/warn e "Error measuring memoization cache size" (symbol cache-var))
-                                                  nil))]
-                                 [bytes (/ (- (System/nanoTime) start-ns) 1e6)]))]
-      {:cache      (str (symbol cache-var))
-       :entries    entries
-       :bytes      bytes
-       :measure-ms measure-ms})))
+  (try
+    (when-let [cache (cache-object @cache-var)]
+      (let [entries (count cache)
+            [bytes measure-ms] (when memory-measurement-available?
+                                 (let [start-ns (System/nanoTime)
+                                       bytes (estimate-cache-bytes cache entries)]
+                                   [bytes (/ (- (System/nanoTime) start-ns) 1e6)]))]
+        {:cache      (str (symbol cache-var))
+         :entries    entries
+         :bytes      bytes
+         :measure-ms measure-ms}))
+    (catch Exception e
+      (log/warn e "Error measuring memoization cache size" {:cache (str (symbol cache-var))}))))
 
 (defn- all-cache-stats
   []
