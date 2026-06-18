@@ -27,8 +27,6 @@ type GeoJSONDetails = {
   region_name: string;
 };
 
-// "bottom": a horizontal swatch strip under the map. "side": a vertical legend to the left, matching
-// the wide-card layout the live ChoroplethMap uses (LegendVertical).
 type LegendPosition = "bottom" | "side";
 
 export interface StaticChoroplethProps {
@@ -125,7 +123,7 @@ export const StaticChoropleth = ({
   // Vertical legend to the left of the map: widen the viewBox leftward so the swatch column sits beside
   // the (unmoved) map in the same projected coordinate space.
   if (legendPosition === "side" && hasLegend) {
-    const legendWidth = mapWidth * 0.34;
+    const legendWidth = mapWidth * SIDE_LEGEND.widthRatio;
     const totalWidth = mapWidth + legendWidth;
     return (
       <svg
@@ -146,10 +144,11 @@ export const StaticChoropleth = ({
     );
   }
 
-  const legendGap = mapHeight * 0.04;
-  const swatchHeight = mapHeight * 0.045;
-  const fontSize = mapHeight * 0.035;
-  const totalHeight = mapHeight + legendGap + swatchHeight + fontSize * 1.6;
+  const totalHeight =
+    mapHeight +
+    getLegendGap(mapHeight) +
+    getSwatchHeight(mapHeight) +
+    getLegendFontSize(mapHeight) * BOTTOM_LEGEND.heightReserveRatio;
 
   return (
     <svg
@@ -185,15 +184,48 @@ type LegendProps = {
   bounds: MapBounds;
 };
 
+// Legend geometry as ratios so the legend scales with the projected map. Grouped here as the single
+// place to tune spacing; each field notes what it's a ratio of.
+const BOTTOM_LEGEND = {
+  gapRatio: 0.04, // of map height
+  swatchHeightRatio: 0.045, // of map height
+  fontSizeRatio: 0.035, // of map height
+  labelOffsetRatio: 1.2, // of font size, drops the label below its swatch
+  heightReserveRatio: 1.6, // of font size, vertical space reserved below the map
+} as const;
+
+const SIDE_LEGEND = {
+  widthRatio: 0.34, // of map width
+  fontSizeRatio: 0.042, // of map height
+  rowHeightRatio: 0.09, // of map height
+  swatchSizeRatio: 1.1, // of font size
+  gapRatio: 0.6, // of font size
+  swatchInsetRatio: 0.4, // of font size
+  labelBaselineRatio: 0.35, // of font size, vertical-centering nudge for the label
+} as const;
+
+// Shared so the main component reserves the same space (totalHeight) that BottomLegend draws into —
+// otherwise the strip gets clipped.
+const getLegendGap = (mapHeight: number) => mapHeight * BOTTOM_LEGEND.gapRatio;
+const getSwatchHeight = (mapHeight: number) =>
+  mapHeight * BOTTOM_LEGEND.swatchHeightRatio;
+const getLegendFontSize = (mapHeight: number) =>
+  mapHeight * BOTTOM_LEGEND.fontSizeRatio;
+
 // Horizontal swatch strip below the map: one equal-width swatch per bin, label centered beneath it.
 const BottomLegend = ({ titles, colors, fontColor, bounds }: LegendProps) => {
+  if (titles.length === 0) {
+    return null;
+  }
+
   const { minX, maxY } = bounds;
   const mapWidth = bounds.maxX - minX;
   const mapHeight = maxY - bounds.minY;
-  const swatchHeight = mapHeight * 0.045;
-  const fontSize = mapHeight * 0.035;
-  const legendY = maxY + mapHeight * 0.04;
-  const labelY = legendY + swatchHeight + fontSize * 1.2;
+  const swatchHeight = getSwatchHeight(mapHeight);
+  const fontSize = getLegendFontSize(mapHeight);
+  const legendY = maxY + getLegendGap(mapHeight);
+  const labelY =
+    legendY + swatchHeight + fontSize * BOTTOM_LEGEND.labelOffsetRatio;
   const itemWidth = mapWidth / titles.length;
 
   return (
@@ -236,13 +268,17 @@ const SideLegend = ({
   bounds,
   legendWidth,
 }: LegendProps & { legendWidth: number }) => {
+  if (titles.length === 0) {
+    return null;
+  }
+
   const { minX, minY } = bounds;
   const mapHeight = bounds.maxY - minY;
-  const fontSize = mapHeight * 0.042;
-  const rowHeight = mapHeight * 0.09;
-  const swatchSize = fontSize * 1.1;
-  const gap = fontSize * 0.6;
-  const swatchX = minX - legendWidth + fontSize * 0.4;
+  const fontSize = mapHeight * SIDE_LEGEND.fontSizeRatio;
+  const rowHeight = mapHeight * SIDE_LEGEND.rowHeightRatio;
+  const swatchSize = fontSize * SIDE_LEGEND.swatchSizeRatio;
+  const gap = fontSize * SIDE_LEGEND.gapRatio;
+  const swatchX = minX - legendWidth + fontSize * SIDE_LEGEND.swatchInsetRatio;
   const top = minY + (mapHeight - titles.length * rowHeight) / 2;
 
   return (
@@ -260,7 +296,11 @@ const SideLegend = ({
             />
             <text
               x={swatchX + swatchSize + gap}
-              y={rowY + swatchSize / 2 + fontSize * 0.35}
+              y={
+                rowY +
+                swatchSize / 2 +
+                fontSize * SIDE_LEGEND.labelBaselineRatio
+              }
               fontSize={fontSize}
               fontFamily="Lato, sans-serif"
               textAnchor="start"

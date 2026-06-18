@@ -9,6 +9,10 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 import { StaticChoropleth } from "./StaticChoropleth";
 import { getStaticChoroplethSettings } from "./utils";
@@ -139,9 +143,9 @@ describe("StaticChoropleth", () => {
   it("formats legend labels with the metric column's settings via getStaticChoroplethSettings", () => {
     // getStaticChoroplethSettings rebuilds the `settings.column` accessor that the static-viz bundle
     // can't (map isn't registered there); without it the currency formatting never reaches the legend.
-    const currencyRawSeries = [
-      {
-        card: {
+    const currencyRawSeries: RawSeries = [
+      createMockSingleSeries(
+        {
           display: "map",
           visualization_settings: {
             "map.region": "us_states",
@@ -149,27 +153,29 @@ describe("StaticChoropleth", () => {
             "map.metric": "revenue",
           },
         },
-        data: {
-          cols: [
-            {
-              name: "state",
-              base_type: "type/Text",
-              semantic_type: "type/State",
-            },
-            {
-              name: "revenue",
-              base_type: "type/Float",
-              semantic_type: "type/Income",
-              settings: { number_style: "currency", currency: "USD" },
-            },
-          ],
-          rows: [
-            ["CA", 12400],
-            ["New York", 1400],
-          ],
+        {
+          data: {
+            cols: [
+              createMockColumn({
+                name: "state",
+                base_type: "type/Text",
+                semantic_type: "type/State",
+              }),
+              createMockColumn({
+                name: "revenue",
+                base_type: "type/Float",
+                semantic_type: "type/Income",
+                settings: { number_style: "currency", currency: "USD" },
+              }),
+            ],
+            rows: [
+              ["CA", 12400],
+              ["New York", 1400],
+            ],
+          },
         },
-      },
-    ] as unknown as RawSeries;
+      ),
+    ];
 
     const svg = ReactDOMServer.renderToStaticMarkup(
       <StaticChoropleth
