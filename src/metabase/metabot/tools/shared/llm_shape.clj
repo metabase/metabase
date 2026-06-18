@@ -809,18 +809,18 @@
       :items     [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
       :total     5
       :page      1
-      :pages     1
-      :truncated false}
+      :pages     1}
 
    Output shape:
      <list type=\"databases\" total=\"5\" page=\"1\" pages=\"1\" showing=\"5\" truncated=\"false\">
        <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
        ...
      </list>"
-  [{:keys [list-type items total page pages truncated]}]
+  [{:keys [list-type items total page pages]}]
   (let [type-attr (clojure.core/name (or list-type :items))
         item-xml  (str/join "\n" (map list-item->xml items))
         showing   (count items)
+        truncated (< page pages)
         note      (when truncated
                     (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
                          "Append ?page=" (inc page) " to the URI to fetch the next page.</truncation-note>"))]

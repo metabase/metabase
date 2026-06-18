@@ -768,34 +768,32 @@
       (is (= 50 (:total result)))
       (is (= 25 (count (:items result))))
       (is (= 1 (-> result :items first :id)))
-      (is (= 25 (-> result :items last :id)))
-      (is (true? (:truncated result)))))
-  (testing "page 2 returns second 25 items, not truncated"
+      (is (= 25 (-> result :items last :id)))))
+  (testing "page 2 returns second 25 items"
     (let [items (mapv (fn [i] {:id i}) (range 1 51))
           result (#'read-resource/paginate-list items "2")]
       (is (= 2 (:page result)))
       (is (= 26 (-> result :items first :id)))
-      (is (= 50 (-> result :items last :id)))
-      (is (false? (:truncated result)))))
-  (testing "out-of-bounds page clamps to last page"
-    (let [items (mapv (fn [i] {:id i}) (range 1 11))
-          result (#'read-resource/paginate-list items "999")]
-      (is (= 1 (:page result)))
-      (is (= 1 (:pages result)))
-      (is (= 10 (count (:items result))))))
+      (is (= 50 (-> result :items last :id)))))
+  (testing "out-of-range page throws instead of clamping"
+    (let [items (mapv (fn [i] {:id i}) (range 1 11))]
+      (is (thrown-with-msg? Exception #"Invalid page 999\. This list has 1 page\."
+                            (#'read-resource/paginate-list items "999")))
+      (is (thrown-with-msg? Exception #"Invalid page 0\. This list has 1 page\."
+                            (#'read-resource/paginate-list items "0")))
+      (is (thrown-with-msg? Exception #"Invalid page -3\. This list has 1 page\."
+                            (#'read-resource/paginate-list items "-3")))))
   (testing "list shorter than one page"
     (let [items (mapv (fn [i] {:id i}) (range 1 6))
           result (#'read-resource/paginate-list items nil)]
       (is (= 1 (:page result)))
       (is (= 1 (:pages result)))
-      (is (= 5 (:total result)))
-      (is (false? (:truncated result)))))
+      (is (= 5 (:total result)))))
   (testing "empty list"
     (let [result (#'read-resource/paginate-list [] nil)]
       (is (= 1 (:page result)))
       (is (= 1 (:pages result)))
-      (is (= 0 (:total result)))
-      (is (false? (:truncated result))))))
+      (is (= 0 (:total result))))))
 
 (deftest pagination-database-tables-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -804,22 +802,24 @@
         (t2/insert! :model/Table {:name   (format "TABLE-%03d" i)
                                   :db_id  db-id
                                   :active true}))
-      (testing "page 1 returns first 25 tables, truncated with page/pages metadata"
+      (testing "page 1 returns first 25 tables, with page/pages metadata"
         (let [result (read-resource/read-resource
                       {:uris [(str "metabase://database/" db-id "/tables")]})
               so     (get-in result [:resources 0 :content :structured-output])]
           (is (= 1 (:page so)))
           (is (= 2 (:pages so)))
           (is (= 30 (:total so)))
-          (is (= 25 (count (:items so))))
-          (is (true? (:truncated so)))))
-      (testing "page 2 returns remaining 5 tables, not truncated"
+          (is (= 25 (count (:items so))))))
+      (testing "page 2 returns remaining 5 tables"
         (let [result (read-resource/read-resource
                       {:uris [(str "metabase://database/" db-id "/tables?page=2")]})
               so     (get-in result [:resources 0 :content :structured-output])]
           (is (= 2 (:page so)))
-          (is (= 5 (count (:items so))))
-          (is (false? (:truncated so))))))))
+          (is (= 5 (count (:items so))))))
+      (testing "out-of-range page surfaces as a resource error, not an uncaught exception"
+        (let [result (read-resource/read-resource
+                      {:uris [(str "metabase://database/" db-id "/tables?page=999")]})]
+          (is (=? {:resources [{:error string?}]} result)))))))
 
 (deftest pagination-xml-output-test
   (testing "truncated list XML includes page/pages attrs and a truncation note with next-page URI hint"

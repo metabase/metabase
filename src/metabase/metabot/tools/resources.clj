@@ -18,7 +18,7 @@
   - metabase://user/recent-items - current user's recent items
 
   Pagination:
-  List responses are capped at 25 items per page. When :truncated is true, use ?page=N to
+  List responses are capped at page-size items per page. When :truncated is true, use ?page=N to
   fetch subsequent pages, e.g. metabase://database/1/tables?page=2. The response includes
   :page (current, 1-indexed) and :pages (total).
 
@@ -78,24 +78,28 @@
   "Maximum number of URIs that can be fetched in a single call."
   5)
 
-(def ^:private max-list-items
+(def ^:private page-size
   "Page size for list responses."
   25)
 
 (defn- paginate-list
   "Return one page of items. `page-str` is a 1-indexed string (from a URI query param), defaults to 1.
-   Page size is always `max-list-items`."
+   Page size is always `page-size`. Throws if `page-str` parses to a page number outside [1, pages]
+   rather than silently clamping, so a caller (the agent) finds out it passed a bad value."
   [items page-str]
-  (let [items  (vec items)
-        total  (count items)
-        pages  (max 1 (int (Math/ceil (/ (double total) max-list-items))))
-        page   (min pages (max 1 (or (some-> page-str parse-long) 1)))
-        start  (* (dec page) max-list-items)]
-    {:items     (vec (take max-list-items (drop start items)))
-     :total     total
-     :page      page
-     :pages     pages
-     :truncated (< page pages)}))
+  (let [items (vec items)
+        total (count items)
+        pages (max 1 (int (Math/ceil (/ (double total) page-size))))
+        page  (or (some-> page-str parse-long) 1)
+        _     (when (or (< page 1) (> page pages))
+                (throw (ex-info (str "Invalid page " page ". This list has " pages
+                                     (if (= pages 1) " page." " pages."))
+                                {:page page :pages pages})))
+        start (* (dec page) page-size)]
+    {:items (vec (take page-size (drop start items)))
+     :total total
+     :page  page
+     :pages pages}))
 
 (defn- list-result
   "Build a structured-output map for a list of items.
@@ -103,15 +107,14 @@
    `query-params` is the parsed URI query-param map; `:page` selects the page (1-indexed string)."
   ([list-type items] (list-result list-type items nil))
   ([list-type items query-params]
-   (let [{:keys [items total page pages truncated]} (paginate-list items (:page query-params))]
+   (let [{:keys [items total page pages]} (paginate-list items (:page query-params))]
      {:structured-output
       {:result-type :metabot-list
        :list-type   list-type
        :items       items
        :total       total
        :page        page
-       :pages       pages
-       :truncated   truncated}})))
+       :pages       pages}})))
 
 (defn- entity-result
   "Build a structured-output map for a single entity (databases, collections, etc.)."
