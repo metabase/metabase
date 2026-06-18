@@ -792,8 +792,10 @@
                (recur page it acc' (inc n)))
 
              ;; This page is exhausted - ask `next-page` for another and keep processing.
+             ;; `some->` keeps the old nil-page tolerance (#47339): a nil page yields no next page and falls through
+             ;; to the `acc` branch (empty result) instead of NPEing inside `next-page`.
              :else
-             (if-let [new-page (next-page page)]
+             (if-let [new-page (some-> page next-page)]
                (if-let [new-iter (some-> new-page values-iterator)]
                  (do
                    (log/trace "BigQuery: New page returned")
