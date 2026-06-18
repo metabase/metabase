@@ -586,51 +586,42 @@
         (max 1)
         (min remaining))))
 
-(defn- reducible-sample-pages
-  "An `IReduceInit` over up to `max-rows` rows of `bq-table`, fetched via `tabledata.list`. The first page is a small
-  probe (`sample-probe-rows`); after each page the next page size is recomputed from the *measured* average bytes/row
-  to target `*sample-page-byte-budget*` per page -- so heavy tables fetch fewer rows per page without relying on
-  column-type estimates. Pages are walked manually (re-issuing `.list` with the page token) because `.getNextPage`
-  reuses the original request's page size, which would pin us to the tiny probe size forever."
+(defn- list-sample-page
+  "Issue a `tabledata.list` request for at most `page-size` rows, continuing from `page-token` when given."
+  ^TableResult [^Table bq-table page-size ^String page-token]
+  (let [opts (cond-> [(BigQuery$TableDataListOption/pageSize (long page-size))]
+               (not (str/blank? page-token)) (conj (BigQuery$TableDataListOption/pageToken page-token)))]
+    (.list bq-table (u/varargs BigQuery$TableDataListOption opts))))
+
+(defn- adaptive-sample-next-page
+  "A swappable page-advance for [[reducible-bigquery-results]], used when sampling. It measures the just-consumed
+  page's real bytes/row and re-issues `.list` from the page token with a size targeting `*sample-page-byte-budget*`
+  -- a sliding window that adapts per page to the table's actual data instead of guessing from column types. Returns
+  nil once the `max-rows` budget is spent or there are no more pages."
   [^Table bq-table ^long max-rows]
-  (let [budget (long *sample-page-byte-budget*)]
-    (reify clojure.lang.IReduceInit
-      (reduce [_ rf init]
-        (loop [acc        init
-               token      nil
-               page-size  (long sample-probe-rows)
-               seen       0
-               seen-bytes 0]
-          (let [remaining (- max-rows seen)]
-            (if (or (reduced? acc) (<= remaining 0))
-              (unreduced acc)
-              (let [opts (cond-> [(BigQuery$TableDataListOption/pageSize (min page-size remaining))]
-                           token (conj (BigQuery$TableDataListOption/pageToken token)))
-                    page (.list bq-table (u/varargs BigQuery$TableDataListOption opts))
-                    _    (*page-callback*)
-                    res  (reduce (fn [[acc page-bytes page-n] ^FieldValueList row]
-                                   (let [acc' (rf acc row)]
-                                     (if (reduced? acc')
-                                       (reduced [acc' page-bytes page-n])
-                                       [acc' (+ (long page-bytes) (row-bytes row)) (inc (long page-n))])))
-                                 [acc 0 0]
-                                 (.getValues page))
-                    [acc' page-bytes page-n] (unreduced res)
-                    seen'       (+ seen (long page-n))
-                    seen-bytes' (+ seen-bytes (long page-bytes))
-                    token'      (.getNextPageToken page)]
-                (if (or (reduced? acc') (str/blank? token') (zero? (long page-n)))
-                  (unreduced acc')
-                  (recur acc'
-                         token'
-                         (next-sample-page-size budget seen-bytes' seen' (- max-rows seen'))
-                         seen'
-                         seen-bytes'))))))))))
+  (let [budget (long *sample-page-byte-budget*)
+        seen   (atom {:bytes 0, :rows 0})]
+    (fn [^TableResult page]
+      (let [token (.getNextPageToken page)]
+        (when-not (str/blank? token)
+          (let [[page-bytes page-rows] (reduce (fn [[b n] row] [(+ (long b) (row-bytes row)) (inc (long n))])
+                                               [0 0]
+                                               (.getValues page))
+                {:keys [bytes rows]}   (swap! seen (fn [s] {:bytes (+ (long (:bytes s)) (long page-bytes))
+                                                            :rows  (+ (long (:rows s)) (long page-rows))}))
+                remaining              (- max-rows (long rows))]
+            (when (pos? remaining)
+              (*page-callback*)
+              (list-sample-page bq-table (next-sample-page-size budget bytes rows remaining) token))))))))
 
 (defn- sample-table
   "Process a sample of rows of fields corresponding to the Metabase fields
   `fields` from the BigQuery table `bq-table` using the query result reducing
   function `rff`.
+
+  We fetch a small probe page first and then let [[reducible-bigquery-results]] walk the rest, but with an adaptive
+  page-advance ([[adaptive-sample-next-page]]) that re-sizes each page from the *measured* bytes/row so heavy tables
+  fetch fewer rows -- without column-type guesses, and reusing the existing cancel/dedup/nil-page handling.
 
   `.getSchema` returns nil if called on the result of `.list`, so we have to
   match fields by position. Here it is assumed that :database_position in
@@ -641,14 +632,17 @@
   (let [^Schema schema (.. bq-table getDefinition getSchema)
         field-idxs     (mapv :database_position fields)
         all-parsers    (get-field-parsers schema)
-        parsers        (mapv all-parsers field-idxs)]
+        parsers        (mapv all-parsers field-idxs)
+        probe          (list-sample-page bq-table (min (long sample-probe-rows) table-rows-sample/max-sample-rows) nil)]
     (transduce
-     (map (partial extract-fingerprint field-idxs parsers))
+     (comp (take table-rows-sample/max-sample-rows)
+           (map (partial extract-fingerprint field-idxs parsers)))
      ;; Instead of passing on fields, we could recalculate the
      ;; metadata from the schema, but that probably makes no
      ;; difference and currently the metadata is ignored anyway.
      (rff {:cols fields})
-     (reducible-sample-pages bq-table table-rows-sample/max-sample-rows))))
+     (reducible-bigquery-results probe nil (constantly nil)
+                                 (adaptive-sample-next-page bq-table table-rows-sample/max-sample-rows)))))
 
 (defn- ingestion-time-partitioned-table?
   [table-id]
@@ -749,57 +743,67 @@
      ;; realizing more rows as per the maximum result size
      (.setMaxResults *page-size*))))
 
+(defn- next-page-same-size
+  "Default page-advance for [[reducible-bigquery-results]]: fetch the next page at the original request's page size
+  (BigQuery's `.getNextPage`). Returns nil once the result set is exhausted."
+  ^TableResult [^TableResult page]
+  (when (.hasNextPage page)
+    (log/trace "BigQuery: Fetching new page")
+    (*page-callback*)
+    (or (.getNextPage page)
+        (throw (ex-info "Cannot get next page from BigQuery" {})))))
+
 (defn- reducible-bigquery-results
-  [^TableResult page cancel-chan attempt-job-cancel-fn]
-  (reify
-    clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      ;; TODO: Once we're confident that the memory/thread leaks in BigQuery are resolved, we can remove some of this
-      ;; logging, and certainly remove the `n` counter.
-      ;; NOTE: Page can be nil in various situations, some are understood (early cancel) and some are not. (#47339)
-      (try
-        (loop [^TableResult page page
-               it                (some-> page values-iterator)
-               acc               init
-               n                 0]
-          (cond
-            ;; Early exit. This happens in middleware/limit `(take max)`
-            (reduced? acc)
-            (do (log/tracef "BigQuery: Early exit from reducer after %d rows" n)
-                (attempt-job-cancel-fn)
-                (unreduced acc))
+  "Reducible over the rows of `page` and its successors. `next-page` is the swappable page-advance: given the
+  just-exhausted page it returns the next one (or nil when done). Defaults to [[next-page-same-size]] (fixed page
+  size); the sync sampler passes [[adaptive-sample-next-page]] to resize each page from measured bytes/row."
+  ([^TableResult page cancel-chan attempt-job-cancel-fn]
+   (reducible-bigquery-results page cancel-chan attempt-job-cancel-fn next-page-same-size))
+  ([^TableResult page cancel-chan attempt-job-cancel-fn next-page]
+   (reify
+     clojure.lang.IReduceInit
+     (reduce [_ rf init]
+       ;; TODO: Once we're confident that the memory/thread leaks in BigQuery are resolved, we can remove some of this
+       ;; logging, and certainly remove the `n` counter.
+       ;; NOTE: Page can be nil in various situations, some are understood (early cancel) and some are not. (#47339)
+       (try
+         (loop [^TableResult page page
+                it                (some-> page values-iterator)
+                acc               init
+                n                 0]
+           (cond
+             ;; Early exit. This happens in middleware/limit `(take max)`
+             (reduced? acc)
+             (do (log/tracef "BigQuery: Early exit from reducer after %d rows" n)
+                 (attempt-job-cancel-fn)
+                 (unreduced acc))
 
-            ;; While middleware is processing rows, check for browser initiated cancel.
-            (some-> cancel-chan a/poll!)
-            (throw (ex-info (tru "Query cancelled") {:page n}))
+             ;; While middleware is processing rows, check for browser initiated cancel.
+             (some-> cancel-chan a/poll!)
+             (throw (ex-info (tru "Query cancelled") {:page n}))
 
-            ;; Clear to send: if there's more in `it`, then send it and recur.
-            (some-> it .hasNext)
-            (let [acc' (try
-                         (rf acc (.next it))
-                         (catch Throwable e
-                           (log/errorf e "error in reducible-bigquery-results! %d rows" n)
-                           (throw e)))]
-              (recur page it acc' (inc n)))
+             ;; Clear to send: if there's more in `it`, then send it and recur.
+             (some-> it .hasNext)
+             (let [acc' (try
+                          (rf acc (.next it))
+                          (catch Throwable e
+                            (log/errorf e "error in reducible-bigquery-results! %d rows" n)
+                            (throw e)))]
+               (recur page it acc' (inc n)))
 
-            ;; This page is exhausted - check for another page and keep processing.
-            (some-> page .hasNextPage)
-            (let [_        (log/tracef "BigQuery: Fetching new page after %d rows" n)
-                  _        (*page-callback*)
-                  new-page (.getNextPage page)]
-              (if-let [new-iter (some-> new-page values-iterator)]
-                (do
-                  (log/trace "BigQuery: New page returned")
-                  (recur new-page new-iter acc (inc n)))
-                (throw (ex-info "Cannot get next page from BigQuery" {:page n}))))
-
-            ;; All pages exhausted, so just return.
-            :else
-            (do (log/tracef "BigQuery: All rows consumed (%d)" n)
-                acc)))
-        (catch Throwable t
-          (attempt-job-cancel-fn)
-          (throw t))))))
+             ;; This page is exhausted - ask `next-page` for another and keep processing.
+             :else
+             (if-let [new-page (next-page page)]
+               (if-let [new-iter (some-> new-page values-iterator)]
+                 (do
+                   (log/trace "BigQuery: New page returned")
+                   (recur new-page new-iter acc (inc n)))
+                 (throw (ex-info "Cannot get next page from BigQuery" {:page n})))
+               (do (log/tracef "BigQuery: All rows consumed (%d)" n)
+                   acc))))
+         (catch Throwable t
+           (attempt-job-cancel-fn)
+           (throw t)))))))
 
 (defn- bigquery-execute-response
   "Given the initial query page, respond with metadata and a lazy reducible that will page through the rest of the data."

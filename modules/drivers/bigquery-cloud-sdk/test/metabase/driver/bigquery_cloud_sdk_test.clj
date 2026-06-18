@@ -172,6 +172,33 @@
     (testing "page size never exceeds the remaining row budget"
       (is (= 5 (next-size 1000000000 10 10 5))))))
 
+(defn- mock-page
+  "A `TableResult` proxy exposing a page token and a fixed set of rows."
+  ^TableResult [token rows]
+  (proxy [TableResult] []
+    (getNextPageToken [] token)
+    (getValues [] rows)))
+
+(deftest ^:synchronized adaptive-sample-next-page-test
+  (let [requested (atom [])
+        next-size  (fn [budget max-rows rows]
+                     (reset! requested [])
+                     (with-redefs [bigquery/list-sample-page (fn [_bq size _token]
+                                                               (swap! requested conj size)
+                                                               (mock-page nil []))]
+                       (binding [bigquery/*sample-page-byte-budget* budget]
+                         ((#'bigquery/adaptive-sample-next-page :table max-rows) (mock-page "tok" rows))
+                         (first @requested))))
+        light      (vec (repeatedly 5 #(field-value-list [(prim-cell "x")])))
+        heavy      (vec (repeatedly 5 #(field-value-list [(prim-cell (apply str (repeat 5000 "x")))])))]
+    (testing "the next page shrinks when the measured page is heavier (sliding window adapts to real data)"
+      (is (< (next-size 100000 1000000 heavy)
+             (next-size 100000 1000000 light))))
+    (testing "the next page is clamped to the remaining row budget"
+      (is (= 3 (next-size 1000000000 8 light))))
+    (testing "no further page is fetched once the page token is blank"
+      (is (nil? ((#'bigquery/adaptive-sample-next-page :table 100) (mock-page "" light)))))))
+
 ;; These look like the macros from metabase.query-processor.expressions-test
 ;; but conform to bigquery naming rules
 (defn- calculate-bird-scarcity* [formula filter-clause]
