@@ -226,17 +226,18 @@ export function useLibraryTreeTableInstance({
     null,
   );
 
-  // Initialize browseExpanded from defaultExpanded once collections are loaded,
-  // so we stop falling through to a recalculated defaultExpanded on every render.
+  // Lock browseExpanded only once the collection tree has loaded: `!isLoading` alone fires too
+  // early (section item queries are skipped until `collections` resolves), locking a stale subset.
   useEffect(() => {
     if (
       browseExpanded === null &&
       !isLoading &&
+      collections.length > 0 &&
       Object.keys(defaultExpanded).length > 0
     ) {
       setBrowseExpanded(defaultExpanded);
     }
-  }, [browseExpanded, defaultExpanded, isLoading]);
+  }, [browseExpanded, defaultExpanded, isLoading, collections.length]);
 
   const expanded = isSearchActive ? true : (browseExpanded ?? defaultExpanded);
   const onExpandedChange = useCallback(
