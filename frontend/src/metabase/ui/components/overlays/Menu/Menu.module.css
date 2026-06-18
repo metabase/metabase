@@ -9,7 +9,7 @@
 .item {
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
-  line-height: var(--mantine-line-height-lg);
+  line-height: var(--mantine-line-height-md);
   padding: var(--mantine-spacing-sm);
 
   &[data-disabled="true"] {
