@@ -5,10 +5,8 @@ import type {
   DeleteMappingModalValueType,
   GroupIds,
 } from "metabase/admin/types";
-import { Modal } from "metabase/common/components/Modal";
-import { ModalFooter } from "metabase/common/components/ModalContent";
 import { Radio } from "metabase/common/components/Radio";
-import { Box, Button, Text } from "metabase/ui";
+import { Box, Button, Group, Modal, Stack, Text } from "metabase/ui";
 
 export type DeleteGroupMappingModalProps = {
   name: string;
@@ -57,24 +55,16 @@ export const DeleteGroupMappingModal = ({
       : t`What should happen with the group itself in Metabase?`;
 
   return (
-    <Modal>
-      <div>
-        <Text
-          component="h2"
-          size="xl"
-          fw="bold"
-          p="xl"
-        >{t`Remove this group mapping?`}</Text>
-        <Text component="p" px="xl">
-          {subtitle}
-        </Text>
-        <Box px="xl" py="xs">
-          <p>{whatShouldHappenText}</p>
+    <Modal opened onClose={onHide} title={t`Remove this group mapping?`}>
+      <Stack gap="lg" mt="sm">
+        <Text>{subtitle}</Text>
 
+        <Box>
+          <Text mb="sm">{whatShouldHappenText}</Text>
           <Box ml="md">
             <Radio
               vertical
-              value={value as DeleteMappingModalValueType | undefined}
+              value={value}
               options={[
                 {
                   name: t`Nothing, just remove the mapping`,
@@ -97,13 +87,14 @@ export const DeleteGroupMappingModal = ({
             />
           </Box>
         </Box>
-        <ModalFooter fullPageModal={false} formModal={true}>
+
+        <Group justify="flex-end">
           <Button onClick={onHide}>{t`Cancel`}</Button>
           <Button variant="filled" color="error" onClick={handleConfirm}>
-            {submitButtonLabels[value as DeleteMappingModalValueType]}
+            {submitButtonLabels[value]}
           </Button>
-        </ModalFooter>
-      </div>
+        </Group>
+      </Stack>
     </Modal>
   );
 };
