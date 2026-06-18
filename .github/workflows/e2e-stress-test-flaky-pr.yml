@@ -1,12 +1,6 @@
 name: E2E Stress Test (flaky-test-fix PR)
 
-# Auto-runs the e2e stress test on every changed Cypress spec in a PR that carries the
-# `flaky-test-fix` label. The idea: when someone opens a PR claiming to de-flake an e2e
-# test, prove it by burning the changed spec(s) in many times before review.
-#
-# Mirrors loki-stress-test-flake-fix.yml: a detect job finds the changed specs, then a
-# matrix fans each one out — twice, once with network throttling and once without — into
-# its own run of the reusable e2e-stress-test-flake-fix workflow.
+# Auto-runs the e2e stress test on every changed Cypress spec in a PR
 
 on:
   pull_request:
@@ -31,9 +25,7 @@ jobs:
       # JSON array of spec paths, consumed by the matrix below.
       specs: ${{ steps.detect.outputs.specs }}
       should_run: ${{ steps.detect.outputs.should_run }}
-      # Optional burn-50 / burn-100 labels bump the burn-in count beyond the default of
-      # 20; if both are present, burn-100 wins. `contains()` on the labels array is the
-      # same pattern as the job's `if:` gate above — no shell, no array stringification.
+      # burn-50 / burn-100 labels bump the burn-in past 20
       burn_in: >-
         ${{ contains(github.event.pull_request.labels.*.name, 'burn-100') && '100'
             || contains(github.event.pull_request.labels.*.name, 'burn-50') && '50'
