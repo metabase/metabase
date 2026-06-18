@@ -125,6 +125,8 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
 
       cy.log("select multiple tables");
       TablePicker.getDatabase("Writable Postgres12").click();
+      // wait for the database's tables to load before selecting them
+      cy.wait("@getSchema");
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       TablePicker.getTable("Reviews").findByRole("checkbox").check();
@@ -138,6 +140,10 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
       });
+      ensureLibraryDataExpanded();
+      H.DataStudio.Library.libraryPage()
+        .findAllByTestId("table-name", { timeout: 15000 })
+        .should("have.length.at.least", 1);
       H.DataStudio.Library.tableItem("Orders").should("be.visible");
       H.DataStudio.Library.tableItem("Products").should("be.visible");
       cy.go("back");
@@ -153,8 +159,9 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       });
       H.DataStudio.nav().findByLabelText("Library").click();
 
+      ensureLibraryDataExpanded();
       H.DataStudio.Library.libraryPage().within(() => {
-        cy.findByText("Reviews").should("be.visible");
+        cy.findByText("Reviews", { timeout: 15000 }).should("be.visible");
         cy.findByText("Orders").should("not.exist");
         cy.findByText("Products").should("not.exist");
       });
@@ -371,4 +378,20 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
 
 function getTableId(tables: Table[], tableName: string) {
   return tables.find((table: Table) => table.display_name === tableName)?.id;
+}
+
+// The Library page auto-expands the Data collection, but that is racy and can leave it
+// collapsed so its tables never render. Expand it explicitly when that happens.
+function ensureLibraryDataExpanded() {
+  H.DataStudio.Library.collectionItem("Data").should("be.visible");
+  H.DataStudio.Library.libraryPage().then(($page) => {
+    const hasTables = $page.find('[data-testid="table-name"]').length > 0;
+    const dataRow = $page
+      .find('[data-testid="collection-name"]')
+      .filter((_, el) => (el.textContent ?? "").includes("Data"))
+      .closest('[role="row"]');
+    if (!hasTables && dataRow.attr("aria-expanded") !== "true") {
+      cy.wrap(dataRow).click();
+    }
+  });
 }
