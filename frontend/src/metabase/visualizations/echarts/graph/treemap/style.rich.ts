@@ -69,12 +69,14 @@ export function getRichUpperLabel({
 }) {
   const textPrimary = renderingContext.getColor("text-primary");
   const textSecondary = renderingContext.getColor("text-secondary");
+  const fontFamily = renderingContext.fontFamily;
 
   return {
     backgroundColor: groupTint,
     formatter: getHeaderFormatter(displayName, valueLabel, percentLabel),
     rich: {
       name: {
+        fontFamily,
         width: nameColumnWidth,
         overflow: "truncate",
         align: "left",
@@ -83,12 +85,14 @@ export function getRichUpperLabel({
         fontWeight: groupHeader.fontWeight,
       },
       value: {
+        fontFamily,
         color: textPrimary,
         fontSize: groupHeader.fontSize,
         fontWeight: groupHeader.fontWeight,
         padding: [0, 0, 0, PARENT_HEADER_VALUE_PERCENT_GAP],
       },
       pct: {
+        fontFamily,
         color: textSecondary,
         fontSize: groupHeader.fontSize,
         fontWeight: groupHeader.percentFontWeight,

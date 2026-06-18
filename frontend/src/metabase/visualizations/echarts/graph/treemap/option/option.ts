@@ -418,6 +418,7 @@ function getUpperLabelDefault({
     show: showParentLabels && !isDrilled,
     color: renderingContext.getColor("text-primary"),
     height,
+    fontFamily: renderingContext.fontFamily,
     fontSize: groupHeader.fontSize,
     fontWeight: groupHeader.fontWeight,
     lineHeight: height,
