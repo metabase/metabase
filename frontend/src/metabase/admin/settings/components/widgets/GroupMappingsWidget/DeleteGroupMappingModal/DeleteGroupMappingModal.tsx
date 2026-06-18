@@ -5,8 +5,7 @@ import type {
   DeleteMappingModalValueType,
   GroupIds,
 } from "metabase/admin/types";
-import { Radio } from "metabase/common/components/Radio";
-import { Box, Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Box, Button, Group, Modal, Radio, Stack, Text } from "metabase/ui";
 
 export type DeleteGroupMappingModalProps = {
   name: string;
@@ -60,32 +59,32 @@ export const DeleteGroupMappingModal = ({
         <Text>{subtitle}</Text>
 
         <Box>
-          <Text mb="sm">{whatShouldHappenText}</Text>
-          <Box ml="md">
-            <Radio
-              vertical
-              value={value}
-              options={[
-                {
-                  name: t`Nothing, just remove the mapping`,
-                  value: "nothing",
-                },
-                {
-                  name: t`Also remove all group members (except from Admin)`,
-                  value: "clear",
-                },
-                {
-                  name:
-                    groupIds.length > 1
-                      ? t`Also delete the groups (except Admin)`
-                      : t`Also delete the group`,
-                  value: "delete",
-                },
-              ]}
-              showButtons
-              onChange={handleChange}
-            />
-          </Box>
+          <Text mb="md">{whatShouldHappenText}</Text>
+          <Radio.Group
+            value={value}
+            onChange={(newValue) =>
+              handleChange(newValue as DeleteMappingModalValueType)
+            }
+          >
+            <Stack gap="sm">
+              <Radio
+                value="nothing"
+                label={t`Nothing, just remove the mapping`}
+              />
+              <Radio
+                value="clear"
+                label={t`Also remove all group members (except from Admin)`}
+              />
+              <Radio
+                value="delete"
+                label={
+                  groupIds.length > 1
+                    ? t`Also delete the groups (except Admin)`
+                    : t`Also delete the group`
+                }
+              />
+            </Stack>
+          </Radio.Group>
         </Box>
 
         <Group justify="flex-end">

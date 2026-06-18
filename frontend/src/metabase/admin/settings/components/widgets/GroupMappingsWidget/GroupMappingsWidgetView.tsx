@@ -7,11 +7,19 @@ import NoResults from "assets/img/no_results.svg";
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { getErrorMessage } from "metabase/api/utils/errors";
-import { Button } from "metabase/common/components/Button";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
 import { FormSwitch } from "metabase/forms";
-import { Box, Flex, Group, Icon, Text, Tooltip, rem } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Text,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import { AddMappingRow } from "./AddMappingRow";
@@ -165,7 +173,12 @@ export function GroupMappingsWidgetView({
           py="sm"
         >
           {!showAddRow && (
-            <Button primary small type="button" onClick={handleShowAddRow}>
+            <Button
+              variant="filled"
+              size="sm"
+              type="button"
+              onClick={handleShowAddRow}
+            >
               {t`New mapping`}
             </Button>
           )}
