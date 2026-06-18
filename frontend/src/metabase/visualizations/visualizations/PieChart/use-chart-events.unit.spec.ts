@@ -155,7 +155,6 @@ describe("useChartEvents", () => {
     );
 
     clickHandler?.handler({
-      dataIndex: 0,
       name: OTHER_SLICE_KEY,
       event: { event: new MouseEvent("click") },
     });

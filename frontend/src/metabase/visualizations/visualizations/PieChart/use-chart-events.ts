@@ -180,7 +180,7 @@ function handleClick(
   onVisualizationClick: VisualizationProps["onVisualizationClick"],
   chartModel: PieChartModel,
 ) {
-  if (event.dataIndex == null) {
+  if (event.name == null) {
     return;
   }
 
