@@ -560,20 +560,33 @@
 
 ;;; ------------------------------------------------- Post-Execution Completion -------------------------------------------------
 
+(defn- mark-index-failed!
+  "Best-effort: flag the managed row for `index` (matched by name) failed, with the error message."
+  [transform-id index ^Throwable t]
+  (when transform-id
+    (let [idx-name (or (:name index) (name (:kind index)))]
+      (t2/update! :model/TableIndex
+                  :transform_id transform-id :index_name idx-name
+                  {:status :failed :error_message (ex-message t)}))))
+
 (defn- apply-standalone-indexes!
   "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
-  table creation, so they're filtered out here and passing the full list is safe. Each create uses `:if-not-exists`,
-  so re-applying is a no-op. Throws on failure."
-  [database {:keys [indexes schema] table-name :name}]
+  table creation, so they're filtered out here. Each create uses `:if-not-exists`, so re-applying is a no-op. On a
+  per-index DDL throw, marks the managed row failed (when `:transform-id` is set) and re-throws."
+  [database {:keys [indexes schema transform-id] table-name :name}]
   (let [driver     (:engine database)
         methods    (driver/supported-index-methods driver database)
         standalone (filter #(= :standalone (get-in methods [(:kind %) :lifecycle])) indexes)]
     (when (seq standalone)
       (let [conn-spec (driver/connection-spec driver database)]
         (doseq [index standalone]
-          (driver/execute-raw-queries! driver conn-spec
-                                       (driver/compile-create-index driver schema table-name
-                                                                    (assoc index :if-not-exists true))))))))
+          (try
+            (driver/execute-raw-queries! driver conn-spec
+                                         (driver/compile-create-index driver schema table-name
+                                                                      (assoc index :if-not-exists true)))
+            (catch Throwable t
+              (mark-index-failed! transform-id index t)
+              (throw t))))))))
 
 (defn apply-target-indexes!
   "Apply the target's standalone indexes, on full-create runs only (a `:table` run or a full-reset incremental run
@@ -584,7 +597,7 @@
              (or (= :table (keyword (:type (:target transform))))
                  (full-incremental-run? transform)))
     (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))]
-      (apply-standalone-indexes! database (:target transform)))))
+      (apply-standalone-indexes! database (assoc (:target transform) :transform-id (:id transform))))))
 
 (defn verify-managed-indexes!
   "Reconcile each managed TableIndex row against what's physically in the warehouse and set its `:status`."

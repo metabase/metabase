@@ -199,3 +199,22 @@
       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex present-id)))
       (is (= :failed (t2/select-one-fn :status :model/TableIndex missing-id)))
       (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex present-id))))))
+
+(deftest ^:synchronized ddl-failure-marks-row-failed-test
+  (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
+                                             :source {:type "query"}
+                                             :source_database_id (mt/id)
+                                             :target {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                 :model/TableIndex {idx-id :id} {:transform_id tid :index_name "boom_idx"
+                                                 :structured {:kind :btree :name "boom_idx" :columns [{:name "x"}]}}]
+    (let [transform {:id tid :target {:database (mt/id) :schema "public" :name "t"
+                                      :indexes [{:kind :btree :name "boom_idx" :columns [{:name "x"}]}]}}]
+      (with-redefs [metabase.driver/supported-index-methods (fn [& _] {:btree {:lifecycle :standalone}})
+                    metabase.driver/connection-spec        (fn [& _] {})
+                    metabase.driver/compile-create-index   (fn [& _] "CREATE INDEX boom_idx ...")
+                    metabase.driver/execute-raw-queries!   (fn [& _] (throw (ex-info "ddl boom" {})))]
+        (is (thrown? Throwable
+                     (#'metabase.transforms-base.util/apply-standalone-indexes!
+                      {:engine :postgres :id (mt/id)} (assoc (:target transform) :transform-id tid))))
+        (is (= :failed (t2/select-one-fn :status :model/TableIndex idx-id)))
+        (is (re-find #"ddl boom" (t2/select-one-fn :error_message :model/TableIndex idx-id)))))))
