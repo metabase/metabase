@@ -11,7 +11,10 @@
 
      name: Sales dashboard      # display name
      slug: sales                # URL identity (/data-app/:slug)
-     path: dist/index.js        # bundle path, relative to this app's directory"
+     path: dist/index.js        # bundle path, relative to this app's directory
+     allowed_hosts:             # optional — origins the sandboxed bundle may fetch/XHR
+       - https://api.example.com
+       - https://*.internal.acme.com"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -50,6 +53,37 @@
   [p]
   (-> (str p) str/trim (str/replace #"^\./" "")))
 
+(def ^:private allowed-host-re
+  "A single `allowed_hosts` entry: an origin the app's sandboxed bundle may
+   `fetch`/XHR — scheme + host, an optional `*.` subdomain wildcard, and an
+   optional port. No path/query/bare `*`/non-http(s) scheme: it names an
+   origin, e.g. `https://api.example.com` or `https://*.internal.acme.com`."
+  #"(?i)https?://(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?")
+
+(defn- parse-allowed-hosts
+  "Validate + normalize the optional `allowed_hosts` list from a parsed config.
+   Each entry must be a bare origin (see [[allowed-host-re]]); returns a
+   lowercased, de-duplicated vector, or `[]` when the key is absent. Throws an
+   `ex-info` with `:status-code` 400 on a non-list value or an invalid entry."
+  [parsed ^String dir]
+  (let [raw (:allowed_hosts parsed)]
+    (cond
+      (nil? raw) []
+      (not (sequential? raw))
+      (throw (ex-info (tru "{0}/{1}: \"allowed_hosts\" must be a list." dir config-file-name)
+                      {:status-code 400}))
+      :else
+      (->> raw
+           (mapv (fn [entry]
+                   (let [s (some-> entry str str/trim str/lower-case (str/replace #"/+$" ""))]
+                     (when-not (and s (re-matches allowed-host-re s))
+                       (throw (ex-info (tru "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
+                                            dir config-file-name (str entry))
+                                       {:status-code 400})))
+                     s)))
+           distinct
+           vec))))
+
 (defn- path-traversal? [path]
   (some #(= ".." %) (str/split path #"/")))
 
@@ -63,14 +97,17 @@
 
 (defn parse-app-config
   "Parse the bytes of one `data_app.yml` (from directory `dir`, used only for
-   error messages) into `{:slug ..., :display_name ..., :path ...}`. `path` is
-   relative to the app's directory. Throws an `ex-info` with `:status-code` 400
-   on malformed or incomplete content."
+   error messages) into `{:slug ..., :display_name ..., :path ...,
+   :allowed_hosts [...]}`. `path` is relative to the app's directory;
+   `:allowed_hosts` is a (possibly empty) vector of origins the sandboxed bundle
+   may reach. Throws an `ex-info` with `:status-code` 400 on malformed or
+   incomplete content."
   [^bytes bytes ^String dir]
-  (let [parsed (parse-yaml bytes dir)
-        slug   (some-> (:slug parsed) str str/trim not-empty)
-        name   (some-> (:name parsed) str str/trim not-empty)
-        path   (some-> (:path parsed) normalize-path not-empty)]
+  (let [parsed        (parse-yaml bytes dir)
+        slug          (some-> (:slug parsed) str str/trim not-empty)
+        name          (some-> (:name parsed) str str/trim not-empty)
+        path          (some-> (:path parsed) normalize-path not-empty)
+        allowed-hosts (parse-allowed-hosts parsed dir)]
     (when-not (and slug (re-matches slug-pattern slug))
       (throw (ex-info (tru "{0}/{1}: \"slug\" must be lowercase letters, numbers, and dashes." dir config-file-name)
                       {:status-code 400})))
@@ -86,4 +123,4 @@
     (when (path-traversal? path)
       (throw (ex-info (tru "{0}/{1}: \"path\" must not contain \"..\"." dir config-file-name)
                       {:status-code 400})))
-    {:slug slug, :display_name name, :path path}))
+    {:slug slug, :display_name name, :path path, :allowed_hosts allowed-hosts}))

@@ -23,7 +23,9 @@
    :out blob->bytes})
 
 (t2/deftransforms :model/DataApp
-  {:bundle transform-bundle})
+  {:bundle        transform-bundle
+   ;; JSON array of origins the sandboxed bundle may fetch/XHR (see config.clj).
+   :allowed_hosts mi/transform-json})
 
 (doto :model/DataApp
   (derive :metabase/model)
@@ -31,7 +33,7 @@
 
 (def non-blob-columns
   "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
-  [:id :name :display_name :bundle_path :enabled
+  [:id :name :display_name :bundle_path :enabled :allowed_hosts
    :bundle_hash :last_synced_sha :last_synced_at :sync_error
    :created_at :updated_at])
 

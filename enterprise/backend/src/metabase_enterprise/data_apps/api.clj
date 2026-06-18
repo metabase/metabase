@@ -17,6 +17,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -133,6 +134,10 @@
           (if (and bundle (pos? (alength bundle)))
             (respond {:status  200
                       :headers (cond-> bundle-response-headers
+                                 ;; JSON array of origins the sandboxed bundle may fetch/XHR; the
+                                 ;; iframe reads this to configure its Near-Membrane fetch allowlist.
+                                 true (assoc "X-Metabase-Data-App-Allowed-Hosts"
+                                             (json/encode (or (:allowed_hosts row) [])))
                                  etag (assoc "ETag" etag))
                       :body    (ByteArrayInputStream. bundle)})
             (respond {:status  404
