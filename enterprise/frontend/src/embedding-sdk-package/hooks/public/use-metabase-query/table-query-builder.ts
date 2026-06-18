@@ -113,9 +113,7 @@ function buildAggregationClause(aggregation: unknown): Aggregation | null {
   return ["measure", {}, aggregation.id] as Aggregation;
 }
 
-function buildCountClause(): Aggregation {
-  return ["count"] as Aggregation;
-}
+const buildCountClause = (): Aggregation => ["count"] as Aggregation;
 
 function buildTableBreakout(breakout: unknown): ConcreteFieldReference {
   const { dimension, options } = normalizeBreakout(breakout);
@@ -186,10 +184,8 @@ function normalizeBreakout(breakout: unknown) {
   return { dimension: breakout.dimension, options };
 }
 
-function isBreakoutObject(value: unknown): value is BreakoutObjectRuntime {
-  return typeof value === "object" && value != null && "dimension" in value;
-}
+const isBreakoutObject = (value: unknown): value is BreakoutObjectRuntime =>
+  typeof value === "object" && value != null && "dimension" in value;
 
-function isNotNull<TValue>(value: TValue | null): value is TValue {
-  return value !== null;
-}
+const isNotNull = <TValue>(value: TValue | null): value is TValue =>
+  value !== null;

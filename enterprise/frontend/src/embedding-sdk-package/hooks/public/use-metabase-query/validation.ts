@@ -9,7 +9,7 @@ import {
 } from "./guards";
 import type { MetricQueryRuntime } from "./runtime-types";
 
-export function validateMetricTableScopedInputs(query: MetricQueryRuntime) {
+export const validateMetricTableScopedInputs = (query: MetricQueryRuntime) =>
   validateTableScopedInputs({
     allowedTableIds: getMetricMappedTableIds(query),
     breakouts: query.breakouts,
@@ -17,7 +17,6 @@ export function validateMetricTableScopedInputs(query: MetricQueryRuntime) {
     measures: query.measures,
     context: "Metric query",
   });
-}
 
 export function validateTableScopedInputs({
   allowedTableIds,
