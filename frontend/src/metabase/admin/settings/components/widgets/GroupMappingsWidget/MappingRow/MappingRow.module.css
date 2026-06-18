@@ -1,0 +1,7 @@
+.deleteButton {
+  color: var(--mb-color-text-primary);
+}
+
+.deleteButton:hover {
+  color: var(--mb-color-danger);
+}
