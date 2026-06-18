@@ -223,6 +223,9 @@
       (ex-info (str "Cannot convert " (pr-str value) " to float.")
                {:value value}))))
 
+(defn- integer->boolean [expr]
+  (h2x/cast :boolean expr))
+
 (defmulti date-dbtype
   "Return the name of the date type we convert to in this database."
   {:added "0.55.0" :arglists '([driver])}
@@ -802,7 +805,7 @@
       (throw (Exception. (tru "No magnitude known for {0}" coercion-type)))))
 
 (defn cast-field-if-needed
-  "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
+  "Wrap a `field-identifier` in appropriate HoneySQL expressions if it needs casting."
   [driver {:keys [base-type coercion-strategy], :as field} honeysql-form]
   (if (some #(str/includes? (name %) "_") (keys field))
     (do
@@ -816,6 +819,9 @@
                (unix-timestamp->honeysql driver
                                          (semantic-type->unix-timestamp-unit coercion-strategy)
                                          honeysql-form)
+
+               (and (isa? base-type :type/Number) (isa? coercion-strategy :Coercion/Integer->Boolean))
+               (integer->boolean honeysql-form)
 
                (and (= base-type :type/Text) (isa? coercion-strategy :Coercion/String->Temporal))
                (cast-temporal-string driver coercion-strategy honeysql-form)

@@ -56,6 +56,7 @@
 
 (deftest ^:parallel coercion-possibilities-test
   (is (= {:type/Text    #{::Coerce-Int-To-Str}
+          :type/Boolean #{:Coercion/Integer->Boolean}
           :type/Instant #{:Coercion/UNIXNanoSeconds->DateTime
                           :Coercion/UNIXMicroSeconds->DateTime
                           :Coercion/UNIXMilliSeconds->DateTime
@@ -68,6 +69,7 @@
          (types/coercion-possibilities :type/Decimal)))
   (testing "Should work for for subtypes of a the coercion base type(s)"
     (is (= {:type/Text    #{::Coerce-Int-To-Str}
+            :type/Boolean #{:Coercion/Integer->Boolean}
             :type/Instant #{:Coercion/UNIXNanoSeconds->DateTime
                             :Coercion/UNIXMicroSeconds->DateTime
                             :Coercion/UNIXMilliSeconds->DateTime

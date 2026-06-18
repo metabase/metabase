@@ -51,6 +51,21 @@
               (is (= res
                      (biginteger coerced-number))))))))))
 
+(deftest ^:parallel integer-to-boolean-coercion-test
+  (mt/test-drivers #{:sqlite}
+    (mt/dataset rounding-nums-db
+      (let [mp (lib.tu/merged-mock-metadata-provider
+                (mt/metadata-provider)
+                {:fields [{:id (mt/id :nums "int_col")
+                           :coercion-strategy :Coercion/Integer->Boolean
+                           :effective-type :type/Boolean}]})
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :nums)))
+                      (lib/with-fields [(lib.metadata/field mp (mt/id :nums :int_col))]))]
+        (let [rows (mt/rows (qp.store/with-metadata-provider mp
+                              (qp/process-query query)))]
+          (is (false? (ffirst rows)))
+          (is (true? (fnext rows))))))))
+
 (deftest ^:parallel float-to-integer-coercion-test
   (mt/test-drivers
     (mt/normal-drivers)
