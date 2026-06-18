@@ -51,6 +51,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
    [ring.util.codec :as codec]
@@ -672,6 +673,9 @@
     (let [dashboard (api/read-check :model/Dashboard id)
           params    (cond-> parameters
                       (string? parameters) json/decode+kw)
+          ;; the array form is validated by the endpoint schema, but a JSON string only proves it's *valid JSON* --
+          ;; once decoded it must still be a well-formed parameter list, or it's a 400 (not a 500)
+          _         (api/check-400 (mr/validate [:maybe [:sequential ParameterWithID]] params))
           pdf-bytes (channel.render/render-dashboard-to-pdf id api/*current-user-id*
                                                             (or params [])
                                                             (keyword (or paper_size "a4")))

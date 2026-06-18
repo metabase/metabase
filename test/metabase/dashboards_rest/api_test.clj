@@ -720,6 +720,13 @@
                                   {:request-options {:as :byte-array}}
                                   {:parameters (json/encode [{:id "p1" :value "NY"}])})
             (is (= [{:id "p1" :value "NY"}] (:parameters (first @calls)))))
+          (testing "a JSON string that is valid JSON but not a well-formed parameter list is a 400 (not a 500)"
+            ;; an object instead of an array
+            (is (mt/user-http-request :rasta :post 400 (format "dashboard/%d/pdf" dash-id)
+                                      {:parameters (json/encode {:id "p1" :value "x"})}))
+            ;; an array whose entry is missing the required :id
+            (is (mt/user-http-request :rasta :post 400 (format "dashboard/%d/pdf" dash-id)
+                                      {:parameters (json/encode [{:value "x"}])})))
           (testing "rejects an invalid paper_size"
             (mt/user-http-request :rasta :post 400 (format "dashboard/%d/pdf" dash-id)
                                   {:paper_size "a3"})))))))
