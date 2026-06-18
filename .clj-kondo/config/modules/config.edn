@@ -2363,11 +2363,13 @@
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table
+                    :model/TableIndex
                     :model/Transform
                     :model/TransformRun}
    :uses #{database-routing
            driver
            events
+           indexes
            lib
            lib-be
            premium-features

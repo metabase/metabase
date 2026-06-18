@@ -181,3 +181,21 @@
                                         :structured {:kind :btree :name "a_idx" :columns [{:name "y"}]}}]
       (is (= ["a_idx" "b_idx"]
              (map :name (metabase.transforms.execute/hydrate-transform-indexes {:id tid})))))))
+
+(deftest ^:synchronized verify-managed-indexes!-test
+  (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                             :source             {:type "query"}
+                                             :source_database_id (mt/id)
+                                             :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                 :model/TableIndex {present-id :id} {:transform_id tid :index_name "present_idx"
+                                                     :structured {:kind :btree :name "present_idx" :columns [{:name "x"}]}}
+                 :model/TableIndex {missing-id :id} {:transform_id tid :index_name "missing_idx"
+                                                     :structured {:kind :btree :name "missing_idx" :columns [{:name "y"}]}}]
+    (with-redefs [metabase.driver/fetch-table-indexes
+                  (fn [& _] [{:name "present_idx" :kind :btree :access-method "btree" :is-unique false
+                              :is-primary false :is-valid true :key-columns ["x"] :include-columns []
+                              :partial-predicate nil :definition "..."}])]
+      (#'metabase.transforms-base.util/verify-managed-indexes! (t2/select-one :model/Transform tid))
+      (is (= :succeeded (t2/select-one-fn :status :model/TableIndex present-id)))
+      (is (= :failed (t2/select-one-fn :status :model/TableIndex missing-id)))
+      (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex present-id))))))

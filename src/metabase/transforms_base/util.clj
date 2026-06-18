@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
+   [metabase.indexes.reconcile :as reconcile]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -584,6 +585,21 @@
                  (full-incremental-run? transform)))
     (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))]
       (apply-standalone-indexes! database (:target transform)))))
+
+(defn verify-managed-indexes!
+  "Reconcile each managed TableIndex row against what's physically in the warehouse and set its `:status`."
+  [transform]
+  (when-let [managed (seq (t2/select :model/TableIndex :transform_id (:id transform)))]
+    (let [database  (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
+          {:keys [schema] table-name :name} (:target transform)
+          warehouse (reconcile/fetch-warehouse-indexes database schema table-name)]
+      (when (seq warehouse)
+        (let [present-keys (into #{} (map reconcile/match-key) warehouse)]
+          (doseq [row managed]
+            (let [present? (contains? present-keys (reconcile/match-key (reconcile/normalize-managed row)))]
+              (t2/update! :model/TableIndex (:id row)
+                          {:status           (if present? :succeeded :failed)
+                           :last_executed_at :%now}))))))))
 
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.
