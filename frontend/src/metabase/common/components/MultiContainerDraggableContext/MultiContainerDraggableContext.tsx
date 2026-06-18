@@ -32,8 +32,10 @@ export function findContainer<
 export type MultiContainerDraggableContextShouldUpdateStateData<
   TItemsDictionary extends Record<string, string[]>,
 > = {
+  activeId: string;
   activeContainer: keyof TItemsDictionary;
   overContainer: keyof TItemsDictionary;
+  items: TItemsDictionary;
 };
 
 type MultiContainerDraggableContextProps<
@@ -105,8 +107,10 @@ export const MultiContainerDraggableContext = <
 
       const shouldUpdate =
         shouldUpdateState?.({
+          activeId,
           activeContainer,
           overContainer,
+          items,
         }) ?? true;
 
       if (!shouldUpdate) {
@@ -178,8 +182,10 @@ export const MultiContainerDraggableContext = <
 
       const shouldUpdate =
         shouldUpdateState?.({
+          activeId,
           activeContainer,
           overContainer,
+          items,
         }) ?? true;
 
       if (!shouldUpdate) {

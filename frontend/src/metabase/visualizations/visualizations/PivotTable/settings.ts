@@ -135,7 +135,17 @@ export const settings = {
         let rows;
         let columns: DatasetColumn[];
 
-        if (dimensions.length < 2) {
+        if (isNativeQuery) {
+          // Native pivots render every dimension as a (nested) row. The first
+          // dimension (lowest cardinality, e.g. cohort_date) is the primary
+          // group; the second (e.g. country) becomes the single Breakdown,
+          // which is merged back in right after the primary row in the pivot
+          // engine so it renders as the second nested row.
+          rows = [first].filter(Boolean);
+          columns = second ? [second] : [];
+          // Any extra dimensions also become rows after the breakdown.
+          rows = [...rows, ...rest];
+        } else if (dimensions.length < 2) {
           columns = [];
           rows = [first];
         } else if (dimensions.length <= 3) {

@@ -36,9 +36,17 @@ const makeShouldUpdateDraggableContextState =
   ({
     activeId,
     overContainer,
+    items,
   }: MultiContainerDraggableContextShouldUpdateStateData<ColumnNameColumnSplitSetting>) => {
     const targetPartition = partitions.find((p) => p.name === overContainer);
     if (!targetPartition) {
+      return false;
+    }
+    // Enforce a per-partition maximum (e.g. the single-column "Breakdown").
+    if (
+      targetPartition.maxSize != null &&
+      (items[overContainer]?.length ?? 0) >= targetPartition.maxSize
+    ) {
       return false;
     }
     const activeColumn = columns.find((col) => col.name === activeId);

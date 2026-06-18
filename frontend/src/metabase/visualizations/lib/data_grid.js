@@ -61,12 +61,25 @@ export function multiLevelPivot(data, settings) {
   if (!settings[COLUMN_SPLIT_SETTING]) {
     return null;
   }
-  const columnSplit = migratePivotColumnSplitSetting(
+  let columnSplit = migratePivotColumnSplitSetting(
     settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
     data.cols,
   );
 
   const isNativeQuery = data.cols.some((col) => col.source === "native");
+
+  // Native SQL pivots use a single "Breakdown" dimension that should render as a
+  // nested row, not as horizontal column groups. Whatever the user placed in the
+  // "columns" (Breakdown) partition is appended to rows so the layout is stable
+  // regardless of which partition the column was dropped into.
+  if (isNativeQuery) {
+    columnSplit = {
+      ...columnSplit,
+      rows: [...(columnSplit.rows ?? []), ...(columnSplit.columns ?? [])],
+      columns: [],
+    };
+  }
+
   const processedData = isNativeQuery
     ? addPivotGroupingToNativeData(data, columnSplit)
     : data;
