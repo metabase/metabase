@@ -161,11 +161,6 @@ function getSuccessMessage(
   outcome: RemoteSyncOutcome | null,
   taskType: RemoteSyncTaskType,
 ): string {
-  const fallback =
-    taskType === "import"
-      ? t`Successfully pulled changes.`
-      : t`Successfully pushed changes.`;
-
   switch (outcome?.kind) {
     case "pull-skipped":
       return t`Skipped pull: no changes.`;
@@ -174,18 +169,20 @@ function getSuccessMessage(
     case "pulled":
       return isCount(outcome.count) && isBranch(outcome.branch)
         ? t`Successfully pulled ${outcome.count} changes from ${outcome.branch}.`
-        : fallback;
+        : t`Successfully pulled changes.`;
     case "pushed":
       return isCount(outcome.count) && isBranch(outcome.branch)
         ? t`Successfully pushed ${outcome.count} changes to ${outcome.branch}.`
-        : fallback;
+        : t`Successfully pushed changes.`;
     case "merged":
       return isCount(outcome.pulled) &&
         isCount(outcome.pushed) &&
         isBranch(outcome.branch)
         ? t`Successfully pulled ${outcome.pulled} changes and pushed ${outcome.pushed} changes to ${outcome.branch}.`
-        : fallback;
+        : t`Successfully pulled and pushed changes.`;
     default:
-      return fallback;
+      return taskType === "import"
+        ? t`Successfully pulled changes.`
+        : t`Successfully pushed changes.`;
   }
 }
