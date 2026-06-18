@@ -224,6 +224,24 @@
                    (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
                 (str "batched hash should match per-row hash for " model_type))))))))
 
+(deftest record-content-hashes!-chunks-rows-test
+  (testing "record-content-hashes! hashes every row even when they span multiple batches (GHY-3933)"
+    (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                   :model/Card c1 {:name "C1" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
+                   :model/Card c2 {:name "C2" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
+                   :model/Card c3 {:name "C3" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (doseq [card [c1 c2 c3]]
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name (:name card)
+                                             :status "synced" :status_changed_at (t/offset-date-time)}))
+      ;; force more than one chunk for the 3 cards
+      (with-redefs [impl/content-hash-batch-size 2]
+        (#'impl/record-content-hashes! (t2/select [:model/RemoteSyncObject :id :model_type :model_id])))
+      (doseq [card [c1 c2 c3]]
+        (is (= (source/row->content-hash {:model_type "Card" :model_id (:id card)})
+               (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))
+            (str "every chunked row should get its hash: " (:name card)))))))
+
 ;;; ------------------------------------------- export integration -------------------------------------------
 ;;; These run a real export! to a mock source — which records the content_hash baseline through the actual
 ;;; export path (full/incremental) — then fire a no-op update and assert it stays synced. Unlike the

@@ -250,19 +250,24 @@
         (t2/update! :model/RemoteSyncObject :model_type model-type :model_id id
                     {:file_path path})))))
 
+(def content-hash-batch-size
+  "Max RemoteSyncObject rows per extraction/update batch, to keep IN-lists and CASE expressions bounded."
+  500)
+
 (defn- record-content-hashes!
   "Records each row's current serialized-content hash on its RemoteSyncObject, establishing the baseline
   against which later update events are compared (see `remote-sync.events/resolve-status`). Used after a
   full export or an import. `rows` is a seq of maps with `:id`, `:model_type`, and `:model_id`.
 
-  Batches the work to one extraction and one update per model type (rather than a query and update per
-  entity): `extract-query` returns the modeled instances for the whole model in one query — keeping each
-  local `:id` so it correlates to its RemoteSyncObject row — and a single CASE update writes every hash.
-  Entities that fail to serialize are skipped."
+  Batches the work to one extraction and one update per chunk of `content-hash-batch-size` rows of a given
+  model type (rather than a query and update per entity): `extract-query` returns the modeled instances for
+  the chunk in one query — keeping each local `:id` so it correlates to its RemoteSyncObject row — and a
+  single CASE update writes every hash. Entities that fail to serialize are skipped."
   [rows]
   (let [storage-opts (serdes/storage-base-context)]
     (doseq [[model-type model-rows] (group-by :model_type rows)
-            :let [id->rso (into {} (map (juxt :model_id :id)) model-rows)
+            chunk (partition-all content-hash-batch-size model-rows)
+            :let [id->rso (into {} (map (juxt :model_id :id)) chunk)
                   extract-opts {:where [:in :id (vec (keys id->rso))] :skip-archived true}
                   rso->hash (into {}
                                   (keep (fn [instance]
