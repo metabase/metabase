@@ -1,6 +1,7 @@
 (ns metabase.indexes.reconcile-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver]
    [metabase.indexes.reconcile :as reconcile]))
 
 (def ^:private managed-btree
@@ -68,3 +69,12 @@
     (let [merged (reconcile/merge-indexes [managed-btree managed-sortkey] [wh-btree wh-dba])]
       (is (= 3 (count merged)))
       (is (= #{true} (set (map #(contains? % :metabase_managed) merged)))))))
+
+(deftest fetch-warehouse-indexes-test
+  (testing "delegates to the driver method"
+    (with-redefs [metabase.driver/fetch-table-indexes (fn [_driver _db _schema _table] [wh-btree])]
+      (is (= [wh-btree]
+             (reconcile/fetch-warehouse-indexes {:engine :postgres} "public" "t")))))
+  (testing "swallows driver/connection errors and returns []"
+    (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] (throw (ex-info "boom" {})))]
+      (is (= [] (reconcile/fetch-warehouse-indexes {:engine :postgres} "public" "t"))))))

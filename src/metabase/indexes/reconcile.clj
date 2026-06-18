@@ -1,6 +1,9 @@
 (ns metabase.indexes.reconcile
   "Reconcile Metabase-managed index hints (TableIndex rows) with the indexes physically present in the warehouse.
-  Shared by the read API and the transform-run status verification.")
+  Shared by the read API and the transform-run status verification."
+  (:require
+   [metabase.driver :as driver]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -61,3 +64,13 @@
                          (remove #(contains? managed-key (match-key %)))
                          (mapv #(assoc % :metabase_managed false :present_in_warehouse true)))]
     (into managed* unmanaged)))
+
+(defn fetch-warehouse-indexes
+  "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`. Returns `[]` if the
+  driver can't introspect indexes or the warehouse is unreachable, so callers degrade instead of erroring."
+  [database schema table-name]
+  (try
+    (vec (driver/fetch-table-indexes (:engine database) database schema table-name))
+    (catch Throwable t
+      (log/warnf t "fetch-table-indexes failed for %s.%s" schema table-name)
+      [])))
