@@ -33,25 +33,28 @@ This anonymous data helps us figure out things like:
 
 When anonymous tracking is enabled, Metabase collects usage data from embedded components in addition to the general product events described above.
 
-### iframe embedding
+### Static and interactive embedding
 
-For iframe-based embedding (static, interactive, and guest), Metabase records query execution counts grouped by embedding type. No query content, result data, or user identifiers are collected.
+For static and interactive iframe-based embedding, Metabase records query execution counts grouped by embedding type. No query content, result data, or user identifiers are collected.
 
-### Modular embedding SDK
+### Modular embedding
 
-When you use the [modular embedding SDK](../embedding/sdk/introduction.md), Metabase collects a component-mount event each time an SDK component is rendered in your app. Each event includes:
+Both the [modular embedding (iframe)](../embedding/modular-embedding.md) and the [modular embedding SDK](../embedding/sdk/introduction.md) collect a usage event when components are rendered in your app. Each event includes:
 
-- Which component was used (for example, `InteractiveDashboard` or `StaticQuestion`)
-- The component's configuration options (for example, whether downloads or subscriptions are enabled)
+- Which components were used (for example, `metabase-dashboard` or `InteractiveDashboard`)
+- The component's configuration options (for example, whether downloads or drill-through are enabled)
 - The authentication method (SSO, API key, or guest)
-- The SDK package version
 - Whether a custom locale is configured
+
+The modular embedding SDK also includes the SDK package version.
+
+**Timing.** The iframe transport fires once per page load after the first component is ready. The SDK transport fires once per component mount per page load.
 
 **No persistent identifiers.** Within a session, an in-memory identifier groups related events. This identifier is regenerated on every page load and is never written to cookies or localStorage — there is no persistent cross-session identifier.
 
-**Routing.** SDK telemetry routes through your Metabase instance, not directly to a third-party analytics host. No additional allowlisting is required in your Content Security Policy.
+**Routing.** Telemetry routes through your Metabase instance, not directly to a third-party analytics host. No additional allowlisting is required in your Content Security Policy.
 
-**Opting out.** Disabling the anonymous tracking toggle (see below) stops all embedding telemetry.
+**Opting out.** Disabling the anonymous tracking toggle (see below) stops all modular embedding telemetry.
 
 ## Opting out of anonymous usage data collection for self-hosted Metabases
 
