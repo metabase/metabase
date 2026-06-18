@@ -171,6 +171,43 @@
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
+(def ^:private table-name-max-length
+  "Maximum length of the `metabase_table.name` column in the application DB (a `varchar(256)`). Tables whose name is
+  longer than this can't be stored.
+
+  As with Fields, an alternative would be to widen the column, but `name` is part of the `idx_unique_table` unique
+  constraint whose key also includes the `varchar(254)` schema helper, so on MySQL/InnoDB there's only room to grow
+  `name` to roughly `varchar(512)` — still short of e.g. BigQuery's 1024-character table names. Truncating is not an
+  option either: `name` is the real warehouse table name used to generate SQL."
+  256)
+
+(def ^:private table-schema-max-length
+  "Maximum length of the `metabase_table.schema` column in the application DB (a `varchar(254)`). Tables in a
+  schema/dataset whose name is longer than this can't be stored — BigQuery dataset names, for instance, can be up to
+  1024 characters."
+  254)
+
+(defn- table-name-or-schema-too-long?
+  "Whether `table`'s name or schema is too long to store in the application DB (see `table-name-max-length` /
+  `table-schema-max-length`)."
+  [{table-name :name, table-schema :schema}]
+  (or (< table-name-max-length (count table-name))
+      (< table-schema-max-length (count (or table-schema "")))))
+
+(mu/defn- remove-tables-with-too-long-names :- [:set i/DatabaseMetadataTable]
+  "Drop any tables in `db-metadata-tables` whose name or schema is too long to store in the application DB (see
+  `table-name-max-length` / `table-schema-max-length`), logging a warning. A single over-long table name or schema
+  would otherwise abort creation of all remaining new tables for the database."
+  [database           :- i/DatabaseInstance
+   db-metadata-tables :- [:set i/DatabaseMetadataTable]]
+  (let [{too-long true, ok false} (group-by table-name-or-schema-too-long? db-metadata-tables)]
+    (when (seq too-long)
+      (log/warnf "Skipping %d Table(s) in %s whose name or schema is too long to store: %s"
+                 (count too-long)
+                 (sync-util/name-for-logging database)
+                 (pr-str (sort (map (fn [{:keys [schema name]}] (str schema "." name)) too-long)))))
+    (set ok)))
+
 (mu/defn- create-or-reactivate-tables!
   "Create `new-tables` for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance
@@ -364,6 +401,9 @@
    ;; determine what's changed between what info we have and what's in the DB
    (let [driver                (driver.u/database->driver database)
          db-table-metadatas    (table-set db-metadata)
+         ;; drop tables whose names can't be stored in the app DB before they reach an INSERT and abort creation of
+         ;; the remaining new tables for this database
+         db-table-metadatas    (remove-tables-with-too-long-names database db-table-metadatas)
          ;; DEV-1898: workspace-isolated tables (`ws_*`) live on the warehouse but must not
          ;; become :model/Table rows. They back canonical Tables via remap, not their own identity.
          db-table-metadatas    (ws.table-remapping/filter-workspace-side-tables db-table-metadatas (:id database))
