@@ -349,15 +349,11 @@ function normalizeBreakout(breakout: unknown) {
   return { dimension: breakout.dimension, options };
 }
 
-function isBreakoutObject(value: unknown): value is BreakoutObjectRuntime {
-  return typeof value === "object" && value != null && "dimension" in value;
-}
+const isBreakoutObject = (value: unknown): value is BreakoutObjectRuntime =>
+  typeof value === "object" && value != null && "dimension" in value;
 
-function hasFieldId(value: unknown): value is { fieldId: number } {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "fieldId" in value &&
-    typeof value.fieldId === "number"
-  );
-}
+const hasFieldId = (value: unknown): value is { fieldId: number } =>
+  typeof value === "object" &&
+  value != null &&
+  "fieldId" in value &&
+  typeof value.fieldId === "number";
