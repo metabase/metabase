@@ -172,12 +172,20 @@ export type AddCardToDashboardOpts = NewDashCardOpts & {
 
 export const addCardToDashboard =
   ({ dashId, tabId, cardId }: AddCardToDashboardOpts) =>
-  async (dispatch: Dispatch) => {
-    const card = await runRtkEndpoint(
-      { id: cardId },
-      dispatch,
-      cardApi.endpoints.getCard,
-    );
+  async (dispatch: Dispatch, getState: GetState) => {
+    const cached = cardApi.endpoints.getCard.select({ id: cardId })(
+      getState(),
+    ).data;
+    const card =
+      cached ??
+      (await runRtkEndpoint(
+        { id: cardId },
+        dispatch,
+        cardApi.endpoints.getCard,
+        {
+          forceRefetch: false,
+        },
+      ));
 
     const dashcardId = generateTemporaryDashcardId();
     const dashcard = dispatch(

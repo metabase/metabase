@@ -356,7 +356,7 @@ async function runAddCardToDashboard({
     dashId,
     tabId,
     cardId,
-  })(store.dispatch);
+  })(store.dispatch, store.getState);
   const nextState = store.getState();
 
   const tempDashCardId =
