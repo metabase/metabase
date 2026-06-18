@@ -194,6 +194,36 @@
           "Content matching the baseline must clear a stale dirty flag")
       (is (not (sync-object/dirty?))))))
 
+;;; ------------------------------------------- record-content-hashes! -------------------------------------------
+
+(deftest record-content-hashes!-batches-and-matches-row-hash-test
+  (testing "record-content-hashes! (batched) writes the same hash as per-row row->content-hash, for every
+            identity flavor — including the extract-query overrides (Collection, NativeQuerySnippet),
+            hybrids (Measure), and path models (Field) that have no entity_id (GHY-3933)"
+    (with-library-synced
+      (mt/with-temp [:model/Database db {:name "DB"}
+                     :model/Collection rs {:is_remote_synced true :name "RS" :location "/"}
+                     :model/Collection data {:is_remote_synced true :type collection/library-data-collection-type :name "Data"}
+                     :model/Collection snips {:name "Snippets" :namespace "snippets"}
+                     :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id rs)}
+                     :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id snips)}
+                     :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db) :is_published true :collection_id (:id data)}
+                     :model/Field field {:name "F" :table_id (:id table) :base_type :type/Integer}
+                     :model/Measure measure {:name "M" :table_id (:id table)}]
+        (let [rows (mapv (fn [[mt id]] {:model_type mt :model_id id})
+                         [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
+                          ["Field" (:id field)] ["Measure" (:id measure)]])]
+          (t2/delete! :model/RemoteSyncObject)
+          (doseq [row rows]
+            (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
+                                                            :status_changed_at (t/offset-date-time)})))
+          (let [seeded (t2/select [:model/RemoteSyncObject :id :model_type :model_id])]
+            (#'impl/record-content-hashes! seeded))
+          (doseq [{:keys [model_type model_id] :as row} rows]
+            (is (= (source/row->content-hash row)
+                   (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
+                (str "batched hash should match per-row hash for " model_type))))))))
+
 ;;; ------------------------------------------- export integration -------------------------------------------
 ;;; These run a real export! to a mock source — which records the content_hash baseline through the actual
 ;;; export path (full/incremental) — then fire a no-op update and assert it stays synced. Unlike the

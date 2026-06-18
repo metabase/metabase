@@ -253,13 +253,31 @@
 (defn- record-content-hashes!
   "Records each row's current serialized-content hash on its RemoteSyncObject, establishing the baseline
   against which later update events are compared (see `remote-sync.events/resolve-status`). Used after a
-  full export or an import. `rows` is a seq of maps with `:id`, `:model_type`, and `:model_id`. Skips rows
-  whose entity can't be serialized (e.g. a removed entity that no longer exists)."
+  full export or an import. `rows` is a seq of maps with `:id`, `:model_type`, and `:model_id`.
+
+  Batches the work to one extraction and one update per model type (rather than a query and update per
+  entity): `extract-query` returns the modeled instances for the whole model in one query — keeping each
+  local `:id` so it correlates to its RemoteSyncObject row — and a single CASE update writes every hash.
+  Entities that fail to serialize are skipped."
   [rows]
-  (doseq [{:keys [id model_type model_id]} rows
-          :let [hash (source/row->content-hash {:model_type model_type :model_id model_id})]
-          :when hash]
-    (t2/update! :model/RemoteSyncObject id {:content_hash hash})))
+  (let [storage-opts (serdes/storage-base-context)]
+    (doseq [[model-type model-rows] (group-by :model_type rows)
+            :let [id->rso (into {} (map (juxt :model_id :id)) model-rows)
+                  extract-opts {:where [:in :id (vec (keys id->rso))] :skip-archived true}
+                  rso->hash (into {}
+                                  (keep (fn [instance]
+                                          (when-let [rso-id (id->rso (:id instance))]
+                                            (try
+                                              [rso-id (source/content-hash
+                                                       (:content (source/entity->file-spec
+                                                                  storage-opts
+                                                                  (serdes/extract-one model-type extract-opts instance))))]
+                                              (catch Exception _ nil)))))
+                                  (serdes/extract-query model-type extract-opts))]
+            :when (seq rso->hash)]
+      (t2/update! :model/RemoteSyncObject
+                  {:id [:in (vec (keys rso->hash))]}
+                  {:content_hash (into [:case] (mapcat (fn [[rso-id h]] [[:= :id rso-id] h])) rso->hash)}))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
