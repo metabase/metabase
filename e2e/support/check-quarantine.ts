@@ -20,6 +20,12 @@
 
 import { readFileSync } from "node:fs";
 
+import {
+  type FailedTest,
+  type QuarantineEntry,
+  compareFailedToQuarantine,
+} from "./quarantine-compare";
+
 const {
   CI_CONDUCTOR_BASE_URL,
   CI_CONDUCTOR_WEBHOOK_SECRET,
@@ -36,37 +42,6 @@ const TEST_SUITE = "e2e";
 
 const failuresFile =
   QUARANTINE_FAILURES_FILE ?? "./target/quarantine-failures.jsonl";
-
-/** One quarantined test as served by ci-conductor's `/api/quarantine`. */
-type QuarantineEntry = {
-  test_name: string;
-  test_suite: string;
-  test_path: string;
-  file_path: string;
-};
-
-/** A test that ultimately failed in this run, as recorded by after:spec. */
-type FailedTest = {
-  test_name: string;
-  test_path: string | null;
-  file_path: string | null;
-};
-
-/**
- * Identity key for a test: the spec file path, describe path, and leaf test
- * name as a JSON tuple. ci-conductor's quarantine list and our after:spec
- * recorder both derive these three fields from the same Cypress title array
- * (file_path = `spec.relative`, test_path = the joined `describe` titles), so
- * they match exactly. JSON-encoding keeps the parts distinct, so tuples that
- * differ only in where a boundary falls can't collide.
- */
-function matchKey(
-  filePath: string | null | undefined,
-  testPath: string | null | undefined,
-  testName: string,
-): string {
-  return JSON.stringify([filePath ?? "", testPath ?? "", testName]);
-}
 
 /** Read the run's failed tests from the JSONL file. */
 function readFailedTests(file: string): FailedTest[] {
@@ -161,28 +136,22 @@ async function main(): Promise<void> {
     return;
   }
 
-  const quarantined = new Set(
-    quarantine.map((q) => matchKey(q.file_path, q.test_path, q.test_name)),
-  );
-
-  const unquarantined = failed.filter(
-    (test) =>
-      !quarantined.has(
-        matchKey(test.file_path, test.test_path, test.test_name),
-      ),
+  const { quarantined, unquarantined } = compareFailedToQuarantine(
+    failed,
+    quarantine,
   );
 
   console.log(
     `[quarantine] ${failed.length} failed test(s); ${quarantine.length} test(s) in the ${TEST_SUITE} quarantine list.`,
   );
-  failed.forEach((test) => {
-    const isQuarantined = quarantined.has(
-      matchKey(test.file_path, test.test_path, test.test_name),
-    );
-    console.log(
-      `  ${isQuarantined ? "✓ quarantined" : "✗ NOT quarantined"}: ${test.test_name}  (${test.file_path ?? "unknown file"})`,
-    );
-  });
+  const describe = (test: FailedTest) =>
+    `${test.test_name}  (${test.file_path ?? "unknown file"})`;
+  quarantined.forEach((test) =>
+    console.log(`  ✓ quarantined: ${describe(test)}`),
+  );
+  unquarantined.forEach((test) =>
+    console.log(`  ✗ NOT quarantined: ${describe(test)}`),
+  );
 
   finish(
     unquarantined.length > 0,
