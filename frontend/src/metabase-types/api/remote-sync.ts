@@ -155,10 +155,6 @@ export type RemoteSyncTask = {
   ended_at: string | null;
   last_progress_report_at: string | null;
   error_message: string | null;
-  /**
-   * Structured description of the task result. The UI maps it to a localized confirmation message
-   * (falling back to generic copy when the shape isn't recognized), rather than the server storing copy.
-   */
   outcome?: RemoteSyncOutcome | null;
   initiated_by: UserId;
   conflicts?: string[];
