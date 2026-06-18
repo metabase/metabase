@@ -168,3 +168,16 @@
   (testing "fetch-table-indexes has no safe default: its method throws for such a driver"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"fetch-table-indexes is not implemented for driver :h2"
                           (driver/fetch-table-indexes :h2 nil "public" "t")))))
+
+(deftest ^:parallel hydrate-transform-indexes-test
+  (testing "returns the structured defs of a transform's managed indexes, ordered by name"
+    (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                               :source             {:type "query"}
+                                               :source_database_id (mt/id)
+                                               :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                   :model/TableIndex _ {:transform_id tid :index_name "b_idx"
+                                        :structured {:kind :btree :name "b_idx" :columns [{:name "x"}]}}
+                   :model/TableIndex _ {:transform_id tid :index_name "a_idx"
+                                        :structured {:kind :btree :name "a_idx" :columns [{:name "y"}]}}]
+      (is (= ["a_idx" "b_idx"]
+             (map :name (metabase.transforms.execute/hydrate-transform-indexes {:id tid})))))))
