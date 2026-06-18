@@ -55,7 +55,7 @@ function isCustomVizAllowed(
   );
 }
 
-const assetObjectUrls = new Map<number, string>();
+const iconObjectUrls = new Map<CustomVizPluginId, string>();
 
 // A cross-origin `<img>` can't carry the session header, so we fetch the icon
 // with the auth in the headers and hand back a same-origin `blob:` url.
