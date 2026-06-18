@@ -21,7 +21,7 @@
 import { readFileSync } from "node:fs";
 
 const {
-  CI_CONDUCTOR_WEBHOOK_URL,
+  CI_CONDUCTOR_BASE_URL,
   CI_CONDUCTOR_WEBHOOK_SECRET,
   // Default to a dry run: compute and print the verdict, but never fail the
   // job. Set to "false" to actually gate the build on the verdict.
@@ -94,18 +94,15 @@ function readFailedTests(file: string): FailedTest[] {
 }
 
 /**
- * Resolve the ci-conductor API base from the webhook URL secret. That secret
- * holds the webhooks base (".../webhooks"); the quarantine list lives at
- * ".../api/quarantine" on the same host, so we drop the "/webhooks" suffix.
+ * Build the quarantine list URL from the ci-conductor base origin secret. The
+ * reporter posts to ".../webhooks/failed-tests"; the quarantine list lives at
+ * ".../api/quarantine" on the same host.
  */
 function quarantineUrl(): string | null {
-  if (!CI_CONDUCTOR_WEBHOOK_URL) {
+  if (!CI_CONDUCTOR_BASE_URL) {
     return null;
   }
-  const base = CI_CONDUCTOR_WEBHOOK_URL.replace(/\/+$/, "").replace(
-    /\/webhooks$/,
-    "",
-  );
+  const base = CI_CONDUCTOR_BASE_URL.replace(/\/+$/, "");
   return `${base}/api/quarantine?suite=${TEST_SUITE}`;
 }
 
@@ -114,7 +111,7 @@ async function fetchQuarantine(): Promise<QuarantineEntry[] | null> {
   const url = quarantineUrl();
   if (!url) {
     console.log(
-      "[quarantine] CI_CONDUCTOR_WEBHOOK_URL is unset; cannot fetch the quarantine list.",
+      "[quarantine] CI_CONDUCTOR_BASE_URL is unset; cannot fetch the quarantine list.",
     );
     return null;
   }
