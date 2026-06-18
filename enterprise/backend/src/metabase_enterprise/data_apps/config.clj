@@ -18,6 +18,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.yaml :as yaml])
   (:import
@@ -75,7 +76,7 @@
       :else
       (->> raw
            (mapv (fn [entry]
-                   (let [s (some-> entry str str/trim str/lower-case (str/replace #"/+$" ""))]
+                   (let [s (some-> entry str str/trim u/lower-case-en (str/replace #"/+$" ""))]
                      (when-not (and s (re-matches allowed-host-re s))
                        (throw (ex-info (tru "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
                                             dir config-file-name (str entry))
