@@ -255,16 +255,17 @@
   500)
 
 (defn- record-content-hashes!
-  "Records each row's current serialized-content hash on its RemoteSyncObject, establishing the baseline
-  against which later update events are compared (see `remote-sync.events/resolve-status`). Used after a
-  full export or an import. `rows` is a seq of maps with `:id`, `:model_type`, and `:model_id`.
+  "Records every RemoteSyncObject's current serialized-content hash, establishing the baseline against which
+  later update events are compared (see `remote-sync.events/resolve-status`). Used after a full export or an
+  import, once all rows are synced.
 
   Batches the work to one extraction and one update per chunk of `content-hash-batch-size` rows of a given
   model type (rather than a query and update per entity): `extract-query` returns the modeled instances for
   the chunk in one query — keeping each local `:id` so it correlates to its RemoteSyncObject row — and a
   single CASE update writes every hash. Entities that fail to serialize are skipped."
-  [rows]
-  (let [storage-opts (serdes/storage-base-context)]
+  []
+  (let [storage-opts (serdes/storage-base-context)
+        rows         (t2/select [:model/RemoteSyncObject :id :model_type :model_id])]
     (doseq [[model-type model-rows] (group-by :model_type rows)
             chunk (partition-all content-hash-batch-size model-rows)
             :let [id->rso (into {} (map (juxt :model_id :id)) chunk)
@@ -331,7 +332,7 @@
       (record-exported-paths! (source.ingestable/cached-file-paths base-ingestable))
       ;; Record each entity's serialized-content hash (from the live DB entity, matching how update events
       ;; recompute it) so a post-pull edit that doesn't change the content doesn't mark it dirty.
-      (record-content-hashes! (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
+      (record-content-hashes!)
       (when finalize! (finalize!)))
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms))
@@ -716,7 +717,7 @@
       (remote-sync.task/set-version! task-id version)
       (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
       (record-exported-paths! entries)
-      (record-content-hashes! (t2/select [:model/RemoteSyncObject :id :model_type :model_id])))
+      (record-content-hashes!))
     {:status :success}))
 
 (defn export!

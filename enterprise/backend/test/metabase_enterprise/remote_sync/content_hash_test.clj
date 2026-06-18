@@ -217,8 +217,7 @@
           (doseq [row rows]
             (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
                                                             :status_changed_at (t/offset-date-time)})))
-          (let [seeded (t2/select [:model/RemoteSyncObject :id :model_type :model_id])]
-            (#'impl/record-content-hashes! seeded))
+          (#'impl/record-content-hashes!)
           (doseq [{:keys [model_type model_id] :as row} rows]
             (is (= (source/row->content-hash row)
                    (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
@@ -236,7 +235,7 @@
                                              :status "synced" :status_changed_at (t/offset-date-time)}))
       ;; force more than one chunk for the 3 cards
       (with-redefs [impl/content-hash-batch-size 2]
-        (#'impl/record-content-hashes! (t2/select [:model/RemoteSyncObject :id :model_type :model_id])))
+        (#'impl/record-content-hashes!))
       (doseq [card [c1 c2 c3]]
         (is (= (source/row->content-hash {:model_type "Card" :model_id (:id card)})
                (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))
