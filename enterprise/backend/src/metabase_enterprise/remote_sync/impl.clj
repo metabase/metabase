@@ -542,14 +542,14 @@
             ;; is itself deferred so it only runs when one of the gates is open (e.g. a forced import with
             ;; force-deletion? true skips it entirely).
             blocking-conflicts    (delay
-                                     (let [conflicts (delay (get-conflicts (source.p/->ingestable snapshot {:path-filters path-filters})
-                                                                           first-import?))]
-                                       (cond-> []
-                                         (and first-import? (not force?))
-                                         (into (:first-import-conflicts @conflicts))
+                                    (let [conflicts (delay (get-conflicts (source.p/->ingestable snapshot {:path-filters path-filters})
+                                                                          first-import?))]
+                                      (cond-> []
+                                        (and first-import? (not force?))
+                                        (into (:first-import-conflicts @conflicts))
 
-                                         (not force-deletion?)
-                                         (into (:deletion-conflicts @conflicts)))))
+                                        (not force-deletion?)
+                                        (into (:deletion-conflicts @conflicts)))))
             incremental-plan      (delay (incremental-import-plan snapshot last-imported-version))
             result                (cond
                                     merge?
