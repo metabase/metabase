@@ -99,11 +99,12 @@ const elements = [
     name: "embedding-sdk-package",
     pattern: "enterprise/frontend/src/embedding-sdk-package/**",
   }),
-  createElement({
-    type: "shared",
-    name: "embedding-sdk-shared",
-    pattern: "frontend/src/embedding-sdk-shared/{**,.storybook/**}",
-  }),
+  ...[
+    "frontend/src/embedding-sdk-shared/**",
+    "frontend/src/embedding-sdk-shared/.storybook/**",
+  ].map((pattern) =>
+    createElement({ type: "shared", name: "embedding-sdk-shared", pattern }),
+  ),
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
@@ -213,15 +214,15 @@ const elements = [
 
   // Loose files living directly under frontend/src/metabase that have not yet
   // been pulled into a module folder.
-  createElement({
-    type: "shared",
-    name: "cljs-dev-tools",
-    pattern: [
-      "frontend/src/metabase/dev.ts",
-      "frontend/src/metabase/dev-noop.ts",
-    ],
-    mode: "full",
-  }),
+  ...["frontend/src/metabase/dev.ts", "frontend/src/metabase/dev-noop.ts"].map(
+    (pattern) =>
+      createElement({
+        type: "shared",
+        name: "cljs-dev-tools",
+        pattern,
+        mode: "full",
+      }),
+  ),
   createElement({
     type: "shared",
     name: "error-boundary",
