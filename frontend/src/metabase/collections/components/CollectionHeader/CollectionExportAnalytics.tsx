@@ -35,7 +35,7 @@ export function CollectionExportAnalytics() {
           onClick={handleExport}
           disabled={isExporting}
         >
-          <Icon name="download" size={16} />
+          <Icon name="download" />
         </ActionIcon>
       </span>
     </Tooltip>

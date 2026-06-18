@@ -37,7 +37,7 @@ export function CollectionUpload({
             aria-label={t`Upload data`}
             onClick={() => setShowInfoModal(true)}
           >
-            <Icon name="upload" size={16} />
+            <Icon name="upload" />
           </ActionIcon>
         </UploadTooltip>
 
@@ -73,7 +73,7 @@ export function CollectionUpload({
           component="span"
           aria-label={t`Upload data`}
         >
-          <Icon name="upload" size={16} />
+          <Icon name="upload" />
         </ActionIcon>
       </UploadLabel>
       <UploadInput ref={uploadInputRef} onChange={handleFileUpload} />
