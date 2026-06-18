@@ -14455,7 +14455,13 @@
           "name" : "id",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.actions.schema.id"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.actions.schema.id"
+            }, {
+              "description" : "String must be a valid 21-character NanoID string.",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            } ]
           }
         } ],
         "responses" : {
@@ -15351,6 +15357,26 @@
           }
         },
         "tags" : [ "/api/alert" ]
+      }
+    },
+    "/api/analytics-proxy" : {
+      "post" : {
+        "operationId" : "post-api-analytics-proxy",
+        "summary" : "POST /api/analytics-proxy",
+        "description" : "Forward a Snowplow `tp2` payload to `sp.metabase.com` server-side, bypassing the customer page's\n  `connect-src` CSP.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/analytics-proxy" ]
       }
     },
     "/api/analytics/anonymous-stats" : {
@@ -28439,7 +28465,7 @@
       "get" : {
         "operationId" : "get-api-ee-remote-sync-export-preflight",
         "summary" : "GET /api/ee/remote-sync/export-preflight",
-        "description" : "Dry-run preview of what pushing the current state would do given the live remote branch, without\n  writing anything. Drives the UI's push decision (force / new branch / merge).\n\n  Returns:\n  - has_changes: whether the remote branch has advanced beyond the last synced version\n  - clean: whether a 3-way merge would apply with no conflicts\n  - conflicts: human-readable labels of the entities that conflict (empty when clean)\n  - summary: counts of remote changes a merge would fold in\n  - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists\n\n  Requires superuser permissions.",
+        "description" : "Dry-run preview of what pushing the current state would do given the live remote branch, without\n  writing anything. Drives the UI's push decision (force / new branch / merge).\n\n  Returns:\n  - has_changes: whether the remote branch has advanced beyond the last synced version\n  - clean: whether a 3-way merge would apply with no conflicts\n  - conflicts: human-readable labels of the entities that conflict (empty when clean)\n  - summary: counts of remote changes a merge would fold in\n  - force_push_casualties: remote content a force push (rather than a merge) would discard, as\n    `{:deleted [labels] :overwritten [labels]}`\n  - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists\n\n  Requires superuser permissions.",
         "parameters" : [ {
           "in" : "query",
           "name" : "branch",
@@ -28465,6 +28491,24 @@
                       "items" : {
                         "type" : "string"
                       }
+                    },
+                    "force_push_casualties" : {
+                      "type" : "object",
+                      "properties" : {
+                        "deleted" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        },
+                        "overwritten" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }
+                      },
+                      "required" : [ "deleted", "overwritten" ]
                     },
                     "has_changes" : {
                       "type" : "boolean"
@@ -28492,7 +28536,7 @@
                       "required" : [ "added", "updated", "removed" ]
                     }
                   },
-                  "required" : [ "has_changes", "clean", "conflicts", "summary", "reason" ]
+                  "required" : [ "has_changes", "clean", "conflicts", "summary", "force_push_casualties", "reason" ]
                 }
               }
             }

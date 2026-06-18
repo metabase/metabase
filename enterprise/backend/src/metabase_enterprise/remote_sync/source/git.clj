@@ -16,11 +16,12 @@
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEditor$DeletePath DirCacheEditor$DeleteTree
                               DirCacheEditor$PathEdit DirCacheEntry)
-   (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent Ref)
+   (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent Ref Repository)
    (org.eclipse.jgit.revwalk RevCommit RevWalk)
    (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
                                RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
-   (org.eclipse.jgit.treewalk TreeWalk)))
+   (org.eclipse.jgit.treewalk TreeWalk)
+   (org.eclipse.jgit.treewalk.filter TreeFilter)))
 
 (set! *warn-on-reflection* true)
 
@@ -217,6 +218,38 @@
       (let [loader (.open repo object-id)]
         (String. (.getBytes loader) "UTF-8")))))
 
+(defn changed-files
+  "Paths whose blob differs between commit `from-version` and this snapshot's `version`, classified into
+  `{:added #{} :modified #{} :deleted #{}}`. jgit prunes unchanged subtrees as it walks, so the cost is
+  proportional to the number of changed entries, not the size of the tree.
+
+  Takes a GitSnapshot (:git instance and current :version) and a `from-version` commit-ish to diff against.
+
+  Returns nil when `from-version` cannot be resolved or is no longer present in the local object store
+  (e.g. orphaned by a force-push or rebase), signalling the caller to fall back to a full import."
+  [{:keys [^Git git ^String version]} ^String from-version]
+  (let [^Repository repo (.getRepository git)
+        objects (.getObjectDatabase repo)
+        old-id (.resolve repo from-version)
+        new-id (.resolve repo version)]
+    (when (and old-id new-id (.has objects old-id) (.has objects new-id))
+      (with-open [rw (RevWalk. repo)
+                  ^TreeWalk tw (TreeWalk. repo)]
+        (.addTree tw (.getTree (.parseCommit rw old-id)))
+        (.addTree tw (.getTree (.parseCommit rw new-id)))
+        (.setRecursive tw true)
+        (.setFilter tw TreeFilter/ANY_DIFF)
+        (let [zero (ObjectId/zeroId)]
+          (loop [acc {:added #{} :modified #{} :deleted #{}}]
+            (if (.next tw)
+              (let [in-old? (not (.equals zero (.getObjectId tw 0)))
+                    in-new? (not (.equals zero (.getObjectId tw 1)))
+                    bucket  (cond (not in-old?) :added
+                                  (not in-new?) :deleted
+                                  :else         :modified)]
+                (recur (update acc bucket conj (.getPathString tw))))
+              acc)))))))
+
 (defn push-branch!
   "Pushes a local branch to the remote repository.
 
@@ -403,7 +436,11 @@
     (apply-changes! this message upserts delete-paths))
 
   (version [this]
-    (:version this)))
+    (:version this))
+
+  source.p/Diffable
+  (changed-files* [this from-version]
+    (changed-files this from-version)))
 
 (def ^:private jgit (atom {}))
 
