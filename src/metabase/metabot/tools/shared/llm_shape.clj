@@ -708,6 +708,9 @@
                   "measure" "segment" "transform" "dashboard") t
       nil)))
 
+(defn- container-type? [type]
+  (#{"dashboard" :dashboard "collection" :collection} type))
+
 (defn search-result->xml
   "Format a single search result as XML element.
    Emits a `uri` attribute (the numeric-id `read_resource` URI) for every type that has a
@@ -724,8 +727,16 @@
    `schema.table` of the table the metric aggregates). Combined with `database_name` this
    gives the LLM the full portable FK `[database_name, schema, table]` it must put in
    `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
-   without a separate `read_resource` round-trip."
-  [{:keys [id type name description verified official curated can_write data_authority data_layer collection
+   without a separate `read_resource` round-trip.
+
+   Each result also gets a `uri` (`metabase://...`) and curator flags
+   (`is_verified`, `is_official`, `is_library_member`) plus an `is_container` marker
+   for collections/dashboards — the LLM picks URIs and feeds them to `read_resource`
+   for details. `collection_path` is the slash-joined ancestor chain. Table results
+   additionally carry the curation signals `is_curated`, `data_layer`, and
+   `data_authority`; dashboards and documents carry `can_write`."
+  [{:keys [id type name description verified collection collection_path
+           official official_collection library_member curated can_write data_authority data_layer
            database_id database_name database_engine database_schema portable_entity_id
            base_table_portable_fk]}]
   (let [fqn (cond
@@ -740,19 +751,27 @@
                  (database-engine-or-unknown
                   (if (keyword? database_engine)
                     (clojure.core/name database_engine)
-                    database_engine)))]
+                    database_engine)))
+        type-kw (cond (keyword? type) type
+                      (string? type)  (keyword type)
+                      :else           type)]
     (render-llm-template
      :search_result
-     {:search_tag_name (search-result-tag-name type)
+     {:search_tag_name (search-result-tag-name type-kw)
       :search_id (str id)
-      :search_uri (when id
-                    (when-let [uri-type (search-result-uri-type type)]
-                      (metabase-uri uri-type id)))
       :search_name name
+      :search_uri (when id
+                    (when-let [uri-type (search-result-uri-type type-kw)]
+                      (metabase-uri uri-type id)))
+      :search_is_container (container-type? type-kw)
       :search_has_verified (some? verified)
       :search_verified verified
-      :search_has_official (some? official)
-      :search_official official
+      ;; `is_official` is the branch's presence-style flag; it's true when the entity lives in an
+      ;; official collection (`official_collection`) or carries the legacy table `official` signal.
+      :search_is_official (boolean (or official_collection official))
+      :search_is_library_member (boolean library_member)
+      ;; Master's richer curation signals (table results): the precomputed `curated` rollup plus the
+      ;; table-only `data_layer` / `data_authority` attributes.
       :search_has_curated (some? curated)
       :search_curated curated
       :search_has_can_write (some? can_write)
@@ -761,6 +780,7 @@
       :search_data_authority (when (and data_authority (not= "unconfigured" (clojure.core/name data_authority)))
                                (clojure.core/name data_authority))
       :search_description description
+      :search_collection_path collection_path
       :search_collection_name (:name collection)
       :search_database_id (when database_id (str database_id))
       :search_database_name database_name

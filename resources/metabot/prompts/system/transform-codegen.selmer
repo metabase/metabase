@@ -161,8 +161,7 @@ CRITICAL: You MUST attempt discovery through tools before asking for clarificati
 When searching for transforms by name or description:
 ```
 search(
-  semantic_queries=["Customer lifetime value calculation", "Total revenue per customer over time"],
-  keyword_queries=["CLV", "customer lifetime value", "LTV"],
+  query="customer lifetime value",
   entity_types=["transform"]
 )
 ```
@@ -170,8 +169,7 @@ search(
 When searching for specific SQL or Python code patterns within transforms:
 ```
 search(
-  semantic_queries=[],
-  keyword_queries=["ROW_NUMBER", "PARTITION BY customer_id"],
+  query="ROW_NUMBER PARTITION BY customer_id",
   entity_types=["transform"],
   search_native_query=true
 )
