@@ -141,28 +141,3 @@ databaseChangeLog:
       # rollback drops it. Reverting the column first would only run right before
       # that DROP (and could fail once the table is gone). See the bundle changeset.
       rollback: []
-
-  - changeSet:
-      id: v63.2026-05-28T00:00:03
-      author: timofei
-      comment: >-
-        Add data_app.allowed_hosts. A JSON array of origins the app's sandboxed
-        bundle may fetch/XHR; NULL/empty means none. Guarded so pre-existing
-        tables pick it up while fresh installs that already created it skip it.
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: data_app
-                columnName: allowed_hosts
-      changes:
-        - addColumn:
-            tableName: data_app
-            columns:
-              - column:
-                  name: allowed_hosts
-                  type: ${text.type}
-                  remarks: JSON array of origins the sandboxed bundle may fetch/XHR. NULL when none configured.
-                  constraints:
-                    nullable: true
-      rollback: []
