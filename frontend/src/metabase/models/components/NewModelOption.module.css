@@ -2,7 +2,7 @@
   box-sizing: border-box;
   text-decoration: none;
   display: block;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   padding: var(--padding-4);
   align-items: center;
   border: var(--border-size) var(--border-style) var(--mb-color-border);

@@ -95,7 +95,7 @@ export function AddMemberRow({
                   <Pill
                     key={user.id}
                     size="xl"
-                    bg="background-tertiary"
+                    bg="background_page-tertiary"
                     c="text-primary"
                     ms={index > 0 ? "sm" : ""}
                     withRemoveButton

@@ -26,7 +26,7 @@ export const SearchResultsContainer = styled(Paper)<PaperProps>`
 
 const selectedStyles = css`
   color: var(--mb-color-core-brand);
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 `;

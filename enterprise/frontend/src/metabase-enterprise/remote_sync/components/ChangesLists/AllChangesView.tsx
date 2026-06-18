@@ -141,7 +141,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                     p="sm"
                     gap="sm"
                     mb={hasItems ? "0.75rem" : 0}
-                    bg="background-secondary"
+                    bg="background_page-secondary"
                     bdrs="md"
                   >
                     <Icon

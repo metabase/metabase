@@ -75,7 +75,7 @@ function PreviewCard({
       h={`${height}px`}
       top={`${top}px`}
       left={`${left}px`}
-      bg="background-primary"
+      bg="background_page-primary"
       style={{ borderRadius: "2px" }}
     />
   );

@@ -36,7 +36,7 @@ export const RunSidebar = memo(function RunSidebar({
         className={S.sidebar}
         p="lg"
         gap="xl"
-        bg="background-primary"
+        bg="background_page-primary"
         data-testid="run-list-sidebar"
       >
         <Stack gap="lg">

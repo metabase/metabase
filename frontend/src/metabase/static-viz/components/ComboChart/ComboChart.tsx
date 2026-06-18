@@ -117,7 +117,7 @@ export const ComboChart = ({
             <rect
               x={width / 2 - DATA_OUT_OF_RANGE_RECT.width / 2}
               y={totalHeight / 2 - DATA_OUT_OF_RANGE_RECT.height / 2}
-              fill={renderingContext.getColor("background-primary")}
+              fill={renderingContext.getColor("background_page-primary")}
               stroke={renderingContext.getColor("border")}
               strokeWidth="1"
               width={DATA_OUT_OF_RANGE_RECT.width}

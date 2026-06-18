@@ -5,7 +5,7 @@
 
 .menuItem.menuItem:hover:not([data-disabled="true"]) {
   color: var(--mb-color-brand);
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .menuItem.menuItem[data-disabled="true"] {
@@ -23,5 +23,5 @@
 
 .dangerItem.dangerItem:hover:not([data-disabled="true"]) {
   color: var(--mb-color-danger);
-  background-color: var(--mb-color-background-error);
+  background-color: var(--mb-color-background_surface-error);
 }

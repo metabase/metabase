@@ -11,7 +11,7 @@ export const Container = styled.div`
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   border-bottom: 1px solid var(--mb-color-border);
   padding: var(--mantine-spacing-md) var(--mantine-spacing-xl);
 `;
@@ -45,7 +45,7 @@ export const CompactSelect = styled(Select)`
 
   &:hover {
     ${SelectButton.Root} {
-      background-color: var(--mb-color-background-secondary);
+      background-color: var(--mb-color-background_page-secondary);
     }
   }
 `;

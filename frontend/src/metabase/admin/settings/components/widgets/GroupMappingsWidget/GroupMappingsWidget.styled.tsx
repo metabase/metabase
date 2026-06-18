@@ -19,7 +19,7 @@ export const GroupMappingsWidgetRoot = styled.div`
 `;
 
 export const GroupMappingsWidgetHeader = styled.div`
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
   display: flex;

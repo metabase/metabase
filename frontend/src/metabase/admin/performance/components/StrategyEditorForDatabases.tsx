@@ -168,7 +168,7 @@ export const StrategyEditorForDatabases: React.FC = () => {
           )}
           <Box
             component="section"
-            bg="background-primary"
+            bg="background_page-primary"
             h="100%"
             className={cx(S.formPanel, {
               [S.formPanelWithLeftBorder]: canOverrideRootStrategy,

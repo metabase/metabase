@@ -121,7 +121,7 @@ export function ManageCustomVizPage() {
           align="center"
           bd="1px solid var(--mb-color-border)"
           bdrs="md"
-          bg="background-primary"
+          bg="background_page-primary"
           justify="center"
           mih="15rem"
           p="xl"
@@ -134,7 +134,7 @@ export function ManageCustomVizPage() {
         <Box
           bd="1px solid var(--mb-color-border)"
           bdrs="md"
-          bg="background-primary"
+          bg="background_page-primary"
           className={S.pluginList}
           style={{
             overflow: "hidden",

@@ -1,8 +1,21 @@
 import { Alert, type MantineThemeOverride } from "@mantine/core";
 
+import type { ColorName } from "metabase/ui/colors/types";
 import { color, isColorName } from "metabase/ui/utils/colors";
 
 import AlertStyles from "./Alert.module.css";
+
+// Maps the Alert's semantic `color` to its background-fill token. Built as an
+// explicit map (instead of synthesizing `background-${color}`) because the
+// background tokens now live in the `background_surface` / `background_page`
+// namespaces and no longer share the color prop's name. See GDGT-2532.
+const ALERT_BACKGROUND_COLORS: Record<string, ColorName> = {
+  "core-brand": "background_surface-brand-subtle",
+  warning: "background_surface-warning",
+  error: "background_surface-error",
+  info: "background_page-tertiary",
+  success: "background_surface-success",
+};
 
 export const alertOverrides: MantineThemeOverride["components"] = {
   Alert: Alert.extend({
@@ -14,10 +27,9 @@ export const alertOverrides: MantineThemeOverride["components"] = {
       title: AlertStyles.title,
     },
     vars: (_theme, props) => {
-      const bgColor =
-        props.color === "core-brand"
-          ? "background-brand"
-          : `background-${props.color}`;
+      const bgColor = props.color
+        ? ALERT_BACKGROUND_COLORS[props.color]
+        : undefined;
       if (isColorName(props.color) && isColorName(bgColor)) {
         return {
           root: {

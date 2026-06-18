@@ -38,7 +38,7 @@ export const PublicLinksListing = <
   if (data.length === 0) {
     return (
       <Box
-        bg="background-secondary"
+        bg="background_page-secondary"
         bd="1px solid var(--mb-color-border)"
         bdrs="xs"
         px="md"

@@ -131,7 +131,7 @@ const DataPartJsonCard = ({
       </Flex>
       <Box
         p="sm"
-        bg="background-primary"
+        bg="background_page-primary"
         style={{
           borderTop: "1px solid var(--mb-color-border)",
           borderBottomLeftRadius: "var(--mantine-radius-sm)",

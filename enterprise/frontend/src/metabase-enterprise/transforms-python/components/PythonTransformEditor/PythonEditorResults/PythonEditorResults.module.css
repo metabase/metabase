@@ -21,7 +21,7 @@
 }
 
 .tableHeader {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   padding: var(--mantine-spacing-sm);
 }
 
@@ -40,7 +40,7 @@
 }
 
 .error {
-  background-color: var(--mb-color-background-error);
+  background-color: var(--mb-color-background_surface-error);
 }
 
 .traceback {

@@ -9,11 +9,11 @@
 
   &[data-disabled] {
     .track {
-      background-color: var(--mb-color-background-tertiary);
+      background-color: var(--mb-color-background_page-tertiary);
     }
 
     .thumb {
-      background-color: var(--mb-color-background-secondary);
+      background-color: var(--mb-color-background_page-secondary);
     }
   }
 
@@ -81,7 +81,7 @@
   background-color: var(--mb-color-switch-off);
 
   input:not(:checked) + & {
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_page-tertiary);
   }
 
   input:checked + & {
@@ -89,7 +89,7 @@
   }
 
   input:disabled + & {
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_page-tertiary);
   }
 }
 
@@ -99,7 +99,7 @@
   border-radius: 1.375rem;
 
   input:disabled + * > & {
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
   }
 
   &::before {

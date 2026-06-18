@@ -38,7 +38,7 @@
 
 .SelectInput {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 
   &[data-disabled] {
     opacity: 1;
@@ -80,7 +80,7 @@
   [data-disabled] & {
     opacity: 1;
     color: var(--mb-color-text-tertiary);
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_page-tertiary);
 
     &::placeholder {
       color: var(--mb-color-text-tertiary);
@@ -98,12 +98,12 @@
 
   &:hover {
     color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &[aria-selected="true"] {
     color: var(--mb-color-text-selected);
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
   }
 
   &[data-combobox-disabled] {
@@ -153,7 +153,7 @@
 }
 
 .Dropdown {
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   border-color: var(--mb-color-border);
 }
 

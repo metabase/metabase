@@ -94,7 +94,7 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
             top: `${pos.y}px`,
             position: "fixed",
             zIndex: 200,
-            backgroundColor: "var(--mb-color-background-primary)",
+            backgroundColor: "var(--mb-color-background_page-primary)",
             border: "1px solid var(--mb-color-border)",
             borderRadius: "8px",
             boxShadow: "0 4px 10px var(--mb-color-shadow)",

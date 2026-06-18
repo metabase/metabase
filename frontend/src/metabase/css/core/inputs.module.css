@@ -5,7 +5,7 @@
 
 .input {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   font-size: 1.12em;
   padding: 0.75rem 0.75rem;
   border: 1px solid var(--input-border-color);

@@ -61,11 +61,11 @@ export function JobEditor({
             />
             {isMeterLocked && (
               <LockedTransformsHoverCard>
-                <TransformBadge bg="background-warning-secondary">{t`Disabled`}</TransformBadge>
+                <TransformBadge bg="background_surface-warning-strong">{t`Disabled`}</TransformBadge>
               </LockedTransformsHoverCard>
             )}
             {!isMeterLocked && !job.active && (
-              <TransformBadge bg="background-warning-secondary">
+              <TransformBadge bg="background_surface-warning-strong">
                 {t`Disabled`}
               </TransformBadge>
             )}

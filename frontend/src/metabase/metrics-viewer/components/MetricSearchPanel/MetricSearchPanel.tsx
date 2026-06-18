@@ -153,7 +153,7 @@ export function MetricSearchPanel() {
             className={S.filterPillsSection}
             px="sm"
             py="xs"
-            bg="background-filter"
+            bg="background_page-filter"
           >
             <MetricsFilterPills
               definitionSources={definitionSources}

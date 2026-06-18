@@ -41,7 +41,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       color: var(--mb-color-core-brand);
 
       &:hover {
-        background-color: var(--mb-color-background-secondary);
+        background-color: var(--mb-color-background_page-secondary);
       }
     `}
 `;

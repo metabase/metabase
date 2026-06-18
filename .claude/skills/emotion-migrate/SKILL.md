@@ -21,7 +21,7 @@ For EACH styled component, go through every CSS property and ask: "Can this be a
 
 - `display` → `display` prop
 - `color` → `c` prop (`c="core-brand"`, `c="text-primary"`)
-- `background-color` → `bg` prop (`bg="background-primary"`)
+- `background-color` → `bg` prop (`bg="background_page-primary"`)
 - `font-size` → `fz` prop (`fz="md"`)
 - `font-weight` → `fw` prop (`fw="bold"`)
 - `line-height` → `lh` prop (`lh="md"`)
@@ -57,7 +57,7 @@ For EACH styled component, go through every CSS property and ask: "Can this be a
   align="center"            /* style prop */
   gap="sm"                  /* style prop */
   p="md"                    /* style prop */
-  bg="background-primary"   /* style prop */
+  bg="background_page-primary"   /* style prop */
 >
 ```
 
@@ -172,7 +172,7 @@ Create `ComponentName.module.css` alongside the component file:
 .root {
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 /* Conditional states as separate classes, combined with cx() */
@@ -192,7 +192,7 @@ Create `ComponentName.module.css` alongside the component file:
 
   &:hover {
     color: var(--mb-color-core-brand);
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
@@ -256,7 +256,7 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 **Colors** (`c`, `bg`):
 
 - Text: `"text-primary"`, `"text-secondary"`, `"text-tertiary"`
-- Background: `"background-primary"`, `"background-secondary"`, `"background-hover"`
+- Background: `"background_page-primary"`, `"background_page-secondary"`, `"background_surface-hover"`
 - Brand: `"core-brand"`, `"error"`, `"success"`, `"warning"`
 
 **Typography** (`fz`, `fw`, `lh`, `ta`, `ff`):
@@ -280,7 +280,7 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 **Colors** — `var(--mb-color-<name>)`:
 
 - `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-tertiary`
-- `--mb-color-background-primary`, `--mb-color-background-secondary`, `--mb-color-background-hover`
+- `--mb-color-background_page-primary`, `--mb-color-background_page-secondary`, `--mb-color-background_surface-hover`
 - `--mb-color-border`, `--mb-color-border-strong`, `--mb-color-border-subtle`
 - `--mb-color-core-brand`, `--mb-color-core-brand-hover`
 - `--mb-color-error`, `--mb-color-success`, `--mb-color-warning`
