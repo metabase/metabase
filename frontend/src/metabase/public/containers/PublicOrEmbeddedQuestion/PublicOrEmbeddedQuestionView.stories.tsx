@@ -5,7 +5,7 @@ import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
@@ -14,8 +14,6 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
-import { Api } from "metabase/api";
-import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockSettingsState,
@@ -94,7 +92,7 @@ const initialState = createMockState({
   }),
 });
 
-const store = getStore(publicReducers, initialState, [Api.middleware]);
+const store = getPublicStore(initialState);
 
 const Template: StoryFn<PublicOrEmbeddedQuestionViewProps> = (args) => {
   return <PublicOrEmbeddedQuestionView {...args} />;
