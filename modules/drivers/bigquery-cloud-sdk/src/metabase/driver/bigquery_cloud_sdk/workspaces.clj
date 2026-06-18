@@ -531,6 +531,65 @@
       (finally
         (.close projects-client)))))
 
+(defn- policy-without-member
+  "Return a copy of `policy` with `member` removed from the binding for `role`, dropping the binding entirely if it
+  has no members left. Other bindings are preserved as-is."
+  ^Policy [^Policy policy ^String role ^String member]
+  (let [new-bindings (keep (fn [^Binding binding]
+                             (if (= (.getRole binding) role)
+                               (let [members (remove #(= % member) (.getMembersList binding))]
+                                 (when (seq members)
+                                   (-> (Binding/newBuilder binding)
+                                       (.clearMembers)
+                                       (.addAllMembers members)
+                                       (.build))))
+                               binding))
+                           (.getBindingsList policy))]
+    (-> (Policy/newBuilder policy)
+        (.clearBindings)
+        (.addAllBindings new-bindings)
+        (.build))))
+
+(defn- ws-revoke-project-role!
+  "Remove the project-level IAM binding for `service-account-email`/`role` added by [[ws-grant-project-role!]].
+   Idempotent: a no-op (no `setIamPolicy` write) when the member is not present, and drops a binding entirely if it
+   has no members left.
+
+   This must be called during teardown *before* the service account is deleted. Deleting the service account does
+   NOT remove this binding — GCP leaves the member behind as a `deleted:serviceAccount:...` entry, which counts
+   toward the project IAM policy's 1,500-member hard limit and accumulates across workspace teardowns until any
+   further `setIamPolicy` (i.e. any grant) fails with `INVALID_ARGUMENT: The number of members in the policy ... is
+   larger than the maximum allowed size 1,500`."
+  [details ^String project-id ^String service-account-email ^String role]
+  (log/infof "Revoking project role %s from %s" role service-account-email)
+  (let [creds          (.createScoped (ws-service-account-credentials details)
+                                      (doto (java.util.ArrayList.)
+                                        (.add "https://www.googleapis.com/auth/cloud-platform")))
+        settings       (-> (ProjectsSettings/newBuilder)
+                           (.setCredentialsProvider (reify com.google.api.gax.core.CredentialsProvider
+                                                      (getCredentials [_] creds)))
+                           ^ProjectsSettings (.build))
+        projects-client (ProjectsClient/create settings)
+        resource       (format "projects/%s" project-id)
+        member         (format "serviceAccount:%s" service-account-email)]
+    (try
+      (with-sa-propagation-retry! {}
+        (fn []
+          (let [^Policy current-policy (.getIamPolicy projects-client
+                                                      (-> (GetIamPolicyRequest/newBuilder)
+                                                          (.setResource resource)
+                                                          (.build)))]
+            ;; Only write if the member is actually bound, to avoid needless setIamPolicy churn.
+            (when (ws-has-role-binding? current-policy role member)
+              (let [set-request (-> (SetIamPolicyRequest/newBuilder)
+                                    (.setResource resource)
+                                    (.setPolicy (policy-without-member current-policy role member))
+                                    (.build))]
+                (.setIamPolicy projects-client set-request)
+                (log/infof "Revoked %s on project %s from %s" role project-id service-account-email))))))
+      (finally
+        (.close projects-client)))))
+
 (defn- ws-create-service-account!
   "Create a service account for a workspace if it doesn't exist.
    Returns the service account email.
@@ -589,12 +648,22 @@
         client       (ws-database-details->client details)
         iam-client   (ws-database-details->iam-client details)
         project-id   (bigquery.common/get-project-id details)
-        dataset-name (driver.u/workspace-isolation-namespace-name workspace)]
+        dataset-name (driver.u/workspace-isolation-namespace-name workspace)
+        ws-sa-email  (format "%s@%s.iam.gserviceaccount.com"
+                             (ws-service-account-id workspace) project-id)]
     (try
       (log/infof "Destroying BigQuery workspace isolation: dataset=%s" dataset-name)
-      ;; Delete the dataset if it exists (deleteContents=true removes all tables)
+      ;; Delete the dataset if it exists (deleteContents=true removes all tables); this also drops the dataset-level ACL.
       (drop-dataset! client project-id dataset-name)
-      ;; Delete the service account (this also removes its IAM bindings)
+      ;; Revoke the project-level role granted in init (see [[ws-revoke-project-role!]]). This must happen *before*
+      ;; deleting the SA: deleting it does not remove the binding, and afterward the member would be rewritten to
+      ;; `deleted:serviceAccount:...` (which we'd no longer match) and would leak toward the project IAM 1,500-member
+      ;; cap. Best-effort so a revoke hiccup doesn't block SA/dataset teardown.
+      (try
+        (ws-revoke-project-role! details project-id ws-sa-email "roles/bigquery.jobUser")
+        (catch Throwable t
+          (log/warn t "Failed to revoke project role during BigQuery workspace teardown; project IAM member may leak")))
+      ;; Delete the service account (removes the impersonation binding on its own resource policy).
       (ws-delete-service-account! iam-client project-id workspace)
       {:success true}
       (finally

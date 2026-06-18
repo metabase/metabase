@@ -45,12 +45,41 @@
     FieldValueList
     QueryJobConfiguration
     TableResult)
-   (com.google.cloud.iam.admin.v1 IAMClient)))
+   (com.google.cloud.iam.admin.v1 IAMClient)
+   (com.google.iam.v1 Binding Policy)))
 
 (set! *warn-on-reflection* true)
 
 (defn- random-suffix []
   (subs (str (random-uuid)) 0 8))
+
+(deftest policy-without-member-test
+  (testing "policy-without-member removes a project IAM member added by ws-grant-project-role!"
+    (let [strip         @#'bigquery.ws/policy-without-member
+          binding       (fn [role & members]
+                          (-> (Binding/newBuilder) (.setRole role) (.addAllMembers (vec members)) (.build)))
+          policy        (fn [& bs] (-> (Policy/newBuilder) (.addAllBindings (vec bs)) (.build)))
+          roles->members (fn [^Policy p]
+                           (into {} (map (fn [^Binding b] [(.getRole b) (vec (.getMembersList b))]))
+                                 (.getBindingsList p)))]
+      (testing "removes only the target member, leaving co-members and other bindings intact"
+        (is (= {"roles/bigquery.jobUser" ["serviceAccount:keep@x"]
+                "roles/owner"            ["user:admin@x"]}
+               (roles->members
+                (strip (policy (binding "roles/bigquery.jobUser" "serviceAccount:drop@x" "serviceAccount:keep@x")
+                               (binding "roles/owner" "user:admin@x"))
+                       "roles/bigquery.jobUser" "serviceAccount:drop@x")))))
+      (testing "drops the binding entirely when its last member is removed (this frees the IAM policy slot)"
+        (is (= {"roles/owner" ["user:admin@x"]}
+               (roles->members
+                (strip (policy (binding "roles/bigquery.jobUser" "serviceAccount:drop@x")
+                               (binding "roles/owner" "user:admin@x"))
+                       "roles/bigquery.jobUser" "serviceAccount:drop@x")))))
+      (testing "leaves the policy unchanged when the member isn't bound under that role"
+        (is (= {"roles/bigquery.jobUser" ["serviceAccount:keep@x"]}
+               (roles->members
+                (strip (policy (binding "roles/bigquery.jobUser" "serviceAccount:keep@x"))
+                       "roles/owner" "serviceAccount:keep@x"))))))))
 
 ;; BQ helpers (admin client, IAM client, impersonated client, dataset CRUD,
 ;; assertion helpers) live in `metabase.driver.bigquery-cloud-sdk.workspace-test-util`
