@@ -3134,63 +3134,74 @@
           (is (= "type/Number"
                  (t2/select-one-fn :effective_type :metabase_field_user_settings :field_id with-coercion-id))))))))
 
-(deftest task-run-notification-id-test
-  (testing "v62 adds task_run.notification_id and backfills it from the notification-send task_history child"
-    ;; Open-ended range from the (db-agnostic) column-add changeset: the backfill changesets are
-    ;; dbms-gated (Postgres / MySQL), so on H2 they're absent from the changelog and can't be used as
-    ;; a range endpoint. Open-ended still runs whichever backfill matches the current database.
+(defn- insert-task-run-notification-fixtures!
+  "Insert the alert/subscription runs and their notification-send task_history rows the v62 backfill
+   reads. Returns a map of label -> task_run id. Call inside `test-migrations`, before `(migrate!)`."
+  []
+  (let [recent    (t/offset-date-time)
+        old       (t/minus (t/offset-date-time) (t/days 100))
+        new-run!  (fn [started run-type status]
+                    (t2/insert-returning-pk! :task_run {:run_type    run-type
+                                                        :entity_type "card"
+                                                        :entity_id   1
+                                                        :status      status
+                                                        :started_at  started}))
+        new-th!   (fn [run-id task status details]
+                    ;; insert via table name (not the model) so task_details is stored as the raw
+                    ;; JSON string the backfill reads, without the model's :json transform.
+                    (t2/insert! :task_history {:task         task
+                                               :status       status
+                                               :started_at   recent
+                                               :run_id       run-id
+                                               :task_details details}))
+        ;; the three task_history shapes a real notification-send produces, plus the edge cases
+        success   (new-run! recent "alert"        "success")   ; normal: succeeded, notification_id top-level
+        failed    (new-run! recent "alert"        "failed")    ; failed: with-task-history nests under original-info
+        abandoned (new-run! recent "alert"        "abandoned") ; abandoned: died before writing any task_history
+        too-old   (new-run! old    "alert"        "success")   ; outside the 90-day window
+        chan-only (new-run! recent "alert"        "success")   ; only a channel-send child, no notification-send
+        subscript (new-run! recent "subscription" "success")   ; dashboard subscription, also attributed
+        other     (new-run! recent "sync"         "success")]  ; neither alert nor subscription
+    (new-th! success   "notification-send" "success" "{\"notification_id\":101}")
+    (new-th! failed    "notification-send" "failed"  "{\"status\":\"failed\",\"message\":\"boom\",\"original-info\":{\"notification_id\":102}}")
+    ;; `abandoned` intentionally has NO task_history (the run was killed before writing one)
+    (new-th! too-old   "notification-send" "success" "{\"notification_id\":104}")
+    (new-th! chan-only "channel-send"      "success" "{\"notification_id\":105,\"channel_type\":\"channel/email\"}")
+    (new-th! subscript "notification-send" "success" "{\"notification_id\":107}")
+    (new-th! other     "notification-send" "success" "{\"notification_id\":106}")
+    {:success success :failed failed :abandoned abandoned :too-old too-old
+     :chan-only chan-only :subscript subscript :other other}))
+
+(deftest task-run-notification-id-column-test
+  (testing "v62 adds task_run.notification_id on every database, and never attributes a run that has no notification-send child in the window"
+    ;; The column-add changeset is db-agnostic; these negative cases hold on every database (and double
+    ;; as the H2 coverage, since H2 skips the backfill entirely).
     (impl/test-migrations ["v62.2026-06-06T00:00:00"] [migrate!]
-      (let [recent    (t/offset-date-time)
-            old       (t/minus (t/offset-date-time) (t/days 100))
-            new-run!  (fn [started run-type status]
-                        (t2/insert-returning-pk! :task_run {:run_type    run-type
-                                                            :entity_type "card"
-                                                            :entity_id   1
-                                                            :status      status
-                                                            :started_at  started}))
-            new-th!   (fn [run-id task status details]
-                        ;; insert via table name (not the model) so task_details is stored as the raw
-                        ;; JSON string the backfill reads, without the model's :json transform.
-                        (t2/insert! :task_history {:task         task
-                                                   :status       status
-                                                   :started_at   recent
-                                                   :run_id       run-id
-                                                   :task_details details}))
-            ;; the three task_history shapes a real notification-send produces, plus the edge cases
-            success   (new-run! recent "alert" "success")   ; normal: succeeded, notification_id top-level
-            failed    (new-run! recent "alert" "failed")    ; failed: with-task-history nests under original-info
-            abandoned (new-run! recent "alert" "abandoned") ; abandoned: died before writing any task_history
-            too-old   (new-run! old    "alert"        "success")   ; outside the 90-day window
-            chan-only (new-run! recent "alert"        "success")   ; only a channel-send child, no notification-send
-            subscript (new-run! recent "subscription" "success")   ; dashboard subscription, also attributed
-            other     (new-run! recent "sync"         "success")]  ; neither alert nor subscription
-        (new-th! success   "notification-send" "success" "{\"notification_id\":101}")
-        (new-th! failed    "notification-send" "failed"  "{\"status\":\"failed\",\"message\":\"boom\",\"original-info\":{\"notification_id\":102}}")
-        ;; `abandoned` intentionally has NO task_history (the run was killed before writing one)
-        (new-th! too-old   "notification-send" "success" "{\"notification_id\":104}")
-        (new-th! chan-only "channel-send"      "success" "{\"notification_id\":105,\"channel_type\":\"channel/email\"}")
-        (new-th! subscript "notification-send" "success" "{\"notification_id\":107}")
-        (new-th! other     "notification-send" "success" "{\"notification_id\":106}")
+      (let [ids (insert-task-run-notification-fixtures!)]
         (migrate!)
-        (let [nid #(t2/select-one-fn :notification_id :task_run :id %)]
-          (testing "the column is added on every database"
-            (is (nil? (nid abandoned)) "a run with no notification-send history is never attributed"))
-          (if (contains? #{:postgres :mysql} (mdb/db-type))
-            (testing "the backfill extracts notification_id from task_details (Postgres/MySQL)"
-              (testing "normal successful send — top-level notification_id"
-                (is (= 101 (nid success))))
-              (testing "failed send — notification_id nested under original-info is still attributed"
-                (is (= 102 (nid failed))))
-              (testing "abandoned run with no task_history stays null"
-                (is (nil? (nid abandoned))))
-              (testing "run older than the 90-day window is not backfilled"
-                (is (nil? (nid too-old))))
-              (testing "channel-send-only run (no notification-send) stays null"
-                (is (nil? (nid chan-only))))
-              (testing "subscription run is attributed too"
-                (is (= 107 (nid subscript))))
-              (testing "a run that is neither alert nor subscription is not backfilled"
-                (is (nil? (nid other)))))
-            (testing "H2 skips the dbms-gated backfill — column present, all null"
-              (is (nil? (nid success)))
-              (is (nil? (nid failed))))))))))
+        (let [nid #(t2/select-one-fn :notification_id :task_run :id (ids %))]
+          (testing "abandoned run with no task_history stays null"
+            (is (nil? (nid :abandoned))))
+          (testing "run older than the 90-day window is not backfilled"
+            (is (nil? (nid :too-old))))
+          (testing "channel-send-only run (no notification-send) stays null"
+            (is (nil? (nid :chan-only))))
+          (testing "a run that is neither alert nor subscription is not backfilled"
+            (is (nil? (nid :other)))))))))
+
+(deftest task-run-notification-id-backfill-test
+  ;; The backfill is dbms-gated to Postgres/MySQL (H2 has no JSON-extraction variant and ages out on
+  ;; its own). Skip the whole thing on H2; its column-present/all-null behavior is already covered by
+  ;; task-run-notification-id-column-test.
+  (when (#{:postgres :mysql} (mdb/db-type))
+    (testing "v62 backfills notification_id from the notification-send task_history child"
+      (impl/test-migrations ["v62.2026-06-06T00:00:00"] [migrate!]
+        (let [ids (insert-task-run-notification-fixtures!)]
+          (migrate!)
+          (let [nid #(t2/select-one-fn :notification_id :task_run :id (ids %))]
+            (testing "normal successful send, top-level notification_id"
+              (is (= 101 (nid :success))))
+            (testing "failed send, notification_id nested under original-info is still attributed"
+              (is (= 102 (nid :failed))))
+            (testing "subscription run is attributed too"
+              (is (= 107 (nid :subscript))))))))))
