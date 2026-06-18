@@ -332,8 +332,7 @@
                     [:start-time {:optional true} [:maybe ms/NonBlankString]]
                     [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
                     [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
-  (api/check-data-analyst)
-  (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
+  (api/read-check :model/TransformJob job-id)
   (-> (transforms.core/paged-job-runs (assoc query-params
                                              :job-id job-id
                                              :offset (request/offset)
@@ -346,7 +345,7 @@
                                [:job-id ms/PositiveInt]
                                [:run-id ms/PositiveInt]]
    _query-params]
-  (api/check-data-analyst)
+  (api/read-check :model/TransformJob job-id)
   (api/check-404 (t2/select-one :model/TransformJobRun :id run-id :job_id job-id))
   (let [runs (transforms.core/transform-runs-for-job-run run-id)]
     (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
