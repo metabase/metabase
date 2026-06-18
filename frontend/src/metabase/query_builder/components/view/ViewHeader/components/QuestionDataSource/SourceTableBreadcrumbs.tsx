@@ -59,22 +59,21 @@ export function SourceTableBreadcrumbs({
       variant={variant}
       divider={divider}
       parts={[
-        <HeadBreadcrumbs.Badge
+        <HeadBreadcrumbs.Breadcrumb
           key="collection"
           to={Urls.collection(collection)}
           icon="repository"
-          inactiveColor="text-tertiary"
         >
           {collection.name}
-        </HeadBreadcrumbs.Badge>,
-        <HeadBreadcrumbs.Badge
+        </HeadBreadcrumbs.Breadcrumb>,
+        <HeadBreadcrumbs.Breadcrumb
           key="name"
           to={
             hasTableLink
               ? Urls.queryBuilderTable(table.id, table.db_id)
               : undefined
           }
-          inactiveColor={isSubhead ? "text-tertiary" : "text-primary"}
+          color={isSubhead ? "text-tertiary" : "text-primary"}
         >
           <span>
             {table.display_name}
@@ -90,7 +89,7 @@ export function SourceTableBreadcrumbs({
               </span>
             )}
           </span>
-        </HeadBreadcrumbs.Badge>,
+        </HeadBreadcrumbs.Breadcrumb>,
       ]}
     />
   );

@@ -15,6 +15,7 @@
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -937,17 +938,17 @@
                                       "decimal_col"    (bigdec decimal-val)
                                       "bignumeric_col" (bigdec bignumeric-val)
                                       "bigdecimal_col" (bigdec bigdecimal-val)}]
-              (testing (format "filtering against %s" col-nm))
-              (is (= 1
-                     (-> (mt/first-row
-                          (mt/run-mbql-query nil
-                            {:source-table (mt/id tbl-nm)
-                             :aggregation  [[:count]]
-                             :parameters   [{:name   col-nm
-                                             :type   :number/=
-                                             :target [:field (mt/id tbl-nm col-nm)]
-                                             :value  [param-v]}]}))
-                         first))))))))))
+              (testing (format "filtering against %s" col-nm)
+                (is (= 1
+                       (-> (mt/first-row
+                            (mt/run-mbql-query nil
+                              {:source-table (mt/id tbl-nm)
+                               :aggregation  [[:count]]
+                               :parameters   [{:name   col-nm
+                                               :type   :number/=
+                                               :target [:field (mt/id tbl-nm col-nm)]
+                                               :value  [param-v]}]}))
+                           first)))))))))))
 
 (deftest sync-table-with-array-test
   (mt/test-driver
@@ -1458,3 +1459,24 @@
     (is (nil? (bigquery.ws/ws-sa-description->created-at "")))
     (is (nil? (bigquery.ws/ws-sa-description->created-at "some other description")))
     (is (nil? (bigquery.ws/ws-sa-description->created-at "created-at:not-an-instant")))))
+
+(deftest ^:parallel bigquery-field-filter-alias-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [mp    (mt/metadata-provider)
+          sql   "SELECT title as title, category AS category
+                 FROM sha_c1baee7db240aa419104c2d925a07a4d4faeeb24_test_data.products p
+                 WHERE 1=1 [[ AND {{category}} ]]
+                 ORDER BY p.title ASC;"
+          product-category (lib/ref (lib.metadata/field mp (mt/id :products :category)))
+          query (-> (lib/native-query mp sql)
+                    (lib/with-template-tags {"category" {:name "category"
+                                                         :alias "p.category"
+                                                         :display-name "Category"
+                                                         :type :dimension
+                                                         :dimension product-category
+                                                         :widget-type :text}})
+                    (assoc :parameters [{:type :text
+                                         :target [:dimension [:template-tag "category"]]
+                                         :value "Gadget"}]))]
+      (is (= ["Aerodynamic Leather Computer" "Gadget"]
+             (mt/first-row (qp/process-query query)))))))

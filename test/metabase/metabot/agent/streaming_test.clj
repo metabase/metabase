@@ -149,6 +149,38 @@
       (is (= 1 (:version part)))
       (is (= value (:data part))))))
 
+(deftest viz-part-test
+  (testing "inline -> generated_entity card embedding the query"
+    (let [part (streaming/viz-part {:inline?   true
+                                    :entity-id "c-1"
+                                    :query-id  "q-1"
+                                    :query     {:database 1}
+                                    :display   :bar
+                                    :title     "Orders by month"
+                                    :link      "/question#abc"})]
+      (is (= :data (:type part)))
+      (is (= "generated_entity" (:data-type part)))
+      (is (= 1 (:version part)))
+      (is (= {:type    "card"
+              :id      "c-1"
+              :query   {:id "q-1" :query {:database 1}}
+              :title   "Orders by month"
+              :display "bar"}
+             (:data part)))))
+  (testing "omits display when absent"
+    (let [part (streaming/viz-part {:inline?   true
+                                    :entity-id "c-1"
+                                    :query-id  "q-1"
+                                    :query     {:database 1}
+                                    :title     "Orders by month"})]
+      (is (= "Orders by month" (:title (:data part))))
+      (is (not (contains? (:data part) :display)))))
+  (testing "non-inline -> navigate_to link"
+    (let [part (streaming/viz-part {:inline? false
+                                    :link    "/question#abc"})]
+      (is (= "navigate_to" (:data-type part)))
+      (is (= "/question#abc" (:data part))))))
+
 (deftest data-type-constants-test
   (testing "data type constants are defined correctly"
     (is (= "navigate_to" streaming/navigate-to-type))
@@ -156,6 +188,7 @@
     (is (= "todo_list" streaming/todo-list-type))
     (is (= "code_edit" streaming/code-edit-type))
     (is (= "transform_suggestion" streaming/transform-suggestion-type))
+    (is (= "generated_entity" streaming/generated-entity-type))
     (is (= "adhoc_viz" streaming/adhoc-viz-type))
     (is (= "static_viz" streaming/static-viz-type))))
 

@@ -6,6 +6,8 @@ import type { Location } from "history";
 import { useEffect, useMemo } from "react";
 import { useAsync, useMount } from "react-use";
 
+import { publicApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { ExternalCardDataProvider } from "metabase/documents/contexts/ExternalCardDataContext";
@@ -23,10 +25,9 @@ import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLin
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { getSetting } from "metabase/selectors/settings";
-import { PublicApi } from "metabase/services";
 import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
-import type { Dataset, Document } from "metabase-types/api";
+import type { Document } from "metabase-types/api";
 
 import S from "./PublicDocument.module.css";
 
@@ -52,9 +53,13 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
     loading,
     error,
   } = useAsync(async () => {
-    const doc = await PublicApi.document({ uuid });
+    const doc = await runRtkEndpoint(
+      { uuid },
+      dispatch,
+      publicApi.endpoints.getPublicDocument,
+    );
     return doc as Document;
-  }, [uuid]);
+  }, [uuid, dispatch]);
 
   useEffect(() => {
     if (error) {
@@ -125,8 +130,6 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
     () => ({
       cards: document?.cards ?? {},
       documentUuid: uuid,
-      loadCardQuery: (cardId: number) =>
-        PublicApi.documentCardQuery({ uuid, cardId }) as Promise<Dataset>,
     }),
     [document?.cards, uuid],
   );

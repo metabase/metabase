@@ -1,19 +1,22 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
+import type {
+  MetricsViewerDefinitionEntry,
+  SelectedMetric,
+} from "metabase/metrics-viewer/types";
+import {
+  getDimensionsByType,
+  getEntryBreakout,
+} from "metabase/metrics-viewer/utils";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type {
-  MetricsViewerDefinitionEntry,
-  SelectedMetric,
-} from "../../../types/viewer-state";
-import { getEntryBreakout } from "../../../utils/definition-entries";
-import { getDimensionsByType } from "../../../utils/tabs";
 import { BreakoutDimensionPicker } from "../../BreakoutDimensionPicker";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 
@@ -25,6 +28,7 @@ type MetricPillProps = {
   metric: SelectedMetric;
   colors?: string[];
   definitionEntry: MetricsViewerDefinitionEntry;
+  isDisabled?: boolean;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number, sourceType: "metric" | "measure") => void;
   onSetBreakout: (dimension: ProjectionClause | undefined) => void;
@@ -35,6 +39,7 @@ export function MetricPill({
   metric,
   colors,
   definitionEntry,
+  isDisabled,
   onSwap,
   onRemove,
   onSetBreakout,
@@ -137,7 +142,7 @@ export function MetricPill({
                 ? t`Remove ${metric.name}`
                 : t`Remove metric`,
             }}
-            data-testid="metrics-viewer-search-pill"
+            data-testid="metrics-viewer-pill"
           >
             <Flex align="center" gap="xs">
               {metric.isLoading ? (
@@ -145,12 +150,18 @@ export function MetricPill({
               ) : (
                 <>
                   <SourceColorIndicator
-                    colors={colors}
+                    colors={
+                      isDisabled ? ["var(--mb-color-icon-disabled)"] : colors
+                    }
                     fallbackIcon={
                       metric.sourceType === "measure" ? "ruler" : "metric"
                     }
                   />
-                  <span>{metric.name}</span>
+                  <span
+                    className={cx(S.metricPillText, isDisabled && S.disabled)}
+                  >
+                    {metric.name}
+                  </span>
                 </>
               )}
             </Flex>
@@ -209,24 +220,22 @@ export function MetricPill({
                   leftSection={<Icon name="close" />}
                   onClick={handleRemoveBreakout}
                 >
-                  {t`Remove breakout`}
+                  {t`Remove series breakout`}
                 </Menu.Item>
               )}
               <Menu.Item
                 leftSection={<Icon name="arrow_split" />}
                 onClick={handleOpenBreakoutPicker}
               >
-                {breakoutDimension ? t`Change breakout` : t`Break out`}
+                {breakoutDimension
+                  ? t`Change series breakout`
+                  : t`Add a series breakout`}
               </Menu.Item>
             </>
           )}
-          {metric.sourceType === "metric" &&
-            dimensions.size > 0 &&
-            definition && <Menu.Divider role="separator" />}
           {metric.sourceType === "metric" && (
             <Menu.Item
-              leftSection={<Icon name="info" />}
-              rightSection={<Icon name="external" />}
+              leftSection={<Icon name="home" />}
               component={ForwardRefLink}
               to={Urls.metricQuestionUrl({
                 id: metric.id,

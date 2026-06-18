@@ -24,7 +24,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
     css`
       border: none;
       padding: 0;
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
 
       &:hover {
         background-color: unset;
@@ -38,7 +38,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       height: fit-content;
       line-height: 1.5rem;
       padding: 0.5rem;
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
 
       &:hover {
         background-color: var(--mb-color-background-secondary);

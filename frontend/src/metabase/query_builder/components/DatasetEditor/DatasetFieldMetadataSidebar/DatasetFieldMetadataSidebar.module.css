@@ -13,7 +13,7 @@
     outline: none;
 
     &:focus {
-      border-color: var(--mb-color-brand);
+      border-color: var(--mb-color-core-brand);
     }
   }
 }

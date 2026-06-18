@@ -9,7 +9,7 @@
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-filter);
+    background-color: var(--mb-color-core-filter);
 
     :global(.Icon) {
       color: var(--mb-color-text-primary-inverse) !important;

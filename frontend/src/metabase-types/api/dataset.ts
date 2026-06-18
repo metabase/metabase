@@ -20,6 +20,9 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
+/**
+ * @inline
+ */
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
 

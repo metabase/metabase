@@ -652,22 +652,27 @@ serdes/meta:
                   "PythonLibrary source should be imported correctly"))))))))
 
 (deftest import-removes-python-library-not-on-remote-test
-  (testing "Import removes local PythonLibrary that doesn't exist on the remote"
+  (testing "Import removes local PythonLibrary that doesn't exist on the remote, but only when forced (GHY-3900)"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
-        (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (mt/with-model-cleanup [:model/RemoteSyncTask :model/PythonLibrary]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local only"})]
             (is (t2/exists? :model/PythonLibrary :id (:id local-library))
                 "Local PythonLibrary should exist before import")
             (let [test-files {"main" {}}
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
-                  result (impl/import! (source.p/snapshot mock-source) task-id)]
-              (is (= :success (:status result))
-                  (str "Import should succeed. Result: " result))
-              (is (not (t2/exists? :model/PythonLibrary :id (:id local-library)))
-                  "Local PythonLibrary should be deleted after import since it wasn't on remote"))))))))
+                  snapshot (source.p/snapshot mock-source)]
+              (testing "a non-forced import reports a conflict and preserves the library"
+                (is (= :conflict (:status (impl/import! snapshot task-id)))
+                    "Import should conflict when it would delete an unsynced local PythonLibrary")
+                (is (t2/exists? :model/PythonLibrary :id (:id local-library))
+                    "Local PythonLibrary must be preserved when the import is not forced"))
+              (testing "forcing the import discards the local library"
+                (is (= :success (:status (impl/import! snapshot task-id :force? true))))
+                (is (not (t2/exists? :model/PythonLibrary :id (:id local-library)))
+                    "Local PythonLibrary should be deleted after a forced import since it wasn't on remote")))))))))
 
 (deftest import-preserves-builtin-python-library-test
   (testing "Import does NOT delete the built-in PythonLibrary even when it's not on remote"
@@ -798,8 +803,8 @@ serdes/meta:
                 (is (not (t2/exists? :model/Collection :entity_id coll-eid))
                     "Local transforms collection should be removed when not on remote")))))))))
 
-(deftest import-removes-all-local-transforms-when-setting-enabled-and-remote-has-none-test
-  (testing "When remote-sync-transforms is enabled and remote has no transforms, all local transforms are removed"
+(deftest import-conflicts-on-local-transforms-when-setting-enabled-and-remote-has-none-test
+  (testing "When remote-sync-transforms is enabled and remote has no transforms, deleting unsynced local transforms requires force"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
@@ -826,15 +831,102 @@ serdes/meta:
                     test-files {"main" {"collections/main/remote_collection/remote_collection.yaml"
                                         (test-helpers/generate-collection-yaml remote-coll-entity-id "Remote Collection")}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
-                    result (impl/import! (source.p/snapshot mock-source) task-id)]
-                (is (= :success (:status result))
-                    (str "Import should succeed. Result: " result))
-                (is (not (t2/exists? :model/Transform :id local-transform-id))
-                    "Local transform should be deleted when setting enabled and remote has no transforms")
-                (is (not (t2/exists? :model/TransformTag :id local-tag-id))
-                    "Local tag should be deleted when setting enabled and remote has no transforms")
-                (is (not (t2/exists? :model/Collection :entity_id coll-eid))
-                    "Local transforms collection should be deleted when setting enabled and remote has none")))))))))
+                    snapshot (source.p/snapshot mock-source)]
+                (testing "a non-forced import reports a conflict instead of silently deleting (GHY-3900)"
+                  (is (= :conflict (:status (impl/import! snapshot task-id)))
+                      "Import should conflict when it would delete unsynced local transforms")
+                  (is (t2/exists? :model/Transform :id local-transform-id)
+                      "Local transform must be preserved when the import is not forced")
+                  (is (t2/exists? :model/TransformTag :id local-tag-id)
+                      "Local tag must be preserved when the import is not forced")
+                  (is (t2/exists? :model/Collection :id coll-id)
+                      "Local transforms collection must be preserved when the import is not forced"))
+                (testing "forcing the import discards the local transforms"
+                  (is (= :success (:status (impl/import! snapshot task-id :force? true))))
+                  (is (not (t2/exists? :model/Transform :id local-transform-id))
+                      "Local transform should be deleted when forced")
+                  (is (not (t2/exists? :model/TransformTag :id local-tag-id))
+                      "Local tag should be deleted when forced")
+                  (is (not (t2/exists? :model/Collection :entity_id coll-eid))
+                      "Local transforms collection should be deleted when forced"))))))))))
+
+(deftest import-conflicts-on-non-first-import-when-local-transform-would-be-deleted-test
+  (testing "GHY-3900: an already-configured instance (not first import) reports a conflict rather than deleting unsynced local transforms"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Local Transforms Collection"
+                                                          :namespace collection/transforms-ns
+                                                          :entity_id (u/generate-nano-id)
+                                                          :location "/"}
+                         :model/Transform {local-transform-id :id} {:name "Local Transform"
+                                                                    :entity_id (u/generate-nano-id)
+                                                                    :collection_id coll-id}]
+            ;; a prior successful import makes this NOT a first import, so the legacy first-import conflict
+            ;; gate would not fire — the deletion-conflict gate must catch it regardless.
+            (t2/insert! :model/RemoteSyncTask {:sync_task_type "import"
+                                               :initiated_by (mt/user->id :rasta)
+                                               :cancelled false
+                                               :version "prior-version"
+                                               :ended_at (t/offset-date-time)})
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                  test-files {"main" {"collections/main/remote_collection/remote_collection.yaml"
+                                      (test-helpers/generate-collection-yaml (u/generate-nano-id) "Remote Collection")}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :conflict (:status result))
+                  (str "Import should conflict on a non-first import too. Result: " result))
+              (is (t2/exists? :model/Transform :id local-transform-id)
+                  "Local transform must be preserved"))))))))
+
+(deftest import-deletes-synced-transform-without-conflict-test
+  (testing "A previously-synced local transform absent from the remote is reconciled away with no conflict"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform :model/RemoteSyncObject]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Local Transforms Collection"
+                                                          :namespace collection/transforms-ns
+                                                          :entity_id (u/generate-nano-id)
+                                                          :location "/"}
+                         :model/Transform {local-transform-id :id} {:name "Synced Transform"
+                                                                    :entity_id (u/generate-nano-id)
+                                                                    :collection_id coll-id}]
+            ;; mark the transform as already synced — its removal is a normal reconcile, not data loss
+            (t2/insert! :model/RemoteSyncObject {:model_type "Transform"
+                                                 :model_id local-transform-id
+                                                 :model_name "Synced Transform"
+                                                 :status "synced"
+                                                 :status_changed_at (t/offset-date-time)})
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                  test-files {"main" {"collections/main/remote_collection/remote_collection.yaml"
+                                      (test-helpers/generate-collection-yaml (u/generate-nano-id) "Remote Collection")}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result))
+                  (str "Import should succeed without conflict for already-synced transforms. Result: " result))
+              (is (not (t2/exists? :model/Transform :id local-transform-id))
+                  "Synced local transform should be reconciled away"))))))))
+
+(deftest import-does-not-conflict-on-builtin-transform-tag-test
+  (testing "Built-in TransformTags are excluded from removal and do not trigger a deletion conflict"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask :model/TransformTag]
+          (mt/with-temp [:model/TransformTag {builtin-tag-id :id} {:name "Built-in Tag"
+                                                                   :entity_id (u/generate-nano-id)
+                                                                   :built_in_type "hourly"}]
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                  test-files {"main" {"collections/main/remote_collection/remote_collection.yaml"
+                                      (test-helpers/generate-collection-yaml (u/generate-nano-id) "Remote Collection")}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result))
+                  (str "Built-in tag should not cause a conflict. Result: " result))
+              (is (t2/exists? :model/TransformTag :id builtin-tag-id)
+                  "Built-in tag should be preserved"))))))))
 
 (deftest import-auto-enables-setting-when-remote-has-transforms-test
   (testing "When setting is disabled and remote has transforms, setting is auto-enabled and transforms are synced"

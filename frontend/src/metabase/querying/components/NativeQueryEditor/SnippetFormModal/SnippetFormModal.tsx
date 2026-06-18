@@ -5,7 +5,6 @@ import {
   useCreateSnippetMutation,
   useUpdateSnippetMutation,
 } from "metabase/api";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";
 import type {
   CreateSnippetRequest,
@@ -71,26 +70,16 @@ export function SnippetFormModal({
     onClose?.();
   }, [snippet, updateSnippet, onClose]);
 
-  const {
-    checkData,
-    isConfirmationShown,
-    handleInitialSave,
-    handleSaveAfterConfirmation,
-    handleCloseConfirmation,
-  } = PLUGIN_DEPENDENCIES.useCheckSnippetDependencies({
-    onSave: handleUpdate,
-  });
-
   const handleSubmit = useCallback(
     async (values: SnippetFormValues) => {
       if (isSavedSnippet(snippet)) {
         setSnippet({ ...snippet, ...values });
-        await handleInitialSave({ ...values, id: snippet.id });
+        await handleUpdate({ ...values, id: snippet.id });
       } else {
         await handleCreate(values);
       }
     },
-    [snippet, handleCreate, handleInitialSave],
+    [snippet, handleCreate, handleUpdate],
   );
 
   return (
@@ -98,34 +87,19 @@ export function SnippetFormModal({
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header px="xl">
-          <Modal.Title>
-            {isConfirmationShown ? (
-              <PLUGIN_DEPENDENCIES.CheckDependenciesTitle />
-            ) : (
-              modalTitle
-            )}
-          </Modal.Title>
+          <Modal.Title>{modalTitle}</Modal.Title>
           <Flex justify="flex-end">
             <Modal.CloseButton />
           </Flex>
         </Modal.Header>
-        <Modal.Body px={isConfirmationShown ? 0 : "xl"}>
-          {isConfirmationShown && checkData != null ? (
-            <PLUGIN_DEPENDENCIES.CheckDependenciesForm
-              checkData={checkData}
-              onSave={handleSaveAfterConfirmation}
-              onCancel={handleCloseConfirmation}
-            />
-          ) : (
-            <SnippetForm
-              snippet={snippet}
-              isEditing={isEditing}
-              isDirty={checkData != null}
-              onSubmit={handleSubmit}
-              onArchive={handleArchive}
-              onCancel={onClose}
-            />
-          )}
+        <Modal.Body px="xl">
+          <SnippetForm
+            snippet={snippet}
+            isEditing={isEditing}
+            onSubmit={handleSubmit}
+            onArchive={handleArchive}
+            onCancel={onClose}
+          />
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>

@@ -17,6 +17,7 @@ import {
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
+import { MetabotInlineChart } from "./MetabotInlineChart";
 
 type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
@@ -67,6 +68,15 @@ export const AgentDataPartMessage = ({
         </Stack>
       );
     })
+    .with(
+      { part: { type: "generated_entity", value: { type: "card" } } },
+      ({ part }) => (
+        <Stack gap="md">
+          {debug && <DataPartJsonCard type={part.type} value={part.value} />}
+          <MetabotInlineChart value={part.value} />
+        </Stack>
+      ),
+    )
     .with({ part: { type: "adhoc_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
     )

@@ -54,6 +54,7 @@ export function EntrySearchInput({
     {
       q: searchQuery,
       models: searchModels,
+      context: "dependencies",
     },
     {
       skip: !isSearchEnabled,

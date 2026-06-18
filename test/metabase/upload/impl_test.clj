@@ -2633,9 +2633,9 @@
     (with-uploads-enabled!
       (let [db-id           (mt/id)
             write-cache-key [db-id :write-data]]
-        (mt/with-dynamic-fn-redefs [driver.conn/effective-connection-type
+        (mt/with-dynamic-fn-redefs [driver.conn/connection-pool-type
                                     (fn [_database]
-                                      (if (= driver.conn/*connection-type* :write-data)
+                                      (if (= @#'driver.conn/*connection-type* :write-data)
                                         :write-data
                                         :default))]
           (try
@@ -2653,9 +2653,9 @@
     (with-uploads-enabled!
       (let [db-id           (mt/id)
             write-cache-key [db-id :write-data]]
-        (mt/with-dynamic-fn-redefs [driver.conn/effective-connection-type
+        (mt/with-dynamic-fn-redefs [driver.conn/connection-pool-type
                                     (fn [_database]
-                                      (if (= driver.conn/*connection-type* :write-data)
+                                      (if (= @#'driver.conn/*connection-type* :write-data)
                                         :write-data
                                         :default))]
           (try

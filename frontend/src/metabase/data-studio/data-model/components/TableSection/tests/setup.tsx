@@ -1,3 +1,4 @@
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -50,7 +51,6 @@ export function setup({
   enterprisePlugins,
   tokenFeatures,
 }: SetupOpts = {}) {
-  const onSyncOptionsClick = jest.fn();
   const tableWithSegments = segments ? { ...table, segments } : table;
 
   const settings = mockSettings({
@@ -76,6 +76,9 @@ export function setup({
     key: "seen-publish-tables-info",
     value: true,
   });
+  fetchMock.post("path:/api/data-studio/table/sync-schema", {});
+  fetchMock.post("path:/api/data-studio/table/rescan-values", {});
+  fetchMock.post("path:/api/data-studio/table/discard-values", {});
 
   renderWithProviders(
     <Route
@@ -86,7 +89,6 @@ export function setup({
           activeTab={activeTab}
           hasLibrary
           canPublish
-          onSyncOptionsClick={onSyncOptionsClick}
           onUpdate={jest.fn()}
         />
       )}
@@ -96,6 +98,4 @@ export function setup({
       storeInitialState: state,
     },
   );
-
-  return { onSyncOptionsClick };
 }

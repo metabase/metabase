@@ -208,6 +208,15 @@
               :specific-errors {:include ["should be either \"tables\" or \"tables.fields\", received: \"schemas\""]}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
+(deftest ^:parallel get-database-stub-test
+  (testing "GET /api/database"
+    (testing "A stub database should not be included in the response"
+      (mt/with-temp [:model/Database {db-id-1 :id} {:is_stub true}
+                     :model/Database {db-id-2 :id} {:is_stub false}]
+        (let [{databases :data} (mt/user-http-request :lucky :get 200 "database")]
+          (is (nil? (m/find-first #(= (:id %) db-id-1) databases)))
+          (is (some? (m/find-first #(= (:id %) db-id-2) databases))))))))
+
 (deftest get-database-legacy-no-self-service-test
   (testing "GET /api/database/:id"
     (testing "A database can be fetched even if one table has legacy-no-self-service permissions"
@@ -265,15 +274,34 @@
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-2
                                        :type        :metric}
-     :model/Segment  _                {:table_id table-id-2}]
+     :model/Segment  _                {:table_id table-id-2}
+     :model/Transform _                {:name   "Source DB transform"
+                                        :source {:type  :query
+                                                 :query {:database db-id
+                                                         :type     :native
+                                                         :native   {:query "select 1"}}}
+                                        :target {:type     "table"
+                                                 :database db-id
+                                                 :schema "PUBLIC"
+                                                 :name "source_db_transform_target"}}
+     :model/Transform _                {:name   "Target DB transform"
+                                        :source {:type  :query
+                                                 :query {:database db-id
+                                                         :type     :native
+                                                         :native   {:query "select 1"}}}
+                                        :target {:type     "table"
+                                                 :database db-id
+                                                 :schema "PUBLIC"
+                                                 :name "target_db_transform_target"}}]
     (testing "should require admin"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "database/%d/usage_info" db-id)))))
     (testing "return the correct usage info"
-      (is (= {:question 1
-              :dataset  2
-              :metric   3
-              :segment  1}
+      (is (= {:question  1
+              :dataset   2
+              :metric    3
+              :segment   1
+              :transform 2}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
     (testing "404 if db does not exist"
       (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {:order-by [[:id :desc]]}))]
@@ -318,10 +346,11 @@
   (mt/with-temp
     [:model/Database {db-id :id} {}]
     (testing "should work with DB that has no tables"
-      (is (= {:question 0
-              :dataset  0
-              :metric   0
-              :segment  0}
+      (is (= {:question  0
+              :dataset   0
+              :metric    0
+              :segment   0
+              :transform 0}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
 
 (defn- create-db-via-api! [& [m]]

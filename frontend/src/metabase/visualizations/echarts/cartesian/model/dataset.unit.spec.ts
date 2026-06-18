@@ -42,6 +42,7 @@ import type {
   TimeSeriesXAxisModel,
   XAxisModel,
 } from "./types";
+import { getBarSeriesDataLabelKey } from "./util";
 
 const createMockComputedVisualizationSettings = (
   opts: Partial<ComputedVisualizationSettings> = {},
@@ -513,6 +514,90 @@ describe("dataset transform functions", () => {
       ]);
     });
 
+    it("should replace bar series zero values with nulls when the series has non-zero values", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          series1: 0,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          series1: 10,
+        },
+      ];
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [],
+        xAxisModel,
+        [createMockSeriesModel({ dataKey: "series1" })],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          series: () => ({ display: "bar" }),
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: null,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 10,
+        },
+      ]);
+    });
+
+    it("should preserve bar series zero values when the whole series is zero", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          series1: 0,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          series1: 0,
+        },
+      ];
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [],
+        xAxisModel,
+        [createMockSeriesModel({ dataKey: "series1" })],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          series: () => ({ display: "bar" }),
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 0,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 0,
+        },
+      ]);
+    });
+
     describe("ordinal series", () => {
       it("should stringify x values if they're objects (metabase#52684)", () => {
         const dataset = [
@@ -832,6 +917,24 @@ describe("dataset transform functions", () => {
       expect(result[0][X_AXIS_DATA_KEY]).toBe("2022-01-01");
       expect(result[1][X_AXIS_DATA_KEY]).toBe("2022-02-01");
       expect(result[2][X_AXIS_DATA_KEY]).toBe("2022-03-01");
+    });
+
+    it("should sort valid dates and move null dates to the end", () => {
+      const dataset = [
+        { [X_AXIS_DATA_KEY]: "2022-03-01", [seriesKey]: 10 },
+        { [X_AXIS_DATA_KEY]: null, [seriesKey]: 2 },
+        { [X_AXIS_DATA_KEY]: "2022-01-01", [seriesKey]: 5 },
+        { [X_AXIS_DATA_KEY]: "2022-02-01", [seriesKey]: 8 },
+      ];
+
+      const result = sortDataset(dataset, "timeseries");
+
+      expect(result.map((datum) => datum[X_AXIS_DATA_KEY])).toEqual([
+        "2022-01-01",
+        "2022-02-01",
+        "2022-03-01",
+        null,
+      ]);
     });
 
     it.each(numericScale)("should sort numeric datasets", (xAxisScale) => {

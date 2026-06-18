@@ -49,6 +49,9 @@ const agentOverridesByAgentId: Partial<
   sql: {
     profileOverride: METABOT_PROFILE_OVERRIDES.SQL,
   },
+  ask: {
+    profileOverride: METABOT_PROFILE_OVERRIDES.NLQ,
+  },
 };
 
 export const createConversation = (
@@ -156,6 +159,7 @@ export const getMetabotInitialState = (): MetabotState => {
     conversations: {
       omnibot: createConversation("omnibot"),
       sql: createConversation("sql"),
+      ask: createConversation("ask"),
     },
     reactions: {
       navigateToPath: null,

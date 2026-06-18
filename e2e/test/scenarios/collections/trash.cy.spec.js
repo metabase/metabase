@@ -852,14 +852,14 @@ describe("scenarios > collections > trash", () => {
     cy.visit("/trash");
 
     toggleEllipsisMenuFor("Orders");
-    cy.findAllByRole("dialog")
+    cy.findAllByRole("menu")
       .should("have.length", 1)
       .and("contain", "Move")
       .and("contain", "Restore")
       .and("contain", "Delete permanently");
 
     toggleEllipsisMenuFor("Orders, Count");
-    cy.findAllByRole("dialog")
+    cy.findAllByRole("menu")
       .should("have.length", 1)
       .and("contain", "Move")
       .and("contain", "Restore")
@@ -979,14 +979,18 @@ function ensureCanRestoreFromPage(name) {
 }
 
 function selectItem(name) {
-  cy.findByText(name).closest("tr").findByRole("checkbox").check();
+  cy.findByText(name)
+    .closest("tr")
+    .findByRole("checkbox")
+    .closest("button")
+    .click();
 }
 
 function assertChecked(name, checked = true) {
   cy.findByText(name)
     .closest("tr")
     .findByRole("checkbox")
-    .should(checked ? "have.attr" : "not.have.attr", "checked");
+    .should(checked ? "be.checked" : "not.be.checked");
 }
 
 function assertTrashSelectedInNavigationSidebar() {
