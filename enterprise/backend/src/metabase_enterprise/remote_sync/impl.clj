@@ -318,6 +318,12 @@
       (t2/insert! :model/RemoteSyncObject
                   (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
 
+(defn- pulled-change-count
+  "Total number of entities applied by a pull, across entity-id- and path-identified models in `imported-data`."
+  [imported-data]
+  (transduce (map count) + 0 (concat (vals (:by-entity-id imported-data))
+                                     (vals (:by-path imported-data)))))
+
 (defn- import-merged!
   "Local-only merge for the pull path. Performs an entity-identity 3-way merge of local state against the
   remote tip and, on a clean merge, applies the merged result to the LOCAL app DB only — it does not push.
@@ -342,7 +348,8 @@
     (= (source.p/version base-snapshot) (source.p/version snapshot))
     (u/prog1 {:status        :success
               :version       (source.p/version snapshot)
-              :merge-summary {:added 0 :updated 0 :removed 0}}
+              :merge-summary {:added 0 :updated 0 :removed 0}
+              :outcome       {:kind "pull-skipped"}}
       (log/info "Pull merge: remote has not advanced; keeping local changes unchanged"))
 
     :else
@@ -370,7 +377,10 @@
                      (count dirty-objects))
           {:status :success
            :version (source.p/version snapshot)
-           :merge-summary summary})))))
+           :merge-summary summary
+           :outcome {:kind "pulled"
+                     :count (apply + (vals summary))
+                     :branch (settings/remote-sync-branch)}})))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
@@ -429,17 +439,18 @@
               (and (not force?) (= last-imported-version snapshot-version))
               (u/prog1 {:status :success
                         :version (source.p/version snapshot)
-                        :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
-                (log/infof (:message <>)))
+                        :outcome {:kind "pull-skipped"}}
+                (log/infof "Skipping import: snapshot version %s matches last imported version" snapshot-version))
 
               :else
-              (do
-                (load-snapshot! snapshot task-id sync-timestamp
-                                :finalize! #(remote-sync.task/set-version! task-id (source.p/version snapshot)))
+              (let [imported-data (load-snapshot! snapshot task-id sync-timestamp
+                                                  :finalize! #(remote-sync.task/set-version! task-id (source.p/version snapshot)))]
                 (log/info "Successfully reloaded entities from git repository")
                 {:status :success
                  :version (source.p/version snapshot)
-                 :message "Successfully reloaded from git repository"}))))
+                 :outcome {:kind "pulled"
+                           :count (pulled-change-count imported-data)
+                           :branch (settings/remote-sync-branch)}}))))
         (catch Exception e
           (handle-import-exception e snapshot))
         (finally
@@ -455,7 +466,8 @@
     local app DB by loading the merged result (the 'pull' half), so local now contains the remote's
     changes. Returns a `:success` result with a `:merge-summary`."
   [source snapshot base-snapshot task-id message sync-timestamp models]
-  (let [{:keys [status version conflicts summary]}
+  (let [pushed-count (count (remote-sync.object/dirty-rows))
+        {:keys [status version conflicts summary]}
         (source/merge-and-store! models snapshot base-snapshot task-id message)]
     (case status
       :conflict
@@ -481,7 +493,11 @@
                                        (remote-sync.task/set-version! task-id version)))
           (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d)"
                      (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary))
-          {:status :success :version version :merge-summary summary})
+          {:status :success :version version :merge-summary summary
+           :outcome {:kind "merged"
+                     :pulled (apply + (vals summary))
+                     :pushed pushed-count
+                     :branch (settings/remote-sync-branch)}})
         ;; The merge was pushed to `version`, but its commit can't be resolved locally (should not happen —
         ;; write-files! updates the local ref before returning). Fail loudly rather than silently advancing
         ;; the version while skipping the reconcile, which would leave local missing the folded-in remote
@@ -675,8 +691,11 @@
     (let [{:keys [version entries]} (source/store! models snapshot task-id message)]
       (remote-sync.task/set-version! task-id version)
       (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
-      (record-exported-paths! entries))
-    {:status :success}))
+      (record-exported-paths! entries)
+      {:status :success
+       :outcome {:kind "pushed"
+                 :count (count entries)
+                 :branch (settings/remote-sync-branch)}})))
 
 (defn export!
   "Exports remote-synced collections to a remote source repository.
@@ -743,7 +762,8 @@
             (and (not diverged?) (empty? dirty-rows) (empty? disabled-files))
             (do
               (log/info "Remote sync export: no changes to export")
-              {:status :success})
+              {:status :success
+               :outcome {:kind "push-skipped"}})
 
             ;; Remote hasn't advanced but a dirty row can't be applied incrementally → full re-serialize.
             (and (not diverged?) (= plan :remote-sync/unsyncable-batch))
@@ -764,7 +784,10 @@
                 (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
               (log/infof "Remote sync incremental export: wrote %d, deleted %d"
                          (count upserts) (count delete-paths))
-              {:status :success})
+              {:status :success
+               :outcome {:kind "pushed"
+                         :count (+ (count upserts) (count delete-paths))
+                         :branch (settings/remote-sync-branch)}})
 
             ;; Remote advanced and the caller did not ask to merge — refuse. The UI's export preflight
             ;; drives the choice between force, new branch, and merge.
@@ -950,7 +973,7 @@
                   :success (do
                              (when branch
                                (settings/remote-sync-branch! branch))
-                             (remote-sync.task/complete-sync-task! task-id (:message result)))
+                             (remote-sync.task/complete-sync-task! task-id (:outcome result)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result)))

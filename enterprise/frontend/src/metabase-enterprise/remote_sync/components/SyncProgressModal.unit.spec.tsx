@@ -6,6 +6,7 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { RemoteSyncOutcome } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { SyncProgressModal } from "./SyncProgressModal";
@@ -16,7 +17,7 @@ const setup = ({
   isError = false,
   errorMessage = "",
   isSuccess = false,
-  message = "",
+  outcome = null,
   isAdmin = true,
   onDismiss = jest.fn(),
   cancelResponse,
@@ -26,7 +27,7 @@ const setup = ({
   isError?: boolean;
   errorMessage?: string;
   isSuccess?: boolean;
-  message?: string;
+  outcome?: RemoteSyncOutcome | null;
   isAdmin?: boolean;
   onDismiss?: jest.Mock;
   cancelResponse?: { status?: number; body?: any; delay?: number };
@@ -44,7 +45,7 @@ const setup = ({
         isError={isError}
         errorMessage={errorMessage}
         isSuccess={isSuccess}
-        message={message}
+        outcome={outcome}
         onDismiss={onDismiss}
       />,
       {
@@ -128,31 +129,73 @@ describe("SyncProgressModal", () => {
   });
 
   describe("success state", () => {
-    it("should show the server message for a successful import", () => {
+    it("should render the pulled outcome with count and branch", () => {
       setup({
         taskType: "import",
         isSuccess: true,
-        message: "Imported 12 items.",
+        outcome: { kind: "pulled", count: 12, branch: "main" },
       });
 
       expect(screen.getByText("Pull complete")).toBeInTheDocument();
-      expect(screen.getByText("Imported 12 items.")).toBeInTheDocument();
-    });
-
-    it("should fall back to a generic message when the server sends none", () => {
-      setup({ taskType: "import", isSuccess: true, message: "" });
-
       expect(
-        screen.getByText("Successfully pulled changes from Git."),
+        screen.getByText("Successfully pulled 12 changes from main."),
       ).toBeInTheDocument();
     });
 
-    it("should use export-specific copy for a successful export", () => {
-      setup({ taskType: "export", isSuccess: true, message: "" });
+    it("should render the pushed outcome with count and branch", () => {
+      setup({
+        taskType: "export",
+        isSuccess: true,
+        outcome: { kind: "pushed", count: 3, branch: "main" },
+      });
 
       expect(screen.getByText("Push complete")).toBeInTheDocument();
       expect(
-        screen.getByText("Successfully pushed changes to Git."),
+        screen.getByText("Successfully pushed 3 changes to main."),
+      ).toBeInTheDocument();
+    });
+
+    it("should render the merged outcome with both counts", () => {
+      setup({
+        taskType: "export",
+        isSuccess: true,
+        outcome: { kind: "merged", pulled: 1, pushed: 1, branch: "main" },
+      });
+
+      expect(
+        screen.getByText(
+          "Successfully pulled 1 changes and pushed 1 changes to main.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should render the skipped outcomes", () => {
+      setup({
+        taskType: "import",
+        isSuccess: true,
+        outcome: { kind: "pull-skipped" },
+      });
+      expect(screen.getByText("Skipped pull: no changes.")).toBeInTheDocument();
+    });
+
+    it("should fall back to generic copy when there is no outcome", () => {
+      setup({ taskType: "import", isSuccess: true, outcome: null });
+
+      expect(
+        screen.getByText("Successfully pulled changes."),
+      ).toBeInTheDocument();
+    });
+
+    it("should fall back to task-type copy when the outcome shape is unrecognized", () => {
+      // An unknown kind (e.g. from a newer/older server) must not render a broken message.
+      setup({
+        taskType: "export",
+        isSuccess: true,
+        outcome: { kind: "teleported" } as unknown as RemoteSyncOutcome,
+      });
+
+      expect(
+        screen.getByText("Successfully pushed changes."),
       ).toBeInTheDocument();
     });
 

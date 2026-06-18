@@ -50,9 +50,9 @@ export const getErrorMessage = createSelector(
   (currentTask) => currentTask?.error_message ?? "",
 );
 
-export const getTaskMessage = createSelector(
+export const getTaskOutcome = createSelector(
   getCurrentTask,
-  (currentTask) => currentTask?.message ?? "",
+  (currentTask) => currentTask?.outcome ?? null,
 );
 
 export const getHasPendingMutation = createSelector(

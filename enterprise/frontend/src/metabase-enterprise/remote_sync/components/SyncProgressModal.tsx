@@ -6,7 +6,7 @@ import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
 import { useCancelRemoteSyncCurrentTaskMutation } from "metabase-enterprise/api";
-import type { RemoteSyncTaskType } from "metabase-types/api";
+import type { RemoteSyncOutcome, RemoteSyncTaskType } from "metabase-types/api";
 
 interface SyncProgressModalProps {
   taskType: RemoteSyncTaskType;
@@ -14,7 +14,7 @@ interface SyncProgressModalProps {
   isError: boolean;
   errorMessage: string;
   isSuccess: boolean;
-  message: string;
+  outcome: RemoteSyncOutcome | null;
   onDismiss: () => void;
 }
 
@@ -24,7 +24,7 @@ export function SyncProgressModal({
   isError,
   errorMessage,
   isSuccess,
-  message,
+  outcome,
   onDismiss,
 }: SyncProgressModalProps) {
   const canCancel = useSelector(getUserIsAdmin);
@@ -77,12 +77,12 @@ export function SyncProgressModal({
   }
 
   if (isSuccess) {
-    const { successTitle, successFallback } = getModalContent(taskType);
+    const { successTitle } = getModalContent(taskType);
 
     return (
       <Modal onClose={onDismiss} opened size="md" title={successTitle}>
         <Stack mt="md" gap="md">
-          <Text>{message || successFallback}</Text>
+          <Text>{getSuccessMessage(outcome, taskType)}</Text>
           <Group justify="flex-end">
             <Button
               data-testid="sync-success-close-button"
@@ -132,14 +132,12 @@ const getModalContent = (
   title: string;
   progressLabel: string;
   successTitle: string;
-  successFallback: string;
 } => {
   if (taskType === "import") {
     return {
       title: t`Pulling from Git`,
       progressLabel: t`Importing content…`,
       successTitle: t`Pull complete`,
-      successFallback: t`Successfully pulled changes from Git.`,
     };
   }
 
@@ -147,6 +145,47 @@ const getModalContent = (
     title: t`Pushing to Git`,
     progressLabel: t`Exporting content…`,
     successTitle: t`Push complete`,
-    successFallback: t`Successfully pushed changes to Git.`,
   };
 };
+
+const isCount = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+const isBranch = (value: unknown): value is string => typeof value === "string";
+
+/**
+ * Maps a structured sync outcome to a localized confirmation message. Falls back to generic per-task-type
+ * copy whenever the outcome is missing, has an unknown `kind`, or is missing the fields that kind needs —
+ * so an unrecognized shape never renders a broken message.
+ */
+function getSuccessMessage(
+  outcome: RemoteSyncOutcome | null,
+  taskType: RemoteSyncTaskType,
+): string {
+  const fallback =
+    taskType === "import"
+      ? t`Successfully pulled changes.`
+      : t`Successfully pushed changes.`;
+
+  switch (outcome?.kind) {
+    case "pull-skipped":
+      return t`Skipped pull: no changes.`;
+    case "push-skipped":
+      return t`Skipped push: no changes.`;
+    case "pulled":
+      return isCount(outcome.count) && isBranch(outcome.branch)
+        ? t`Successfully pulled ${outcome.count} changes from ${outcome.branch}.`
+        : fallback;
+    case "pushed":
+      return isCount(outcome.count) && isBranch(outcome.branch)
+        ? t`Successfully pushed ${outcome.count} changes to ${outcome.branch}.`
+        : fallback;
+    case "merged":
+      return isCount(outcome.pulled) &&
+        isCount(outcome.pushed) &&
+        isBranch(outcome.branch)
+        ? t`Successfully pulled ${outcome.pulled} changes and pushed ${outcome.pushed} changes to ${outcome.branch}.`
+        : fallback;
+    default:
+      return fallback;
+  }
+}

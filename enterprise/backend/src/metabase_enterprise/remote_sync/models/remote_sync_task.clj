@@ -21,7 +21,8 @@
 (derive :model/RemoteSyncTask :metabase/model)
 
 (t2/deftransforms :model/RemoteSyncTask
-  {:conflicts mi/transform-json})
+  {:conflicts mi/transform-json
+   :outcome   mi/transform-json})
 
 (declare current-task)
 
@@ -96,15 +97,17 @@
 (defn complete-sync-task!
   "Marks a sync task as completed.
 
-  Takes the ID of the sync task to mark as completed and an optional human-readable message describing the
-  outcome (shown to the user when the task finishes).
+  Takes the ID of the sync task to mark as completed and an optional `outcome` map describing the result
+  (e.g. `{:kind \"pulled\" :count 12 :branch \"main\"}`). The UI renders the outcome to a localized
+  confirmation message; we store structured data rather than customer-facing copy.
 
   Returns the number of rows updated (should be 1 if successful)."
-  [task-id & [message]]
-  (t2/update! :model/RemoteSyncTask task-id
-              {:progress 1.0
-               :ended_at (mi/now)
-               :message message}))
+  ([task-id] (complete-sync-task! task-id nil))
+  ([task-id outcome]
+   (t2/update! :model/RemoteSyncTask task-id
+               {:progress 1.0
+                :ended_at (mi/now)
+                :outcome  outcome})))
 
 (defn fail-sync-task!
   "Marks a sync task as failed.

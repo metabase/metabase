@@ -287,7 +287,7 @@ describe("remote-sync-listener-middleware", () => {
           status: "successful",
           sync_task_type: "import",
           ended_at: "2026-06-18T00:00:00Z",
-          message: "Successfully reloaded from git repository",
+          outcome: { kind: "pulled", count: 3, branch: "main" },
         },
       });
 
@@ -316,9 +316,11 @@ describe("remote-sync-listener-middleware", () => {
 
       // The modal must NOT auto-dismiss; it stays open showing the success message until the user closes it.
       expect(store.getState().remoteSyncPlugin?.showModal).toBe(true);
-      expect(store.getState().remoteSyncPlugin?.currentTask?.message).toBe(
-        "Successfully reloaded from git repository",
-      );
+      expect(store.getState().remoteSyncPlugin?.currentTask?.outcome).toEqual({
+        kind: "pulled",
+        count: 3,
+        branch: "main",
+      });
     });
 
     it("does NOT open the setup modal when an export task ends in conflict", async () => {
