@@ -683,45 +683,50 @@ function getFinalSeries({
   const display = firstSeries.card.display;
   const { rows } = firstSeries.data;
 
-  let finalSeries: SingleSeries[] = series;
-
   if (display === "table") {
-    finalSeries = getHeatMapSeries({ series, legendItems });
-  } else if (shouldFallBackToRow(firstSeries)) {
-    // fallback to a row chart for small datasets
-    // for a line, it doesn't make sense to display a time series with only a few rows
-    // for a bar, the bars are very wide and don't use the space well with only a few rows
-    finalSeries = series.map((s) => ({
-      ...s,
-      card: {
-        ...s.card,
-        display: "row",
-      },
-    }));
-  } else if (display === "bar" && rows.some((row) => row[0] == null)) {
-    // if we have a bar chart with null values, make sure the x-axis is ordinal
-    finalSeries = series.map((s) => ({
-      ...s,
-      card: {
-        ...s.card,
-        visualization_settings: {
-          ...s.card.visualization_settings,
-          "graph.x_axis.scale": "ordinal",
-        },
-      },
-    }));
+    return getHeatMapSeries({ series, legendItems });
   }
+
+  const fallbackDisplay = getFallbackDisplay(series);
+  // if we have a bar chart with null values, make sure the x-axis is ordinal, or they won't be displayed
+  const ensureXAxisIsOrdinal =
+    fallbackDisplay === "bar" && rows.some((row) => row[0] == null);
+  const finalSeries = series.map((s) => ({
+    ...s,
+    card: {
+      ...s.card,
+      display: fallbackDisplay,
+      visualization_settings: ensureXAxisIsOrdinal
+        ? {
+            ...s.card.visualization_settings,
+            "graph.x_axis.scale": "ordinal" as const,
+          }
+        : s.card.visualization_settings,
+    },
+  }));
 
   return combineSeriesSettings({ series: finalSeries, legendItems });
 }
 
-function shouldFallBackToRow(series: SingleSeries): boolean {
-  const { card, data } = series;
+// fallback to a row chart for small datasets
+// for a line, it doesn't make sense to display a time series with only a few rows
+// for a bar, the bars are very wide and don't use the space well with only a few rows
+function getFallbackDisplay(series: SingleSeries[]): VisualizationDisplay {
+  const firstSeries = series[0];
+  const { card, data } = firstSeries;
   const { display } = card;
   const { rows, cols } = data;
+
+  if (series.length > 1) {
+    // never fall back to row if there are multiple series due to segments
+    // it's too easy to trigger the row chart's "Other" grouping, which hides the segments
+    // and sums the metrics, which is arguably a correctness issue (see #39146)
+    return display;
+  }
+
   let numRows: number;
   if (cols.length === 3) {
-    // here we'll consider the number of "rows" the number of unique dates
+    // time-facet - here we'll consider the number of "rows" the number of unique dates
     const dates = new Set<RowValue>();
     for (const row of rows) {
       dates.add(row[1]);
@@ -730,10 +735,13 @@ function shouldFallBackToRow(series: SingleSeries): boolean {
   } else {
     numRows = rows.length;
   }
-  return (
+  if (
     (display === "line" || display === "bar") &&
     numRows <= MIN_ROWS_TO_SHOW_LINE_OR_BAR
-  );
+  ) {
+    return "row";
+  }
+  return display;
 }
 
 function combineSeriesSettings({

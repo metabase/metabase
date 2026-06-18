@@ -8,8 +8,10 @@ import type {
 import _ from "underscore";
 
 import { getTextColorForBackground } from "metabase/ui/colors/palette";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isNotNull } from "metabase/utils/types";
 import {
+  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
@@ -487,7 +489,11 @@ const buildEChartsBarSeries = (
       ? seriesModel.color
       : (params: CallbackDataParams) => {
           const xValue = dataset[params.dataIndex]?.[X_AXIS_DATA_KEY];
-          return dimensionValueColors[String(xValue)] ?? seriesModel.color;
+          const formattedXValue =
+            xValue === ECHARTS_CATEGORY_AXIS_NULL_VALUE
+              ? NULL_DISPLAY_VALUE
+              : String(xValue);
+          return dimensionValueColors[formattedXValue] ?? seriesModel.color;
         };
   const emphasisItemColor: NonNullable<BarSeriesOption["itemStyle"]>["color"] =
     dimensionValueColors == null ? seriesModel.color : "inherit";

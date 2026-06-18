@@ -384,6 +384,7 @@ interface CategoryScenarioOptions {
   includeTimeFacet?: boolean;
   timeFacetBreakouts?: RowValue[];
   timeFacetDateCount?: number;
+  segments?: SegmentConfig[];
 }
 
 interface TopNScenarioOptions {
@@ -499,7 +500,18 @@ function buildCategoryScenario(
   options: CategoryScenarioOptions = {},
 ): QueryConfig[] {
   const dimensionId = options.dimensionId ?? DEFAULT_DIMENSION_ID;
+  const segments = options.segments ?? [];
   const configs: QueryConfig[] = [{ ...main, dimensionId }];
+
+  for (const segment of segments) {
+    configs.push({
+      ...main,
+      rows: segment.rows,
+      dimensionId,
+      segmentId: segment.segmentId,
+      segmentName: segment.segmentName,
+    });
+  }
 
   if (options.includeTimeFacet === false) {
     return configs;
@@ -677,6 +689,20 @@ export const Timeseries_FewRows = ScenarioStory({
   configs: buildTimeSeriesScenario(2),
 });
 
+export const Timeseries_FewRowsWithSegment = ScenarioStory({
+  title: "Time series — few rows with a segment",
+  description: "Segments don't fallback to a row chart",
+  configs: buildTimeSeriesScenario(2, {
+    segments: [
+      {
+        segmentId: 1,
+        segmentName: "VIP customers",
+        rows: timeseriesRows(2, 1),
+      },
+    ],
+  }),
+});
+
 export const Timeseries_SingleRow = ScenarioStory({
   title: "Time series — single row",
   description: "Main query has 1 data point → row chart fallback",
@@ -837,6 +863,29 @@ export const Bar_FewRows = ScenarioStory({
     cols: [stringCol(), numberCol()],
     rows: categoryRows(["Yes", "No"]),
   }),
+});
+
+export const Bar_FewRowsWithSegment = ScenarioStory({
+  title: "Bar — few rows with a segment",
+  description: "Segments don't fallback to a row chart",
+  configs: buildCategoryScenario(
+    {
+      cols: [stringCol(), numberCol()],
+      rows: categoryRows(["Yes", "No"]),
+    },
+    {
+      segments: [
+        {
+          segmentId: 1,
+          segmentName: "VIP customers",
+          rows: [
+            ["Yes", 10],
+            ["No", 20],
+          ],
+        },
+      ],
+    },
+  ),
 });
 
 export const Bar_Boolean = ScenarioStory({

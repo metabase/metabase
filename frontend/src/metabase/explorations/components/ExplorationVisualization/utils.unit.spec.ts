@@ -656,11 +656,8 @@ describe("row chart fallback (via buildSeriesGroup)", () => {
 
   it("falls back to row in document embed charts", () => {
     const charts = buildSeriesGroups({
-      queries: [
-        makeQuery({ id: 1, name: "Q1", dimension_id: "dim-1" }),
-        makeQuery({ id: 2, name: "Q2", dimension_id: "dim-1" }),
-      ],
-      datasets: [smallTsDataset, smallTsDataset],
+      queries: [makeQuery({ id: 1, name: "Q1", dimension_id: "dim-1" })],
+      datasets: [smallTsDataset],
       selectedTimelineId: null,
     }).chartsForDocumentEmbed;
 
