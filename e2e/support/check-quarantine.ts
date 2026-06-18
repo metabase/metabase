@@ -35,9 +35,7 @@ const isDryRun = QUARANTINE_DRY_RUN !== "false";
 const TEST_SUITE = "e2e";
 
 const failuresFile =
-  process.argv[2] ??
-  QUARANTINE_FAILURES_FILE ??
-  "./target/quarantine-failures.jsonl";
+  QUARANTINE_FAILURES_FILE ?? "./target/quarantine-failures.jsonl";
 
 /** One quarantined test as served by ci-conductor's `/api/quarantine`. */
 type QuarantineEntry = {
@@ -54,31 +52,23 @@ type FailedTest = {
   file_path: string | null;
 };
 
-/** Basename of a path, tolerant of both POSIX and Windows separators. */
-function baseName(p: string): string {
-  return p.split(/[\\/]/).pop() ?? "";
-}
-
 /**
- * Identity key for a test. ci-conductor's quarantine list and our after:spec
- * recorder both derive these fields from the same Cypress title array, so an
- * exact comparison is sound. We key on the spec basename (robust to any
- * path-prefix difference), the describe path, and the leaf test name.
+ * Identity key for a test: the spec file path, describe path, and leaf test
+ * name as a JSON tuple. ci-conductor's quarantine list and our after:spec
+ * recorder both derive these three fields from the same Cypress title array
+ * (file_path = `spec.relative`, test_path = the joined `describe` titles), so
+ * they match exactly. JSON-encoding keeps the parts distinct, so tuples that
+ * differ only in where a boundary falls can't collide.
  */
 function matchKey(
   filePath: string | null | undefined,
   testPath: string | null | undefined,
   testName: string,
 ): string {
-  return [
-    filePath ? baseName(filePath) : "",
-    (testPath ?? "").trim(),
-    testName.trim(),
-    // NUL separator: can't appear in any of the parts, so no collisions.
-  ].join("\u0000");
+  return JSON.stringify([filePath ?? "", testPath ?? "", testName]);
 }
 
-/** Read and de-dupe the run's failed tests from the JSONL file. */
+/** Read the run's failed tests from the JSONL file. */
 function readFailedTests(file: string): FailedTest[] {
   let raw: string;
   try {
@@ -88,7 +78,7 @@ function readFailedTests(file: string): FailedTest[] {
     return [];
   }
 
-  const parsed = raw
+  return raw
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line !== "")
@@ -101,16 +91,6 @@ function readFailedTests(file: string): FailedTest[] {
       }
     })
     .filter((test): test is FailedTest => test !== null);
-
-  const seen = new Set<string>();
-  return parsed.filter((test) => {
-    const key = matchKey(test.file_path, test.test_path, test.test_name);
-    if (seen.has(key)) {
-      return false;
-    }
-    seen.add(key);
-    return true;
-  });
 }
 
 /**
