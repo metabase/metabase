@@ -324,8 +324,20 @@ export const _columnSettings = {
     getDefault: (
       column: DatasetColumn,
       columnSettings: DatasetColumn,
-      { settings }: { settings: VisualizationSettings },
+      {
+        settings,
+        series,
+      }: { settings: VisualizationSettings; series?: Series },
     ) => {
+      // Native SQL has no backend-computed subtotals, so always hide them.
+      const data = series?.[0]?.data;
+      const isNativeQuery = data?.cols.some(
+        (col: DatasetColumn) => col.source === "native",
+      );
+      if (isNativeQuery) {
+        return false;
+      }
+
       // Default to showing totals if appropriate
       const rows = settings[COLUMN_SPLIT_SETTING]?.rows || [];
 
