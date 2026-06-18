@@ -605,7 +605,7 @@
   [driver {:keys [hosted?]}]
   (not (and
         (= driver :sqlite)
-        (= hosted? true))))
+        hosted?)))
 
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported
