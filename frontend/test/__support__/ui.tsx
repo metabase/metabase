@@ -21,7 +21,7 @@ import _ from "underscore";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
-import { PUT } from "metabase/api/legacy-client";
+import { useUpdateSettingMutation } from "metabase/api/settings";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
@@ -264,9 +264,13 @@ export function TestWrapper({
   displayTheme?: "light" | "dark";
   withCssVariables?: boolean;
 }): JSX.Element {
-  const handleUpdateColorScheme = useCallback(async (value: any) => {
-    await PUT("/api/setting/:key")({ key: "color-scheme", value });
-  }, []);
+  const [updateSetting] = useUpdateSettingMutation();
+  const handleUpdateColorScheme = useCallback(
+    async (value: any) => {
+      await updateSetting({ key: "color-scheme", value }).unwrap();
+    },
+    [updateSetting],
+  );
 
   const [whitelabelColors, setWhitelabelColors] = useState(() =>
     MetabaseSettings.applicationColors(),
