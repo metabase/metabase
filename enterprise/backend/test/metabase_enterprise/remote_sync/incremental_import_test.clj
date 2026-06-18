@@ -33,11 +33,10 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util.thread-local :as tu.thread-local]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each rs.test/clean-remote-sync-state)
+(use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
 
 ;;; ------------------------------------------------- State capture --------------------------------------------------
 
@@ -124,18 +123,14 @@
   ({path content}; the two cards' paths carry `card_a` / `card_b` slugs). Cleans up any entities
   recreated during the differential churn (delete+recreate gives fresh primary keys)."
   [f]
-  ;; Bind *thread-local* false so with-temp does NOT wrap the body in its :rollback-only transaction.
-  ;; The import reports progress on a separate pool connection (wrap-progress-ingestable); on MySQL that
-  ;; connection blocks on the uncommitted RemoteSyncTask row for the full 50s innodb_lock_wait_timeout —
-  ;; once per ingested entity — making each test minutes long. Committing the temp rows avoids the
-  ;; cross-connection lock wait; with-model-cleanup handles teardown. (No effect on H2.)
-  (binding [tu.thread-local/*thread-local* false]
-    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
-                     :model/Card _a {:name "Card A" :collection_id coll-id}
-                     :model/Card _b {:name "Card B" :collection_id coll-id}]
-        (mt/with-model-cleanup [:model/Card :model/Collection]
-          (f (synced-tree)))))))
+  ;; with-temp commits (not rollback) via the `commit-with-temp` :each fixture, so the import's progress
+  ;; updates on a separate connection don't block on MySQL — see that fixture's docstring.
+  (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
+                   :model/Card _a {:name "Card A" :collection_id coll-id}
+                   :model/Card _b {:name "Card B" :collection_id coll-id}]
+      (mt/with-model-cleanup [:model/Card :model/Collection]
+        (f (synced-tree))))))
 
 (defn- path-with [tree slug]
   (some (fn [p] (when (str/includes? p slug) p)) (keys tree)))

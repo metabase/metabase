@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -413,6 +414,20 @@ width: fixed
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
   model tables (Transform, TransformTag, PythonLibrary) are clean."
   (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
+
+(defn commit-with-temp
+  "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a
+  `:rollback-only` transaction (by binding `*thread-local*` false).
+
+  Required by remote-sync tests that call `import!`: the import reports progress on a separate pool
+  connection (`wrap-progress-ingestable`), and on MySQL that connection blocks on the uncommitted
+  `RemoteSyncTask` row for the full 50s `innodb_lock_wait_timeout` — once per ingested entity — turning
+  each such test into minutes (and timing out the EE MySQL app-db job). Committing the temp rows avoids
+  the cross-connection lock wait. Safe because these tests are non-parallel and clean up via other
+  fixtures. No effect on H2 (same-connection/MVCC). Compose after `clean-remote-sync-state`."
+  [thunk]
+  (binding [tu.thread-local/*thread-local* false]
+    (thunk)))
 
 (defn generate-table-yaml
   "Generate YAML content for a table with the given `table-name` and `db-name`.
