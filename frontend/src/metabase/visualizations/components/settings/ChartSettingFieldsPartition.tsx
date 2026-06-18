@@ -31,23 +31,25 @@ const EMPTY_VALUE: ColumnNameColumnSplitSetting = {
   values: [],
 };
 
-const shouldUpdateDraggableContextState = ({
-  activeContainer,
-  overContainer,
-}: MultiContainerDraggableContextShouldUpdateStateData<ColumnNameColumnSplitSetting>) =>
-  getPartitionType(activeContainer) === getPartitionType(overContainer);
-
-const getPartitionType = (
-  partitionName: keyof ColumnNameColumnSplitSetting,
-) => {
-  switch (partitionName) {
-    case "rows":
-    case "columns":
-      return "dimension";
-    default:
-      return "metric";
-  }
-};
+const makeShouldUpdateDraggableContextState =
+  (partitions: Partition[], columns: RemappingHydratedDatasetColumn[]) =>
+  ({
+    activeId,
+    overContainer,
+  }: MultiContainerDraggableContextShouldUpdateStateData<ColumnNameColumnSplitSetting>) => {
+    const targetPartition = partitions.find((p) => p.name === overContainer);
+    if (!targetPartition) {
+      return false;
+    }
+    const activeColumn = columns.find((col) => col.name === activeId);
+    if (!activeColumn) {
+      return true;
+    }
+    return (
+      targetPartition.columnFilter == null ||
+      targetPartition.columnFilter(activeColumn)
+    );
+  };
 
 type ChartSettingFieldsPartitionInternalProps = {
   activeId: string | null;
@@ -94,6 +96,7 @@ const ChartSettingFieldsPartitionInternal = ({
           partitions={partitions}
           items={items}
           sourcePartition={sourcePartition}
+          activeColumn={activeColumn}
           columnsByPartitionName={columnsByPartitionName}
           activeId={activeId}
           getColumnTitle={getColumnTitle}
@@ -119,6 +122,7 @@ const PartitionContainer = ({
   partitions,
   items,
   sourcePartition,
+  activeColumn,
   columnsByPartitionName,
   activeId,
   getColumnTitle,
@@ -127,6 +131,7 @@ const PartitionContainer = ({
   partitionName: keyof ColumnNameColumnSplitSetting;
   items: ColumnNameColumnSplitSetting;
   sourcePartition: keyof ColumnNameColumnSplitSetting | null;
+  activeColumn: RemappingHydratedDatasetColumn | undefined;
   columnsByPartitionName: Record<
     keyof ColumnNameColumnSplitSetting,
     RemappingHydratedDatasetColumn[]
@@ -161,11 +166,11 @@ const PartitionContainer = ({
   const columnNames = items[partitionName];
   const columns = columnsByPartitionName[partitionName] || [];
 
-  const partitionType = getPartitionType(partitionName);
-  const sourcePartitionType = sourcePartition
-    ? getPartitionType(sourcePartition)
-    : null;
-  const droppableDisabled = partitionType !== sourcePartitionType;
+  const droppableDisabled =
+    sourcePartition === null ||
+    (activeColumn != null &&
+      partition.columnFilter != null &&
+      !partition.columnFilter(activeColumn));
 
   return (
     <Box py="md" className={partitionIndex > 0 ? CS.borderTop : undefined}>
@@ -263,21 +268,30 @@ export const ChartSettingFieldsPartition = ({
   getColumnTitle,
   onChange,
   onShowWidget,
-}: ChartSettingFieldsPartitionProps) => (
-  <MultiContainerDraggableContext<ColumnNameColumnSplitSetting>
-    value={value ?? EMPTY_VALUE}
-    shouldUpdateState={shouldUpdateDraggableContextState}
-    onChange={onChange}
-  >
-    {({ activeId, items }) => (
-      <ChartSettingFieldsPartitionInternal
-        activeId={activeId}
-        items={items}
-        partitions={partitions}
-        columns={columns}
-        getColumnTitle={getColumnTitle}
-        onShowWidget={onShowWidget}
-      />
-    )}
-  </MultiContainerDraggableContext>
-);
+}: ChartSettingFieldsPartitionProps) => {
+  const currentItems = value ?? EMPTY_VALUE;
+  const shouldUpdateState = useCallback(
+    (
+      data: MultiContainerDraggableContextShouldUpdateStateData<ColumnNameColumnSplitSetting>,
+    ) => makeShouldUpdateDraggableContextState(partitions, columns)(data),
+    [partitions, columns],
+  );
+  return (
+    <MultiContainerDraggableContext<ColumnNameColumnSplitSetting>
+      value={currentItems}
+      shouldUpdateState={shouldUpdateState}
+      onChange={onChange}
+    >
+      {({ activeId, items }) => (
+        <ChartSettingFieldsPartitionInternal
+          activeId={activeId}
+          items={items}
+          partitions={partitions}
+          columns={columns}
+          getColumnTitle={getColumnTitle}
+          onShowWidget={onShowWidget}
+        />
+      )}
+    </MultiContainerDraggableContext>
+  );
+};
