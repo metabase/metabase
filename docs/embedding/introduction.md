@@ -100,6 +100,8 @@ If you're using an AI agent to help you embed Metabase in your app, check out [A
 
 [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) tracks embed usage, including embedding context, authentication methods, hostname, and other metadata. Check out the [Embedding usage dashboard](../usage-and-performance-tools/usage-analytics-reference.md#embedding-usage).
 
+For information about the anonymous usage data Metabase collects from embedded components, see [Embedding telemetry](../installation-and-operation/information-collection.md#embedding-telemetry).
+
 ## Further reading
 
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).

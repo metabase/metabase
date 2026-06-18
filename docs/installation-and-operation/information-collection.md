@@ -29,6 +29,30 @@ This anonymous data helps us figure out things like:
 - Where people get stuck
 - How performance for key workflows (like querying or loading) changes over time
 
+## Embedding telemetry
+
+When anonymous tracking is enabled, Metabase collects usage data from embedded components in addition to the general product events described above.
+
+### iframe embedding
+
+For iframe-based embedding (static, interactive, and guest), Metabase records query execution counts grouped by embedding type. No query content, result data, or user identifiers are collected.
+
+### Modular embedding SDK
+
+When you use the [modular embedding SDK](../embedding/sdk/introduction.md), Metabase collects a component-mount event each time an SDK component is rendered in your app. Each event includes:
+
+- Which component was used (for example, `InteractiveDashboard` or `StaticQuestion`)
+- The component's configuration options (for example, whether downloads or subscriptions are enabled)
+- The authentication method (SSO, API key, or guest)
+- The SDK package version
+- Whether a custom locale is configured
+
+**No persistent identifiers.** Within a session, an in-memory identifier groups related events. This identifier is regenerated on every page load and is never written to cookies or localStorage — there is no persistent cross-session identifier.
+
+**Routing.** SDK telemetry routes through your Metabase instance, not directly to a third-party analytics host. No additional allowlisting is required in your Content Security Policy.
+
+**Opting out.** Disabling the anonymous tracking toggle (see below) stops all embedding telemetry.
+
 ## Opting out of anonymous usage data collection for self-hosted Metabases
 
 If you're self-hosting Metabase, you can opt out of providing us with your anonymous usage data:
@@ -57,7 +81,7 @@ The token validation request includes:
 - Types of embedding (modular, guest, SDK, full app)
 - Site UUID (just an identifier for your Metabase)
 - Metabase version
-- Query execution timestamp (last UTC day)
+- Query execution counts for the previous UTC day, broken down by embedding type (SDK, interactive, static, public link, simple, and internal)
 - Metabot usage statistics: count of tokens, queries, users, and date (just counts and the date).
 
 ## Further reading
