@@ -161,7 +161,18 @@ export const settings = {
       return t`Show row totals`;
     },
     widget: "toggle",
-    getDefault: () => true,
+    // Native SQL has no backend-computed subtotals, so totals rows would be empty.
+    getValue: (
+      [{ data }]: Series,
+      settings: Partial<VisualizationSettings> = {},
+    ) => {
+      const stored = settings["pivot.show_row_totals"];
+      if (stored !== undefined) {
+        return stored;
+      }
+      const isNativeQuery = data?.cols.some((col) => col.source === "native");
+      return !isNativeQuery;
+    },
     inline: true,
   },
   "pivot.show_column_totals": {
@@ -172,7 +183,18 @@ export const settings = {
       return t`Show column totals`;
     },
     widget: "toggle",
-    getDefault: () => true,
+    // Native SQL has no backend-computed subtotals, so totals rows would be empty.
+    getValue: (
+      [{ data }]: Series,
+      settings: Partial<VisualizationSettings> = {},
+    ) => {
+      const stored = settings["pivot.show_column_totals"];
+      if (stored !== undefined) {
+        return stored;
+      }
+      const isNativeQuery = data?.cols.some((col) => col.source === "native");
+      return !isNativeQuery;
+    },
     inline: true,
   },
   "pivot.condense_duplicate_totals": {
