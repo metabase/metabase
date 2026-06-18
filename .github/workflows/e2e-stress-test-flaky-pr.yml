@@ -16,8 +16,6 @@ concurrency:
 jobs:
   detect-changed-specs:
     name: Detect changed e2e specs
-    # Gate on the label so this only fires for flaky-test-fix PRs, regardless of which of
-    # the four event types delivered us here.
     if: contains(github.event.pull_request.labels.*.name, 'flaky-test-fix')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
@@ -77,8 +75,7 @@ jobs:
       fail-fast: false
       matrix:
         spec: ${{ fromJson(needs.detect-changed-specs.outputs.specs) }}
-        # Burn each spec in both regimes — flakes often only reproduce under one of the two
-        # timing conditions. Cross-producing with `spec` yields two runs per changed spec.
+        # Burn each spec with and without throttle
         enable_network_throttling: [true, false]
     uses: ./.github/workflows/e2e-stress-test-flake-fix.yml
     secrets: inherit
