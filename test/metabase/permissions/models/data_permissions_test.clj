@@ -866,6 +866,47 @@
                                                 :table_id table-id-4 :perm_type :perms/create-queries))
             "should inherit :query-builder from PUBLIC schema, not the :no default")))))
 
+(defn- make-granular-perms-scenario!
+  "Create `db-id` with `n-groups` groups and `n-tables` tables in a single
+  schema, all granted granular table-level view-data perms (kept granular by
+  giving one table a differing value so they don't consolidate to a DB-level
+  row). Returns `[db-id group-ids]`."
+  [n-groups n-tables]
+  (let [db-id     (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))
+        group-ids (vec (for [_ (range n-groups)]
+                         (t2/insert-returning-pk! :model/PermissionsGroup
+                                                  (mt/with-temp-defaults :model/PermissionsGroup))))
+        table-ids (vec (for [_ (range n-tables)]
+                         (t2/insert-returning-pk! :model/Table
+                                                  (merge (mt/with-temp-defaults :model/Table)
+                                                         {:db_id db-id :schema "s1" :active true}))))]
+    (doseq [g group-ids]
+      (doseq [tid (butlast table-ids)]
+        (data-perms/set-table-permission! g tid :perms/view-data :unrestricted))
+      ;; one differing table keeps the schema granular (prevents DB-level consolidation)
+      (data-perms/set-table-permission! g (last table-ids) :perms/view-data :blocked))
+    [db-id group-ids]))
+
+(deftest load-perm-context-distinct-preserves-schema-vals-idx-test
+  (testing "DISTINCT collapse yields the same schema-vals-idx as loading every row (#76077)"
+    (mt/with-model-cleanup [:model/PermissionsGroup :model/Database :model/Table]
+      (let [[db-id group-ids] (make-granular-perms-scenario! 3 12)
+            idx-from (fn [rows]
+                       (reduce (fn [acc {:keys [group_id perm_type schema_name perm_value]}]
+                                 (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
+                               {} rows))
+            all      (t2/select :model/DataPermissions
+                                {:where [:and [:= :db_id db-id] [:not= :table_id nil]
+                                         [:in :group_id group-ids]]})
+            distinct (t2/select :model/DataPermissions
+                                {:select-distinct [:group_id :perm_type :schema_name :perm_value]
+                                 :where [:and [:= :db_id db-id] [:not= :table_id nil]
+                                         [:in :group_id group-ids]]})]
+        (is (< (count distinct) (count all))
+            "DISTINCT actually collapses duplicate rows")
+        (is (= (idx-from all) (idx-from distinct))
+            "the resulting schema-vals-idx is byte-identical")))))
+
 (deftest batch-permissions-lock-skips-fine-grained-locks-test
   (testing "Fine-grained cluster locks are skipped inside with-global-permissions-lock"
     (mt/with-temp [:model/Database {db-id :id} {}]
