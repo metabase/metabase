@@ -79,13 +79,13 @@
         ;; When the driver type is text but the lib type is temporal, this is usually because the driver doesn't
         ;; support temporal types natively (e.g. sqlite (#75604)). So we'll prefer the lib types in this case,
         ;; and when the driver type is missing or `:type/*`.
-        unreliable-driver-type? (or (#{nil :type/*} driver-base-type)
-                                    (and (isa? driver-base-type :type/Text)
-                                         (isa? lib-col-type :type/Temporal)))]
+        prefer-lib-type? (or (#{nil :type/*} driver-base-type)
+                             (and (isa? driver-base-type :type/Text)
+                                  (isa? lib-col-type :type/Temporal)))]
     (merge lib-col
            (m/filter-vals some? driver-col)
            ;; Prefer our inferred base type if the driver type is unreliable and ours is more specific
-           (when unreliable-driver-type?
+           (when prefer-lib-type?
              (when-let [lib-base-type (:base-type lib-col)]
                {:base-type lib-base-type}))
            ;; Prefer our `:name` if it's something different that what's returned by the driver (e.g. for named
@@ -93,7 +93,7 @@
            (u/select-non-nil-keys lib-col [:name :lib/source])
            ;; whatever type comes back from the query is by definition the effective type, but fall back to the
            ;; type calculated by Lib if the driver type is unreliable
-           {:effective-type (or (when-not unreliable-driver-type?
+           {:effective-type (or (when-not prefer-lib-type?
                                   driver-base-type)
                                 (:effective-type lib-col)
                                 (:base-type lib-col)
