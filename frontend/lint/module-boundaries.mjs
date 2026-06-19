@@ -268,6 +268,15 @@ const rules = [
     message: "Shared modules cannot import from feature modules",
   },
   {
+    // Foundational sink: schema.js may only import lib/* and basic/* modules,
+    // never other shared (or feature/app) modules, so it stays safe to depend
+    // on from anywhere without forming cycles.
+    from: ["shared/schema"],
+    disallow: ["shared/*"],
+    message:
+      "metabase/schema.js is a foundational sink and may only import lib/* and basic/* modules",
+  },
+  {
     from: ["feature/*"],
     allow: ["lib/*", "basic/*", "shared/*"],
     message: "Feature modules cannot import from other feature modules",
