@@ -90,18 +90,23 @@
                   profile
                   ["construct_notebook_query" "read_resource"]
                   [])]
-    (testing "catalog lists available skills with string ids"
+    (testing "catalog lists available on-demand skills with string ids"
       (let [ids (map :id (:catalog manifest))]
         (is (every? string? ids))
-        (is (some #{"construct-notebook-query-core"} ids))
-        (is (some #{"read-resource"} ids))))
+        (is (some #{"construct-notebook-query-core"} ids))))
     (testing "catalog entries are display-only (id/title/description), no body"
       (is (every? #(= #{:id :title :description} (set (keys %))) (:catalog manifest))))
     (testing "catalog is sorted by descending priority then id"
       ;; core has priority 60, the rest 50, operators 40 -> core first, operators last
       (is (= "construct-notebook-query-core" (:id (first (:catalog manifest))))))
-    (testing "no always-on skills in this migration"
-      (is (empty? (:always-on manifest))))))
+    (testing "always-on skills carry their body and are omitted from the catalog"
+      (let [always-on-ids (map (comp name :id) (:always-on manifest))]
+        (is (some #{"read-resource"} always-on-ids)
+            "read-resource is an always-on guardrail skill")
+        (is (not (some #{"read-resource"} (map :id (:catalog manifest))))
+            "always-on skills must not also appear in the catalog")
+        (is (every? :body (:always-on manifest))
+            "always-on skills inline their full body")))))
 
 (deftest ^:parallel build-skill-manifest-records-loadable-skill-ids-test
   (testing "building the manifest records the request's loadable skill ids"

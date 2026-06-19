@@ -292,11 +292,11 @@
   Dialect context only arises in SQL-editor sessions, so its presence is itself the gate.
 
   Invariant: the emitted pair references the `load_skill` tool, which
-  [[metabase.metabot.agent.profiles/get-tools-for-profile]] registers whenever the skill catalog is
-  non-empty.
+  [[metabase.metabot.agent.profiles/get-tools-for-profile]] registers whenever the skill manifest is
+  non-empty — i.e. the profile has any catalog or always-on skill.
   Any profile that can reach SQL-editor/dialect context also exposes query skills (the cross-cutting
-  `read-resource` skill alone keeps the catalog non-empty), so `load_skill` is always registered when
-  this returns a non-empty preload."
+  `read-resource` skill is always-on for them), so `load_skill` is always registered when this returns
+  a non-empty preload."
   [engine]
   (or (when-let [skill (dialect-skill engine)]
         (let [skill-id (:id skill)

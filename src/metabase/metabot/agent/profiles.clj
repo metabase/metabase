@@ -218,11 +218,16 @@
   `load_skill` tool is injected so the agent can pull skill bodies on demand."
   [profile-id capabilities]
   (when-let [profile (get-profile profile-id)]
-    (let [base (-> profile
-                   :tools
-                   (filter-by-capabilities capabilities)
-                   filter-by-scope
-                   tool-map)]
+    (let [base     (-> profile
+                       :tools
+                       (filter-by-capabilities capabilities)
+                       filter-by-scope
+                       tool-map)
+          manifest (skills/build-skill-manifest profile (keys base) capabilities)]
       (cond-> base
-        (seq (:catalog (skills/build-skill-manifest profile (keys base) capabilities)))
+        ;; Register load_skill whenever the profile has ANY skills — on-demand (catalog) or
+        ;; always-on. Always-on bodies are inlined, but their presence still implies a
+        ;; skill-bearing, possibly dialect-capable profile whose `dialect-preload-parts` emit a
+        ;; synthetic `load_skill` call that must resolve to a registered tool.
+        (or (seq (:catalog manifest)) (seq (:always-on manifest)))
         (assoc "load_skill" #'tools/load-skill-tool)))))
