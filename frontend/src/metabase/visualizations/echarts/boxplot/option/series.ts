@@ -60,7 +60,7 @@ export const buildEChartsBoxPlotSeries = (
     .filter((seriesModel) => seriesModel.visible)
     .map((seriesModel) => {
       const seriesColor =
-        seriesModel.color ?? renderingContext.getColor("brand");
+        seriesModel.color ?? renderingContext.getColor("core-brand");
       const fillColor = Color(seriesColor).alpha(BOX_FILL_OPACITY).string();
       const yAxisIndex = getSeriesYAxisIndex(chartModel, seriesModel.dataKey);
       const dataKey = seriesModel.dataKey;
@@ -132,7 +132,7 @@ export const buildEChartsMeanSeries = (
     .filter((seriesModel) => seriesModel.visible)
     .map((seriesModel) => {
       const seriesColor =
-        seriesModel.color ?? renderingContext.getColor("brand");
+        seriesModel.color ?? renderingContext.getColor("core-brand");
       const meanColor = Color(seriesColor)
         .darken(MEAN_COLOR_DARKEN_FACTOR)
         .hex();
@@ -209,7 +209,7 @@ export const buildEChartsPointsSeries = (
         showValuesMode === "all" && labelFormatter != null && showSeriesValues;
 
       const seriesColor =
-        seriesModel.color ?? renderingContext.getColor("brand");
+        seriesModel.color ?? renderingContext.getColor("core-brand");
       const xOffsetPixels = visibleSeriesOffsets.get(seriesModel.dataKey) ?? 0;
       const yAxisIndex = getSeriesYAxisIndex(chartModel, seriesModel.dataKey);
       const dataKey = seriesModel.dataKey;

@@ -15,3 +15,9 @@ export const getBuildInfo = (
     buildTime: buildInfo?.buildTime,
   };
 };
+
+export function getSdkPackageVersion(): string | null {
+  return (
+    getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ?? null
+  );
+}

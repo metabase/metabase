@@ -1,13 +1,18 @@
-(ns metabase.documents.view-log-test
+(ns ^:synchronous metabase.documents.view-log-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.documents.view-log :as documents.view-log]
    [metabase.events.core :as events]
    [metabase.test :as mt]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+                        (thunk))))
 
 (defn latest-view
   "Returns the most recent view for a given user and document ID"
@@ -109,13 +114,20 @@
                                              :document "{\"type\":\"doc\",\"content\":[]}"
                                              :creator_id (:id user)}]
       (let [events-published (atom [])]
-        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
-                                                            (swap! events-published conj topic)
-                                                            event)]
+        (methodical/add-aux-method-with-unique-key!
+         #'events/publish-event! :before :default
+         (fn [topic _event]
+           (swap! events-published conj topic))
+         ::publish-event-spy)
+        (try
           (#'documents.view-log/update-document-last-viewed-at!*
            [{:id (:id document) :timestamp (t/offset-date-time)}])
           (is (not (contains? (set @events-published) :event/document-update))
-              "updating last_viewed_at should not publish :event/document-update"))))))
+              "updating last_viewed_at should not publish :event/document-update")
+          (finally
+            (methodical/remove-aux-method-with-unique-key!
+             #'events/publish-event! :before :default
+             ::publish-event-spy)))))))
 
 (deftest document-event-derivation-test
   (testing "Document events are properly derived from base events"

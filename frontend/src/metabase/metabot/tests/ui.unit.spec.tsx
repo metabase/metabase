@@ -3,14 +3,15 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
-import { logout } from "metabase/auth/actions";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import { logout } from "metabase/redux/auth";
 import * as domModule from "metabase/utils/dom";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
+import { MetabotChat } from "../components/MetabotChat";
 
 import {
   assertNotVisible,
@@ -34,11 +35,14 @@ describe("metabot > ui", () => {
     await assertVisible();
   });
 
-  it("should warn that metabot can be inaccurate", async () => {
-    setup();
-    expect(
-      await screen.findByText("Metabot isn't perfect. Double-check results."),
-    ).toBeInTheDocument();
+  it("does not render header actions unless they are provided", async () => {
+    setup({
+      ui: <MetabotChat config={{ agentId: "ask", suggestionModels: [] }} />,
+    });
+
+    expect(await screen.findByTestId("metabot-chat-input")).toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-reset-chat")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-close-chat")).not.toBeInTheDocument();
   });
 
   it("should show a setup prompt and disable chat input when metabot is not configured", async () => {

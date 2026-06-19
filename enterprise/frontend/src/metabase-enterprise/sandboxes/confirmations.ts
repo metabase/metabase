@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
-import type { EntityId } from "metabase/admin/permissions/types";
 import { hasPermissionValueInGraph } from "metabase/admin/permissions/utils/graph";
+import type { PermissionEntityId } from "metabase-types/api";
 import { DataPermissionValue } from "metabase-types/api";
 import type { GroupsPermissions } from "metabase-types/api/permissions";
 
 export function getSandboxedTableWarningModal(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   value: DataPermissionValue,
 ) {
   // if the user is sandboxing the table while there is create-queries permissions set to

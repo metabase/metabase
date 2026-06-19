@@ -2,4 +2,4 @@
 
 (derive ::event :metabase/event)
 (derive :event/transform-failed ::event)
-(derive :event/transform-job-failed ::event)
+(derive :event/transform-failure-digest ::event)

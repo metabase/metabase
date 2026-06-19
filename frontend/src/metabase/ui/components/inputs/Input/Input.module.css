@@ -35,11 +35,11 @@
     border-color: var(--mb-color-border);
 
     &:hover:not(:disabled) {
-      border-color: var(--mb-color-brand);
+      border-color: var(--mb-color-core-brand);
     }
 
     &:focus {
-      border-color: var(--mb-color-brand);
+      border-color: var(--mb-color-core-brand);
     }
 
     &[data-error] {

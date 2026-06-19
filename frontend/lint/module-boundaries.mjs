@@ -25,7 +25,6 @@ const elements = [
     type: "lib",
     name: "types",
     pattern: "frontend/src/metabase-types/*/**",
-    enforceOutgoing: false,
   }),
   createElement({ type: "lib", name: "utils" }),
 
@@ -49,10 +48,11 @@ const elements = [
 
   // shared
   createElement({ type: "shared", name: "account" }),
+  createElement({ type: "shared", name: "actions" }),
   createElement({ type: "shared", name: "api" }),
   createElement({ type: "shared", name: "archive" }),
-  createElement({ type: "shared", name: "auth" }),
-  createElement({ type: "shared", name: "browse" }),
+  createElement({ type: "feature", name: "auth" }),
+  createElement({ type: "feature", name: "browse" }),
   createElement({ type: "shared", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
   createElement({ type: "shared", name: "common" }),
@@ -66,7 +66,23 @@ const elements = [
   createElement({ type: "shared", name: "databases" }),
   createElement({ type: "shared", name: "detail-view" }),
   createElement({ type: "shared", name: "documents" }),
+  createElement({
+    type: "shared",
+    name: "embed",
+    pattern: "frontend/src/embed/**",
+  }),
   createElement({ type: "shared", name: "embedding", enforceOutgoing: false }),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk",
+    enforceOutgoing: false,
+  }),
+  createElement({
+    type: "shared",
+    name: "embedding-sdk-bundle",
+    pattern: "frontend/src/embedding-sdk-bundle/**",
+    enforceOutgoing: false,
+  }),
   createElement({
     type: "shared",
     name: "embedding-ee",
@@ -74,14 +90,21 @@ const elements = [
   }),
   createElement({
     type: "shared",
-    name: "embedding-sdk-package",
-    pattern: "enterprise/frontend/src/embedding-sdk-package/**",
+    name: "embedding-sdk-ee",
+    pattern: "enterprise/frontend/src/embedding-sdk-ee/**",
+    enforceOutgoing: false,
   }),
   createElement({
     type: "shared",
-    name: "embedding-sdk-shared",
-    pattern: "frontend/src/embedding-sdk-shared/**",
+    name: "embedding-sdk-package",
+    pattern: "enterprise/frontend/src/embedding-sdk-package/**",
   }),
+  ...[
+    "frontend/src/embedding-sdk-shared/**",
+    "frontend/src/embedding-sdk-shared/.storybook/**",
+  ].map((pattern) =>
+    createElement({ type: "shared", name: "embedding-sdk-shared", pattern }),
+  ),
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
@@ -93,27 +116,29 @@ const elements = [
     name: "metabase-shared",
     pattern: "frontend/src/metabase-shared/**",
   }),
+  createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
-  createElement({ type: "shared", name: "metrics" }),
-  createElement({ type: "shared", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "models" }),
+  createElement({ type: "shared", name: "nav" }),
   createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
+  createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "pulse" }),
-  createElement({ type: "shared", name: "querying", enforceOutgoing: false }),
+  createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "questions" }),
+  createElement({ type: "shared", name: "redux" }),
+  createElement({ type: "shared", name: "rich_text_editing" }),
   createElement({ type: "shared", name: "router" }),
   createElement({
     type: "shared",
     name: "schema",
     pattern: "frontend/src/metabase/schema.js",
     mode: "full",
-    enforceOutgoing: false,
   }),
-  createElement({ type: "shared", name: "search" }),
-  createElement({ type: "shared", name: "setup" }),
+  createElement({ type: "shared", name: "selectors" }),
+  createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
   createElement({ type: "shared", name: "timelines" }),
@@ -136,9 +161,12 @@ const elements = [
     pattern: "enterprise/frontend/src/metabase-enterprise/**",
     mode: "full",
   }),
+  createElement({ type: "feature", name: "metrics" }),
+  createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
   createElement({ type: "feature", name: "query_builder" }),
   createElement({ type: "feature", name: "reference" }),
+  createElement({ type: "feature", name: "search" }),
 
   // app
   ...[
@@ -146,14 +174,20 @@ const elements = [
     "frontend/src/metabase/app-embed-sdk.tsx",
     "frontend/src/metabase/app-main.js",
     "frontend/src/metabase/app-embed.ts",
+    "frontend/src/metabase/app-embed-mcp.tsx",
     "frontend/src/metabase/app-public.ts",
-    "frontend/src/metabase/App.tsx",
+    "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
+    "frontend/src/metabase/app/selectors.ts",
+    "frontend/src/metabase/app/selectors.unit.spec.ts",
     "frontend/src/metabase/reducers-main.ts",
-    "frontend/src/metabase/routes.jsx",
+    "frontend/src/metabase/reducers-common.ts",
+    "frontend/src/metabase/reducers-public.ts",
+    "frontend/src/metabase/routes.tsx",
     "frontend/src/metabase/routes-embed.tsx",
     "frontend/src/metabase/route-guards.tsx",
+    "frontend/src/metabase/route-guards.unit.spec.tsx",
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
@@ -172,18 +206,40 @@ const elements = [
     type: "app",
     name: "nav",
     pattern: "frontend/src/metabase/app/nav/**",
-    enforceOutgoing: true,
   }),
   // static-viz must come after the app entries rather than in the
   // alphabetical shared list: its entry point (static-viz/index.tsx) is app
   // tier, and the first matching element wins.
   createElement({ type: "shared", name: "static-viz" }),
-  // catch-all for unmoduled files - must be last
+
+  // Loose files living directly under frontend/src/metabase that have not yet
+  // been pulled into a module folder.
+  ...["frontend/src/metabase/dev.ts", "frontend/src/metabase/dev-noop.ts"].map(
+    (pattern) =>
+      createElement({
+        type: "shared",
+        name: "cljs-dev-tools",
+        pattern,
+        mode: "full",
+      }),
+  ),
   createElement({
     type: "shared",
-    name: "other",
-    pattern: "frontend/src/*/**",
-    enforceOutgoing: false,
+    name: "error-boundary",
+    pattern: "frontend/src/metabase/ErrorBoundary.tsx",
+    mode: "full",
+  }),
+  createElement({
+    type: "shared",
+    name: "routes-stable-id-aware",
+    pattern: "frontend/src/metabase/routes-stable-id-aware.tsx",
+    mode: "full",
+  }),
+  createElement({
+    type: "shared",
+    name: "redux-store",
+    pattern: "frontend/src/metabase/store.js",
+    mode: "full",
   }),
 ];
 

@@ -21,7 +21,7 @@ export const BrowseDataHeader = () => {
         >
           <Title order={2} c="text-primary">
             <Group gap="sm">
-              <Icon size={24} c="brand" name="database" />
+              <Icon size={24} c="core-brand" name="database" />
               {t`Databases`}
             </Group>
           </Title>

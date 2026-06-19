@@ -2,10 +2,10 @@
   transition: color 0.3s linear;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 
   &.isSelected {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }

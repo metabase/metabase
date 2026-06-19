@@ -10,6 +10,7 @@
    [metabase.transforms.models.transform-run-cancelation]
    [metabase.transforms.models.transform-tag]
    [metabase.transforms.models.transform-transform-tag]
+   [metabase.transforms.notification]
    [metabase.transforms.query-impl]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]

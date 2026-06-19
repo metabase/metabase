@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-rows-truncated-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -43,6 +44,18 @@
                              :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]
              :constraints  {:max-results           10
                             :max-results-bare-rows 5}}
+            [[1] [1] [1] [1] [1]])))))
+
+(deftest ^:parallel add-rows-truncated-aggregation-then-empty-stage-test
+  (testing "aggregation in an earlier stage + empty final stage uses `:max-results`, not `:max-results-bare-rows` (#48439)"
+    (is (= {:status    :completed
+            :row_count 5
+            :data      {:rows [[1] [1] [1] [1] [1]]}}
+           (add-rows-truncated
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                (lib/aggregate (lib/count))
+                lib/append-stage
+                (assoc :constraints {:max-results 10, :max-results-bare-rows 5}))
             [[1] [1] [1] [1] [1]])))))
 
 (deftest ^:parallel e2e-test

@@ -45,7 +45,7 @@
     // type-checking; the surrounding story/helper handles the typing.
     "frontend/test/__support__/custom-viz-fixtures/**/*.js",
     // The following files will load `frontend/src/metabase/app` which will conflict with
-    // `frontend/src/metabase/App.tsx`, since now we're loading both JS and TS files.
+    // `frontend/src/metabase/AppComponent.tsx`, since now we're loading both JS and TS files.
     "frontend/src/metabase/app-main.js",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/app-embed.ts"

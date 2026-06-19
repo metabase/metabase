@@ -62,6 +62,15 @@ const SV_SETUP_SQL = `
   );
 `;
 
+const SV_REQUIRED_TABLES = [
+  "users",
+  "profiles",
+  "categories",
+  "products",
+  "lookup",
+  "other",
+];
+
 const tableNode = (tableId: TableId) => cy.get(`[data-id="table-${tableId}"]`);
 const schemaPickerTrigger = () => cy.findByTestId("schema-picker-button");
 const searchInput = () => cy.findByTestId("schema-viewer-node-search-input");
@@ -328,7 +337,11 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     H.activateToken("bleeding-edge");
     cy.intercept("GET", "/api/ee/erd*").as(ERD_ALIAS);
     H.queryWritableDB(SV_SETUP_SQL, "postgres");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    H.resyncDatabase({
+      dbId: WRITABLE_DB_ID,
+      tables: SV_REQUIRED_TABLES,
+      retrigger: true,
+    });
   });
 
   after(() => {
@@ -505,9 +518,10 @@ describe("scenarios > schema-viewer (entry points + loader/error states)", () =>
     cy.findAllByTestId("tree-item").contains("Orders").click();
 
     cy.log(
-      "Click the 'Schema viewer' button in the Orders table section — opens with Orders as focal",
+      "Click the 'View schema' action in the Orders table section — opens with Orders as focal",
     );
-    cy.findByTestId("table-section").findByLabelText("Schema viewer").click();
+    H.DataModel.TableSection.getActionsMenuButton().click();
+    H.menu().findByText("View schema").click();
     cy.wait("@erd");
     cy.url()
       .should("include", "/data-studio/schema-viewer")

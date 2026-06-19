@@ -14,7 +14,7 @@ import { Flex, Icon } from "metabase/ui";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import { getDimensionsByType } from "../../utils/tabs";
+import { getDimensionsByType } from "../../utils/dimension-breakouts";
 
 import S from "./BreakoutDimensionPicker.module.css";
 import { DimensionBinningPicker } from "./DimensionBinningPicker";

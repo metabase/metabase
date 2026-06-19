@@ -78,6 +78,35 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.setupSMTP();
     });
 
+    it("renders an object detail as a label/value table in a subscription email", () => {
+      const questionDetails = {
+        name: "Object detail static-viz smoke",
+        native: {
+          query: "SELECT 'Hammer' AS product, 19 AS price, NULL AS discount",
+        },
+        display: "object",
+      };
+
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
+        ({ dashboardId }) => {
+          H.visitDashboard(dashboardId);
+        },
+      );
+
+      H.openAndAddEmailsToSubscriptions([
+        `${admin.first_name} ${admin.last_name}`,
+      ]);
+
+      H.sendEmailAndAssert(({ html }) => {
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        expect(html).to.include("Hammer");
+        // "Empty" (the null column) is unique to the :object renderer — a table fallback leaves it blank.
+        expect(html).to.include("Empty");
+      });
+    });
+
     describe("with no existing subscriptions", () => {
       it("should not enable subscriptions without the recipient (metabase#17657)", () => {
         openDashboardSubscriptions();
@@ -496,6 +525,40 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.sendEmailAndAssert((email) => {
         expect(email.html).to.include(dashboardDetails.name);
         expect(email.html).to.include(questionDetails.name);
+      });
+    });
+
+    it("renders a region (choropleth) map as an image in a subscription email", () => {
+      const questionDetails = {
+        name: "Region map static-viz smoke",
+        native: {
+          query:
+            "SELECT 'CA' AS state, 99999 AS metric " +
+            "UNION ALL SELECT 'NY' AS state, 11111 AS metric",
+        },
+        display: "map",
+        visualization_settings: {
+          "map.type": "region",
+          "map.region": "us_states",
+          "map.dimension": "STATE",
+          "map.metric": "METRIC",
+        },
+      };
+
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
+        ({ dashboardId }) => {
+          assignRecipient({ dashboard_id: dashboardId });
+        },
+      );
+
+      H.sendEmailAndAssert(({ html }) => {
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        // The map rasterizes to a PNG <img>; a table fallback would instead leak these values as text.
+        expect(html).to.include("<img");
+        expect(html).not.to.include("99999");
+        expect(html).not.to.include("11111");
       });
     });
   });

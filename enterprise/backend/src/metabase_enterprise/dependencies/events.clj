@@ -1,12 +1,13 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.findings :as deps.findings]
+   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.events.core :as events]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -215,7 +216,7 @@
 (methodical/defmethod events/publish-event! ::check-card-dependents
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (deps.findings/mark-entity-stale! :card (:id object))
+    (deps.findings/mark-entity-and-transitive-dependents-stale! :card (:id object))
     (task.entity-check/trigger-entity-check-job!)))
 
 (derive ::check-card-dependents-on-delete :metabase/event)
@@ -224,7 +225,7 @@
 (methodical/defmethod events/publish-event! ::check-card-dependents-on-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (when (deps.findings/mark-immediate-dependents-stale! :card (:id object))
+    (when (deps.findings/mark-transitive-dependents-stale! {:card [(:id object)]})
       (task.entity-check/trigger-entity-check-job!))))
 
 (derive ::check-transform :metabase/event)
@@ -234,7 +235,7 @@
 (methodical/defmethod events/publish-event! ::check-transform
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (deps.findings/mark-entity-stale! :transform (:id object))
+    (deps.findings/mark-entity-and-transitive-dependents-stale! :transform (:id object))
     (task.entity-check/trigger-entity-check-job!)))
 
 (derive ::check-transform-on-delete :metabase/event)
@@ -243,7 +244,7 @@
 (methodical/defmethod events/publish-event! ::check-transform-on-delete
   [_ {:keys [id]}]
   (when (premium-features/has-feature? :dependencies)
-    (when (deps.findings/mark-immediate-dependents-stale! :transform id)
+    (when (deps.findings/mark-transitive-dependents-stale! {:transform [id]})
       (task.entity-check/trigger-entity-check-job!))))
 
 (derive ::check-segment-dependents :metabase/event)
@@ -253,7 +254,7 @@
 (methodical/defmethod events/publish-event! ::check-segment-dependents
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (deps.findings/mark-entity-stale! :segment (:id object))
+    (deps.findings/mark-entity-and-transitive-dependents-stale! :segment (:id object))
     (task.entity-check/trigger-entity-check-job!)))
 
 (derive ::check-segment-dependents-on-delete :metabase/event)
@@ -262,7 +263,7 @@
 (methodical/defmethod events/publish-event! ::check-segment-dependents-on-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (when (deps.findings/mark-immediate-dependents-stale! :segment (:id object))
+    (when (deps.findings/mark-transitive-dependents-stale! {:segment [(:id object)]})
       (task.entity-check/trigger-entity-check-job!))))
 
 (derive ::check-transform-dependents :metabase/event)
@@ -271,7 +272,7 @@
 (methodical/defmethod events/publish-event! ::check-transform-dependents
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (when (deps.findings/mark-immediate-dependents-stale! :transform (:transform-id object))
+    (when (deps.findings/mark-transitive-dependents-stale! {:transform [(:transform-id object)]})
       (task.entity-check/trigger-entity-check-job!))))
 
 (defn- synced-db->direct-dependents-of-changed-tables
@@ -317,7 +318,7 @@
   (when (premium-features/has-feature? :dependencies)
     (let [changes (synced-db->direct-dependents-of-changed-tables db-id)]
       (when (and (seq changes)
-                 (deps.findings/mark-all-immediate-dependents-stale! {:table changes}))
+                 (deps.findings/mark-transitive-dependents-stale! {:table changes}))
         (task.entity-check/trigger-entity-check-job!)))))
 
 ;; ### Admin UI Table/Field Metadata Updates
@@ -328,7 +329,7 @@
 (methodical/defmethod events/publish-event! ::check-table-metadata-update
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (when (deps.findings/mark-immediate-dependents-stale! :table (:id object))
+    (when (deps.findings/mark-transitive-dependents-stale! {:table [(:id object)]})
       (task.entity-check/trigger-entity-check-job!))))
 
 (derive ::check-field-metadata-update :metabase/event)
@@ -337,5 +338,19 @@
 (methodical/defmethod events/publish-event! ::check-field-metadata-update
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (when (deps.findings/mark-immediate-dependents-stale! :table (:table_id object))
+    (when (deps.findings/mark-transitive-dependents-stale! {:table [(:table_id object)]})
       (task.entity-check/trigger-entity-check-job!))))
+
+;; ### Database Deletion (orphans transforms)
+;; Transforms whose `source_database_id` matches the database being deleted survive the delete
+;; but their existing `analysis_finding` rows still say "OK". Mark them stale here so the entity-check
+;; job re-runs and surfaces them on `/data-studio/dependency-diagnostics/broken`.
+(defenterprise mark-transforms-stale-on-database-delete!
+  "Enterprise implementation: mark all transforms whose source database is being deleted as stale
+   for dependency re-analysis. See the OSS declaration in `metabase.warehouses.models.database`."
+  :feature :dependencies
+  [db-id]
+  (when-let [transform-ids (not-empty (t2/select-pks-set :model/Transform :source_database_id db-id))]
+    (deps.analysis-finding/mark-stale! :transform transform-ids)
+    (deps.findings/mark-transitive-dependents-stale! {:transform transform-ids})
+    (task.entity-check/trigger-entity-check-job!)))

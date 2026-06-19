@@ -1,6 +1,4 @@
-import type { GroupId } from "metabase-types/api";
-
-import type { EntityId } from "../types";
+import type { GroupId, PermissionEntityId } from "metabase-types/api";
 
 import {
   isDatabaseEntityId,
@@ -11,7 +9,9 @@ import {
 export const DATABASES_BASE_PATH = `/admin/permissions/data/database`;
 export const GROUPS_BASE_PATH = `/admin/permissions/data/group`;
 
-export const getDatabaseFocusPermissionsUrl = (entityId?: EntityId) => {
+export const getDatabaseFocusPermissionsUrl = (
+  entityId?: PermissionEntityId,
+) => {
   if (entityId == null) {
     return DATABASES_BASE_PATH;
   }
@@ -41,7 +41,7 @@ export const getDatabaseFocusPermissionsUrl = (entityId?: EntityId) => {
 
 export const getGroupFocusPermissionsUrl = (
   groupId?: GroupId,
-  entityId?: EntityId,
+  entityId?: PermissionEntityId,
 ) => {
   if (groupId == null) {
     return GROUPS_BASE_PATH;

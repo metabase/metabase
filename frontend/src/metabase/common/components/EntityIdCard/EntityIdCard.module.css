@@ -4,7 +4,7 @@
   color: var(--mb-color-text-tertiary);
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
@@ -13,7 +13,7 @@
 
   &:hover {
     background-color: var(--mb-color-background-hover);
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 
   border-radius: 100%;

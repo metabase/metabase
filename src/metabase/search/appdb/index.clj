@@ -109,6 +109,15 @@
             (log/infof "New pending index %s" pending)
             pending)))))
 
+(defn- analyze-table!
+  "Refresh the table's statistics so size estimates are accurate as soon as it becomes active.
+  Best-effort: a failure here must never block activation."
+  [table-name]
+  (try
+    (specialization/analyze-table! table-name)
+    (catch Exception e
+      (log/warnf e "Failed to analyze index table %s" table-name))))
+
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if a rotation occurred."
   []
@@ -116,6 +125,7 @@
     (let [{:keys [pending]} (index-state/force-refresh! *state-store*)]
       (log/infof "Activating pending index %s" pending)
       (when pending
+        (analyze-table! pending)
         (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
           (index-state/set-state! *state-store* {:pending nil :active active})
           (log/infof "Activated pending index %s" active)))

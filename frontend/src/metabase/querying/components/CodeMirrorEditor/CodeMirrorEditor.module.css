@@ -56,7 +56,7 @@
 }
 
 .tag {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 
   & * {
     color: inherit;

@@ -262,6 +262,13 @@ async function openActionMenu(action: WritebackAction) {
   await userEvent.click(menuButton);
 }
 
+async function openHeaderActionsMenu() {
+  const header = screen.getByTestId("model-actions-header");
+  await userEvent.click(
+    within(header).getByRole("button", { name: "Actions" }),
+  );
+}
+
 describe("ModelActions", () => {
   describe.each([
     { type: "structured", getModel: createStructuredModelCard },
@@ -461,7 +468,7 @@ describe("ModelActions", () => {
         const actions = createMockImplicitCUDActions(model.id);
         await setupActions({ model, actions });
 
-        await userEvent.click(screen.getByLabelText("Actions menu"));
+        await openHeaderActionsMenu();
         await userEvent.click(await screen.findByText("Disable basic actions"));
         await userEvent.click(screen.getByRole("button", { name: "Disable" }));
 
@@ -577,7 +584,7 @@ describe("ModelActions", () => {
       await setupActions({ model: modelCard, actions: [action] });
       fetchMock.modifyRoute("action-post", { response: {} });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
       await userEvent.click(await screen.findByText("Create basic actions"));
 
       await waitFor(() => {
@@ -659,7 +666,7 @@ describe("ModelActions", () => {
         actions: createMockImplicitCUDActions(modelCard.id),
       });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
 
       expect(
         screen.queryByText(/Create basic action/i),
@@ -669,7 +676,7 @@ describe("ModelActions", () => {
     it("doesn't allow to disable implicit actions if they don't exist", async () => {
       await setupActions({ model: modelCard, actions: [] });
 
-      await userEvent.click(screen.getByLabelText("Actions menu"));
+      await openHeaderActionsMenu();
 
       expect(
         screen.queryByText("Disable basic actions"),

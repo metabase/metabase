@@ -119,12 +119,7 @@
                         (u/prog1 (->> entries (map :model) frequencies)
                           (when commit?
                             (t2/query ["commit"]))
-                          (log/trace "indexed documents for " <>)
-                          (when active-updated
-                            (try
-                              (analytics/set-gauge! :metabase-search/appdb-index-size (t2/count (name active-updated)))
-                              (catch Exception e
-                                (log/warnf e "Unable to measure active search index size (%s)" active-updated))))))))]
+                          (log/trace "indexed documents for " <>)))))]
     (if commit?
       ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
       (t2/with-connection [_conn (mdb/data-source)]
@@ -146,20 +141,11 @@
 
 (defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
   (when (seq ids)
-    (u/prog1 (->> [(index/active-table) (index/pending-table)]
-                  (keep (fn [table-name]
-                          (when table-name
-                            {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
-                                               ;; Race conditions with table being deleted, especially in tests.
-                                               (catch Exception e (if (table/table-not-found-exception? e) 0 (throw e))))})))
-                  (apply merge-with +)
-                  (into {}))
-      (when (index/active-table)
-        (try
-          (analytics/set-gauge! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
-                                                                                         :from   [(index/active-table)]
-                                                                                         :limit  1})))
-          (catch Exception e
-            ;; No point tracking the size of the newer index table, since we won't have modified it.
-            (when-not (table/table-not-found-exception? e)
-              (throw e))))))))
+    (->> [(index/active-table) (index/pending-table)]
+         (keep (fn [table-name]
+                 (when table-name
+                   {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
+                                      ;; Race conditions with table being deleted, especially in tests.
+                                      (catch Exception e (if (table/table-not-found-exception? e) 0 (throw e))))})))
+         (apply merge-with +)
+         (into {}))))

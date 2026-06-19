@@ -61,6 +61,7 @@
   :metabase/check-def-check-not-uppercase-name               {:level :warning}
   :metabase/check-def-no-underscores                         {:level :warning}
   :metabase/check-me-humanize                                {:level :warning}
+  :metabase/check-testing-not-empty                          {:level :warning}
   :metabase/defsetting-must-specify-export                   {:level :warning}
   :metabase/defsetting-namespace                             {:level :warning}
   :metabase/discourage-millis-duration                       {:level :warning}
@@ -538,6 +539,7 @@
  {:analyze-call
   {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
+   cljs.test/testing                                                                                                         hooks.clojure.test/testing
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
    clojure.core/def                                                                                                          hooks.clojure.core.def/lint-def
    clojure.core/definterface                                                                                                 hooks.clojure.core.def/lint-def
@@ -556,6 +558,7 @@
    clojure.core/-                                                                                                            hooks.metabase.util.timing/discourage-millis-duration
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
+   clojure.test/testing                                                                                                      hooks.clojure.test/testing
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
    malli.error/humanize                                                                                                      hooks.malli.error/humanize
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
