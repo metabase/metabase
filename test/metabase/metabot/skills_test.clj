@@ -113,7 +113,16 @@
     (binding [scope/*current-loadable-skill-ids* (atom #{})]
       (skills/build-skill-manifest {:name :internal} ["construct_notebook_query"] [])
       (is (contains? @scope/*current-loadable-skill-ids* :construct-notebook-query-core))
-      (is (not (contains? @scope/*current-loadable-skill-ids* :read-resource))))))
+      (is (not (contains? @scope/*current-loadable-skill-ids* :read-resource)))))
+  (testing "always-on skills are NOT loadable — their bodies are already inlined, so load_skill
+           must not re-fetch them (a wasted iteration)"
+    (binding [scope/*current-loadable-skill-ids* (atom #{})]
+      ;; read_resource active -> read-resource skill is visible, but it is always-on
+      (skills/build-skill-manifest {:name :internal} ["construct_notebook_query" "read_resource"] [])
+      (is (not (contains? @scope/*current-loadable-skill-ids* :read-resource))
+          "an always-on skill must be excluded from the loadable set")
+      (is (not (skills/skill-loadable? (skills/get-skill :read-resource)))
+          "skill-loadable? rejects an always-on skill once a manifest is tracked"))))
 
 (deftest ^:parallel dialect-preload-parts-test
   (testing "resolves a synthetic load_skill pair when the dialect is known"
