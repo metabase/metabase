@@ -160,32 +160,35 @@ describe("command palette", () => {
       .should("not.exist");
     H.commandPalette().findByText("No results for “New”").should("be.visible");
 
-    const firstOption = () =>
-      H.commandPalette().findAllByRole("option").first();
+    // The "Actions" section title is always the first row,
+    // so the first action is actually second `role=option`, and the
+    // documentation entry is always the last option.
+    const firstAction = () => H.commandPalette().findAllByRole("option").eq(1);
     const docsOption = () =>
       H.commandPalette().findByRole("option", {
         name: 'Search documentation for "New"',
       });
 
     cy.log("the first action is selected by default");
-    firstOption().should("have.attr", "aria-selected", "true");
+    firstAction().should("have.attr", "aria-selected", "true");
 
-    cy.log("End selects the last item, Home selects the first");
+    cy.log("End selects the last item");
     H.pressEnd();
     docsOption().should("have.attr", "aria-selected", "true");
 
+    cy.log("Home selects the first action again");
     H.pressHome();
-    firstOption().should("have.attr", "aria-selected", "true");
+    firstAction().should("have.attr", "aria-selected", "true");
 
     cy.log(
       "PageDown moves the selection down, PageUp brings it back to the top",
     );
     cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
-    firstOption().should("not.have.attr", "aria-selected", "true");
+    firstAction().should("not.have.attr", "aria-selected", "true");
 
     H.pressPageUp();
-    firstOption().should("have.attr", "aria-selected", "true");
+    firstAction().should("have.attr", "aria-selected", "true");
   });
 
   it("should display search results in the order returned by the API", () => {
