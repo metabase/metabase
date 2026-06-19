@@ -281,12 +281,10 @@
         no-values
 
         ;; Field-backed source (no `values_source_type`): `card-param-values` would route to
-        ;; `search-values-from-field-id`, which lies to an agent two ways — it reports
-        ;; `has_more_values false` even when the fetch fills its 1000-row cap (a truncated list read as
-        ;; complete), and it swallows a fetch error into `[]` (a warehouse/sandbox failure read as "no
-        ;; values"). The strict variant reports a truthful floor at the cap and lets the error surface as
-        ;; an isError, matching the dashboard path. Static-list and card sources already report
-        ;; `has_more_values` truthfully, so they keep the normal path.
+        ;; `search-values-from-field-id`, which keeps `has_more_values true` for every nonblank search
+        ;; and swallows fetch errors into `[]`. The strict variant measures search completeness and lets
+        ;; errors surface as an isError, matching the dashboard path. Static-list and card sources already
+        ;; report `has_more_values` truthfully, so they keep the normal path.
         (nil? (:values_source_type param))
         (let [field-id (params/param-target->field-id (:target param) card)]
           (if (range-shaped-date-param? param)
