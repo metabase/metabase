@@ -172,6 +172,8 @@ describe("command palette", () => {
     cy.log("the first action is selected by default");
     firstAction().should("have.attr", "aria-selected", "true");
 
+    cy.wait(100); // pressing a navigation key too fast does nothing
+
     cy.log("End selects the last item");
     H.pressEnd();
     docsOption().should("have.attr", "aria-selected", "true");
@@ -183,7 +185,6 @@ describe("command palette", () => {
     cy.log(
       "PageDown moves the selection down, PageUp brings it back to the top",
     );
-    cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
     firstAction().should("not.have.attr", "aria-selected", "true");
 
