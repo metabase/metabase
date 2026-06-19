@@ -230,6 +230,20 @@
             (is (pos? (t2/count :model/Card :database_id (:id db))))
             (is (t2/exists? :model/Dashboard :collection_id (:id examples)))))))))
 
+(deftest replace-sample-database-skips-content-when-sync-fails-test
+  (testing "When the replacement sync fails, example content is NOT recreated - recreating against an unsynced DB
+           remaps every card onto empty id maps, which is silent corruption worse than a missing example collection"
+    (mt/with-model-cleanup [:model/Database]
+      (mt/with-temp [:model/Database old-sample {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}]
+        (let [recreate-called? (atom false)]
+          (with-redefs [example-content/recreate-example-content! (fn [_] (reset! recreate-called? true))]
+            (mt/with-dynamic-fn-redefs [sync/sync-database! (fn [_] (throw (ex-info "sync boom" {})))]
+              (#'sample-data/update-sample-database-if-needed! old-sample)))
+          (testing "recreate is skipped"
+            (is (false? @recreate-called?)))
+          (testing "the engine swap itself still completed - a new SQLite sample DB exists"
+            (is (t2/exists? :model/Database :is_sample true :engine :sqlite))))))))
+
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
     (mt/with-temp-empty-app-db [_conn :h2]

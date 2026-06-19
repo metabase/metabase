@@ -159,11 +159,13 @@
                                                           :engine engine
                                                           :is_sample true))))]
     (when new-db
-      (try
-        (sync/sync-database! new-db)
-        (catch Throwable e
-          (log/error e "Failed to sync the replacement sample database")))
-      (when-not (config/config-bool :mb-enable-test-endpoints)
+      (when (and (try
+                   (sync/sync-database! new-db)
+                   true
+                   (catch Throwable e
+                     (log/error e "Failed to sync the replacement sample database")
+                     false))
+                 (not (config/config-bool :mb-enable-test-endpoints)))
         (example-content/recreate-example-content! (:id new-db))))))
 
 (defn update-sample-database-if-needed!
