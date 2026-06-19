@@ -1105,8 +1105,6 @@ async function findTablePickerItem(
         throw new Error(`Cannot find ${type} in table picker`); // trigger retry
       }
     },
-    // This virtualized, data-fetching picker can take longer than the default
-    // 1s to populate under parallel CI load, so give the retry loop more room.
     { timeout: 5000 },
   );
 

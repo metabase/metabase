@@ -192,7 +192,7 @@
   "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their owning process is
   presumed dead). Returns the rows that were timed out."
   [stale-minutes]
-  (reap-transform-runs! :last_heartbeat stale-minutes :minute "Timed out: no heartbeat"))
+  (reap-transform-runs! :last_heartbeat stale-minutes :minute "Timed out: crashed"))
 
 (defn cancel-old-canceling-runs!
   "Atomically force-cancels active runs whose cancelation requests are older than `age` `unit`. Returns the
