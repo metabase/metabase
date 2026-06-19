@@ -147,7 +147,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
           .map((col) => ({ name: col.display_name, value: col.name })),
         columns: data.cols,
         onRemove: vizSettings["treemap.sub_grouping"]
-          ? () => onChange(null as never)
+          ? () => onChange(null)
           : null,
       };
     },
