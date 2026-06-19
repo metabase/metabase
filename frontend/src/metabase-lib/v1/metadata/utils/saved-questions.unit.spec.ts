@@ -94,14 +94,12 @@ describe("saved question helpers", () => {
       expect(isVirtualCardId(4)).toBe(false);
     });
 
-    it("should return false for garbage", () => {
+    it("should return false for non-virtual ids", () => {
       expect(isVirtualCardId()).toBe(false);
-      expect(isVirtualCardId(null)).toBe(false);
       expect(isVirtualCardId(null)).toBe(false);
       expect(isVirtualCardId(0)).toBe(false);
       expect(isVirtualCardId(-1)).toBe(false);
       expect(isVirtualCardId("1")).toBe(false);
-      expect(isVirtualCardId({ foo: "bar" })).toBe(false);
     });
   });
 
@@ -117,13 +115,7 @@ describe("saved question helpers", () => {
       });
     });
 
-    [
-      { id: undefined },
-      { id: null },
-      { id: 123 },
-      { id: true },
-      { id: { foo: "bar" } },
-    ].forEach((testCase) => {
+    [{ id: undefined }, { id: null }, { id: 123 }].forEach((testCase) => {
       const { id } = testCase;
 
       it(`should handle non string input (${id})`, () => {

@@ -1,8 +1,11 @@
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   Card,
+  CardId,
   Collection,
   ModerationReviewStatus,
+  TableId,
+  VirtualCardId,
 } from "metabase-types/api";
 
 export const SAVED_QUESTIONS_VIRTUAL_DB_ID = -1337;
@@ -41,13 +44,15 @@ export function getQuestionVirtualTableId(id: string | number): string {
   return `card__${id}`;
 }
 
-export function isVirtualCardId(tableId?: unknown): boolean {
+export function isVirtualCardId(
+  tableId?: TableId | null,
+): tableId is VirtualCardId {
   return typeof tableId === "string" && tableId.startsWith("card__");
 }
 
 export function getQuestionIdFromVirtualTableId(
-  tableId: unknown,
-): number | null {
+  tableId?: TableId | null,
+): CardId | null {
   if (typeof tableId !== "string") {
     return null;
   }
