@@ -1,19 +1,28 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
-import { getSdkAuthMethod, getSdkLocaleUsed, trackSdkEvent } from "./snowplow";
+import { type SdkAuthMethod, trackSdkSimpleEvent } from "./snowplow";
 
 export function useIsTrackingEnabled(): boolean {
   // Default false so we don't fire events during the settings-load window for users who opted out.
   return useSetting("anon-tracking-enabled") ?? false;
 }
 
-export const EMBEDDING_SDK_SCHEMA =
-  "iglu:com.metabase/embedding_sdk/jsonschema/1-0-0";
+// Module-level state set synchronously during ComponentProvider render so child
+// component effects can read the correct values on the first commit.
+let sdkAuthMethod: SdkAuthMethod | undefined;
+let sdkLocaleUsed = false;
+
+export function setSdkTrackingContext(
+  authMethod: SdkAuthMethod,
+  localeUsed: boolean,
+) {
+  sdkAuthMethod = authMethod;
+  sdkLocaleUsed = localeUsed;
+}
 
 // CreateQuestion is intentionally excluded — it renders InteractiveQuestion with
 // questionId="new", which already fires an InteractiveQuestion event (id_new: true).
@@ -117,41 +126,37 @@ const SDK_COMPONENT_DEFAULT_PROPERTIES: {
 // React 18 StrictMode double-mounts within a single JS load.
 const firedKeys = new Set<string>();
 
-// Fire a per-mount component-usage event through the SDK tracker.
+// Counter for assigning unique keys to component instances. Incremented once
+// per useRef initialization (i.e. once per component mount), so two instances
+// of the same component type get distinct keys even with the same entityId.
+let nextInstanceId = 0;
+
+// Fire a per-mount component-usage event via trackSimpleEvent.
 //
-// Dedup: one event per (componentName, entityId) per JS load. For presence
-// components (entityId = null), one event per (componentName, 'presence') per load.
-// For new questions the entityId encodes the variant ('new' or 'new-native').
+// Dedup: one event per component instance per JS load. The dedup key is
+// instance-scoped so that two mounted instances of the same component type
+// each fire their own event. React 18 StrictMode double-mounts are also
+// deduplicated because useRef returns the same value across re-renders.
 //
 // This hook must be called inside a component that is a descendant of
-// MetabaseReduxProvider (i.e. inside a ComponentProvider subtree).
-//
-// Timing: events wait for both anon-tracking-enabled (opt-out gate) and
-// sdkTrackerReady (set by ComponentProvider after initSdkTracker completes).
-// Without the sdkTrackerReady gate, firing early would either silently drop the
-// event (Snowplow discards calls before newTracker runs) or record auth_method
-// as undefined because initSdkTracker hasn't written it yet.
+// ComponentProvider (i.e. inside a ComponentProvider subtree).
 export function useTrackSdkComponentMount<C extends SdkComponentName>(
   componentName: C,
-  entityId: number | string | null,
+  _entityId: number | string | null,
   properties: Partial<SdkComponentProperties[C]>,
 ): void {
   const isTrackingEnabled = useIsTrackingEnabled();
-  const isTrackerReady = useSdkSelector((state) => state.sdk.sdkTrackerReady);
+  const instanceKey = useRef(`${componentName}:instance:${nextInstanceId++}`);
 
   useEffect(() => {
     if (!isEmbeddingSdk() || isEmbeddingEajs()) {
       return;
     }
-    if (!isTrackingEnabled || !isTrackerReady) {
+    if (!isTrackingEnabled) {
       return;
     }
 
-    const dedupKey =
-      entityId !== null
-        ? `${componentName}:${String(entityId)}`
-        : `${componentName}:presence`;
-
+    const dedupKey = instanceKey.current;
     if (firedKeys.has(dedupKey)) {
       return;
     }
@@ -175,22 +180,16 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
       ).map(([key, value]) => [key, value == null ? null : String(value)]),
     );
 
-    trackSdkEvent({
-      schema: EMBEDDING_SDK_SCHEMA,
-      data: {
-        component: componentName,
-        properties: serializedProperties,
-        global: {
-          auth_method: getSdkAuthMethod(),
-          sdk_version: sdkVersion,
-          locale_used: getSdkLocaleUsed(),
-        },
-      },
+    trackSdkSimpleEvent({
+      event: "embedding_sdk_component_rendered",
+      triggered_from: componentName,
+      event_detail: JSON.stringify({
+        sdk_version: sdkVersion,
+        auth_method: sdkAuthMethod,
+        locale_used: sdkLocaleUsed,
+        ...serializedProperties,
+      }),
     });
-    // deps are intentionally limited to the two gate flags — fires once when both
-    // become true, capturing entityId and properties as a snapshot at that moment.
-    // adding entityId/properties would re-fire on value changes and could produce
-    // two events if entityId transitions from null to a real id after ready.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTrackingEnabled, isTrackerReady]);
+  }, [isTrackingEnabled]);
 }

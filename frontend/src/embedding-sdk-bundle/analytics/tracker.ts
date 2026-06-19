@@ -1,21 +1,18 @@
 import { useEffect } from "react";
 
-import {
-  EMBEDDING_SDK_SCHEMA,
-  useIsTrackingEnabled,
-} from "embedding-sdk-bundle/analytics/component-events";
-import type { SdkAuthMethod } from "embedding-sdk-bundle/analytics/snowplow";
-import {
-  getSdkAuthMethod,
-  getSdkLocaleUsed,
-  initSdkTracker,
-  trackSdkEvent,
-} from "embedding-sdk-bundle/analytics/snowplow";
-import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
-import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
-import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
+import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
+
+import {
+  setSdkTrackingContext,
+  useIsTrackingEnabled,
+} from "./component-events";
+import {
+  type SdkAuthMethod,
+  initSdkTracker,
+  trackSdkSimpleEvent,
+} from "./snowplow";
 
 export function deriveAuthMethod(
   authConfig: MetabaseAuthConfig,
@@ -29,52 +26,50 @@ export function deriveAuthMethod(
   return "sso";
 }
 
-// Initialize the SDK Snowplow tracker and fire the provider-init adoption beacon.
-// Waits for anon-tracking-enabled to be loaded from the instance settings so the
+// Module-level flag so the beacon fires once per JS load regardless of how many
+// ComponentProvider instances mount.
+let beaconFired = false;
+
+// Reset module state for testing. Not called in production.
+export function __resetBeaconForTesting() {
+  beaconFired = false;
+}
+
+// Initialize SDK analytics context and fire the provider-init adoption beacon.
+// Waits for anon-tracking-enabled to be loaded from instance settings so the
 // opt-out gate is respected. Fires once per JS load; idempotent under re-renders.
+//
+// setSdkTrackingContext is called synchronously during render (not in an effect)
+// so child component effects can read auth_method on the very first commit.
 export function useInitSdkTracker(
   authConfig: MetabaseAuthConfig,
-  reduxStore: SdkStore,
   localeUsed: boolean,
 ) {
   const isTrackingEnabled = useIsTrackingEnabled();
+  const authMethod = deriveAuthMethod(authConfig);
+
+  setSdkTrackingContext(authMethod, localeUsed);
 
   useEffect(() => {
-    if (isEmbeddingEajs() || !isTrackingEnabled) {
+    if (!isEmbeddingSdk() || isEmbeddingEajs() || !isTrackingEnabled) {
+      return;
+    }
+    if (beaconFired) {
       return;
     }
 
-    const authMethod = deriveAuthMethod(authConfig);
-    const wasJustInitialized = initSdkTracker({
-      metabaseInstanceUrl: authConfig.metabaseInstanceUrl,
-      authMethod,
-      localeUsed,
-      store: reduxStore,
+    // Initialize the Snowplow proxy tracker before the first event. Idempotent.
+    initSdkTracker({ metabaseInstanceUrl: authConfig.metabaseInstanceUrl });
+    beaconFired = true;
+
+    trackSdkSimpleEvent({
+      event: "embedding_sdk_initialized",
+      event_detail: JSON.stringify({
+        sdk_version: getSdkPackageVersion(),
+        auth_method: authMethod,
+        locale_used: localeUsed,
+      }),
     });
-
-    // setSdkTrackerReady unblocks per-mount hooks in child components. Set it
-    // even when wasJustInitialized=false (e.g. multiple providers) so children
-    // in a nested provider context can also fire.
-    reduxStore.dispatch(setSdkTrackerReady(true));
-
-    if (wasJustInitialized) {
-      const sdkVersion = getSdkPackageVersion();
-
-      trackSdkEvent({
-        schema: EMBEDDING_SDK_SCHEMA,
-        data: {
-          component: null,
-          properties: null,
-          global: {
-            auth_method: getSdkAuthMethod(),
-            sdk_version: sdkVersion,
-            locale_used: getSdkLocaleUsed(),
-          },
-        },
-      });
-    }
-    // isTrackingEnabled is the only dep: fire once when the opt-out gate becomes
-    // known. authConfig and reduxStore are stable across the provider lifetime.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTrackingEnabled]);
 }

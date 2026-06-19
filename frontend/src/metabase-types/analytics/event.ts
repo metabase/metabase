@@ -46,3 +46,18 @@ export type CustomVizEvent =
   | CustomVizPluginToggledEvent
   | CustomVizPluginRefreshedEvent
   | CustomVizSelectedEvent;
+
+export type EmbeddingSdkInitializedEvent = ValidateEvent<{
+  event: "embedding_sdk_initialized";
+  event_detail: string;
+}>;
+
+export type EmbeddingSdkComponentRenderedEvent = ValidateEvent<{
+  event: "embedding_sdk_component_rendered";
+  triggered_from: string;
+  event_detail: string;
+}>;
+
+export type EmbeddingSdkEvent =
+  | EmbeddingSdkInitializedEvent
+  | EmbeddingSdkComponentRenderedEvent;

@@ -107,7 +107,7 @@ export const ComponentProviderInternal = (
   });
 
   useInitPlugins(reduxStore);
-  useInitSdkTracker(authConfig, reduxStore, locale != null);
+  useInitSdkTracker(authConfig, locale != null);
 
   useSdkCustomLoader();
 
