@@ -148,14 +148,18 @@
   [engine old-sample-db]
   (log/infof "Bundled sample database engine changed from %s to %s; replacing the sample database"
              (:engine old-sample-db) engine)
-  (let [new-db (t2/with-transaction [_conn]
+  ;; Extract the bundled DB file (a multi-MB copy out of the JAR) before opening the transaction, so the file IO
+  ;; doesn't hold the app-DB transaction open.
+  (let [new-db-details (when (config/load-sample-content?)
+                         (try-to-extract-sample-database! engine))
+        new-db (t2/with-transaction [_conn]
                  (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
                    (t2/delete! :model/Database (:id old-sample-db))
                    (delete-emptied-dashboards! dashboard-ids))
-                 (when (config/load-sample-content?)
+                 (when new-db-details
                    (first (t2/insert-returning-instances! :model/Database
                                                           :name sample-database-name
-                                                          :details (try-to-extract-sample-database! engine)
+                                                          :details new-db-details
                                                           :engine engine
                                                           :is_sample true))))]
     (when new-db
