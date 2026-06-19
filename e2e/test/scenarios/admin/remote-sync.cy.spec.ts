@@ -408,7 +408,8 @@ describe("Remote Sync", () => {
             cy.findByText(REMOTE_QUESTION_NAME).should("exist");
           });
 
-          H.modal().findByText("Pushing to Git").should("not.exist");
+          // waitForTask above already closed the sync confirmation modal.
+          H.modal().should("not.exist");
 
           H.clickSwitchBranchOption();
           H.popover().findByRole("option", { name: "main" }).click();
@@ -494,7 +495,9 @@ describe("Remote Sync", () => {
         .findByText("Success")
         .should("exist");
 
-      H.modal().should("not.exist", { timeout: 10000 });
+      // Read-only setup runs an initial import; close its confirmation modal (GHY-3747).
+      H.closeSyncResultModal();
+      H.modal().should("not.exist");
       H.goToMainApp();
 
       // In read-only mode, git sync controls should not be visible in app bar
