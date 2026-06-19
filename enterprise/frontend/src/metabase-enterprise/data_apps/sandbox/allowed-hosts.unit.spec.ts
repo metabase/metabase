@@ -37,7 +37,33 @@ describe("isHostAllowed", () => {
     expect(isHostAllowed(u("https://notexample.com/"), allow)).toBe(false);
   });
 
-  it("honors an explicit port (and an entry without one allows any)", () => {
+  it("treats an explicit default port as equivalent to the implicit one", () => {
+    // explicit `:443` on either side ≡ omitting it (matches browser CSP)
+    expect(
+      isHostAllowed(u("https://api.example.com/"), [
+        "https://api.example.com:443",
+      ]),
+    ).toBe(true);
+    expect(
+      isHostAllowed(u("https://api.example.com:443/"), [
+        "https://api.example.com",
+      ]),
+    ).toBe(true);
+    expect(
+      isHostAllowed(u("http://api.example.com:80/"), [
+        "http://api.example.com",
+      ]),
+    ).toBe(true);
+  });
+
+  it("requires a non-default port to be listed explicitly", () => {
+    // a no-port entry only matches the scheme's default port (CSP semantics)
+    expect(
+      isHostAllowed(u("https://api.example.com:8443/"), [
+        "https://api.example.com",
+      ]),
+    ).toBe(false);
+    // explicit non-default ports must match exactly
     expect(
       isHostAllowed(u("https://api.example.com:8443/"), [
         "https://api.example.com:8443",
@@ -48,11 +74,6 @@ describe("isHostAllowed", () => {
         "https://api.example.com:8443",
       ]),
     ).toBe(false);
-    expect(
-      isHostAllowed(u("https://api.example.com:8443/"), [
-        "https://api.example.com",
-      ]),
-    ).toBe(true);
   });
 
   it("denies everything for an empty allowlist", () => {
@@ -62,20 +83,20 @@ describe("isHostAllowed", () => {
 
 describe("makeSandboxFetch", () => {
   const base = "https://mb.example.com/embed/data-app/sales";
+  const origin = "https://mb.example.com";
+
+  const fakeWindow = (fetch: jest.Mock) =>
+    ({ fetch, location: { href: base, origin } }) as unknown as Window &
+      typeof globalThis;
 
   it("returns null for an empty allowlist (keeps the sandbox hard block)", () => {
     expect(makeSandboxFetch(window, [], "sales")).toBeNull();
   });
 
-  it("allows listed hosts, blocks others and the Metabase origin", async () => {
+  it("allows listed hosts and blocks others", async () => {
     const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
-    const fakeWindow = {
-      fetch: realFetch,
-      location: { href: base },
-    } as unknown as Window & typeof globalThis;
-
     const sandboxFetch = makeSandboxFetch(
-      fakeWindow,
+      fakeWindow(realFetch),
       ["https://api.example.com"],
       "sales",
     );
@@ -87,15 +108,33 @@ describe("makeSandboxFetch", () => {
     await expect(sandboxFetch!("https://evil.example.org/")).rejects.toThrow(
       /blocked fetch/,
     );
-    // A relative URL resolves to the Metabase origin — must stay blocked.
-    await expect(sandboxFetch!("/api/user/current")).rejects.toThrow(
-      /blocked fetch/,
-    );
     expect(realFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("always blocks the Metabase origin, even if it's in allowed_hosts", async () => {
+    const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
+    // The Metabase origin is mistakenly allowlisted — it must still be denied.
+    const sandboxFetch = makeSandboxFetch(
+      fakeWindow(realFetch),
+      [origin, "https://api.example.com"],
+      "sales",
+    )!;
+
+    await expect(sandboxFetch(`${origin}/api/user/current`)).rejects.toThrow(
+      /Metabase origin/,
+    );
+    // A relative URL resolves to the Metabase origin too.
+    await expect(sandboxFetch("/api/user/current")).rejects.toThrow(
+      /Metabase origin/,
+    );
+    expect(realFetch).not.toHaveBeenCalled();
   });
 });
 
 describe("makeSandboxXhr", () => {
+  // jsdom's window origin is http://localhost — treat that as the Metabase origin.
+  const mbOrigin = window.location.origin;
+
   it("returns null for an empty allowlist", () => {
     expect(makeSandboxXhr(window, [], "sales")).toBeNull();
   });
@@ -114,5 +153,20 @@ describe("makeSandboxXhr", () => {
     );
     // Allowed host: open() should not throw.
     expect(() => xhr.open("GET", "https://api.example.com/data")).not.toThrow();
+  });
+
+  it("always blocks the Metabase origin, even if it's in allowed_hosts", () => {
+    const SandboxXhr = makeSandboxXhr(
+      window,
+      [mbOrigin, "https://api.example.com"],
+      "sales",
+    )!;
+    const xhr = new SandboxXhr();
+    expect(() => xhr.open("GET", `${mbOrigin}/api/user/current`)).toThrow(
+      /Metabase origin/,
+    );
+    expect(() => xhr.open("GET", "/api/user/current")).toThrow(
+      /Metabase origin/,
+    );
   });
 });
