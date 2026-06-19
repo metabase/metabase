@@ -446,6 +446,10 @@ describe(
           native: { query: `SELECT id, name, amount FROM ${SOURCE_TABLE}` },
         }).as("nativeQuestion");
 
+        // Source replacement only rewrites entities whose table dependency the
+        // async backfill has recorded; wait for it before replacing the source.
+        H.waitForBackfillComplete();
+
         cy.get<Cypress.Response<{ id: number }>>("@nativeQuestion").then(
           ({ body }) => {
             replaceSourceWithTarget(
@@ -838,7 +842,13 @@ function openReplacementModal(sourceTableLabel: string) {
 
 function pickTarget(targetTableLabel: string) {
   SourceReplacement.getTargetPickerButton().click();
+
+  cy.intercept("GET", "/api/search?*").as("entityPickerSearch");
   H.entityPickerModal().findByRole("searchbox").type(targetTableLabel);
+  // The entity-picker search is async; wait for it before selecting a result,
+  // otherwise the result list may not have rendered yet.
+  cy.wait("@entityPickerSearch");
+
   cy.findByTestId("result-item")
     .contains(targetTableLabel)
     .closest("a")
