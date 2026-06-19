@@ -222,6 +222,24 @@ export const settings = {
     },
     inline: true,
   },
+  "pivot.sort_rows_by_measure": {
+    hidden: true,
+    getValue: (
+      [{ data }]: Series,
+      settings: Partial<VisualizationSettings> = {},
+    ) => {
+      const stored = settings["pivot.sort_rows_by_measure"];
+      if (stored !== undefined) {
+        return stored;
+      }
+      // For native SQL pivots with 2+ row dimensions, sort the inner dimension
+      // (e.g. country) descending by the first measure (e.g. new_user_count).
+      const isNativeQuery = data != null && isNativePivotData(data.cols);
+      const columnSplit = settings["pivot_table.column_split"];
+      const rowCount = columnSplit?.rows?.length ?? 0;
+      return isNativeQuery && rowCount >= 2 ? "desc" : null;
+    },
+  },
   "pivot.subtotals_on_top": {
     hidden: true,
     getValue: (

@@ -229,6 +229,49 @@
   (->> (map (into [] col-settings) indexes)
        (map :pivot_table.column_sort_order)))
 
+(defn- sort-children-by-measure
+  "For each node in the tree, sort its children by the measure value at
+  `measure-val-index` (index into the values vector) using the given path as
+  the parent key prefix. Recurse up to `max-depth` levels.
+
+  `values-by-key` maps [col-values... row-values...] → {:values [...]}.
+  For native pivots col-indexes is empty so keys are just row path vectors."
+  [tree col-indexes parent-path measure-val-index descending? max-depth depth values-by-key]
+  (when (< depth max-depth)
+    (let [children (:children tree)
+          value->child-pos (:value->child-pos tree)]
+      (when (pos? (count children))
+        ;; Sort this node's children by the measure value at their path.
+        #?(:cljs
+           (.sort children
+                  (fn [a b]
+                    (let [path-a (conj (vec parent-path) (:value a))
+                          path-b (conj (vec parent-path) (:value b))
+                          key-a  (into (vec col-indexes) path-a)
+                          key-b  (into (vec col-indexes) path-b)
+                          va     (nth (:values (get values-by-key key-a)) measure-val-index nil)
+                          vb     (nth (:values (get values-by-key key-b)) measure-val-index nil)
+                          ;; nils sort last
+                          result (cond
+                                   (and (nil? va) (nil? vb)) 0
+                                   (nil? va) 1
+                                   (nil? vb) -1
+                                   :else (compare va vb))]
+                      (if descending? (- result) result))))
+           :clj nil)
+        ;; Rebuild value->child-pos after re-ordering.
+        #?(:cljs (.clear value->child-pos) :clj nil)
+        (doseq [i (range (count children))]
+          (perf/map-put! value->child-pos (:value (perf/list-nth children i)) i))
+        ;; Recurse into children.
+        (doseq [i (range (count children))]
+          (let [child (perf/list-nth children i)
+                child-path (conj (vec parent-path) (:value child))]
+            (sort-children-by-measure child col-indexes child-path
+                                      measure-val-index descending? max-depth
+                                      (inc depth) values-by-key))))))
+  tree)
+
 #?(:clj (def ^:private collator (Collator/getInstance)))
 
 (defn- compare-fn
@@ -304,8 +347,22 @@
         col-sort-orders (sort-orders-from-settings col-settings col-indexes)
         sorted-row-tree (sort-tree collapsed-row-tree row-sort-orders)
         sorted-col-tree (sort-tree col-tree col-sort-orders)
-        values-by-key   (build-values-by-key rows cols row-indexes col-indexes val-indexes)]
-    {:row-tree (:children sorted-row-tree)
+        values-by-key   (build-values-by-key rows cols row-indexes col-indexes val-indexes)
+        ;; Optionally sort the second row dimension by the first measure value.
+        ;; pivot.sort_rows_by_measure can be :asc or :desc (or nil for off).
+        measure-sort    (get settings :pivot.sort_rows_by_measure)
+        final-row-tree  (if (and measure-sort (> (count row-indexes) 1))
+                          (do
+                            (sort-children-by-measure sorted-row-tree
+                                                      col-indexes []
+                                                      0
+                                                      (= measure-sort :desc)
+                                                      (count row-indexes)
+                                                      0
+                                                      values-by-key)
+                            sorted-row-tree)
+                          sorted-row-tree)]
+    {:row-tree (:children final-row-tree)
      :col-tree (:children sorted-col-tree)
      :values-by-key values-by-key}))
 
