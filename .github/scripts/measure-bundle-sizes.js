@@ -3,6 +3,16 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 
+// MEASURE_ROOT lets callers point at an extracted tree (e.g. the PR bundle-size
+// check measures a current and a base-ref tree); defaults to cwd for the stats
+// workflow. MEASURE_BUNDLES restricts which bundles are measured (comma-separated).
+const baseDir = process.env.MEASURE_ROOT ? path.resolve(process.env.MEASURE_ROOT) : process.cwd();
+const resolve = (...relativeParts) => path.resolve(baseDir, ...relativeParts);
+const bundleFilter = process.env.MEASURE_BUNDLES
+  ? new Set(process.env.MEASURE_BUNDLES.split(",").map(bundle => bundle.trim()))
+  : null;
+const isBundleWanted = bundle => !bundleFilter || bundleFilter.has(bundle);
+
 const SDK_ROOT = "resources/frontend_client/app/embedding-sdk";
 
 /**
@@ -95,7 +105,7 @@ function collectJsFiles(absolutePath) {
 }
 
 function readStats(statsFile) {
-  const statsPath = path.resolve(process.cwd(), statsFile);
+  const statsPath = resolve(statsFile);
   return fs.existsSync(statsPath) ? JSON.parse(fs.readFileSync(statsPath, "utf8")) : null;
 }
 
@@ -118,13 +128,13 @@ function initialJsFiles({ file: statsFile, entrypoint, root }, joinRoot) {
     console.warn(`Entrypoint "${entrypoint}" missing in ${statsFile}; reporting initial == total.`);
     return null;
   }
-  const base = root ? path.resolve(process.cwd(), root) : joinRoot;
+  const base = root ? resolve(root) : joinRoot;
   return assets.map(name => path.join(base, name));
 }
 
 function measureSimpleTarget({ bundle, dir, file, altFile, stats, optional }) {
   const candidates = [dir, file, altFile].filter(Boolean);
-  const chosen = candidates.find(c => fs.existsSync(path.resolve(process.cwd(), c)));
+  const chosen = candidates.find(c => fs.existsSync(resolve(c)));
   if (!chosen) {
     if (optional) {
       console.warn(`Skipping "${bundle}": output not found (${candidates.join(", ")})`);
@@ -133,7 +143,7 @@ function measureSimpleTarget({ bundle, dir, file, altFile, stats, optional }) {
     throw new Error(`Bundle output not found for "${bundle}": ${candidates.join(", ")}`);
   }
 
-  const root = path.resolve(process.cwd(), chosen);
+  const root = resolve(chosen);
   const total = sizeOf(collectJsFiles(root));
   const initialFiles = stats ? initialJsFiles(stats, root) : null;
   const initial = initialFiles ? sizeOf(initialFiles) : total;
@@ -151,13 +161,13 @@ function measureSimpleTarget({ bundle, dir, file, altFile, stats, optional }) {
  * unless SDK_ASYNC_CHUNKS_LOADABLE is set, at which point "total" includes them.
  */
 function measureChunkedSdk(statsFile) {
-  const chunksDir = path.resolve(process.cwd(), SDK_ROOT, "chunks");
+  const chunksDir = resolve(SDK_ROOT, "chunks");
   if (!fs.existsSync(chunksDir)) {
     // pre-chunked layout (monolith only) — nothing to measure here
     return [];
   }
 
-  const absRoot = path.resolve(process.cwd(), SDK_ROOT);
+  const absRoot = resolve(SDK_ROOT);
   const everything = collectJsFiles(chunksDir).filter(f => !SDK_RUNTIME_RE.test(f));
 
   const stats = readStats(statsFile);
@@ -183,8 +193,10 @@ function measureChunkedSdk(statsFile) {
 
 function measureBundleSizes() {
   return [
-    ...simpleTargets.flatMap(measureSimpleTarget),
-    ...measureChunkedSdk("artifacts/stats-embedding-sdk.json"),
+    ...simpleTargets.filter(target => isBundleWanted(target.bundle)).flatMap(measureSimpleTarget),
+    ...(isBundleWanted("embedding-sdk-chunked")
+      ? measureChunkedSdk("artifacts/stats-embedding-sdk.json")
+      : []),
   ];
 }
 
