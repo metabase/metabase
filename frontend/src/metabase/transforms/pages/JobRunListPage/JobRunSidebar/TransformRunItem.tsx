@@ -35,6 +35,7 @@ export function TransformRunItem({ transformRun }: TransformRunItemProps) {
       wrap="nowrap"
       align="start"
       aria-label={name}
+      data-testid="transform-run-item"
     >
       <FixedSizeIcon name="transform" />
       <Stack gap="sm" flex={1} miw={0}>

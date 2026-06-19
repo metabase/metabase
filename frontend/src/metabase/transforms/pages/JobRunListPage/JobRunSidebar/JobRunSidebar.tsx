@@ -1,10 +1,11 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { t } from "ttag";
 
 import { useListJobRunTransformRunsQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
+import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import {
   ActionIcon,
   Badge,
@@ -43,11 +44,26 @@ export const JobRunSidebar = memo(function JobRunSidebar({
   onResizeStop,
   onClose,
 }: JobRunSidebarProps) {
+  const [isPolling, setIsPolling] = useState(false);
   const {
     data: transformRuns = [],
     isLoading,
     error,
-  } = useListJobRunTransformRunsQuery({ jobId, runId: run.id });
+  } = useListJobRunTransformRunsQuery(
+    { jobId, runId: run.id },
+    { pollingInterval: isPolling ? POLLING_INTERVAL : undefined },
+  );
+
+  const shouldPoll =
+    run.status === "started" ||
+    transformRuns.some(
+      (transformRun) =>
+        transformRun.status === "started" ||
+        transformRun.status === "canceling",
+    );
+  if (isPolling !== shouldPoll) {
+    setIsPolling(shouldPoll);
+  }
 
   return (
     <SidebarResizableBox

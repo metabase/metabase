@@ -9,12 +9,14 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
   within,
 } from "__support__/ui";
+import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import type {
   TransformJobRun,
   TransformRunForJobRun,
@@ -42,14 +44,14 @@ function setup({
   initialRoute = `/data-studio/transforms/jobs/${JOB_ID}/runs`,
 }: SetupOpts = {}) {
   const job = createMockTransformJob({ id: JOB_ID, name: "Nightly job" });
+  let currentRuns = runs;
 
   setupUserMetabotPermissionsEndpoint();
   setupGetTransformJobEndpoint(job);
-  setupListTransformJobRunsEndpoint(
-    JOB_ID,
+  setupListTransformJobRunsEndpoint(JOB_ID, () =>
     createMockListTransformJobRunsResponse({
-      data: runs,
-      total: runs.length,
+      data: currentRuns,
+      total: currentRuns.length,
     }),
   );
   Object.entries(transformRunsByRunId).forEach(([runId, transformRuns]) => {
@@ -63,6 +65,12 @@ function setup({
     withRouter: true,
     initialRoute,
   });
+
+  return {
+    setRuns(nextRuns: TransformJobRun[]) {
+      currentRuns = nextRuns;
+    },
+  };
 }
 
 function getLastRunsRequestParams() {
@@ -137,6 +145,43 @@ describe("JobRunListPage", () => {
     expect(
       await screen.findByRole("region", { name: "Error" }),
     ).toBeInTheDocument();
+  });
+
+  it("refreshes the sidebar transform runs when the run finishes while open", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+
+    try {
+      const { setRuns } = setup({
+        runs: [createMockTransformJobRun({ id: 5, status: "started" })],
+      });
+
+      let isFinished = false;
+      setupListJobRunTransformRunsEndpoint(JOB_ID, 5, () => [
+        createMockTransformRunForJobRun({
+          id: 17,
+          status: isFinished ? "succeeded" : "started",
+          transform_name: "transform_f",
+        }),
+      ]);
+
+      await userEvent.click(
+        await screen.findByRole("row", { name: /In progress/ }),
+      );
+      const item = await screen.findByTestId("transform-run-item");
+      expect(within(item).getByText("In progress")).toBeInTheDocument();
+
+      // The run (and its transform) finish while the sidebar stays open; the
+      // next poll should refresh the transform's status
+      isFinished = true;
+      setRuns([createMockTransformJobRun({ id: 5, status: "succeeded" })]);
+      act(() => {
+        jest.advanceTimersByTime(POLLING_INTERVAL);
+      });
+
+      expect(await within(item).findByText("Success")).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   describe("filters", () => {

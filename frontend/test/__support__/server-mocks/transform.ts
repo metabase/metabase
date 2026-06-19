@@ -59,7 +59,7 @@ export function setupGetTransformJobEndpoint(job: TransformJob) {
 
 export function setupListTransformJobRunsEndpoint(
   jobId: TransformJobId,
-  response: ListTransformJobRunsResponse,
+  response: ListTransformJobRunsResponse | (() => ListTransformJobRunsResponse),
 ) {
   fetchMock.get(`path:/api/transform-job/${jobId}/runs`, response);
 }
@@ -67,7 +67,7 @@ export function setupListTransformJobRunsEndpoint(
 export function setupListJobRunTransformRunsEndpoint(
   jobId: TransformJobId,
   runId: TransformJobRunId,
-  runs: TransformRunForJobRun[],
+  runs: TransformRunForJobRun[] | (() => TransformRunForJobRun[]),
 ) {
   fetchMock.get(
     `path:/api/transform-job/${jobId}/runs/${runId}/transform-runs`,
