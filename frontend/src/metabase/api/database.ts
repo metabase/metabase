@@ -240,6 +240,10 @@ export const databaseApi = Api.injectEndpoints({
           tag("parameter-values"),
           tag("card"),
         ]),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, DatabaseSchema)),
+        ),
     }),
     deleteDatabase: builder.mutation<void, DatabaseId>({
       query: (id) => ({

@@ -56,6 +56,7 @@ export const segmentApi = Api.injectEndpoints({
           idTag("segment", id),
           tag("table"),
         ]),
+      onQueryStarted: hydrateMetadataStore(SegmentSchema),
     }),
   }),
 });

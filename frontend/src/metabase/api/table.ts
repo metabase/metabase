@@ -100,6 +100,10 @@ export const tableApi = Api.injectEndpoints({
           tag("dataset"),
           listTag("erd"),
         ]),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, TableSchema)),
+        ),
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
       query: (body) => ({

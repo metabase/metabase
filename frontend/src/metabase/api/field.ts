@@ -96,6 +96,10 @@ export const fieldApi = Api.injectEndpoints({
           tag("card"),
           tag("dataset"),
         ]),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, FieldSchema)),
+        ),
     }),
     updateFieldValues: builder.mutation<void, UpdateFieldValuesRequest>({
       query: ({ id, ...body }) => ({
