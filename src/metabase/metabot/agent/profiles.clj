@@ -170,7 +170,10 @@
   :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  10
   :temperature     0.3
+  ;; the nlq profile gets both the general instance search and, for users with the semantic-search
+  ;; feature, the curated search tool (gated via its :feature-semantic-search capability).
   :tools           [#'tools/nlq-search-tool
+                    #'tools/curated-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/navigate-user-tool

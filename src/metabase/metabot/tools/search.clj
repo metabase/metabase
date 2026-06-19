@@ -11,6 +11,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -301,6 +302,81 @@
     (->> fused-results
          (take limit)
          (map postprocess-search-result)
+         enrich-with-collection-descriptions
+         enrich-with-database-engines
+         enrich-with-portable-entity-ids
+         enrich-with-metric-base-tables
+         remove-unreadable-transforms)))
+
+(defn- table-refs->results
+  [ids]
+  (when (seq ids)
+    ;; only surface tables the current user can read — a curated entry may point at one they can't access
+    (for [t (filter mi/can-read?
+                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description] :id [:in ids]))]
+      {:id              (:id t)
+       :type            "table"
+       :name            (:name t)
+       :display_name    (:display_name t)
+       :database_id     (:db_id t)
+       :database_schema (:schema t)
+       :description     (:description t)})))
+
+(defn- card-refs->results
+  "Build post-processed search-result records for card-backed refs (`{:id .. :type \"model\"|\"metric\"|\"question\"}`).
+  Emits one record per ref, so the same card registered under two type strings yields a record for each
+  (rather than collapsing to one and silently dropping the other)."
+  [refs]
+  (let [ids       (distinct (map :id refs))
+        ;; only surface cards the current user can read (collection perms) — see table-refs->results
+        id->card  (when (seq ids)
+                    (into {} (map (juxt :id identity))
+                          (filter mi/can-read?
+                                  (t2/select [:model/Card :id :name :description :database_id :collection_id :card_schema]
+                                             :id [:in ids]))))
+        coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
+        id->coll  (when (seq coll-ids)
+                    (into {} (map (juxt :id identity))
+                          (t2/select [:model/Collection :id :name :authority_level] :id [:in coll-ids])))
+        ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
+        verified  (when (seq ids)
+                    (t2/select-fn-set :moderated_item_id :model/ModerationReview
+                                      :moderated_item_id [:in ids] :moderated_item_type "card"
+                                      :most_recent true :status "verified"))]
+    (for [{:keys [id type]} refs
+          :let [c (id->card id)]
+          :when c]
+      (let [coll (get id->coll (:collection_id c))]
+        {:id          id
+         :type        type
+         :name        (:name c)
+         :description (:description c)
+         :database_id (:database_id c)
+         :verified    (contains? verified id)
+         :collection  (when coll (select-keys coll [:id :name :authority_level]))}))))
+
+(defn ref-model->entity-type
+  "Normalize an entity ref's `:model` string to the agent-facing entity type: plain cards are
+  `\"question\"` everywhere the agent sees them (`read_resource` URIs, search results)."
+  [model]
+  (if (= model "card") "question" model))
+
+(defn entity-refs->search-results
+  "Hydrate semantic-layer entity refs into the enriched search-result shape that
+  [[metabase.metabot.tools.shared.llm-shape/search-results->xml]] and the `search` tool consume.
+
+  `refs` is a seq of `{:model <entity-type> :id <id>}` where `<entity-type>` is `\"table\"`, `\"model\"`,
+  `\"metric\"`, or `\"question\"` (the names the agent uses with `read_resource`); `\"card\"` is accepted
+  and normalized to `\"question\"`.
+  Returns records carrying `:portable_entity_id`, `:database_name`, fully-qualified names, metric base
+  tables, etc. — everything the LLM needs to build a query without an extra round-trip.
+  Refs whose entity no longer exists are dropped."
+  [refs]
+  (let [by-model  (group-by (comp ref-model->entity-type :model) refs)
+        table-ids (distinct (map :id (get by-model "table")))
+        card-refs (for [m ["model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})]
+    (->> (concat (table-refs->results table-ids)
+                 (card-refs->results (distinct card-refs)))
          enrich-with-collection-descriptions
          enrich-with-database-engines
          enrich-with-portable-entity-ids
