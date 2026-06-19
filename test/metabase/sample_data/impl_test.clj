@@ -201,6 +201,40 @@
       (testing "the old Example collection is deleted"
         (is (not (t2/exists? :model/Collection :id (:id examples))))))))
 
+(deftest replace-sample-database-collection-cascade-test
+  (testing "On H2 -> SQLite replacement, deleting the old Example collection fires the Collection before-delete hook,
+           which leaves no dangling content under the Example tree even for entities the `is_sample` filter doesn't
+           match directly"
+    (mt/with-temp
+      [:model/Database         old-sample {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}
+       :model/Database         other-db   {:engine :h2, :details {:db "mem:other"}}
+       :model/Collection       examples   {:name "Examples", :is_sample true}
+       ;; A user sub-collection nested under Examples that is NOT is_sample - only the `:location` cascade in the
+       ;; before-delete hook can reach it, not the `is_sample` filter.
+       :model/Collection       nested     {:name "My stuff", :location (str "/" (:id examples) "/")}
+       ;; Content filed directly into the Example tree (owned by another database, so only the collection cascade -
+       ;; not the sample-DB deletion - can remove it). The card sits in the nested child to exercise descent.
+       :model/Card             card       {:database_id (:id other-db), :collection_id (:id nested)}
+       :model/Dashboard        dash       {:collection_id (:id examples)}
+       :model/PermissionsGroup group      {}
+       :model/Permissions      _          {:object (format "/collection/%d/" (:id examples)) :group_id (:id group)}
+       :model/Permissions      _          {:object (format "/collection/%d/" (:id nested))   :group_id (:id group)}]
+      ;; Skip recreating the replacement Sample Database (load-sample-content? false): we only exercise the
+      ;; collection-cascade half of the swap, and recreating it would leak an is_sample row other tests select on.
+      (with-redefs [config/load-sample-content? (constantly false)]
+        (#'sample-data/update-sample-database-if-needed! old-sample))
+      (testing "the Example collection and its non-sample descendant are both deleted"
+        (is (not (t2/exists? :model/Collection :id (:id examples))))
+        (is (not (t2/exists? :model/Collection :id (:id nested)))))
+      (testing "content filed into the Example tree is deleted"
+        (is (not (t2/exists? :model/Card :id (:id card))))
+        (is (not (t2/exists? :model/Dashboard :id (:id dash)))))
+      (testing "permission records for the deleted collections are removed"
+        (is (not (t2/exists? :model/Permissions :object (format "/collection/%d/" (:id examples)))))
+        (is (not (t2/exists? :model/Permissions :object (format "/collection/%d/" (:id nested))))))
+      (testing "the other database is untouched"
+        (is (t2/exists? :model/Database :id (:id other-db)))))))
+
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
     (mt/with-temp-empty-app-db [_conn :h2]
