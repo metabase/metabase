@@ -1,5 +1,5 @@
+import { getMetricMappedTableIds } from "./accessors";
 import {
-  getMetricMappedTableIds,
   isCountAggregation,
   isFieldAggregation,
   isMeasureSchema,

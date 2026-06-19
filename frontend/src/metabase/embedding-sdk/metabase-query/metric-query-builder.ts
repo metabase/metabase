@@ -11,6 +11,8 @@ import {
   getMetricId,
   getMetricSourceCardId,
   getMetricSourceTableId,
+} from "./accessors";
+import {
   isFieldSchema,
   isMeasureSchema,
   isSegmentSchema,

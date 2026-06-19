@@ -1,6 +1,7 @@
 import type { Field } from "metabase-types/api";
 
-import { getMetricId, getMetricSourceTableId, isMeasureSchema } from "./guards";
+import { getMetricId, getMetricSourceTableId } from "./accessors";
+import { isMeasureSchema } from "./guards";
 import type { MetadataInput, Query } from "./metabase-lib-query-lib";
 import { Lib } from "./metabase-lib-query-lib";
 import type { FieldWithFieldId } from "./metabase-lib-query-utils";

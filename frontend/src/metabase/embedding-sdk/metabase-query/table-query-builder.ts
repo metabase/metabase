@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/utils/types";
 import type {
   Aggregation,
   ConcreteFieldReference,
@@ -6,8 +7,8 @@ import type {
   StructuredDatasetQuery,
 } from "metabase-types/api";
 
+import { getTableId } from "./accessors";
 import {
-  getTableId,
   isCountAggregation,
   isDimensionFilter,
   isFieldAggregation,
@@ -181,6 +182,3 @@ function normalizeBreakout(breakout: unknown) {
 
 const isBreakoutObject = (value: unknown): value is BreakoutObjectRuntime =>
   typeof value === "object" && value != null && "dimension" in value;
-
-const isNotNull = <TValue>(value: TValue | null): value is TValue =>
-  value !== null;

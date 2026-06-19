@@ -20,7 +20,6 @@ import type {
   ExecuteActionParams,
   ExecuteActionResult,
 } from "embedding-sdk-bundle/lib/execute-action";
-import type { CreateMetabaseQuery } from "embedding-sdk-bundle/lib/metabase-query/create-metabase-query";
 import type {
   QueryDatasetParams,
   QueryDatasetResult,
@@ -36,6 +35,7 @@ import type {
 } from "embedding-sdk-bundle/types";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
+import type { CreateMetabaseQuery } from "metabase/embedding-sdk/metabase-query/create-metabase-query";
 import type { User } from "metabase-types/api";
 
 export type InternalComponent<TComponent extends JSXElementConstructor<any>> =

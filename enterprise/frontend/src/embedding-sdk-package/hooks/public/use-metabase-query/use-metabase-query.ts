@@ -155,6 +155,7 @@ const isOrderableJavaScriptType = (
   value === "boolean" ||
   value === "Date";
 
+// useMetabaseQueryObject returns synchronously while the SDK bundle loads.
 const PLACEHOLDER_DATASET_QUERY: StructuredDatasetQuery = {
   type: "query",
   database: 0,

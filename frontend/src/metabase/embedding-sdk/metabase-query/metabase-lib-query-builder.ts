@@ -6,7 +6,7 @@ import {
   getMetricSourceTableId,
   getTableDatabaseId,
   getTableId,
-} from "./guards";
+} from "./accessors";
 import {
   applyAggregations,
   applyBreakouts,

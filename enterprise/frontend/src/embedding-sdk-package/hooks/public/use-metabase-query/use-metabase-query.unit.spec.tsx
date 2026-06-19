@@ -1,11 +1,11 @@
 import { waitFor } from "@testing-library/react";
 
 import { render, screen } from "__support__/ui";
-import { createMetabaseQuery as createMetabaseQueryInBundle } from "embedding-sdk-bundle/lib/metabase-query/create-metabase-query";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import { createMetabaseQuery as createMetabaseQueryInBundle } from "metabase/embedding-sdk/metabase-query/create-metabase-query";
 
 import type { MetabaseQueryOptions } from "./use-metabase-query";
 import {
@@ -670,6 +670,23 @@ describe("useMetabaseQuery", () => {
       ).toMatchObject({
         query: {
           aggregation: [["max", ["field", 102, {}]]],
+        },
+      });
+    });
+
+    it("preserves default binning when metabase-lib has no default strategy", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          breakouts: [
+            breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+              binning: { strategy: "default" },
+            }),
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          breakout: [["field", 102, { binning: { strategy: "default" } }]],
         },
       });
     });

@@ -1,3 +1,5 @@
+import type { TemporalUnit } from "metabase-types/api";
+
 import {
   isCountAggregation,
   isDimensionFilter,
@@ -294,17 +296,26 @@ function findLibColumnForBreakout(
   }
 
   if (typeof options["temporal-unit"] === "string") {
-    const bucket = Lib.availableTemporalBuckets(
+    const bucket = findTemporalBucket(
       query,
       STAGE_INDEX,
       column,
-    ).find(
-      (bucket) =>
-        Lib.displayInfo(query, STAGE_INDEX, bucket).shortName ===
-        options["temporal-unit"],
+      options["temporal-unit"] as TemporalUnit,
     );
 
     return bucket ? Lib.withTemporalBucket(column, bucket) : null;
+  }
+
+  if (isDefaultBinningOptions(options.binning)) {
+    const columnWithDefaultBinning = Lib.withDefaultBinning(
+      query,
+      STAGE_INDEX,
+      column,
+    );
+
+    return Lib.binning(columnWithDefaultBinning)
+      ? columnWithDefaultBinning
+      : null;
   }
 
   if (options.binning != null) {
@@ -313,6 +324,25 @@ function findLibColumnForBreakout(
 
   return column;
 }
+
+const findTemporalBucket = (
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+  targetUnit: TemporalUnit,
+) =>
+  Lib.availableTemporalBuckets(query, stageIndex, column).find(
+    (bucket) =>
+      Lib.displayInfo(query, stageIndex, bucket).shortName === targetUnit,
+  ) ?? null;
+
+const isDefaultBinningOptions = (
+  value: unknown,
+): value is { strategy: "default" } =>
+  typeof value === "object" &&
+  value != null &&
+  "strategy" in value &&
+  value.strategy === "default";
 
 function findLibColumn(query: Query, field: unknown): ColumnMetadata | null {
   const fieldId = getFieldId(field);
