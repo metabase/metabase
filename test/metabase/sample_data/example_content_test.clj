@@ -7,7 +7,16 @@
    [metabase.sample-data.impl]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(deftest remap-blob-parameters-preserves-order-test
+  (testing "remap-blob keeps a card/dashboard's parameters in their designed order rather than re-sorting by :id"
+    (let [blob (json/encode [{:id "zzzz" :name "Date Range" :type "string/="}
+                             {:id "aaaa" :name "Vendor"     :type "string/="}])
+          out  (json/decode+kw (#'example-content/remap-blob {} :parameters blob))]
+      (is (= ["Date Range" "Vendor"] (mapv :name out))
+          "parameters must stay in original order, not be alphabetized by :id"))))
 
 (deftest remap-collection-location-test
   (let [remap #'example-content/remap-collection-location]

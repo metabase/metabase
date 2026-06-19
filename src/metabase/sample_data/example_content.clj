@@ -98,8 +98,9 @@
       (json/encode
        (case kind
          :mbql       (->> (json/decode+kw blob) serdes/export-mbql (remap-source-card-refs (:cards maps)))
-         ;; export-parameters injects a :position artifact meant to be undone by import; drop it.
-         :parameters (mapv #(dissoc % :position) (serdes/export-parameters (json/decode+kw blob)))
+         ;; Remap each parameter's refs in place, preserving the designed order. (export-parameters would reorder
+         ;; them by :id - a serialization-stability device we must not inherit, or the filter order is scrambled.)
+         :parameters (mapv serdes/export-mbql (json/decode+kw blob))
          :param-maps (serdes/export-parameter-mappings (json/decode+kw blob))
          ;; column_settings keys must stay strings, so decode without keywordizing (as the model does).
          :viz        (serdes/export-visualization-settings (mi/normalize-visualization-settings (json/decode blob)))
