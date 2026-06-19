@@ -5,6 +5,12 @@ import { invalidateTags, tag } from "./tags";
 
 export const premiumFeaturesApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    getTokenStatus: builder.query<TokenStatus, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/premium-features/token/status",
+      }),
+    }),
     refreshTokenStatus: builder.mutation<TokenStatus, void>({
       query: () => ({
         method: "POST",
@@ -16,4 +22,5 @@ export const premiumFeaturesApi = Api.injectEndpoints({
   }),
 });
 
-export const { useRefreshTokenStatusMutation } = premiumFeaturesApi;
+export const { useGetTokenStatusQuery, useRefreshTokenStatusMutation } =
+  premiumFeaturesApi;

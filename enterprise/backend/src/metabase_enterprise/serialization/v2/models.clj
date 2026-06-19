@@ -141,6 +141,7 @@
    "SourceMetricDaily"
    "SourceSegmentCompositeDaily"
    "SourceSegmentDaily"
+   "SsoRelayState"
    "SupportAccessGrantLog"
    "TableRemapping"
    "TaskHistory"

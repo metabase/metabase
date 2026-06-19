@@ -7,6 +7,7 @@ import {
   databaseApi,
   datasetApi,
   fieldApi,
+  revisionApi,
   segmentApi,
   tableApi,
 } from "metabase/api";
@@ -15,7 +16,6 @@ import { isProduction } from "metabase/env";
 import { createThunkAction } from "metabase/redux";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
-import { RevisionsApi } from "metabase/services";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 
@@ -148,11 +148,12 @@ export const updateFieldDimension =
 
 export const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
 export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id) => {
-  return async () => {
-    const revisions = await RevisionsApi.get({
-      id,
-      entity: type === "metric" ? "legacy-metric" : type,
-    });
+  return async (dispatch) => {
+    const revisions = await runRtkEndpoint(
+      { id, entity: type === "metric" ? "legacy-metric" : type },
+      dispatch,
+      revisionApi.endpoints.listRevisions,
+    );
     return { type, id, revisions };
   };
 });

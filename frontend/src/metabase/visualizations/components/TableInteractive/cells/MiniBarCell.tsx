@@ -97,6 +97,7 @@ export const MiniBarCell = <TValue,>({
 
   return (
     <BaseCell
+      data-testid="mini-bar-cell"
       className={S.root}
       backgroundColor={backgroundColor}
       align={align}

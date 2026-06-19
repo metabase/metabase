@@ -1,26 +1,29 @@
-import cx from "classnames";
 import { useField } from "formik";
 import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import NoResults from "assets/img/no_results.svg";
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { getErrorMessage } from "metabase/api/utils/errors";
-import CS from "metabase/css/core/index.css";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { useToast } from "metabase/common/hooks";
 import { FormSwitch } from "metabase/forms";
-import { Box, Button, Icon, Tooltip } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Text,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 
-import AddMappingRow from "./AddMappingRow";
-import {
-  GroupMappingsWidgetAbout as About,
-  GroupMappingsWidgetAboutContentRoot as AboutContentRoot,
-  GroupMappingsWidgetHeader as Header,
-  GroupMappingsWidgetRoot as Root,
-  GroupMappingsWidgetToggleRoot as ToggleRoot,
-  GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
-} from "./GroupMappingsWidget.styled";
+import { AddMappingRow } from "./AddMappingRow";
+import S from "./GroupMappingsWidget.module.css";
 import { MappingRow } from "./MappingRow";
 
 const groupIsMappable = (group: GroupInfo) => !isDefaultGroup(group);
@@ -34,7 +37,7 @@ const helpText = (mappingSetting: string) => {
 
 const noMappingText = (mappingSetting: string, syncSwitchValue: boolean) => {
   if (!syncSwitchValue) {
-    return `No mappings yet, group sync is not on`;
+    return t`No mappings yet, group sync is not on`;
   }
   if (mappingSetting === "jwt-group-mappings") {
     return t`No mappings yet, groups will be automatically assigned by exactly matching names`;
@@ -73,6 +76,7 @@ export function GroupMappingsWidgetView({
 }: GroupMappingsWidgetViewProps) {
   const [showAddRow, setShowAddRow] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [sendToast] = useToast();
 
   const groups = allGroups.filter(groupIsMappable);
 
@@ -94,6 +98,7 @@ export function GroupMappingsWidgetView({
       });
       setShowAddRow(false);
       setSaveError(null);
+      sendToast({ message: t`Mapping added`, icon: "check" });
     } catch (error) {
       setSaveError(getErrorMessage(error));
     }
@@ -111,6 +116,7 @@ export function GroupMappingsWidgetView({
       try {
         await updateSetting({ key: mappingSetting, value: updatedMappings });
         setSaveError(null);
+        sendToast({ message: t`Mapping updated`, icon: "check" });
       } catch (error) {
         setSaveError(getErrorMessage(error));
       }
@@ -135,6 +141,7 @@ export function GroupMappingsWidgetView({
         await onSuccess();
       }
       setSaveError(null);
+      sendToast({ message: t`Mapping deleted`, icon: "check" });
     } catch (error) {
       setSaveError(getErrorMessage(error));
     }
@@ -142,58 +149,60 @@ export function GroupMappingsWidgetView({
 
   const [{ value: groupSyncSwitchValue }] = useField<boolean>(setting.key);
 
-  return (
-    <WidgetAndErrorRoot>
-      <Root>
-        <Header>
-          <ToggleRoot>
-            <span>{t`Synchronize Group Memberships`}</span>
-            <FormSwitch data-testid="group-sync-switch" name={setting.key} />
-          </ToggleRoot>
-          <About>
-            <Tooltip
-              label={helpText(mappingSetting)}
-              position="top"
-              maw="20rem"
-            >
-              <AboutContentRoot>
-                <Icon name="info" />
-                <span>{t`About mappings`}</span>
-              </AboutContentRoot>
-            </Tooltip>
-          </About>
-        </Header>
+  const hasMappings = Object.keys(mappings).length > 0;
 
-        <Box pos="relative">
+  return (
+    <Flex direction="column" w="100%">
+      <Group mb="md" gap="sm">
+        <Text fw="bold">{t`Synchronize Group Memberships`}</Text>
+        <FormSwitch data-testid="group-sync-switch" name={setting.key} />
+      </Group>
+
+      <Flex
+        bd="1px solid var(--mb-color-border)"
+        bdrs="md"
+        direction="column"
+        w="100%"
+      >
+        <Flex
+          className={S.header}
+          align="center"
+          bg="background-secondary"
+          mih={rem(56)}
+          px="md"
+          py="sm"
+        >
           {!showAddRow && (
             <Button
-              pos="absolute"
-              top={0}
-              right={0}
-              mr="md"
               variant="filled"
               size="sm"
+              type="button"
               onClick={handleShowAddRow}
             >
               {t`New mapping`}
             </Button>
           )}
-          <AdminContentTable columnTitles={[groupHeading, t`Groups`, ""]}>
-            {showAddRow && (
-              <AddMappingRow
-                mappings={mappings}
-                placeholder={groupPlaceholder}
-                onCancel={handleHideAddRow}
-                onAdd={handleAddMapping}
-              />
-            )}
-            {Object.keys(mappings).length === 0 && !showAddRow && (
-              <tr>
-                <td>&nbsp;</td>
-                <td> {noMappingText(mappingSetting, groupSyncSwitchValue)}</td>
-                <td>&nbsp;</td>
-              </tr>
-            )}
+          <Tooltip label={helpText(mappingSetting)} position="top" maw="20rem">
+            <Flex align="center" gap="sm" c="text-secondary" ml="auto">
+              <Icon name="info" />
+              <span>{t`About mappings`}</span>
+            </Flex>
+          </Tooltip>
+        </Flex>
+
+        {showAddRow && (
+          <AddMappingRow
+            mappings={mappings}
+            placeholder={groupPlaceholder}
+            onCancel={handleHideAddRow}
+            onAdd={handleAddMapping}
+          />
+        )}
+        {hasMappings ? (
+          <AdminContentTable
+            className={S.mappingsTable}
+            columnTitles={[groupHeading, t`Groups`, ""]}
+          >
             {Object.entries(mappings).map(([name, selectedGroupIds]) => {
               return groups?.length > 0 ? (
                 <MappingRow
@@ -209,11 +218,23 @@ export function GroupMappingsWidgetView({
               ) : null;
             })}
           </AdminContentTable>
-        </Box>
-      </Root>
+        ) : (
+          !showAddRow && (
+            <Box pb="md">
+              <EmptyState
+                illustrationElement={<img src={NoResults} alt="" />}
+                message={noMappingText(mappingSetting, groupSyncSwitchValue)}
+                spacing="sm"
+              />
+            </Box>
+          )
+        )}
+      </Flex>
       {saveError && (
-        <div className={cx(CS.textError, CS.textBold, CS.m1)}>{saveError}</div>
+        <Text c="error" fw="bold" m="sm">
+          {saveError}
+        </Text>
       )}
-    </WidgetAndErrorRoot>
+    </Flex>
   );
 }
