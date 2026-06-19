@@ -1,19 +1,30 @@
 (ns metabase.metabot.tools.mcp-external
-  "POC: pull tools from an external MCP server (e.g. Notion's hosted MCP) and
-  expose them as Metabot agent tools.
+  "POC: expose external MCP servers (Linear, Notion, ...) to the Metabot agent
+  loop — but as ONE meta-tool per server, not one tool per remote tool.
 
-  Implements the minimum slice of MCP's Streamable HTTP transport: JSON-RPC
-  `initialize`, `tools/list`, `tools/call` over a single POST endpoint. The
-  server may answer either as plain JSON or as an SSE stream (text/event-stream);
-  we handle both.
+  Why a meta-tool: dumping every remote tool flat (Linear alone is 46; add
+  Notion + GitHub + Slack and you're at ~250) blows up the request prefix and
+  degrades the LLM's tool selection (it gets confused past ~30 tools). Instead
+  each server is a single tool the LLM sees:
 
-  Config via env vars (POC-grade, no settings UI):
-    MB_MCP_EXTERNAL_URL    - MCP endpoint, e.g. https://mcp.notion.com/mcp
-    MB_MCP_EXTERNAL_TOKEN  - bearer token (Notion OAuth access token / integration secret)
+      linear { op: \"list_tools\" }                       -> the server's catalog
+      linear { op: \"call_tool\", name: \"...\", args: {} } -> dispatch one tool
 
-  ponytail: hand-rolled 3-method client, no MCP SDK. add a real client + OAuth
-  flow when this graduates past POC. Notion's hosted MCP expects OAuth; a static
-  token here proves the wiring and swaps for a real token via env, not code."
+  This is CLI-style progressive disclosure: the LLM discovers a server's tools
+  on demand, then calls them. N servers = N tools, regardless of how many tools
+  each server exposes. Fits Metabot's frozen-at-init tool set (no loop changes).
+
+  Transport is the minimum slice of MCP's Streamable HTTP: JSON-RPC `initialize`,
+  `tools/list`, `tools/call` over one POST endpoint. Server may answer as plain
+  JSON or SSE; we handle both.
+
+  Config via env (POC-grade, no settings UI). One server:
+    MB_MCP_EXTERNAL_URL    - MCP endpoint, e.g. https://mcp.linear.app/mcp
+    MB_MCP_EXTERNAL_TOKEN  - bearer token
+    MB_MCP_EXTERNAL_NAME   - tool name for the server (default \"linear\")
+
+  ponytail: hand-rolled client, single-server-from-env, in-process catalog cache.
+  Add a real client + OAuth + multi-server settings when this graduates."
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
@@ -22,9 +33,23 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- config []
-  {:url   (System/getenv "MB_MCP_EXTERNAL_URL")
-   :token (System/getenv "MB_MCP_EXTERNAL_TOKEN")})
+;; ---------------------------------------------------------------------------
+;; Config
+;; ---------------------------------------------------------------------------
+
+(defn- servers
+  "Configured external MCP servers as [{:name :url :token} ...]. POC reads a
+  single server from env; extend to a registry/settings later."
+  []
+  (let [url (System/getenv "MB_MCP_EXTERNAL_URL")]
+    (when-not (str/blank? url)
+      [{:name  (or (System/getenv "MB_MCP_EXTERNAL_NAME") "linear")
+        :url   url
+        :token (System/getenv "MB_MCP_EXTERNAL_TOKEN")}])))
+
+;; ---------------------------------------------------------------------------
+;; Transport (JSON-RPC over Streamable HTTP)
+;; ---------------------------------------------------------------------------
 
 (defn- parse-body
   "MCP Streamable HTTP may reply as JSON or as SSE. Pull the JSON-RPC payload
@@ -60,45 +85,83 @@
       (throw (ex-info (str "MCP error: " (:message err)) {:method method :error err})))
     (:result parsed)))
 
-(defn- mcp-tool->tool-def
-  "Turn one MCP tool descriptor into a Metabot tool-def map.
+;; ---------------------------------------------------------------------------
+;; Per-server catalog cache (tools/list is stable for a session)
+;; ---------------------------------------------------------------------------
 
-  Metabot's Claude adapter normally derives the wire schema from a Malli
-  `:schema`; MCP hands us JSON Schema directly, so we stash it under
-  `:input_schema` and teach `tool->claude` to prefer it (see claude.clj)."
-  [cfg {:keys [name description inputSchema]}]
-  {:tool-name    name
-   :doc          description
-   :schema       nil
-   :input_schema (or inputSchema {:type "object" :properties {}})
-   :fn           (fn [args]
-                   (try
-                     (let [result  (rpc! cfg "tools/call" {:name name :arguments (or args {})})
-                           ;; MCP returns {:content [{:type "text" :text "..."} ...]}
-                           text    (->> (:content result)
-                                        (keep :text)
-                                        (str/join "\n"))]
-                       {:output (if (str/blank? text) (json/encode result) text)})
-                     (catch Exception e
-                       (log/error e "External MCP tool call failed" {:tool name})
-                       {:output (str "MCP tool error: " (.getMessage e))})))})
+(defonce ^:private catalog-cache (atom {}))
+
+(defn- server-tools
+  "MCP tool descriptors for a server, cached after the first fetch."
+  [{:keys [url] :as cfg}]
+  (or (@catalog-cache url)
+      (let [_     (rpc! cfg "initialize" {:protocolVersion "2025-06-18"
+                                          :capabilities    {}
+                                          :clientInfo      {:name "metabase-metabot" :version "poc"}})
+            tools (:tools (rpc! cfg "tools/list" {}))]
+        (swap! catalog-cache assoc url tools)
+        tools)))
+
+;; ---------------------------------------------------------------------------
+;; Meta-tool: one Metabot tool per MCP server
+;; ---------------------------------------------------------------------------
+
+(def ^:private meta-tool-params
+  "Malli params schema for the per-server meta-tool. `tool->claude` reads the
+  `params` out of [:=> [:cat params] out] and turns it into the wire schema."
+  [:map {:closed true}
+   [:op {:description "\"list_tools\" to see this server's available tools, or \"call_tool\" to invoke one."}
+    [:enum "list_tools" "call_tool"]]
+   [:name {:optional true
+           :description "When op=call_tool: the exact tool name from list_tools."}
+    [:maybe :string]]
+   [:args {:optional true
+           :description "When op=call_tool: a map of arguments for that tool."}
+    [:maybe :map]]])
+
+(defn- list-tools-output
+  "Compact catalog the LLM reads to discover a server's tools."
+  [cfg]
+  (let [tools (server-tools cfg)]
+    {:output (->> tools
+                  (map (fn [{:keys [name description]}]
+                         (str "- " name ": " (some-> description str/trim
+                                                     (#(first (str/split-lines %)))))))
+                  (str/join "\n"))
+     :structured-output {:tools (mapv #(select-keys % [:name :description :inputSchema]) tools)}}))
+
+(defn- call-tool-output
+  "Dispatch one remote tool by name, flatten the MCP result into {:output ...}."
+  [cfg tool-name args]
+  (if (str/blank? tool-name)
+    {:output "call_tool requires :name (call op=list_tools first to see names)."}
+    (let [result (rpc! cfg "tools/call" {:name tool-name :arguments (or args {})})
+          ;; MCP returns {:content [{:type "text" :text "..."} ...]}
+          text   (->> (:content result) (keep :text) (str/join "\n"))]
+      {:output (if (str/blank? text) (json/encode result) text)})))
+
+(defn- server->tool-def
+  "Build the single Metabot tool-def map representing one MCP server."
+  [{:keys [name] :as cfg}]
+  {:tool-name name
+   :doc       (str "External MCP server \"" name "\". Use op=list_tools to discover its tools, "
+                   "then op=call_tool with a tool name + args to invoke one. "
+                   "Tools are discovered on demand — list before you call.")
+   :schema    [:=> [:cat meta-tool-params] :any]
+   :fn        (fn [{:keys [op name args] :as _input}]
+                (try
+                  (case op
+                    "list_tools" (list-tools-output cfg)
+                    "call_tool"  (call-tool-output cfg name args)
+                    {:output (str "Unknown op " (pr-str op) "; use \"list_tools\" or \"call_tool\".")})
+                  (catch Exception e
+                    (log/error e "External MCP meta-tool failed" {:server (:name cfg) :op op})
+                    {:output (str "MCP error: " (.getMessage e))})))})
 
 (defn external-mcp-tools
-  "Connect to the configured external MCP server and return a
-  `{tool-name -> tool-def-map}` map ready to merge into the agent's tool
-  registry. Returns `{}` (and logs) if unconfigured or unreachable, so a broken
-  MCP server can never take down the agent loop."
+  "Return `{tool-name -> tool-def-map}` — one meta-tool per configured MCP
+  server — ready to merge into the agent's registry. Returns `{}` if none
+  configured. Catalogs are fetched lazily (on first list_tools), so an
+  unreachable server costs nothing at agent init and never crashes the loop."
   []
-  (let [{:keys [url] :as cfg} (config)]
-    (if (str/blank? url)
-      {}
-      (try
-        (rpc! cfg "initialize" {:protocolVersion "2025-06-18"
-                                :capabilities    {}
-                                :clientInfo      {:name "metabase-metabot" :version "poc"}})
-        (let [tools (:tools (rpc! cfg "tools/list" {}))]
-          (log/info "Loaded external MCP tools" {:url url :count (count tools)})
-          (into {} (map (juxt :name #(mcp-tool->tool-def cfg %))) tools))
-        (catch Exception e
-          (log/error e "Failed to load external MCP tools" {:url url})
-          {})))))
+  (into {} (map (juxt :name server->tool-def)) (servers)))
