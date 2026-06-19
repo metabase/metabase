@@ -110,14 +110,14 @@ export const getThemeOverrides = (
     sm: rem(12),
     md: rem(14),
     lg: rem(16),
-    // xl: undefined - do not use
+    xl: rem(999), // do not use
   },
   lineHeights: {
     xs: rem(15),
     sm: rem(16),
     md: rem(16),
     lg: rem(24),
-    // xl: undefined - do not use
+    xl: rem(999), // do not use
   },
   headings: {
     sizes: {
