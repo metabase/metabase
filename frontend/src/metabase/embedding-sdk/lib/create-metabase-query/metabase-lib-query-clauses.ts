@@ -1,4 +1,5 @@
 import type { TemporalUnit } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import {
   isCountAggregation,
@@ -29,6 +30,7 @@ import {
   getFieldId,
   getObjectNumber,
   getObjectString,
+  normalizeBreakout,
 } from "./metabase-lib-query-utils";
 import type {
   DimensionFilterRuntime,
@@ -105,6 +107,17 @@ export function applyMetricMeasures(
   return nextQuery;
 }
 
+export function applyMetricAggregation(
+  query: Query,
+  metricId: number,
+): Query | null {
+  const metricMetadata = findLibMetric(query, metricId);
+
+  return metricMetadata
+    ? Lib.aggregate(query, STAGE_INDEX, metricMetadata)
+    : null;
+}
+
 export function applyBreakouts(
   query: Query,
   breakouts: readonly unknown[] | undefined,
@@ -159,7 +172,9 @@ export const findLibMetric = (
   metricId: number,
 ): MetricMetadata | null =>
   Lib.availableMetrics(query, STAGE_INDEX).find(
-    (metricMetadata) => getDisplayInfoId(query, metricMetadata) === metricId,
+    (metricMetadata) =>
+      Lib.displayInfo(query, STAGE_INDEX, metricMetadata).name ===
+      `metric_${metricId}`,
   ) ?? null;
 
 function buildLibFieldFilter(
@@ -182,7 +197,7 @@ function buildLibFieldFilter(
   }
 
   if (filter.operator === "time-interval") {
-    return null;
+    return buildLibRelativeDateFilter(filter, column);
   }
 
   const jsType = getObjectString(filter.dimension, "jsType");
@@ -221,6 +236,138 @@ function buildLibFieldFilter(
     options: {},
   });
 }
+
+function buildLibRelativeDateFilter(
+  filter: DimensionFilterRuntime,
+  column: ColumnMetadata,
+): ExpressionClause | null {
+  const parts = getRelativeDateFilterParts(filter);
+
+  if (!parts) {
+    return null;
+  }
+
+  return Lib.relativeDateFilterClause({
+    column,
+    ...parts,
+  });
+}
+
+type RelativeDateFilterParts = {
+  value: number;
+  unit: Lib.RelativeDateFilterUnit;
+  offsetValue: number | null;
+  offsetUnit: Lib.RelativeDateFilterUnit | null;
+  options: Lib.RelativeDateFilterOptions;
+};
+
+function getRelativeDateFilterParts(
+  filter: DimensionFilterRuntime,
+): RelativeDateFilterParts | null {
+  const values =
+    filter.values ?? (Array.isArray(filter.value) ? filter.value : null);
+
+  if (values) {
+    return createRelativeDateFilterParts(
+      values[0],
+      values[1],
+      values[2],
+      values[3],
+    );
+  }
+
+  if (!isObject(filter.value)) {
+    return null;
+  }
+
+  return createRelativeDateFilterParts(
+    filter.value.value,
+    filter.value.unit,
+    filter.value.options,
+    filter.value.offsetValue,
+    filter.value.offsetUnit,
+  );
+}
+
+function createRelativeDateFilterParts(
+  value: unknown,
+  unit: unknown,
+  options: unknown,
+  offsetValue?: unknown,
+  offsetUnit?: unknown,
+): RelativeDateFilterParts | null {
+  if (typeof value !== "number" || !isRelativeDateFilterUnit(unit)) {
+    return null;
+  }
+
+  const optionsObject = isObject(options) ? options : {};
+  const parsedOffsetValue =
+    typeof offsetValue === "number"
+      ? offsetValue
+      : (getNumberOption(optionsObject, "offsetValue") ??
+        getNumberOption(optionsObject, "offset-value") ??
+        null);
+  const optionsOffsetUnit =
+    getStringOption(optionsObject, "offsetUnit") ??
+    getStringOption(optionsObject, "offset-unit");
+  const parsedOffsetUnit = isRelativeDateFilterUnit(offsetUnit)
+    ? offsetUnit
+    : isRelativeDateFilterUnit(optionsOffsetUnit)
+      ? optionsOffsetUnit
+      : null;
+
+  return {
+    value,
+    unit,
+    offsetValue: parsedOffsetValue,
+    offsetUnit: parsedOffsetUnit,
+    options: getRelativeDateFilterOptions(options),
+  };
+}
+
+function getRelativeDateFilterOptions(
+  options: unknown,
+): Lib.RelativeDateFilterOptions {
+  if (!isObject(options)) {
+    return {};
+  }
+
+  const includeCurrent =
+    getBooleanOption(options, "includeCurrent") ??
+    getBooleanOption(options, "include-current");
+
+  return includeCurrent === true ? { includeCurrent: true } : {};
+}
+
+const getBooleanOption = (
+  options: Record<string, unknown>,
+  key: string,
+): boolean | null => (typeof options[key] === "boolean" ? options[key] : null);
+
+const getNumberOption = (
+  options: Record<string, unknown>,
+  key: string,
+): number | null => (typeof options[key] === "number" ? options[key] : null);
+
+const getStringOption = (
+  options: Record<string, unknown>,
+  key: string,
+): string | null => (typeof options[key] === "string" ? options[key] : null);
+
+const RELATIVE_DATE_FILTER_UNITS = new Set<string>([
+  "minute",
+  "hour",
+  "day",
+  "week",
+  "month",
+  "quarter",
+  "year",
+]);
+
+const isRelativeDateFilterUnit = (
+  value: unknown,
+): value is Lib.RelativeDateFilterUnit =>
+  typeof value === "string" && RELATIVE_DATE_FILTER_UNITS.has(value);
 
 function buildLibAggregation(
   query: Query,
@@ -273,16 +420,9 @@ const findLibMeasure = (
 ): MeasureMetadata | null =>
   Lib.availableMeasures(query, STAGE_INDEX).find(
     (availableMeasure) =>
-      getDisplayInfoId(query, availableMeasure) ===
-      getObjectNumber(measure, "id"),
+      Lib.displayInfo(query, STAGE_INDEX, availableMeasure).name ===
+      `measure_${getObjectNumber(measure, "id")}`,
   ) ?? null;
-
-const getDisplayInfoId = (
-  query: Query,
-  metadata: MeasureMetadata | MetricMetadata,
-): unknown =>
-  (Lib.displayInfo(query, STAGE_INDEX, metadata as never) as { id?: unknown })
-    .id;
 
 function findLibColumnForBreakout(
   query: Query,
@@ -306,20 +446,8 @@ function findLibColumnForBreakout(
     return bucket ? Lib.withTemporalBucket(column, bucket) : null;
   }
 
-  if (isDefaultBinningOptions(options.binning)) {
-    const columnWithDefaultBinning = Lib.withDefaultBinning(
-      query,
-      STAGE_INDEX,
-      column,
-    );
-
-    return Lib.binning(columnWithDefaultBinning)
-      ? columnWithDefaultBinning
-      : null;
-  }
-
   if (options.binning != null) {
-    return null;
+    return buildBinnedColumn(query, column, options.binning);
   }
 
   return column;
@@ -336,13 +464,73 @@ const findTemporalBucket = (
       Lib.displayInfo(query, stageIndex, bucket).shortName === targetUnit,
   ) ?? null;
 
-const isDefaultBinningOptions = (
-  value: unknown,
-): value is { strategy: "default" } =>
-  typeof value === "object" &&
-  value != null &&
-  "strategy" in value &&
-  value.strategy === "default";
+type BinningOptions =
+  | { strategy: "default" }
+  | { strategy: "num-bins"; "num-bins": number }
+  | { strategy: "bin-width"; "bin-width": number };
+
+function buildBinnedColumn(
+  query: Query,
+  column: ColumnMetadata,
+  binningOptions: unknown,
+): ColumnMetadata | null {
+  if (!isBinningOptions(binningOptions)) {
+    return null;
+  }
+
+  if (binningOptions.strategy === "default") {
+    const columnWithDefaultBinning = Lib.withDefaultBinning(
+      query,
+      STAGE_INDEX,
+      column,
+    );
+
+    return Lib.binning(columnWithDefaultBinning)
+      ? columnWithDefaultBinning
+      : null;
+  }
+
+  const bucket = Lib.availableBinningStrategies(
+    query,
+    STAGE_INDEX,
+    column,
+  ).find(
+    (bucket) =>
+      Lib.displayInfo(query, STAGE_INDEX, bucket).displayName ===
+      getBinningStrategyDisplayName(binningOptions),
+  );
+
+  return bucket ? Lib.withBinning(column, bucket) : null;
+}
+
+function isBinningOptions(value: unknown): value is BinningOptions {
+  if (typeof value !== "object" || value == null || !("strategy" in value)) {
+    return false;
+  }
+
+  if (value.strategy === "default") {
+    return true;
+  }
+
+  if (value.strategy === "num-bins") {
+    return getObjectNumber(value, "num-bins") != null;
+  }
+
+  return (
+    value.strategy === "bin-width" &&
+    getObjectNumber(value, "bin-width") != null
+  );
+}
+
+function getBinningStrategyDisplayName(
+  binningOptions: Exclude<BinningOptions, { strategy: "default" }>,
+) {
+  if (binningOptions.strategy === "num-bins") {
+    return `${binningOptions["num-bins"]} bins`;
+  }
+
+  return `Bin every ${binningOptions["bin-width"]}`;
+}
 
 function findLibColumn(query: Query, field: unknown): ColumnMetadata | null {
   const fieldId = getFieldId(field);
@@ -382,30 +570,4 @@ function findLibColumn(query: Query, field: unknown): ColumnMetadata | null {
       (column) => Lib.displayInfo(query, STAGE_INDEX, column).name === field,
     ) ?? null
   );
-}
-
-function normalizeBreakout(breakout: unknown) {
-  if (typeof breakout === "string" || isTableFieldSchema(breakout)) {
-    return { dimension: breakout, options: {} };
-  }
-
-  if (
-    typeof breakout !== "object" ||
-    breakout == null ||
-    !("dimension" in breakout)
-  ) {
-    return { dimension: null, options: {} };
-  }
-
-  const options: Record<string, unknown> = {};
-
-  if ("bucket" in breakout && breakout.bucket) {
-    options["temporal-unit"] = breakout.bucket;
-  }
-
-  if ("binning" in breakout && breakout.binning) {
-    options.binning = breakout.binning;
-  }
-
-  return { dimension: breakout.dimension, options };
 }

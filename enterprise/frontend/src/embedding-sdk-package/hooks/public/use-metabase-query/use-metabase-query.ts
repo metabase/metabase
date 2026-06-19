@@ -9,6 +9,12 @@ import {
 
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import {
+  isMetricQuery,
+  isQuestionQuery,
+  isTableQuery,
+  isUnaryOperator,
+} from "embedding-sdk-shared/lib/create-metabase-query/query-guards";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
@@ -19,12 +25,6 @@ import type {
 } from "../data-schema";
 import { mapQueryData } from "../data-schema";
 
-import {
-  isMetricQuery,
-  isQuestionQuery,
-  isTableQuery,
-  isUnaryOperator,
-} from "./guards";
 import { mapDatasetQueryData } from "./map-dataset-query-data";
 import { stableStringifyQuery } from "./stable-query-key";
 import type {
@@ -154,14 +154,6 @@ const isOrderableJavaScriptType = (
   value === "number" ||
   value === "boolean" ||
   value === "Date";
-
-// useMetabaseQueryObject returns synchronously while the SDK bundle loads.
-const PLACEHOLDER_DATASET_QUERY: StructuredDatasetQuery = {
-  type: "query",
-  database: 0,
-  query: { "source-table": 0 },
-  parameters: [],
-};
 
 function subscribeToSdkBundleLoaded(callback: () => void) {
   const target = typeof document === "undefined" ? null : document;
@@ -306,7 +298,7 @@ const useMetabaseQueryImpl = <
         return;
       }
 
-      if (isTableQuery(currentQuery)) {
+      if (isTableQuery(currentQuery) || isMetricQuery(currentQuery)) {
         if (!queryDataset) {
           return;
         }
@@ -316,17 +308,6 @@ const useMetabaseQueryImpl = <
 
         setData(mapDatasetQueryData(result));
         return;
-      }
-
-      if (isMetricQuery(currentQuery)) {
-        if (!queryDataset) {
-          return;
-        }
-
-        const datasetQuery = createMetabaseQuery(currentQuery);
-        const result = await queryDataset(reduxStore)({ datasetQuery });
-
-        setData(mapDatasetQueryData(result));
       }
     } catch (err) {
       setError(err);
@@ -356,16 +337,23 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 /** @notExported useMetabaseQueryObject */
 export function useMetabaseQueryObject(
   query: TableQuery<unknown> | MetricQuery<unknown>,
-): StructuredDatasetQuery {
+): StructuredDatasetQuery | null {
   const createQuery = useCreateMetabaseQueryFromBundle();
+
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
   const queryRef = useRef(query);
 
   queryRef.current = query;
 
   return useMemo(
-    () =>
-      createQuery ? createQuery(queryRef.current) : PLACEHOLDER_DATASET_QUERY,
+    () => {
+      // If SDK bundle is not yet loaded, createQuery would be `null`
+      if (!createQuery) {
+        return null;
+      }
+
+      return createQuery(queryRef.current);
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
     [createQuery, queryKey],
   );

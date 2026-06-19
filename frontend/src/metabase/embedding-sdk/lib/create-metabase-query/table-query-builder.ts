@@ -7,7 +7,7 @@ import type {
   StructuredDatasetQuery,
 } from "metabase-types/api";
 
-import { getTableId } from "./accessors";
+import { getTableIdFromQuery } from "./accessors";
 import {
   isCountAggregation,
   isDimensionFilter,
@@ -17,8 +17,8 @@ import {
   isTableFieldSchema,
   isUnaryOperator,
 } from "./guards";
+import { normalizeBreakout } from "./metabase-lib-query-utils";
 import type {
-  BreakoutObjectRuntime,
   DimensionFilterRuntime,
   TableQueryRuntime,
 } from "./runtime-types";
@@ -27,7 +27,7 @@ import { validateTableScopedInputs } from "./validation";
 export function buildTableDatasetQuery(
   query: TableQueryRuntime,
 ): Omit<StructuredDatasetQuery, "database"> {
-  const tableId = getTableId(query);
+  const tableId = getTableIdFromQuery(query);
 
   if (tableId == null) {
     throw new Error(
@@ -118,6 +118,10 @@ const buildCountClause = (): Aggregation => ["count"] as Aggregation;
 function buildTableBreakout(breakout: unknown): ConcreteFieldReference {
   const { dimension, options } = normalizeBreakout(breakout);
 
+  if (dimension == null) {
+    throw new Error("Table query breakouts must use generated field objects.");
+  }
+
   return buildFieldReference(dimension, options) as ConcreteFieldReference;
 }
 
@@ -157,28 +161,3 @@ function buildFieldReference(
 
   return ["field", String(field), options] as FieldReference;
 }
-
-function normalizeBreakout(breakout: unknown) {
-  if (typeof breakout === "string" || isTableFieldSchema(breakout)) {
-    return { dimension: breakout, options: {} };
-  }
-
-  if (!isBreakoutObject(breakout)) {
-    throw new Error("Table query breakouts must use generated field objects.");
-  }
-
-  const options: Record<string, unknown> = {};
-
-  if (breakout.bucket) {
-    options["temporal-unit"] = breakout.bucket;
-  }
-
-  if (breakout.binning) {
-    options.binning = breakout.binning;
-  }
-
-  return { dimension: breakout.dimension, options };
-}
-
-const isBreakoutObject = (value: unknown): value is BreakoutObjectRuntime =>
-  typeof value === "object" && value != null && "dimension" in value;

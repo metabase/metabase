@@ -1,4 +1,4 @@
-import { getMetricMappedTableIds } from "./accessors";
+import { getMetricMappedTableIdsFromQuery } from "./accessors";
 import {
   isCountAggregation,
   isFieldAggregation,
@@ -7,16 +7,38 @@ import {
   isTableDimensionFilter,
   isTableFieldSchema,
 } from "./guards";
+import {
+  getMetricDimensionValues,
+  getObjectNumber,
+  getObjectString,
+  normalizeBreakout,
+} from "./metabase-lib-query-utils";
 import type { MetricQueryRuntime } from "./runtime-types";
 
 export const validateMetricTableScopedInputs = (query: MetricQueryRuntime) =>
   validateTableScopedInputs({
-    allowedTableIds: getMetricMappedTableIds(query),
+    allowedTableIds: getMetricMappedTableIdsFromQuery(query),
     breakouts: query.breakouts,
     filters: query.filters,
     measures: query.measures,
     context: "Metric query",
   });
+
+export function validateMetricGeneratedDimensions(query: MetricQueryRuntime) {
+  query.filters?.forEach((filter) => {
+    if (isTableDimensionFilter(filter)) {
+      validateMetricDimensionForTableField(query, filter.dimension);
+    }
+  });
+
+  query.breakouts?.forEach((breakout) => {
+    const field = getTableFieldFromBreakout(breakout);
+
+    if (field) {
+      validateMetricDimensionForTableField(query, field);
+    }
+  });
+}
 
 export function validateTableScopedInputs({
   allowedTableIds,
@@ -97,20 +119,42 @@ export function validateTableScopedInputs({
 }
 
 function getTableFieldFromBreakout(breakout: unknown) {
-  if (isTableFieldSchema(breakout)) {
-    return breakout;
-  }
+  const { dimension } = normalizeBreakout(breakout);
 
-  if (
-    typeof breakout === "object" &&
-    breakout != null &&
-    "dimension" in breakout &&
-    isTableFieldSchema(breakout.dimension)
-  ) {
-    return breakout.dimension;
-  }
+  return isTableFieldSchema(dimension) ? dimension : null;
+}
 
-  return null;
+export function validateMetricDimensionForTableField(
+  query: MetricQueryRuntime,
+  field: unknown,
+) {
+  const dimension = getMetricDimensionFields(query).find((dimension) => {
+    return fieldsMatch(dimension, field);
+  });
+
+  if (!dimension) {
+    throw new Error(
+      "Metric query table-field filters must match a generated metric dimension for the metric. Use schema.metrics.*.dimensions.* or pass the full generated metric object.",
+    );
+  }
+}
+
+export const getMetricDimensionFields = (query: MetricQueryRuntime) =>
+  getMetricDimensionValues(query.metric, isTableFieldSchema);
+
+function fieldsMatch(left: unknown, right: unknown) {
+  const leftTableId = getObjectNumber(left, "tableId");
+  const rightTableId = getObjectNumber(right, "tableId");
+  const leftFieldId = getObjectNumber(left, "fieldId");
+  const rightFieldId = getObjectNumber(right, "fieldId");
+  const leftName = getObjectString(left, "name");
+  const rightName = getObjectString(right, "name");
+
+  return (
+    leftTableId === rightTableId &&
+    ((leftFieldId != null && leftFieldId === rightFieldId) ||
+      (leftName != null && leftName === rightName))
+  );
 }
 
 function validateGeneratedMeasure({

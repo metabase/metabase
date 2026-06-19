@@ -1,13 +1,16 @@
+import { isMetricReference } from "embedding-sdk-shared/lib/create-metabase-query/query-guards";
+import type { TableId } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
+
 import type {
   ID,
   MetricQueryRuntime,
-  MetricReferenceRuntime,
   TableQueryRuntime,
 } from "./runtime-types";
 import type { TableSchema } from "./schema";
 
-export function getMetricId(query: unknown): ID | null {
-  if (typeof query !== "object" || query == null) {
+export function getMetricIdFromQuery(query: unknown): ID | null {
+  if (!isObject(query)) {
     return null;
   }
 
@@ -22,8 +25,8 @@ export function getMetricId(query: unknown): ID | null {
   return null;
 }
 
-export function getTableId(query: unknown): ID | null {
-  if (typeof query !== "object" || query == null) {
+export function getTableIdFromQuery(query: unknown): ID | null {
+  if (!isObject(query)) {
     return null;
   }
 
@@ -38,7 +41,9 @@ export function getTableId(query: unknown): ID | null {
   return null;
 }
 
-export function getTableDatabaseId(query: TableQueryRuntime): ID | null {
+export function getTableDatabaseIdFromQuery(
+  query: TableQueryRuntime,
+): ID | null {
   if ("table" in query && isTableReference(query.table)) {
     return query.table.databaseId;
   }
@@ -50,35 +55,45 @@ export function getTableDatabaseId(query: TableQueryRuntime): ID | null {
   return null;
 }
 
-export const getMetricMappedTableIds = (
+export const getMetricMappedTableIdsFromQuery = (
   query: MetricQueryRuntime,
 ): readonly number[] | null =>
   isMetricReference(query.metric) ? query.metric.mappedTableIds : null;
 
-export const getMetricDatabaseId = (query: MetricQueryRuntime): ID | null =>
+export const getMetricDatabaseIdFromQuery = (
+  query: MetricQueryRuntime,
+): ID | null =>
   isMetricReference(query.metric) && query.metric.databaseId != null
     ? query.metric.databaseId
     : null;
 
-export const getMetricSourceTableId = (query: MetricQueryRuntime): ID | null =>
+export const getMetricSourceTableIdFromQuery = (
+  query: MetricQueryRuntime,
+): ID | null =>
   isMetricReference(query.metric) && query.metric.sourceTableId != null
     ? query.metric.sourceTableId
     : null;
 
-export const getMetricSourceCardId = (query: MetricQueryRuntime): ID | null =>
+export const getMetricSourceCardIdFromQuery = (
+  query: MetricQueryRuntime,
+): ID | null =>
   isMetricReference(query.metric) && query.metric.sourceCardId != null
     ? query.metric.sourceCardId
     : null;
 
-const isMetricReference = (value: unknown): value is MetricReferenceRuntime =>
-  typeof value === "object" &&
-  value != null &&
-  "id" in value &&
-  "mappedTableIds" in value &&
-  Array.isArray(value.mappedTableIds);
+export const getMetricSourceIdFromQuery = (
+  query: MetricQueryRuntime,
+): TableId | null => {
+  const sourceTableId = getMetricSourceTableIdFromQuery(query);
+
+  if (sourceTableId != null) {
+    return Number(sourceTableId);
+  }
+
+  const sourceCardId = getMetricSourceCardIdFromQuery(query);
+
+  return sourceCardId == null ? null : `card__${sourceCardId}`;
+};
 
 const isTableReference = (value: unknown): value is TableSchema =>
-  typeof value === "object" &&
-  value != null &&
-  "id" in value &&
-  "databaseId" in value;
+  isObject(value) && "id" in value && "databaseId" in value;

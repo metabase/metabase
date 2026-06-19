@@ -5,7 +5,7 @@ import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import { createMetabaseQuery as createMetabaseQueryInBundle } from "metabase/embedding-sdk/metabase-query/create-metabase-query";
+import { createMetabaseQuery as createMetabaseQueryInBundle } from "metabase/embedding-sdk/lib/create-metabase-query/create-metabase-query";
 
 import type { MetabaseQueryOptions } from "./use-metabase-query";
 import {
@@ -565,6 +565,14 @@ describe("useMetabaseQuery", () => {
       ).toEqual(expectedOrdersQuery);
     });
 
+    it("returns null from useMetabaseQueryObject before the SDK bundle loads", () => {
+      delete window.METABASE_EMBEDDING_SDK_BUNDLE;
+
+      render(<MetabaseQueryObjectComponent />);
+
+      expect(screen.getByTestId("query-object")).toHaveTextContent("null");
+    });
+
     it("builds explicit count aggregations", () => {
       expect(
         createMetabaseQuery({
@@ -659,6 +667,31 @@ describe("useMetabaseQuery", () => {
       });
     });
 
+    it("builds time-interval filters through metabase-lib", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            {
+              dimension: TEST_SCHEMA.tables.orders.fields.createdAt,
+              operator: "time-interval",
+              values: [-30, "day", { "include-current": true }],
+            },
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          filter: [
+            "time-interval",
+            ["field", 103, {}],
+            -30,
+            "day",
+            { "include-current": true },
+          ],
+        },
+      });
+    });
+
     it("supports field aggregation object literals", () => {
       expect(
         createMetabaseQuery({
@@ -684,9 +717,37 @@ describe("useMetabaseQuery", () => {
             }),
           ],
         }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["count"]],
+          breakout: [["field", 102, { binning: { strategy: "default" } }]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("builds binned table breakouts through metabase-lib", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          breakouts: [
+            breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+              binning: { strategy: "num-bins", "num-bins": 10 },
+            }),
+          ],
+        }),
       ).toMatchObject({
         query: {
-          breakout: [["field", 102, { binning: { strategy: "default" } }]],
+          breakout: [
+            [
+              "field",
+              102,
+              { binning: { strategy: "num-bins", "num-bins": 10 } },
+            ],
+          ],
         },
       });
     });
@@ -715,7 +776,11 @@ describe("useMetabaseQuery", () => {
           "source-table": 1,
           aggregation: [
             ["metric", 34],
-            ["measure", {}, 21],
+            [
+              "aggregation-options",
+              ["measure", 21],
+              { "display-name": "Measure 21" },
+            ],
           ],
           filter: ["=", ["field", 101, {}], "paid"],
           breakout: [["field", 103, { "temporal-unit": "month" }]],
@@ -919,7 +984,11 @@ describe("useMetabaseQuery", () => {
             "source-table": 1,
             aggregation: [
               ["metric", 34],
-              ["measure", {}, 21],
+              [
+                "aggregation-options",
+                ["measure", 21],
+                { "display-name": "Measure 21" },
+              ],
             ],
           },
           parameters: [],
@@ -1010,7 +1079,11 @@ describe("useMetabaseQuery", () => {
             "source-table": 1,
             aggregation: [
               ["metric", 35],
-              ["measure", {}, 21],
+              [
+                "aggregation-options",
+                ["measure", 21],
+                { "display-name": "Measure 21" },
+              ],
             ],
             breakout: [["field", 103, { "temporal-unit": "month" }]],
           },

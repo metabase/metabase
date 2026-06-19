@@ -1,24 +1,4 @@
-import type { Aggregation, StructuredDatasetQuery } from "metabase-types/api";
-
-export const normalizeMetricAggregations = (
-  datasetQuery: StructuredDatasetQuery,
-): StructuredDatasetQuery => ({
-  ...datasetQuery,
-  query: {
-    ...datasetQuery.query,
-    aggregation: datasetQuery.query.aggregation?.map((aggregation) => {
-      if (
-        Array.isArray(aggregation) &&
-        aggregation[0] === "measure" &&
-        aggregation.length === 2
-      ) {
-        return ["measure", {}, aggregation[1]] as Aggregation;
-      }
-
-      return aggregation;
-    }),
-  },
-});
+import type { StructuredDatasetQuery } from "metabase-types/api";
 
 export const normalizeDatasetQuery = (
   datasetQuery: StructuredDatasetQuery,

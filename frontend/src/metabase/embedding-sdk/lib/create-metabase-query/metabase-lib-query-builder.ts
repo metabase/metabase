@@ -1,16 +1,18 @@
 import type { StructuredDatasetQuery } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import {
-  getMetricDatabaseId,
-  getMetricId,
-  getMetricSourceTableId,
-  getTableDatabaseId,
-  getTableId,
+  getMetricDatabaseIdFromQuery,
+  getMetricIdFromQuery,
+  getMetricSourceIdFromQuery,
+  getTableDatabaseIdFromQuery,
+  getTableIdFromQuery,
 } from "./accessors";
 import {
   applyAggregations,
   applyBreakouts,
   applyFilters,
+  applyMetricAggregation,
   applyMetricMeasures,
   buildLibMetricDatasetFilter,
   buildLibTableFilter,
@@ -21,15 +23,13 @@ import {
   createMetricMetadata,
   createTableMetadata,
 } from "./metabase-lib-query-metadata";
-import {
-  normalizeDatasetQuery,
-  normalizeMetricAggregations,
-} from "./metabase-lib-query-normalization";
+import { normalizeDatasetQuery } from "./metabase-lib-query-normalization";
 import { buildMetricDatasetQuery } from "./metric-query-builder";
 import type { MetricQueryRuntime, TableQueryRuntime } from "./runtime-types";
 import type { TableSchema } from "./schema";
 import { buildTableDatasetQuery } from "./table-query-builder";
 import {
+  validateMetricGeneratedDimensions,
   validateMetricTableScopedInputs,
   validateTableScopedInputs,
 } from "./validation";
@@ -43,8 +43,8 @@ export function buildTableDatasetQueryWithMetabaseLib(
     return null;
   }
 
-  const databaseId = getTableDatabaseId(query);
-  const tableId = getTableId(query);
+  const databaseId = getTableDatabaseIdFromQuery(query);
+  const tableId = getTableIdFromQuery(query);
 
   if (databaseId == null || tableId == null) {
     return null;
@@ -99,21 +99,27 @@ export function buildMetricDatasetQueryWithMetabaseLib(
   query: MetricQueryRuntime,
 ): StructuredDatasetQuery | null {
   validateMetricTableScopedInputs(query);
+  validateMetricGeneratedDimensions(query);
 
-  const metricId = getMetricId(query);
-  const databaseId = getMetricDatabaseId(query);
-  const sourceTableId = getMetricSourceTableId(query);
+  const metricId = getMetricIdFromQuery(query);
+  const databaseId = getMetricDatabaseIdFromQuery(query);
+  const sourceId = getMetricSourceIdFromQuery(query);
 
-  if (metricId == null || databaseId == null || sourceTableId == null) {
+  if (metricId == null || databaseId == null || sourceId == null) {
     return null;
   }
 
   const metadata = createMetricMetadata(query, Number(databaseId));
-  let libQuery = createLibQuery(
-    metadata,
-    Number(databaseId),
-    Number(sourceTableId),
-  );
+
+  let libQuery = createLibQuery(metadata, Number(databaseId), sourceId);
+
+  const queryWithMetric = applyMetricAggregation(libQuery, Number(metricId));
+
+  if (!queryWithMetric) {
+    return null;
+  }
+
+  libQuery = queryWithMetric;
 
   const queryWithMeasures = applyMetricMeasures(libQuery, query.measures);
 
@@ -141,13 +147,8 @@ export function buildMetricDatasetQueryWithMetabaseLib(
     return null;
   }
 
-  return addMetricAggregation(
-    normalizeMetricAggregations(
-      normalizeDatasetQuery(
-        Lib.toLegacyQuery(queryWithBreakouts) as StructuredDatasetQuery,
-      ),
-    ),
-    Number(metricId),
+  return normalizeDatasetQuery(
+    Lib.toLegacyQuery(queryWithBreakouts) as StructuredDatasetQuery,
   );
 }
 
@@ -163,11 +164,36 @@ export function buildDatasetQueryWithMetabaseLib(
     return datasetQuery;
   }
 
-  if ("metric" in query || "metricId" in query) {
+  if (isMetricQueryRuntime(query)) {
+    if (hasGeneratedMetric(query)) {
+      if (hasBinningBreakout(query)) {
+        return buildMetricDatasetQuery(query as MetricQueryRuntime);
+      }
+
+      throw new Error(
+        "Generated metric query could not be built with metabase-lib.",
+      );
+    }
+
     return buildMetricDatasetQuery(query as MetricQueryRuntime);
   }
 
-  const databaseId = getTableDatabaseId(query as TableQueryRuntime);
+  if (hasGeneratedTable(query)) {
+    if (hasBinningBreakout(query)) {
+      const tableQuery = query as TableQueryRuntime;
+
+      return {
+        ...buildTableDatasetQuery(tableQuery),
+        database: Number(getTableDatabaseIdFromQuery(tableQuery)),
+      };
+    }
+
+    throw new Error(
+      "Generated table query could not be built with metabase-lib.",
+    );
+  }
+
+  const databaseId = getTableDatabaseIdFromQuery(query as TableQueryRuntime);
 
   if (databaseId == null) {
     return buildTableDatasetQuery(
@@ -182,20 +208,26 @@ export function buildDatasetQueryWithMetabaseLib(
 }
 
 const getGeneratedTable = (query: TableQueryRuntime): TableSchema | null =>
-  typeof query.table === "object" && query.table != null
-    ? (query.table as TableSchema)
-    : null;
+  isObject(query.table) ? (query.table as TableSchema) : null;
 
-const addMetricAggregation = (
-  datasetQuery: StructuredDatasetQuery,
-  metricId: number,
-): StructuredDatasetQuery => ({
-  ...datasetQuery,
-  query: {
-    ...datasetQuery.query,
-    aggregation: [
-      ["metric", metricId],
-      ...(datasetQuery.query.aggregation ?? []),
-    ],
-  },
-});
+const isMetricQueryRuntime = (
+  query: TableQueryRuntime | MetricQueryRuntime,
+): query is MetricQueryRuntime => "metric" in query || "metricId" in query;
+
+const hasGeneratedMetric = (query: MetricQueryRuntime): boolean =>
+  isObject(query.metric);
+
+const hasGeneratedTable = (
+  query: TableQueryRuntime | MetricQueryRuntime,
+): query is TableQueryRuntime =>
+  !isMetricQueryRuntime(query) && isObject(query.table);
+
+const hasBinningBreakout = (
+  query: TableQueryRuntime | MetricQueryRuntime,
+): boolean =>
+  Boolean(
+    query.breakouts?.some(
+      (breakout) =>
+        isObject(breakout) && "binning" in breakout && breakout.binning != null,
+    ),
+  );

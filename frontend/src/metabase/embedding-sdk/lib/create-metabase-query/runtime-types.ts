@@ -1,24 +1,8 @@
-import type { FieldSchema } from "../data-schema";
+import type { FilterOperator as LibFilterOperator } from "metabase-lib/common";
 
 export type ID = string | number;
 
-export type FilterOperator =
-  | "="
-  | "!="
-  | ">"
-  | ">="
-  | "<"
-  | "<="
-  | "between"
-  | "contains"
-  | "does-not-contain"
-  | "starts-with"
-  | "ends-with"
-  | "is-empty"
-  | "not-empty"
-  | "is-null"
-  | "not-null"
-  | "time-interval";
+export type FilterOperator = LibFilterOperator | "time-interval";
 
 export type QuestionQueryRuntime = {
   questionId: ID;
@@ -93,11 +77,3 @@ export type DimensionFilterRuntime = {
   value?: unknown;
   values?: readonly unknown[];
 };
-
-export type BreakoutObjectRuntime = {
-  dimension: string | FieldSchema;
-  bucket?: unknown;
-  binning?: unknown;
-};
-
-export type BreakoutRuntime = string | FieldSchema | BreakoutObjectRuntime;
