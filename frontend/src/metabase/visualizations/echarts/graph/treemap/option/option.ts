@@ -67,6 +67,8 @@ const HIDDEN_LABEL_OVERRIDE: Pick<TreemapSeriesNode, "label"> = {
   label: { show: false },
 };
 
+const MIN_TILE_SIZE = 25 * 25;
+
 export function getTreemapChartOption(config: TreemapChartOptionConfig): {
   series: TreemapChartSeriesOption;
 } {
@@ -114,8 +116,8 @@ export function getTreemapChartOption(config: TreemapChartOptionConfig): {
     right: 0,
     bottom: 0,
     leafDepth: 2,
-    visibleMin: 25 * 25,
-    childrenVisibleMin: 25 * 25,
+    visibleMin: MIN_TILE_SIZE,
+    childrenVisibleMin: MIN_TILE_SIZE,
     levels: hasNestedChildren ? [rootLevel, groupLevel] : [rootLevel],
     data: toSeriesData({ tree, config: buildConfig }),
   };
