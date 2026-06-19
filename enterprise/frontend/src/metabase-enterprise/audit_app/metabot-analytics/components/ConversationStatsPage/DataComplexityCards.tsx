@@ -16,6 +16,7 @@ import {
   Skeleton,
   Stack,
   Text,
+  Title,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
@@ -123,7 +124,7 @@ function DataComplexityCard({
             <Text c="text-secondary">{catalog.rating_label}</Text>
           </Stack>
         ) : (
-          <Stack gap={4} my="sm">
+          <Stack gap="xs" my="sm">
             <Text c="error" fw={700}>{t`Score unavailable`}</Text>
             <Text c="text-secondary">{t`Open for component details.`}</Text>
           </Stack>
@@ -135,9 +136,7 @@ function DataComplexityCard({
         onClose={close}
         title={
           <Stack gap={4} align="flex-start">
-            <Text fw={700} size="xl" lh="1.5rem">
-              {title}
-            </Text>
+            <Title order={2}>{title}</Title>
             <Text size="sm" lh="1rem" c="text-secondary">
               {subtitle}
             </Text>
