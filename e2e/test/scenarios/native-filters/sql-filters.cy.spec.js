@@ -173,7 +173,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       SQLFilter.runQuery();
 
       cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("No results!");
+        cy.findByText("No results");
       });
     });
 
@@ -191,7 +191,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       SQLFilter.runQuery();
 
       cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("No results!");
+        cy.findByText("No results");
       });
     });
 

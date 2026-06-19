@@ -211,7 +211,7 @@ describe("issue 37300", () => {
       cy.findByText("ID").should("be.visible");
       cy.findByText("Ean").should("be.visible");
 
-      cy.findByText("No results!").should("be.visible");
+      cy.findByText("No results").should("be.visible");
     });
   });
 });
