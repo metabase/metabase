@@ -20,10 +20,10 @@ type TreeNodeLayout =
  * series data (`.tree.root`). `getModel()` is declared `private` in ECharts'.
  */
 function getTreemapRoot(chart: EChartsType): TreeNode | undefined {
-  return (chart as unknown as { getModel(): GlobalModel })
-    .getModel()
-    ?.getSeriesByIndex(0)
-    ?.getRawData()?.tree?.root;
+  // @ts-expect-error -- getModel is private in ECharts' public types
+  const globalModel: GlobalModel = chart.getModel();
+
+  return globalModel?.getSeriesByIndex(0)?.getRawData()?.tree?.root;
 }
 
 /**
