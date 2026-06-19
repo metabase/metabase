@@ -357,7 +357,7 @@
   (if (should-show-column-totals? settings)
     (conj
      row-tree
-     {:value (i18n/tru "Grand totals")
+     {:value (i18n/tru "Totals")
       :children []
       :isSubtotal true
       :isGrandTotal true})
@@ -368,7 +368,7 @@
   [row-item]
   (let [subtotal-val (or (get-in row-item [:value :xlsx-formatted-value])
                          (:value row-item))]
-    {:value (i18n/tru "Totals for {0}" subtotal-val)
+    {:value subtotal-val
      :rawValue (:rawValue row-item)
      :span 1
      :isSubtotal true
