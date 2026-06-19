@@ -152,10 +152,12 @@
                         :edit-sql-query
                         :replace-sql-query
                         :ask-for-sql-clarification]
-  ;; Delivering SQL via one of these tools IS the answer here, so a successful call ends the turn
-  ;; rather than forcing more tool calls under :required-tool-call?. Failed calls don't terminate,
-  ;; so the model can still self-correct. The same tools stay non-terminal in other profiles.
-  :terminal-tools      #{"create_sql_query" "edit_sql_query" "replace_sql_query"}
+  ;; Delivering SQL via one of these tools — or asking the user to clarify — IS the answer here, so a
+  ;; successful call ends the turn rather than forcing more tool calls under :required-tool-call?.
+  ;; Failed calls don't terminate, so the model can still self-correct. The same tools stay
+  ;; non-terminal in other profiles.
+  :terminal-tools      #{"create_sql_query" "edit_sql_query" "replace_sql_query"
+                         "ask_for_sql_clarification"}
   :tools               [#'tools/sql-search-tool
                         #'tools/read-resource-tool
                         #'tools/create-sql-query-code-edit-tool
@@ -181,6 +183,9 @@
   :max-iterations  10
   :temperature     0.3
   :required-tool-call? true
+  ;; Producing a chart draft is the answer; a successful construct ends the turn (schema collection
+  ;; is a non-terminal preparatory step). Failed constructs don't terminate, so the model retries.
+  :terminal-tools  #{"document_construct_model_chart" "document_construct_sql_chart"}
   :tools           [#'tools/list-available-data-sources-tool
                     #'tools/list-available-fields-tool
                     #'tools/get-field-values-tool

@@ -176,17 +176,11 @@
   [parts]
   (some #(= (:type %) :tool-input) parts))
 
-(defn- has-final-response?
-  "Check if any tool result signals a final response."
-  [parts]
-  (some #(and (= (:type %) :tool-output)
-              (get-in % [:result :final-response?]))
-        parts))
-
 (defn- successful-tool-output?
-  "Whether a `:tool-output` part represents a successful, answer-producing call.
-  The query/chart-producing tools attach `:structured-output` only on success, returning just an
-  `:output` (error string) on validation/exception failures — so its presence is the success signal."
+  "Whether a `:tool-output` part represents a successful call.
+  Answer-producing tools attach `:structured-output` when they produce a result (a query, a chart
+  draft, a clarification question), and return just an `:output` error string on validation/exception
+  failures — so its presence is the success signal."
   [part]
   (and (= (:type part) :tool-output)
        (some? (get-in part [:result :structured-output]))))
@@ -194,10 +188,11 @@
 (defn- terminal-tool-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
   tool-name strings). This lets a profile end the turn as soon as it produces its answer (e.g. the
-  `:sql` profile after a successful `edit_sql_query`) instead of forcing the model to keep emitting
-  tool calls under `:required-tool-call?`.
+  `:sql` profile after a successful `edit_sql_query`, or `ask_for_sql_clarification`) instead of
+  forcing the model to keep emitting tool calls under `:required-tool-call?`.
 
-  A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
+  Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
+  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
@@ -213,7 +208,6 @@
   [iteration max-iterations terminal-tools parts]
   (and (< iteration max-iterations)
        (has-tool-calls? parts)
-       (not (has-final-response? parts))
        (not (terminal-tool-call? terminal-tools parts))))
 
 (defn- finish-reason
@@ -221,7 +215,6 @@
   [iteration max-iterations terminal-tools parts]
   (cond
     (>= iteration max-iterations)              :max-iterations
-    (has-final-response? parts)                :final-response
     (terminal-tool-call? terminal-tools parts) :terminal-tool
     :else                                      :stop))
 
