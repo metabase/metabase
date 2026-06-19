@@ -10,14 +10,13 @@ import { useInitialCollectionId } from "metabase/collections/hooks";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
 import type {
   EntityPickerOptions,
   FilterItemsInPersonalCollection,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import { Form, FormProvider } from "metabase/forms";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
@@ -162,7 +161,11 @@ function CreateCollectionForm({
                 {!!onCancel && (
                   <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
                 )}
-                <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
+                <FormSubmitButton
+                  label={t`Create`}
+                  disabled={!dirty}
+                  variant="filled"
+                />
               </Flex>
             </FormFooter>
           </Form>

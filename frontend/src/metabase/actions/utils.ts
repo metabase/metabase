@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type { ButtonProps } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -304,11 +305,23 @@ export const getFormValidationSchema = (
   return Yup.object(Object.fromEntries(schema));
 };
 
-export const getSubmitButtonColor = (action: WritebackAction): string => {
+export const getSubmitButtonColor = (
+  action: WritebackAction,
+): ButtonProps["color"] => {
   if (isImplicitDeleteAction(action)) {
-    return "danger";
+    return "error";
   }
-  return action.visualization_settings?.submitButtonColor ?? "primary";
+
+  const color = action.visualization_settings?.submitButtonColor;
+  switch (color) {
+    case "danger":
+      return "error";
+    case "success":
+    case "warning":
+      return color;
+    default:
+      return "brand";
+  }
 };
 
 export const getSubmitButtonLabel = (action: WritebackAction): string => {
