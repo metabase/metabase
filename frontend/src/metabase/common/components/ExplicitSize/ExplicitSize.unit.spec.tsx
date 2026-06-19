@@ -1,9 +1,20 @@
 import { act, render, screen } from "@testing-library/react";
 import { forwardRef } from "react";
+import { flushSync } from "react-dom";
 
+import { createMockMediaQueryList } from "__support__/ui";
 import resizeObserver from "metabase/utils/resize-observer";
 
-import { ExplicitSize } from "./ExplicitSize";
+import { ExplicitSize, ExplicitSizeRefreshModeContext } from "./ExplicitSize";
+
+jest.mock("react-dom", () => {
+  const reactDom = jest.requireActual("react-dom");
+
+  return {
+    ...reactDom,
+    flushSync: jest.fn((fn: () => void) => fn()),
+  };
+});
 
 jest.mock("metabase/utils/resize-observer", () => {
   const callbacks = new Map<
@@ -85,10 +96,12 @@ describe("ExplicitSize", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     renderSpy.mockClear();
+    jest.mocked(flushSync).mockClear();
   });
 
   afterEach(() => {
     jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
   it("should pass the size from resize observer entries to the wrapped component", () => {
@@ -130,5 +143,23 @@ describe("ExplicitSize", () => {
     triggerResize(element, createEntry(element, 400, 868));
 
     expect(screen.getByTestId("sized")).toHaveTextContent("400x868");
+  });
+
+  it("should not use flushSync while printing in layout refresh mode (#74181)", () => {
+    jest
+      .spyOn(window, "matchMedia")
+      .mockReturnValue(createMockMediaQueryList({ matches: true }));
+
+    render(
+      <ExplicitSizeRefreshModeContext.Provider value="layout">
+        <SizedComponent />
+      </ExplicitSizeRefreshModeContext.Provider>,
+    );
+    const element = screen.getByTestId("sized");
+
+    triggerResize(element, createEntry(element, 400, 866.812));
+
+    expect(flushSync).not.toHaveBeenCalled();
+    expect(screen.getByTestId("sized")).toHaveTextContent("400x866.812");
   });
 });
