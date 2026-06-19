@@ -563,8 +563,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-period").findByText("2024").should("be.visible");
     H.popover().within(() => {
       cy.findByText("Date granularity").should("be.visible");
-      cy.findByText("Date style").should("not.exist");
-      cy.findByText("Show the time").should("not.exist");
+      cy.findByText("Date style").should("not.be.visible");
+      cy.findByText("Show the time").should("not.be.visible");
     });
 
     cy.log("quarter and month granularities keep the relevant period");
