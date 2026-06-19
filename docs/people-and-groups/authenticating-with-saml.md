@@ -198,11 +198,7 @@ Once you've gotten everything set up in your SAML provider, you'll need to confi
 
 A new SSO login will automatically create a new Metabase account.
 
-Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
-
-### Switching from password to SAML
-
-If a person has an existing Metabase account (created with a username and password) and signs in via SAML for the first time, Metabase links their account to the SAML provider. After that, they can only sign in via SAML—password login no longer works. There's no UI option to revert this. To restore password authentication for an account, an admin must set the `sso_source` column to `null` in the `core_user` table of the application database, then reset the person's password. If you're on Metabase Cloud, [contact support](https://www.metabase.com/help) to make this change.
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase, [even if they previously had a password login](./managing.md#signing-in-via-sso-disables-password-logins).
 
 ## Disabling password logins
 
