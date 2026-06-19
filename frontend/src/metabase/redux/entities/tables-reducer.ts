@@ -3,6 +3,7 @@ import { updateIn } from "icepick";
 import { CARD_CREATED, CARD_UPDATED } from "metabase/redux/cards";
 import {
   convertSavedQuestionToVirtualTable,
+  getCardModeratedStatus,
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
   getQuestionVirtualTableId,
@@ -57,10 +58,11 @@ export function tablesReducer(
       const virtualTable = state[virtualTableId];
       const virtualSchemaId = getCollectionVirtualSchemaId(card.collection);
       const virtualSchemaName = getCollectionVirtualSchemaName(card.collection);
+      const moderatedStatus = getCardModeratedStatus(card);
 
       if (
         virtualTable.display_name !== card.name ||
-        virtualTable.moderated_status !== card.moderated_status ||
+        virtualTable.moderated_status !== moderatedStatus ||
         virtualTable.description !== card.description ||
         virtualTable.schema !== virtualSchemaId ||
         virtualTable.schema_name !== virtualSchemaName
@@ -68,7 +70,7 @@ export function tablesReducer(
         state = updateIn(state, [virtualTableId], (table) => ({
           ...table,
           display_name: card.name,
-          moderated_status: card.moderated_status,
+          moderated_status: moderatedStatus,
           description: card.description,
           schema: virtualSchemaId,
           schema_name: virtualSchemaName,

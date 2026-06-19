@@ -1,3 +1,10 @@
+import type { Collection } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockModerationReview,
+} from "metabase-types/api/mocks";
+
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   convertSavedQuestionToVirtualTable,
@@ -132,49 +139,44 @@ describe("saved question helpers", () => {
   });
 
   describe("convertSavedQuestionToVirtualTable", () => {
-    const COMMON_QUESTION_DATA = {
-      id: 11,
-      name: "Q1",
-      description: "Text",
-      moderated_status: "verified",
-      dataset_query: {
-        database: 4,
-      },
-    };
+    const createTestCard = (collection: Collection | null) =>
+      createMockCard({
+        id: 11,
+        name: "Q1",
+        description: "Text",
+        database_id: 4,
+        moderation_reviews: [
+          createMockModerationReview({ status: "verified" }),
+        ],
+        collection,
+      });
 
     it("correctly converts questions in normal collections", () => {
-      const question = {
-        ...COMMON_QUESTION_DATA,
-        collection: {
-          id: 8,
-          name: "Marketing",
-        },
-      };
+      const question = createTestCard(
+        createMockCollection({ id: 8, name: "Marketing" }),
+      );
 
       expect(convertSavedQuestionToVirtualTable(question)).toEqual({
         id: `card__${question.id}`,
         display_name: question.name,
         description: question.description,
-        moderated_status: question.moderated_status,
-        db_id: question.dataset_query.database,
+        moderated_status: "verified",
+        db_id: question.database_id,
         type: "question",
-        schema: `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:${question.collection.name}`,
-        schema_name: question.collection.name,
+        schema: `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:Marketing`,
+        schema_name: "Marketing",
       });
     });
 
     it("correctly converts questions in the root collection", () => {
-      const question = {
-        ...COMMON_QUESTION_DATA,
-        collection: null,
-      };
+      const question = createTestCard(null);
 
       expect(convertSavedQuestionToVirtualTable(question)).toEqual({
         id: `card__${question.id}`,
         display_name: question.name,
         description: question.description,
-        moderated_status: question.moderated_status,
-        db_id: question.dataset_query.database,
+        moderated_status: "verified",
+        db_id: question.database_id,
         type: "question",
         schema: `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:${encodeURIComponent(
           "Everything else",
