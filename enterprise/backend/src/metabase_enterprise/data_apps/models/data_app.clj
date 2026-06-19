@@ -31,6 +31,15 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
+;; the column existed has NULL until it's re-synced. Guard on `contains?` so
+;; selects that don't fetch the column (e.g. `select-one-fn :bundle`) are left
+;; untouched rather than gaining a spurious `:allowed_hosts` key.
+(t2/define-after-select :model/DataApp
+  [app]
+  (cond-> app
+    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
+
 (def non-blob-columns
   "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
   [:id :name :display_name :bundle_path :enabled :allowed_hosts

@@ -61,7 +61,7 @@
    [:display_name    ms/NonBlankString]
    [:bundle_path     ms/NonBlankString]
    [:enabled         :boolean]
-   [:allowed_hosts   [:maybe [:sequential :string]]]
+   [:allowed_hosts   [:sequential :string]]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]
@@ -134,12 +134,12 @@
         (let [^bytes bundle (t2/select-one-fn :bundle :model/DataApp :id (:id row))]
           (if (and bundle (pos? (alength bundle)))
             (respond {:status  200
-                      :headers (cond-> bundle-response-headers
-                                 ;; JSON array of origins the sandboxed bundle may fetch/XHR; the
-                                 ;; iframe reads this to configure its Near-Membrane fetch allowlist.
-                                 true (assoc "X-Metabase-Data-App-Allowed-Hosts"
-                                             (json/encode (or (:allowed_hosts row) [])))
-                                 etag (assoc "ETag" etag))
+                      :headers (-> bundle-response-headers
+                                   ;; JSON array of origins the sandboxed bundle may fetch/XHR; the
+                                   ;; iframe reads this to configure its Near-Membrane fetch allowlist.
+                                   (assoc "X-Metabase-Data-App-Allowed-Hosts"
+                                          (json/encode (:allowed_hosts row)))
+                                   (cond-> etag (assoc "ETag" etag)))
                       :body    (ByteArrayInputStream. bundle)})
             (respond {:status  404
                       :headers {"Content-Type" "application/json"}

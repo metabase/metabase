@@ -98,6 +98,24 @@
           (is (= "[]"
                  (get-in resp [:headers "X-Metabase-Data-App-Allowed-Hosts"]))))))))
 
+(deftest list-includes-allowed-hosts-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp]
+      (t2/insert! :model/DataApp
+                  :name "withhosts" :display_name "With"
+                  :bundle_path "data_apps/withhosts/index.js"
+                  :allowed_hosts ["https://api.example.com"])
+      ;; inserted without the column → stored NULL, exercising the read coercion
+      (t2/insert! :model/DataApp
+                  :name "nohosts" :display_name "No"
+                  :bundle_path "data_apps/nohosts/index.js")
+      (testing "the list endpoint returns allowed_hosts, always a list (NULL → [])"
+        (let [by-name (->> (mt/user-http-request :crowberto :get 200 "data-app")
+                           (into {} (map (juxt :name identity))))]
+          (is (= ["https://api.example.com"]
+                 (get-in by-name ["withhosts" :allowed_hosts])))
+          (is (= [] (get-in by-name ["nohosts" :allowed_hosts]))))))))
+
 ;;; ----------------------------------------------------- Sync -----------------------------------------------------
 
 (deftest import-materializes-apps-test
