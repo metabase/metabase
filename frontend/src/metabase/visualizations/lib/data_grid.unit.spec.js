@@ -257,13 +257,13 @@ describe("data_grid", () => {
         { value: "x", path: ["a", "x"] },
         { value: "y", path: ["a", "y"] },
         { value: "z", path: ["a", "z"] },
-        { value: "Totals for a", path: ["a"] },
+        { value: "a", path: ["a"] },
         { value: "b", path: ["b"] },
         { value: "x", path: ["b", "x"] },
         { value: "y", path: ["b", "y"] },
         { value: "z", path: ["b", "z"] },
-        { value: "Totals for b", path: ["b"] },
-        { value: "Grand totals", path: null },
+        { value: "b", path: ["b"] },
+        { value: "Totals", path: null },
       ]);
       expect(getValues(topHeaderItems)).toEqual(["Metric"]);
       expect(rowCount).toEqual(9);
@@ -299,7 +299,7 @@ describe("data_grid", () => {
       ]);
       const { topHeaderItems, leftHeaderItems, getRowSection } =
         multiLevelPivotForIndexes(data, [0], [1], [2]);
-      expect(getValues(leftHeaderItems)).toEqual(["x", "y", "Grand totals"]);
+      expect(getValues(leftHeaderItems)).toEqual(["x", "y", "Totals"]);
       expect(getValues(topHeaderItems)).toEqual(["a", "b", "Row totals"]);
       expect(getValues(getRowSection(0, 0))).toEqual(["1"]);
       expect(getValues(getRowSection(1, 1))).toEqual([null]);
@@ -357,23 +357,23 @@ describe("data_grid", () => {
         { path: ["a1", "b1"], value: "b1" },
         { path: ["a1", "b1", "c1"], value: "c1" },
         { path: ["a1", "b1", "c2"], value: "c2" },
-        { path: ["a1", "b1"], value: "Totals for b1" },
+        { path: ["a1", "b1"], value: "b1" },
         { path: ["a1", "b2"], value: "b2" },
         { path: ["a1", "b2", "c1"], value: "c1" },
         { path: ["a1", "b2", "c2"], value: "c2" },
-        { path: ["a1", "b2"], value: "Totals for b2" },
-        { path: ["a1"], value: "Totals for a1" },
+        { path: ["a1", "b2"], value: "b2" },
+        { path: ["a1"], value: "a1" },
         { path: ["a2"], value: "a2" },
         { path: ["a2", "b1"], value: "b1" },
         { path: ["a2", "b1", "c1"], value: "c1" },
         { path: ["a2", "b1", "c2"], value: "c2" },
-        { path: ["a2", "b1"], value: "Totals for b1" },
+        { path: ["a2", "b1"], value: "b1" },
         { path: ["a2", "b2"], value: "b2" },
         { path: ["a2", "b2", "c1"], value: "c1" },
         { path: ["a2", "b2", "c2"], value: "c2" },
-        { path: ["a2", "b2"], value: "Totals for b2" },
-        { path: ["a2"], value: "Totals for a2" },
-        { path: null, value: "Grand totals" },
+        { path: ["a2", "b2"], value: "b2" },
+        { path: ["a2"], value: "a2" },
+        { path: null, value: "Totals" },
       ]);
       expect(rowCount).toEqual(15);
       expect(columnCount).toEqual(1);
@@ -623,9 +623,9 @@ describe("data_grid", () => {
               collapsedRows: ['["a"]'],
             });
           expect(rowCount).toEqual(5);
-          expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
+          expect(leftHeaderItems[0].value).toEqual("a"); // a is collapsed
           expect(getRowSection(0, 0)).toEqual([
-            { isSubtotal: true, value: "3" },
+            { isSubtotal: true, value: "3", backgroundColor: null },
           ]);
         });
 
@@ -635,13 +635,13 @@ describe("data_grid", () => {
               collapsedRows: ["1"],
             });
           expect(rowCount).toEqual(3);
-          expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
-          expect(leftHeaderItems[1].value).toEqual("Totals for b"); // b is also collapsed
+          expect(leftHeaderItems[0].value).toEqual("a"); // a is collapsed
+          expect(leftHeaderItems[1].value).toEqual("b"); // b is also collapsed
           expect(getRowSection(0, 0)).toEqual([
-            { isSubtotal: true, value: "3" },
+            { isSubtotal: true, value: "3", backgroundColor: null },
           ]);
           expect(getRowSection(0, 1)).toEqual([
-            { isSubtotal: true, value: "7" },
+            { isSubtotal: true, value: "7", backgroundColor: null },
           ]);
         });
 
@@ -662,10 +662,10 @@ describe("data_grid", () => {
           );
           expect(getValues(leftHeaderItems)).toEqual([
             "x",
-            "Totals for x",
+            "x",
             "y",
-            "Totals for y",
-            "Grand totals",
+            "y",
+            "Totals",
           ]);
           expect(getValues(topHeaderItems)).toEqual(["a", "b", "Row totals"]);
         });
@@ -708,11 +708,11 @@ describe("data_grid", () => {
             });
           expect(rowCount).toEqual(6);
           expect(leftHeaderItems[1]).toMatchObject({
-            value: "Totals for Affiliate",
+            value: "Affiliate",
             isSubtotal: true,
           });
           expect(leftHeaderItems[5]).toMatchObject({
-            value: "Totals for Twitter",
+            value: "Twitter",
             isSubtotal: true,
           });
           expect(getRowSection(1, 0)).toMatchObject([
@@ -721,10 +721,10 @@ describe("data_grid", () => {
             },
           ]); //Value for affiliate, but not a subtotal so it has children
           expect(getRowSection(1, 2)).toEqual([
-            { isSubtotal: true, value: "6" },
+            { isSubtotal: true, value: "6", backgroundColor: null },
           ]);
           expect(getRowSection(1, 3)).toEqual([
-            { isSubtotal: true, value: "4" },
+            { isSubtotal: true, value: "4", backgroundColor: null },
           ]);
         });
       });
@@ -749,7 +749,7 @@ describe("data_grid", () => {
         "x",
         "y",
         "z",
-        "Grand totals",
+        "Totals",
       ]);
     });
 

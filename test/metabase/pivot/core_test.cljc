@@ -219,7 +219,7 @@
           other-attrs {:custom "attr"}
           value-formatters [(fn [v] (str "$" v))
                             (fn [v] (str v "%"))]
-          result (#'pivot/get-subtotals subtotal-values breakout-indexes values other-attrs value-formatters)]
+          result (#'pivot/get-subtotals subtotal-values breakout-indexes values other-attrs value-formatters nil nil nil)]
       (is (= [{:value "$100" :isSubtotal true :custom "attr"}
               {:value "200%" :isSubtotal true :custom "attr"}]
              result)))))
@@ -573,8 +573,11 @@
           col-paths [["A"]]
           row-paths [[1]]
           color-getter (constantly "blue")
+          columns [{:name "col0"} {:name "col1"} {:name "count"} {:name "sum"}]
+          val-indexes [2 3]
           getter (#'pivot/create-row-section-getter values-by-key subtotal-values value-formatters
-                                                    col-indexes row-indexes col-paths row-paths color-getter)
+                                                    col-indexes row-indexes col-paths row-paths color-getter
+                                                    columns val-indexes)
           result (getter 0 0)]
       (is (= [{:value "$10"
                :backgroundColor "blue"

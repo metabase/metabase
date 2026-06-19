@@ -492,11 +492,26 @@
           (cond-> (conj! transient-row updated-node)
             subtotal-node (conj! subtotal-node)))))))
 
+(defn- prune-collapsed-children
+  "Recursively drops the children of any node marked :isCollapsed. Used when
+   column subtotals are disabled (e.g. native SQL pivots): collapsing a row must
+   still hide its descendants even though no subtotal node is added."
+  [nodes]
+  (mapv (fn [node]
+          (if (:isCollapsed node)
+            (assoc node :children [] :hasSubtotal true)
+            (let [children (:children node)]
+              (cond-> node
+                (seq children)
+                (assoc :children (prune-collapsed-children children))))))
+        nodes))
+
 (defn- add-subtotals
   "Adds subtotal rows to the pivot table based on settings."
   [row-tree row-indexes settings col-settings]
   (if-not (should-show-column-totals? settings)
-    (vec row-tree)
+    ;; Column subtotals are off, but collapse must still hide descendants.
+    (prune-collapsed-children (vec row-tree))
     (let [subtotal-settings-by-col (map (fn [idx]
                                           (not= ((nth col-settings idx) :pivot_table.column_show_totals)
                                                 false))
