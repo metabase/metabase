@@ -38,7 +38,12 @@
     ;; The query orders by metric desc; `pin-other-last` (run by the runner on
     ;; the QP result) moves `(Other)` to the end. Mirror that here so the test
     ;; exercises the same effective ordering the chart sees.
-    (-> (variants/pin-other-last "top-n-other" (qp/process-query q)) :data :rows vec)))
+    ;; Coerce the count column to `long`: some drivers (e.g. Oracle) return
+    ;; aggregate counts as BigDecimal, which would break exact `=` comparison
+    ;; against the expected Long literals even though the ordering is identical.
+    (->> (variants/pin-other-last "top-n-other" (qp/process-query q))
+         :data :rows
+         (mapv (fn [[label cnt]] [label (long cnt)])))))
 
 ;; ---------------------------------------------------------------------------
 ;; Temporal-axis variants: order by date desc + not-null filter + row cap
