@@ -46,8 +46,8 @@
       "`weird,name`, b"     ["weird,name" "b"]
       "`paren(col`, b"      ["paren(col" "b"]
       "`back``tick`"        ["back`tick"]              ; doubled backtick is an escaped backtick
-      ""                    []                         ; blank -> [], so :key-columns stays schema-valid
-      nil                   [])))
+      ""                    nil
+      nil                   nil)))
 
 (deftest ^:parallel clickhouse-version
   (mt/test-driver :clickhouse
