@@ -143,11 +143,15 @@
         (is (str/includes? rendered marker)
             "always-on skill body must be inlined into the system prompt")
         (is (str/includes? rendered (:body (skills/get-skill :read-resource)))
-            "the full skill body is inlined, not just a fragment")))
+            "the full skill body is inlined, not just a fragment")
+        (is (not (str/includes? rendered "# Available skills"))
+            "an empty catalog must NOT render the load_skill header (would invite pointless loads)")))
     (testing "read-resource body is ABSENT when the profile leaves it on-demand"
       (let [rendered (render {:name :sql})]
         (is (not (str/includes? rendered marker))
             "an on-demand skill's body must not leak into the prompt prefix")
+        (is (str/includes? rendered "# Available skills")
+            "a non-empty catalog renders the load_skill header")
         (is (str/includes? rendered "read-resource")
             "the on-demand skill still appears as a one-line catalog entry")))))
 
