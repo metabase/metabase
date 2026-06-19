@@ -486,26 +486,97 @@
 
 (deftest multi-stage-unknown-cross-stage-column-surfaces-error-test
   (testing (str "If the LLM references a column name that the previous stage doesn't produce,\n"
-                "repair leaves the clause alone (no `base-type` to infer) and the lib-schema\n"
-                "validator surfaces the missing-key error - reflagged as :agent-error?\n"
-                "by `execute-representations-query`'s catch.")
+                "the cross-stage assert pass raises an :agent-error? naming the column and\n"
+                "listing the valid ones, rather than passing a typeless ref through into a\n"
+                "non-runnable query (BOT-1442).")
     (with-mp-and-stubs!
       (fn []
-        (try
-          (construct/execute-representations-query
-           (query-data
-            {"lib/type" "mbql/query"
-             "database" "Sample"
-             "stages"   [{"lib/type"     "mbql.stage/mbql"
-                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                          "aggregation"  [["count" {}]]
-                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
-                         {"lib/type" "mbql.stage/mbql"
-                          "filters"  [[">" {} ["field" {} "no_such_column"] 10]]}]}))
-          (is false "expected throw")
-          (catch clojure.lang.ExceptionInfo e
-            (let [d (ex-data e)]
-              (is (true? (:agent-error? d))))))))))
+        (let [e (try
+                  (construct/execute-representations-query
+                   (query-data
+                    {"lib/type" "mbql/query"
+                     "database" "Sample"
+                     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                  "aggregation"  [["count" {}]]
+                                  "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                                 {"lib/type" "mbql.stage/mbql"
+                                  "filters"  [[">" {} ["field" {} "no_such_column"] 10]]}]}))
+                  nil (catch clojure.lang.ExceptionInfo ex ex))]
+          (is (some? e))
+          (let [d (ex-data e)]
+            (is (true? (:agent-error? d)))
+            (is (= :unresolved-cross-stage-field (:error d)))
+            (is (contains? (set (:available d)) "count"))
+            (is (re-find #"no_such_column" (ex-message e)))))))))
+
+(deftest multi-stage-aggregation-display-name-recovered-end-to-end-test
+  (testing (str "BOT-1442 (Cynthia): a stage-1 breakout that references a previous stage's\n"
+                "aggregation column by its UI display label (`Max of Doubled`) instead of the\n"
+                "machine name (`max`) is recovered end-to-end: the tool succeeds, the ref is\n"
+                "rewritten to `max` with a stamped base-type, and the resolved query is runnable.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "expressions"  {"Doubled" ["*" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 2]}
+                                     "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                                     "aggregation"  [["max" {} ["expression" {} "Doubled"]]]}
+                                    {"lib/type"    "mbql.stage/mbql"
+                                     "breakout"    [["field" {} "Max of Doubled"]]
+                                     "aggregation" [["count" {}]]}]}))
+              q             (get-in result [:structured-output :query])
+              stage1-bo     (get-in q [:stages 1 :breakout 0])]
+          (testing "the display label was rewritten to the aggregation's machine name"
+            (is (= "max" (nth stage1-bo 2))))
+          (testing "the recovered ref carries a base-type (schema-valid, runnable)"
+            (is (some? (:base-type (nth stage1-bo 1))))
+            (is (nil? (#'construct/query-not-runnable-explanation q)))))))))
+
+(deftest multi-stage-offset-in-custom-column-surfaces-error-end-to-end-test
+  (testing (str "BOT-1442 sibling: an `offset` in a custom column surfaces a loud\n"
+                ":offset-in-custom-column agent-error through the tool, instead of building a\n"
+                "query the editor silently can't run.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (try
+                  (construct/execute-representations-query
+                   (query-data
+                    {"lib/type" "mbql/query"
+                     "database" "Sample"
+                     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                  "expressions"  {"Prev" ["offset" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] -1]}
+                                  "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]}))
+                  nil (catch clojure.lang.ExceptionInfo ex ex))]
+          (is (some? e))
+          (is (true? (:agent-error? (ex-data e))))
+          (is (= :offset-in-custom-column (:error (ex-data e)))))))))
+
+(deftest query-not-runnable-explanation-gate-test
+  (testing (str "The runnability backstop returns nil for a runnable resolved query and a\n"
+                "non-nil Malli explanation for one whose breakout field ref is missing its\n"
+                "base-type (the BOT-1442 schema invalidity that disables the editor's run/save).")
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]
+                                     "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}]}))
+              good (get-in result [:structured-output :query])
+              ;; Corrupt a breakout field ref into a string-named ref with no base-type - the
+              ;; exact shape that resolves structurally yet makes Lib.canRun false.
+              bad  (assoc-in good [:stages 0 :breakout 0] [:field {} "PRODUCT_ID"])]
+          (is (nil? (#'construct/query-not-runnable-explanation good)))
+          (is (some? (#'construct/query-not-runnable-explanation bad))))))))
 
 ;;; ============================================================
 ;;; Step-9 contract: expressions (custom columns)

@@ -2148,10 +2148,22 @@
         (assoc "effective-type" (let [et (:effective-type col)]
                                   (if (keyword? et) (subs (str et) 1) (str et))))))))
 
-(defn- mini-resolved-columns-by-name
+(defn- column-descriptors
+  "Build the cross-stage match oracle from a `lib/returned-columns` sequence: a vector of
+  `{:name <machine-name>, :display-name <display-name>, :types {\"base-type\" …}|nil}`
+  descriptors. `:types` is nil when the column exposes no usable `base-type`. Carrying the
+  `:display-name` lets [[match-cross-stage-column]] recover a ref the LLM wrote with the UI
+  label (e.g. `\"Max of Instance Has SC\"`) instead of the machine name (`max`)."
+  [cols]
+  (mapv (fn [col]
+          {:name         (:name col)
+           :display-name (:display-name col)
+           :types        (types-from-column col)})
+        cols))
+
+(defn- mini-resolved-columns
   "Resolve `stages[0..idx-1]` as a self-contained query, run it through `lib/query`, and return
-  a `{column-name → {\"base-type\" ..., \"effective-type\" ...}}` map for the columns the
-  prefix returns.
+  the prefix's returned columns as a vector of [[column-descriptors]].
 
   Returns `nil` (logged at debug) if anything in the resolve / lib/query path throws. The
   enclosing pass treats `nil` as 'skip this stage's repairs and let downstream surface the real
@@ -2163,11 +2175,7 @@
           resolved      (repr.resolve/resolve-query mp prefix-query content-store)
           lib-q         (lib/query mp resolved)
           cols          (lib/returned-columns lib-q)]
-      (into {}
-            (keep (fn [col]
-                    (when-let [types (types-from-column col)]
-                      [(:name col) types])))
-            cols))
+      (column-descriptors cols))
     (catch Exception e
       (log/debugf e "[repr-repair] mini-resolve of stages[0..%d] failed; skipping cross-stage type inference for stage %d"
                   (dec stage-idx) stage-idx)
@@ -2199,34 +2207,34 @@
     (-> s u/lower-case-en (str/replace #"[-\s]+" "_"))))
 
 (defn- match-cross-stage-column
-  "Find the canonical column entry in `name->types` for `col-name`. Returns `[canonical-name
-  types]` or `nil` when no column matches.
+  "Find the column descriptor in `cols` (a vector of [[column-descriptors]]) that `col-name`
+  refers to. Returns `[canonical-machine-name types]` or `nil` when no column matches.
 
   Tries, in order:
-    1. an exact match;
-    2. the double-quote-stripped name (only when stripping actually resolves);
-    3. a loose match that folds case and hyphens/whitespace to underscores, but **only when
-       exactly one** real column matches - so `count-where` resolves to `count_where` while
-       genuine ambiguity is left for the resolver to report.
+    1. an exact `:name` match;
+    2. the double-quote-stripped `:name` (only when stripping actually resolves);
+    3. a loose `:name` match that folds case and hyphens/whitespace to underscores, but **only
+       when exactly one** real column matches - so `count-where` resolves to `count_where`;
+    4. a loose `:display-name` match (same folding, same one-hit guard) - so a ref the LLM
+       wrote with the UI label (`\"Max of Instance Has SC\"`) recovers the machine name (`max`).
 
-  A column whose name legitimately needs quotes (vanishingly rare) is never clobbered, and
-  unmatched names are passed through for the resolver to surface with a better message."
-  [name->types col-name]
-  (let [stripped (strip-surrounding-double-quotes col-name)]
-    (cond
-      (contains? name->types col-name)
-      [col-name (get name->types col-name)]
-
-      (and (not= stripped col-name) (contains? name->types stripped))
-      [stripped (get name->types stripped)]
-
-      :else
-      (let [target (normalize-col-key stripped)
-            hits   (when target
-                     (filter #(= target (normalize-col-key %)) (keys name->types)))]
-        (when (= 1 (count hits))
-          (let [canon (first hits)]
-            [canon (get name->types canon)]))))))
+  Genuine ambiguity (more than one loose hit) is left unmatched at each layer. A column whose
+  name legitimately needs quotes (vanishingly rare) is never clobbered."
+  [cols col-name]
+  (let [stripped   (strip-surrounding-double-quotes col-name)
+        exact      (fn [n] (some #(when (= n (:name %)) %) cols))
+        loose-on   (fn [key-fn raw]
+                     (let [target (normalize-col-key raw)
+                           hits   (when target
+                                    (filter #(= target (normalize-col-key (key-fn %))) cols))]
+                       (when (= 1 (count hits))
+                         (first hits))))
+        match      (or (exact col-name)
+                       (when (not= stripped col-name) (exact stripped))
+                       (loose-on :name stripped)
+                       (loose-on :display-name stripped))]
+    (when match
+      [(:name match) (:types match)])))
 
 (defn- maybe-fill-cross-stage-types
   "Given a cross-stage field clause and a name→types map, return the clause with its column name
@@ -2235,17 +2243,19 @@
 
   Idempotent: once the name is canonical it matches exactly on the next pass (no rename), and
   once `base-type` is present it is left alone."
-  [clause name->types]
+  [clause cols]
   (let [opts     (nth clause 1)
         col-name (nth clause 2)]
-    (if-let [[canonical-name types] (match-cross-stage-column name->types col-name)]
+    (if-let [[canonical-name types] (match-cross-stage-column cols col-name)]
       (cond-> clause
-        ;; Canonicalise the name when quote-stripping was needed to match. A bare `base-type`
-        ;; stamp without this would leave the ref pointing at a non-existent column.
+        ;; Canonicalise the name when quote-stripping / display-name recovery was needed to
+        ;; match. A bare `base-type` stamp without this would leave the ref pointing at a
+        ;; non-existent column.
         (not= canonical-name col-name)
         (assoc 2 canonical-name)
-        ;; Stamp inferred types only when the LLM didn't author a `base-type` already.
-        (not (contains? opts "base-type"))
+        ;; Stamp inferred types only when the LLM didn't author a `base-type` already and the
+        ;; matched column actually exposes one.
+        (and types (not (contains? opts "base-type")))
         (assoc 1 (merge opts types)))
       clause)))
 
@@ -2254,13 +2264,13 @@
   `\"base-type\"`. Skips descent into `\"joins\"` subtrees - join stages have their own
   resolution context (the join's own `stages`) and shouldn't reach into their parent stage's
   previous-stage columns."
-  [stage name->types]
+  [stage cols]
   (let [joins  (get stage "joins")
         stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))
         walked (walk/postwalk
                 (fn [node]
                   (if (string-cross-stage-field-clause? node)
-                    (maybe-fill-cross-stage-types node name->types)
+                    (maybe-fill-cross-stage-types node cols)
                     node))
                 stage')]
     (cond-> walked
@@ -2269,8 +2279,8 @@
 (defn- mini-resolved-columns-for-source-card
   "Resolve a single-stage query consisting only of `{:source-card <entity-id>}` (plus the
   outer `mbql/query` wrapper and the warehouse database name), then return the
-  `lib/returned-columns` output as a `name → types` map in the same shape as
-  [[mini-resolved-columns-by-name]]. Used by [[infer-source-card-field-types*]] to stamp
+  `lib/returned-columns` output as a vector of [[column-descriptors]] in the same shape as
+  [[mini-resolved-columns]]. Used by [[infer-source-card-field-types*]] to stamp
   `base-type` onto `[field, {}, \"<col>\"]` clauses in a stage whose source is a saved
   question / model.
 
@@ -2288,11 +2298,7 @@
               resolved   (repr.resolve/resolve-query mp bare-query content-store)
               lib-q      (lib/query mp resolved)
               cols       (lib/returned-columns lib-q)]
-          (into {}
-                (keep (fn [col]
-                        (when-let [types (types-from-column col)]
-                          [(:name col) types])))
-                cols))
+          (column-descriptors cols))
         (catch Exception e
           (log/debugf e "[repr-repair] source-card resolve of stage %d failed; skipping field-type inference"
                       stage-idx)
@@ -2316,8 +2322,8 @@
           q
           (let [stage (get-in q ["stages" i])
                 q'    (if (and (map? stage) (get stage "source-card"))
-                        (if-let [name->types (mini-resolved-columns-for-source-card mp q i content-store)]
-                          (update-in q ["stages" i] infer-cross-stage-field-types-in-stage name->types)
+                        (if-let [cols (mini-resolved-columns-for-source-card mp q i content-store)]
+                          (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols)
                           q)
                         q)]
             (recur (inc i) q')))))))
@@ -2336,11 +2342,74 @@
              q query]
         (if (>= i n)
           q
-          (let [name->types (mini-resolved-columns-by-name mp q i content-store)
-                q'          (if name->types
-                              (update-in q ["stages" i] infer-cross-stage-field-types-in-stage name->types)
-                              q)]
+          (let [cols (mini-resolved-columns mp q i content-store)
+                q'   (if cols
+                       (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols)
+                       q)]
             (recur (inc i) q')))))))
+
+;;; ============================================================
+;;; Pass 5.7 -- assert cross-stage / source-card string refs resolved
+;;;
+;;; A `["field" {} "<name>"]` ref into a previous stage or a source-card must name a real
+;;; output column. The inference passes above (5 / 5.5) stamp `base-type` onto every such ref
+;;; that matches; anything still missing `base-type` afterward matched nothing - the LLM
+;;; named a column that doesn't exist (typically a UI display label like "Max of X" instead of
+;;; the machine name "max"). lib's resolver passes a typeless string-named field ref through
+;;; unvalidated, producing a schema-invalid, non-runnable query that silently breaks the
+;;; notebook editor (BOT-1442). This pass turns that silent failure into the same loud,
+;;; retryable `:agent-error?` the LLM already recovers from for dangling `[:expression …]`
+;;; refs, naming the offending column and listing the valid ones.
+;;; ============================================================
+
+(defn- unstamped-cross-stage-ref?
+  "True if `node` is a `[\"field\" {} \"<name>\"]` cross-stage/source-card ref still lacking
+  `base-type` (an LLM-authored `base-type` is left for the resolver / schema to judge)."
+  [node]
+  (and (string-cross-stage-field-clause? node)
+       (not (contains? (nth node 1) "base-type"))))
+
+(defn- stage-has-unstamped-cross-stage-ref?
+  "Cheap structural pre-scan: does `stage` contain any [[unstamped-cross-stage-ref?]] outside
+  its `joins` subtrees? Lets the assert pass skip the (resolving) confirmation step entirely
+  on the happy path, where every ref already carries a stamped `base-type`."
+  [stage]
+  (let [stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))]
+    (boolean (some unstamped-cross-stage-ref? (tree-seq coll? seq stage')))))
+
+(defn- first-unresolved-cross-stage-ref
+  "Return the first [[unstamped-cross-stage-ref?]] clause in `stage` that matches no column in
+  `cols`, or nil. Skips `joins` subtrees (their own resolution context)."
+  [stage cols]
+  (let [stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))]
+    (some (fn [node]
+            (when (and (unstamped-cross-stage-ref? node)
+                       (nil? (match-cross-stage-column cols (nth node 2))))
+              node))
+          (tree-seq coll? seq stage'))))
+
+(defn- assert-cross-stage-refs-resolved*
+  "Pass 5.7: raise an `:agent-error?` for any string-named cross-stage / source-card field ref
+  that resolves to no real column. No-op when `mp` is nil. Only stages that still carry an
+  unstamped ref pay the cost of re-resolving their column universe to build the message."
+  [query mp content-store]
+  (when (and mp (map? query) (vector? (get query "stages")))
+    (doseq [[idx stage] (map-indexed vector (get query "stages"))
+            :when        (and (map? stage) (stage-has-unstamped-cross-stage-ref? stage))]
+      (when-let [cols (cond
+                        (get stage "source-card") (mini-resolved-columns-for-source-card mp query idx content-store)
+                        (pos? idx)                (mini-resolved-columns mp query idx content-store))]
+        (when-let [bad (first-unresolved-cross-stage-ref stage cols)]
+          (throw (ex-info
+                  (tru "No column named {0} is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: {1}."
+                       (pr-str (nth bad 2))
+                       (str/join ", " (map :name cols)))
+                  {:agent-error? true
+                   :error        :unresolved-cross-stage-field
+                   :stage        idx
+                   :clause       bad
+                   :available    (mapv :name cols)}))))))
+  query)
 
 ;;; ============================================================
 ;;; Pass 6 -- friendly error messages for silently-accepted-but-wrong shapes.
@@ -2527,6 +2596,39 @@
 
 ;;; ----- friendly-errors pipeline driver -----------------------------------------------
 
+;;; ----- E7: `offset` window clause inside a custom column (`expressions:`) ------------
+
+(defn- offset-in-custom-column-error!
+  "Detect an `offset` window clause inside any stage's `expressions:` (a custom column). lib's
+  schema permits `offset` anywhere an expression is legal, and `can-run` suppresses the
+  expression type-check, so an `offset()` placed in a custom column passes validation - but the
+  FE's `diagnose-expression` rejects it (\"OFFSET is not supported in custom columns\"), leaving
+  a query that builds yet can't be visualized or saved (the BOT-1442 sibling). `offset` is only
+  valid inside an aggregation or `order-by`, so flag it here as a loud `:agent-error?`.
+
+  Runs after `normalize-expressions-shape*`, so `expressions:` is the canonical sequential
+  vector of clauses; the map form is handled too for safety."
+  [query]
+  (when (and (map? query) (vector? (get query "stages")))
+    (doseq [stage  (get query "stages")
+            :when  (map? stage)
+            clause (let [exprs (get stage "expressions")]
+                     (cond
+                       (map? exprs)    (vals exprs)
+                       (vector? exprs) exprs
+                       :else           nil))]
+      (when (some (fn [node]
+                    (and (vector? node)
+                         (not (map-entry? node))
+                         (= "offset" (nth node 0 nil))))
+                  (tree-seq coll? seq clause))
+        (throw (ex-info
+                (tru "`offset` is not supported in a custom column (`expressions:`). Use `offset` only inside an `aggregation:` or `order-by:` clause.")
+                {:agent-error? true
+                 :error        :offset-in-custom-column
+                 :clause       clause}))))
+    query))
+
 (defn- friendly-errors*
   "Run every diagnostic detector in turn. Throws on the first match; otherwise returns
   `query` unchanged."
@@ -2538,7 +2640,8 @@
     (case-default-in-opts-error! query)
     (sexp-legacy-op-as-clause-error! query)
     (blank-expression-ref-error! query)
-    (numeric-field-id-error! query))
+    (numeric-field-id-error! query)
+    (offset-in-custom-column-error! query))
   query)
 
 ;;; ============================================================
@@ -2610,14 +2713,19 @@
        prefix of stages and reading the returned columns' metadata.
     5.5. infer `base-type` / `effective-type` on field references in a stage whose source is
        a saved question / model (`source-card:`), using the card's resolved returned columns.
+    5.7. assert that every string-named cross-stage / source-card field ref resolved to a real
+       column (i.e. Pass 5 / 5.5 stamped its `base-type`). A ref that matched nothing is the
+       LLM naming a column that doesn't exist (often a display label); raise an `:agent-error?`
+       naming it and listing the valid columns, instead of letting it pass through into a
+       schema-invalid, non-runnable query (BOT-1442).
 
-  Pass 4, Pass 5, and Pass 5.5 require `mp` (a `MetadataProvider`); they are best-effort
-  no-ops when `mp` can't resolve the relevant pieces (so the subsequent validate/resolve
-  stages can surface the real error with their own, better messages). Hard FK errors from
-  Pass 4 (`:no-fk-path`, `:ambiguous-fk`) are raised as `:agent-error?` ex-info so the tool
-  wrapper can relay them to the LLM. Pass 5 and Pass 5.5 never throw on their own - if a
-  prefix / source-card can't be resolved, they just leave the affected clauses alone and let
-  the schema validator complain.
+  Pass 4, Pass 5, Pass 5.5, and Pass 5.7 require `mp` (a `MetadataProvider`); they are
+  best-effort no-ops when `mp` can't resolve the relevant pieces (so the subsequent
+  validate/resolve stages can surface the real error with their own, better messages). Hard FK
+  errors from Pass 4 (`:no-fk-path`, `:ambiguous-fk`) are raised as `:agent-error?` ex-info so
+  the tool wrapper can relay them to the LLM. Pass 5 and Pass 5.5 never throw on their own - if
+  a prefix / source-card can't be resolved, they just leave the affected clauses alone; Pass
+  5.7 then raises the `:agent-error?` only for refs that survived to the end still unresolved.
 
   Note: the database-name normalisation pass (\"Pass 2.5\") that previously lived here was
   removed in `repr-plan.md` step 13, and the top-level `database:` field was removed from
@@ -2649,4 +2757,5 @@
        (resolve-implicit-joins* mp content-store)
        (infer-cross-stage-field-types* mp content-store)
        (infer-source-card-field-types* mp content-store)
+       (assert-cross-stage-refs-resolved* mp content-store)
        friendly-errors*)))

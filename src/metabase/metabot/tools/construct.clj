@@ -1,12 +1,15 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
+   [malli.error :as me]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
@@ -24,6 +27,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -278,6 +282,27 @@
                  (nil? (:status-code base)) (assoc :status-code 400))]
     (ex-info (ex-message e) data e)))
 
+(defn- query-not-runnable-explanation
+  "When `pmbql-query` would make the FE's `canRun` gate return false, return a humanized Malli
+  explanation of why; nil when the query is runnable.
+
+  This is the same `::lib.schema/query` validation `metabase.lib.query/can-run` performs (with
+  expression type-checks suppressed exactly as `can-run` does), checked directly rather than
+  through the `mu/defn`-instrumented `can-run` - which under dev instrumentation throws on an
+  invalid query instead of returning false. A constructed question's `can-run-method` is always
+  satisfied (it only restricts `:metric` queries) and `database:` is stamped by repair, so
+  schema validity is the whole gate here.
+
+  This is a backstop: the repair passes already convert the common non-runnable shapes
+  (dangling cross-stage / source-card refs, offset-in-custom-column) into loud `:agent-error?`s
+  upstream. This catches anything else that resolves structurally but is still schema-invalid,
+  so the tool never reports a query the notebook editor can't run/visualize/save as success
+  (BOT-1442)."
+  [pmbql-query]
+  (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+    (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
+      (me/humanize explanation))))
+
 (defn execute-representations-query
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
 
@@ -340,6 +365,12 @@
       (let [repaired      (repr.repair/repair mp parsed permission-aware-content-store)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
+            _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
+                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. This usually means a field reference is missing its type or names a column that does not exist. Schema validation details: {0}"
+                                                 (pr-str why))
+                                            {:agent-error? true
+                                             :error        :query-not-runnable
+                                             :status-code  400})))
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (repr/validate-query exported-repr)
             query-id      (u/generate-nano-id)]
