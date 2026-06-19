@@ -1,0 +1,8 @@
+.actionButton {
+  &[data-variant]:disabled,
+  &[data-variant][data-disabled="true"] {
+    opacity: 0.5;
+    color: var(--button-color);
+    background-color: var(--button-bg);
+  }
+}
