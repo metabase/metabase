@@ -613,6 +613,22 @@
         [:min [:offset {:lib/uuid (str (random-uuid))} [:field 42] 1]]            "Offset"
         [:offset {:lib/uuid (str (random-uuid))} [:sum [:cum-sum [:field 42]]] 1] "CumulativeSum"))))
 
+(deftest ^:parallel offset-display-name-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        sum   (first (lib/aggregations query))
+        offset-agg (fn [n] (first (lib/aggregations
+                                   (lib/replace-clause query sum (lib/offset (lib/fresh-uuids sum) n)))))]
+    (testing "display name describes the look-back / look-ahead distance"
+      (are [n expected] (= expected (lib/display-name query (offset-agg n)))
+        -1  "Sum of Total (previous period)"
+        1   "Sum of Total (next period)"
+        -12 "Sum of Total (12 periods ago)"
+        3   "Sum of Total (3 periods ahead)"))
+    (testing "column name is stable and direction-aware"
+      (is (= "sum_previous_12" (lib/column-name query (offset-agg -12))))
+      (is (= "sum_next_1" (lib/column-name query (offset-agg 1)))))))
+
 (deftest ^:parallel diagnose-expression-cyclic-aggregation-tests
   (testing "self loop"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

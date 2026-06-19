@@ -247,6 +247,24 @@
        \_
        (interval-column-name (clojure.core/- amount) unit)))
 
+;;; `:offset` is a window function: the value of `expr` `n` rows back (negative `n`) or ahead
+;;; (positive `n`) in the breakout ordering.
+(defmethod lib.metadata.calculation/display-name-method :offset
+  [query stage-number [_offset _opts expr n] style]
+  (let [inner (lib.metadata.calculation/display-name query stage-number expr style)]
+    (condp = n
+      -1 (i18n/tru "{0} (previous period)" inner)
+      1  (i18n/tru "{0} (next period)" inner)
+      (if (neg? n)
+        (i18n/tru "{0} ({1} periods ago)" inner (clojure.core/abs n))
+        (i18n/tru "{0} ({1} periods ahead)" inner n)))))
+
+(defmethod lib.metadata.calculation/column-name-method :offset
+  [query stage-number [_offset _opts expr n]]
+  (str (lib.metadata.calculation/column-name query stage-number expr)
+       (if (neg? n) "_previous_" "_next_")
+       (clojure.core/abs n)))
+
 ;;; for now we'll just pretend `:coalesce` isn't a present and just use the display name for the expr it wraps.
 (defmethod lib.metadata.calculation/display-name-method :coalesce
   [query stage-number [_coalesce _opts expr _null-expr] style]
