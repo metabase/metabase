@@ -1760,7 +1760,7 @@ serdes/meta:
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
                       source/merge-and-store!          (fn [_ _ _ _ _] (reset! merged? true) {:status :success})
-                      source/store!                    (fn [_ _ _ _] (reset! stored? true) "v")]
+                      source/store-and-record!         (fn [_ _ _ _] (reset! stored? true) {:version "v" :entries []})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
@@ -1774,10 +1774,10 @@ serdes/meta:
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (let [merged? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
-                      spec/extract-entities-for-export (constantly [{:dummy true}])
+                      spec/export-targets              (constantly {"Card" [1]})
                       source/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})
-                      ;; force? routes through full-export!, which uses store!'s {:version :entries} result.
-                      source/store!                    (fn [& _] {:version "forced-version" :entries []})]
+                      ;; force? routes through full-export!, which uses store-and-record!'s {:version :entries} result.
+                      source/store-and-record!         (fn [& _] {:version "forced-version" :entries []})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :force? true
                                      :source (export-test-source)

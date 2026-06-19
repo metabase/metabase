@@ -219,62 +219,63 @@
     {:first-import-conflicts (vec first-import-conflicts)
      :deletion-conflicts     (spec/check-deletion-conflicts imported-data)}))
 
-(defn- record-exported-paths!
-  "Records each exported entity's repo file path on its RemoteSyncObject row, so later renames and
-  deletes can resolve the old path. `entries` is a seq of {:model_type :entity_id :path}; only
-  entity-id models are recorded. Correlates entity_id -> model_id per model type."
-  [entries]
-  (doseq [[model-type es] (group-by :model_type entries)
-          :let [spec (spec/spec-for-model-type model-type)]
-          :when (and spec (= :entity-id (:identity spec)))]
-    (let [eid->path (into {} (map (juxt :entity_id :path)) es)
-          id->eid   (t2/select-pk->fn :entity_id (:model-key spec) :entity_id [:in (vec (keys eid->path))])]
-      (doseq [[id eid] id->eid
-              :let [path (eid->path eid)]
-              :when path]
-        (t2/update! :model/RemoteSyncObject :model_type model-type :model_id id
-                    {:file_path path})))))
-
 (def content-hash-batch-size
-  "Max RemoteSyncObject rows per extraction/update batch, to keep IN-lists and CASE expressions bounded."
+  "Max RemoteSyncObject rows per update batch, to keep IN-lists and CASE expressions bounded."
   500)
 
-(defn- record-content-hashes!
-  "Records every RemoteSyncObject's current serialized-content hash, establishing the baseline against which
-  later update events are compared (see `remote-sync.events/resolve-status`). Used after a full export or an
-  import, once all rows are synced.
+(defn- record-exported-metadata!
+  "Writes `file_path` and `content_hash` onto the RemoteSyncObject rows named by `entries` (each
+  {:model_type :model_id :path :content_hash}), in a single batched CASE update per chunk of
+  `content-hash-batch-size` rows — across all model types, not per model. Rows are matched by
+  (model_type, model_id) -> primary key via one select. Rows with no matching entry (e.g. removed/delete
+  rows) are left untouched."
+  [entries]
+  (let [by-key (into {} (map (juxt (juxt :model_type :model_id) identity)) entries)
+        pairs  (keep (fn [{:keys [id model_type model_id]}]
+                       (when-let [e (by-key [model_type model_id])]
+                         [id e]))
+                     (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
+    (doseq [chunk (partition-all content-hash-batch-size pairs)]
+      ;; one atomic combined CASE update per chunk; the honeysql expression compiles per app-db dialect
+      (t2/update! :model/RemoteSyncObject
+                  {:id [:in (mapv first chunk)]}
+                  {:file_path    (into [:case] (mapcat (fn [[id e]] [[:= :id id] (:path e)])) chunk)
+                   :content_hash (into [:case] (mapcat (fn [[id e]] [[:= :id id] (:content_hash e)])) chunk)}))))
 
-  Batches the work to one extraction and one update per chunk of `content-hash-batch-size` rows of a given
-  model type (rather than a query and update per entity): `extract-query` returns the modeled instances for
-  the chunk in one query — keeping each local `:id` so it correlates to its RemoteSyncObject row — and a
-  single CASE update writes every hash. Runs under `serdes/with-cache` so the FK resolution inside
-  extraction (collections, databases, users, …) is memoized across entities. Entities that fail to
-  serialize are skipped."
-  []
+(defn- import-content-metadata
+  "Builds `record-exported-metadata!` entries for the given RemoteSyncObject `rows` (maps with :model_type
+  and :model_id) after an import. Re-serializes each loaded entity once (grouped by model, under
+  `serdes/with-cache` so FKs are memoized) to compute its `content_hash` — matching what the update-event
+  consumer recomputes. `file_path` is the actual repo path the entity was read from (`repo-paths`, from
+  cached-file-paths) for entity-id models, so later renames/deletes resolve the real file; other models fall
+  back to the freshly computed path. Entities that fail to serialize are skipped."
+  [rows repo-paths]
   (serdes/with-cache
     (let [storage-opts (serdes/storage-base-context)
-          rows         (t2/select [:model/RemoteSyncObject :id :model_type :model_id])]
-      (doseq [[model-type model-rows] (group-by :model_type rows)
-              chunk (partition-all content-hash-batch-size model-rows)
-              :let [id->rso (into {} (map (juxt :model_id :id)) chunk)
-                    extract-opts {:where [:in :id (vec (keys id->rso))] :skip-archived true}
-                    rso->hash (into {}
-                                    (keep (fn [instance]
-                                            (when-let [rso-id (id->rso (:id instance))]
-                                              (try
-                                                [rso-id (source/content-hash
-                                                         (:content (source/entity->file-spec
-                                                                    storage-opts
-                                                                    (serdes/extract-one model-type extract-opts instance))))]
-                                                (catch Exception _ nil)))))
-                                    (serdes/extract-query model-type extract-opts))]
-              :when (seq rso->hash)]
-        ;; one atomic CASE update per chunk; the honeysql expression compiles per app-db dialect
-        (t2/update! :model/RemoteSyncObject
-                    {:id [:in (vec (keys rso->hash))]}
-                    {:content_hash (into [:case]
-                                         (mapcat (fn [[rso-id h]] [[:= :id rso-id] h]))
-                                         rso->hash)})))))
+          repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)]
+      (into []
+            (mapcat (fn [[model-type model-rows]]
+                      (let [spec         (spec/spec-for-model-type model-type)
+                            model-key    (:model-key spec)
+                            extract-opts {:where [:in :id (mapv :model_id model-rows)] :skip-archived true}
+                            ;; entity-id models: map local id -> entity_id so we can look up the repo path
+                            id->eid      (when (and model-key (= :entity-id (:identity spec)))
+                                           (t2/select-pk->fn :entity_id model-key :id [:in (mapv :model_id model-rows)]))]
+                        ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
+                        (into []
+                              (keep (fn [instance]
+                                      (try
+                                        (let [fspec     (source/entity->file-spec storage-opts (serdes/extract-one model-type extract-opts instance))
+                                              repo-path (some->> (some-> id->eid (get (:id instance)))
+                                                                 (vector model-type)
+                                                                 repo-by-eid)]
+                                          {:model_type   model-type
+                                           :model_id     (:id instance)
+                                           :path         (or repo-path (:path fspec))
+                                           :content_hash (source/content-hash (:content fspec))})
+                                        (catch Exception _ nil))))
+                              (serdes/extract-query model-type extract-opts)))))
+            (group-by :model_type rows)))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
@@ -315,12 +316,12 @@
     (t2/with-transaction [_conn]
       (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
       (sync-objects! sync-timestamp imported-data)
-      ;; Record the actual repo path each entity was read from, so later renames/deletes resolve the
-      ;; real file and stay on the incremental export fast-path.
-      (record-exported-paths! (source.ingestable/cached-file-paths base-ingestable))
-      ;; Record each entity's serialized-content hash (from the live DB entity, matching how update events
-      ;; recompute it) so a post-pull edit that doesn't change the content doesn't mark it dirty.
-      (record-content-hashes!)
+      ;; Record each entity's repo file_path (so later renames/deletes resolve the real file) and its
+      ;; serialized-content hash (so a post-pull edit that doesn't change the content stays synced) in one
+      ;; batched write.
+      (record-exported-metadata!
+       (import-content-metadata (t2/select [:model/RemoteSyncObject :model_type :model_id])
+                                (source.ingestable/cached-file-paths base-ingestable)))
       (when finalize! (finalize!)))
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms))
@@ -431,7 +432,9 @@
         (t2/delete! :model/RemoteSyncObject {:where (rso-where-for sync-rows)})
         (t2/insert! :model/RemoteSyncObject sync-rows))
       (when ingestable
-        (record-exported-paths! (source.ingestable/cached-file-paths ingestable)))
+        ;; record file_path + content_hash for just the rows this incremental load touched
+        (record-exported-metadata!
+         (import-content-metadata sync-rows (source.ingestable/cached-file-paths ingestable))))
       (when finalize! (finalize!)))
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
     ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
@@ -837,19 +840,21 @@
 
 (defn- full-export!
   "Re-serializes the entire remote-synced set into `snapshot` and commits it, then marks every
-  RemoteSyncObject row synced (as of `sync-timestamp`) and records each entity's file_path. Used when
-  the pending changes can't be applied incrementally (name collisions, disabled content needing a
+  RemoteSyncObject row synced (as of `sync-timestamp`) and records each entity's file_path and content_hash.
+  Used when the pending changes can't be applied incrementally (name collisions, disabled content needing a
   reconcile, etc.). Throws if there is no remote-syncable content. Returns {:status :success}."
   [snapshot task-id message sync-timestamp]
-  (let [models (spec/extract-entities-for-export)]
-    (when (not models)
+  (let [targets (spec/export-targets)]
+    (when (not targets)
       (throw (ex-info "No remote-syncable content available." {})))
     (remote-sync.task/update-progress! task-id 0.3)
-    (let [{:keys [version entries]} (source/store! models snapshot task-id message)]
+    ;; serialize once: write the files and get back each entity's path + content_hash (keyed by primary key)
+    (let [{:keys [version entries]} (source/store-and-record! targets snapshot task-id message)]
       (remote-sync.task/set-version! task-id version)
+      ;; blanket-reconcile every row to synced (covers removed/delete rows not in this export), then write
+      ;; file_path + content_hash for the exported entities in one batched pass.
       (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
-      (record-exported-paths! entries)
-      (record-content-hashes!))
+      (record-exported-metadata! entries))
     {:status :success}))
 
 (defn export!

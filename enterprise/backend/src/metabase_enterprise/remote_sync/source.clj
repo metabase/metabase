@@ -124,6 +124,40 @@
                           (source.p/write-files! snapshot message))]
     {:version version :entries @entries}))
 
+(defn store-and-record!
+  "Serializes the export `targets` (a map of {model-name [id ...]} from `spec/export-targets`) exactly once,
+  writes each file to `snapshot`, and returns {:version :entries} where each entry is
+  {:model_type :model_id :path :content_hash}. Unlike [[store!]], it drives serialization from
+  `extract-query` so it keeps each entity's primary key — letting callers record file_path and content_hash
+  on the RemoteSyncObject rows for every model type (including path models with no entity_id) without a
+  second serialization pass. Reports progress via `task-id`."
+  [targets snapshot task-id message]
+  (let [storage-opts (serdes/storage-base-context)
+        total        (reduce + 0 (map (comp count val) targets))
+        done         (volatile! 0)
+        ;; serialize once, retaining the primary key; build file-specs and the metadata entries together.
+        ;; extract-one must run inside the extract-query reduction, while its ResultSet is still open.
+        rows         (into []
+                           (mapcat (fn [[model-type ids]]
+                                     (let [extract-opts {:where [:in :id (vec ids)] :skip-archived true}]
+                                       (into []
+                                             (map (fn [instance]
+                                                    (let [entity (serdes/extract-one model-type extract-opts instance)
+                                                          spec   (entity->file-spec storage-opts entity)]
+                                                      (remote-sync.task/update-progress!
+                                                       task-id (-> (vswap! done inc) (/ (max 1 total)) (* 0.6) (+ 0.3)))
+                                                      {:model_type model-type :model_id (:id instance) :spec spec})))
+                                             (serdes/extract-query model-type extract-opts)))))
+                           targets)
+        version      (source.p/write-files! snapshot message (map :spec rows))]
+    {:version version
+     :entries  (mapv (fn [{:keys [model_type model_id spec]}]
+                       {:model_type   model_type
+                        :model_id     model_id
+                        :path         (:path spec)
+                        :content_hash (content-hash (:content spec))})
+                     rows)}))
+
 (defn- snapshot->specs
   "Reads a snapshot's managed-directory files into a sequence of `{:path :content}` specs, matching the
   shape produced by [[serialize-specs]]. Used to read the merge base and remote-tip trees for merging."

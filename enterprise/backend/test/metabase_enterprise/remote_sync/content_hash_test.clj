@@ -194,12 +194,12 @@
           "Content matching the baseline must clear a stale dirty flag")
       (is (not (sync-object/dirty?))))))
 
-;;; ------------------------------------------- record-content-hashes! -------------------------------------------
+;;; ------------------------------------------- record-exported-metadata! -------------------------------------------
 
-(deftest record-content-hashes!-batches-and-matches-row-hash-test
-  (testing "record-content-hashes! (batched) writes the same hash as per-row row->content-hash, for every
-            identity flavor — including the extract-query overrides (Collection, NativeQuerySnippet),
-            hybrids (Measure), and path models (Field) that have no entity_id (GHY-3933)"
+(deftest content-metadata-matches-row-hash-test
+  (testing "import-content-metadata + record-exported-metadata! write a content_hash matching per-row
+            row->content-hash for every identity flavor — including the extract-query overrides (Collection,
+            NativeQuerySnippet), hybrids (Measure), and path models (Field) that have no entity_id (GHY-3933)"
     (with-library-synced
       (mt/with-temp [:model/Database db {:name "DB"}
                      :model/Collection rs {:is_remote_synced true :name "RS" :location "/"}
@@ -217,14 +217,14 @@
           (doseq [row rows]
             (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
                                                             :status_changed_at (t/offset-date-time)})))
-          (#'impl/record-content-hashes!)
+          (#'impl/record-exported-metadata! (#'impl/import-content-metadata rows []))
           (doseq [{:keys [model_type model_id] :as row} rows]
             (is (= (source/row->content-hash row)
                    (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
-                (str "batched hash should match per-row hash for " model_type))))))))
+                (str "written hash should match per-row hash for " model_type))))))))
 
-(deftest record-content-hashes!-chunks-rows-test
-  (testing "record-content-hashes! hashes every row even when they span multiple batches (GHY-3933)"
+(deftest record-exported-metadata!-chunks-rows-test
+  (testing "record-exported-metadata! writes every row even when they span multiple batches (GHY-3933)"
     (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
                    :model/Card c1 {:name "C1" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
                    :model/Card c2 {:name "C2" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
@@ -233,9 +233,11 @@
       (doseq [card [c1 c2 c3]]
         (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name (:name card)
                                              :status "synced" :status_changed_at (t/offset-date-time)}))
-      ;; force more than one chunk for the 3 cards
-      (with-redefs [impl/content-hash-batch-size 2]
-        (#'impl/record-content-hashes!))
+      (let [rows    (mapv (fn [c] {:model_type "Card" :model_id (:id c)}) [c1 c2 c3])
+            entries (#'impl/import-content-metadata rows [])]
+        ;; force more than one chunk for the 3 cards
+        (with-redefs [impl/content-hash-batch-size 2]
+          (#'impl/record-exported-metadata! entries)))
       (doseq [card [c1 c2 c3]]
         (is (= (source/row->content-hash {:model_type "Card" :model_id (:id card)})
                (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))
@@ -338,6 +340,28 @@
                    (export-baseline-then-noop-status!
                     [{:model_type "PythonLibrary" :model_id (:id lib) :model_name "lib.py"}]
                     {:model-type "PythonLibrary" :model-id (:id lib) :topic :event/python-library-update :object lib})))))))))
+
+(deftest full-export-records-metadata-and-stays-synced-test
+  (testing "A forced full export (real store-and-record! + record-exported-metadata!) writes file_path and
+            content_hash, and a subsequent no-op update stays synced (GHY-3933)"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
+      (mt/with-model-cleanup [:model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+          (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS" :location "/"}
+                         :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
+                         :model/RemoteSyncObject _ {:model_type "Collection" :model_id (:id coll) :model_name "RS" :status "create" :status_changed_at (t/offset-date-time)}
+                         :model/RemoteSyncObject _ {:model_type "Card" :model_id (:id card) :model_name "Card" :model_collection_id (:id coll) :status "create" :status_changed_at (t/offset-date-time)}]
+            ;; force? routes through full-export! -> store-and-record! (no incremental fast-path)
+            (let [mock-source (test-helpers/create-mock-source)
+                  result      (impl/export! (source.p/snapshot mock-source) task-id "Full export" :force? true)]
+              (is (= :success (:status result)) (str "forced full export should succeed: " result))
+              (let [row (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
+                (is (= "synced" (:status row)))
+                (is (some? (:content_hash row)) "content_hash recorded from store-and-record!'s serialization")
+                (is (some? (:file_path row)) "file_path recorded from store-and-record!'s serialization")))
+            (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
+            (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+                "a no-op update after a full export stays synced")))))))
 
 ;;; ------------------------------------------- import integration -------------------------------------------
 ;;; These import a snapshot from a mock source — which records the content_hash baseline through the actual
