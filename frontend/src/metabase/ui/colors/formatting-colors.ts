@@ -4,7 +4,7 @@ export function assignUserColors(
   userIds: string[],
   currentUserId: string | null,
   colors = [
-    color("brand"),
+    color("core-brand"),
     color("accent2"),
     color("error"),
     color("accent1"),

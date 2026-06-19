@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -18,7 +19,9 @@
   (:import
    (java.sql PreparedStatement ResultSet)
    (java.time Instant)
-   (java.time.temporal ChronoUnit)))
+   (java.time.temporal ChronoUnit)
+   (java.util.concurrent.locks ReadWriteLock Lock)
+   (net.snowflake.client.api.exception SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -96,6 +99,8 @@
   []
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
 
+;;; --------------------------------- Cleanup ----------------------------------
+
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old
    -- tracked that haven't been touched in a while or are not tracked and too old"
@@ -104,14 +109,10 @@
         ;; tracked UNION ALL untracked
         ;; NB. currently appears that the second half never shows anything; all
         ;; datasets currently appear to be tracked.
-        query "(select name from metabase_test_tracking.PUBLIC.datasets
-                where accessed_at < dateadd(day, ?, current_timestamp()))
-               UNION All
-               (select database_name from metabase_test_tracking.information_schema.databases d
-                where d.database_name not in (select name from metabase_test_tracking.PUBLIC.datasets)
-                and d.database_name like 'sha_%'
-                and created < dateadd(day, ?, current_timestamp()))"]
-    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec) [query days-ago days-ago]))))
+        query "select name from metabase_test_tracking.PUBLIC.datasets
+                where accessed_at < dateadd(day, ?, current_timestamp())"]
+    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec)
+                                               [query days-ago]))))
 
 (defn- orphan-isolation-schemas
   "Return a collection of schema names with mb__isolation_ prefix that are more than 3 hours old,
@@ -192,14 +193,14 @@
   "Open a write-capable Snowflake connection + Statement, call `f` with the stmt,
   close everything. Centralizes the boilerplate so the per-resource drop fns
   don't repeat it."
-  [f]
+  [f & args]
   (sql-jdbc.execute/do-with-connection-with-options
    :snowflake
    (no-db-connection-spec)
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (f stmt)))))
+       (apply f stmt args)))))
 
 (defn- drop-old-datasets!
   "Drop test datasets (databases) prefixed by `sha_` that are >2 days old."
@@ -544,6 +545,10 @@
   [_driver _feature _database]
   (not (tx/on-master-or-release-branch?)))
 
+;; too much contention here causing unreliable tests
+(defmethod driver/database-supports? [:snowflake :test/dynamic-dataset-loading]
+  [_driver _feature _database] false)
+
 (defmethod tx/fake-sync-schema :snowflake
   [_driver]
   "PUBLIC")
@@ -625,3 +630,66 @@
     "TIME"         :type/Time
     ;; Default: unknown types get :type/*
     :type/*))
+
+;; Sadly Snowflake does not implement locks outside very limited scope of
+;; automatic locking around DDL; there are no advisory locks, so we are stuck
+;; building them ourselves out of table rows.
+(defn- setup-locks! []
+  ;; Reuse the existing tracking database, but make a new table.
+  (with-write-stmt! (fn [^java.sql.Statement stmt]
+                      (.executeQuery stmt "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;")))
+  ;; normal tables literally cannot have primary keys enforced! must be hybrid.
+  (with-write-stmt! (fn [^java.sql.Statement stmt]
+                      (.executeQuery stmt "CREATE HYBRID TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.locks
+                                          (dataset TEXT PRIMARY KEY, at TIMESTAMPTZ DEFAULT current_timestamp())")))
+  ;; unfortuantely with-redefs in the test suite can mean that we end up trying
+  ;; to create locks as other users which will need access to the locks table
+  (with-write-stmt! (fn [^java.sql.Statement stmt]
+                      (.executeQuery stmt "GRANT ALL ON metabase_test_tracking.PUBLIC.locks TO SYSADMIN"))))
+
+(alter-var-root #'setup-locks! memoize)
+
+(defn- try-lock! [^java.sql.Statement stmt dataset-name]
+  (try
+    (.executeQuery stmt (format "INSERT INTO metabase_test_tracking.PUBLIC.locks (dataset) VALUES ('%s')"
+                                dataset-name))
+    true
+    (catch SnowflakeSQLException e
+      (when-not (= "A primary key already exists." (.getMessage e))
+        (throw e))
+      (with-write-stmt! (fn [^java.sql.Statement stmt]
+                          (.executeQuery stmt "DELETE FROM metabase_test_tracking.PUBLIC.locks
+                                           WHERE TIMEDIFF('seconds', at, current_timestamp()::TIMESTAMPTZ) > 60")))
+      false)))
+
+(defn- lock! [dataset-name]
+  (setup-locks!)
+  (loop [tries 0]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "[Snowflake] locking attempt" tries "on" dataset-name)
+    (let [locked? (with-write-stmt! try-lock! dataset-name)]
+      (when (< 1000 tries)
+        (throw (Exception. "could not acquire snowflake lock")))
+      (when (not locked?)
+        (Thread/sleep 100)
+        (recur (inc tries))))))
+
+(defn- unlock! [dataset-name ^java.sql.Statement stmt]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println "[Snowflake] unlocking" dataset-name)
+  (.executeQuery stmt (format "DELETE FROM metabase_test_tracking.PUBLIC.locks WHERE dataset = '%s'"
+                              dataset-name)))
+
+(defmethod test.data.impl.get-or-create/dataset-lock :snowflake
+  [_driver dataset-name]
+  (reify ReadWriteLock
+    (readLock [_]
+      (reify Lock
+        (lock [_])
+        (unlock [_])))
+    (writeLock [_]
+      (reify Lock
+        (lock [_]
+          (lock! dataset-name))
+        (unlock [_]
+          (with-write-stmt! (partial unlock! dataset-name)))))))

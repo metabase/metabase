@@ -1,9 +1,11 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { securityCenterApi, subscriptionApi } from "metabase/api";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Advisory } from "metabase-types/api";
 import {
@@ -17,6 +19,7 @@ import { SecurityCenterPromoCard } from "./SecurityCenterPromoCard";
 const DISMISSED_KEY = "security-center-promo-dismissed";
 
 interface SetupOpts {
+  isAdmin?: boolean;
   isProSelfHosted?: boolean;
   emailConfigured?: boolean;
   slackConfigured?: boolean;
@@ -24,6 +27,7 @@ interface SetupOpts {
 }
 
 function setup({
+  isAdmin = true,
   isProSelfHosted = true,
   emailConfigured = false,
   slackConfigured = false,
@@ -36,8 +40,8 @@ function setup({
   );
 
   setupNotificationChannelsEndpoints({
-    email: { configured: emailConfigured } as any,
-    slack: { configured: slackConfigured } as any,
+    email: { configured: emailConfigured },
+    slack: { configured: slackConfigured },
   });
 
   fetchMock.get("path:/api/ee/security-center", {
@@ -46,17 +50,48 @@ function setup({
   });
 
   const state = createMockState({
-    currentUser: createMockUser({ is_superuser: true }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
       "token-features": tokenFeatures,
     }),
   });
 
-  renderWithProviders(<Route path="*" component={SecurityCenterPromoCard} />, {
-    initialRoute: "/",
-    storeInitialState: state,
-    withRouter: true,
+  return renderWithProviders(
+    <Route path="*" component={SecurityCenterPromoCard} />,
+    {
+      initialRoute: "/",
+      storeInitialState: state,
+      withRouter: true,
+    },
+  );
+}
+
+type SetupResult = ReturnType<typeof setup>;
+
+async function waitForAdminQueriesToFinish({ store }: SetupResult) {
+  await waitFor(() => {
+    expect(
+      subscriptionApi.endpoints.getChannelInfo.select()(store.getState())
+        .isSuccess,
+    ).toBe(true);
+    expect(
+      securityCenterApi.endpoints.listSecurityAdvisories.select()(
+        store.getState(),
+      ).isSuccess,
+    ).toBe(true);
   });
+}
+
+function expectAdminQueriesToBeSkipped({ store }: SetupResult) {
+  expect(
+    subscriptionApi.endpoints.getChannelInfo.select()(store.getState())
+      .isUninitialized,
+  ).toBe(true);
+  expect(
+    securityCenterApi.endpoints.listSecurityAdvisories.select()(
+      store.getState(),
+    ).isUninitialized,
+  ).toBe(true);
 }
 
 describe("SecurityCenterPromoCard", () => {
@@ -76,38 +111,52 @@ describe("SecurityCenterPromoCard", () => {
   });
 
   it("does not render when email is configured", async () => {
-    setup({ emailConfigured: true });
+    const view = setup({ emailConfigured: true });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForAdminQueriesToFinish(view);
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
   it("does not render when slack is configured", async () => {
-    setup({ slackConfigured: true });
+    const view = setup({ slackConfigured: true });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForAdminQueriesToFinish(view);
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
-  it("does not render for non-pro-self-hosted plans", async () => {
-    setup({ isProSelfHosted: false });
+  it("does not render or fire admin-only requests for non-admin users", () => {
+    const view = setup({ isAdmin: false });
 
-    await screen.findByText(() => false).catch(() => {});
+    expectAdminQueriesToBeSkipped(view);
+    expect(
+      screen.queryByText(/Stay safe with security alerts/),
+    ).not.toBeInTheDocument();
+
+    // Non-admins must not trigger admin-only endpoints.
+    expect(fetchMock.callHistory.called("path:/api/ee/security-center")).toBe(
+      false,
+    );
+  });
+
+  it("does not render for non-pro-self-hosted plans", async () => {
+    const view = setup({ isProSelfHosted: false });
+
+    await waitForAdminQueriesToFinish(view);
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
   });
 
   it("does not render when there is an active advisory (red banner takes over)", async () => {
-    setup({
+    const view = setup({
       advisories: [createAdvisory({ match_status: "active" })],
     });
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForAdminQueriesToFinish(view);
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
@@ -118,7 +167,7 @@ describe("SecurityCenterPromoCard", () => {
 
     await screen.findByText(/Stay safe with security alerts/);
     const close = screen.getByRole("button", { name: /close/i });
-    close.click();
+    await userEvent.click(close);
 
     await waitFor(() => {
       expect(
@@ -131,9 +180,9 @@ describe("SecurityCenterPromoCard", () => {
   it("stays hidden after dismissal", async () => {
     localStorage.setItem(DISMISSED_KEY, "true");
 
-    setup();
+    const view = setup();
 
-    await screen.findByText(() => false).catch(() => {});
+    await waitForAdminQueriesToFinish(view);
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();

@@ -449,7 +449,7 @@ describe("database page > side panel", () => {
       { name: "Amazon Redshift", file: "redshift" },
       { name: "ClickHouse", file: "clickhouse" },
       { name: "Databricks", file: "databricks" },
-      { name: "Druid", file: "druid" },
+      { name: "Druid JDBC", file: "druid" },
       { name: "MongoDB", file: "mongo" },
       { name: "MySQL", file: "mysql" },
       { name: "PostgreSQL", file: "postgresql" },
@@ -866,7 +866,7 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     H.modal().within(() => {
-      cy.button("Delete this content and the DB connection")
+      cy.button("Delete this DB connection")
         .as("deleteButton")
         .should("be.disabled");
       cy.findByLabelText(/Delete [0-9]* saved questions?/)
@@ -886,7 +886,7 @@ describe("scenarios > admin > databases > sample database", () => {
         .click()
         .should("be.checked");
       cy.findByText(
-        "This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!",
+        "This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone. Transforms that use this database won’t be deleted, but they will stop working.",
       );
 
       cy.get("@deleteButton").should("be.disabled");
@@ -942,7 +942,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByTestId("database-name-confirmation-input").type(
         "Sample Database",
       );
-      cy.findByText("Delete this content and the DB connection").click();
+      cy.findByText("Delete this DB connection").click();
       cy.wait("@deleteDatabase");
     });
 

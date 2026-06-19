@@ -36,10 +36,9 @@ import {
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/common/utils/card";
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
-import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
+import type { Card, Dataset, Timeline, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -229,6 +228,10 @@ interface SetupOpts {
   card: Card | UnsavedCard | null;
   dataset?: Dataset;
   initialRoute?: string;
+  timelines?: Timeline[];
+  // Delay (ms) for the /api/timeline response, used to control its resolution
+  // order relative to the question/bookmarks load.
+  timelinesDelay?: number;
 }
 
 export const setup = async ({
@@ -241,6 +244,8 @@ export const setup = async ({
         ? `/${card.id}`
         : `#${serializeCardForUrl(card)}`
   }`,
+  timelines = [],
+  timelinesDelay,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
@@ -249,7 +254,7 @@ export const setup = async ({
   setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints([]);
-  setupTimelinesEndpoints([]);
+  setupTimelinesEndpoints(timelines, timelinesDelay);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
@@ -279,12 +284,11 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  const { container, history } = renderWithProviders(
+  const { container, history, store } = renderWithProviders(
     <div>
       <Route>
         <Route path="/" component={TestHome} />
         <Route path="/model">
-          <Route path="new" component={NewModelOptions} />
           <Route path="query" component={TestQueryBuilder} />
           <Route path="columns" component={TestQueryBuilder} />
           <Route path="metadata" component={TestQueryBuilder} />
@@ -325,19 +329,8 @@ export const setup = async ({
     container,
     history: checkNotNull(history),
     mockEventListener,
+    store,
   };
-};
-
-export const startNewNotebookModel = async () => {
-  await userEvent.click(screen.getByText("Use the notebook editor"));
-  await waitForLoaderToBeRemoved();
-
-  const modal = await screen.findByTestId("mini-picker");
-  await waitForLoaderToBeRemoved();
-  await userEvent.click(await within(modal).findByText("Sample Database"));
-  await userEvent.click(await within(modal).findByText("Orders"));
-
-  expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
 };
 
 export const triggerNativeQueryChange = async () => {

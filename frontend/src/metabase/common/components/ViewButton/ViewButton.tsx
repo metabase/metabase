@@ -19,7 +19,7 @@ export const ViewButton = ({ className, active, color, ...props }: Props) => {
       }}
       style={
         {
-          "--view-button-color": color ?? "var(--mb-color-brand)",
+          "--view-button-color": color ?? "var(--mb-color-core-brand)",
         } as CSSProperties
       }
       {...props}

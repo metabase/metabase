@@ -6,12 +6,12 @@
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
 .sortedByColumn {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .rightAligned {
@@ -19,6 +19,6 @@
 }
 
 .clickable {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   cursor: pointer;
 }

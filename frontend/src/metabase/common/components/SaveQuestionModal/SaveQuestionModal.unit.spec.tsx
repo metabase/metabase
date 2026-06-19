@@ -23,7 +23,6 @@ import {
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import * as qbSelectors from "metabase/query_builder/selectors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import {
   createMockQueryBuilderState,
@@ -810,11 +809,6 @@ describe("SaveQuestionModal", () => {
       const { rerender } = await setup(dirtyQuestion, originalQuestion);
 
       await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-      // simulate slow response and further re-render of the modal
-      jest
-        .spyOn(qbSelectors, "getIsSavedQuestionChanged")
-        .mockReturnValue(false);
 
       rerender();
 

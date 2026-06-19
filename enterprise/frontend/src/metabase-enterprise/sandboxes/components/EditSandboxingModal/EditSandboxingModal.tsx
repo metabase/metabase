@@ -9,6 +9,7 @@ import {
   useGetCardQuery,
   useGetPermissionsGroupQuery,
   useGetTableQuery,
+  useValidateGroupTableAccessPolicyMutation,
 } from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
@@ -21,7 +22,6 @@ import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { GTAPApi } from "metabase/services";
 import { Button, Center, Icon, Loader } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import type {
@@ -111,13 +111,15 @@ const EditSandboxingModal = ({
   const [showPickerModal, { turnOn: showModal, turnOff: hideModal }] =
     useToggle(false);
 
+  const [validatePolicy] = useValidateGroupTableAccessPolicyMutation();
+
   const [{ error }, savePolicy] = useAsyncFn(async () => {
     const shouldValidate = normalizedPolicy.card_id != null;
     if (shouldValidate) {
-      await GTAPApi.validate(normalizedPolicy);
+      await validatePolicy(normalizedPolicy).unwrap();
     }
     onSave(normalizedPolicy);
-  }, [normalizedPolicy]);
+  }, [normalizedPolicy, validatePolicy]);
 
   const remainingAttributesOptions = attributes.filter(
     (attribute) => !(attribute in policy.attribute_remappings),
@@ -284,7 +286,7 @@ const EditSandboxingModal = ({
           <ActionButton
             className={CS.ml1}
             actionFn={savePolicy}
-            primary
+            variant="filled"
             disabled={!canSave}
           >
             {t`Save`}

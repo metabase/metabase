@@ -5,15 +5,15 @@
       border 300ms linear;
 
     &:hover {
-      color: var(--mb-color-filter);
+      color: var(--mb-color-core-filter);
       background-color: color-mix(
         in srgb,
-        var(--mb-color-filter) 10%,
+        var(--mb-color-core-filter) 10%,
         var(--mb-color-white)
       );
       border-color: color-mix(
         in srgb,
-        var(--mb-color-filter) 40%,
+        var(--mb-color-core-filter) 40%,
         var(--mb-color-white)
       );
     }
@@ -50,12 +50,12 @@
     &:hover {
       background-color: color-mix(
         in srgb,
-        var(--mb-color-filter) 10%,
+        var(--mb-color-core-filter) 10%,
         var(--mb-color-white)
       );
       border-color: color-mix(
         in srgb,
-        var(--mb-color-filter) 40%,
+        var(--mb-color-core-filter) 40%,
         var(--mb-color-white)
       );
     }
@@ -64,7 +64,7 @@
     &[data-expanded="true"] {
       .FilterCountChip {
         color: var(--mb-color-text-primary-inverse);
-        background-color: var(--mb-color-filter);
+        background-color: var(--mb-color-core-filter);
       }
     }
   }
@@ -78,7 +78,7 @@
   color: var(--mb-color-text-primary);
   background-color: color-mix(
     in srgb,
-    var(--mb-color-filter) 15%,
+    var(--mb-color-core-filter) 15%,
     var(--mb-color-white)
   );
 }
@@ -89,15 +89,15 @@
     border 300ms linear;
 
   &:hover:not([data-active="true"]) {
-    color: var(--mb-color-summarize);
+    color: var(--mb-color-core-summarize);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-summarize) 40%,
+      var(--mb-color-core-summarize) 40%,
       var(--mb-color-white)
     );
     background-color: color-mix(
       in srgb,
-      var(--mb-color-summarize) 15%,
+      var(--mb-color-core-summarize) 15%,
       var(--mb-color-white)
     );
   }
@@ -109,22 +109,22 @@
     border 300ms linear;
 
   &:hover:not([data-active="true"]) {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-brand) 40%,
+      var(--mb-color-core-brand) 40%,
       var(--mb-color-white)
     );
     background-color: color-mix(
       in srgb,
-      var(--mb-color-brand) 15%,
+      var(--mb-color-core-brand) 15%,
       var(--mb-color-white)
     );
   }
 }
 
 .BackButton {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   padding: 0.75rem;
 }
 
@@ -191,7 +191,7 @@
   color: var(--mb-color-text-primary);
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
 
     &.isDirty {
       color: var(--mb-color-text-primary-inverse);
@@ -233,7 +233,7 @@
     width: 2rem;
 
     &:hover {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
       background-color: var(--mb-color-background-tertiary);
     }
   }

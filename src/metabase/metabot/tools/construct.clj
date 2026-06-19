@@ -7,10 +7,12 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -32,6 +34,57 @@
   [:map {:closed true}
    [:chart_type :string]])
 
+(def ^:private construct-notebook-query-json-schema
+  "Hand-authored JSON Schema for the `:query` argument, attached to the deliberately open,
+  property-less malli `:map` via a `:json-schema` override. It does not participate in validation —
+  it only replaces the schema we hand the LLM. Malli would otherwise emit an empty-`properties`
+  object, which weaker models (e.g. gpt-4.1-mini) read as \"this object has no fields\" and answer
+  with `{}`; the structured `:required`/`:properties` here stop that, and the prose carries the
+  per-clause shape JSON Schema can't express well."
+  {:type        "object"
+   :description (str "An MBQL 5 query as a JSON **object** (never a quoted string) matching "
+                     "`metabase.lib.schema/external-query`. The FIRST stage MUST contain exactly one of `source-table` "
+                     "(a portable FK `[\"<db-name>\", \"<schema-or-null>\", \"<table-name>\"]`) or `source-card` "
+                     "(an entity_id string) — the target database is inferred from it; there is no top-level "
+                     "`database` field. Every clause is `[\"<op>\", {<options>}, ...args]` with a mandatory "
+                     "(possibly empty) options map at position 1, and every field reference is `[\"field\", {}, "
+                     "[\"<db>\", \"<schema>\", \"<table>\", \"<field>\"]]`. Minimal example — count of orders by "
+                     "month: `{\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", "
+                     "\"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": "
+                     "[[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, "
+                     "[\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}`. Load the "
+                     "`construct-notebook-query-*` skills for the full operator catalog, joins, expressions, "
+                     "and multi-stage rules.")
+   :required    ["lib/type" "stages"]
+   :properties  {"lib/type" {:type        "string"
+                             :const       "mbql/query"
+                             :description "Must be the literal string `mbql/query`."}
+                 "stages"   {:type        "array"
+                             :minItems    1
+                             :description (str "Non-empty array of query stages. The FIRST stage must carry the "
+                                               "source (`source-table` or `source-card`); later stages read from "
+                                               "the previous one.")
+                             :items
+                             {:type       "object"
+                              :properties {"lib/type"     {:type "string" :const "mbql.stage/mbql"}
+                                           "source-table" {:type        "array"
+                                                           :minItems    3
+                                                           :maxItems    3
+                                                           :items       {:type "string"}
+                                                           :description "Portable FK `[<db-name>, <schema-or-null>, <table-name>]`."}
+                                           "source-card"  {:type        "string"
+                                                           :description "entity_id of a saved question/model used as the source."}
+                                           ;; Each clause is itself a `["<op>", {opts}, ...args]` array; the inner
+                                           ;; `items {}` (any) keeps the shape open while satisfying the API's
+                                           ;; requirement that every `array` schema declare `items`.
+                                           "aggregation"  {:type "array" :items {:type "array" :items {}}}
+                                           "breakout"     {:type "array" :items {:type "array" :items {}}}
+                                           "filters"      {:type "array" :items {:type "array" :items {}}}
+                                           "fields"       {:type "array" :items {:type "array" :items {}}}
+                                           "order-by"     {:type "array" :items {:type "array" :items {}}}
+                                           "joins"        {:type "array" :items {:type "object"}}
+                                           "expressions"  {:type "object"}}}}}})
+
 (def ^:private construct-notebook-query-args-schema
   "Args schema for `construct_notebook_query`.
 
@@ -48,8 +101,11 @@
   omits `:source_entity` and `:referenced_entities` — the query body is self-describing."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
-   [:query :map]
-   [:visualization {:optional true} construct-visualization-schema]])
+   ;; Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the
+   ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
+   [:query [:map {:json-schema construct-notebook-query-json-schema}]]
+   [:visualization {:optional true} construct-visualization-schema]
+   [:title :string]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -355,9 +411,10 @@
   construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table.
 
-  Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`. See
+  Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a
+  short, human-friendly `title` shown above the resulting chart. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization title]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
@@ -369,7 +426,7 @@
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
                              :queries-state {(:query-id structured) (:query structured)}})
-              navigate-url (get-in chart-result [:reactions 0 :url])
+              results-url  (:results-url chart-result)
               full-structured (assoc structured
                                      :result-type   :query
                                      :chart-id      (:chart-id chart-result)
@@ -387,8 +444,15 @@
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
           {:output (str "<result>\n" chart-xml "\n</result>\n"
                         "<instructions>\n" instruction-text "\n</instructions>")
-           :data-parts        (when navigate-url
-                                [(streaming/navigate-to-part navigate-url)])
+           :data-parts        (when results-url
+                                [(streaming/viz-part
+                                  {:inline?   (shared/inline-viz-capable?)
+                                   :entity-id (:chart-id chart-result)
+                                   :query-id  (:query-id structured)
+                                   :query     (links/->legacy-mbql (:query structured))
+                                   :display   chart-type
+                                   :title     title
+                                   :link      results-url})])
            :structured-output full-structured
            :instructions      instruction-text})
         ;; query-result may already have :output (error) or only :structured-output

@@ -6,7 +6,7 @@ import {
   isValidElement,
 } from "react";
 
-import { Badge } from "metabase/common/components/Badge";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { Box, Flex } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 
@@ -14,14 +14,8 @@ import type { DataSourcePart } from "../QuestionDataSource/utils";
 
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
 
-const HeaderBadge = (props: ComponentProps<typeof Badge>) => (
-  <Badge
-    classNames={{
-      root: HeaderBreadcrumbsS.HeaderBadge,
-      icon: HeaderBreadcrumbsS.HeaderBadgeIcon,
-    }}
-    {...props}
-  />
+const HeaderBreadcrumb = (props: ComponentProps<typeof Breadcrumb>) => (
+  <Breadcrumb className={HeaderBreadcrumbsS.HeaderBreadcrumb} {...props} />
 );
 
 function getBadgeInactiveColor({
@@ -70,13 +64,13 @@ export function HeadBreadcrumbs({
             {isDataSourceReactElement(part) ? (
               part
             ) : (
-              <HeaderBadge
+              <HeaderBreadcrumb
                 to={part.href}
+                color={badgeInactiveColor}
                 icon={part.icon}
-                inactiveColor={badgeInactiveColor}
               >
                 {part.name}
-              </HeaderBadge>
+              </HeaderBreadcrumb>
             )}
             {!isLast &&
               (isDividerReactElement(divider) ? (
@@ -109,4 +103,4 @@ function isDividerReactElement(
   return isValidElement(divider);
 }
 
-HeadBreadcrumbs.Badge = HeaderBadge;
+HeadBreadcrumbs.Breadcrumb = HeaderBreadcrumb;

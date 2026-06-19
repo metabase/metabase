@@ -339,20 +339,20 @@
               (recur (dec num-retries))
               (throw e))))))))
 
-(defn delete-old-datasets!
-  []
+(defn delete-old-datasets! []
   (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets` WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))"
+                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
+                           " WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))"
                            " UNION ALL "
                            "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
                              where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
                              and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))")
+                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))")
                       (project-id)
                       (project-id)
                       (project-id))]
     (doseq [outdated (map first all-outdated)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset more than two days old: %s`." outdated))
+      (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
       (destroy-dataset! outdated))))
 
 ;;; ---------------------- Workspace isolation orphan cleanup ----------------------
@@ -363,7 +363,7 @@
 ;;;     (#'bq-tx/orphan-isolation-datasets)
 ;;;     ;; => ("mb__isolation_..." ...)
 ;;;     (#'bq-tx/orphan-isolation-service-accounts)
-;;;     ;; => ("mb__isolation_..." ...)
+;;;     ;; => ("mb-ws-..." ...)
 ;;;
 ;;; The whole-orchestration entry point is the existing
 ;;; [[delete-old-datasets-if-needed!]].
@@ -381,7 +381,7 @@
        (map first)))
 
 (defn- orphan-isolation-service-accounts
-  "Return iso SA email addresses (`mb__isolation_*@...`) older than 3 hours.
+  "Return iso SA email addresses (`mb-ws-*@...`) older than 3 hours.
 
    Age comes from the `created-at:<iso-instant>` marker encoded in the SA
    `description` field by
@@ -403,7 +403,7 @@
              (keep (fn [^com.google.iam.admin.v1.ServiceAccount sa]
                      (let [sa-email   (.getEmail sa)
                            created-at (bigquery.ws/ws-sa-description->created-at (.getDescription sa))]
-                       (when (and (str/starts-with? sa-email "mb__isolation_")
+                       (when (and (str/starts-with? sa-email "mb-ws-")
                                   created-at
                                   (.isBefore ^java.time.Instant created-at threshold))
                          sa-email))))
@@ -526,26 +526,28 @@
       (test-dataset-id db-def)
       (tx/tracking-access-note)])))
 
+(defn- get-existing-tables [dataset-id]
+  (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
+                    (project-id) dataset-id)]
+    (set (map :table_name (execute! sql)))))
+
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-  (delete-old-datasets-if-needed!)
+  ;; re-enable this again once things are stable; for now let's just completely
+  ;; excise this potential source of unreliability
+  (comment (delete-old-datasets-if-needed!))
   (let [dataset-id (test-dataset-id db-def)]
-    (if (database-exists?! db-def)
-      (log/info (u/format-color 'blue "Dataset already exists %s, not loading db" (pr-str dataset-id)))
-      (try
-        (log/infof "Creating dataset %s..." (pr-str dataset-id))
-        (create-dataset! dataset-id)
-        ;; now create tables and load data.
-        (doseq [tabledef table-definitions]
-          (load-tabledef! dataset-id tabledef))
-        (doseq [native-ddl (:native-ddl options)]
-          (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
-        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
-        (catch Throwable e
-          (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
-          (log/error (u/pprint-to-str 'red (Throwable->map e)))
-          (throw e))))))
+    (when-not (database-exists?! db-def)
+      (create-dataset! dataset-id))
+    ;; now create tables and load data.
+    (let [existing-tables (get-existing-tables dataset-id)]
+      (doseq [tabledef table-definitions
+              :when (not (existing-tables (:table-name tabledef)))]
+        (load-tabledef! dataset-id tabledef)))
+    (doseq [native-ddl (:native-ddl options)]
+      (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
+    (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]

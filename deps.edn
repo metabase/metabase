@@ -131,7 +131,7 @@
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.poi/poi-ooxml-full             {:mvn/version "5.5.1"}
-  org.apache.sshd/sshd-core                 {:mvn/version "3.0.0-M2"              ; ssh tunneling and test server
+  org.apache.sshd/sshd-core                 {:mvn/version "2.16.0"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "3.2.3"}
@@ -497,7 +497,6 @@
     "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/clickhouse/test"
     "modules/drivers/databricks/test"
-    "modules/drivers/druid/test"
     "modules/drivers/druid-jdbc/test"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/test"
@@ -561,8 +560,6 @@
     "modules/drivers/databricks/test"
     "modules/drivers/druid-jdbc/src"
     "modules/drivers/druid-jdbc/test"
-    "modules/drivers/druid/src"
-    "modules/drivers/druid/test"
     "modules/drivers/hive-like/src"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/src"
@@ -600,7 +597,6 @@
                 "modules/drivers/bigquery-cloud-sdk/src"
                 "modules/drivers/clickhouse/src"
                 "modules/drivers/databricks/src"
-                "modules/drivers/druid/src"
                 "modules/drivers/druid-jdbc/src"
                 "modules/drivers/hive-like/src"
                 "modules/drivers/mongo/src"
@@ -626,7 +622,6 @@
                                  "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/clickhouse/src"
                                  "modules/drivers/databricks/src"
-                                 "modules/drivers/druid/src"
                                  "modules/drivers/druid-jdbc/src"
                                  "modules/drivers/hive-like/src"
                                  "modules/drivers/mongo/src"

@@ -1,70 +1,47 @@
 import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
-import { push } from "react-router-redux";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
-  Anchor,
   Box,
   Button,
   Card,
+  Divider,
   FixedSizeIcon,
   Group,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import type { Workspace } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 
 import { trackWorkspaceSetupButtonClicked } from "../../../analytics";
-import { canManageWorkspaceInstance } from "../../../selectors";
-import { NewWorkspaceModal } from "../NewWorkspaceModal";
+import { NewWorkspaceButton } from "../NewWorkspaceButton";
 import { SetupWorkspaceModal } from "../SetupWorkspaceModal";
 
 import S from "./WorkspaceEmptyState.module.css";
 
-export function WorkspaceEmptyState() {
-  const [isCreateOpen, { open: openCreate, close: closeCreate }] =
-    useDisclosure(false);
+export type WorkspaceEmptyStateProps = {
+  databases: Database[];
+};
+
+export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
   const [isSetupOpen, { open: openSetup, close: closeSetup }] =
     useDisclosure(false);
-  const dispatch = useDispatch();
-  const canManageInstance = useSelector(canManageWorkspaceInstance);
+  const applicationName = useSelector(getApplicationName);
 
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
     useDocsUrl("ai/file-based-development");
   const { url: remoteSyncDocsUrl, showMetabaseLinks: showRemoteSyncLink } =
     useDocsUrl("installation-and-operation/remote-sync");
 
-  const handleCreate = (workspace: Workspace) => {
-    closeCreate();
-    dispatch(push(Urls.workspace(workspace.id)));
-  };
-
   const handleSetupClick = () => {
     trackWorkspaceSetupButtonClicked();
     openSetup();
   };
-
-  const createButton = (
-    <Button key="create" variant="filled" onClick={openCreate}>
-      {t`Create a workspace`}
-    </Button>
-  );
-
-  const setupButton = (
-    <Anchor
-      key="setup"
-      role="button"
-      component="button"
-      onClick={handleSetupClick}
-    >
-      {t`upload a workspace config`}
-    </Anchor>
-  );
 
   return (
     <>
@@ -73,41 +50,43 @@ export function WorkspaceEmptyState() {
           <Title
             order={3}
             mb="sm"
-          >{t`Isolated spaces for agents and developers`}</Title>
+          >{t`Use Workspaces to develop your semantic layer safely`}</Title>
           <Text mb="md">
-            {t`Develop transforms and the semantic layer without touching production tables. Each workspace gets its own schema and database user in the warehouses you pick.`}
+            {t`While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema, letting you test and build on top of these tables. When you're ready, use remote sync to pull your changes into your production ${applicationName}.`}
           </Text>
-          <Stack gap="sm" pb="xl">
-            <Box>{createButton}</Box>
-            {canManageInstance && (
-              <Box>{jt`or ${setupButton} generated from your production instance to put this development instance into a workspace.`}</Box>
-            )}
-          </Stack>
+          <Text mb="lg">
+            {t`If this is your production instance, create and download a workspace config here to use in a development instance.`}{" "}
+            {t`If you're using this ${applicationName} instance for development, you can upload a workspace config file to put this instance into that workspace.`}
+          </Text>
+          <Group gap="md">
+            <NewWorkspaceButton databases={databases} primary />
+            <Button variant="default" onClick={handleSetupClick}>
+              {t`Upload a workspace config`}
+            </Button>
+          </Group>
           {(showFileBasedDevLink || showRemoteSyncLink) && (
-            <Group pt="md" gap="sm" align="stretch">
-              {showFileBasedDevLink && (
-                <DocsLink
-                  title={t`File-based development`}
-                  description={t`How to use the CLI to develop content locally.`}
-                  link={fileBasedDevDocsUrl}
-                />
-              )}
-              {showRemoteSyncLink && (
-                <DocsLink
-                  title={t`Using remote sync`}
-                  description={t`How to sync and review instance content with git.`}
-                  link={remoteSyncDocsUrl}
-                />
-              )}
-            </Group>
+            <>
+              <Divider my="xl" />
+              <Group gap="sm" align="stretch">
+                {showFileBasedDevLink && (
+                  <DocsLink
+                    title={t`Agent-driven development`}
+                    description={t`How to use the CLI to develop content locally.`}
+                    link={fileBasedDevDocsUrl}
+                  />
+                )}
+                {showRemoteSyncLink && (
+                  <DocsLink
+                    title={t`Using remote sync`}
+                    description={t`How to sync and review ${applicationName} content with git.`}
+                    link={remoteSyncDocsUrl}
+                  />
+                )}
+              </Group>
+            </>
           )}
         </Box>
       </Card>
-      <NewWorkspaceModal
-        opened={isCreateOpen}
-        onCreate={handleCreate}
-        onClose={closeCreate}
-      />
       <SetupWorkspaceModal opened={isSetupOpen} onClose={closeSetup} />
     </>
   );
@@ -133,7 +112,7 @@ function DocsLink({ title, description, link }: DocsLinkProps) {
       miw="16rem"
     >
       <Group gap="sm" wrap="nowrap" align="flex-start">
-        <FixedSizeIcon c="brand" name="reference" />
+        <FixedSizeIcon c="core-brand" name="reference" />
         <Stack gap="xs">
           <Title order={5}>{title}</Title>
           <Box c="text-secondary">{description}</Box>

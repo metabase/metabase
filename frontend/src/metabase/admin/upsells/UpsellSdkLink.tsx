@@ -27,7 +27,7 @@ export function UpsellSdkLink() {
     return (
       <UnstyledButton
         onClick={triggerUpsellFlow}
-        c="brand"
+        c="core-brand"
         className={linkStyles.link}
         key="upgrade-button"
         fw="bold"

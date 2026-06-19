@@ -9,6 +9,7 @@ import {
   useListNotificationsQuery,
 } from "metabase/api";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
@@ -29,8 +30,6 @@ import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
-
-import type { MetricUrls } from "../../../types";
 
 import S from "./MetricToolbar.module.css";
 
@@ -192,22 +191,22 @@ function MetricToolbarButtons({
           </>
         )}
 
-        {(PLUGIN_AUDIT.isEnabled || showDataStudioLink) && (
-          <Menu.Divider role="separator" />
-        )}
-
         {showDataStudioLink && (
-          <Menu.Item
-            leftSection={<Icon name="grid_bordered" />}
-            onClick={() => dispatch(openUrl(Urls.dataStudioMetric(card.id)))}
-          >
-            {t`Open in Data Studio`}
-          </Menu.Item>
+          <>
+            <Menu.Divider role="separator" />
+            <Menu.Item
+              leftSection={<Icon name="grid_bordered" />}
+              onClick={() => dispatch(openUrl(Urls.dataStudioMetric(card.id)))}
+            >
+              {t`Open in Data Studio`}
+            </Menu.Item>
+          </>
         )}
         <PLUGIN_AUDIT.InsightsMenuItem
           card={card}
           label={t`Metric usage analytics`}
           iconName="pie_slice"
+          withDivider={!showDataStudioLink}
         />
 
         {card.can_write && (

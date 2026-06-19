@@ -2,14 +2,14 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/redux";
+import type { LoginData } from "metabase/redux/auth";
+import { login } from "metabase/redux/auth";
 
-import { login } from "../../actions";
 import {
   getExternalAuthProviders,
   getHasSessionCookies,
   getIsLdapEnabled,
 } from "../../selectors";
-import type { LoginData } from "../../types";
 import { AuthButton } from "../AuthButton";
 import { LoginForm } from "../LoginForm";
 

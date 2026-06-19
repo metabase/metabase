@@ -41,7 +41,7 @@
 }
 
 .squareBracket {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .callExpression {
@@ -49,7 +49,7 @@
 }
 
 .processingInstruction {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .logicOperator {

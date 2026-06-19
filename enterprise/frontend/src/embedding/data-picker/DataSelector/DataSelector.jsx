@@ -854,7 +854,9 @@ export class UnconnectedDataSelector extends Component {
             </Box>
           </Popover.Target>
 
-          <Popover.Dropdown>{this.renderContent()}</Popover.Dropdown>
+          <Popover.Dropdown aria-label={this.props.popoverAriaLabel}>
+            {this.renderContent()}
+          </Popover.Dropdown>
         </Popover>
       );
     }
@@ -903,6 +905,7 @@ function withAvailableModels(WrappedComponent) {
       calculate_available_models: true,
       limit: 0,
       models: ["dataset"],
+      context: "data-picker",
     });
     const { data: _data, ...metadata } = response ?? {};
     return (

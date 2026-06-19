@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { MetricPageParams } from "metabase/common/metrics/types";
 import { MetricDependenciesPage } from "metabase/metrics/pages/MetricDependenciesPage";
-import type { MetricPageParams } from "metabase/metrics/types";
 
 import { DataStudioMetricBreadcrumbs } from "../../components/DataStudioMetricBreadcrumbs";
 import { dataStudioMetricUrls } from "../../urls";

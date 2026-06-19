@@ -14,21 +14,24 @@ export type NotificationCardSendCondition =
   | "has_result";
 
 type NotificationCardPayload = {
-  payload_type: "notification/card";
-  payload: {
-    card_id: CardId;
-    card?: Card; // hydrated on the BE
-    send_once: boolean;
-    send_condition: NotificationCardSendCondition;
+  card_id: CardId;
+  card?: Card; // hydrated on the BE
+  send_once: boolean;
+  send_condition: NotificationCardSendCondition;
 
-    id?: number;
-    created_at?: string;
-    updated_at?: string;
-  };
+  id?: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type NotificationCardData = {
+  payload_type: "notification/card";
+  // payload can be null when it's deleted from the database
+  payload: NotificationCardPayload | null;
   payload_id?: number;
 };
 
-type NotificationPayload = NotificationCardPayload; // will be populated with more variants later on
+type NotificationData = NotificationCardData; // will be populated with more variants later on
 
 export type NotificationRecipientUser = {
   type: "notification-recipient/user";
@@ -131,14 +134,14 @@ export interface ListNotificationsRequest extends PaginationRequest {
   permission_group_id?: number;
 }
 
-export type CreateAlertNotificationRequest = NotificationCardPayload & {
+export type CreateAlertNotificationRequest = NotificationCardData & {
   handlers: NotificationHandler[];
   subscriptions: NotificationCronSubscription[];
 };
 
 export type CreateNotificationRequest = CreateAlertNotificationRequest; // will be populated with more variants later on
 
-export type UpdateAlertNotificationRequest = NotificationCardPayload & {
+export type UpdateAlertNotificationRequest = NotificationCardData & {
   id: NotificationId;
   active: boolean;
   handlers: NotificationHandler[];
@@ -148,7 +151,7 @@ export type UpdateAlertNotificationRequest = NotificationCardPayload & {
 
 export type UpdateNotificationRequest = UpdateAlertNotificationRequest; // will be populated with more variants later on
 
-export type Notification = NotificationPayload & {
+export type Notification = NotificationData & {
   id: NotificationId;
   active: boolean;
 
@@ -216,6 +219,7 @@ export type AdminNotificationListParams = {
   recipient_email?: string;
   channel?: NotificationChannelType | NotificationChannelType[];
   last_send_status?: NotificationRunStatus;
+  last_check_status?: NotificationRunStatus;
   query?: string;
   sort_column?: AdminNotificationSortColumn;
   sort_direction?: SortDirection;
@@ -234,4 +238,19 @@ export type BulkNotificationPayload = {
   notification_ids: NotificationId[];
   action: BulkNotificationAction;
   creator_id?: UserId;
+};
+
+// Unauthenticated, hash-based email unsubscribe (pulse subscriptions and
+// notifications). The two endpoints accept mutually-exclusive id keys, so both
+// are optional here.
+export type UnsubscribeRequest = {
+  hash: string;
+  email: string;
+  "pulse-id"?: string;
+  "notification-handler-id"?: string;
+};
+
+export type UnsubscribeResponse = {
+  status?: string;
+  title: string;
 };

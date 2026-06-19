@@ -79,6 +79,30 @@
   ['metabase-enterprise.serialization
    'metabase.models.serialization])
 
+(defn- log-export-error!
+  "Log a serialization export error, honoring `full-stacktrace` (full trace vs stripped one-liner)."
+  [e full-stacktrace]
+  (if full-stacktrace
+    (log/error e "Error during serialization export")
+    (log/error (u/strip-error e "Error during serialization export"))))
+
+(defn- extract-entities!
+  "Run eager extraction (target resolution, escape analysis) before streaming starts. It must run
+  before the streaming response opens so a failure can still set a non-200 status. Eager logs (e.g.
+  escape-analysis warnings) are captured into `log-output` so they land in export.log alongside the
+  storage logs captured later. `full-stacktrace` is honored for genuine server failures the way the
+  streaming path and the CLI export do; client input errors carry a `:status-code` and pass through to
+  the API layer unlogged, so they surface as a clean 4xx rather than a logged server error."
+  [opts ^ByteArrayOutputStream log-output full-stacktrace]
+  (try
+    (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
+                                       {:additive *additive-logging*})]
+      (extract/extract opts))
+    (catch Exception e
+      (when-not (:status-code (ex-data e))
+        (log-export-error! e full-stacktrace))
+      (throw e))))
+
 (defn- serialize-to-stream!
   "Serialize directly to an OutputStream as streaming tar.gz. Returns result map.
 
@@ -94,9 +118,7 @@
                      (v2.storage/store! entities writer))
                    (catch Exception e
                      (reset! error e)
-                     (if full-stacktrace
-                       (log/error e "Error during serialization export")
-                       (log/error (u/strip-error e "Error during serialization export")))
+                     (log-export-error! e full-stacktrace)
                      nil)))]
     ;; Read the buffer and write the log after the appender has closed (and thus flushed) so nothing is lost.
     (try
@@ -166,7 +188,7 @@
                            :direction       "export"
                            :source          "api"
                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                           :count           (count (:seen report))
+                           :count           (reduce + 0 (vals (:entity-counts report)))
                            :error_count     (count (:errors report))
                            :collection      (str/join "," (map str collection))
                            :all_collections (and (empty? collection)
@@ -238,14 +260,11 @@
                            (format "%s-%s"
                                    (u/slugify (appearance/site-name))
                                    (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
-        ;; extract/extract runs eager setup (target resolution, escape analysis) which can throw
-        ;; for invalid inputs (e.g. bad collection ID). This must happen before streaming starts so the error
-        ;; can set a non-200 status. Its eager logs (e.g. escape-analysis warnings) are captured into `log-output`
-        ;; so they end up in export.log alongside the storage logs captured later.
+        ;; Eager setup (target resolution, escape analysis) must run before the streaming response opens
+        ;; so a failure can still set a non-200 status. extract-entities! captures its logs into log-output
+        ;; (so escape-analysis warnings land in export.log) and honors full_stacktrace for genuine failures.
         log-output (ByteArrayOutputStream.)
-        entities (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
-                                                    {:additive *additive-logging*})]
-                   (extract/extract opts))]
+        entities   (extract-entities! opts log-output full-stacktrace?)]
     (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
       (sr/set-header! "Content-Disposition"
                       (format "attachment; filename=\"%s.tar.gz\"" export-dirname))

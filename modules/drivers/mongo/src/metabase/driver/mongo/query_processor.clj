@@ -172,6 +172,13 @@
     :else
     [field-name]))
 
+(defn- raw-path->components
+  "Split a `parent.child.leaf`-style Mongo path string into a vector of path components. The Mongo driver
+  treats `.` as the unambiguous nested-key separator everywhere (sync, projection, ordering); literal dots in
+  document field names aren't supported."
+  [^String path]
+  (str/split path #"\."))
+
 (mu/defn field->name
   "Return a single string name for column metadata `col` For nested fields, this creates a combined qualified name."
   ([col]
@@ -209,10 +216,12 @@
   x)
 
 (defmethod ->rvalue :expression
-  [[_ expression-name]]
-  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
-    (cond->> (->rvalue expression-value)
-      (driver-api/is-clause? :value expression-value) (array-map $literal))))
+  [[_ expression-name {:keys [temporal-unit]}]]
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)
+        rvalue           (cond->> (->rvalue expression-value)
+                           (driver-api/is-clause? :value expression-value) (array-map $literal))]
+    (cond-> rvalue
+      temporal-unit (with-rvalue-temporal-bucketing temporal-unit))))
 
 (def ^:private base64-decoder "
 function(bin) {
@@ -1529,12 +1538,22 @@ function(bin) {
   (vec (col->name-components (driver-api/field (driver-api/metadata-provider) field-id))))
 
 (defn- field-clauses->id->path
-  "Build a map of `field-id -> path-vector` for all `:field` clauses in `fields` that reference an integer ID."
+  "Build a map of `field-id-or-name -> path-vector` for all `:field` clauses in `fields`. Integer IDs are
+  resolved via the metadata provider; for string refs (e.g. from a wrapper stage), the path is derived from
+  the opts `:source-alias` populated by `add-alias-info` (and path-prepended by [[HACK-update-aliases]] for
+  nested fields), falling back to `id-or-name` when no source-alias is present. The path-joined string is
+  split on the Mongo path delimiter."
   [fields]
   (into {}
-        (keep (fn [[agg-type field-id & _]]
-                (when (and (= agg-type :field) (integer? field-id))
-                  [field-id (field-id->path field-id)])))
+        (keep (fn [[agg-type id-or-name opts]]
+                (when (= agg-type :field)
+                  (cond
+                    (integer? id-or-name)
+                    [id-or-name (field-id->path id-or-name)]
+
+                    (string? id-or-name)
+                    [id-or-name (raw-path->components
+                                 (get opts driver-api/qp.add.source-alias id-or-name))]))))
         fields))
 
 (defn- remove-parent-fields
@@ -1550,9 +1569,9 @@ function(bin) {
                                    (when (> (count path) 1)
                                      (vec (butlast path)))))
                            (vals id->path))]
-    (remove (fn [[_ field-id & _]]
-              (and (integer? field-id)
-                   (contains? parent-paths (id->path field-id))))
+    (remove (fn [[agg-type id-or-name & _]]
+              (and (= agg-type :field)
+                   (contains? parent-paths (id->path id-or-name))))
             fields)))
 
 (defn- remove-child-fields
@@ -1565,10 +1584,11 @@ function(bin) {
   [fields]
   (let [id->path  (field-clauses->id->path fields)
         all-paths (set (vals id->path))]
-    (remove (fn [[agg-type field-id]]
-              (when (and (= agg-type :field) (integer? field-id))
-                (let [path (id->path field-id)]
-                  (and (> (count path) 1)
+    (remove (fn [[agg-type id-or-name]]
+              (when (= agg-type :field)
+                (let [path (id->path id-or-name)]
+                  (and path
+                       (> (count path) 1)
                        (contains? all-paths (vec (butlast path)))))))
             fields)))
 

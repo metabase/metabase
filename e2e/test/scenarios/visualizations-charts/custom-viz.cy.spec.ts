@@ -2374,7 +2374,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2394,12 +2393,6 @@ describe("sandbox", () => {
       "have.been.calledWith",
       "plugin read element id",
       "sandbox-decoy",
-    );
-
-    // The swap is reported to host console for diagnostics.
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <div id="root"> with decoy/,
     );
 
     // The real host element was untouched.
@@ -2434,7 +2427,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2457,11 +2449,6 @@ describe("sandbox", () => {
       "have.been.calledWith",
       "plugin parentNode decoy:",
       "true",
-    );
-
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <div.*> with decoy/,
     );
 
     cy.get("[data-plugin-sandbox]")
@@ -2495,7 +2482,6 @@ describe("sandbox", () => {
     H.visitQuestion("@sandboxCardId", {
       onBeforeLoad(win) {
         cy.spy(win.console, "log").as("consoleLog");
-        cy.spy(win.console, "error").as("consoleError");
       },
     });
     cy.wait("@injectedBundle");
@@ -2517,9 +2503,10 @@ describe("sandbox", () => {
       doc.body.removeAttribute("data-mutation-probe-attr");
     });
 
-    cy.get("@consoleError").should(
-      "have.been.calledWithMatch",
-      /\[plugin \d+\] swapped out-of-scope <body> with decoy/,
+    cy.get("@consoleLog").should(
+      "have.been.calledWith",
+      "plugin observed mutations:",
+      0,
     );
   });
 

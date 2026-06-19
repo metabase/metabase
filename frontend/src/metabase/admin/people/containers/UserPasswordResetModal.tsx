@@ -78,7 +78,7 @@ const UserPasswordResetModalInner = ({
         opened
         title={t`Password reset link for ${user.common_name}`}
         onConfirm={onClose}
-        confirmButtonProps={{ color: "brand", variant: "filled" }}
+        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
         confirmButtonText={t`Done`}
         closeButtonText={null}
         onClose={onClose}
@@ -103,7 +103,7 @@ const UserPasswordResetModalInner = ({
         opened
         title={t`${user.common_name}'s password has been reset`}
         onConfirm={onClose}
-        confirmButtonProps={{ color: "brand", variant: "filled" }}
+        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
         confirmButtonText={t`Done`}
         closeButtonText={null}
         onClose={onClose}
@@ -130,7 +130,7 @@ const UserPasswordResetModalInner = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            color="brand"
+            color="core-brand"
             onClick={handleGetResetLink}
           >{t`Get reset link`}</Button>
           <Button

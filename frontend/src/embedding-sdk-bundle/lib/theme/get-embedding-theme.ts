@@ -77,6 +77,23 @@ export function getEmbeddingThemeOverride(
     );
   }
 
+  // Whitelabel keys flow in here directly (admin form + DB still use the
+  // legacy `brand`/`filter`/`summarize` names), bypassing
+  // SDK_TO_MAIN_APP_COLORS_MAPPING. Mirror them to the `core-*` counterparts
+  // so consumers reading `var(--mb-color-core-brand)` see the whitelabel value.
+  // Temporary compatibility layer for the colors migration (GDGT-2517).
+  if (override.colors) {
+    if (override.colors.brand) {
+      override.colors["core-brand"] = override.colors.brand;
+    }
+    if (override.colors.filter) {
+      override.colors["core-filter"] = override.colors.filter;
+    }
+    if (override.colors.summarize) {
+      override.colors["core-summarize"] = override.colors.summarize;
+    }
+  }
+
   if (theme.colors) {
     if (!override.colors) {
       override.colors = {};

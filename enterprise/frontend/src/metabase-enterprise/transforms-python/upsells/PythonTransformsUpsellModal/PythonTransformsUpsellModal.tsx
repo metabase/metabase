@@ -5,9 +5,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { trackUpsellViewed } from "metabase/common/components/upsells/components/analytics";
 import { useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
+import { getIsHosted } from "metabase/selectors/settings";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getIsHosted } from "metabase/setup/selectors";
 import {
   Button,
   Center,
@@ -115,7 +115,7 @@ export function PythonTransformsUpsell({
               {bulletPoints.map((point) => (
                 <Flex direction="row" gap="sm" key={point}>
                   <Center w={24} h={24} flex="0 0 auto">
-                    <Icon name="check_filled" size={16} c="brand" />
+                    <Icon name="check_filled" size={16} c="core-brand" />
                   </Center>
                   <Text c="text-secondary" lh="lg">
                     {point}
