@@ -10,22 +10,20 @@
 
 (def unnamed-inline-kinds
   "Index kinds with no physical name (warehouse `:name` is nil); matched by kind + key columns instead. `:distkey` is
-  excluded until a driver fetches one -- it stores a single `:column`, not `:columns`, so it can't be column-keyed yet."
+  excluded until a driver fetches one: it stores a single `:column`, so it can't be column-keyed."
   #{:sortkey :order-by})
 
 (defn match-key
-  "Join key for a warehouse index map: `[:kind key-columns]` for unnamed-inline kinds, else its `:name`. Kind-specific
-  qualifiers (a sortkey's compound/interleaved style) are deliberately not in the key -- a hint matches its physical
-  counterpart on identity, not on every attribute."
+  "Join key for a warehouse index map: `[:kind key-columns]` for unnamed-inline kinds, else its `:name`. Kind
+  qualifiers (e.g. a sortkey's style) are intentionally not part of the key."
   [{:keys [kind key-columns] nm :name}]
   (if (contains? unnamed-inline-kinds kind)
     [kind key-columns]
     nm))
 
 (defn index-name
-  "The physical index name for a structured definition: a named kind's own `:name`, else a stable name from its
-  `:kind` (so a transform holds at most one sortkey/order-by/etc, enforced by the unique constraint). The canonical
-  rule -- used on create to populate `:index_name`, and to locate that row again when its DDL fails."
+  "Physical index name for a structured def: a named kind's `:name`, else its `:kind` as a string (one inline key per
+  transform)."
   [structured]
   (or (:name structured) (name (:kind structured))))
 
@@ -69,9 +67,8 @@
                               :created_by :created_at :updated_at :last_executed_at])})
 
 (defn merge-indexes
-  "Reality-first merged index list. Every index physically present in the warehouse is listed, flagged
-  `:metabase_managed` when a TableIndex `row` matches it (by [[match-key]]) and carrying that row's `:request`
-  bookkeeping. A managed hint not yet present (pending/failed) is appended, projected from its declared `:structured`."
+  "Reality-first merged index list: every warehouse index, flagged `:metabase_managed` with its `:request` when a
+  TableIndex `row` matches ([[match-key]]), plus any managed hint not yet present, projected from its `:structured`."
   [rows warehouse-maps]
   (let [by-key       (into {} (map (juxt managed-match-key identity)) rows)
         present-keys (into #{} (map match-key) warehouse-maps)

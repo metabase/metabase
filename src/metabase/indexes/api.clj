@@ -29,7 +29,7 @@
    [:last_executed_at [:maybe :any]]])
 
 (def ^:private MergedRequest
-  "The managed-row bookkeeping on a merged entry: lifecycle plus the editable structured definition the form binds to."
+  "Managed-row bookkeeping on a merged entry: lifecycle plus the editable structured definition."
   [:map
    [:id ms/PositiveInt]
    [:status [:enum :pending :running :succeeded :failed :dropped]]
@@ -41,9 +41,8 @@
    [:last_executed_at [:maybe :any]]])
 
 (def ^:private MergedIndex
-  "One entry in the reality-first merged list: an index as physically observed in the warehouse, flagged
-  `:metabase_managed` and carrying a `:request` when a managed hint matches it. A managed hint not yet present is
-  projected from its declared definition, with `:present_in_warehouse` false and no observed physical detail."
+  "A merged-list entry: an index as observed in the warehouse, with a `:request` on Metabase-managed rows. Shape is
+  built by [[metabase.indexes.reconcile/merge-indexes]]."
   [:map
    [:metabase_managed     :boolean]
    [:present_in_warehouse :boolean]
@@ -69,9 +68,8 @@
   (api/write-check :model/Transform transform_id))
 
 (api.macros/defendpoint :get "/" :- [:map [:data [:sequential MergedIndex]]]
-  "List a transform's index hints, reality-first: every index physically present in the warehouse, each flagged
-  `:metabase_managed` (false for one a DBA created by hand) and carrying its `:request` when Metabase manages it. A
-  managed hint not yet present is listed with `:present_in_warehouse` false."
+  "List a transform's index hints: the indexes physically in the warehouse merged with its managed hints. Each entry
+  is flagged `:metabase_managed`; managed ones also carry `:request` (status + definition)."
   [_route-params
    {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
   (api/read-check :model/Transform transform-id)

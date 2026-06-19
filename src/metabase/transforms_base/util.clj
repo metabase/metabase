@@ -612,9 +612,8 @@
       (let [database  (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
             {:keys [schema] table-name :name} (:target transform)
             warehouse (reconcile/fetch-warehouse-indexes database schema table-name)]
-        ;; An empty fetch is ambiguous -- the table genuinely has no indexes, or the driver can't introspect / the
-        ;; warehouse was unreachable (both degrade to []). Leave statuses untouched rather than flip every managed
-        ;; row to :failed on a transient blip; warn so a stuck-:pending hint is traceable.
+        ;; An empty fetch is ambiguous (no indexes vs couldn't introspect -- both degrade to []), so leave statuses
+        ;; untouched rather than mark everything failed; warn so a stuck :pending stays traceable.
         (if (seq warehouse)
           (let [present-keys (into #{} (map reconcile/match-key) warehouse)
                 by-present   (group-by #(contains? present-keys (reconcile/managed-match-key %)) managed)]
