@@ -675,7 +675,7 @@
 
 (deftest transform-creation-allowed-in-read-write-mode-test
   (testing "can_create should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms-basic}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]

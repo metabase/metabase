@@ -12,7 +12,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest inspect-lens-not-found-test
-  (mt/with-premium-features #{:transforms-basic :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (testing "GET /api/ee/transforms/:id/inspect/:lens-id returns 404 for a nonexistent lens"
       (mt/with-temp [:model/Transform {transform-id :id} {}]
         (mt/with-data-analyst-role! (mt/user->id :lucky)

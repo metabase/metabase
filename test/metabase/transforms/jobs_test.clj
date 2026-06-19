@@ -184,7 +184,32 @@
           (is (empty? (filter (comp #{:warn} :level) @logged-messages))
               "Should not log warnings when feature is enabled")
           (is @run-called?
-              "Should call run-mbql-transform! when feature is enabled"))))))
+              "Should call run-mbql-transform! when feature is enabled")))))
+  (testing "Query transforms are skipped when transforms-enabled is explicitly false"
+    (mt/with-temporary-raw-setting-values [transforms-enabled "false"]
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (let [query-transform {:id 4
+                               :source query-source
+                               :name "Disabled Transform"}
+              run-id 103
+              logged-messages (atom [])
+              run-called? (atom false)]
+          (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                                 (swap! logged-messages conj {:level level :message message}))
+                                      transform-run/running-run-for-transform-id (constantly nil)
+                                      transforms.execute/execute! (fn [_ _]
+                                                                    (reset! run-called? true))
+                                      transforms.job-run/add-run-activity! (constantly nil)]
+            (#'jobs/run-transform! run-id :scheduled nil (promise) query-transform)
+            (is (= 1 (count @logged-messages))
+                "Should log exactly one warning")
+            (is (= :warn (:level (first @logged-messages)))
+                "Should log at warn level")
+            (is (re-matches #".*Skip running transform 4 due to lacking premium features.*"
+                            (:message (first @logged-messages)))
+                "Warning message should indicate transform was skipped")
+            (is (false? @run-called?)
+                "Should not execute when transforms-enabled is explicitly false")))))))
 
 (deftest run-transform-locked-meter-test
   ;; `transform-metered-as` is `defenterprise`; the OSS impl returns nil for everything,

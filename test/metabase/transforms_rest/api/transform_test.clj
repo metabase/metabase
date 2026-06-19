@@ -505,6 +505,32 @@
                                                        (format "transform/%d/run" (:id created)))]
                     (is (= "Transform run started" (:message response)))))))))))))
 
+(deftest transforms-disabled-blocks-api-operations-test
+  (doseq [[features label] [[#{:transforms-basic :hosting} "hosted with transforms features"]
+                            [#{} "self-hosted"]]]
+    (testing label
+      (mt/with-temporary-raw-setting-values [transforms-enabled "false"]
+        (mt/with-premium-features features
+          (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+            (mt/dataset transforms-dataset/transforms-test
+              (testing "POST /api/transform returns 402"
+                (let [table-name (str "disabled_transform_" (u/generate-nano-id))
+                      response   (mt/user-http-request :crowberto :post 402 "transform"
+                                                       {:name   "Disabled Transform"
+                                                        :source {:type  "query"
+                                                                 :query (make-query "Gadget")}
+                                                        :target {:type   "table"
+                                                                 :schema (get-test-schema)
+                                                                 :name   table-name}})]
+                  (is (= "Premium features required for this transform type are not enabled."
+                         response))))
+              (testing "GET /api/transform returns 403"
+                (mt/user-http-request :crowberto :get 403 "transform"))
+              (testing "POST /api/transform/:id/run returns 403"
+                (mt/with-temp [:model/Transform {transform-id :id} {}]
+                  (mt/user-http-request :crowberto :post 403
+                                        (format "transform/%d/run" transform-id)))))))))))
+
 (deftest run-transform-permission-test
   (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
