@@ -32,7 +32,13 @@ export const COLUMN_SORT_ORDER_DESC = "descending";
 
 // For native SQL queries the backend never adds the pivot-grouping column.
 // We synthesize it here so the CLJS pivot engine can process the data.
-function addPivotGroupingToNativeData(data, columnSplit) {
+// When there are multiple row dimensions we also synthesize subtotal rows by
+// grouping on each breakout prefix and summing/averaging measure values, so
+// the CLJS engine can populate collapsed rows with real aggregated numbers.
+// `getColumnSetting` is an optional function (col) => settings; when provided
+// it is used to determine whether a value column should be averaged (percent /
+// ratio) rather than summed.
+function addPivotGroupingToNativeData(data, columnSplit, getColumnSetting) {
   const {
     rows: rowColNames = [],
     columns: colColNames = [],
@@ -64,7 +70,103 @@ function addPivotGroupingToNativeData(data, columnSplit) {
     source: "native",
   };
   const cols = [...taggedCols, pivotGroupCol];
-  const rows = data.rows.map((row) => [...row, 0]);
+
+  // All breakout column names in order (rows first, then columns partition).
+  const allBreakouts = [...rowColNames, ...colColNames];
+  const numBreakouts = allBreakouts.length;
+
+  // Index lookup: breakout/value column name → position in original data.cols.
+  const colIndexByName = {};
+  data.cols.forEach((col, i) => {
+    colIndexByName[col.name] = i;
+  });
+
+  const breakoutIndexes = allBreakouts.map((name) => colIndexByName[name]);
+  const valueIndexes = valueColNames.map((name) => colIndexByName[name]);
+
+  // Determine aggregation type per value column: "avg" for percent/ratio columns, "sum" otherwise.
+  const valueAggTypes = valueColNames.map((name) => {
+    if (!getColumnSetting) {
+      return "sum";
+    }
+    const col = data.cols[colIndexByName[name]];
+    const colSetting = col ? getColumnSetting(col) : null;
+    const style = colSetting?.["number_style"];
+    return style === "percent" ? "avg" : "sum";
+  });
+
+  // Primary rows: every breakout is active → pivot-grouping = 0.
+  const primaryRows = data.rows.map((row) => [...row, 0]);
+
+  // Synthesize subtotal rows for each strict prefix of the breakout list,
+  // plus the grand total (prefix length 0 = no grouping key).
+  // For a prefix of length k (keeping the first k breakouts), the inactive
+  // breakouts are indexes k..numBreakouts-1, so the pivot-grouping bitmask is
+  // the OR of (1 << i) for i in [k, numBreakouts-1].
+  const subtotalRows = [];
+
+  function synthesizeSubtotalRows(prefixLen) {
+    let groupingMask = 0;
+    for (let i = prefixLen; i < numBreakouts; i++) {
+      groupingMask |= 1 << i;
+    }
+
+    // Group rows by the first `prefixLen` breakout values and aggregate measures.
+    const groups = new Map();
+    const counts = new Map(); // per group, per value column index → count of non-null values
+    for (const row of data.rows) {
+      const key =
+        prefixLen === 0
+          ? "__grand__"
+          : breakoutIndexes
+              .slice(0, prefixLen)
+              .map((idx) => row[idx])
+              .join("\0");
+      if (!groups.has(key)) {
+        // Seed with the breakout values for this prefix + nulls for the rest.
+        const seedRow = [...row];
+        // Null out inactive breakout positions.
+        for (let i = prefixLen; i < numBreakouts; i++) {
+          seedRow[breakoutIndexes[i]] = null;
+        }
+        // Null out value positions (will be aggregated below).
+        for (const vi of valueIndexes) {
+          seedRow[vi] = null;
+        }
+        groups.set(key, seedRow);
+        counts.set(key, new Array(valueIndexes.length).fill(0));
+      }
+      const accRow = groups.get(key);
+      const cnt = counts.get(key);
+      valueIndexes.forEach((vi, aggIdx) => {
+        const v = row[vi];
+        if (typeof v === "number" && isFinite(v)) {
+          accRow[vi] = (accRow[vi] ?? 0) + v;
+          cnt[aggIdx]++;
+        }
+      });
+    }
+
+    for (const [key, accRow] of groups.entries()) {
+      const cnt = counts.get(key);
+      // For avg-type columns, divide by count to get the mean.
+      valueIndexes.forEach((vi, aggIdx) => {
+        if (valueAggTypes[aggIdx] === "avg" && cnt[aggIdx] > 0) {
+          accRow[vi] = accRow[vi] / cnt[aggIdx];
+        }
+      });
+      subtotalRows.push([...accRow, groupingMask]);
+    }
+  }
+
+  // Prefix lengths 1..numBreakouts-1 → per-group subtotals.
+  for (let prefixLen = 1; prefixLen < numBreakouts; prefixLen++) {
+    synthesizeSubtotalRows(prefixLen);
+  }
+  // Prefix length 0 → grand total (all breakouts inactive).
+  synthesizeSubtotalRows(0);
+
+  const rows = [...primaryRows, ...subtotalRows];
 
   return { ...data, cols, rows };
 }
@@ -94,7 +196,7 @@ export function multiLevelPivot(data, settings) {
   }
 
   const processedData = isNativeQuery
-    ? addPivotGroupingToNativeData(data, columnSplit)
+    ? addPivotGroupingToNativeData(data, columnSplit, settings.column)
     : data;
 
   const columns = Pivot.columns_without_pivot_group(processedData.cols);

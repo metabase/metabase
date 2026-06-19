@@ -75,12 +75,21 @@ export const settings = {
       if (!_.isEqual(rows, currentRows)) {
         // For questions with 2+ row columns (e.g. native SQL with a breakdown),
         // collapse the first level by default so the table is not overwhelming.
+        // Use the STRING form "1" (not the number 1): the CLJS engine json-parses
+        // it back to an int for level-collapse, while RowToggleIcon compares
+        // against JSON.stringify(path.length) — also a string — so per-row
+        // expand/collapse toggling works.
         const isNativeQuery = isNativePivotData(data.cols);
         const defaultCollapsed =
-          isNativeQuery && (currentRows?.length ?? 0) >= 2 ? [1] : [];
+          isNativeQuery && (currentRows?.length ?? 0) >= 2 ? ["1"] : [];
         return { value: defaultCollapsed, rows: currentRows };
       }
-      return { rows, value };
+      // Normalize any numeric level entries (e.g. a previously saved `1`) to the
+      // string form so per-row toggling via RowToggleIcon compares correctly.
+      const normalizedValue = (value ?? []).map((v: number | string) =>
+        typeof v === "number" ? String(v) : v,
+      );
+      return { rows, value: normalizedValue };
     },
   },
   [COLUMN_SPLIT_SETTING]: {
@@ -198,17 +207,18 @@ export const settings = {
       return t`Show column totals`;
     },
     widget: "toggle",
-    // Native SQL has no backend-computed subtotals, so totals rows would be empty.
     getValue: (
-      [{ data }]: Series,
+      _series: Series,
       settings: Partial<VisualizationSettings> = {},
     ) => {
       const stored = settings["pivot.show_column_totals"];
       if (stored !== undefined) {
         return stored;
       }
-      const isNativeQuery = data != null && isNativePivotData(data.cols);
-      return !isNativeQuery;
+      // Native SQL subtotals are synthesized client-side in data_grid.js, so we
+      // enable this so the CLJS engine generates subtotal nodes (needed for
+      // collapsed rows to display aggregated values).
+      return true;
     },
     inline: true,
   },
@@ -344,11 +354,16 @@ export const _columnSettings = {
         series,
       }: { settings: VisualizationSettings; series?: Series },
     ) => {
-      // Native SQL has no backend-computed subtotals, so always hide them.
+      // For native SQL the empty subtotal rows are already suppressed by
+      // `pivot.show_column_totals` being false. We keep this per-column setting
+      // TRUE so the row stays collapsible: filter-collapsed-subtotals in the
+      // CLJS engine drops collapse entries for columns whose show-totals is
+      // false, which would otherwise break expand/collapse and the
+      // collapsed-by-default behavior.
       const data = series?.[0]?.data;
       const isNativeQuery = data != null && isNativePivotData(data.cols);
       if (isNativeQuery) {
-        return false;
+        return true;
       }
 
       // Default to showing totals if appropriate

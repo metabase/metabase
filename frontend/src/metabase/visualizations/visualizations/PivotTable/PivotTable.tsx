@@ -458,8 +458,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                         icon={
                           // you can only collapse before the last column
                           index < rowIndexes.length - 1 &&
-                          (isColumnCollapsible(rowIndex) ||
-                            isNativePivotData(data.cols)) && (
+                          isColumnCollapsible(rowIndex) && (
                             <RowToggleIcon
                               value={index + 1}
                               settings={settings}
