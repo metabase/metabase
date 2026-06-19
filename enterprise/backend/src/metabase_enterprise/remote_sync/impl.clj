@@ -241,29 +241,30 @@
   be a bounded chunk so the IN clauses stay within DB param limits."
   [rows repo-paths]
   (let [storage-opts (serdes/storage-base-context)
-        repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)]
+        repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)
+        serialize    (fn [model-type opts id->eid instance]
+                       (try
+                         (let [fspec     (source/entity->file-spec storage-opts (serdes/extract-one model-type opts instance))
+                               repo-path (some->> (some-> id->eid (get (:id instance)))
+                                                  (vector model-type)
+                                                  repo-by-eid)]
+                           {:model_type   model-type
+                            :model_id     (:id instance)
+                            :path         (or repo-path (:path fspec))
+                            :content_hash (source/content-hash (:content fspec))})
+                         (catch Exception _ nil)))]
+    ;; One transduction over the model groups: stream each model's extract-query through `serialize` via an
+    ;; eduction — extract-one runs while the ResultSet is open, with no intermediate per-model sequence.
     (into []
           (mapcat (fn [[model-type model-rows]]
-                    (let [spec         (spec/spec-for-model-type model-type)
-                          model-key    (:model-key spec)
-                          extract-opts {:where [:in :id (mapv :model_id model-rows)] :skip-archived true}
+                    (let [spec      (spec/spec-for-model-type model-type)
+                          model-key (:model-key spec)
+                          opts      {:where [:in :id (mapv :model_id model-rows)] :skip-archived true}
                           ;; entity-id models: map local id -> entity_id so we can look up the repo path
-                          id->eid      (when (and model-key (= :entity-id (:identity spec)))
-                                         (t2/select-pk->fn :entity_id model-key :id [:in (mapv :model_id model-rows)]))]
-                      ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
-                      (into []
-                            (keep (fn [instance]
-                                    (try
-                                      (let [fspec     (source/entity->file-spec storage-opts (serdes/extract-one model-type extract-opts instance))
-                                            repo-path (some->> (some-> id->eid (get (:id instance)))
-                                                               (vector model-type)
-                                                               repo-by-eid)]
-                                        {:model_type   model-type
-                                         :model_id     (:id instance)
-                                         :path         (or repo-path (:path fspec))
-                                         :content_hash (source/content-hash (:content fspec))})
-                                      (catch Exception _ nil))))
-                            (serdes/extract-query model-type extract-opts)))))
+                          id->eid   (when (and model-key (= :entity-id (:identity spec)))
+                                      (t2/select-pk->fn :entity_id model-key :id [:in (mapv :model_id model-rows)]))]
+                      (eduction (keep #(serialize model-type opts id->eid %))
+                                (serdes/extract-query model-type opts)))))
           (group-by :model_type rows))))
 
 (defn- merge-content-metadata
