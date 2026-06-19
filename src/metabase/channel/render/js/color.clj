@@ -47,33 +47,6 @@
 
     :else v))
 
-(defn- convert-bignumbers-by-column
-  "Convert BigDecimal and BigInteger values to doubles/longs since Graal doesn't handle these"
-  [data]
-  (if (empty? data)
-    []
-    (let [first-row (first data)
-          bignum-column-indices (->> (map-indexed
-                                      (fn [idx item]
-                                        (when (or (instance? BigDecimal item)
-                                                  (instance? BigInteger item))
-                                          idx))
-                                      first-row)
-                                     (filter some?)
-                                     (into #{}))]
-      (if (empty? bignum-column-indices)
-        data
-        (mapv
-         (fn [row]
-           (vec
-            (map-indexed
-             (fn [idx item]
-               (if (bignum-column-indices idx)
-                 (->js-number item)
-                 item))
-             row)))
-         data)))))
-
 (mu/defn make-color-selector
   "Returns a curried javascript function (object) that can be used with `get-background-color` for delegating to JS
   code to pick out the correct color for a given cell in a pulse table. The logic for picking a color is somewhat
@@ -82,11 +55,10 @@
   `get-background-color` on each cell."
   [{:keys [cols rows]} :- QueryResults
    viz-settings]
-  (let [converted-rows (convert-bignumbers-by-column rows)]
-    (js.engine/execute-fn-name (js-engine) "makeCellBackgroundGetter"
-                               (json/encode converted-rows)
-                               (json/encode cols)
-                               (json/encode viz-settings))))
+  (js.engine/execute-fn-name (js-engine) "makeCellBackgroundGetter"
+                             (json/encode rows)
+                             (json/encode cols)
+                             (json/encode viz-settings)))
 
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. Returns color as string suitable for use CSS, e.g. a hex string or
