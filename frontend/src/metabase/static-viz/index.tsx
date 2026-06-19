@@ -8,7 +8,10 @@ import ReactDOMServer from "react-dom/server";
 import enterpriseOverrides from "ee-overrides";
 import "metabase/utils/dayjs";
 
-import { StaticChoropleth } from "metabase/static-viz/components/StaticChoropleth";
+import {
+  StaticChoropleth,
+  getStaticChoroplethSettings,
+} from "metabase/static-viz/components/StaticChoropleth";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticChart";
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
@@ -19,7 +22,6 @@ import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
 import { extractRemappings, isCartesianChart } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createDataSource,
   getVisualizationColumns,
@@ -191,10 +193,7 @@ export function RenderChart(
       return ReactDOMServer.renderToStaticMarkup(
         <StaticChoropleth
           rawSeries={rawSeriesWithRemappings}
-          settings={
-            rawSeriesWithRemappings[0].card
-              .visualization_settings as ComputedVisualizationSettings
-          }
+          settings={getStaticChoroplethSettings(rawSeriesWithRemappings)}
           geoJson={geoJson}
           geoJsonDetails={geoJsonDetails}
           renderingContext={renderingContext}

@@ -1,4 +1,5 @@
-import { readFileSync, statSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { dirname } from "node:path";
 
 import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
 
@@ -270,6 +271,47 @@ export function extractFailedTests(
   }
 
   return tests;
+}
+
+/**
+ * Where after:spec records this run's ultimate test failures for the post-run
+ * quarantine gate (DEV-2082). One JSON object per line
+ * (`{test_name, test_path, file_path}`), appended per spec, so the gate step
+ * can read the whole job's failures from a single file. Override with
+ * QUARANTINE_FAILURES_FILE. Note these are the SAME fields ci-conductor stores
+ * in its quarantine list (both derived from the same Cypress title array), so
+ * the gate can compare them exactly. See `check-quarantine.ts`.
+ */
+const QUARANTINE_FAILURES_FILE =
+  process.env.QUARANTINE_FAILURES_FILE ?? "./target/quarantine-failures.jsonl";
+
+/**
+ * Persist the tests that ultimately failed (status "failure") so the post-run
+ * quarantine gate can decide whether the job passes. Flaky tests that recovered
+ * on retry and passing tests don't gate the build, so they're filtered out.
+ * Best-effort and never throws — recording must not break the test run.
+ */
+export function recordFailedTestsForQuarantine(tests: ConductorTest[]): void {
+  try {
+    const broken = tests.filter((test) => test.status === "failure");
+    if (broken.length === 0) {
+      return;
+    }
+    const lines =
+      broken
+        .map((test) =>
+          JSON.stringify({
+            test_name: test.name,
+            test_path: test.path ?? null,
+            file_path: test.file ?? null,
+          }),
+        )
+        .join("\n") + "\n";
+    mkdirSync(dirname(QUARANTINE_FAILURES_FILE), { recursive: true });
+    appendFileSync(QUARANTINE_FAILURES_FILE, lines);
+  } catch (error) {
+    console.error("[quarantine] failed to record failures", error);
+  }
 }
 
 /**
