@@ -4,7 +4,6 @@ title: Reading resources by URI
 description: Navigating the Metabase instance with read_resource — load to learn the URI patterns (databases, collections, tables, models, questions, metrics, transforms, dashboards) and when to drill vs. search.
 tools: [read_resource]
 priority: 50
-always-on: true
 ---
 When using the read_resource tool, you have access to a unified interface for navigating the Metabase instance and retrieving data about its resources via URI patterns.
 

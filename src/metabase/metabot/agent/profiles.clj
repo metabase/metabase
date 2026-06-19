@@ -53,21 +53,29 @@
   - :max-iterations - Maximum agent loop iterations
   - :temperature - LLM temperature setting
   - :tools - Vector of tool vars (e.g. #'tools/search-tool)
+  - :always-on-skills - Optional vector of skill ids (keywords) whose bodies are inlined into this
+    profile's system prompt instead of being loaded on demand via `load_skill`. Always-on is a
+    per-profile decision: the same skill can be inlined here and on-demand elsewhere.
 
-  Tool vars are validated at registration time to ensure they have required metadata."
+  Tool vars are validated at registration time to ensure they have required metadata, and any
+  `:always-on-skills` are validated to refer to registered skills."
   [profile :- [:map
                [:name :keyword]
                [:prompt-template :string]
                [:max-iterations :int]
                [:temperature :float]
-               [:tools [:vector :any]]]]
+               [:tools [:vector :any]]
+               [:always-on-skills {:optional true} [:vector :keyword]]]]
   (let [tool-vars (:tools profile)]
     (doseq [tool-var tool-vars]
       (validate-tool-var! tool-var))
     (when-not (apply distinct? (map #(:tool-name (meta %)) tool-vars))
       (let [dups (->> (frequencies (map #(:tool-name (meta %)) tool-vars))
                       (filter (fn [[_ cnt]] (< 1 cnt))))]
-        (throw (ex-info "Duplicate tool names in profile" {:tool-names (map first dups)})))))
+        (throw (ex-info "Duplicate tool names in profile" {:tool-names (map first dups)}))))
+    (when-let [unknown (seq (remove skills/get-skill (:always-on-skills profile)))]
+      (throw (ex-info "Profile references unknown always-on skill ids"
+                      {:profile (:name profile) :unknown-skill-ids unknown}))))
   (swap! *profiles assoc (:name profile) profile))
 
 (register-profile!
@@ -125,6 +133,14 @@
   :max-iterations      20
   :temperature         0.3
   :required-tool-call? true
+  ;; The SQL editor is a focused, tool-heavy flow: this guidance is relevant on essentially every
+  ;; turn, so inline it rather than make the model spend iterations loading it. Other profiles that
+  ;; share these tools (e.g. :internal) keep them on-demand by not listing them here.
+  :always-on-skills    [:read-resource
+                        :create-sql-query
+                        :edit-sql-query
+                        :replace-sql-query
+                        :ask-for-sql-clarification]
   :tools               [#'tools/sql-search-tool
                         #'tools/read-resource-tool
                         #'tools/create-sql-query-code-edit-tool

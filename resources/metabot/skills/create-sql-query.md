@@ -4,7 +4,6 @@ title: Creating SQL queries
 description: Creating a new SQL query with create_sql_query — load before writing SQL for the read-only contract, model reference syntax ({{#model_id}}), and identifier quoting.
 tools: [create_sql_query]
 priority: 50
-always-on: true
 ---
 **When to use:**
 - User asks for SQL queries but isn't editing an existing one

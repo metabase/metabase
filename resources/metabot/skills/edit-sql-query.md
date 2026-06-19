@@ -4,7 +4,6 @@ title: Editing SQL queries (targeted)
 description: Making small, targeted string-replacement edits to an existing SQL query with edit_sql_query — load when changing a query already in context (use replace-sql-query for major rewrites).
 tools: [edit_sql_query]
 priority: 50
-always-on: true
 ---
 Edit an existing SQL query by applying targeted string replacements. This updates the query text shown to the user; it does **not** execute the query.
 

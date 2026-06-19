@@ -4,7 +4,6 @@ title: Asking for SQL clarification
 description: Asking the user a short clarifying question with ask_for_sql_clarification — load to learn when a request is genuinely ambiguous enough to ask vs. when to pick a default and deliver SQL instead.
 tools: [ask_for_sql_clarification]
 priority: 50
-always-on: true
 ---
 Ask the user a short clarifying question when their request is genuinely ambiguous. The `question` text is inserted as a SQL comment at the user's cursor — so this is a small-surface input for *short prose only*, not a delivery channel.
 
