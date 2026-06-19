@@ -28,7 +28,7 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
-  RemappedFieldValue,
+  RowValue,
   Segment,
 } from "metabase-types/api";
 
@@ -367,8 +367,12 @@ function hydrateField(field: Field, metadata: Metadata) {
   field.target = hydrateFieldTarget(field, metadata);
   field.name_field = hydrateNameField(field, metadata);
   field.values = getFieldValues(field);
-  // getRemappings may yield [value] 1-tuples; assert pairs so new Map accepts them
-  field.remapping = new Map(getRemappings(field) as RemappedFieldValue[]);
+  // pad getRemappings' [value] 1-tuples to [value, undefined] so new Map accepts them
+  field.remapping = new Map(
+    getRemappings(field).map(
+      ([value, label]): [RowValue, string | undefined] => [value, label],
+    ),
+  );
 }
 
 function hydrateTableForeignKeys(
