@@ -131,7 +131,7 @@ describe("useMcpVisualizationSelector", () => {
     ]);
   });
 
-  it("does not seed a new query from stale SDK question state", () => {
+  it("waits for the new query result before capturing the default visualization", () => {
     const updateQuestion = jest.fn();
     const firstResult = createQueryResult(3);
     const nextResult = createQueryResult(1);
