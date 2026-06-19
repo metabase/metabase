@@ -1,12 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import Question from "metabase-lib/v1/Question";
 
-const getLastRunCard = (state) => state.qb.lastRunCard;
-const getParameterValues = (state) => state.qb.parameterValues;
-const getZoomedObjectId = (state) => state.qb.zoomedRowObjectId;
+const getLastRunCard = (state: State) => state.qb.lastRunCard;
+const getParameterValues = (state: State) => state.qb.parameterValues;
+const getZoomedObjectId = (state: State) => state.qb.zoomedRowObjectId;
 
 const getLastRunQuestion = createSelector(
   [getMetadata, getLastRunCard, getParameterValues],
@@ -19,9 +20,8 @@ const isZoomingRow = createSelector(
   (index) => index != null,
 );
 
-export const getMode = createSelector(
-  [getLastRunQuestion],
-  (question) => question && getQuestionMode(question),
+export const getMode = createSelector([getLastRunQuestion], (question) =>
+  question ? getQuestionMode(question) : null,
 );
 
 export const getIsObjectDetail = createSelector(
