@@ -268,6 +268,15 @@ const rules = [
     message: "Shared modules cannot import from feature modules",
   },
   {
+    // Foundational sink: hooks may only import lib/* and basic/* modules, never
+    // other shared (or feature/app) modules, so it stays safe to depend on from
+    // anywhere without forming cycles.
+    from: ["shared/hooks"],
+    disallow: ["shared/*"],
+    message:
+      "metabase/hooks is a foundational sink and may only import lib/* and basic/* modules",
+  },
+  {
     from: ["feature/*"],
     allow: ["lib/*", "basic/*", "shared/*"],
     message: "Feature modules cannot import from other feature modules",
