@@ -346,8 +346,9 @@
   "Best-effort split of a ClickHouse key expression into its top-level columns/expressions. A quoted name like
   `weird,name` becomes a bare element; a real expression like `lower(email)` stays one element."
   [expr]
-  (when-let [s (perf/not-empty expr)]
-    (perf/mapv (comp unquote-ident str/trim) (split-top-level-commas (strip-wrapping-parens s)))))
+  (if-let [s (perf/not-empty expr)]
+    (perf/mapv (comp unquote-ident str/trim) (split-top-level-commas (strip-wrapping-parens s)))
+    []))
 
 ;; Named skip-indexes come from `system.data_skipping_indices`; the inline MergeTree sorting key
 ;; (`system.tables.sorting_key`) is emitted with `:name nil`. Blank `schema` falls back to `currentDatabase()`.
@@ -363,17 +364,17 @@
                               "ORDER BY name")
                          db table])
                        (perf/mapv (fn [{:keys [name type type_full expr granularity]}]
-                                    {:name              name
-                                     :kind              :skip-index
-                                     :access-method     type
-                                     :is-unique         false
-                                     :is-primary        false
-                                     :is-valid          true
-                                     :key-columns       (expr->columns expr)
-                                     :include-columns   []
-                                     :partial-predicate nil
-                                     :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
-                                                                name expr type_full granularity)})))
+                               {:name              name
+                                :kind              :skip-index
+                                :access-method     type
+                                :is-unique         false
+                                :is-primary        false
+                                :is-valid          true
+                                :key-columns       (expr->columns expr)
+                                :include-columns   []
+                                :partial-predicate nil
+                                :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
+                                                           name expr type_full granularity)})))
         sorting   (-> (jdbc/query
                        conn-spec
                        [(str "SELECT sorting_key FROM system.tables "
