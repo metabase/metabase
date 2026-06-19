@@ -562,7 +562,7 @@
     "test-visual:loki-report": "node frontend/test/generate-loki-report-json.js && reg-cli --from .loki/report.json --report .loki/report.html",
     "test-visual:loki-report-open": "bun run test-visual:loki || (echo 'Visual test failed, opening report...' && bun run test-visual:loki-report && open-cli .loki/report.html)",
     "type-check": "bun run clean:cljs && bun run build:cljs && bun run type-check-pure",
-    "type-check-pure": "NODE_OPTIONS=--max-old-space-size=8192 tsgo --noEmit",
+    "type-check-pure": "tsgo --noEmit",
     "types:generate": "openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts",
     "types:generate:watch": "npx chokidar 'resources/openapi/openapi.json' --initial -c 'openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts' --debounce 1000",
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
