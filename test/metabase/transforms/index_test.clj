@@ -139,6 +139,8 @@
     (mt/test-drivers (index-util/index-test-drivers)
       (let [spec  (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
             cases (index-util/fetch-cases driver/*driver*)]
+        (is (driver/database-supports? driver/*driver* :index/fetch (mt/db))
+            "a driver that implements fetch-table-indexes declares :index/fetch")
         (is (some? cases) (index-util/missing-case-message driver/*driver*))
         (doseq [{:keys [label table create expected definition-contains]} cases]
           (testing label
@@ -161,6 +163,8 @@
           (is (= [] (driver/fetch-table-indexes driver/*driver* (mt/db) nil "mb_fetch_does_not_exist"))))))))
 
 (deftest ^:parallel fetch-table-indexes-unsupported-driver-test
-  (testing "fetch-table-indexes has no safe default: a driver that can't introspect indexes throws"
+  (testing "a driver that can't introspect indexes doesn't declare :index/fetch"
+    (is (not (driver/database-supports? :h2 :index/fetch nil))))
+  (testing "fetch-table-indexes has no safe default: its method throws for such a driver"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"fetch-table-indexes is not implemented for driver :h2"
                           (driver/fetch-table-indexes :h2 nil "public" "t")))))

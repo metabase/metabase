@@ -58,6 +58,7 @@
                               :expressions/text                 true
                               ;; ClickHouse uses both index lifecycles: ORDER BY is inlined into the MergeTree engine
                               ;; clause at creation, while data-skipping indexes are added as separate statements after.
+                              :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          true
                               :left-join                        (not driver-api/is-test?)
@@ -313,38 +314,40 @@
      [(format "ALTER TABLE %s MATERIALIZE INDEX %s" target idx)]]))
 
 (defn- strip-wrapping-parens
-  "Drop one balanced `(...)` that wraps the whole expression (a skip-index `expr` has one, a sorting key doesn't). Only
-  strips when the opening paren's match is the final char, so `lower(email)` is left intact."
+  "Drop one `(...)` that wraps the whole expression (a skip-index `expr` has one, a sorting key doesn't)."
   [^String s]
-  (if (and (str/starts-with? s "(")
-           (loop [i 1, depth 1]
-             (when (< i (count s))
-               (let [depth (case (.charAt s i) \( (inc depth) \) (dec depth) depth)]
-                 (if (zero? depth) (= i (dec (count s))) (recur (inc i) depth))))))
-    (subs s 1 (dec (count s)))
-    s))
+  (cond-> s (and (str/starts-with? s "(") (str/ends-with? s ")")) (subs 1 (dec (count s)))))
 
 (defn- split-top-level-commas
-  "Split on commas that aren't nested in parens, so a function key like `toStartOfInterval(d, INTERVAL 1 DAY)` stays one
-  element instead of being torn at its inner comma."
+  "Split on commas that aren't nested in parens or inside a `backtick`/'string' span, so neither a function key like
+  `toStartOfInterval(d, INTERVAL 1 DAY)` nor a quoted name like `weird,name` is torn at an inner comma."
   [^String s]
-  (loop [i 0, depth 0, start 0, acc []]
+  (loop [i 0, depth 0, q nil, start 0, acc []]
     (if (< i (count s))
-      (case (.charAt s i)
-        \( (recur (inc i) (inc depth) start acc)
-        \) (recur (inc i) (dec depth) start acc)
-        \, (if (zero? depth)
-             (recur (inc i) depth (inc i) (conj acc (subs s start i)))
-             (recur (inc i) depth start acc))
-        (recur (inc i) depth start acc))
+      (let [c (.charAt s i)]
+        (cond
+          q                            (recur (inc i) depth (when-not (= c q) q) start acc)
+          (or (= c \`) (= c \'))       (recur (inc i) depth c start acc)
+          (= c \()                     (recur (inc i) (inc depth) q start acc)
+          (= c \))                     (recur (inc i) (dec depth) q start acc)
+          (and (= c \,) (zero? depth)) (recur (inc i) depth q (inc i) (conj acc (subs s start i)))
+          :else                        (recur (inc i) depth q start acc)))
       (conj acc (subs s start)))))
 
+(defn- unquote-ident
+  "Strip the backticks off a quoted identifier (doubled backticks unescaped), so it matches the bare column name the
+  managed side stores. Leaves bare names and expressions untouched."
+  [^String s]
+  (if (and (> (count s) 1) (str/starts-with? s "`") (str/ends-with? s "`"))
+    (str/replace (subs s 1 (dec (count s))) "``" "`")
+    s))
+
 (defn- expr->columns
-  "Best-effort split of a ClickHouse key expression into its top-level columns/expressions. Strips a wrapping paren, then
-  splits on top-level commas only; a real expression like `lower(email)` stays one element."
+  "Best-effort split of a ClickHouse key expression into its top-level columns/expressions. A quoted name like
+  `weird,name` becomes a bare element; a real expression like `lower(email)` stays one element."
   [expr]
   (if-let [s (perf/not-empty expr)]
-    (perf/mapv str/trim (split-top-level-commas (strip-wrapping-parens s)))
+    (perf/mapv (comp unquote-ident str/trim) (split-top-level-commas (strip-wrapping-parens s)))
     []))
 
 ;; Named skip-indexes come from `system.data_skipping_indices`; the inline MergeTree sorting key

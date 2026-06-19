@@ -856,6 +856,10 @@
     ;; CREATE TABLE for a Python transform).
     :index/inline-create
     ;;
+    ;; Does this driver support reading the indexes that physically exist on a table? Drivers with this feature
+    ;; implement [[fetch-table-indexes]].
+    :index/fetch
+    ;;
     ;; Does this driver support calculating dependencies of native queries?
     :dependencies/native
     ;;
@@ -1626,9 +1630,9 @@
   "Fetch the physical indexes on `table` in `schema` of `database`, one normalized map per catalog index, matching
   `::fetch-table-indexes.result`. Inline sort keys (ClickHouse `ORDER BY`, Redshift `SORTKEY`) have `:name nil`.
 
-  The index-manager read side. Distinct from the sync-side [[describe-table-indexes]]/[[describe-indexes]], which
-  capture only single-column indexes to flag fields as indexed; this returns full physical detail (uniqueness, partial
-  predicate, INCLUDE columns, key order, raw DDL)."
+  Distinct from the sync-side [[describe-table-indexes]]/[[describe-indexes]], which capture only single-column indexes
+  to flag fields as indexed; this returns full physical detail (uniqueness, partial predicate, INCLUDE columns, key
+  order, raw DDL)."
   {:added "0.63.0", :arglists '([driver database schema table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

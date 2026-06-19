@@ -82,6 +82,7 @@
                               :expressions/integer            true
                               :expressions/text               true
                               :identifiers-with-spaces        true
+                              :index/fetch                    true
                               :index/standalone-create        true
                               :metadata/table-existence-check true
                               :now                            true

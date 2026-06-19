@@ -55,6 +55,7 @@
                               ;; Redshift has no secondary indexes; sortkeys are inlined into the table-creation
                               ;; statement, not created afterwards. Override the `:postgres`-inherited standalone
                               ;; support.
+                              :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          false
                               :metadata/table-existence-check   true
