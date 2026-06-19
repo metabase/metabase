@@ -31,7 +31,7 @@ This anonymous data helps us figure out things like:
 
 ## Embedding telemetry
 
-When anonymous tracking is enabled, Metabase collects usage data from embedded components in addition to the general product events described above.
+When anonymous tracking is enabled, Metabase collects usage data from embedded iframes and components. This usage data is anonymous, and just concerns embedding feature usage. It doesn't collect query content, result data, or user identifiers.
 
 ### Data collected by modular embeds
 
