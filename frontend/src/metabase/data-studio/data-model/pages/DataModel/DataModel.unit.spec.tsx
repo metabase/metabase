@@ -1092,17 +1092,23 @@ async function findTablePickerItem(
 ) {
   let items: HTMLElement[] = [];
 
-  await waitFor(() => {
-    const allItems = screen.queryAllByTestId("tree-item");
-    items = allItems.filter(
-      (el) =>
-        el.getAttribute("data-type") === type && el.textContent?.includes(name),
-    );
+  await waitFor(
+    () => {
+      const allItems = screen.queryAllByTestId("tree-item");
+      items = allItems.filter(
+        (el) =>
+          el.getAttribute("data-type") === type &&
+          el.textContent?.includes(name),
+      );
 
-    if (items.length !== 1) {
-      throw new Error(`Cannot find ${type} in table picker`); // trigger retry
-    }
-  });
+      if (items.length !== 1) {
+        throw new Error(`Cannot find ${type} in table picker`); // trigger retry
+      }
+    },
+    // This virtualized, data-fetching picker can take longer than the default
+    // 1s to populate under parallel CI load, so give the retry loop more room.
+    { timeout: 5000 },
+  );
 
   return items[0];
 }
