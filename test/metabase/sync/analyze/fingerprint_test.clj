@@ -166,6 +166,26 @@
 (def ^:private one-updated-map
   (merge default-stat-map {:updated-fingerprints 1, :fingerprints-attempted 1}))
 
+(deftest fingerprint-table!-skips-tables-over-field-limit-test
+  (testing "tables with more active fields than scan-max-fields-per-table are skipped entirely (avoids OOM)"
+    (let [fingerprinted? (atom false)]
+      (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {2 #{:type/Float}}]
+        (mt/with-dynamic-fn-redefs [qp/process-query                   (fn [_query rff]
+                                                                         (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
+                                    sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
+          (mt/with-temp [:model/Table table {}
+                         :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}
+                         :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}]
+            (testing "over the limit -> skipped, nothing fingerprinted"
+              (mt/with-temporary-setting-values [scan-max-fields-per-table 1]
+                (is (= default-stat-map (sync.fingerprint/fingerprint-table! table)))
+                (is (false? @fingerprinted?))))
+            (testing "within the limit -> fingerprinted normally"
+              (reset! fingerprinted? false)
+              (mt/with-temporary-setting-values [scan-max-fields-per-table 10000]
+                (sync.fingerprint/fingerprint-table! table)
+                (is (true? @fingerprinted?))))))))))
+
 (deftest  fingerprint-table!-test
   (testing "field is a substype of newer fingerprint version"
     (is (= [one-updated-map true]

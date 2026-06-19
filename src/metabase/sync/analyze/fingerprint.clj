@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.sync.interface :as i]
+   [metabase.sync.settings :as sync.settings]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -203,25 +204,46 @@
   (seq (t2/select :model/Field
                   (honeysql-for-fields-that-need-fingerprint-updating table))))
 
+(mu/defn- warn-too-many-fields!
+  "Log why fingerprinting is being skipped for a `table` whose active `field-count` exceeds
+  [[sync.settings/scan-max-fields-per-table]] -- loading that many Fields into memory at once can exhaust the heap
+  (this has OOM'd instances syncing document databases like Mongo with very large/dynamic schemas)."
+  [table       :- i/TableInstance
+   field-count :- ms/IntGreaterThanOrEqualToZero]
+  (log/warnf (str "Skipping fingerprinting for table %s: it has %d active fields, which exceeds "
+                  "scan-max-fields-per-table (%d). Fingerprinting this many fields at once risks running the instance "
+                  "out of memory; raise MB_SCAN_MAX_FIELDS_PER_TABLE if these fields must be fingerprinted.")
+             (sync-util/name-for-logging table) field-count (sync.settings/scan-max-fields-per-table)))
+
+(mu/defn- fingerprint-fields-of-table!
+  "Fingerprint the (non-empty) `fields` of `table`. On a non-transient error, advance their fingerprint version so we
+  don't re-attempt every sync; transient errors are left untouched to retry next sync."
+  [table  :- i/TableInstance
+   fields :- [:sequential i/FieldInstance]]
+  (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
+  (let [stats (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                (fingerprint-fields! table fields))]
+    (if-let [throwable (:throwable stats)]
+      (do
+        (when-not (sync-util/transient-exception? throwable)
+          (mark-fingerprinting-failed! fields))
+        (merge (empty-stats-map 0) stats))
+      stats)))
+
 (mu/defn fingerprint-table!
-  "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
+  "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed. Tables with
+  more active fields than [[metabase.sync.settings/scan-max-fields-per-table]] are skipped entirely, since loading
+  that many Fields at once can exhaust the heap. Uses a COUNT to decide, so the Fields aren't loaded just to skip."
   [table :- i/TableInstance]
   (tracing/with-span :sync "sync.fingerprint.table" {:db/id (:db_id table) :sync/table (:name table)}
-    (if-let [fields (fields-to-fingerprint table)]
-      (do
-        (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
-        (let [stats
-              (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                (fingerprint-fields! table fields))]
-          (if-let [throwable (:throwable stats)]
-            (do
-              ;; transient connection/environment errors abort this run and retry on the next sync; for any other
-              ;; (permanent) error, give up so we don't re-attempt every sync.
-              (when-not (sync-util/transient-exception? throwable)
-                (mark-fingerprinting-failed! fields))
-              (merge (empty-stats-map 0) stats))
-            stats)))
-      (empty-stats-map 0))))
+    (let [field-count (t2/count :model/Field :table_id (u/the-id table) :active true)]
+      (if (> field-count (sync.settings/scan-max-fields-per-table))
+        (do
+          (warn-too-many-fields! table field-count)
+          (empty-stats-map 0))
+        (if-let [fields (seq (fields-to-fingerprint table))]
+          (fingerprint-fields-of-table! table fields)
+          (empty-stats-map 0))))))
 
 (def ^:private LogProgressFn
   [:=> [:cat :string [:schema i/TableInstance]] :any])

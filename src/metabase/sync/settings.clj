@@ -42,3 +42,12 @@
   :export?        true
   :default        []
   :encryption     :no)
+
+(defsetting scan-max-fields-per-table
+  "Maximum number of fields a table may have before it is skipped during fingerprinting analysis. Tables with more
+  active fields than this -- e.g. document databases like MongoDB with very large or dynamic schemas -- are not
+  fingerprinted, since loading every field into memory at once can exhaust the heap and crash the instance."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    10000)
