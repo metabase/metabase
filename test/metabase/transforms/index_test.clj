@@ -5,7 +5,6 @@
   [[metabase.transforms.execute/hydrate-transform-indexes]] to inject its case."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]

@@ -1,8 +1,9 @@
 (ns metabase.indexes.api
-  "CRUD over managed table indexes, mounted at `/api/indexes`. A managed index belongs to a transform's output, so
-  reads require read access to that transform and mutations require write access to it -- the same permission editing
-  the transform itself uses. Validation and the `:status` default live in the model's hooks; these endpoints use
-  toucan2 directly."
+  "Table-index endpoints, mounted at `/api/indexes`. Two concepts: `GET /` is a transform's merged index reality
+  (warehouse indexes plus managed requests); `/request/:id` is CRUD over a single index request. An index
+  belongs to a transform's output, so reads require read access to that transform and mutations require write access
+  -- the same permission editing the transform itself uses. Validation and the `:status` default live in the model's
+  hooks; these endpoints use toucan2 directly."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -14,7 +15,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private TableIndex
+(def ^:private RequestIndex
+  "A single index request -- one `metabase_table_indexes` row, the `/request/:id` resource."
   [:map
    [:id ms/PositiveInt]
    [:transform_id ms/PositiveInt]
@@ -28,21 +30,9 @@
    [:updated_at :any]
    [:last_executed_at [:maybe :any]]])
 
-(def ^:private MergedRequest
-  "Managed-row bookkeeping on a merged entry: lifecycle plus the editable structured definition."
-  [:map
-   [:id ms/PositiveInt]
-   [:status [:enum :pending :running :succeeded :failed :dropped]]
-   [:structured ::schema/index-structured]
-   [:error_message [:maybe :string]]
-   [:created_by [:maybe ms/PositiveInt]]
-   [:created_at :any]
-   [:updated_at :any]
-   [:last_executed_at [:maybe :any]]])
-
-(def ^:private MergedIndex
-  "A merged-list entry: an index as observed in the warehouse, with a `:request` on Metabase-managed rows. Shape is
-  built by [[metabase.indexes.reconcile/merge-indexes]]."
+(def ^:private Index
+  "An index on a transform's target: as observed in the warehouse, plus a `:request` when Metabase manages it. Built
+  by [[metabase.indexes.reconcile/merge-indexes]]."
   [:map
    [:metabase_managed     :boolean]
    [:present_in_warehouse :boolean]
@@ -55,21 +45,21 @@
    [:is_valid             :boolean]
    [:partial_predicate    [:maybe :string]]
    [:access_method        [:maybe :string]]
-   [:request {:optional true} MergedRequest]])
+   [:request {:optional true} RequestIndex]])
 
 (defn- read-check-owner!
-  "Read-check the transform a managed index belongs to -- the permission viewing that transform uses."
+  "Read-check the transform an index request belongs to -- the permission viewing that transform uses."
   [{:keys [transform_id]}]
   (api/read-check :model/Transform transform_id))
 
 (defn- write-check-owner!
-  "Write-check the transform a managed index belongs to -- the permission editing that transform uses."
+  "Write-check the transform an index request belongs to -- the permission editing that transform uses."
   [{:keys [transform_id]}]
   (api/write-check :model/Transform transform_id))
 
-(api.macros/defendpoint :get "/" :- [:map [:data [:sequential MergedIndex]]]
-  "List a transform's index hints: the indexes physically in the warehouse merged with its managed hints. Each entry
-  is flagged `:metabase_managed`; managed ones also carry `:request` (status + definition)."
+(api.macros/defendpoint :get "/" :- [:map [:data [:sequential Index]]]
+  "A transform's indexes: those physically in the warehouse, merged with its managed requests. Each entry is flagged
+  `:metabase_managed`; managed ones also carry `:request` (status + definition)."
   [_route-params
    {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
   (api/read-check :model/Transform transform-id)
@@ -78,14 +68,15 @@
         warehouse (reconcile/fetch-warehouse-indexes (t2/select-one :model/Database database) schema table-name)]
     {:data (reconcile/merge-indexes managed warehouse)}))
 
-(api.macros/defendpoint :get "/:id" :- TableIndex
-  "Fetch a single managed index (e.g. to poll its status)."
+(api.macros/defendpoint :get "/request/:id" :- RequestIndex
+  "Fetch a single index request (e.g. to poll its status)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (doto (api/check-404 (t2/select-one :model/TableIndex :id id))
     (read-check-owner!)))
 
-(api.macros/defendpoint :post "/" :- TableIndex
-  "Create a managed index on a transform's target table. Requires write access to the transform."
+(api.macros/defendpoint :post "/request" :- RequestIndex
+  "Create an index request on a transform's target table. Requires write access to the transform. Listed via `GET /`,
+  not under `/request`."
   [_route-params
    _query-params
    {:keys [transform_id structured]} :- [:map
@@ -102,8 +93,8 @@
                                     :structured   structured
                                     :created_by   api/*current-user-id*})))
 
-(api.macros/defendpoint :put "/:id" :- TableIndex
-  "Replace the structured definition of a managed index, resetting it to pending."
+(api.macros/defendpoint :put "/request/:id" :- RequestIndex
+  "Replace the structured definition of an index request, resetting it to pending."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [structured]} :- [:map [:structured :map]]]
@@ -117,8 +108,8 @@
     (t2/select-one :model/TableIndex :id id)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
-  "Delete a managed index."
+(api.macros/defendpoint :delete "/request/:id"
+  "Delete an index request."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (write-check-owner! (api/check-404 (t2/select-one :model/TableIndex :id id)))
   (t2/delete! :model/TableIndex :id id)

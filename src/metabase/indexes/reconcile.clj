@@ -1,6 +1,6 @@
 (ns metabase.indexes.reconcile
-  "Reconcile Metabase-managed index hints (TableIndex rows) with the indexes physically present in the warehouse.
-  Shared by the read API and the transform-run status verification: we create a managed index, then match it against
+  "Reconcile Metabase-managed index requests (TableIndex rows) with the indexes physically present in the warehouse.
+  Shared by the read API and the transform-run status verification: we apply an index request, then match it against
   `driver/fetch-table-indexes` to confirm it landed."
   (:require
    [metabase.driver :as driver]
@@ -28,7 +28,7 @@
   (or (:name structured) (name (:kind structured))))
 
 (defn managed-match-key
-  "The [[match-key]] for a managed TableIndex row, from its stored structured definition and index name."
+  "The [[match-key]] for an index request, from its stored structured definition and index name."
   [{:keys [index_name structured]}]
   (match-key {:kind        (:kind structured)
               :name        index_name
@@ -48,9 +48,9 @@
    :access_method     (:access-method wh)})
 
 (defn- declared-fields
-  "A managed hint not (yet) in the warehouse, projected from its declared `:structured` into the observation fields."
+  "A request not (yet) in the warehouse, projected from its declared `:structured` into the observation fields."
   [{:keys [structured]}]
-  {:name              (or (:name structured) (some-> (:kind structured) name))
+  {:name              (:name structured)
    :kind              (:kind structured)
    :key_columns       (mapv :name (:columns structured))
    :include_columns   (vec (:include structured))
@@ -61,14 +61,14 @@
    :access_method     nil})
 
 (defn- request-fields
-  "Bookkeeping carried on a managed entry, under `:request`: lifecycle plus the editable structured definition."
+  "The managed `row` carried under `:request` on an observed index -- the full request resource."
   [row]
-  {:request (select-keys row [:id :status :structured :error_message
+  {:request (select-keys row [:id :transform_id :index_name :status :structured :error_message
                               :created_by :created_at :updated_at :last_executed_at])})
 
 (defn merge-indexes
   "Reality-first merged index list: every warehouse index, flagged `:metabase_managed` with its `:request` when a
-  TableIndex `row` matches ([[match-key]]), plus any managed hint not yet present, projected from its `:structured`."
+  TableIndex `row` matches ([[match-key]]), plus any request not yet present, projected from its `:structured`."
   [rows warehouse-maps]
   (let [by-key       (into {} (map (juxt managed-match-key identity)) rows)
         present-keys (into #{} (map match-key) warehouse-maps)
