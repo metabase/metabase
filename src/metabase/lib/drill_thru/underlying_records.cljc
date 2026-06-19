@@ -28,7 +28,7 @@
   Question transformation:
 
   - Set display \"table\""
-  (:refer-clojure :exclude [mapv empty? #?(:clj for)])
+  (:refer-clojure :exclude [mapv empty? not-empty #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -50,7 +50,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv empty? #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv empty? not-empty #?(:clj for)]]))
 
 (mu/defn underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.underlying-records]
   "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this
@@ -128,12 +128,12 @@
    :row-count  row-count
    :table-name table-name})
 
-(defn- non-empty-values [value]
+(defn- non-empty-seq [value]
   #?(:clj  (when (sequential? value)
-             (seq value))
+             (not-empty value))
      :cljs (cond
-             (array? value)      (seq (array-seq value))
-             (sequential? value) (seq value))))
+             (array? value)      (not-empty (array-seq value))
+             (sequential? value) (not-empty value))))
 
 (mu/defn- drill-filter :- ::lib.schema/query
   [query        :- ::lib.schema/query
@@ -142,7 +142,7 @@
    column-ref   :- ::lib.schema.ref/ref
    value        :- :any]
   (let [filter-column  (lib.drill-thru.common/breakout->filterable-column query stage-number column-ref column)
-        values         (non-empty-values value)
+        values         (non-empty-seq value)
         filter-clauses (or
                         (when (lib.binning/binning column)
                           (let [unbinned-column (-> filter-column

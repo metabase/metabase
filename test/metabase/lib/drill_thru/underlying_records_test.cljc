@@ -351,8 +351,8 @@
     (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                        (lib/aggregate (lib/count))
                        (lib/breakout (meta/field-metadata :products :category)))
-          columns  (lib/returned-columns query)
-          category (m/find-first #(= (:name %) "CATEGORY") columns)
+          cols     (lib/returned-columns query)
+          category (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Category"})
           context  {:column     nil
                     :column-ref nil
                     :value      nil
