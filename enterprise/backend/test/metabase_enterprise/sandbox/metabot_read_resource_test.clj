@@ -57,6 +57,28 @@
               "result_metadata withheld — it names the sandboxed columns")
           (is (contains? mbr :name) "identity fields still present"))))))
 
+(deftest read-resource-redacts-sandboxed-card-in-list-test
+  (testing "redaction also fires on the LIST path (extract-readable), not just the single-entity path —
+           a sandboxed user listing a database's models gets each card's query/metadata withheld"
+    ;; Realistic case: a sandboxed user browses database/{id}/models. The list goes through
+    ;; extract-readable's batched hydrate + redact, a different code path than the single fetch-card.
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
+                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+                      :attributes {:cat 50}}
+      (mt/with-temp [:model/Card _ {:type            :model
+                                    :name            "Venues Model"
+                                    :database_id     (mt/id)
+                                    :dataset_query   (table-query :venues)
+                                    :result_metadata [{:name "NAME"}]}]
+        (let [result (read-resource/read-resource {:uris [(str "metabase://database/" (mt/id) "/models")]})
+              items  (get-in result [:resources 0 :content :structured-output :items])
+              model  (first (filter #(= "Venues Model" (:name %)) items))]
+          (is (some? model) "the model is listed (collection perms intact)")
+          (is (not (contains? model :dataset_query))
+              "dataset_query withheld in the list item too")
+          (is (not (contains? model :result_metadata))
+              "result_metadata withheld in the list item too"))))))
+
 (deftest read-resource-keeps-card-for-non-sandboxed-user-test
   (testing "an admin reading the same card MBR DOES get the query + metadata"
     (mt/with-current-user (mt/user->id :crowberto)
