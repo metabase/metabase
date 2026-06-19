@@ -147,8 +147,6 @@ describe("extractVariableUsagesFromFileContent", () => {
   });
 
   it("should extract an mb-* wrapper with a fallback and the bare var nested in it", () => {
-    // Mirror of the case above: when the mb-* var is the one carrying the fallback it's
-    // still validated (mb-* must always be defined), and the nested bare var is too.
     const content = `
       .button {
         color: var(--mb-color-text-secondary, var(--notification-warning-text-color));
