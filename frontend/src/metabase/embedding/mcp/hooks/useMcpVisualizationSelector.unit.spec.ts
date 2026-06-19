@@ -4,7 +4,7 @@ import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibili
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
 
-import { useChartTypes } from "./useChartTypes";
+import { useMcpVisualizationSelector } from "./useMcpVisualizationSelector";
 
 interface HookProps {
   question: Question;
@@ -34,7 +34,7 @@ const createQueryResult = (rowCount: number) =>
     data: { rows: Array.from({ length: rowCount }, () => []) },
   }) as unknown as Dataset;
 
-describe("useChartTypes", () => {
+describe("useMcpVisualizationSelector", () => {
   beforeEach(() => {
     mockGetSensibleVisualizations.mockReturnValue({
       sensibleVisualizations: ["bar"],
@@ -42,7 +42,7 @@ describe("useChartTypes", () => {
     });
   });
 
-  it("keeps the origin visualization after re-running questions", () => {
+  it("keeps the default visualization after re-running questions", () => {
     const updateQuestion = jest.fn();
 
     const firstResult = createQueryResult(3);
@@ -57,7 +57,12 @@ describe("useChartTypes", () => {
 
     const { result, rerender } = renderHook(
       ({ question, queryKey, queryResults }: HookProps) =>
-        useChartTypes({ question, queryResults, updateQuestion, queryKey }),
+        useMcpVisualizationSelector({
+          question,
+          queryResults,
+          updateQuestion,
+          queryKey,
+        }),
       { initialProps },
     );
 
@@ -82,7 +87,7 @@ describe("useChartTypes", () => {
     );
   });
 
-  it("resets the original visualization for a new MCP query", () => {
+  it("resets the default visualization for a new MCP query", () => {
     const updateQuestion = jest.fn();
     const firstResult = createQueryResult(3);
     const nextResult = createQueryResult(1);
@@ -100,12 +105,72 @@ describe("useChartTypes", () => {
 
     const { result, rerender } = renderHook(
       ({ question, queryKey, queryResults }: HookProps) =>
-        useChartTypes({ question, queryResults, updateQuestion, queryKey }),
+        useMcpVisualizationSelector({
+          question,
+          queryResults,
+          updateQuestion,
+          queryKey,
+        }),
       { initialProps },
     );
 
     expect(result.current.sensibleChartTypes.map(({ type }) => type)).toEqual([
       "line",
+      "bar",
+      "table",
+    ]);
+
+    rerender({
+      question: createQuestion("scalar"),
+      queryKey: "query-2",
+      queryResults: [nextResult],
+    });
+
+    expect(result.current.sensibleChartTypes.map(({ type }) => type)).toEqual([
+      "scalar",
+    ]);
+  });
+
+  it("does not seed a new query from stale SDK question state", () => {
+    const updateQuestion = jest.fn();
+    const firstResult = createQueryResult(3);
+    const nextResult = createQueryResult(1);
+
+    mockGetSensibleVisualizations.mockImplementation(({ result }) => ({
+      sensibleVisualizations: result === nextResult ? ["scalar"] : ["bar"],
+      nonSensibleVisualizations: [],
+    }));
+
+    const initialProps: HookProps = {
+      question: createQuestion("line"),
+      queryKey: "query-1",
+      queryResults: [firstResult],
+    };
+
+    const { result, rerender } = renderHook(
+      ({ question, queryKey, queryResults }: HookProps) =>
+        useMcpVisualizationSelector({
+          question,
+          queryResults,
+          updateQuestion,
+          queryKey,
+        }),
+      { initialProps },
+    );
+
+    expect(result.current.sensibleChartTypes.map(({ type }) => type)).toEqual([
+      "line",
+      "bar",
+      "table",
+    ]);
+
+    rerender({
+      question: createQuestion("line"),
+      queryKey: "query-2",
+      queryResults: [firstResult],
+    });
+
+    expect(result.current.sensibleChartTypes.map(({ type }) => type)).toEqual([
       "bar",
       "table",
     ]);

@@ -5,56 +5,60 @@ import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
 
 import {
+  type DefaultDisplayState,
+  captureDefaultDisplay,
+} from "../utils/captureDefaultDisplay";
+import {
   type McpChartTypeEntry,
   getMcpChartTypes,
 } from "../utils/getMcpChartTypes";
 
-interface UseChartTypesInput {
+interface UseMcpVisualizationSelectorInput {
   queryKey: string | null;
   question: Question | undefined;
   queryResults: Dataset[] | null | undefined;
   updateQuestion: (question: Question, opts: { run: boolean }) => void;
 }
 
-interface UseChartTypesResult {
+interface UseMcpVisualizationSelectorResult {
   sensibleChartTypes: McpChartTypeEntry[];
-  hasOnlyTable: boolean;
   selectedChartType: CardDisplayType | null;
   handleDisplayChange: (type: CardDisplayType) => void;
 }
 
-export function useChartTypes({
+/**
+ * Re-builds the chart type picker options for MCP Apps questions.
+ *
+ * The SDK question can still show the previous query's question and results
+ * after the MCP host sends a new query. We track the default display
+ * by query key and wait for fresh results before updating it.
+ */
+export function useMcpVisualizationSelector({
   queryKey,
   question,
   queryResults,
   updateQuestion,
-}: UseChartTypesInput): UseChartTypesResult {
+}: UseMcpVisualizationSelectorInput): UseMcpVisualizationSelectorResult {
   const queryResult = queryResults?.[0] ?? null;
   const currentDisplay = question?.display() ?? null;
 
-  const originalDisplayRef = useRef<{
-    queryKey: string | null;
-    display: CardDisplayType | null;
-  }>({ queryKey, display: null });
+  const defaultDisplayRef = useRef<DefaultDisplayState>({
+    queryKey,
+    defaultDisplay: null,
+    lastQueryResult: null,
+  });
 
-  // Clear the original visualization when the query changes
-  if (originalDisplayRef.current.queryKey !== queryKey) {
-    originalDisplayRef.current = { display: null, queryKey };
-  }
+  // Always show the default visualization for a question
+  // as the first item in the selector.
+  // Every visualization type is possible here.
+  const defaultDisplayState = captureDefaultDisplay({
+    currentDisplay,
+    queryKey,
+    queryResult,
+    previousState: defaultDisplayRef.current,
+  });
 
-  const originalDisplay = originalDisplayRef.current.display;
-
-  // EMB-1858: MCP cards start as `table` before the SDK picks a sensible viz.
-  // Update that placeholder, then preserve the visualization across re-runs.
-  const shouldUpdateOriginalDisplay =
-    queryResult !== null &&
-    currentDisplay !== null &&
-    (originalDisplay === null ||
-      (originalDisplay === "table" && currentDisplay !== "table"));
-
-  if (shouldUpdateOriginalDisplay) {
-    originalDisplayRef.current.display = currentDisplay;
-  }
+  defaultDisplayRef.current = defaultDisplayState;
 
   const { sensibleVisualizations } = useMemo(
     () => getSensibleVisualizations({ result: queryResult }),
@@ -64,13 +68,10 @@ export function useChartTypes({
   const rowCount = queryResult?.data?.rows?.length ?? 0;
 
   const sensibleChartTypes = getMcpChartTypes({
-    defaultDisplay: originalDisplayRef.current.display,
+    defaultDisplay: defaultDisplayState.defaultDisplay,
     sensibleVisualizations: sensibleVisualizations as CardDisplayType[],
     canShowTable: rowCount >= 2,
   });
-
-  const hasOnlyTable =
-    sensibleChartTypes.length === 1 && sensibleChartTypes[0].type === "table";
 
   const handleDisplayChange = (type: CardDisplayType) => {
     if (!question) {
@@ -84,7 +85,6 @@ export function useChartTypes({
 
   return {
     sensibleChartTypes,
-    hasOnlyTable,
     selectedChartType: currentDisplay,
     handleDisplayChange,
   };
