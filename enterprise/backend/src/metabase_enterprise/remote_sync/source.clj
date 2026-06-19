@@ -124,6 +124,10 @@
                           (source.p/write-files! snapshot message))]
     {:version version :entries @entries}))
 
+(def ^:private extract-id-batch-size
+  "Max ids per extract-query IN clause, to keep it within DB bind-parameter limits."
+  500)
+
 (defn store-and-record!
   "Serializes the export `targets` (a map of {model-name [id ...]} from `spec/export-targets`) exactly once,
   writes each file to `snapshot`, and returns {:version :entries} where each entry is
@@ -136,18 +140,21 @@
         total        (reduce + 0 (map (comp count val) targets))
         done         (volatile! 0)
         ;; serialize once, retaining the primary key; build file-specs and the metadata entries together.
-        ;; extract-one must run inside the extract-query reduction, while its ResultSet is still open.
+        ;; extract-one must run inside the extract-query reduction, while its ResultSet is still open; ids are
+        ;; chunked so each extract-query IN stays within DB param limits.
         rows         (into []
                            (mapcat (fn [[model-type ids]]
-                                     (let [extract-opts {:where [:in :id (vec ids)] :skip-archived true}]
-                                       (into []
-                                             (map (fn [instance]
-                                                    (let [entity (serdes/extract-one model-type extract-opts instance)
-                                                          spec   (entity->file-spec storage-opts entity)]
-                                                      (remote-sync.task/update-progress!
-                                                       task-id (-> (vswap! done inc) (/ (max 1 total)) (* 0.6) (+ 0.3)))
-                                                      {:model_type model-type :model_id (:id instance) :spec spec})))
-                                             (serdes/extract-query model-type extract-opts)))))
+                                     (mapcat (fn [id-chunk]
+                                               (let [extract-opts {:where [:in :id (vec id-chunk)] :skip-archived true}]
+                                                 (into []
+                                                       (map (fn [instance]
+                                                              (let [entity (serdes/extract-one model-type extract-opts instance)
+                                                                    spec   (entity->file-spec storage-opts entity)]
+                                                                (remote-sync.task/update-progress!
+                                                                 task-id (-> (vswap! done inc) (/ (max 1 total)) (* 0.6) (+ 0.3)))
+                                                                {:model_type model-type :model_id (:id instance) :spec spec})))
+                                                       (serdes/extract-query model-type extract-opts))))
+                                             (partition-all extract-id-batch-size ids))))
                            targets)
         version      (source.p/write-files! snapshot message (map :spec rows))]
     {:version version

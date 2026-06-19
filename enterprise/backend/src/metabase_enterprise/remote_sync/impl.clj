@@ -55,14 +55,6 @@
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
 
-(defn- sync-objects!
-  "Replaces the RemoteSyncObject table with `rows` (already-built insert maps): deletes all existing records
-  and inserts the new ones in one batched insert."
-  [rows]
-  (t2/delete! :model/RemoteSyncObject)
-  (when (seq rows)
-    (t2/insert! :model/RemoteSyncObject rows)))
-
 (defn- build-entity-id-where-clause
   "Builds a HoneySQL WHERE clause for entity_id filtering.
    Combines the imported entity-ids exclusion with any spec-level entity_id condition."
@@ -241,38 +233,38 @@
 (defn- import-content-metadata
   "Builds {:model_type :model_id :path :content_hash} entries for the given RemoteSyncObject `rows` (maps
   with :model_type and :model_id) after an import — folded into the import insert by `merge-content-metadata`.
-  Re-serializes each loaded entity once (grouped by model, under `serdes/with-cache` so FKs are memoized) to
-  compute its `content_hash` — matching what the update-event consumer recomputes. `file_path` is the actual
-  repo path the entity was read from (`repo-paths`, from cached-file-paths) for entity-id models, so later
-  renames/deletes resolve the real file; other models fall back to the freshly computed path. Entities that
-  fail to serialize are skipped."
+  Re-serializes each loaded entity once (grouped by model) to compute its `content_hash` — matching what the
+  update-event consumer recomputes. `file_path` is the actual repo path the entity was read from
+  (`repo-paths`, from cached-file-paths) for entity-id models, so later renames/deletes resolve the real
+  file; other models fall back to the freshly computed path. Entities that fail to serialize are skipped.
+  Call within a `serdes/with-cache` (see `insert-with-metadata!`) so FK lookups are memoized; `rows` should
+  be a bounded chunk so the IN clauses stay within DB param limits."
   [rows repo-paths]
-  (serdes/with-cache
-    (let [storage-opts (serdes/storage-base-context)
-          repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)]
-      (into []
-            (mapcat (fn [[model-type model-rows]]
-                      (let [spec         (spec/spec-for-model-type model-type)
-                            model-key    (:model-key spec)
-                            extract-opts {:where [:in :id (mapv :model_id model-rows)] :skip-archived true}
-                            ;; entity-id models: map local id -> entity_id so we can look up the repo path
-                            id->eid      (when (and model-key (= :entity-id (:identity spec)))
-                                           (t2/select-pk->fn :entity_id model-key :id [:in (mapv :model_id model-rows)]))]
-                        ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
-                        (into []
-                              (keep (fn [instance]
-                                      (try
-                                        (let [fspec     (source/entity->file-spec storage-opts (serdes/extract-one model-type extract-opts instance))
-                                              repo-path (some->> (some-> id->eid (get (:id instance)))
-                                                                 (vector model-type)
-                                                                 repo-by-eid)]
-                                          {:model_type   model-type
-                                           :model_id     (:id instance)
-                                           :path         (or repo-path (:path fspec))
-                                           :content_hash (source/content-hash (:content fspec))})
-                                        (catch Exception _ nil))))
-                              (serdes/extract-query model-type extract-opts)))))
-            (group-by :model_type rows)))))
+  (let [storage-opts (serdes/storage-base-context)
+        repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)]
+    (into []
+          (mapcat (fn [[model-type model-rows]]
+                    (let [spec         (spec/spec-for-model-type model-type)
+                          model-key    (:model-key spec)
+                          extract-opts {:where [:in :id (mapv :model_id model-rows)] :skip-archived true}
+                          ;; entity-id models: map local id -> entity_id so we can look up the repo path
+                          id->eid      (when (and model-key (= :entity-id (:identity spec)))
+                                         (t2/select-pk->fn :entity_id model-key :id [:in (mapv :model_id model-rows)]))]
+                      ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
+                      (into []
+                            (keep (fn [instance]
+                                    (try
+                                      (let [fspec     (source/entity->file-spec storage-opts (serdes/extract-one model-type extract-opts instance))
+                                            repo-path (some->> (some-> id->eid (get (:id instance)))
+                                                               (vector model-type)
+                                                               repo-by-eid)]
+                                        {:model_type   model-type
+                                         :model_id     (:id instance)
+                                         :path         (or repo-path (:path fspec))
+                                         :content_hash (source/content-hash (:content fspec))})
+                                      (catch Exception _ nil))))
+                            (serdes/extract-query model-type extract-opts)))))
+          (group-by :model_type rows))))
 
 (defn- merge-content-metadata
   "Folds the file_path + content_hash from `metadata` entries ({:model_type :model_id :path :content_hash})
@@ -285,6 +277,18 @@
               (assoc row :file_path (:path m) :content_hash (:content_hash m))
               row))
           rows)))
+
+(defn- insert-with-metadata!
+  "Inserts RemoteSyncObject `rows` after an import, in chunks of `content-hash-batch-size`. Each chunk
+  re-serializes only its entities to compute file_path + content_hash (`repo-paths` supplies the actual repo
+  path for entity-id models) and folds them into that chunk's insert — so insert/IN param counts and the
+  memory held at once are bounded to one chunk. The whole run shares one serdes cache so FK lookups are
+  memoized across chunks."
+  [rows repo-paths]
+  (serdes/with-cache
+    (doseq [chunk (partition-all content-hash-batch-size rows)]
+      (t2/insert! :model/RemoteSyncObject
+                  (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
@@ -324,13 +328,12 @@
       (settings/remote-sync-transforms! true))
     (t2/with-transaction [_conn]
       (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
-      ;; Build the RemoteSyncObject rows and fold in each entity's repo file_path (so later renames/deletes
-      ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced), so the
-      ;; whole reconcile is one delete + one batched insert.
-      (let [rows (spec/sync-all-entities! sync-timestamp imported-data)]
-        (sync-objects! (merge-content-metadata
-                        rows
-                        (import-content-metadata rows (source.ingestable/cached-file-paths base-ingestable)))))
+      ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
+      ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
+      ;; insert. Chunked so insert/IN params and memory stay bounded.
+      (t2/delete! :model/RemoteSyncObject)
+      (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
+                             (source.ingestable/cached-file-paths base-ingestable))
       (when finalize! (finalize!)))
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms))
@@ -438,13 +441,9 @@
       (when (seq deletes)
         (t2/delete! :model/RemoteSyncObject {:where (rso-where-for deletes)}))
       (when (seq sync-rows)
-        ;; fold file_path + content_hash into the insert so the touched rows are written once
-        (let [rows (merge-content-metadata
-                    sync-rows
-                    (when ingestable
-                      (import-content-metadata sync-rows (source.ingestable/cached-file-paths ingestable))))]
-          (t2/delete! :model/RemoteSyncObject {:where (rso-where-for sync-rows)})
-          (t2/insert! :model/RemoteSyncObject rows)))
+        ;; fold file_path + content_hash into the insert so the touched rows are written once (chunked)
+        (t2/delete! :model/RemoteSyncObject {:where (rso-where-for sync-rows)})
+        (insert-with-metadata! sync-rows (when ingestable (source.ingestable/cached-file-paths ingestable))))
       (when finalize! (finalize!)))
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
     ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
