@@ -99,7 +99,14 @@ function addPivotGroupingToNativeData(data, columnSplit, getColumnSetting) {
   const breakoutIndexes = allBreakouts.map((name) => colIndexByName[name]);
   const valueIndexes = valueColNames.map((name) => colIndexByName[name]);
 
-  // Determine aggregation type per value column: "avg" for percent/ratio columns, "sum" otherwise.
+  // Determine aggregation type per value column. Percent/ratio columns must be
+  // aggregated as a WEIGHTED mean, not summed and not a plain (unweighted) mean:
+  // a retention rate rolled up across breakdown cells is
+  //   total_rate = SUM(rate * weight) / SUM(weight)   over non-null cells
+  // where `weight` is the per-cell denominator (cohort size). An unweighted
+  // AVG(rate) gives a 1-user cell the same weight as a 50-user cell and skews
+  // the total (typically low, because the many single-user churned cells read
+  // 0%). Non-percent columns (counts) are summed.
   const valueAggTypes = valueColNames.map((name) => {
     if (!getColumnSetting) {
       return "sum";
@@ -107,8 +114,14 @@ function addPivotGroupingToNativeData(data, columnSplit, getColumnSetting) {
     const col = data.cols[colIndexByName[name]];
     const colSetting = col ? getColumnSetting(col) : null;
     const style = colSetting?.["number_style"];
-    return style === "percent" ? "avg" : "sum";
+    return style === "percent" ? "weighted" : "sum";
   });
+
+  // Weight column for weighted (percent) aggregation: the first non-percent
+  // numeric value column acts as the per-cell denominator (e.g. new_user /
+  // cohort_size). If there is no such column we fall back to an unweighted mean.
+  const weightAggIdx = valueAggTypes.findIndex((t) => t === "sum");
+  const weightColIndex = weightAggIdx >= 0 ? valueIndexes[weightAggIdx] : null;
 
   // Primary rows: every breakout is active → pivot-grouping = 0.
   const primaryRows = data.rows.map((row) => [...row, 0]);
@@ -128,7 +141,8 @@ function addPivotGroupingToNativeData(data, columnSplit, getColumnSetting) {
 
     // Group rows by the first `prefixLen` breakout values and aggregate measures.
     const groups = new Map();
-    const counts = new Map(); // per group, per value column index → count of non-null values
+    const counts = new Map(); // per group, per value col → count of non-null values
+    const wAccum = new Map(); // per group, per value col → {wsum, wxsum} for weighted means
     for (const row of data.rows) {
       const key =
         prefixLen === 0
@@ -150,24 +164,40 @@ function addPivotGroupingToNativeData(data, columnSplit, getColumnSetting) {
         }
         groups.set(key, seedRow);
         counts.set(key, new Array(valueIndexes.length).fill(0));
+        wAccum.set(
+          key,
+          valueIndexes.map(() => ({ wsum: 0, wxsum: 0 })),
+        );
       }
       const accRow = groups.get(key);
       const cnt = counts.get(key);
+      const wacc = wAccum.get(key);
+      const weight = weightColIndex != null ? row[weightColIndex] : null;
       valueIndexes.forEach((vi, aggIdx) => {
         const v = row[vi];
-        if (typeof v === "number" && isFinite(v)) {
+        if (typeof v !== "number" || !isFinite(v)) {
+          return;
+        }
+        cnt[aggIdx]++;
+        if (valueAggTypes[aggIdx] === "weighted") {
+          // Weighted mean: accumulate value*weight and weight, over non-null
+          // cells only. Fall back to an equal weight of 1 when no weight column
+          // is available so the result degrades to an unweighted mean.
+          const w = typeof weight === "number" && isFinite(weight) ? weight : 1;
+          wacc[aggIdx].wsum += w;
+          wacc[aggIdx].wxsum += v * w;
+        } else {
           accRow[vi] = (accRow[vi] ?? 0) + v;
-          cnt[aggIdx]++;
         }
       });
     }
 
     for (const [key, accRow] of groups.entries()) {
-      const cnt = counts.get(key);
-      // For avg-type columns, divide by count to get the mean.
+      const wacc = wAccum.get(key);
       valueIndexes.forEach((vi, aggIdx) => {
-        if (valueAggTypes[aggIdx] === "avg" && cnt[aggIdx] > 0) {
-          accRow[vi] = accRow[vi] / cnt[aggIdx];
+        if (valueAggTypes[aggIdx] === "weighted") {
+          const { wsum, wxsum } = wacc[aggIdx];
+          accRow[vi] = wsum > 0 ? wxsum / wsum : null;
         }
       });
       subtotalRows.push([...accRow, groupingMask]);
