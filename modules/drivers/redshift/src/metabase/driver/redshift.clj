@@ -261,7 +261,6 @@
                     "ORDER BY abs(sortkey)")
                (perf/not-empty schema) table])]
     (if (seq rows)
-      ;; negative `sortkey` positions mark the whole key INTERLEAVED
       (let [interleaved? (perf/some (comp neg? :sortkey) rows)
             columns      (perf/mapv :column_name rows)]
         [{:name              nil
