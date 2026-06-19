@@ -30,7 +30,9 @@ export const Title = styled.span`
 `;
 
 /* restyles metabase/ui buttons for the colored bar: filled = primary, subtle = secondary */
-export const ButtonsContainer = styled.div<{ admin: boolean }>`
+export const ButtonsContainer = styled("div", {
+  shouldForwardProp: isPropValid,
+})<{ admin: boolean }>`
   display: flex;
 
   button[data-variant] {

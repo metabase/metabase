@@ -2345,6 +2345,7 @@
               enterprise/transforms-python}
    :model-exports #{:model/Transform
                     :model/TransformJob
+                    :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}
@@ -2398,6 +2399,7 @@
            util}
    :model-imports #{:model/Transform
                     :model/TransformJob
+                    :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
@@ -3254,6 +3256,7 @@
            events
            models
            premium-features
+           search
            settings
            startup
            task

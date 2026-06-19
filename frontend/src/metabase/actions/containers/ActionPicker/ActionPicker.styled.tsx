@@ -3,7 +3,6 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Button } from "metabase/common/components/Button";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { EmptyState as UnstyledEmptyState } from "metabase/common/components/EmptyState";
 
@@ -45,13 +44,4 @@ export const EmptyModelStateContainer = styled.div`
   padding: var(--mantine-spacing-md);
   color: var(--mb-color-text-secondary);
   text-align: center;
-`;
-
-export const EditButton = styled(Button)`
-  color: var(--mb-color-text-tertiary);
-  padding: 0 0.5rem;
-`;
-
-export const NewActionButton = styled(Button)`
-  margin: 0.25rem 0.75rem;
 `;

@@ -3,8 +3,6 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Button } from "metabase/common/components/Button";
-
 interface TabButtonProps {
   isSelected?: boolean;
   disabled?: boolean;
@@ -87,33 +85,6 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
         border-color: var(--mb-color-core-brand);
       }
     `}
-`;
-
-export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
-  transition: background-color 0s;
-  align-self: center;
-  padding: 0.25rem;
-  color: inherit;
-  border: none;
-
-  ${(props) =>
-    props.isOpen &&
-    !props.disabled &&
-    css`
-      color: var(--mb-color-core-brand);
-      background-color: var(--mb-color-background_page-tertiary);
-    `}
-  &:hover,:focus {
-    ${(props) =>
-      props.disabled
-        ? css`
-            color: var(--mb-color-text-primary);
-          `
-        : css`
-            color: var(--mb-color-core-brand);
-            background-color: var(--mb-color-background_page-tertiary);
-          `}
-  }
 `;
 
 export const MenuContent = styled.ul`

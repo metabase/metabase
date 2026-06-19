@@ -101,6 +101,8 @@ export default defineConfig([
           rules: boundaryRules,
         },
       ],
+      // Every file frontend/src/ and enterprise/frontend/src/ must belong to a declared module.
+      "boundaries/no-unknown-files": "error",
     },
   },
 ]);
