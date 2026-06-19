@@ -30,9 +30,11 @@
 
 (set! *warn-on-reflection* true)
 
-;; `extract-readable` (and the doc-refs above it) reference `max-list-items`, which is
-;; defined lower in the file for narrative ordering. Forward-declare so it resolves.
-(declare max-list-items)
+(def max-list-items
+  "Page size for list responses. [[extract-readable]] hydrates at most this many
+   items per page (the rest are reachable via `?page=N`), so we never serdes-hydrate
+   more than one page worth."
+  25)
 
 (defn- enc [s]
   (codec/url-encode (cond
@@ -293,12 +295,6 @@
   [table db-name]
   (let [{:keys [db-name schema table-name]} (canonical-fields table db-name)]
     (table-uri db-name schema table-name)))
-
-(def max-list-items
-  "Page size for list responses. [[extract-readable]] hydrates at most this many
-   items per page (the rest are reachable via `?page=N`), so we never serdes-hydrate
-   more than one page worth."
-  25)
 
 (defn list-result
   "Wrap a paged MBR result in the list envelope used by `read_resource`.
