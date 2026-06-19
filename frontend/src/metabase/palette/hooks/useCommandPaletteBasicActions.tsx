@@ -33,27 +33,6 @@ import {
   useRegisterShortcut,
 } from "./useRegisterShortcut";
 
-export const BASIC_ACTION_ORDER = [
-  "create-new-question",
-  "create-new-native-query",
-  "create-new-dashboard",
-  "create-new-document",
-  "create-new-collection",
-  "create-new-model",
-  "create-new-metric",
-  "download-diagnostics",
-  "navigate-admin-settings",
-  "navigate-embed-js",
-  "navigate-personal-collection",
-  "navigate-user-settings",
-  "navigate-trash",
-  "navigate-home",
-  "navigate-data-studio",
-  "navigate-browse-model",
-  "navigate-browse-database",
-  "navigate-browse-metric",
-];
-
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
   ...props
