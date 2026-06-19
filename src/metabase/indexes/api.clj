@@ -28,21 +28,35 @@
    [:updated_at :any]
    [:last_executed_at [:maybe :any]]])
 
-(def ^:private MergedIndex
-  "A merged-list index entry, always `::schema/index-structured`-shaped. `:metabase_managed` false means a DBA created
-  it; it then lacks the app-DB bookkeeping (`:id`, `:created_by`, `:created_at`, `:updated_at`)."
+(def ^:private MergedRequest
+  "The managed-row bookkeeping on a merged entry: lifecycle plus the editable structured definition the form binds to."
   [:map
-   [:metabase_managed  :boolean]
-   [:transform_id      ms/PositiveInt]
-   [:structured        ::schema/index-structured]
-   [:status            [:enum :pending :running :succeeded :failed :dropped]]
-   ;; managed-only -- absent on DBA indexes
-   [:id               {:optional true} ms/PositiveInt]
-   [:error_message    {:optional true} [:maybe :string]]
-   [:created_by       {:optional true} [:maybe ms/PositiveInt]]
-   [:created_at       {:optional true} :any]
-   [:updated_at       {:optional true} :any]
-   [:last_executed_at {:optional true} [:maybe :any]]])
+   [:id ms/PositiveInt]
+   [:status [:enum :pending :running :succeeded :failed :dropped]]
+   [:structured ::schema/index-structured]
+   [:error_message [:maybe :string]]
+   [:created_by [:maybe ms/PositiveInt]]
+   [:created_at :any]
+   [:updated_at :any]
+   [:last_executed_at [:maybe :any]]])
+
+(def ^:private MergedIndex
+  "One entry in the reality-first merged list: an index as physically observed in the warehouse, flagged
+  `:metabase_managed` and carrying a `:request` when a managed hint matches it. A managed hint not yet present is
+  projected from its declared definition, with `:present_in_warehouse` false and no observed physical detail."
+  [:map
+   [:metabase_managed     :boolean]
+   [:present_in_warehouse :boolean]
+   [:name                 [:maybe :string]]
+   [:kind                 :keyword]
+   [:key_columns          [:sequential :string]]
+   [:include_columns      [:sequential [:maybe :string]]]
+   [:is_unique            :boolean]
+   [:is_primary           :boolean]
+   [:is_valid             :boolean]
+   [:partial_predicate    [:maybe :string]]
+   [:access_method        [:maybe :string]]
+   [:request {:optional true} MergedRequest]])
 
 (defn- index-name
   "Physical index name for a structured index: a named kind's own `:name`, else a stable name from its `:kind` (so a
@@ -61,15 +75,16 @@
   (api/write-check :model/Transform transform_id))
 
 (api.macros/defendpoint :get "/" :- [:map [:data [:sequential MergedIndex]]]
-  "List a transform's index hints: Metabase-managed indexes merged with the indexes physically present in the
-  warehouse. Each entry is flagged `:metabase_managed` -- false for an index a DBA created by hand."
+  "List a transform's index hints, reality-first: every index physically present in the warehouse, each flagged
+  `:metabase_managed` (false for one a DBA created by hand) and carrying its `:request` when Metabase manages it. A
+  managed hint not yet present is listed with `:present_in_warehouse` false."
   [_route-params
    {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
   (api/read-check :model/Transform transform-id)
   (let [{:keys [database schema] table-name :name} (:target (t2/select-one :model/Transform transform-id))
         managed   (t2/select :model/TableIndex :transform_id transform-id {:order-by [[:id :asc]]})
         warehouse (reconcile/fetch-warehouse-indexes (t2/select-one :model/Database database) schema table-name)]
-    {:data (reconcile/merge-indexes transform-id managed warehouse)}))
+    {:data (reconcile/merge-indexes managed warehouse)}))
 
 (api.macros/defendpoint :get "/:id" :- TableIndex
   "Fetch a single managed index (e.g. to poll its status)."

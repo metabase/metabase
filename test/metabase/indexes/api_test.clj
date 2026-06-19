@@ -27,10 +27,11 @@
         (is (= transform-id (:transform_id created)))
         (is (= "by_cat" (:index_name created)))
         (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] [])]
-          (testing "GET lists it for the transform"
+          (testing "GET lists it for the transform (managed hint, not yet in the warehouse)"
             (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
                                                        (str "indexes?transform-id=" transform-id))]
-              (is (= [(:id created)] (map :id data)))))
+              (is (= [(:id created)] (map #(get-in % [:request :id]) data)))
+              (is (false? (:present_in_warehouse (first data))))))
           (testing "the listed index carries no mirrored table_id"
             (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
                                                        (str "indexes?transform-id=" transform-id))]
@@ -61,17 +62,18 @@
       (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] wh)]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
                                                    (str "indexes?transform-id=" transform-id))
-              by-name (group-by #(get-in % [:structured :name]) data)]
-          (testing "the managed index renders from its stored structured, flagged managed"
+              by-name (group-by :name data)]
+          (testing "the managed index is observed from the warehouse, flagged managed, request carries its id"
             (let [e (first (get by-name "by_cat"))]
               (is (true? (:metabase_managed e)))
-              (is (= (:id created) (:id e)))))
-          (testing "the DBA index appears, unmanaged, converted from the warehouse, no app-DB bookkeeping"
+              (is (true? (:present_in_warehouse e)))
+              (is (= (:id created) (-> e :request :id)))))
+          (testing "the DBA index appears, unmanaged, observed, with no request bookkeeping"
             (let [e (first (get by-name "dba_made"))]
               (is (false? (:metabase_managed e)))
-              (is (= "succeeded" (:status e)))
-              (is (nil? (:id e)))
-              (is (= "price" (-> e :structured :columns first :name)))))
+              (is (true? (:present_in_warehouse e)))
+              (is (= ["price"] (:key_columns e)))
+              (is (nil? (:request e)))))
           (testing "nothing unmanaged was persisted"
             (is (= 1 (count (t2/select :model/TableIndex :transform_id transform-id))))))))))
 

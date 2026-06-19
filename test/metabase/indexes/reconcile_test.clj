@@ -34,57 +34,42 @@
     (is (= [:sortkey ["a" "b"]] (reconcile/managed-match-key managed-sortkey)))
     (is (= [:sortkey ["a" "b"]] (reconcile/match-key wh-sortkey)))))
 
-(deftest warehouse->structured-test
-  (testing "classical btree -> structured, uniqueness preserved"
-    (is (= {:kind :btree :name "dba_made" :columns [{:name "price"}]}
-           (reconcile/warehouse->structured wh-dba)))
-    (is (= {:kind :btree :name "by_cat" :columns [{:name "name"}] :unique true}
-           (reconcile/warehouse->structured wh-btree))))
-  (testing "sortkey style rides on :access-method, converted deterministically"
-    (is (= {:kind :sortkey :style :compound :columns [{:name "a"} {:name "b"}]}
-           (reconcile/warehouse->structured wh-sortkey)))
-    (is (= {:kind :sortkey :style :interleaved :columns [{:name "a"} {:name "b"}]}
-           (reconcile/warehouse->structured (assoc wh-sortkey :access-method "interleaved")))))
-  (testing "skip-index type comes from the access-method"
-    (is (= {:kind :skip-index :name "by_minmax" :columns [{:name "a"}] :type :minmax}
-           (reconcile/warehouse->structured
-            {:name "by_minmax" :kind :skip-index :access-method "minmax" :key-columns ["a"]}))))
-  (testing "an expression key column carries its text as the column name"
-    (is (= {:kind :btree :name "fc_expr" :columns [{:name "lower(email)"}]}
-           (reconcile/warehouse->structured
-            {:name "fc_expr" :kind :btree :access-method "btree" :key-columns ["lower(email)"]})))))
-
 (deftest merge-indexes-test
-  (testing "managed-only: rendered from its stored structured, flagged managed"
-    (let [[e] (reconcile/merge-indexes 7 [managed-btree] [])]
+  (testing "managed + present: observed from the warehouse, flagged managed, request carries lifecycle + structured"
+    (let [[e] (reconcile/merge-indexes [managed-btree] [wh-btree])]
       (is (true? (:metabase_managed e)))
-      (is (= (:structured managed-btree) (:structured e)))
-      (is (= 1 (:id e)))
-      (is (= :pending (:status e)))))
-  (testing "warehouse-only (DBA index): converted, flagged unmanaged, no app-DB bookkeeping"
-    (let [[e] (reconcile/merge-indexes 7 [] [wh-dba])]
+      (is (true? (:present_in_warehouse e)))
+      (is (= "by_cat" (:name e)))
+      (is (true? (:is_unique e)))
+      (is (= 1 (-> e :request :id)))
+      (is (= :pending (-> e :request :status)))
+      (is (= (:structured managed-btree) (-> e :request :structured)))))
+  (testing "DBA (warehouse-only): observed, unmanaged, no request bookkeeping"
+    (let [[e] (reconcile/merge-indexes [] [wh-dba])]
       (is (false? (:metabase_managed e)))
-      (is (= 7 (:transform_id e)))
-      (is (= :succeeded (:status e)))
-      (is (= {:kind :btree :name "dba_made" :columns [{:name "price"}]} (:structured e)))
-      (is (nil? (:id e)))
-      (is (nil? (:created_by e)))))
-  (testing "a managed index that also exists in the warehouse is listed once, as the managed entry"
-    (let [merged (reconcile/merge-indexes 7 [managed-btree] [wh-btree])]
+      (is (true? (:present_in_warehouse e)))
+      (is (= "dba_made" (:name e)))
+      (is (= ["price"] (:key_columns e)))
+      (is (nil? (:request e)))))
+  (testing "managed + absent: projected from its declared structured, present_in_warehouse false"
+    (let [[e] (reconcile/merge-indexes [managed-btree] [])]
+      (is (true? (:metabase_managed e)))
+      (is (false? (:present_in_warehouse e)))
+      (is (= "by_cat" (:name e)))
+      (is (true? (:is_unique e)))
+      (is (= :pending (-> e :request :status)))))
+  (testing "a managed inline sortkey matches the warehouse sortkey by kind+columns, listed once as managed"
+    (let [merged (reconcile/merge-indexes [managed-sortkey] [wh-sortkey])]
       (is (= 1 (count merged)))
       (is (true? (:metabase_managed (first merged))))
-      (is (= 1 (:id (first merged))))))
-  (testing "a managed inline sortkey matches the warehouse sortkey by kind+columns, listed once"
-    (let [merged (reconcile/merge-indexes 7 [managed-sortkey] [wh-sortkey])]
-      (is (= 1 (count merged)))
-      (is (true? (:metabase_managed (first merged))))))
+      (is (true? (:present_in_warehouse (first merged))))))
   (testing "mix: a matched managed index, plus a DBA index alongside it"
-    (let [merged  (reconcile/merge-indexes 7 [managed-btree] [wh-btree wh-dba])
+    (let [merged  (reconcile/merge-indexes [managed-btree] [wh-btree wh-dba])
           by-flag (group-by :metabase_managed merged)]
       (is (= 2 (count merged)))
       (is (= 1 (count (get by-flag true))))
       (is (= 1 (count (get by-flag false))))
-      (is (= "dba_made" (-> (get by-flag false) first :structured :name))))))
+      (is (= "dba_made" (-> (get by-flag false) first :name))))))
 
 (deftest fetch-warehouse-indexes-test
   (testing "delegates to the driver method"

@@ -26,38 +26,58 @@
               :name        index_name
               :key-columns (mapv :name (:columns structured))}))
 
-(defn warehouse->structured
-  "The `::schema/index-structured` for an unmanaged warehouse index. Deterministic: a sortkey's style and a
-  skip-index's type ride on `:access-method`; an expression key column carries its text as the column name."
-  [{:keys [kind key-columns include-columns access-method is-unique] index-name :name}]
-  (cond-> {:kind kind :columns (mapv (fn [c] {:name c}) key-columns)}
-    index-name            (assoc :name index-name)
-    (= kind :sortkey)     (assoc :style (keyword access-method))
-    (= kind :skip-index)  (assoc :type (keyword access-method))
-    (seq include-columns) (assoc :include (vec include-columns))
-    is-unique             (assoc :unique true)))
+(defn- observed-fields
+  "The observation fields of a warehouse `::table-index` map, snake-cased for the API."
+  [wh]
+  {:name              (:name wh)
+   :kind              (:kind wh)
+   :key_columns       (vec (:key-columns wh))
+   :include_columns   (vec (:include-columns wh))
+   :is_unique         (boolean (:is-unique wh))
+   :is_primary        (boolean (:is-primary wh))
+   :is_valid          (boolean (:is-valid wh))
+   :partial_predicate (:partial-predicate wh)
+   :access_method     (:access-method wh)})
 
-(defn- managed-entry
-  "A managed TableIndex row as a merged-list entry: its stored definition plus lifecycle, flagged managed."
+(defn- declared-fields
+  "A managed hint not (yet) in the warehouse, projected from its declared `:structured` into the observation fields."
+  [{:keys [structured]}]
+  {:name              (or (:name structured) (some-> (:kind structured) name))
+   :kind              (:kind structured)
+   :key_columns       (mapv :name (:columns structured))
+   :include_columns   (vec (:include structured))
+   :is_unique         (boolean (:unique structured))
+   :is_primary        false
+   :is_valid          false
+   :partial_predicate nil
+   :access_method     nil})
+
+(defn- request-fields
+  "Bookkeeping carried on a managed entry, under `:request`: lifecycle plus the editable structured definition."
   [row]
-  (-> (select-keys row [:id :transform_id :structured :status :error_message
-                        :created_by :created_at :updated_at :last_executed_at])
-      (assoc :metabase_managed true)))
+  {:request (select-keys row [:id :status :structured :error_message
+                              :created_by :created_at :updated_at :last_executed_at])})
 
 (defn merge-indexes
-  "Managed TableIndex `rows` for `transform-id` merged with the indexes physically present in the warehouse, as one
-  list of `::schema/index-structured`-shaped entries. A managed entry renders from its stored `:structured`; an
-  unmanaged (DBA) index is converted from its observation and flagged `:metabase_managed false`. A managed index that
-  also exists in the warehouse is matched, so it's listed once -- as the managed entry."
-  [transform-id rows warehouse-maps]
-  (let [managed-keys (into #{} (map managed-match-key) rows)]
-    (into (mapv managed-entry rows)
-          (comp (remove #(contains? managed-keys (match-key %)))
-                (map (fn [wh] {:metabase_managed false
-                               :transform_id     transform-id
-                               :structured       (warehouse->structured wh)
-                               :status           :succeeded})))
-          warehouse-maps)))
+  "Reality-first merged index list. Every index physically present in the warehouse is listed, flagged
+  `:metabase_managed` when a TableIndex `row` matches it (by [[match-key]]) and carrying that row's `:request`
+  bookkeeping. A managed hint not yet present (pending/failed) is appended, projected from its declared `:structured`."
+  [rows warehouse-maps]
+  (let [by-key       (into {} (map (juxt managed-match-key identity)) rows)
+        present-keys (into #{} (map match-key) warehouse-maps)
+        present      (for [wh warehouse-maps
+                           :let [row (get by-key (match-key wh))]]
+                       (merge (observed-fields wh)
+                              {:metabase_managed     (some? row)
+                               :present_in_warehouse true}
+                              (when row (request-fields row))))
+        absent       (for [row   rows
+                           :when (not (contains? present-keys (managed-match-key row)))]
+                       (merge (declared-fields row)
+                              {:metabase_managed     true
+                               :present_in_warehouse false}
+                              (request-fields row)))]
+    (into (vec present) absent)))
 
 (defn fetch-warehouse-indexes
   "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`. Returns `[]` if the

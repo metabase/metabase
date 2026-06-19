@@ -91,8 +91,7 @@
   "Driver -> fetch-correctness cases. Each case creates `:table` via the literal `:create` statements (popular index
   kinds, made directly so we cover catalog shapes the apply path never produces, e.g. Postgres gin/partial).
   `:expected` is the set of normalized [[metabase.driver/fetch-table-indexes]] maps (sans `:definition`) it must
-  return; `:expected-structured` is what [[metabase.indexes.reconcile/warehouse->structured]] must convert each into.
-  Index models differ, so a case carries however many indexes that driver puts on one table."
+  return. Index models differ, so a case carries however many indexes that driver puts on one table."
   {:postgres
    [{:label  "btree, unique, composite, INCLUDE, partial, gin, brin, hash, expression, and the primary key"
      :table  "mb_fetch_pg"
@@ -118,40 +117,25 @@
                  (idx "fc_hash" :hash "hash" ["email"])
                  (idx "fc_expr" :btree "btree" ["lower(email)"])
                  ;; mixed column + expression: order preserved, the expression carries its text
-                 (idx "fc_mixed" :btree "btree" ["user_id" "lower(email)"])}
-     :expected-structured #{{:kind :btree :name "mb_fetch_pg_pkey" :columns [{:name "id"}] :unique true}
-                            {:kind :btree :name "fc_btree" :columns [{:name "user_id"}]}
-                            {:kind :btree :name "fc_unique" :columns [{:name "email"}] :unique true}
-                            {:kind :btree :name "fc_ab" :columns [{:name "a"} {:name "b"}]}
-                            {:kind :btree :name "fc_include" :columns [{:name "a"}] :include ["b" "email"]}
-                            {:kind :btree :name "fc_partial" :columns [{:name "user_id"}]}
-                            {:kind :gin :name "fc_gin" :columns [{:name "data"}]}
-                            {:kind :brin :name "fc_brin" :columns [{:name "created_at"}]}
-                            {:kind :hash :name "fc_hash" :columns [{:name "email"}]}
-                            {:kind :btree :name "fc_expr" :columns [{:name "lower(email)"}]}
-                            {:kind :btree :name "fc_mixed" :columns [{:name "user_id"} {:name "lower(email)"}]}}}
+                 (idx "fc_mixed" :btree "btree" ["user_id" "lower(email)"])}}
     {:label "a table with no indexes returns []"
      :table "mb_fetch_pg_empty"
      :create ["CREATE TABLE mb_fetch_pg_empty (a INT, b INT)"]
-     :expected #{}
-     :expected-structured #{}}]
+     :expected #{}}]
 
    :redshift
    [{:label  "the inline compound sortkey, unnamed, reconciled by kind + columns"
      :table  "mb_fetch_rs"
      :create ["CREATE TABLE mb_fetch_rs (a INT, b INT) COMPOUND SORTKEY (a, b)"]
-     :expected #{(idx nil :sortkey "compound" ["a" "b"])}
-     :expected-structured #{{:kind :sortkey :style :compound :columns [{:name "a"} {:name "b"}]}}}
+     :expected #{(idx nil :sortkey "compound" ["a" "b"])}}
     {:label  "an interleaved sortkey, whose sortkey positions are negative, still orders by abs() position"
      :table  "mb_fetch_rs_interleaved"
      :create ["CREATE TABLE mb_fetch_rs_interleaved (a INT, b INT) INTERLEAVED SORTKEY (a, b)"]
-     :expected #{(idx nil :sortkey "interleaved" ["a" "b"])}
-     :expected-structured #{{:kind :sortkey :style :interleaved :columns [{:name "a"} {:name "b"}]}}}
+     :expected #{(idx nil :sortkey "interleaved" ["a" "b"])}}
     {:label "a table with no sortkey returns []"
      :table "mb_fetch_rs_empty"
      :create ["CREATE TABLE mb_fetch_rs_empty (a INT, b INT)"]
-     :expected #{}
-     :expected-structured #{}}]
+     :expected #{}}]
 
    :clickhouse
    [{:label  "the inline ORDER BY (unnamed) and named skip-indexes (minmax, set)"
@@ -163,10 +147,7 @@
               "ALTER TABLE mb_fetch_ch MATERIALIZE INDEX by_set"]
      :expected #{(idx "by_minmax" :skip-index "minmax" ["a"])
                  (idx "by_set" :skip-index "set" ["b"])
-                 (idx nil :order-by nil ["a" "b"])}
-     :expected-structured #{{:kind :skip-index :name "by_minmax" :type :minmax :columns [{:name "a"}]}
-                            {:kind :skip-index :name "by_set" :type :set :columns [{:name "b"}]}
-                            {:kind :order-by :columns [{:name "a"} {:name "b"}]}}}
+                 (idx nil :order-by nil ["a" "b"])}}
     {:label  "expression keys: a wrapped single-expr skip-index and an ORDER BY whose function key has an inner comma"
      :table  "mb_fetch_ch_expr"
      :create ["CREATE TABLE mb_fetch_ch_expr (a Int64, b Int64, s String) ENGINE = MergeTree ORDER BY (a, cityHash64(s, b))"
@@ -174,11 +155,8 @@
               "ALTER TABLE mb_fetch_ch_expr MATERIALIZE INDEX ix_lower"]
      ;; ClickHouse stores these verbatim: skip-index `expr` = `(lower(s))`, `sorting_key` = `a, cityHash64(s, b)`.
      :expected #{(idx "ix_lower" :skip-index "set" ["lower(s)"])
-                 (idx nil :order-by nil ["a" "cityHash64(s, b)"])}
-     :expected-structured #{{:kind :skip-index :name "ix_lower" :type :set :columns [{:name "lower(s)"}]}
-                            {:kind :order-by :columns [{:name "a"} {:name "cityHash64(s, b)"}]}}}
+                 (idx nil :order-by nil ["a" "cityHash64(s, b)"])}}
     {:label "an unsorted table returns []"
      :table "mb_fetch_ch_empty"
      :create ["CREATE TABLE mb_fetch_ch_empty (a Int64) ENGINE = MergeTree ORDER BY ()"]
-     :expected #{}
-     :expected-structured #{}}]})
+     :expected #{}}]})
