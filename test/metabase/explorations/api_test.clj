@@ -633,7 +633,7 @@
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
                       :table_id     (mt/id :venues)
-                      :target       ["field" {} (mt/id :checkins :date)]}]
+                      :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "dt"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   "created"
@@ -744,7 +744,7 @@
                                      :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}]
       (let [mapping [{:dimension_id "created"
                       :table_id     (mt/id :venues)
-                      :target       ["field" {} (mt/id :checkins :date)]}]
+                      :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "seg"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   "created"
@@ -766,7 +766,7 @@
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
                       :table_id     (mt/id :venues)
-                      :target       ["field" {} (mt/id :checkins :date)]}]
+                      :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "collapse"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   "created"

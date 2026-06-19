@@ -324,7 +324,7 @@
 
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy? thinking cache?]
+  [{:keys [model system input tools schema tool_choice temperature max-tokens thinking cache?]
     :or   {model "claude-haiku-4-5" cache? true}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))

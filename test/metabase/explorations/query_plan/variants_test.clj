@@ -1,4 +1,4 @@
-(ns metabase.explorations.query-plan.variants-test
+(ns ^:mb/driver-tests metabase.explorations.query-plan.variants-test
   (:require
    [clojure.test :refer :all]
    [metabase.explorations.query-plan.variants :as variants]
