@@ -1885,7 +1885,7 @@ serdes/meta:
                                            {:merged   [{:path "collections/x.yaml" :content "y"}]
                                             :conflicts []
                                             :summary  {:added 1 :updated 0 :removed 0}})
-                    ;; simulate the load marking everything synced (what sync-objects! does), then running
+                    ;; simulate the load marking everything synced (what the import insert does), then running
                     ;; the in-transaction finalize (restore-dirty + set-version)
                     impl/load-snapshot!  (fn [_ _ _ & {:keys [finalize!]}]
                                            (t2/update! :model/RemoteSyncObject

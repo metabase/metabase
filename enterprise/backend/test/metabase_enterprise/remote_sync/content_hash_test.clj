@@ -388,7 +388,7 @@
 
 ;;; ------------------------------------------- import integration -------------------------------------------
 ;;; These import a snapshot from a mock source — which records the content_hash baseline through the actual
-;;; import path (`record-content-hashes!`) — then fire a no-op update and assert it stays synced. This is the
+;;; import path (`insert-with-metadata!`) — then fire a no-op update and assert it stays synced. This is the
 ;;; "right after a pull" scenario from GHY-3933.
 
 (defn- import-then-noop-status!
