@@ -407,25 +407,33 @@
 
 (defn- add-subtotal
   "Adds subtotal nodes to a row item based on subtotal settings.
-   Returns a sequence of nodes (the original node and possibly a subtotal node)."
+   Returns a sequence of nodes (the original node and possibly a subtotal node).
+   When pivot.subtotals_on_top is true in settings, the subtotal node is placed
+   before the children rows (pinned at top when expanded)."
   [row-item subtotal-settings-by-col visible? transient-row settings]
   (let [subtotal-enabled-for-col? (first subtotal-settings-by-col)
         remaining-col-settings    (rest subtotal-settings-by-col)
         subtotal-node             (when (subtotal-permitted? subtotal-enabled-for-col? visible?)
                                     (create-subtotal-node row-item))
-        is-collapsed?             (:isCollapsed row-item)]
+        is-collapsed?             (:isCollapsed row-item)
+        subtotals-on-top?         (true? (:pivot.subtotals_on_top settings))]
     (if is-collapsed?
-      ;; For collapsed items, just add subtotals if applicable
+      ;; For collapsed items, just add the subtotal node.
       (conj! transient-row subtotal-node)
-      ;; For expanded items, recurse.
+      ;; For expanded items, recurse on children.
       (let [processed-children (process-children (:children row-item)
                                                  remaining-col-settings
                                                  settings)
             updated-node       (-> row-item
                                    (assoc :children processed-children)
                                    (assoc :hasSubtotal (boolean subtotal-node)))]
-        (cond-> (conj! transient-row updated-node)
-          subtotal-node (conj! subtotal-node))))))
+        (if (and subtotals-on-top? subtotal-node)
+          ;; Subtotal before the parent node (which carries the children).
+          (-> (conj! transient-row subtotal-node)
+              (conj! updated-node))
+          ;; Default: parent node first, subtotal after children.
+          (cond-> (conj! transient-row updated-node)
+            subtotal-node (conj! subtotal-node)))))))
 
 (defn- add-subtotals
   "Adds subtotal rows to the pivot table based on settings."
@@ -512,28 +520,37 @@
 
 (defn- format-subtotal-values
   "Formats subtotal values and adds additional attributes."
-  [raw-values value-formatters other-attrs]
-  (map #(merge % {:isSubtotal true} other-attrs)
-       (format-values raw-values value-formatters)))
+  ([raw-values value-formatters other-attrs]
+   (format-subtotal-values raw-values value-formatters other-attrs nil nil nil))
+  ([raw-values value-formatters other-attrs color-getter val-col-names row-index]
+   (map-indexed
+    (fn [index item]
+      (let [raw (nth raw-values index nil)
+            base (merge item {:isSubtotal true} other-attrs)]
+        (if (and color-getter val-col-names)
+          (assoc base :backgroundColor
+                 (color-getter raw row-index (nth val-col-names index nil)))
+          base)))
+    (format-values raw-values value-formatters))))
 
 (defn- get-subtotals
   "Returns formatted subtotal values for a position in the pivot table.
    Handles both regular subtotals and grand totals."
-  [subtotal-values breakout-indexes values other-attrs value-formatters]
+  [subtotal-values breakout-indexes values other-attrs value-formatters color-getter val-col-names row-index]
   (let [breakout-key (vec (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) breakout-indexes))
         value-key (vec (sort-by-indexed (fn [_ index] (nth breakout-indexes index)) values))
         raw-values (get-in subtotal-values [breakout-key value-key])]
-    (format-subtotal-values raw-values value-formatters other-attrs)))
+    (format-subtotal-values raw-values value-formatters other-attrs color-getter val-col-names row-index)))
 
 (defn- get-grand-total
   "Special case handler for grand total cells."
-  [subtotal-values indexes index-values value-formatters]
-  (get-subtotals subtotal-values indexes index-values {:isGrandTotal true} value-formatters))
+  [subtotal-values indexes index-values value-formatters color-getter val-col-names row-index]
+  (get-subtotals subtotal-values indexes index-values {:isGrandTotal true} value-formatters color-getter val-col-names row-index))
 
 (defn- get-regular-subtotal
   "Handler for regular subtotal cells (not grand totals)."
-  [subtotal-values indexes index-values value-formatters]
-  (get-subtotals subtotal-values indexes index-values {} value-formatters))
+  [subtotal-values indexes index-values value-formatters color-getter val-col-names row-index]
+  (get-subtotals subtotal-values indexes index-values {} value-formatters color-getter val-col-names row-index))
 
 (defn- get-normal-cell-values
   "Processes and formats values for normal data cells (non-subtotal)."
@@ -561,29 +578,30 @@
 
 (defn- handle-subtotal-cell
   "Processes subtotal cells, including grand totals."
-  [subtotal-values row-values col-values row-indexes col-indexes value-formatters]
+  [subtotal-values row-values col-values row-indexes col-indexes value-formatters color-getter val-col-names row-index]
   (let [row-idxs (take (count row-values) row-indexes)
         col-idxs (take (count col-values) col-indexes)
         indexes (concat col-idxs row-idxs)
         index-values (concat col-values row-values)]
     (if (zero? (count row-values))
-      (get-grand-total subtotal-values indexes index-values value-formatters)
-      (get-regular-subtotal subtotal-values indexes index-values value-formatters))))
+      (get-grand-total subtotal-values indexes index-values value-formatters color-getter val-col-names row-index)
+      (get-regular-subtotal subtotal-values indexes index-values value-formatters color-getter val-col-names row-index))))
 
 (defn- create-row-section-getter
   "Returns a memoized function that retrieves and formats values for a specific cell
   position in the pivot table."
-  [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter]
-  (fn [col-index row-index]
-    (let [col-values (nth col-paths col-index [])
-          row-values (nth row-paths row-index [])
-          index-values (concat col-values row-values)
-          result (if (is-subtotal? row-values col-values row-indexes col-indexes)
-                   (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
-                   (get-normal-cell-values values-by-key index-values value-formatters color-getter))]
-      ;; Convert to JavaScript object if in ClojureScript context
-      #?(:cljs (perf/clj->js result)
-         :clj result))))
+  [values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter columns val-indexes]
+  (let [val-col-names (mapv #(:name (nth columns %)) val-indexes)]
+    (fn [col-index row-index]
+      (let [col-values (nth col-paths col-index [])
+            row-values (nth row-paths row-index [])
+            index-values (concat col-values row-values)
+            result (if (is-subtotal? row-values col-values row-indexes col-indexes)
+                     (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters color-getter val-col-names row-index)
+                     (get-normal-cell-values values-by-key index-values value-formatters color-getter))]
+        ;; Convert to JavaScript object if in ClojureScript context
+        #?(:cljs (perf/clj->js result)
+           :clj result)))))
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (defrecord ResultItem [value rawValue clicked isCollapsed hasSubtotal isGrandTotal isSubtotal isValueColumn depth offset
@@ -679,4 +697,4 @@
       :rowIndex row-paths
       :leftHeaderItems (tree-to-array formatted-row-tree-with-totals)
       :topHeaderItems (tree-to-array formatted-col-tree)
-      :getRowSection (create-row-section-getter values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter)})))
+      :getRowSection (create-row-section-getter values-by-key subtotal-values value-formatters col-indexes row-indexes col-paths row-paths color-getter columns val-indexes)})))

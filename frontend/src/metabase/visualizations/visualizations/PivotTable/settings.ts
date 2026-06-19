@@ -222,6 +222,21 @@ export const settings = {
     },
     inline: true,
   },
+  "pivot.subtotals_on_top": {
+    hidden: true,
+    getValue: (
+      [{ data }]: Series,
+      settings: Partial<VisualizationSettings> = {},
+    ) => {
+      const stored = settings["pivot.subtotals_on_top"];
+      if (stored !== undefined) {
+        return stored;
+      }
+      // For native SQL pivots, pin the "Totals for …" row above its children
+      // so it stays visible as a summary when the group is expanded.
+      return data != null && isNativePivotData(data.cols);
+    },
+  },
   "pivot.condense_duplicate_totals": {
     get section() {
       return t`Columns`;
