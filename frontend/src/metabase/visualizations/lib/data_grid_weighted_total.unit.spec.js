@@ -1,6 +1,7 @@
 import {
   COLUMN_SHOW_TOTALS,
   COLUMN_SPLIT_SETTING,
+  computeNativePivotTotals,
   multiLevelPivot,
 } from "metabase/visualizations/lib/data_grid";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -95,5 +96,68 @@ describe("native pivot weighted percent subtotals", () => {
     const values = result.getRowSection(0, 0).map((c) => c.value);
     expect(values[0]).toBe("14"); // new_user still sums all cells
     expect(values[1]).toBe("50%"); // weighted over non-null cells only
+  });
+});
+
+describe("computeNativePivotTotals", () => {
+  const cols = [COHORT, COUNTRY, NEW_USER, D0];
+  const getColumnSetting = (c) => ({
+    number_style: c.name === "d0" ? "percent" : undefined,
+  });
+  const columnSplit = {
+    rows: ["cohort_date", "country"],
+    columns: [],
+    values: ["new_user", "d0"],
+  };
+
+  it("returns summed counts and weighted percent grand totals", () => {
+    const data = {
+      cols,
+      rows: [
+        ["2024-01-01", "US", 10, 0.5],
+        ["2024-01-01", "ID", 1, 0],
+        ["2024-01-02", "US", 1, 0],
+        ["2024-01-02", "TH", 1, 1],
+      ],
+    };
+    const totals = computeNativePivotTotals(
+      data,
+      columnSplit,
+      getColumnSetting,
+    );
+    expect(totals).toHaveLength(2);
+    // new_user = sum = 13
+    expect(totals[0]).toMatchObject({ name: "new_user", isPercent: false });
+    expect(totals[0].value).toBe(13);
+    // d0 weighted = (10*.5 + 1*0 + 1*0 + 1*1) / 13 = 6/13
+    expect(totals[1]).toMatchObject({ name: "d0", isPercent: true });
+    expect(totals[1].value).toBeCloseTo(6 / 13, 10);
+  });
+
+  it("ignores null percent cells (and their weight)", () => {
+    const data = {
+      cols,
+      rows: [
+        ["2024-01-01", "US", 10, 0.5],
+        ["2024-01-01", "ID", 5, null],
+      ],
+    };
+    const totals = computeNativePivotTotals(
+      data,
+      columnSplit,
+      getColumnSetting,
+    );
+    expect(totals[0].value).toBe(15); // counts still sum
+    expect(totals[1].value).toBeCloseTo(0.5, 10); // only the non-null cell
+  });
+
+  it("returns null for non-native data", () => {
+    const withGroup = {
+      cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Integer }],
+      rows: [],
+    };
+    expect(
+      computeNativePivotTotals(withGroup, columnSplit, getColumnSetting),
+    ).toBeNull();
   });
 });

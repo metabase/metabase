@@ -24,7 +24,9 @@ interface CellProps {
   isBorderedHeader?: boolean;
   isTransparent?: boolean;
   hasTopBorder?: boolean;
+  isRowHovered?: boolean;
   onClick?: ((e: React.MouseEvent) => void) | undefined;
+  onMouseEnter?: (() => void) | undefined;
   onResize?: (newWidth: number) => void;
   showTooltip?: boolean;
 }
@@ -87,7 +89,9 @@ export function Cell({
   isBorderedHeader,
   isTransparent,
   hasTopBorder,
+  isRowHovered,
   onClick,
+  onMouseEnter,
   onResize,
   showTooltip = true,
 }: CellProps) {
@@ -102,6 +106,7 @@ export function Cell({
       isBorderedHeader={isBorderedHeader}
       hasTopBorder={hasTopBorder}
       isTransparent={isTransparent}
+      isRowHovered={isRowHovered}
       style={{
         ...style,
         ...(backgroundColor
@@ -111,6 +116,7 @@ export function Cell({
           : {}),
       }}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
     >
       <>
         <div
@@ -176,6 +182,8 @@ type LeftHeaderCellProps = TopHeaderCellProps & {
   settings: VisualizationSettings;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   isNativeQuery?: boolean;
+  hoveredRowIndex?: number | null;
+  onRowHover?: (rowIndex: number) => void;
 };
 
 export const LeftHeaderCell = ({
@@ -187,8 +195,19 @@ export const LeftHeaderCell = ({
   onUpdateVisualizationSettings,
   onResize,
   isNativeQuery,
+  hoveredRowIndex,
+  onRowHover,
 }: LeftHeaderCellProps) => {
-  const { value, isSubtotal, hasSubtotal, depth, path, clicked, span } = item;
+  const { value, isSubtotal, hasSubtotal, depth, path, clicked, span, offset } =
+    item;
+
+  // This header cell spans body rows [offset, offset + span). Highlight it when
+  // the hovered body row falls within that range, syncing the left header's
+  // hover guide with the body grid's.
+  const isRowHovered =
+    hoveredRowIndex != null &&
+    hoveredRowIndex >= offset &&
+    hoveredRowIndex < offset + span;
 
   // Rows that can be collapsed: subtotal rows, rows with subtotals, or native
   // depth-0 rows that span multiple children.
@@ -221,8 +240,10 @@ export const LeftHeaderCell = ({
       value={value}
       isEmphasized={isSubtotal || collapsed}
       isBold={isSubtotal}
+      isRowHovered={isRowHovered}
       onClick={handleClick}
       onResize={onResize}
+      onMouseEnter={onRowHover ? () => onRowHover(offset) : undefined}
     />
   );
 };
@@ -233,6 +254,9 @@ interface BodyCellProps {
   getCellClickHandler: CellClickHandler;
   cellWidths: number[];
   showTooltip?: boolean;
+  isRowHovered?: boolean;
+  onRowHover?: () => void;
+  onRowHoverEnd?: () => void;
 }
 
 export const BodyCell = ({
@@ -241,9 +265,17 @@ export const BodyCell = ({
   getCellClickHandler,
   cellWidths,
   showTooltip = true,
+  isRowHovered = false,
+  onRowHover,
+  onRowHoverEnd,
 }: BodyCellProps) => {
   return (
-    <div style={style} className={CS.flex}>
+    <div
+      style={style}
+      className={CS.flex}
+      onMouseEnter={onRowHover}
+      onMouseLeave={onRowHoverEnd}
+    >
       {rowSection.map(
         ({ value, isSubtotal, clicked, backgroundColor }, index) => {
           return (
@@ -257,6 +289,7 @@ export const BodyCell = ({
               isBold={isSubtotal}
               showTooltip={showTooltip}
               isBody
+              isRowHovered={isRowHovered}
               onClick={getCellClickHandler(clicked)}
               backgroundColor={backgroundColor}
             />

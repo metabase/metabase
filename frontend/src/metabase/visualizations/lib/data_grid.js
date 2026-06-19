@@ -34,6 +34,80 @@ export function getBreakdownOptions(columnSplit) {
   return allRows.length >= 3 ? allRows.slice(1) : [];
 }
 
+// Computes the grand-total value per measure column for a native pivot, using
+// the same aggregation rules as the synthesized "Totals" row: percent columns
+// are a weighted mean (weight = first non-percent value column, over non-null
+// cells), everything else is summed. Returns an array of
+// `{ name, displayName, value, isPercent }` in value-column order, or null when
+// the data isn't a native pivot or has no value columns.
+// `getColumnSetting` is (col) => columnSettings.
+export function computeNativePivotTotals(data, columnSplit, getColumnSetting) {
+  if (data == null || !isNativePivotData(data.cols)) {
+    return null;
+  }
+  const { values: valueColNames = [] } = columnSplit ?? {};
+  if (valueColNames.length === 0) {
+    return null;
+  }
+
+  const colIndexByName = {};
+  data.cols.forEach((col, i) => {
+    colIndexByName[col.name] = i;
+  });
+
+  const valueIndexes = valueColNames
+    .map((name) => colIndexByName[name])
+    .filter((i) => i != null);
+
+  const isPercentByValue = valueColNames.map((name) => {
+    const col = data.cols[colIndexByName[name]];
+    const colSetting = col && getColumnSetting ? getColumnSetting(col) : null;
+    return colSetting?.["number_style"] === "percent";
+  });
+
+  // Weight column: first non-percent value column (e.g. new_user / cohort_size).
+  const weightValueIdx = isPercentByValue.findIndex((p) => !p);
+  const weightColIndex =
+    weightValueIdx >= 0 ? colIndexByName[valueColNames[weightValueIdx]] : null;
+
+  const sums = valueIndexes.map(() => 0);
+  const wsum = valueIndexes.map(() => 0);
+  const wxsum = valueIndexes.map(() => 0);
+
+  for (const row of data.rows) {
+    const weight = weightColIndex != null ? row[weightColIndex] : null;
+    valueIndexes.forEach((vi, aggIdx) => {
+      const v = row[vi];
+      if (typeof v !== "number" || !isFinite(v)) {
+        return;
+      }
+      if (isPercentByValue[aggIdx]) {
+        const w = typeof weight === "number" && isFinite(weight) ? weight : 1;
+        wsum[aggIdx] += w;
+        wxsum[aggIdx] += v * w;
+      } else {
+        sums[aggIdx] += v;
+      }
+    });
+  }
+
+  return valueIndexes.map((vi, aggIdx) => {
+    const col = data.cols[vi];
+    const isPercent = isPercentByValue[aggIdx];
+    const value = isPercent
+      ? wsum[aggIdx] > 0
+        ? wxsum[aggIdx] / wsum[aggIdx]
+        : null
+      : sums[aggIdx];
+    return {
+      name: col.name,
+      displayName: col.display_name ?? col.name,
+      value,
+      isPercent,
+    };
+  });
+}
+
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
