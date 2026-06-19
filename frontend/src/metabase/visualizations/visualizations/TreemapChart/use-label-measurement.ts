@@ -133,7 +133,6 @@ export function useLabelMeasurement({
     gridSize,
   ]);
 
-  // Measurements are only valid for the exact inputs they were measured at.
   const isStale = !isMeasuredFor(measured, currentKey);
 
   return {
