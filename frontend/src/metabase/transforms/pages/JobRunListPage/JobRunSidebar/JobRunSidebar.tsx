@@ -16,7 +16,11 @@ import {
   Stack,
   Title,
 } from "metabase/ui";
-import type { TransformJobId, TransformJobRun } from "metabase-types/api";
+import type {
+  TransformJobId,
+  TransformJobRun,
+  TransformRunForJobRun,
+} from "metabase-types/api";
 
 import { JobRunInfoSection } from "./JobRunInfoSection";
 import S from "./JobRunSidebar.module.css";
@@ -72,20 +76,11 @@ export const JobRunSidebar = memo(function JobRunSidebar({
                 </Badge>
                 <Title order={5}>{t`Transforms`}</Title>
               </Group>
-              {isLoading || error != null ? (
-                <LoadingAndErrorWrapper loading={isLoading} error={error} />
-              ) : transformRuns.length === 0 ? (
-                <ListEmptyState label={t`No transform runs`} />
-              ) : (
-                <Card p={0} shadow="none" withBorder>
-                  {transformRuns.map((transformRun) => (
-                    <TransformRunItem
-                      key={transformRun.id}
-                      transformRun={transformRun}
-                    />
-                  ))}
-                </Card>
-              )}
+              <TransformRunList
+                transformRuns={transformRuns}
+                isLoading={isLoading}
+                error={error}
+              />
             </Stack>
           </Stack>
         </Box>
@@ -93,6 +88,34 @@ export const JobRunSidebar = memo(function JobRunSidebar({
     </SidebarResizableBox>
   );
 });
+
+type TransformRunListProps = {
+  transformRuns: TransformRunForJobRun[];
+  isLoading: boolean;
+  error: unknown;
+};
+
+function TransformRunList({
+  transformRuns,
+  isLoading,
+  error,
+}: TransformRunListProps) {
+  if (isLoading || error != null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (transformRuns.length === 0) {
+    return <ListEmptyState label={t`No transform runs`} />;
+  }
+
+  return (
+    <Card p={0} shadow="none" withBorder>
+      {transformRuns.map((transformRun) => (
+        <TransformRunItem key={transformRun.id} transformRun={transformRun} />
+      ))}
+    </Card>
+  );
+}
 
 type JobRunSidebarHeaderProps = {
   onClose: () => void;
