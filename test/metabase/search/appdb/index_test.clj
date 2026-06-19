@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -705,6 +706,57 @@
         (testing "reindex completes and writes a single row for the card"
           (search.engine/reindex! :search.engine/appdb {:in-place? true})
           (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str card-id)))))))))
+
+(deftest reindex-does-not-misdirect-writes-to-active-when-pending-tracking-lost-test
+  ;; Regression for the reindex write-misdirection race. A full reindex resolved its destination table
+  ;; per batch from the tracking atom. If a concurrent TTL resync transiently blanked the :pending entry
+  ;; mid-reindex, later batches fell through to the LIVE active table instead of the pending one -- so
+  ;; the index that then got activated was silently missing whole models (real incident: indexed-entity
+  ;; and dataset, the last models processed, were written into the outgoing active table).
+  (when (search/supports-index?)
+    (search.tu/with-temp-index-table
+      (let [active-tbl    (search.index/active-table)
+            pending-tbl   (search.index/gen-table-name)
+            pending-lost? (atom false)
+            real-upsert   specialization/batch-upsert!
+            docs          (mapv (fn [i] {:model "card" :id (str i) :name (str "Reindex doc " i)
+                                         :display_data {} :legacy_input {} :archived false})
+                                (range 1 6))]
+        (try
+          (search.index/create-table! pending-tbl)
+          (is (zero? (t2/count active-tbl)) "active index starts empty")
+          (with-redefs [search.index/insert-batch-size  1
+                        ;; Real pending table until the first batch is written, then the tracking atom
+                        ;; "loses" it -- exactly what a background resync did mid-reindex in the incident.
+                        search.index/pending-table      (fn [] (when-not @pending-lost? pending-tbl))
+                        specialization/batch-upsert!     (fn [t entries]
+                                                           (reset! pending-lost? true)
+                                                           (real-upsert t entries))]
+            ;; *force-sync* false so we exercise the real reindex write path (not the dual-write path)
+            (binding [search.ingestion/*force-sync* false]
+              (#'search.index/index-docs! :search/reindexing docs)))
+          (testing "no batch is written to the live active table"
+            (is (zero? (t2/count active-tbl))))
+          (testing "every document lands in the pending table captured at the start of the reindex"
+            (is (= (count docs) (t2/count pending-tbl))))
+          (finally
+            (#'search.index/drop-table! pending-tbl)))))))
+
+(deftest reindex-aborts-when-no-pending-table-test
+  ;; Fail-safe half of the fix: a full reindex with no pending table to populate must throw rather than
+  ;; silently writing into the live active table.
+  (when (search/supports-index?)
+    (search.tu/with-temp-index-table
+      (let [writes (atom [])]
+        (with-redefs [search.index/pending-table    (constantly nil)
+                      specialization/batch-upsert!   (fn [t _entries] (swap! writes conj t) t)]
+          (binding [search.ingestion/*force-sync* false]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"(?i)pending"
+                 (#'search.index/index-docs!
+                  :search/reindexing
+                  [{:model "card" :id "1" :name "x" :display_data {} :legacy_input {} :archived false}])))
+            (is (empty? @writes) "nothing is written to the live active table")))))))
 
 (deftest when-index-created
   (when (search/supports-index?)
