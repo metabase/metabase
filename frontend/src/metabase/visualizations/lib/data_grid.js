@@ -22,6 +22,18 @@ export function isNativePivotData(cols) {
   return cols != null && !cols.some(isPivotGroupColumn);
 }
 
+// Returns the ordered list of row-dimension column names eligible to be the
+// inner breakdown (every row dim after the first). Empty when there are fewer
+// than 3 row dims, i.e. no choice to make. `columnSplit` is the migrated
+// column-split setting; `rows`/`columns` partitions are both considered.
+export function getBreakdownOptions(columnSplit) {
+  const allRows = [
+    ...(columnSplit?.rows ?? []),
+    ...(columnSplit?.columns ?? []),
+  ];
+  return allRows.length >= 3 ? allRows.slice(1) : [];
+}
+
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
@@ -29,6 +41,9 @@ export const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";
 export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
 export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
+// For native SQL pivots with 3+ row dimensions, the user can pick which
+// dimension (after the first) acts as the inner breakdown. Stores a column name.
+export const BREAKDOWN_DIMENSION_SETTING = "pivot.breakdown_dimension";
 
 // For native SQL queries the backend never adds the pivot-grouping column.
 // We synthesize it here so the CLJS pivot engine can process the data.
@@ -183,14 +198,30 @@ export function multiLevelPivot(data, settings) {
 
   const isNativeQuery = isNativePivotData(data.cols);
 
-  // Native SQL pivots use a single "Breakdown" dimension that should render as a
-  // nested row, not as horizontal column groups. Whatever the user placed in the
-  // "columns" (Breakdown) partition is appended to rows so the layout is stable
-  // regardless of which partition the column was dropped into.
+  // For native SQL, the columns partition is not used. Merge any residual
+  // columns entries (from old saved settings) into rows.
   if (isNativeQuery) {
+    const allRows = [
+      ...(columnSplit.rows ?? []),
+      ...(columnSplit.columns ?? []),
+    ];
+
+    // With 3+ row dimensions the first is the primary group and exactly one of
+    // the remaining dims is the active inner breakdown (selectable via a
+    // dropdown). The other secondary dims are dropped from the layout. With
+    // fewer than 3 dims, all rows render as-is.
+    let effectiveRows = allRows;
+    if (allRows.length >= 3) {
+      const [primary, ...secondary] = allRows;
+      const stored = settings[BREAKDOWN_DIMENSION_SETTING];
+      const chosen =
+        stored != null && secondary.includes(stored) ? stored : secondary[0];
+      effectiveRows = [primary, chosen];
+    }
+
     columnSplit = {
       ...columnSplit,
-      rows: [...(columnSplit.rows ?? []), ...(columnSplit.columns ?? [])],
+      rows: effectiveRows,
       columns: [],
     };
   }

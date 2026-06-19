@@ -18,6 +18,7 @@ interface CellProps {
   icon?: React.ReactNode;
   backgroundColor?: string;
   isBody?: boolean;
+  isCentered?: boolean;
   isBold?: boolean;
   isEmphasized?: boolean;
   isBorderedHeader?: boolean;
@@ -80,6 +81,7 @@ export function Cell({
   icon,
   backgroundColor,
   isBody = false,
+  isCentered = false,
   isBold,
   isEmphasized,
   isBorderedHeader,
@@ -114,6 +116,7 @@ export function Cell({
         <div
           className={cx(CS.px1, CS.flex, CS.alignCenter, {
             [CS.justifyEnd]: isBody,
+            [CS.justifyCenter]: isCentered,
           })}
         >
           <Ellipsified showTooltip={showTooltip}>{value}</Ellipsified>
@@ -161,6 +164,7 @@ export const TopHeaderCell = ({
       isBorderedHeader={maxDepthBelow === 0}
       isEmphasized={hasChildren}
       isBold={isSubtotal}
+      isCentered
       onClick={getCellClickHandler(clicked)}
       onResize={span < 2 ? onResize : undefined}
     />

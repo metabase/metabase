@@ -9,8 +9,6 @@ export interface Partition {
   name: "rows" | "columns" | "values";
   columnFilter: (col: DatasetColumn) => boolean;
   title: React.ReactNode;
-  // Optional maximum number of columns this partition can hold. The "Breakdown"
-  // partition is limited to a single dimension.
   maxSize?: number;
 }
 
@@ -30,15 +28,6 @@ export const partitions: Partition[] = [
     title: (
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
-    ),
-  },
-  {
-    name: "columns",
-    columnFilter: isDimensionColumn,
-    maxSize: 1,
-    title: (
-      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-      <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Breakdown`}</PivotTableSettingLabel>
     ),
   },
   {

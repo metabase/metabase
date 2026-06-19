@@ -349,14 +349,14 @@
         sorted-col-tree (sort-tree col-tree col-sort-orders)
         values-by-key   (build-values-by-key rows cols row-indexes col-indexes val-indexes)
         ;; Optionally sort the second row dimension by the first measure value.
-        ;; pivot.sort_rows_by_measure can be :asc or :desc (or nil for off).
+        ;; pivot.sort_rows_by_measure is the JS string "asc" / "desc" (or nil for off).
         measure-sort    (get settings :pivot.sort_rows_by_measure)
         final-row-tree  (if (and measure-sort (> (count row-indexes) 1))
                           (do
                             (sort-children-by-measure sorted-row-tree
                                                       col-indexes []
                                                       0
-                                                      (= measure-sort :desc)
+                                                      (= measure-sort "desc")
                                                       (count row-indexes)
                                                       0
                                                       values-by-key)

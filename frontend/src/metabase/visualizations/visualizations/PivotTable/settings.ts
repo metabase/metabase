@@ -6,6 +6,7 @@ import { displayNameForColumn } from "metabase/utils/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
+  BREAKDOWN_DIMENSION_SETTING,
   COLLAPSED_ROWS_SETTING,
   COLUMN_FORMATTING_SETTING,
   COLUMN_SHOW_TOTALS,
@@ -13,6 +14,7 @@ import {
   COLUMN_SORT_ORDER_ASC,
   COLUMN_SORT_ORDER_DESC,
   COLUMN_SPLIT_SETTING,
+  getBreakdownOptions,
   isNativePivotData,
   isPivotGroupColumn,
 } from "metabase/visualizations/lib/data_grid";
@@ -145,15 +147,10 @@ export const settings = {
         let columns: DatasetColumn[];
 
         if (isNativeQuery) {
-          // Native pivots render every dimension as a (nested) row. The first
-          // dimension (lowest cardinality, e.g. cohort_date) is the primary
-          // group; the second (e.g. country) becomes the single Breakdown,
-          // which is merged back in right after the primary row in the pivot
-          // engine so it renders as the second nested row.
-          rows = [first].filter(Boolean);
-          columns = second ? [second] : [];
-          // Any extra dimensions also become rows after the breakdown.
-          rows = [...rows, ...rest];
+          // Native pivots render all dimensions as nested rows. The Breakdown
+          // partition is not shown for native queries so everything goes to rows.
+          rows = [first, second, ...rest].filter(Boolean);
+          columns = [];
         } else if (dimensions.length < 2) {
           columns = [];
           rows = [first];
@@ -172,6 +169,19 @@ export const settings = {
           storedValue,
           columnsToPartition,
         );
+        // For native queries the Breakdown partition no longer exists. Migrate
+        // any columns-partition entries from old saved settings into rows. Native
+        // pivot settings are always column-name based, so this is name-safe.
+        const isNativeQuery = isNativePivotData(columnsToPartition);
+        const columnEntries = setting.columns ?? [];
+        if (isNativeQuery && columnEntries.length > 0) {
+          const rowEntries = setting.rows ?? [];
+          setting = {
+            rows: [...rowEntries, ...columnEntries] as string[],
+            columns: [],
+            values: (setting.values ?? []) as string[],
+          };
+        }
       }
 
       return addMissingCardBreakouts(setting, columnsToPartition);
@@ -253,6 +263,35 @@ export const settings = {
       // For native SQL pivots, pin the "Totals for …" row above its children
       // so it stays visible as a summary when the group is expanded.
       return data != null && isNativePivotData(data.cols);
+    },
+  },
+  [BREAKDOWN_DIMENSION_SETTING]: {
+    hidden: true,
+    getValue: (
+      [{ data }]: Series,
+      settings: Partial<VisualizationSettings> = {},
+    ) => {
+      // The chosen inner breakdown for native pivots with 3+ row dims. Defaults
+      // to the first secondary dimension; falls back if the stored choice is no
+      // longer one of the available secondary dimensions.
+      const isNativeQuery = data != null && isNativePivotData(data.cols);
+      if (!isNativeQuery) {
+        return null;
+      }
+      const columnSplit = migratePivotColumnSplitSetting(
+        settings["pivot_table.column_split"] ?? {
+          rows: [],
+          columns: [],
+          values: [],
+        },
+        data?.cols ?? [],
+      );
+      const options = getBreakdownOptions(columnSplit);
+      if (options.length === 0) {
+        return null;
+      }
+      const stored = settings[BREAKDOWN_DIMENSION_SETTING];
+      return stored != null && options.includes(stored) ? stored : options[0];
     },
   },
   "pivot.condense_duplicate_totals": {

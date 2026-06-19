@@ -21,12 +21,14 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
-import { useMantineTheme } from "metabase/ui";
+import { Flex, Select, Text, useMantineTheme } from "metabase/ui";
 import { sumArray } from "metabase/utils/arrays";
 import { getCspNonce } from "metabase/utils/csp";
 import { getScrollBarSize } from "metabase/utils/dom";
 import {
+  BREAKDOWN_DIMENSION_SETTING,
   COLUMN_SHOW_TOTALS,
+  getBreakdownOptions,
   isNativePivotData,
   isPivotGroupColumn,
   multiLevelPivot,
@@ -39,6 +41,7 @@ import type {
   VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 
 import {
   PivotTableRoot,
@@ -74,6 +77,7 @@ import {
 } from "./utils";
 
 const MIN_USABLE_BODY_WIDTH = 240;
+const BREAKDOWN_BAR_HEIGHT = 40;
 
 const mapStateToProps = (state: State) => ({
   fontFamily: getSetting(state, "application-font"),
@@ -243,6 +247,58 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
         return tc(getTitleForColumn(column, settings));
       },
       [data, settings, tc],
+    );
+
+    // For native pivots with 3+ row dimensions, build the breakdown picker:
+    // the user chooses which secondary dimension is the active inner breakdown.
+    const { breakdownOptions, breakdownValue } = useMemo(() => {
+      if (data == null || !isNativePivotData(data.cols)) {
+        return { breakdownOptions: [], breakdownValue: null };
+      }
+      const columnSplit = migratePivotColumnSplitSetting(
+        settings["pivot_table.column_split"] ?? {
+          rows: [],
+          columns: [],
+          values: [],
+        },
+        data.cols,
+      );
+      const optionNames = getBreakdownOptions(columnSplit);
+      if (optionNames.length === 0) {
+        return { breakdownOptions: [], breakdownValue: null };
+      }
+      const colByName = new Map(
+        data.cols
+          .filter((col) => !isPivotGroupColumn(col))
+          .map((col) => [col.name, col]),
+      );
+      const options = optionNames.map((name) => {
+        const col = colByName.get(name);
+        return {
+          value: name,
+          label: col ? tc(getTitleForColumn(col, settings)) : name,
+        };
+      });
+      const stored = settings[BREAKDOWN_DIMENSION_SETTING] as
+        | string
+        | null
+        | undefined;
+      const value =
+        stored != null && optionNames.includes(stored)
+          ? stored
+          : optionNames[0];
+      return { breakdownOptions: options, breakdownValue: value };
+    }, [data, settings, tc]);
+
+    const handleBreakdownChange = useCallback(
+      (value: string | null) => {
+        if (value != null) {
+          onUpdateVisualizationSettings({
+            [BREAKDOWN_DIMENSION_SETTING]: value,
+          });
+        }
+      },
+      [onUpdateVisualizationSettings],
     );
 
     function isColumnCollapsible(columnIndex: number) {
@@ -455,8 +511,11 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     const topHeaderRows =
       columnIndexes.length + (valueIndexes.length > 1 ? 1 : 0) || 1;
 
+    const showBreakdownPicker = breakdownOptions.length > 0;
+    const breakdownBarHeight = showBreakdownPicker ? BREAKDOWN_BAR_HEIGHT : 0;
+
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
-    const bodyHeight = height - topHeaderHeight;
+    const bodyHeight = height - topHeaderHeight - breakdownBarHeight;
     const verticalScrollBarSize =
       rowCount * CELL_HEIGHT > bodyHeight ? getScrollBarSize() : 0;
     const topHeaderWidth =
@@ -515,6 +574,27 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
           data-testid="pivot-table"
         >
           <div className={cx(CS.fullHeight, CS.flex, CS.flexColumn)}>
+            {showBreakdownPicker && (
+              <Flex
+                align="center"
+                gap="sm"
+                px="md"
+                style={{ height: BREAKDOWN_BAR_HEIGHT, flex: "0 0 auto" }}
+                data-testid="pivot-breakdown-picker"
+              >
+                <Text fw="bold" c="text-secondary" size="sm">
+                  {t`Breakdown`}
+                </Text>
+                <Select
+                  size="xs"
+                  data={breakdownOptions}
+                  value={breakdownValue}
+                  onChange={handleBreakdownChange}
+                  comboboxProps={{ withinPortal: false }}
+                  w={200}
+                />
+              </Flex>
+            )}
             <div className={CS.flex} style={{ height: topHeaderHeight }}>
               {/* top left corner - displays left header columns */}
               <PivotTableTopLeftCellsContainer

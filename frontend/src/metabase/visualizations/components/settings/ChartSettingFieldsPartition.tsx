@@ -97,10 +97,10 @@ const ChartSettingFieldsPartitionInternal = ({
 
   return (
     <>
-      {Object.keys(items).map((partitionName) => (
+      {partitions.map((partition) => (
         <PartitionContainer
-          key={partitionName}
-          partitionName={partitionName as keyof ColumnNameColumnSplitSetting}
+          key={partition.name}
+          partitionName={partition.name as keyof ColumnNameColumnSplitSetting}
           partitions={partitions}
           items={items}
           sourcePartition={sourcePartition}

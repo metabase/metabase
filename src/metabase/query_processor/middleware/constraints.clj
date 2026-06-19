@@ -23,8 +23,8 @@
 ;;
 ;; If we turned the below `const`s into `:default`s on the settings themselves, we would use the default values for
 ;; all queries, whether or not the middleware was applied.
-(def ^:private ^:const default-unaggregated-query-row-limit 10000)
-(def ^:private ^:const default-aggregated-query-row-limit 10000)
+(def ^:private ^:const default-unaggregated-query-row-limit 50000)
+(def ^:private ^:const default-aggregated-query-row-limit 50000)
 
 (defn default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
