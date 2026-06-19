@@ -1614,8 +1614,8 @@
    [:is-unique         :boolean]
    [:is-primary        :boolean]
    [:is-valid          :boolean]
-   ;; key columns in index order; an element is nil for an expression column (e.g. lower(email))
-   [:key-columns       [:sequential [:maybe :string]]]
+   ;; key columns in index order; an expression column carries its expression text (e.g. "lower(email)")
+   [:key-columns       [:sequential :string]]
    ;; non-key INCLUDE / covering columns
    [:include-columns   [:sequential [:maybe :string]]]
    ;; the WHERE clause of a partial index, else nil

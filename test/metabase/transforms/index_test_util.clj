@@ -115,9 +115,9 @@
                  (idx "fc_gin" :gin "gin" ["data"])
                  (idx "fc_brin" :brin "brin" ["created_at"])
                  (idx "fc_hash" :hash "hash" ["email"])
-                 (idx "fc_expr" :btree "btree" [nil])
-                 ;; mixed column + expression: order preserved, the expression element is nil
-                 (idx "fc_mixed" :btree "btree" ["user_id" nil])}}
+                 (idx "fc_expr" :btree "btree" ["lower(email)"])
+                 ;; mixed column + expression: order preserved, the expression carries its text
+                 (idx "fc_mixed" :btree "btree" ["user_id" "lower(email)"])}}
     {:label "a table with no indexes returns []"
      :table "mb_fetch_pg_empty"
      :create ["CREATE TABLE mb_fetch_pg_empty (a INT, b INT)"]

@@ -1460,7 +1460,7 @@
                  ix.indisvalid                          AS is_valid,
                  pg_get_expr(ix.indpred, ix.indrelid)   AS partial_predicate,
                  pg_get_indexdef(ix.indexrelid)         AS definition,
-                 ARRAY(SELECT a.attname
+                 ARRAY(SELECT COALESCE(a.attname, pg_get_indexdef(ix.indexrelid, k.ord::int, true))
                        FROM unnest(ix.indkey[0:ix.indnkeyatts - 1]) WITH ORDINALITY AS k(attnum, ord)
                        LEFT JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = k.attnum
                        ORDER BY k.ord)                  AS key_columns,
