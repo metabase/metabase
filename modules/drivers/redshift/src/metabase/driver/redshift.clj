@@ -261,13 +261,12 @@
                     "ORDER BY abs(sortkey)")
                (perf/not-empty schema) table])]
     (if (seq rows)
-      ;; `:access-method` carries the sortkey style (compound/interleaved) -- a sortkey's native "method", and the
-      ;; only place the style survives normalization (negative `sortkey` positions mark the whole key interleaved).
-      (let [style   (if (perf/some (comp neg? :sortkey) rows) "interleaved" "compound")
-            columns (perf/mapv :column_name rows)]
+      ;; negative `sortkey` positions mark the whole key INTERLEAVED
+      (let [interleaved? (perf/some (comp neg? :sortkey) rows)
+            columns      (perf/mapv :column_name rows)]
         [{:name              nil
           :kind              :sortkey
-          :access-method     style
+          :access-method     nil
           :is-unique         false
           :is-primary        false
           :is-valid          true
@@ -275,7 +274,7 @@
           :include-columns   []
           :partial-predicate nil
           :definition        (format "%s SORTKEY (%s)"
-                                     (str/upper-case style)
+                                     (if interleaved? "INTERLEAVED" "COMPOUND")
                                      (str/join ", " columns))}])
       [])))
 

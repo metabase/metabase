@@ -127,11 +127,11 @@
    [{:label  "the inline compound sortkey, unnamed, reconciled by kind + columns"
      :table  "mb_fetch_rs"
      :create ["CREATE TABLE mb_fetch_rs (a INT, b INT) COMPOUND SORTKEY (a, b)"]
-     :expected #{(idx nil :sortkey "compound" ["a" "b"])}}
+     :expected #{(idx nil :sortkey nil ["a" "b"])}}
     {:label  "an interleaved sortkey, whose sortkey positions are negative, still orders by abs() position"
      :table  "mb_fetch_rs_interleaved"
      :create ["CREATE TABLE mb_fetch_rs_interleaved (a INT, b INT) INTERLEAVED SORTKEY (a, b)"]
-     :expected #{(idx nil :sortkey "interleaved" ["a" "b"])}}
+     :expected #{(idx nil :sortkey nil ["a" "b"])}}
     {:label "a table with no sortkey returns []"
      :table "mb_fetch_rs_empty"
      :create ["CREATE TABLE mb_fetch_rs_empty (a INT, b INT)"]
