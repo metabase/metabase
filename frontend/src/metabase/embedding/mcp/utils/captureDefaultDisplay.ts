@@ -26,17 +26,27 @@ export function captureDefaultDisplay({
 }): DefaultDisplayState {
   const hasQueryChanged = previousState.queryKey !== queryKey;
 
+  const hasQueryResultChanged =
+    queryResult !== null && queryResult !== previousState.lastQueryResult;
+
   const previousDefaultDisplay = hasQueryChanged
     ? null
     : previousState.defaultDisplay;
 
-  const isQueryResultStale =
-    hasQueryChanged && queryResult === previousState.lastQueryResult;
+  const isQueryResultFresh =
+    queryResult !== null &&
+    currentDisplay !== null &&
+    (!hasQueryChanged || hasQueryResultChanged);
 
-  // SDK only updates the question display *after* the query result arrives.
-  // see `runQuestionQuerySdk` in `sdk-question/run-question-query.ts`
-  const hasDefaultDisplayUpdated =
-    queryResult !== null && currentDisplay !== null && !isQueryResultStale;
+  // Only update the query key when the SDK query result caught up.
+  // If we refresh the key too early, the next stale render will capture the old display for the new query.
+  if (!isQueryResultFresh) {
+    return {
+      defaultDisplay: previousDefaultDisplay,
+      queryKey: previousState.queryKey,
+      lastQueryResult: previousState.lastQueryResult,
+    };
+  }
 
   // Ad-hoc questions in MCP Apps initializes as `table`.
   // Replace that placeholder when default display actually loads.
@@ -44,16 +54,13 @@ export function captureDefaultDisplay({
   const shouldReplaceTablePlaceholder =
     previousDefaultDisplay === "table" && currentDisplay !== "table";
 
-  const shouldReplaceCurrentDisplay =
-    hasDefaultDisplayUpdated &&
-    (previousDefaultDisplay === null || shouldReplaceTablePlaceholder);
-
-  return {
-    defaultDisplay: shouldReplaceCurrentDisplay
+  // SDK only updates the question display *after* the query result arrives.
+  // We replace the display when that happens.
+  // see `runQuestionQuerySdk` in `sdk-question/run-question-query.ts`
+  const defaultDisplay =
+    previousDefaultDisplay === null || shouldReplaceTablePlaceholder
       ? currentDisplay
-      : previousDefaultDisplay,
+      : previousDefaultDisplay;
 
-    queryKey,
-    lastQueryResult: queryResult,
-  };
+  return { defaultDisplay, queryKey, lastQueryResult: queryResult };
 }

@@ -25,17 +25,43 @@ describe("captureDefaultDisplay", () => {
   it("does not capture stale SDK state after the query changes", () => {
     const previousResult = createQueryResult();
 
-    expect(
-      captureDefaultDisplay({
-        currentDisplay: "line",
-        queryKey: "query-2",
-        queryResult: previousResult,
-        previousState: createState({
-          defaultDisplay: "bar",
-          lastQueryResult: previousResult,
-        }),
-      }).defaultDisplay,
-    ).toBeNull();
+    const firstStaleState = captureDefaultDisplay({
+      currentDisplay: "line",
+      queryKey: "query-2",
+      queryResult: previousResult,
+      previousState: createState({
+        defaultDisplay: "bar",
+        lastQueryResult: previousResult,
+      }),
+    });
+
+    expect(firstStaleState.defaultDisplay).toBeNull();
+    expect(firstStaleState.queryKey).toBe("query-1");
+    expect(firstStaleState.lastQueryResult).toBe(previousResult);
+
+    const secondStaleState = captureDefaultDisplay({
+      currentDisplay: "line",
+      queryKey: "query-2",
+      queryResult: previousResult,
+      previousState: firstStaleState,
+    });
+
+    expect(secondStaleState.defaultDisplay).toBeNull();
+    expect(secondStaleState.queryKey).toBe("query-1");
+    expect(secondStaleState.lastQueryResult).toBe(previousResult);
+
+    const nextResult = createQueryResult();
+
+    const nextState = captureDefaultDisplay({
+      currentDisplay: "scalar",
+      queryKey: "query-2",
+      queryResult: nextResult,
+      previousState: secondStaleState,
+    });
+
+    expect(nextState.defaultDisplay).toBe("scalar");
+    expect(nextState.queryKey).toBe("query-2");
+    expect(nextState.lastQueryResult).toBe(nextResult);
   });
 
   it("captures the current display when the SDK state has updated", () => {

@@ -176,6 +176,17 @@ describe("useMcpVisualizationSelector", () => {
     ]);
 
     rerender({
+      question: createQuestion("line"),
+      queryKey: "query-2",
+      queryResults: [firstResult],
+    });
+
+    expect(result.current.sensibleChartTypes.map(({ type }) => type)).toEqual([
+      "bar",
+      "table",
+    ]);
+
+    rerender({
       question: createQuestion("scalar"),
       queryKey: "query-2",
       queryResults: [nextResult],
