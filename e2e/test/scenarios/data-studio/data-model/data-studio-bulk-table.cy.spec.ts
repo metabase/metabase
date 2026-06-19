@@ -125,6 +125,8 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
 
       cy.log("select multiple tables");
       TablePicker.getDatabase("Writable Postgres12").click();
+      // wait for the database's tables to load before selecting them
+      cy.wait("@getSchema");
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       TablePicker.getTable("Reviews").findByRole("checkbox").check();
