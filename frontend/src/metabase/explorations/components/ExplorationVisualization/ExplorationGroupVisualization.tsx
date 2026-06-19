@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
+import { explorationApi } from "metabase/api/exploration";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
 import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -178,24 +179,25 @@ function ExplorationGroupVisualizationChart({
   locationSearch,
   groupName,
 }: ExplorationGroupVisualizationProps & { groupName: string }) {
-  // One RTKQ hook per query. ESLint complains about hooks-in-a-loop;
-  // safe here because the parent keys this component on `group.id`, so
-  // `queries` length is stable for the lifetime of a single mount.
-  // RTKQ caches each per-query result for 30 minutes, so revisiting a
-  // `page` group is instant.
-  /* eslint-disable react-hooks/rules-of-hooks */
-  const datasetQueries = queries.map((q) =>
-    useGetExplorationQueryResultQuery(q.id),
-  );
-  /* eslint-enable react-hooks/rules-of-hooks */
+  const dispatch = useDispatch();
+  const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
 
-  // Extract the identity-stable dataset references so they can be
-  // individually tracked in the useMemo dependency array below.
-  const datasets = datasetQueries.map((q) => q.currentData);
-  // A result fetch can fail (most commonly a 403 when the viewer's data-access
-  // lens differs from the snapshot creator's). `currentData` stays undefined in
-  // that case, same as while loading, so track errors separately to avoid
-  // showing the loading skeleton forever.
+  useEffect(() => {
+    const subscriptions = queryIds.map((id) =>
+      dispatch(explorationApi.endpoints.getExplorationQueryResult.initiate(id)),
+    );
+    return () => {
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
+    };
+  }, [queryIds, dispatch]);
+
+  const datasetQueries = useSelector((state) =>
+    queryIds.map((id) =>
+      explorationApi.endpoints.getExplorationQueryResult.select(id)(state),
+    ),
+  );
+
+  const datasets = datasetQueries.map((q) => q.data);
   const datasetError = datasetQueries.find((q) => q.error)?.error;
 
   const { seriesGroups, layoutStrategy, chartsForDocumentEmbed } =
@@ -213,7 +215,7 @@ function ExplorationGroupVisualizationChart({
         datasets: filteredDatasets,
         selectedTimelineId,
       });
-      // datasets is reconstructed every render but its identity-stable
+      // datasets are reconstructed every render but its identity-stable
       // entries make this safe; including the array directly would cause
       // an unstable dep warning.
       // eslint-disable-next-line react-hooks/exhaustive-deps

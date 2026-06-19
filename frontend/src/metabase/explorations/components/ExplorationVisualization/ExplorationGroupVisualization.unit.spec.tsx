@@ -36,16 +36,23 @@ jest.mock("metabase/visualizations/components/Visualization", () => {
   return { __esModule: true, default: Visualization };
 });
 
-// Stub the per-query result hook so we can drive datasets (and errors) from each test.
 const mockDatasetsByQueryId = new Map<number, Dataset | undefined>();
 const mockErrorsByQueryId = new Map<number, unknown>();
 jest.mock("metabase/api/exploration", () => ({
   __esModule: true,
-  useGetExplorationQueryResultQuery: (id: number) => ({
-    currentData: mockDatasetsByQueryId.get(id),
-    error: mockErrorsByQueryId.get(id),
-    isLoading: !mockDatasetsByQueryId.has(id) && !mockErrorsByQueryId.has(id),
-  }),
+  explorationApi: {
+    endpoints: {
+      getExplorationQueryResult: {
+        initiate: () => () => ({ unsubscribe: jest.fn() }),
+        select: (id: number) => () => ({
+          data: mockDatasetsByQueryId.get(id),
+          error: mockErrorsByQueryId.get(id),
+          isLoading:
+            !mockDatasetsByQueryId.has(id) && !mockErrorsByQueryId.has(id),
+        }),
+      },
+    },
+  },
   useAppendChartToDocumentMutation: () => [jest.fn()],
   useCreateExplorationDocumentMutation: () => [jest.fn()],
 }));
