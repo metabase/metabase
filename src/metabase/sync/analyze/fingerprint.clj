@@ -239,7 +239,6 @@
   [table :- i/TableInstance]
   (tracing/with-span :sync "sync.fingerprint.table" {:db/id (:db_id table) :sync/table (:name table)}
     (let [limit  (sync.settings/fingerprint-max-fields-per-table)
-          ;; select one extra so we can tell whether there were more fields to skip, without loading them all
           fields (fields-to-fingerprint table (inc limit))]
       (when (> (count fields) limit)
         (warn-too-many-fields! table limit))

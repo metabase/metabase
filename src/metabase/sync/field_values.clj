@@ -180,7 +180,6 @@
   FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
   [table :- i/TableInstance]
   (let [limit            (sync.settings/scan-max-fields-per-table)
-        ;; select one extra so we can tell whether there were more fields to skip, without loading them all
         scanned          (table->fields-to-scan table (inc limit))
         _                (when (> (count scanned) limit)
                            (warn-too-many-fields! table limit))
@@ -290,7 +289,6 @@
   For more info about advanced FieldValues, check the docs
   in [[metabase.warehouse-schema.models.field-values/field-values-types]]"
   [table :- i/TableInstance]
-  ;; bounded like the scan above; fields beyond the limit were never scanned, so they have no FieldValues to expire
   (->> (table->fields-to-scan table (sync.settings/scan-max-fields-per-table))
        (map delete-expired-advanced-field-values-for-field!)
        (reduce +)))
