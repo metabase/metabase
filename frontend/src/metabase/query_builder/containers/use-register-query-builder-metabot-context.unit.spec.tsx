@@ -125,6 +125,19 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     expect(viewing.type).toEqual("adhoc");
   });
 
+  it("should register no context for adhoc questions without a data source", async () => {
+    const question = new Question(
+      createAdHocCard({
+        dataset_query: { type: "query", database: null, query: {} },
+      }),
+    );
+
+    const data = createMockData({ question });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    expect(result).toEqual({});
+  });
+
   it("should generate an image for the current question", async () => {
     const card = createMockCard({ display: "line" });
     const data = createMockData({ question: new Question(card) });
