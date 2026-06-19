@@ -14,15 +14,19 @@ export interface Partition {
   maxSize?: number;
 }
 
-// For native SQL queries, numeric/metric columns should go to Measures (values),
-// not Rows/Columns. This filter allows native columns only if they are non-metric.
-const isDimensionForNative = (col: DatasetColumn) =>
-  col.source === "native" ? !isMetric(col) : isDimension(col);
+// A native pivot column may arrive with source "native" (ad-hoc) or re-sourced
+// to "fields" (saved/dashboard card), so we cannot rely on source alone.
+// Classify by type: metric/numeric columns are measures, everything else is a
+// dimension. For structured queries this still matches isDimension/!isDimension.
+const isDimensionColumn = (col: DatasetColumn) =>
+  isDimension(col) && !isMetric(col);
+const isMeasureColumn = (col: DatasetColumn) =>
+  !isDimension(col) || isMetric(col);
 
 export const partitions: Partition[] = [
   {
     name: "rows",
-    columnFilter: isDimensionForNative,
+    columnFilter: isDimensionColumn,
     title: (
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Rows`}</PivotTableSettingLabel>
@@ -30,7 +34,7 @@ export const partitions: Partition[] = [
   },
   {
     name: "columns",
-    columnFilter: isDimensionForNative,
+    columnFilter: isDimensionColumn,
     maxSize: 1,
     title: (
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -39,7 +43,7 @@ export const partitions: Partition[] = [
   },
   {
     name: "values",
-    columnFilter: (col) => !isDimension(col) || col.source === "native",
+    columnFilter: isMeasureColumn,
     title: (
       // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       <PivotTableSettingLabel data-testid="pivot-table-setting">{t`Measures`}</PivotTableSettingLabel>

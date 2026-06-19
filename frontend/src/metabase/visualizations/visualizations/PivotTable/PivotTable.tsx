@@ -28,6 +28,7 @@ import { getCspNonce } from "metabase/utils/csp";
 import { getScrollBarSize } from "metabase/utils/dom";
 import {
   COLUMN_SHOW_TOTALS,
+  isNativePivotData,
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/visualizations/lib/data_grid";
@@ -186,13 +187,9 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       if (data == null) {
         return null;
       }
-      const isNativeQuery = data.cols.some((col) => col.source === "native");
       // For structured queries the backend adds a pivot-grouping column; for
-      // native SQL queries we synthesize it inside multiLevelPivot.
-      if (!isNativeQuery && !data.cols.some(isPivotGroupColumn)) {
-        return null;
-      }
-
+      // native SQL queries it's absent and multiLevelPivot synthesizes it.
+      // Both cases are handled there, which returns null if it can't process.
       try {
         return multiLevelPivot(data, settings);
       } catch (e) {
@@ -462,9 +459,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                           // you can only collapse before the last column
                           index < rowIndexes.length - 1 &&
                           (isColumnCollapsible(rowIndex) ||
-                            data.cols.some(
-                              (col) => col.source === "native",
-                            )) && (
+                            isNativePivotData(data.cols)) && (
                             <RowToggleIcon
                               value={index + 1}
                               settings={settings}
@@ -532,9 +527,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                               }
                               settings={settings}
                               getCellClickHandler={getCellClickHandler}
-                              isNativeQuery={data.cols.some(
-                                (col) => col.source === "native",
-                              )}
+                              isNativeQuery={isNativePivotData(data.cols)}
                             />
                           )}
                           cellSizeAndPositionGetter={({ index }) =>

@@ -506,17 +506,23 @@
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (qp.setup/with-qp-setup [query query]
      (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query) ; normalize to MBQL 5 if needed.
-           rff         (or rff qp.reducible/default-rff)
-           pivot-opts  (or
-                        (pivot-options query (get query :viz-settings))
-                        (pivot-options query (get-in query [:info :visualization-settings]))
-                        (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
-           pivot-limit (pivot-query-max-rows query)
-           query       (-> query
-                           (assoc-in [:middleware :pivot-options] pivot-opts)
-                           (assoc-in [:constraints :max-results] pivot-limit)
-                           (cond-> (get-in query [:constraints :max-results-bare-rows])
-                             (update-in [:constraints :max-results-bare-rows] min pivot-limit))
-                           add-canonical-col-info)
-           all-queries (generate-queries query pivot-opts)]
-       (process-multiple-queries all-queries rff pivot-limit)))))
+           rff         (or rff qp.reducible/default-rff)]
+       (if (lib/native-stage? query -1)
+         ;; Native queries have no breakouts/aggregations, so the pivot subquery
+         ;; machinery would produce empty/garbage rows. The FE pivots native
+         ;; results entirely client-side, so just run the query normally and let
+         ;; it post-process the raw rows.
+         (qp/process-query (qp/userland-query query) rff)
+         (let [pivot-opts  (or
+                            (pivot-options query (get query :viz-settings))
+                            (pivot-options query (get-in query [:info :visualization-settings]))
+                            (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+               pivot-limit (pivot-query-max-rows query)
+               query       (-> query
+                               (assoc-in [:middleware :pivot-options] pivot-opts)
+                               (assoc-in [:constraints :max-results] pivot-limit)
+                               (cond-> (get-in query [:constraints :max-results-bare-rows])
+                                 (update-in [:constraints :max-results-bare-rows] min pivot-limit))
+                               add-canonical-col-info)
+               all-queries (generate-queries query pivot-opts)]
+           (process-multiple-queries all-queries rff pivot-limit)))))))

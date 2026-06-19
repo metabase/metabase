@@ -11,6 +11,17 @@ export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
 }
 
+// A pivot data set needs the synthetic native handling (where we add the
+// pivot-grouping column and re-tag breakout/aggregation columns) when the
+// backend pivot pipeline never ran. We detect that by the ABSENCE of the
+// backend-added pivot-grouping column. Relying on `col.source === "native"`
+// alone is fragile: a native question used as a saved-question / dashboard card
+// can have its columns re-sourced to "fields", which would skip the native
+// handling and crash the CLJS pivot engine.
+export function isNativePivotData(cols) {
+  return cols != null && !cols.some(isPivotGroupColumn);
+}
+
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
@@ -30,15 +41,16 @@ function addPivotGroupingToNativeData(data, columnSplit) {
   const breakoutNames = new Set([...rowColNames, ...colColNames]);
 
   // Re-tag columns so split-pivot-data can count breakouts correctly.
-  // native source → "breakout" for row/col dims, "aggregation" for measures.
+  // Row/col dims → "breakout", measures → "aggregation". We tag purely by the
+  // column's membership in the split (not by its incoming source), because a
+  // native question used as a saved/dashboard card may arrive with source
+  // "fields" rather than "native".
+  const valueNames = new Set(valueColNames);
   const taggedCols = data.cols.map((col) => {
-    if (col.source !== "native") {
-      return col;
-    }
     if (breakoutNames.has(col.name)) {
       return { ...col, source: "breakout" };
     }
-    if (valueColNames.includes(col.name)) {
+    if (valueNames.has(col.name)) {
       return { ...col, source: "aggregation" };
     }
     return col;
@@ -61,12 +73,13 @@ export function multiLevelPivot(data, settings) {
   if (!settings[COLUMN_SPLIT_SETTING]) {
     return null;
   }
+
   let columnSplit = migratePivotColumnSplitSetting(
     settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
     data.cols,
   );
 
-  const isNativeQuery = data.cols.some((col) => col.source === "native");
+  const isNativeQuery = isNativePivotData(data.cols);
 
   // Native SQL pivots use a single "Breakdown" dimension that should render as a
   // nested row, not as horizontal column groups. Whatever the user placed in the

@@ -13,6 +13,7 @@ import {
   COLUMN_SORT_ORDER_ASC,
   COLUMN_SORT_ORDER_DESC,
   COLUMN_SPLIT_SETTING,
+  isNativePivotData,
   isPivotGroupColumn,
 } from "metabase/visualizations/lib/data_grid";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -74,7 +75,7 @@ export const settings = {
       if (!_.isEqual(rows, currentRows)) {
         // For questions with 2+ row columns (e.g. native SQL with a breakdown),
         // collapse the first level by default so the table is not overwhelming.
-        const isNativeQuery = data.cols.some((col) => col.source === "native");
+        const isNativeQuery = isNativePivotData(data.cols);
         const defaultCollapsed =
           isNativeQuery && (currentRows?.length ?? 0) >= 2 ? [1] : [];
         return { value: defaultCollapsed, rows: currentRows };
@@ -119,14 +120,13 @@ export const settings = {
       );
       let setting: PivotTableColumnSplitSetting;
       if (storedValue == null) {
-        const isNativeQuery = columnsToPartition.some(
-          (col) => col.source === "native",
-        );
+        const isNativeQuery = isNativePivotData(columnsToPartition);
         const [dimensions, values] = _.partition(
           columnsToPartition,
-          isNativeQuery
-            ? (col) => col.source === "native" && !isMetric(col)
-            : isDimension,
+          // For native pivots the backend never tags aggregations, so classify
+          // by type: numeric/metric columns are measures, everything else is a
+          // dimension.
+          isNativeQuery ? (col) => !isMetric(col) : isDimension,
         );
         const [first, second, ...rest] = _.sortBy(dimensions, (col) =>
           getIn(col, ["fingerprint", "global", "distinct-count"]),
@@ -185,7 +185,7 @@ export const settings = {
       if (stored !== undefined) {
         return stored;
       }
-      const isNativeQuery = data?.cols.some((col) => col.source === "native");
+      const isNativeQuery = data != null && isNativePivotData(data.cols);
       return !isNativeQuery;
     },
     inline: true,
@@ -207,7 +207,7 @@ export const settings = {
       if (stored !== undefined) {
         return stored;
       }
-      const isNativeQuery = data?.cols.some((col) => col.source === "native");
+      const isNativeQuery = data != null && isNativePivotData(data.cols);
       return !isNativeQuery;
     },
     inline: true,
@@ -346,9 +346,7 @@ export const _columnSettings = {
     ) => {
       // Native SQL has no backend-computed subtotals, so always hide them.
       const data = series?.[0]?.data;
-      const isNativeQuery = data?.cols.some(
-        (col: DatasetColumn) => col.source === "native",
-      );
+      const isNativeQuery = data != null && isNativePivotData(data.cols);
       if (isNativeQuery) {
         return false;
       }
