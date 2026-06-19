@@ -344,11 +344,12 @@
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch.
 
-  `reindex-table`, when non-nil, is the pending table captured once at the start of a full reindex (see
-  [[index-docs!]]). During a reindex we write ONLY to that table -- never the live active table -- so a
-  concurrent resync that transiently blanks the tracking atom can't redirect writes into the index we are
-  about to replace. For incremental and in-place updates (`reindex-table` nil) we dual-write to the active
-  and pending tables so an in-progress rebuild stays current."
+  `reindex-table`, when non-nil, is the destination captured once at the start of a full reindex (see
+  [[index-docs!]]) -- the pending table when a rebuild is staging one, otherwise the active table for an
+  initial build. During a reindex we write ONLY to that captured table, so a concurrent resync that
+  transiently blanks the tracking atom can't redirect writes elsewhere mid-rebuild. For incremental and
+  in-place updates (`reindex-table` nil) we dual-write to the active and pending tables so an in-progress
+  rebuild stays current."
   [reindex-table documents]
   ;; Protect against tests that nuke the appdb
   (when config/is-test?
@@ -391,13 +392,12 @@
   [context document-reducible]
   (tracing/with-span :search "search.appdb.index-docs" {:search/context (name context)}
     (let [reindexing?   (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
-          ;; Capture the pending table ONCE for the whole reindex. Resolving it per batch is unsafe: a
-          ;; concurrent TTL resync of the tracking atom can transiently blank it, which would otherwise
-          ;; flip the write target to the live active table and silently drop documents from the index we
-          ;; are about to activate.
-          reindex-table (when reindexing? (pending-table))]
-      (when (and reindexing? (nil? reindex-table))
-        (throw (ex-info "Refusing to reindex: no pending index table to populate" {:context context})))
+          ;; Capture the destination table ONCE for the whole reindex: the pending table when a rebuild is
+          ;; staging one, otherwise the active table (initial creation populates the freshly-activated table
+          ;; directly, with no pending). Resolving this per batch is unsafe -- a concurrent TTL resync of the
+          ;; tracking atom can transiently blank :pending, which would otherwise flip the write target to the
+          ;; live active table mid-rebuild and silently drop documents from the index we are about to activate.
+          reindex-table (when reindexing? (or (pending-table) (active-table)))]
       (transduce (comp (partition-all insert-batch-size)
                        (map (partial batch-update! reindex-table)))
                  (partial merge-with +)

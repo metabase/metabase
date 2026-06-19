@@ -742,21 +742,31 @@
           (finally
             (#'search.index/drop-table! pending-tbl)))))))
 
-(deftest reindex-aborts-when-no-pending-table-test
-  ;; Fail-safe half of the fix: a full reindex with no pending table to populate must throw rather than
-  ;; silently writing into the live active table.
+(deftest reindex-without-pending-populates-active-table-test
+  ;; The initial-build path populates the freshly-activated table directly with :search/reindexing context
+  ;; and NO pending table. That must keep writing to the active table (it is the captured destination), even
+  ;; if the tracking atom is blanked mid-build -- it must NOT be treated as an error.
   (when (search/supports-index?)
     (search.tu/with-temp-index-table
-      (let [writes (atom [])]
-        (with-redefs [search.index/pending-table    (constantly nil)
-                      specialization/batch-upsert!   (fn [t _entries] (swap! writes conj t) t)]
+      (let [active-tbl  (search.index/active-table)
+            atom-blank? (atom false)
+            real-upsert specialization/batch-upsert!
+            docs        (mapv (fn [i] {:model "card" :id (str i) :name (str "Init doc " i)
+                                       :display_data {} :legacy_input {} :archived false})
+                              (range 1 4))]
+        (is (zero? (t2/count active-tbl)) "active index starts empty")
+        (with-redefs [search.index/insert-batch-size 1
+                      ;; No pending table at all; the active reference is "lost" after the first write to
+                      ;; prove the destination captured at the start is used for the whole build.
+                      search.index/pending-table    (constantly nil)
+                      search.index/active-table     (fn [] (when-not @atom-blank? active-tbl))
+                      specialization/batch-upsert!  (fn [t entries]
+                                                      (reset! atom-blank? true)
+                                                      (real-upsert t entries))]
           (binding [search.ingestion/*force-sync* false]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo #"(?i)pending"
-                 (#'search.index/index-docs!
-                  :search/reindexing
-                  [{:model "card" :id "1" :name "x" :display_data {} :legacy_input {} :archived false}])))
-            (is (empty? @writes) "nothing is written to the live active table")))))))
+            (#'search.index/index-docs! :search/reindexing docs)))
+        (testing "every document lands in the active table that was captured at the start of the build"
+          (is (= (count docs) (t2/count active-tbl))))))))
 
 (deftest when-index-created
   (when (search/supports-index?)
