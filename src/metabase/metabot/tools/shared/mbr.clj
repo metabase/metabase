@@ -240,16 +240,21 @@
   roundtrips would be a noticeable perf cliff."
   ([model instances]
    (extract-readable model instances nil))
-  ([model instances {:keys [page]}]
-   (let [readable (filterv mi/can-read? instances)
+  ([model instances {:keys [page] :as opts}]
+   (let [paged?   (contains? opts :page)
+         readable (filterv mi/can-read? instances)
          total    (count readable)
          pages    (max 1 (long (Math/ceil (/ (double total) max-list-items))))
          page     (or (some-> page parse-long) 1)
-         _        (when (or (< page 1) (> page pages))
+         _        (when (and paged? (or (< page 1) (> page pages)))
                     (throw (ex-info (str "Invalid page " page ". This list has " pages
                                          (if (= pages 1) " page." " pages."))
                                     {:page page :pages pages})))
-         sliced   (->> readable (drop (* (dec page) max-list-items)) (take max-list-items) vec)
+         ;; No `:page` -> hydrate the whole readable set (concat sites paginate the
+         ;; combined vector themselves). With `:page` -> hydrate only that page.
+         sliced   (if paged?
+                    (->> readable (drop (* (dec page) max-list-items)) (take max-list-items) vec)
+                    readable)
          ids      (mapv :id sliced)
          mbrs     (if (empty? ids)
                     []
@@ -276,7 +281,9 @@
                                        (some->> (get extracted-by-path (serdes/generate-path model inst))
                                                 (redact-sandboxed model inst))))
                             sliced)))]
-     {:items mbrs :total total :page page :pages pages})))
+     (if paged?
+       {:items mbrs :total total :page page :pages pages}
+       mbrs))))
 
 (defn with-uri
   "Attach a navigation URI to an MBR map. Non-spec metadata, keyed `_uri`."

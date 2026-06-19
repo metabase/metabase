@@ -459,6 +459,41 @@
               (is (error? result))
               (is (str/includes? (:output result) "Invalid page 99")))))))))
 
+(deftest collection-items-paginates-across-concatenated-models-test
+  (testing "collection/{id}/items pages over the concatenated subcollections+cards stream — :total is
+           the full combined count, the boundary falls mid-model, and ?page=2 returns the remainder"
+    ;; Realistic case: an agent browses a big collection. The concat handler hydrates each sub-list
+    ;; then paginates the combined vector via paginate-items, so the page boundary can fall mid-model.
+    ;; Split cap+2 items as (cap-2) subcollections + 4 cards: page 1 = all subs + 2 cards, page 2 = 2 cards.
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database   {db-id :id}   {}
+                     :model/Collection {coll-id :id} {:name "Big Coll" :location "/"}]
+        (let [cap   @(requiring-resolve 'metabase.metabot.tools.shared.mbr/max-list-items)
+              n-sub  (- cap 2)
+              n-card 4
+              total  (+ n-sub n-card)]
+          (doseq [i (range n-sub)]
+            (t2/insert! :model/Collection {:name (format "SUB-%02d" i) :location (str "/" coll-id "/")}))
+          (doseq [i (range n-card)]
+            (t2/insert! :model/Card {:name (format "CARD-%02d" i) :collection_id coll-id
+                                     :database_id db-id :creator_id (mt/user->id :crowberto)
+                                     :display :table :dataset_query {} :visualization_settings {}}))
+          (let [p1 (-> (read-resource/read-resource {:uris [(str "metabase://collection/" coll-id "/items")]})
+                       (get-in [:resources 0 :content :structured-output]))
+                p2 (-> (read-resource/read-resource {:uris [(str "metabase://collection/" coll-id "/items?page=2")]})
+                       (get-in [:resources 0 :content :structured-output]))]
+            (testing "page 1 caps at the page size and reports the full combined total"
+              (is (= total (:total p1)))
+              (is (= cap (count (:items p1))))
+              (is (= 1 (:page p1)))
+              (is (= 2 (:pages p1)))
+              (is (true? (:truncated p1))))
+            (testing "page 2 holds the remainder and is the last page"
+              (is (= total (:total p2)))
+              (is (= (- total cap) (count (:items p2))))
+              (is (= 2 (:page p2)))
+              (is (false? (:truncated p2))))))))))
+
 (deftest tables-with-duplicate-names-across-schemas-test
   (testing "two tables sharing a name in different schemas both appear (no serdes-path collision)"
     ;; extract-readable re-correlates extracted MBRs to instances by full serdes
