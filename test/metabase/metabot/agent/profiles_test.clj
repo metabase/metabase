@@ -4,6 +4,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.transforms :as tools.transforms]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
@@ -215,3 +216,29 @@
         (is (= #{}
                (set (#'profiles/filter-by-capabilities transform-tools
                                                        ["permission:write_transforms"]))))))))
+
+(deftest terminal-tools-test
+  (testing "the :sql profile marks its SQL write tools AND clarification terminal"
+    (is (= #{"create_sql_query" "edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"}
+           (:terminal-tools (profiles/get-profile :sql)))))
+  (testing "the document profile ends the turn on a constructed chart, not on schema collection"
+    (is (= #{"document_construct_model_chart" "document_construct_sql_chart"}
+           (:terminal-tools (profiles/get-profile :document-generate-content)))))
+  (testing "terminality is per-profile — profiles that share these tools don't inherit it"
+    (is (nil? (:terminal-tools (profiles/get-profile :internal))))
+    (is (nil? (:terminal-tools (profiles/get-profile :nlq))))))
+
+(deftest register-profile-validation-test
+  (let [base {:name            :scratch
+              :prompt-template "internal.selmer"
+              :max-iterations  10
+              :temperature     0.3
+              :tools           [#'tools/read-resource-tool]}]
+    (testing "rejects :always-on-skills that don't resolve to a registered skill"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unknown always-on skill"
+                            (#'profiles/register-profile!
+                             (assoc base :always-on-skills [:no-such-skill])))))
+    (testing "rejects :terminal-tools the profile does not expose"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"terminal tools it does not expose"
+                            (#'profiles/register-profile!
+                             (assoc base :terminal-tools #{"nonexistent_tool"})))))))
