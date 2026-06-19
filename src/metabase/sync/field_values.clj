@@ -200,8 +200,8 @@
                                     (let [fv (get fvs-map (u/the-id field))]
                                       (cond
                                         (not fv)
-                                        (do (log/infof "%s does not have FieldValues. Skipping..."
-                                                       (sync-util/name-for-logging field))
+                                        (do (log/tracef "%s does not have FieldValues. Skipping..."
+                                                        (sync-util/name-for-logging field))
                                             false)
 
                                         (field-values/inactive? fv)
