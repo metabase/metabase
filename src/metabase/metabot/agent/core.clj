@@ -183,20 +183,47 @@
               (get-in % [:result :final-response?]))
         parts))
 
+(defn- successful-tool-output?
+  "Whether a `:tool-output` part represents a successful, answer-producing call.
+  The query/chart-producing tools attach `:structured-output` only on success, returning just an
+  `:output` (error string) on validation/exception failures — so its presence is the success signal."
+  [part]
+  (and (= (:type part) :tool-output)
+       (some? (get-in part [:result :structured-output]))))
+
+(defn- terminal-tool-call?
+  "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
+  tool-name strings). This lets a profile end the turn as soon as it produces its answer (e.g. the
+  `:sql` profile after a successful `edit_sql_query`) instead of forcing the model to keep emitting
+  tool calls under `:required-tool-call?`.
+
+  A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
+  [terminal-tools parts]
+  (boolean
+   (when (seq terminal-tools)
+     (let [success-ids (into #{} (comp (filter successful-tool-output?) (map :id)) parts)]
+       (some (fn [p]
+               (and (= (:type p) :tool-input)
+                    (contains? terminal-tools (:function p))
+                    (contains? success-ids (:id p))))
+             parts)))))
+
 (defn- should-continue?
   "Determine if agent should continue iterating."
-  [iteration max-iterations parts]
+  [iteration max-iterations terminal-tools parts]
   (and (< iteration max-iterations)
        (has-tool-calls? parts)
-       (not (has-final-response? parts))))
+       (not (has-final-response? parts))
+       (not (terminal-tool-call? terminal-tools parts))))
 
 (defn- finish-reason
   "Determine why the agent loop stopped."
-  [iteration max-iterations parts]
+  [iteration max-iterations terminal-tools parts]
   (cond
-    (>= iteration max-iterations) :max-iterations
-    (has-final-response? parts)   :final-response
-    :else                         :stop))
+    (>= iteration max-iterations)              :max-iterations
+    (has-final-response? parts)                :final-response
+    (terminal-tool-call? terminal-tools parts) :terminal-tool
+    :else                                      :stop))
 
 ;;; Call LLM
 (defn- part->invert-links-key
@@ -478,6 +505,7 @@
                      :iteration iteration}
     (let [{:keys [profile tools context memory-atom tracking-opts]} agent
           max-iter           (:max-iterations profile 10)
+          terminal-tools     (set (:terminal-tools profile))
           tracking-opts      (assoc tracking-opts :iteration iteration)
           memory             @memory-atom
           parts-atom         (atom [])
@@ -510,14 +538,14 @@
             (reduced? result')
             (assoc loop-state :status :reduced :result @result')
 
-            (should-continue? iteration max-iter parts)
+            (should-continue? iteration max-iter terminal-tools parts)
             (assoc loop-state :result result' :iteration (inc iteration))
 
             :else
             (do (log/info "Agent loop complete"
                           {:iterations iteration
                            ;; TODO: decide if we want this reason to float up to frontend
-                           :reason     (finish-reason iteration max-iter parts)})
+                           :reason     (finish-reason iteration max-iter terminal-tools parts)})
                 (assoc loop-state
                        :status :done
                        :result (rf result' (final-state-part @memory-atom))))))))))
