@@ -79,28 +79,39 @@
    to the dispatch should mean adding one row here. Args are positional and string-typed
    the way the dispatch passes them to the handler."
   [;; ----- Top-level navigation -----
-   ["metabase://databases"                                 :databases-list             []]
+   ;; List routes take a trailing query-params arg (nil when no query string).
+   ;; `?page=N` rows confirm the page param threads through to the handler.
+   ["metabase://databases"                                 :databases-list             [nil]]
+   ["metabase://databases?page=2"                          :databases-list             [{:page "2"}]]
    ["metabase://collections"                               :collections-list           [nil]]
    ["metabase://collections?tree=true"                     :collections-list           [{:tree "true"}]]
    ["metabase://collections?tree=true&foo=bar"             :collections-list           [{:tree "true" :foo "bar"}]]
+   ["metabase://collections?page=2"                        :collections-list           [{:page "2"}]]
    ["metabase://user/recent-items"                         :user-recents               []]
    ;; ----- Database drill-down -----
    ["metabase://database/1"                                :database                   ["1"]]
-   ["metabase://database/1/tables"                         :database-tables            ["1"]]
-   ["metabase://database/1/models"                         :database-models            ["1"]]
-   ["metabase://database/1/schemas"                        :database-schemas           ["1"]]
-   ["metabase://database/1/schemas/PUBLIC/tables"          :database-schema-tables     ["1" "PUBLIC"]]
-   ["metabase://database/1/schemas/lower_case/tables"      :database-schema-tables     ["1" "lower_case"]]
+   ["metabase://database/1/tables"                         :database-tables            ["1" nil]]
+   ["metabase://database/1/tables?page=2"                  :database-tables            ["1" {:page "2"}]]
+   ["metabase://database/1/models"                         :database-models            ["1" nil]]
+   ["metabase://database/1/models?page=2"                  :database-models            ["1" {:page "2"}]]
+   ["metabase://database/1/schemas"                        :database-schemas           ["1" nil]]
+   ["metabase://database/1/schemas?page=2"                 :database-schemas           ["1" {:page "2"}]]
+   ["metabase://database/1/schemas/PUBLIC/tables"          :database-schema-tables     ["1" "PUBLIC" nil]]
+   ["metabase://database/1/schemas/PUBLIC/tables?page=2"   :database-schema-tables     ["1" "PUBLIC" {:page "2"}]]
+   ["metabase://database/1/schemas/lower_case/tables"      :database-schema-tables     ["1" "lower_case" nil]]
    ;; ----- Collection drill-down -----
    ["metabase://collection/2"                              :collection                 ["2"]]
-   ["metabase://collection/2/items"                        :collection-items           ["2"]]
-   ["metabase://collection/2/subcollections"               :collection-subcollections  ["2"]]
+   ["metabase://collection/2/items"                        :collection-items           ["2" nil]]
+   ["metabase://collection/2/items?page=2"                 :collection-items           ["2" {:page "2"}]]
+   ["metabase://collection/2/subcollections"               :collection-subcollections  ["2" nil]]
+   ["metabase://collection/2/subcollections?page=2"        :collection-subcollections  ["2" {:page "2"}]]
    ;; ----- Table -----
    ["metabase://table/3"                                   :table                      ["3"]]
    ["metabase://table/3/fields"                            :table-fields               ["3"]]
    ["metabase://table/3/fields/42"                         :table-field                ["3" "42"]]
    ["metabase://table/3/fields/c75/17"                     :table-field                ["3" "c75/17"]]
-   ["metabase://table/3/derived"                           :table-derived              ["3"]]
+   ["metabase://table/3/derived"                           :table-derived              ["3" nil]]
+   ["metabase://table/3/derived?page=2"                    :table-derived              ["3" {:page "2"}]]
    ;; ----- Model (a card type) -----
    ["metabase://model/4"                                   :card                       ["model" "4"]]
    ["metabase://model/4/fields"                            :card-fields                ["model" "4"]]
@@ -118,11 +129,13 @@
    ["metabase://metric/6/dimensions/dim-1"                 :metric-dimension           ["6" "dim-1"]]
    ;; ----- Transform -----
    ["metabase://transform/7"                               :transform                  ["7"]]
-   ["metabase://transform/7/sources"                       :transform-sources          ["7"]]
+   ["metabase://transform/7/sources"                       :transform-sources          ["7" nil]]
+   ["metabase://transform/7/sources?page=2"                :transform-sources          ["7" {:page "2"}]]
    ["metabase://transform/7/target"                        :transform-target           ["7"]]
    ;; ----- Dashboard -----
    ["metabase://dashboard/8"                               :dashboard                  ["8"]]
-   ["metabase://dashboard/8/items"                         :dashboard-items            ["8"]]])
+   ["metabase://dashboard/8/items"                         :dashboard-items            ["8" nil]]
+   ["metabase://dashboard/8/items?page=2"                  :dashboard-items            ["8" {:page "2"}]]])
 
 (deftest dispatch-routing-test
   (testing "every supported URI pattern routes to the expected handler with the expected args"
@@ -419,12 +432,32 @@
           (let [result (read-resource/read-resource
                         {:uris [(str "metabase://database/" db-id "/tables")]})
                 so     (get-in result [:resources 0 :content :structured-output])]
-            (is (= n (:total so))
-                "total must be the full readable count, not the capped item count")
-            (is (= cap (count (:items so)))
-                "items must be capped at max-list-items")
-            (is (true? (:truncated so))
-                "truncated must be true when readable count exceeds the cap")))))))
+            (testing "page 1 (default) caps items, reports true total, is truncated"
+              (is (= n (:total so))
+                  "total must be the full readable count, not the capped item count")
+              (is (= cap (count (:items so)))
+                  "items must be capped at max-list-items")
+              (is (= 1 (:page so)))
+              (is (= 2 (:pages so)))
+              (is (true? (:truncated so))
+                  "truncated must be true when readable count exceeds the cap")))
+          (testing "?page=2 returns the remaining items and is not truncated"
+            (let [result (read-resource/read-resource
+                          {:uris [(str "metabase://database/" db-id "/tables?page=2")]})
+                  so     (get-in result [:resources 0 :content :structured-output])]
+              (is (= n (:total so))
+                  "total stays the full readable count across pages")
+              (is (= (- n cap) (count (:items so)))
+                  "page 2 holds only the leftover items past the cap")
+              (is (= 2 (:page so)))
+              (is (= 2 (:pages so)))
+              (is (false? (:truncated so))
+                  "the last page is not truncated")))
+          (testing "an out-of-range page yields an Invalid page error, not a silent empty list"
+            (let [result (read-resource/read-resource
+                          {:uris [(str "metabase://database/" db-id "/tables?page=99")]})]
+              (is (error? result))
+              (is (str/includes? (:output result) "Invalid page 99")))))))))
 
 (deftest tables-with-duplicate-names-across-schemas-test
   (testing "two tables sharing a name in different schemas both appear (no serdes-path collision)"
@@ -650,12 +683,14 @@
         (is (str/includes? output "\"list-type\":\"recent-items\""))))))
 
 (deftest read-list-shape-test
-  (testing "list responses always carry list-type/total/truncated keys in MBR JSON"
+  (testing "list responses always carry list-type/total/page/pages/truncated keys in MBR JSON"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://databases"]})]
         (is (str/includes? output "\"list-type\":\"databases\""))
         (is (str/includes? output "\"total\":"))
         (is (str/includes? output "\"items\":"))
+        (is (str/includes? output "\"page\":"))
+        (is (str/includes? output "\"pages\":"))
         (is (str/includes? output "\"truncated\":"))))))
 
 (deftest format-resources-test

@@ -30,6 +30,10 @@
 
 (set! *warn-on-reflection* true)
 
+;; `extract-readable` (and the doc-refs above it) reference `max-list-items`, which is
+;; defined lower in the file for narrative ordering. Forward-declare so it resolves.
+(declare max-list-items)
+
 (defn- enc [s]
   (codec/url-encode (cond
                       (keyword? s) (name s)
@@ -216,27 +220,34 @@
 (defn extract-readable
   "Map MBR over a sequence of `instances`, dropping any the current user cannot read.
 
-  Without `:limit`, returns a vector of MBR maps for the readable subset.
+  Without `:page`, returns a vector of MBR maps for the readable subset.
 
-  With `:limit n`, slices the readable subset to the first `n` instances *before*
-  extracting — so we never serdes-hydrate items the caller will throw away — and
-  returns a map `{:items <≤n MBRs> :total <full readable count>}`. `:total` is
-  the count of readable instances before the limit, so the caller can report
-  honest truncation even though only `n` were extracted.
+  With `:page n` (1-indexed string or int), slices the readable subset to that page
+  of [[max-list-items]] instances *before* extracting — so we never serdes-hydrate
+  items the caller will throw away — and returns a map
+  `{:items <≤page-size MBRs> :total <full readable count> :page n :pages <total pages>}`.
+  Throws on a page number outside [1, pages] rather than silently clamping, so the
+  caller (the agent) learns it passed a bad value.
 
   Maintains input order by re-correlating each instance to its extracted MBR via
   the full serdes path tuple (see the comment in the body).
 
-  Batched: one `extract-all` call against the union of (possibly limited) readable
+  Batched: one `extract-all` call against the union of (page-sliced) readable
   ids, not one per instance. This matters for collection list endpoints where a
   single response may extract dozens of cards/dashboards — N+1 nested-hydration
   roundtrips would be a noticeable perf cliff."
   ([model instances]
    (extract-readable model instances nil))
-  ([model instances {:keys [limit]}]
+  ([model instances {:keys [page]}]
    (let [readable (filterv mi/can-read? instances)
          total    (count readable)
-         sliced   (if limit (vec (take limit readable)) readable)
+         pages    (max 1 (long (Math/ceil (/ (double total) max-list-items))))
+         page     (or (some-> page parse-long) 1)
+         _        (when (or (< page 1) (> page pages))
+                    (throw (ex-info (str "Invalid page " page ". This list has " pages
+                                         (if (= pages 1) " page." " pages."))
+                                    {:page page :pages pages})))
+         sliced   (->> readable (drop (* (dec page) max-list-items)) (take max-list-items) vec)
          ids      (mapv :id sliced)
          mbrs     (if (empty? ids)
                     []
@@ -263,9 +274,7 @@
                                        (some->> (get extracted-by-path (serdes/generate-path model inst))
                                                 (redact-sandboxed model inst))))
                             sliced)))]
-     (if limit
-       {:items mbrs :total total}
-       mbrs))))
+     {:items mbrs :total total :page page :pages pages})))
 
 (defn with-uri
   "Attach a navigation URI to an MBR map. Non-spec metadata, keyed `_uri`."
@@ -286,35 +295,27 @@
     (table-uri db-name schema table-name)))
 
 (def max-list-items
-  "Cap on items in a single list response. When exceeded the response includes
-   `:truncated true` and `:total` so the agent knows there are more items it
-   can drill into (via search or by paginating, once that's wired).
-
-   Callers pass this as `:limit` to [[extract-readable]] so only this many items
-   are serdes-hydrated, never the full readable set."
+  "Page size for list responses. [[extract-readable]] hydrates at most this many
+   items per page (the rest are reachable via `?page=N`), so we never serdes-hydrate
+   more than one page worth."
   25)
 
 (defn list-result
-  "Wrap a sequence of MBR items in the list envelope used by `read_resource`.
+  "Wrap a paged MBR result in the list envelope used by `read_resource`.
 
-   The shape matches `metabase.metabot.tools.resources` dispatch contract:
-   the outer map has `:structured-output` whose `:result-type` tells
-   [[metabase.metabot.tools.resources/format-content]] how to render.
-
-   `items` is already capped upstream (callers slice via [[extract-readable]]'s
-   `:limit`). Pass the true pre-cap count as `:total` in `opts` so `:truncated`
-   reports honestly; when `:total` is omitted it falls back to `(count items)`
-   (correct only when no upstream cap was applied)."
-  [list-type items {:keys [total]}]
-  (let [items  (vec items)
-        total  (or total (count items))
-        capped (vec (take max-list-items items))]
-    {:structured-output
-     {:result-type :mbr-list
-      :list-type   list-type
-      :items       capped
-      :total       total
-      :truncated   (> total max-list-items)}}))
+   `paged` is the `{:items :total :page :pages}` map returned by [[extract-readable]]
+   (already page-sliced and hydrated). `:truncated` is `(< page pages)`. The
+   `:structured-output` `:result-type` tells
+   [[metabase.metabot.tools.resources/format-content]] how to render."
+  [list-type {:keys [items total page pages]}]
+  {:structured-output
+   {:result-type :mbr-list
+    :list-type   list-type
+    :items       (vec items)
+    :total       total
+    :page        page
+    :pages       pages
+    :truncated   (< page pages)}})
 
 (defn entity-result
   "Wrap a single MBR map in the entity envelope used by `read_resource`.

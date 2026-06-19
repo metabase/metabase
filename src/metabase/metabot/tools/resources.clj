@@ -84,6 +84,33 @@
     {:segments     segments
      :query-params (parse-query-string qs)}))
 
+;; ----- Pagination helper -----
+
+(defn- paginate-items
+  "Paginate an already-built/hydrated item vector the same way
+   [[metabase.metabot.tools.shared.mbr/extract-readable]] paginates instances.
+
+   Used by the concat sites (which mix models and so can't page through a single
+   `extract-readable` call) and by the hand-built schema list. `page-str` is the
+   raw `:page` query-param (string or nil); page size is
+   [[metabase.metabot.tools.shared.mbr/max-list-items]]. Returns
+   `{:items <≤page-size> :total <full count> :page n :pages <total pages>}` and
+   throws on a page outside [1, pages] — matching extract-readable's contract and
+   error message so the agent gets a consistent signal."
+  [items page-str]
+  (let [items (vec items)
+        total (count items)
+        pages (max 1 (long (Math/ceil (/ (double total) mbr/max-list-items))))
+        page  (or (some-> page-str parse-long) 1)]
+    (when (or (< page 1) (> page pages))
+      (throw (ex-info (str "Invalid page " page ". This list has " pages
+                           (if (= pages 1) " page." " pages."))
+                      {:page page :pages pages})))
+    {:items (->> items (drop (* (dec page) mbr/max-list-items)) (take mbr/max-list-items) vec)
+     :total total
+     :page  page
+     :pages pages}))
+
 ;; ----- Lineage helpers -----
 
 (defn- transform-source-table-ids
@@ -94,12 +121,11 @@
 
 ;; ----- Fetch handlers (one per URI shape) -----
 
-(defn- fetch-databases-list []
-  (let [dbs   (t2/select :model/Database
-                         :is_audit false
-                         {:order-by [[:%lower.name :asc]]})
-        {:keys [items total]} (mbr/extract-readable "Database" dbs {:limit mbr/max-list-items})]
-    (mbr/list-result :databases items {:total total})))
+(defn- fetch-databases-list [query-params]
+  (let [dbs (t2/select :model/Database
+                       :is_audit false
+                       {:order-by [[:%lower.name :asc]]})]
+    (mbr/list-result :databases (mbr/extract-readable "Database" dbs {:page (:page query-params)}))))
 
 (defn- fetch-collections-list
   "metabase://collections (root only) and metabase://collections?tree=true (flat list of all).
@@ -107,7 +133,7 @@
    In MBR, hierarchy is encoded by each Collection's `parent_id` (entity_id of
    parent). For tree mode we return the flat list across the namespace; the
    caller assembles the tree by chaining `parent_id`."
-  [{:keys [tree] :as _query-params}]
+  [{:keys [tree page] :as _query-params}]
   (let [tree?  (= "true" tree)
         where  (cond-> [:and
                         [:= :archived false]
@@ -117,11 +143,9 @@
                  (not tree?) (conj [:= :location "/"]))
         colls  (t2/select :model/Collection
                           {:where    where
-                           :order-by [[:location :asc] [:%lower.name :asc]]})
-        {:keys [items total]} (mbr/extract-readable "Collection" colls {:limit mbr/max-list-items})]
+                           :order-by [[:location :asc] [:%lower.name :asc]]})]
     (mbr/list-result (if tree? :collections-tree :collections-root)
-                     items
-                     {:total total})))
+                     (mbr/extract-readable "Collection" colls {:page page}))))
 
 (defn- recent-model->mbr-model
   "Activity-feed shorthand -> MBR model name."
@@ -161,7 +185,7 @@
                                    (-> (mbr/->mbr (recent-model->mbr-model model) inst)
                                        (assoc :_recently_viewed_at timestamp)))))))
                      vec)]
-    (mbr/list-result :recent-items items {:total (count items)})))
+    (mbr/list-result :recent-items (paginate-items items nil))))
 
 ;; ----- Database drill-down -----
 
@@ -170,28 +194,26 @@
     (mbr/entity-result (mbr/extract-as-user "Database" db))
     {:status-code 404 :output (str "Database " id-str " not found")}))
 
-(defn- fetch-database-tables [id-str]
+(defn- fetch-database-tables [id-str query-params]
   (let [db     (mbr/resolve-database id-str)
         _      (api/read-check db)
         tables (t2/select :model/Table
                           :db_id  (:id db)
                           :active true
-                          {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]})
-        {:keys [items total]} (mbr/extract-readable "Table" tables {:limit mbr/max-list-items})]
-    (mbr/list-result :database-tables items {:total total})))
+                          {:order-by [[:%lower.schema :asc] [:%lower.name :asc]]})]
+    (mbr/list-result :database-tables (mbr/extract-readable "Table" tables {:page (:page query-params)}))))
 
-(defn- fetch-database-models [id-str]
+(defn- fetch-database-models [id-str query-params]
   (let [db     (mbr/resolve-database id-str)
         _      (api/read-check db)
         models (t2/select :model/Card
                           :type        :model
                           :database_id (:id db)
                           :archived    false
-                          {:order-by [[:%lower.name :asc]]})
-        {:keys [items total]} (mbr/extract-readable "Card" models {:limit mbr/max-list-items})]
-    (mbr/list-result :database-models items {:total total})))
+                          {:order-by [[:%lower.name :asc]]})]
+    (mbr/list-result :database-models (mbr/extract-readable "Card" models {:page (:page query-params)}))))
 
-(defn- fetch-database-schemas [id-str]
+(defn- fetch-database-schemas [id-str query-params]
   (let [db      (mbr/resolve-database id-str)
         _       (api/read-check db)
         rows    (t2/query
@@ -208,18 +230,17 @@
                              {:type        "schema"
                               :name        s
                               :database    (:name db)})))]
-    (mbr/list-result :database-schemas schemas {:total (count schemas)})))
+    (mbr/list-result :database-schemas (paginate-items schemas (:page query-params)))))
 
-(defn- fetch-database-schema-tables [id-str schema-name]
+(defn- fetch-database-schema-tables [id-str schema-name query-params]
   (let [db     (mbr/resolve-database id-str)
         _      (api/read-check db)
         tables (t2/select :model/Table
                           :db_id  (:id db)
                           :schema schema-name
                           :active true
-                          {:order-by [[:%lower.name :asc]]})
-        {:keys [items total]} (mbr/extract-readable "Table" tables {:limit mbr/max-list-items})]
-    (mbr/list-result :database-schema-tables items {:total total})))
+                          {:order-by [[:%lower.name :asc]]})]
+    (mbr/list-result :database-schema-tables (mbr/extract-readable "Table" tables {:page (:page query-params)}))))
 
 ;; ----- Collection drill-down -----
 
@@ -228,7 +249,7 @@
     (mbr/entity-result (mbr/extract-as-user "Collection" coll))
     {:status-code 404 :output (str "Collection " id-str " not found")}))
 
-(defn- fetch-collection-items [id-str]
+(defn- fetch-collection-items [id-str query-params]
   (let [coll           (mbr/resolve-user-entity :model/Collection id-str)
         _              (api/read-check coll)
         coll-id        (:id coll)
@@ -243,26 +264,24 @@
                                   :location (str (:location coll) coll-id "/")
                                   :archived false
                                   {:order-by [[:%lower.name :asc]]})
-        ;; Each call caps extraction at `max-list-items`, so the worst case is
-        ;; 3×cap hydrated (not the full collection). `:total` sums the true
-        ;; pre-cap readable counts so truncation reporting stays honest.
-        sub-res        (mbr/extract-readable "Collection" subcollections {:limit mbr/max-list-items})
-        card-res       (mbr/extract-readable "Card" cards {:limit mbr/max-list-items})
-        dash-res       (mbr/extract-readable "Dashboard" dashboards {:limit mbr/max-list-items})
-        items          (concat (:items sub-res) (:items card-res) (:items dash-res))
-        total          (+ (:total sub-res) (:total card-res) (:total dash-res))]
-    (mbr/list-result :collection-items items {:total total})))
+        ;; This list mixes three models, so it can't page through one
+        ;; extract-readable call. Hydrate each sub-list fully (bare 2-arity, no
+        ;; paging), concat, then paginate the combined item vector — keeping
+        ;; `:total` honest across all three.
+        items          (concat (mbr/extract-readable "Collection" subcollections)
+                               (mbr/extract-readable "Card" cards)
+                               (mbr/extract-readable "Dashboard" dashboards))]
+    (mbr/list-result :collection-items (paginate-items items (:page query-params)))))
 
-(defn- fetch-collection-subcollections [id-str]
+(defn- fetch-collection-subcollections [id-str query-params]
   (let [coll    (mbr/resolve-user-entity :model/Collection id-str)
         _       (api/read-check coll)
         coll-id (:id coll)
         subs    (t2/select :model/Collection
                            :location (str (:location coll) coll-id "/")
                            :archived false
-                           {:order-by [[:%lower.name :asc]]})
-        {:keys [items total]} (mbr/extract-readable "Collection" subs {:limit mbr/max-list-items})]
-    (mbr/list-result :collection-subcollections items {:total total})))
+                           {:order-by [[:%lower.name :asc]]})]
+    (mbr/list-result :collection-subcollections (mbr/extract-readable "Collection" subs {:page (:page query-params)}))))
 
 ;; ----- Table -----
 
@@ -302,7 +321,7 @@
                              :field-id    field-id
                              :limit       30}))
 
-(defn- fetch-table-derived* [table]
+(defn- fetch-table-derived* [table query-params]
   (let [table-id   (:id table)
         _          (api/read-check table)
         db-id      (:db_id table)
@@ -319,17 +338,17 @@
                                      :source_database_id db-id
                                      {:order-by [[:%lower.name :asc]]})
                           (filter (fn [t] (some #{table-id} (transform-source-table-ids t))))))
-        card-res        (mbr/extract-readable "Card" cards {:limit mbr/max-list-items})
-        transform-res   (mbr/extract-readable "Transform" (or transforms []) {:limit mbr/max-list-items})
-        items           (concat (:items card-res) (:items transform-res))
-        total           (+ (:total card-res) (:total transform-res))]
-    (mbr/list-result :table-derived items {:total total})))
+        ;; Mixes Card + Transform, so hydrate each fully (no paging), concat, then
+        ;; paginate the combined vector.
+        items      (concat (mbr/extract-readable "Card" cards)
+                           (mbr/extract-readable "Transform" (or transforms [])))]
+    (mbr/list-result :table-derived (paginate-items items (:page query-params)))))
 
-(defn- fetch-table-derived [id-str]
-  (fetch-table-derived* (mbr/resolve-table-legacy id-str)))
+(defn- fetch-table-derived [id-str query-params]
+  (fetch-table-derived* (mbr/resolve-table-legacy id-str) query-params))
 
-(defn- fetch-table-derived-by-path [db-name schema table-name]
-  (fetch-table-derived* (mbr/resolve-table db-name schema table-name)))
+(defn- fetch-table-derived-by-path [db-name schema table-name query-params]
+  (fetch-table-derived* (mbr/resolve-table db-name schema table-name) query-params))
 
 (defn- fetch-table-fields-by-path [db-name schema table-name]
   (if-let [t (mbr/resolve-table db-name schema table-name)]
@@ -375,7 +394,7 @@
                   db    (conj (mbr/->mbr "Database" db))
                   table (conj (mbr/->mbr "Table" table))
                   src   (conj (mbr/->mbr "Card" src)))]
-    (mbr/list-result :card-sources items {:total (count items)})))
+    (mbr/list-result :card-sources (paginate-items items nil))))
 
 ;; ----- Metric -----
 
@@ -406,21 +425,21 @@
       (mbr/entity-result (mbr/extract-as-user "Transform" t))
       {:status-code 404 :output (str "Transform " id-str " not found")})))
 
-(defn- fetch-transform-sources [id-str]
+(defn- fetch-transform-sources [id-str query-params]
   (let [transform        (transforms/get-transform (parse-long id-str))
         source-table-ids (transform-source-table-ids transform)
-        tables-res       (when (seq source-table-ids)
+        ;; Mixes the source Database with its source Tables, so build the full
+        ;; combined item vector (tables hydrated fully, no paging) and paginate it.
+        tables           (when (seq source-table-ids)
                            (mbr/extract-readable "Table"
                                                  (t2/select :model/Table
-                                                            :id [:in (set source-table-ids)])
-                                                 {:limit mbr/max-list-items}))
+                                                            :id [:in (set source-table-ids)])))
         db-id            (:source_database_id transform)
         db               (when db-id (t2/select-one :model/Database db-id))
         items            (cond-> []
-                           db         (conj (mbr/->mbr "Database" db))
-                           tables-res (into (:items tables-res)))
-        total            (+ (if db 1 0) (or (:total tables-res) 0))]
-    (mbr/list-result :transform-sources items {:total total})))
+                           db     (conj (mbr/->mbr "Database" db))
+                           tables (into tables))]
+    (mbr/list-result :transform-sources (paginate-items items (:page query-params)))))
 
 (defn- fetch-transform-target [id-str]
   (let [transform    (transforms/get-transform (parse-long id-str))
@@ -436,7 +455,7 @@
         items        (cond-> []
                        db           (conj (mbr/->mbr "Database" db))
                        target-table (conj (mbr/->mbr "Table" target-table)))]
-    (mbr/list-result :transform-target items {:total (count items)})))
+    (mbr/list-result :transform-target (paginate-items items nil))))
 
 ;; ----- Dashboard -----
 
@@ -445,7 +464,7 @@
     (mbr/entity-result (mbr/extract-as-user "Dashboard" dashboard))
     {:status-code 404 :output (str "Dashboard " id-str " not found")}))
 
-(defn- fetch-dashboard-items [id-str]
+(defn- fetch-dashboard-items [id-str query-params]
   (let [dashboard    (mbr/resolve-user-entity :model/Dashboard id-str)
         _            (api/read-check dashboard)
         dashboard-id (:id dashboard)
@@ -457,9 +476,8 @@
                                                       :where  [:and
                                                                [:= :dc.card_id :report_card.id]
                                                                [:= :dc.dashboard_id dashboard-id]]}]]
-                                 :order-by [[:%lower.name :asc]]})
-        {:keys [items total]} (mbr/extract-readable "Card" cards {:limit mbr/max-list-items})]
-    (mbr/list-result :dashboard-items items {:total total})))
+                                 :order-by [[:%lower.name :asc]]})]
+    (mbr/list-result :dashboard-items (mbr/extract-readable "Card" cards {:page (:page query-params)}))))
 
 ;; ----- Dispatch -----
 
@@ -473,39 +491,39 @@
   (let [{:keys [segments query-params]} (parse-uri uri)]
     (match/match-one segments
       ;; Navigation
-      ["databases"]                                    (fetch-databases-list)
+      ["databases"]                                    (fetch-databases-list query-params)
       ["collections"]                                  (fetch-collections-list query-params)
       ["user" "recent-items"]                          (fetch-user-recents)
 
       ;; Database drill-down. `:id` accepts either a numeric DB id (legacy) or a
       ;; database name (MBR-style). `resolve-database` discriminates.
       ["database" id]                                  (fetch-database id)
-      ["database" id "tables"]                         (fetch-database-tables id)
-      ["database" id "models"]                         (fetch-database-models id)
-      ["database" id "schemas"]                        (fetch-database-schemas id)
+      ["database" id "tables"]                         (fetch-database-tables id query-params)
+      ["database" id "models"]                         (fetch-database-models id query-params)
+      ["database" id "schemas"]                        (fetch-database-schemas id query-params)
       ;; Legacy: schemas/{name}/tables. New form uses `schema/{name}/tables`
       ;; (singular `schema`) below to align with the MBR FK path-form.
-      ["database" id "schemas" schema "tables"]        (fetch-database-schema-tables id schema)
-      ["database" id "schema" schema "tables"]         (fetch-database-schema-tables id schema)
+      ["database" id "schemas" schema "tables"]        (fetch-database-schema-tables id schema query-params)
+      ["database" id "schema" schema "tables"]         (fetch-database-schema-tables id schema query-params)
 
       ;; Sync metadata (Table / Field) — MBR path-form. `database` segment must
       ;; be a DB name (path-form is invalid with a numeric id; that maps to the
       ;; legacy `["table" id]` route below).
       ["database" db-name "schema" schema "table" t-name]                       (fetch-table-by-path db-name schema t-name)
       ["database" db-name "schema" schema "table" t-name "fields"]              (fetch-table-fields-by-path db-name schema t-name)
-      ["database" db-name "schema" schema "table" t-name "derived"]             (fetch-table-derived-by-path db-name schema t-name)
+      ["database" db-name "schema" schema "table" t-name "derived"]             (fetch-table-derived-by-path db-name schema t-name query-params)
       ["database" db-name "schema" schema "table" t-name "field" field-name]    (fetch-field-by-path db-name schema t-name field-name)
 
       ;; Collection drill-down
       ["collection" id]                                (fetch-collection id)
-      ["collection" id "items"]                        (fetch-collection-items id)
-      ["collection" id "subcollections"]               (fetch-collection-subcollections id)
+      ["collection" id "items"]                        (fetch-collection-items id query-params)
+      ["collection" id "subcollections"]               (fetch-collection-subcollections id query-params)
 
       ;; Table
       ["table" id]                                     (fetch-table id)
       ["table" id "fields"]                            (fetch-table-fields id)
       ["table" id "fields" & rst]                      (fetch-table-field id (str/join "/" rst))
-      ["table" id "derived"]                           (fetch-table-derived id)
+      ["table" id "derived"]                           (fetch-table-derived id query-params)
 
       ;; Card (model / question / card — share handlers, dispatch on the type segment.
       ;; `card` is the canonical MBR type; `model` and `question` remain for backcompat
@@ -522,12 +540,12 @@
 
       ;; Transform
       ["transform" id]                                 (fetch-transform id)
-      ["transform" id "sources"]                       (fetch-transform-sources id)
+      ["transform" id "sources"]                       (fetch-transform-sources id query-params)
       ["transform" id "target"]                        (fetch-transform-target id)
 
       ;; Dashboard
       ["dashboard" id]                                 (fetch-dashboard id)
-      ["dashboard" id "items"]                         (fetch-dashboard-items id)
+      ["dashboard" id "items"]                         (fetch-dashboard-items id query-params)
 
       ;; Default — required to make match non-recursive
       _ (throw (ex-info (str "Unsupported URI: " uri)
@@ -574,7 +592,7 @@
                        (llm-shape/field-metadata->xml structured)
                        instructions/field-metadata-instructions)
       :mbr-entity     (json/encode (:entity structured))
-      :mbr-list       (json/encode (select-keys structured [:list-type :items :total :truncated]))
+      :mbr-list       (json/encode (select-keys structured [:list-type :items :total :page :pages :truncated]))
       :entity         (llm-shape/entity->xml structured))
     ;; error case — :output is already a string
     (:formatted content)))

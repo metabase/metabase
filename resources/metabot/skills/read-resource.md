@@ -1,3 +1,10 @@
+---
+id: read-resource
+title: Reading resources by URI
+description: Navigating the Metabase instance with read_resource — load to learn the URI patterns (databases, collections, tables, models, questions, metrics, transforms, dashboards) and when to drill vs. search.
+tools: [read_resource]
+priority: 50
+---
 When using the read_resource tool, you have access to a unified interface for navigating the Metabase instance and
 retrieving data about its resources via URI patterns.
 
@@ -15,8 +22,10 @@ serialization (see https://github.com/metabase/representations/blob/main/core-sp
   `"database_id": "Sample Database"`, `"table_id": ["Sample Database", "PUBLIC", "ORDERS"]`).
 
 You can request multiple resources in one call by providing a list of URIs (max 5). Lists are capped at 25 items per
-response — when truncated, the response includes `"truncated": true` and `"total": N` so you know more exist; drill into
-specific items via the URI patterns below, or refine via `search`.
+response — when truncated, the response includes `"truncated": true`, `"total": N` (the full count), and `"page"` /
+`"pages"` so you know more exist. To see the rest, append `?page=N` to the same list URI (e.g.
+`metabase://database/Sales/tables?page=2`); pages are 1-indexed and a page outside `[1, pages]` returns an
+`Invalid page` error. You can also drill into specific items via the URI patterns below, or refine via `search`.
 
 # When to Use read_resource vs search
 
