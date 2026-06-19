@@ -22,9 +22,10 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each (fn [f]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                        (test-helpers/clean-remote-sync-state f))))
+(use-fixtures :each test-helpers/commit-with-temp
+  (fn [f]
+    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+      (test-helpers/clean-remote-sync-state f))))
 
 (deftest transform-event-creates-sync-object-when-setting-enabled-test
   (testing "Creating a transform creates a RemoteSyncObject entry when remote-sync-transforms is enabled"

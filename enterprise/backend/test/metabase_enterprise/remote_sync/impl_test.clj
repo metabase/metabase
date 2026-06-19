@@ -30,13 +30,6 @@
 
 ;; import! tests
 
-(deftest import!-with-no-source-configured-test
-  (testing "import! with no snapshot configured"
-    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          result (impl/import! nil task-id)]
-      (is (= :error (:status result)))
-      (is (re-find #"Remote sync source is not enabled" (:message result))))))
-
 (deftest import!-successful-without-collections-test
   (testing "import! successful without collections (imports all remote-synced)"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
@@ -1815,7 +1808,8 @@ serdes/meta:
   (testing "preview reports no changes when the remote has not advanced"
     (with-redefs [remote-sync.task/last-version (constantly "remote-R") ; == snapshot version
                   source/source-from-settings   (constantly (export-test-source))]
-      (is (= {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
+      (is (= {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}
+              :force-push-casualties {:deleted [] :overwritten []}}
              (impl/preview-export-merge "main"))))))
 
 (deftest preview-export-merge-clean-test
@@ -1850,13 +1844,17 @@ serdes/meta:
                            (default-branch [_] "main")
                            (snapshot [_] (export-test-snapshot "remote-R"))
                            (snapshot-at [_ _] nil))]
-      (with-redefs [remote-sync.task/last-version    (constantly "gone-base")
-                    source/source-from-settings      (constantly no-base-source)
-                    spec/extract-entities-for-export (constantly [{:dummy true}])]
+      (with-redefs [remote-sync.task/last-version        (constantly "gone-base")
+                    source/source-from-settings          (constantly no-base-source)
+                    spec/extract-entities-for-export     (constantly [{:dummy true}])
+                    source/force-push-casualties-no-base (fn [_ _] {:deleted ["Audit Logs"] :overwritten []})]
         (let [result (impl/preview-export-merge "main")]
           (is (true? (:diverged? result)))
           (is (false? (:clean? result)))
-          (is (= :history-rewritten (:reason result))))))))
+          (is (= :history-rewritten (:reason result)))
+          (testing "force-push casualties are still computed without a merge base"
+            (is (= {:deleted ["Audit Logs"] :overwritten []}
+                   (:force-push-casualties result)))))))))
 
 ;;; ------------------------------------- local-only pull merge tests -------------------------------------
 

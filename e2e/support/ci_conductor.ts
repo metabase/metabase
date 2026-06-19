@@ -1,4 +1,5 @@
-import { readFileSync, statSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { dirname } from "node:path";
 
 import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
 
@@ -11,13 +12,13 @@ import fetch from "node-fetch"; // must be node-fetch v2 because it's non-esm
  * than waiting for the whole job to finish — lets failures be tied back to the
  * CI run (and through it the PR / release branch) before the job completes.
  *
- * The webhooks base URL is only supplied via env in CI, so local runs no-op.
+ * The base URL is only supplied via env in CI, so local runs no-op.
  *
  * See DEV-1999.
  */
 
 const {
-  CI_CONDUCTOR_WEBHOOK_URL,
+  CI_CONDUCTOR_BASE_URL,
   CI_CONDUCTOR_WEBHOOK_SECRET,
   CI_CONDUCTOR_DRY_RUN,
   REPO_ID,
@@ -273,6 +274,47 @@ export function extractFailedTests(
 }
 
 /**
+ * Where after:spec records this run's ultimate test failures for the post-run
+ * quarantine gate (DEV-2082). One JSON object per line
+ * (`{test_name, test_path, file_path}`), appended per spec, so the gate step
+ * can read the whole job's failures from a single file. Override with
+ * QUARANTINE_FAILURES_FILE. Note these are the SAME fields ci-conductor stores
+ * in its quarantine list (both derived from the same Cypress title array), so
+ * the gate can compare them exactly. See `check-quarantine.ts`.
+ */
+const QUARANTINE_FAILURES_FILE =
+  process.env.QUARANTINE_FAILURES_FILE ?? "./target/quarantine-failures.jsonl";
+
+/**
+ * Persist the tests that ultimately failed (status "failure") so the post-run
+ * quarantine gate can decide whether the job passes. Flaky tests that recovered
+ * on retry and passing tests don't gate the build, so they're filtered out.
+ * Best-effort and never throws — recording must not break the test run.
+ */
+export function recordFailedTestsForQuarantine(tests: ConductorTest[]): void {
+  try {
+    const broken = tests.filter((test) => test.status === "failure");
+    if (broken.length === 0) {
+      return;
+    }
+    const lines =
+      broken
+        .map((test) =>
+          JSON.stringify({
+            test_name: test.name,
+            test_path: test.path ?? null,
+            file_path: test.file ?? null,
+          }),
+        )
+        .join("\n") + "\n";
+    mkdirSync(dirname(QUARANTINE_FAILURES_FILE), { recursive: true });
+    appendFileSync(QUARANTINE_FAILURES_FILE, lines);
+  } catch (error) {
+    console.error("[quarantine] failed to record failures", error);
+  }
+}
+
+/**
  * Report the given failures to ci-conductor. In dry-run mode the payload is
  * logged and nothing is sent. Otherwise it's POSTed, no-opping when the webhook
  * URL isn't configured (local runs, PRs without the secret). Never throws —
@@ -281,7 +323,7 @@ export function extractFailedTests(
 export async function reportFailedTestsToConductor(
   tests: ConductorTest[],
 ): Promise<void> {
-  if (tests.length === 0 || (!CI_CONDUCTOR_WEBHOOK_URL && !isDryRun)) {
+  if (tests.length === 0 || (!CI_CONDUCTOR_BASE_URL && !isDryRun)) {
     return;
   }
 
@@ -336,14 +378,15 @@ export async function reportFailedTestsToConductor(
       return;
     }
 
-    if (!CI_CONDUCTOR_WEBHOOK_URL) {
+    if (!CI_CONDUCTOR_BASE_URL) {
       // already excluded by the guard above; this also narrows the type
       return;
     }
 
-    // CI_CONDUCTOR_WEBHOOK_URL holds the webhooks *base* (e.g. ".../webhooks");
-    // we append the specific endpoint so the same secret can serve others later.
-    const endpoint = `${CI_CONDUCTOR_WEBHOOK_URL.replace(/\/+$/, "")}/failed-tests`;
+    // CI_CONDUCTOR_BASE_URL holds the ci-conductor base origin (e.g.
+    // "https://conductor.<host>"); we append this endpoint's path. Other
+    // consumers (e.g. the quarantine gate's /api/quarantine) build their own.
+    const endpoint = `${CI_CONDUCTOR_BASE_URL.replace(/\/+$/, "")}/webhooks/failed-tests`;
 
     // ci-conductor authenticates this endpoint via the x-internal-secret header.
     const headers: Record<string, string> = {

@@ -307,6 +307,7 @@ const getPublicQuestionParams = (
   uuid: string,
   type: string,
   result: Dataset,
+  exportParams: ExportParams,
 ): DownloadQueryResultsParams => {
   const parameters = (result?.json_query?.parameters ?? []).map((param) => ({
     id: param.id,
@@ -318,6 +319,7 @@ const getPublicQuestionParams = (
     url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
     params: new URLSearchParams({
       parameters: JSON.stringify(parameters),
+      ..._.mapObject(exportParams, (value) => String(value)),
     }),
   };
 };
@@ -493,7 +495,7 @@ export const getDatasetParams = ({
       );
     }
     if (resourceType === "question" && uuid) {
-      return getPublicQuestionParams(uuid, type, result);
+      return getPublicQuestionParams(uuid, type, result, exportParams);
     }
   }
 

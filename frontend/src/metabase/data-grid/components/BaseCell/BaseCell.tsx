@@ -23,6 +23,7 @@ export const BaseCell = memo(function BaseCell({
   className,
   hasHover = true,
   children,
+  style,
   ...rest
 }: BaseCellProps) {
   const cellStyle = useMemo(() => {
@@ -64,7 +65,7 @@ export const BaseCell = memo(function BaseCell({
         },
         className,
       )}
-      style={cellStyle}
+      style={{ ...cellStyle, ...style }}
       {...rest}
     >
       {children}

@@ -18,6 +18,7 @@ import {
 } from "metabase-enterprise/remote_sync/constants";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {
+  ForcePushCasualties,
   RemoteSyncConfigurationSettings,
   RemoteSyncConflictVariant,
 } from "metabase-types/api";
@@ -27,6 +28,7 @@ import { CommitMessageSection } from "../PushChangesModal/CommitMessageSection";
 
 import { BranchNameInput } from "./BranchNameInput";
 import { ConflictingChangesList } from "./ConflictingChangesList";
+import { ForcePushWarning } from "./ForcePushWarning";
 import { OutOfSyncOptions } from "./OutOfSyncOptions";
 import { SetupConflictInfo } from "./SetupConflictInfo";
 import {
@@ -51,11 +53,23 @@ interface UnsyncedWarningModalProps {
   canMerge?: boolean;
   /** Push variant only: labels of entities that conflict (shown when the merge isn't clean). */
   conflicts?: string[];
+  /** Remote content a force push would discard; surfaced when the force-push option is selected. */
+  forcePushCasualties?: ForcePushCasualties;
+  /** Whether the remote history was rewritten (no merge base); adds context to the force-push warning. */
+  historyRewritten?: boolean;
 }
 
 export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
-  const { onClose, currentBranch, nextBranch, variant, canMerge, conflicts } =
-    props;
+  const {
+    onClose,
+    currentBranch,
+    nextBranch,
+    variant,
+    canMerge,
+    conflicts,
+    forcePushCasualties,
+    historyRewritten,
+  } = props;
   const [optionValue, setOptionValue] = useState<OptionValue>();
   const [newBranchName, setNewBranchName] = useState<string>("");
   // The push variant collects a commit message here, since merge/force/new-branch all push.
@@ -197,6 +211,14 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
           variant={variant}
           canMerge={canMerge}
         />
+
+        {optionValue === "force-push" && forcePushCasualties && (
+          <ForcePushWarning
+            casualties={forcePushCasualties}
+            branch={currentBranch}
+            historyRewritten={historyRewritten}
+          />
+        )}
 
         {optionValue === "new-branch" && (
           <BranchNameInput

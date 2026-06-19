@@ -57,14 +57,20 @@
         instance-id (:id toucan-instance)]
     (if-let [errors (seq (pre-analysis-errors toucan-instance))]
       (deps.analysis-finding/upsert-analysis! entity-type instance-id false errors)
-      (when-let [db-id (instance-db-id toucan-instance)]
+      (if-let [db-id (instance-db-id toucan-instance)]
         (let [mp (lib-be/application-database-metadata-provider db-id)
               results (try (deps.analysis/check-entity mp entity-type instance-id)
                            (catch Exception e
                              (log/error e "Error analyzing entity")
                              [(lib/validation-exception-error (.getMessage e))]))
               success (empty? results)]
-          (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))))))
+          (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))
+        ;; No resolvable database, and no pre-analysis error explaining it: record a terminal error so
+        ;; the entity gets a finding (clearing its stale flag) instead of no-oping forever and being
+        ;; re-selected on every run. It re-checks normally if its database later becomes resolvable.
+        (deps.analysis-finding/upsert-analysis!
+         entity-type instance-id false
+         [(lib/validation-exception-error "Could not resolve a database for this entity.")])))))
 
 (defn analyze-instances!
   "Given a series of toucan entities, upsert analyses for all of them and catch errors."

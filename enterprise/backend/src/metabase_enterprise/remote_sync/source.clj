@@ -139,7 +139,9 @@
 
 (defn compute-merge
   "Runs the entity-identity 3-way merge of local state against the remote tip, without writing. Returns
-  the raw merge result `{:merged :conflicts :summary}` from [[remote-sync.merge/three-way-merge]]:
+  the raw merge result `{:merged :conflicts :summary}` from [[remote-sync.merge/three-way-merge]], plus
+  `:force-push-casualties` (remote content a force push would discard; see
+  [[remote-sync.merge/force-push-casualties]]):
   - `base-snapshot` - the last successfully synced state (the merge base)
   - `stream`        - the local state to serialize (ours)
   - `snapshot`      - the current remote tip (theirs)
@@ -150,7 +152,8 @@
   (let [ours   (serialize-specs stream task-id)
         base   (snapshot->specs base-snapshot)
         theirs (snapshot->specs snapshot)]
-    (remote-sync.merge/three-way-merge base ours theirs)))
+    (assoc (remote-sync.merge/three-way-merge base ours theirs)
+           :force-push-casualties (remote-sync.merge/force-push-casualties base ours theirs))))
 
 (defn specs->snapshot
   "Builds an in-memory read-only SourceSnapshot backed by `specs` (a seq of `{:path :content}`), so merged
@@ -166,13 +169,27 @@
 
 (defn preview-merge
   "Dry-run of [[merge-and-store!]]: computes the 3-way merge without writing anything. Returns
-  `{:clean? bool :conflicts [labels] :summary {:added :updated :removed}}`. Pass nil for `task-id` to
-  skip progress reporting."
+  `{:clean? bool :conflicts [labels] :summary {:added :updated :removed}
+    :force-push-casualties {:deleted [labels] :overwritten [labels]}}`. The casualties are the remote
+  content a force push (rather than a merge) would discard. Pass nil for `task-id` to skip progress
+  reporting."
   [stream snapshot base-snapshot task-id]
-  (let [{:keys [conflicts summary]} (compute-merge stream snapshot base-snapshot task-id)]
-    {:clean?    (empty? conflicts)
-     :conflicts (mapv remote-sync.merge/conflict-label conflicts)
-     :summary   summary}))
+  (let [{:keys [conflicts summary force-push-casualties]}
+        (compute-merge stream snapshot base-snapshot task-id)]
+    {:clean?                 (empty? conflicts)
+     :conflicts             (mapv remote-sync.merge/conflict-label conflicts)
+     :summary               summary
+     :force-push-casualties force-push-casualties}))
+
+(defn force-push-casualties-no-base
+  "Casualties of a force push when there is no merge base — the remote history was rewritten
+  (force-pushed/rebased upstream), so the prior sync point is gone. Without a base we can't tell what
+  changed since divergence, so every remote entity that isn't identical to what we'd write counts: remote
+  content is foreign and gets discarded wholesale. Returns `{:deleted [labels] :overwritten [labels]}`
+  (see [[remote-sync.merge/force-push-casualties]]). `stream` is the local state to serialize (ours),
+  `snapshot` the rewritten remote tip (theirs)."
+  [stream snapshot]
+  (remote-sync.merge/force-push-casualties [] (serialize-specs stream nil) (snapshot->specs snapshot)))
 
 (defn merge-and-store!
   "Like [[store!]], but reconciles the freshly serialized local state against a remote branch that has
