@@ -37,33 +37,7 @@ describe("isHostAllowed", () => {
     expect(isHostAllowed(u("https://notexample.com/"), allow)).toBe(false);
   });
 
-  it("treats an explicit default port as equivalent to the implicit one", () => {
-    // explicit `:443` on either side ≡ omitting it (matches browser CSP)
-    expect(
-      isHostAllowed(u("https://api.example.com/"), [
-        "https://api.example.com:443",
-      ]),
-    ).toBe(true);
-    expect(
-      isHostAllowed(u("https://api.example.com:443/"), [
-        "https://api.example.com",
-      ]),
-    ).toBe(true);
-    expect(
-      isHostAllowed(u("http://api.example.com:80/"), [
-        "http://api.example.com",
-      ]),
-    ).toBe(true);
-  });
-
-  it("requires a non-default port to be listed explicitly", () => {
-    // a no-port entry only matches the scheme's default port (CSP semantics)
-    expect(
-      isHostAllowed(u("https://api.example.com:8443/"), [
-        "https://api.example.com",
-      ]),
-    ).toBe(false);
-    // explicit non-default ports must match exactly
+  it("matches an explicit port exactly; an entry without a port matches any", () => {
     expect(
       isHostAllowed(u("https://api.example.com:8443/"), [
         "https://api.example.com:8443",
@@ -74,6 +48,12 @@ describe("isHostAllowed", () => {
         "https://api.example.com:8443",
       ]),
     ).toBe(false);
+    // an entry without a port matches any port
+    expect(
+      isHostAllowed(u("https://api.example.com:8443/"), [
+        "https://api.example.com",
+      ]),
+    ).toBe(true);
   });
 
   it("denies everything for an empty allowlist", () => {

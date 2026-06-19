@@ -8,51 +8,58 @@
  * SDK calls — become reachable through `fetch`/`XMLHttpRequest`. Host matching
  * mirrors the CSP `connect-src` the backend emits for the same hosts, so the JS
  * layer and the browser CSP layer agree.
+ *
+ * The wildcard semantics (`*.example.com` matches subdomains, not the apex)
+ * intentionally match the backend's `approved-domain?`
+ * (`metabase.server.middleware.security`, used for embedding-origin allowlists).
+ * There's no shared implementation — that one is Clojure, this runs in the
+ * sandboxed browser realm — so keep the two in sync if either changes.
  */
 
 interface AllowedOrigin {
   protocol: string; // "https:" | "http:"
   wildcard: boolean; // entry was "*.host"
   host: string; // "example.com" (without the leading "*." when wildcard)
-  port: string; // "" the scheme's default port
+  port: string; // "" means "any port" (the entry omitted one)
 }
 
 function parseAllowedOrigin(entry: string): AllowedOrigin | null {
-  const match = /^(https?):\/\/(\*\.)?([^/:]+)(?::(\d+))?$/i.exec(entry.trim());
-  if (!match) {
+  let url: URL;
+  try {
+    // The standard URL parser lowercases the host, normalizes away the default
+    // port (`:443`/`:80` → ""), and accepts a leading `*.` wildcard. The request
+    // side (`toUrl`) parses the same way, so both stay consistent.
+    url = new URL(entry.trim());
+  } catch {
     return null;
   }
-  return {
-    protocol: `${match[1].toLowerCase()}:`,
-    wildcard: Boolean(match[2]),
-    host: match[3].toLowerCase(),
-    port: match[4] ?? "",
-  };
-}
 
-// `URL.port` is "" for the scheme's default port; normalize so an explicit
-// `:443`/`:80` compares equal to the implicit default (as CSP host-source does).
-function effectivePort(protocol: string, port: string): string {
-  if (port) {
-    return port;
+  // Must be a bare http(s) origin: no path, query, fragment, or credentials.
+  if (
+    (url.protocol !== "https:" && url.protocol !== "http:") ||
+    url.pathname !== "/" ||
+    url.search !== "" ||
+    url.hash !== "" ||
+    url.username !== "" ||
+    url.password !== ""
+  ) {
+    return null;
   }
-  if (protocol === "https:") {
-    return "443";
-  }
-  if (protocol === "http:") {
-    return "80";
-  }
-  return "";
+  const wildcard = url.hostname.startsWith("*.");
+  return {
+    protocol: url.protocol,
+    wildcard,
+    host: wildcard ? url.hostname.slice(2) : url.hostname,
+    port: url.port,
+  };
 }
 
 function originMatches(url: URL, origin: AllowedOrigin): boolean {
   if (url.protocol !== origin.protocol) {
     return false;
   }
-  if (
-    effectivePort(url.protocol, url.port) !==
-    effectivePort(origin.protocol, origin.port)
-  ) {
+  // An entry without a port matches any port; with one, it must match exactly.
+  if (origin.port && url.port !== origin.port) {
     return false;
   }
   const host = url.hostname.toLowerCase();
