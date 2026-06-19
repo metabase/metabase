@@ -2,7 +2,7 @@ import { useCallback } from "react";
 
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { getName } from "metabase/utils/name";
 import type { Database, RecentItem, SearchResult } from "metabase-types/api";

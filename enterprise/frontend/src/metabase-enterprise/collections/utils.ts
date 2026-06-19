@@ -5,7 +5,7 @@ import type {
   CollectionInstanceAnaltyicsConfig,
 } from "metabase/collections/types";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
-import { useGetIconBase } from "metabase/hooks/use-icon";
+import { useGetIconBase } from "metabase/common/hooks/use-icon";
 import { type ItemWithCollection, PLUGIN_LIBRARY } from "metabase/plugins";
 import type {
   Bookmark,

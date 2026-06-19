@@ -3,7 +3,7 @@ import { c } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/redux";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";

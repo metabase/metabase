@@ -6,7 +6,7 @@ import type {
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
 } from "metabase/collections/types";
-import { useGetIconBase } from "metabase/hooks/use-icon";
+import { useGetIconBase } from "metabase/common/hooks/use-icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
 import type {

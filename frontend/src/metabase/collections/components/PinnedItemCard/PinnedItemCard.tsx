@@ -9,7 +9,7 @@ import type {
 } from "metabase/collections/types";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Card, Flex, Skeleton, Tooltip } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";

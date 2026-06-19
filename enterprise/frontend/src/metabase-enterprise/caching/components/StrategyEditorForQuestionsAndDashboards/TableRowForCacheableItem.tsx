@@ -4,7 +4,7 @@ import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { Link } from "metabase/common/components/Link";
 import { MaybeLink } from "metabase/common/components/MaybeLink/MaybeLink.styled";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { Box, Button, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CacheableModel } from "metabase-types/api";

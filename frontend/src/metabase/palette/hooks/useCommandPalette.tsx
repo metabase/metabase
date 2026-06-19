@@ -10,7 +10,7 @@ import { getCollection } from "metabase/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
 import { trackSearchClick } from "metabase/common/search/analytics";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import {
   getDocsSearchUrl,

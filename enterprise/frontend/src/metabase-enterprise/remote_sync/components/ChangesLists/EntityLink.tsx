@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import type { IconData, IconModel } from "metabase/common/utils/icon";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { Anchor, Group, Icon } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import type { RemoteSyncEntity } from "metabase-types/api";

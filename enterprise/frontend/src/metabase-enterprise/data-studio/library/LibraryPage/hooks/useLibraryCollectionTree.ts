@@ -14,7 +14,7 @@ import {
   createEmptyStateItem,
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type {

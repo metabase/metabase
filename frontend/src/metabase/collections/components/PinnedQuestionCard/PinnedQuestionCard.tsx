@@ -12,7 +12,7 @@ import {
 } from "metabase/collections/utils";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";

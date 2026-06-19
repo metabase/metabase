@@ -17,7 +17,7 @@ import {
   useGetEntityPickerIcon,
 } from "./utils";
 
-jest.mock("metabase/hooks/use-icon", () => ({
+jest.mock("metabase/common/hooks/use-icon", () => ({
   useGetIcon: () => jest.fn().mockReturnValue({ name: "unknown" }),
 }));
 
@@ -29,7 +29,7 @@ describe("EntityPicker utils", () => {
   describe("useGetEntityPickerIcon", () => {
     const setupHook = (mockReturn: { name: string; color?: string }) => {
       const mockGetIcon = jest.fn().mockReturnValue(mockReturn);
-      jest.requireMock("metabase/hooks/use-icon").useGetIcon = () =>
+      jest.requireMock("metabase/common/hooks/use-icon").useGetIcon = () =>
         mockGetIcon;
       const { result } = renderHook(() => useGetEntityPickerIcon());
       return { getEntityPickerIcon: result.current, mockGetIcon };
