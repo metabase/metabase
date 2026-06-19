@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";

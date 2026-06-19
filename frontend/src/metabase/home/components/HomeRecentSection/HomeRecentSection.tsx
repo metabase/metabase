@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";

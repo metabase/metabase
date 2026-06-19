@@ -19,7 +19,7 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { useDispatch } from "metabase/redux";
 import {
   Ellipsified,

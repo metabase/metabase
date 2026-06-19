@@ -1,6 +1,6 @@
 import { useGetCollectionQuery } from "metabase/api";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { modelToUrl } from "metabase/urls/modelToUrl";

@@ -15,7 +15,7 @@ import { useDeleteBookmarkMutation } from "metabase/api";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getIsTenantUser } from "metabase/selectors/user";

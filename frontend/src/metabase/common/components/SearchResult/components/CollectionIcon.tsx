@@ -2,7 +2,7 @@ import {
   DEFAULT_ICON_SIZE,
   LARGE_ICON_SIZE,
 } from "metabase/common/components/SearchResult/components";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { Icon } from "metabase/ui";
 
 import type { IconComponentProps } from "./ItemIcon";

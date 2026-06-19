@@ -11,7 +11,7 @@ import {
   TableColumn,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { Ellipsified, FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
 import type { SortingOptions } from "metabase-types/api/sorting";
 

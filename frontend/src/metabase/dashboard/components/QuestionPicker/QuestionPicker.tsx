@@ -14,7 +14,7 @@ import { getCollectionBreadCrumbs } from "metabase/common/utils/collections";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import {

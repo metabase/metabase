@@ -16,7 +16,7 @@ import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
 import { getDashboardId, getSelectedTabId } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Box, Flex, Icon, Tooltip } from "metabase/ui";

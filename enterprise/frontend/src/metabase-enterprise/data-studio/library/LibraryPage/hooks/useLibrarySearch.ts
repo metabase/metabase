@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { skipToken, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { TreeItem } from "metabase/data-studio/common/types";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import type { CollectionId } from "metabase-types/api";
 
 const SEARCH_DEBOUNCE_MS = 300;

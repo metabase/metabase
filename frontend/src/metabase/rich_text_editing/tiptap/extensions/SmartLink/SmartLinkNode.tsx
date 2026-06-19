@@ -24,7 +24,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Link } from "metabase/common/components/Link";
 import type { IconModel, ObjectWithModel } from "metabase/common/utils/icon";
 import { updateMentionsCache } from "metabase/documents/documents.slice";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import {
   METABSE_PROTOCOL_MD_LINK,
   parseMetabaseProtocolMarkdownLink,

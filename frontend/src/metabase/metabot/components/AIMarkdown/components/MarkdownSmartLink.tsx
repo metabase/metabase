@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGetIcon } from "metabase/common/hooks/use-icon";
 import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { entityToUrlableModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
