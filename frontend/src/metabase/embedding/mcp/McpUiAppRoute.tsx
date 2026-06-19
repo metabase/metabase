@@ -189,7 +189,10 @@ function McpUiAppRouteContent({
 
     return (
       <>
-        <McpQuestionView safeAreaPaddingTop={safeAreaPadding.top} />
+        <McpQuestionView
+          queryKey={query}
+          safeAreaPaddingTop={safeAreaPadding.top}
+        />
 
         <McpCardFooter
           app={app}
