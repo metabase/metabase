@@ -106,7 +106,13 @@
 (mu/defn sync-fields! :- [:map
                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]
-  "Sync the Fields in the Metabase application database for all the Tables in a `database`."
+  "Sync the Fields in the Metabase application database for all the Tables in a `database`.
+
+  `fields-metadata` is a *reducible* of per-column metadata, ordered so a table's columns are contiguous. It is passed
+  straight to `sync!` (never `(into [] ...)`-ed): `sync!`'s `partition-by` buffers only one table's columns at a time,
+  so memory stays bounded by the widest single table rather than the whole schema. A schema with a huge or churning
+  set of tables (e.g. BigQuery with thousands of ephemeral tables) would otherwise materialize every column at once
+  and OOM."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver          (driver.u/database->driver database)
@@ -147,14 +153,13 @@
           (transduce (comp
                       (map (fn [schema]
                              (log/infof "Fetching field metadata for %s.%s" (:name database) schema)
-                             (into [] (fetch-metadata/fields-metadata database
-                                                                      :schema-names [schema]))))
+                             (fetch-metadata/fields-metadata database :schema-names [schema])))
                       (map sync!))
                      (completing (partial merge-with +))
                      {:total-fields   0
                       :updated-fields 0}
                      (sync-util/sync-schemas database))
-          (sync! (into [] (fetch-metadata/fields-metadata database))))))))
+          (sync! (fetch-metadata/fields-metadata database)))))))
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
