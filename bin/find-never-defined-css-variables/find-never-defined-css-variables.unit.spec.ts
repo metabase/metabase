@@ -146,6 +146,20 @@ describe("extractVariableUsagesFromFileContent", () => {
     expect(result).toEqual(new Set(["--mb-color-text-secondary"]));
   });
 
+  it("should extract an mb-* wrapper with a fallback and the bare var nested in it", () => {
+    // Mirror of the case above: when the mb-* var is the one carrying the fallback it's
+    // still validated (mb-* must always be defined), and the nested bare var is too.
+    const content = `
+      .button {
+        color: var(--mb-color-text-secondary, var(--notification-warning-text-color));
+      }
+    `;
+    const result = extractVariableUsagesFromFileContent(content);
+    expect(result).toEqual(
+      new Set(["--mb-color-text-secondary", "--notification-warning-text-color"]),
+    );
+  });
+
   it("should ignore dynamically constructed var() usages", () => {
     // We can't statically validate the interpolated name, so these are skipped.
     const content = `
