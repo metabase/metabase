@@ -614,12 +614,13 @@
             {:keys [schema] table-name :name} (:target transform)
             warehouse (reconcile/fetch-warehouse-indexes database schema table-name)]
         (when (seq warehouse)
-          (let [present-keys (into #{} (map reconcile/match-key) warehouse)]
-            (doseq [row managed]
-              (let [present? (contains? present-keys (reconcile/managed-match-key row))]
-                (t2/update! :model/TableIndex (:id row)
-                            {:status           (if present? :succeeded :failed)
-                             :last_executed_at :%now})))))))))
+          (let [present-keys (into #{} (map reconcile/match-key) warehouse)
+                by-present   (group-by #(contains? present-keys (reconcile/managed-match-key %)) managed)]
+            ;; one update per outcome rather than per row
+            (doseq [[present? rows] by-present]
+              (t2/update! :model/TableIndex :id [:in (map :id rows)]
+                          {:status           (if present? :succeeded :failed)
+                           :last_executed_at :%now}))))))))
 
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.
