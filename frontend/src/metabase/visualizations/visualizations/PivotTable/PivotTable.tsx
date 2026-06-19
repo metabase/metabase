@@ -11,8 +11,7 @@ import {
   useState,
 } from "react";
 import { usePrevious } from "react-use";
-import type { OnScrollParams } from "react-virtualized";
-import { AutoSizer, Collection, Grid, ScrollSync } from "react-virtualized";
+import { AutoSizer, Collection, Grid } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -139,6 +138,100 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     const gridContainerRef = useRef<HTMLDivElement>(null);
     const leftHeaderRef = useRef<Collection>(null);
     const topHeaderRef = useRef<Collection>(null);
+
+    // Track which pane is the current scroll leader to prevent feedback loops.
+    const scrollLeader = useRef<"grid" | "leftHeader" | "topHeader" | null>(
+      null,
+    );
+    const scrollLeaderTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+      null,
+    );
+
+    // scrollLeft/scrollTop state for controlled components that still need it.
+    const [scrollLeft, setScrollLeft] = useState(0);
+    const [scrollTop, setScrollTop] = useState(0);
+
+    const getScrollingContainer = (
+      ref: React.RefObject<Collection | Grid | null>,
+    ): HTMLElement | null => {
+      // react-virtualized Collection and Grid store their scroll container
+      // as _scrollingContainer on the instance.
+
+      return (ref.current as any)?._scrollingContainer ?? null;
+    };
+
+    const claimLead = (leader: "grid" | "leftHeader" | "topHeader") => {
+      if (scrollLeaderTimeout.current !== null) {
+        clearTimeout(scrollLeaderTimeout.current);
+      }
+      scrollLeader.current = leader;
+      // Release lead shortly after scrolling stops so any pane can lead again.
+      scrollLeaderTimeout.current = setTimeout(() => {
+        scrollLeader.current = null;
+      }, 100);
+    };
+
+    const handleGridScroll = useCallback(
+      ({
+        scrollLeft: sl,
+        scrollTop: st,
+      }: {
+        scrollLeft: number;
+        scrollTop: number;
+      }) => {
+        if (scrollLeader.current !== null && scrollLeader.current !== "grid") {
+          return;
+        }
+        claimLead("grid");
+        setScrollLeft(sl);
+        setScrollTop(st);
+        const leftContainer = getScrollingContainer(leftHeaderRef);
+        if (leftContainer && leftContainer.scrollTop !== st) {
+          leftContainer.scrollTop = st;
+        }
+        const topContainer = getScrollingContainer(topHeaderRef);
+        if (topContainer && topContainer.scrollLeft !== sl) {
+          topContainer.scrollLeft = sl;
+        }
+      },
+      [],
+    );
+
+    const handleLeftHeaderScroll = useCallback(
+      ({ scrollTop: st }: { scrollTop: number }) => {
+        if (
+          scrollLeader.current !== null &&
+          scrollLeader.current !== "leftHeader"
+        ) {
+          return;
+        }
+        claimLead("leftHeader");
+        setScrollTop(st);
+        const gridContainer = getScrollingContainer(gridRef);
+        if (gridContainer && gridContainer.scrollTop !== st) {
+          gridContainer.scrollTop = st;
+        }
+      },
+      [],
+    );
+
+    const handleTopHeaderScroll = useCallback(
+      ({ scrollLeft: sl }: { scrollLeft: number }) => {
+        if (
+          scrollLeader.current !== null &&
+          scrollLeader.current !== "topHeader"
+        ) {
+          return;
+        }
+        claimLead("topHeader");
+        setScrollLeft(sl);
+        const gridContainer = getScrollingContainer(gridRef);
+        if (gridContainer && gridContainer.scrollLeft !== sl) {
+          gridContainer.scrollLeft = sl;
+        }
+      },
+      [],
+    );
 
     const tc = useTranslateContent();
 
@@ -421,194 +514,178 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
           isDashboard={isDashboard}
           data-testid="pivot-table"
         >
-          <ScrollSync>
-            {({ onScroll, scrollLeft, scrollTop }) => (
-              <div className={cx(CS.fullHeight, CS.flex, CS.flexColumn)}>
-                <div className={CS.flex} style={{ height: topHeaderHeight }}>
-                  {/* top left corner - displays left header columns */}
-                  <PivotTableTopLeftCellsContainer
+          <div className={cx(CS.fullHeight, CS.flex, CS.flexColumn)}>
+            <div className={CS.flex} style={{ height: topHeaderHeight }}>
+              {/* top left corner - displays left header columns */}
+              <PivotTableTopLeftCellsContainer
+                style={{
+                  width: leftHeaderWidth,
+                }}
+              >
+                {rowIndexes.map((rowIndex: number, index: number) => (
+                  <Cell
+                    key={rowIndex}
+                    isEmphasized
+                    isBold
+                    isBorderedHeader
+                    isTransparent
+                    hasTopBorder={topHeaderRows > 1}
+                    value={getColumnTitle(rowIndex)}
+                    onResize={(newWidth: number) =>
+                      handleColumnResize("leftHeader", index, newWidth)
+                    }
                     style={{
-                      width: leftHeaderWidth,
+                      flex: "0 0 auto",
+                      width:
+                        (leftHeaderWidths?.[index] ?? 0) +
+                        (index === 0 ? LEFT_HEADER_LEFT_SPACING : 0),
+                      ...(index === 0
+                        ? { paddingLeft: LEFT_HEADER_LEFT_SPACING }
+                        : {}),
+                      ...(index === rowIndexes.length - 1
+                        ? { borderRight: "none" }
+                        : {}),
                     }}
-                  >
-                    {rowIndexes.map((rowIndex: number, index: number) => (
-                      <Cell
-                        key={rowIndex}
-                        isEmphasized
-                        isBold
-                        isBorderedHeader
-                        isTransparent
-                        hasTopBorder={topHeaderRows > 1}
-                        value={getColumnTitle(rowIndex)}
-                        onResize={(newWidth: number) =>
-                          handleColumnResize("leftHeader", index, newWidth)
-                        }
-                        style={{
-                          flex: "0 0 auto",
-                          width:
-                            (leftHeaderWidths?.[index] ?? 0) +
-                            (index === 0 ? LEFT_HEADER_LEFT_SPACING : 0),
-                          ...(index === 0
-                            ? { paddingLeft: LEFT_HEADER_LEFT_SPACING }
-                            : {}),
-                          ...(index === rowIndexes.length - 1
-                            ? { borderRight: "none" }
-                            : {}),
-                        }}
-                        icon={
-                          // you can only collapse before the last column
-                          index < rowIndexes.length - 1 &&
-                          isColumnCollapsible(rowIndex) && (
-                            <RowToggleIcon
-                              value={index + 1}
-                              settings={settings}
-                              updateSettings={onUpdateVisualizationSettings}
-                            />
-                          )
-                        }
-                      />
-                    ))}
-                  </PivotTableTopLeftCellsContainer>
-                  {/* top header */}
-                  <Collection
-                    aria-label="pivot-table-top-header"
-                    style={{ minWidth: `${topHeaderWidth}px` }}
-                    ref={topHeaderRef}
-                    className={CS.scrollHideAll}
-                    width={topHeaderWidth}
-                    height={topHeaderHeight}
-                    cellCount={topHeaderItems.length}
-                    cellRenderer={({ index, style, key }) => (
-                      <TopHeaderCell
-                        key={key}
-                        style={style}
-                        item={topHeaderItems[index]}
-                        getCellClickHandler={getCellClickHandler}
-                        onResize={(newWidth: number) =>
-                          handleColumnResize(
-                            "value",
-                            topHeaderItems[index].offset,
-                            newWidth,
-                          )
-                        }
-                      />
-                    )}
-                    cellSizeAndPositionGetter={({ index }) =>
-                      topHeaderCellSizeAndPositionGetter(
-                        topHeaderItems[index],
-                        topHeaderRows,
-                        valueHeaderWidths,
+                    icon={
+                      // you can only collapse before the last column
+                      index < rowIndexes.length - 1 &&
+                      isColumnCollapsible(rowIndex) && (
+                        <RowToggleIcon
+                          value={index + 1}
+                          settings={settings}
+                          updateSettings={onUpdateVisualizationSettings}
+                        />
                       )
                     }
-                    onScroll={({ scrollLeft }) =>
-                      onScroll({ scrollLeft } as OnScrollParams)
-                    }
-                    scrollLeft={scrollLeft}
                   />
-                </div>
-                <div className={cx(CS.flex, CS.flexFull)}>
-                  {/* left header */}
-                  <div style={{ width: leftHeaderWidth }}>
-                    <AutoSizer disableWidth nonce={getCspNonce()}>
-                      {() => (
-                        <Collection
-                          ref={leftHeaderRef}
-                          className={CS.scrollHideAll}
-                          cellCount={leftHeaderItems.length}
-                          cellRenderer={({ index, style, key }) => (
-                            <LeftHeaderCell
-                              key={key}
-                              style={style}
-                              item={leftHeaderItems[index]}
-                              rowIndex={rowIndex}
-                              onUpdateVisualizationSettings={
-                                onUpdateVisualizationSettings
-                              }
-                              settings={settings}
-                              getCellClickHandler={getCellClickHandler}
-                              isNativeQuery={isNativePivotData(data.cols)}
-                            />
-                          )}
-                          cellSizeAndPositionGetter={({ index }) =>
-                            leftHeaderCellSizeAndPositionGetter(
-                              leftHeaderItems[index],
-                              leftHeaderWidths ?? [0],
-                              rowIndexes,
-                            )
+                ))}
+              </PivotTableTopLeftCellsContainer>
+              {/* top header */}
+              <Collection
+                aria-label="pivot-table-top-header"
+                style={{ minWidth: `${topHeaderWidth}px` }}
+                ref={topHeaderRef}
+                className={CS.scrollHideAll}
+                width={topHeaderWidth}
+                height={topHeaderHeight}
+                cellCount={topHeaderItems.length}
+                cellRenderer={({ index, style, key }) => (
+                  <TopHeaderCell
+                    key={key}
+                    style={style}
+                    item={topHeaderItems[index]}
+                    getCellClickHandler={getCellClickHandler}
+                    onResize={(newWidth: number) =>
+                      handleColumnResize(
+                        "value",
+                        topHeaderItems[index].offset,
+                        newWidth,
+                      )
+                    }
+                  />
+                )}
+                cellSizeAndPositionGetter={({ index }) =>
+                  topHeaderCellSizeAndPositionGetter(
+                    topHeaderItems[index],
+                    topHeaderRows,
+                    valueHeaderWidths,
+                  )
+                }
+                onScroll={handleTopHeaderScroll}
+                scrollLeft={scrollLeft}
+              />
+            </div>
+            <div className={cx(CS.flex, CS.flexFull)}>
+              {/* left header */}
+              <div style={{ width: leftHeaderWidth }}>
+                <AutoSizer disableWidth nonce={getCspNonce()}>
+                  {() => (
+                    <Collection
+                      ref={leftHeaderRef}
+                      className={CS.scrollHideAll}
+                      cellCount={leftHeaderItems.length}
+                      cellRenderer={({ index, style, key }) => (
+                        <LeftHeaderCell
+                          key={key}
+                          style={style}
+                          item={leftHeaderItems[index]}
+                          rowIndex={rowIndex}
+                          onUpdateVisualizationSettings={
+                            onUpdateVisualizationSettings
                           }
-                          width={leftHeaderWidth}
-                          height={bodyHeight - scrollBarOffsetSize()}
-                          scrollTop={scrollTop}
-                          onScroll={({ scrollTop }) =>
-                            onScroll({ scrollTop } as OnScrollParams)
-                          }
+                          settings={settings}
+                          getCellClickHandler={getCellClickHandler}
+                          isNativeQuery={isNativePivotData(data.cols)}
                         />
                       )}
-                    </AutoSizer>
-                  </div>
-                  {/* pivot table body */}
-                  <div>
-                    <AutoSizer disableWidth nonce={getCspNonce()}>
-                      {() => (
-                        <Grid
-                          aria-label={PIVOT_TABLE_BODY_LABEL}
-                          width={viewPortWidth - leftHeaderWidth}
-                          height={bodyHeight}
-                          rowCount={rowCount}
-                          columnCount={columnCount}
-                          rowHeight={CELL_HEIGHT}
-                          columnWidth={({ index }) => {
-                            const subColumnWidths = getCellWidthsForSection(
+                      cellSizeAndPositionGetter={({ index }) =>
+                        leftHeaderCellSizeAndPositionGetter(
+                          leftHeaderItems[index],
+                          leftHeaderWidths ?? [0],
+                          rowIndexes,
+                        )
+                      }
+                      width={leftHeaderWidth}
+                      height={bodyHeight - scrollBarOffsetSize()}
+                      scrollTop={scrollTop}
+                      onScroll={handleLeftHeaderScroll}
+                    />
+                  )}
+                </AutoSizer>
+              </div>
+              {/* pivot table body */}
+              <div>
+                <AutoSizer disableWidth nonce={getCspNonce()}>
+                  {() => (
+                    <Grid
+                      aria-label={PIVOT_TABLE_BODY_LABEL}
+                      width={viewPortWidth - leftHeaderWidth}
+                      height={bodyHeight}
+                      rowCount={rowCount}
+                      columnCount={columnCount}
+                      rowHeight={CELL_HEIGHT}
+                      columnWidth={({ index }) => {
+                        const subColumnWidths = getCellWidthsForSection(
+                          valueHeaderWidths,
+                          valueIndexes,
+                          index,
+                        );
+                        return sumArray(subColumnWidths);
+                      }}
+                      estimatedColumnSize={DEFAULT_CELL_WIDTH}
+                      cellRenderer={({
+                        rowIndex,
+                        columnIndex,
+                        key,
+                        style,
+                        isScrolling,
+                      }) => {
+                        return (
+                          <BodyCell
+                            key={key}
+                            style={style}
+                            showTooltip={!isScrolling}
+                            rowSection={getRowSection(columnIndex, rowIndex)}
+                            getCellClickHandler={getCellClickHandler}
+                            cellWidths={getCellWidthsForSection(
                               valueHeaderWidths,
                               valueIndexes,
-                              index,
-                            );
-                            return sumArray(subColumnWidths);
-                          }}
-                          estimatedColumnSize={DEFAULT_CELL_WIDTH}
-                          cellRenderer={({
-                            rowIndex,
-                            columnIndex,
-                            key,
-                            style,
-                            isScrolling,
-                          }) => {
-                            return (
-                              <BodyCell
-                                key={key}
-                                style={style}
-                                showTooltip={!isScrolling}
-                                rowSection={getRowSection(
-                                  columnIndex,
-                                  rowIndex,
-                                )}
-                                getCellClickHandler={getCellClickHandler}
-                                cellWidths={getCellWidthsForSection(
-                                  valueHeaderWidths,
-                                  valueIndexes,
-                                  columnIndex,
-                                )}
-                              />
-                            );
-                          }}
-                          onScroll={({ scrollLeft, scrollTop }) =>
-                            onScroll({
-                              scrollLeft,
-                              scrollTop,
-                            } as OnScrollParams)
-                          }
-                          ref={gridRef}
-                          elementRef={gridContainerRef}
-                          scrollTop={scrollTop}
-                          scrollLeft={scrollLeft}
-                        />
-                      )}
-                    </AutoSizer>
-                  </div>
-                </div>
+                              columnIndex,
+                            )}
+                          />
+                        );
+                      }}
+                      onScroll={handleGridScroll}
+                      ref={gridRef}
+                      elementRef={gridContainerRef}
+                      scrollTop={scrollTop}
+                      scrollLeft={scrollLeft}
+                    />
+                  )}
+                </AutoSizer>
               </div>
-            )}
-          </ScrollSync>
+            </div>
+          </div>
         </PivotTableRoot>
       </DndContext>
     );
