@@ -284,11 +284,19 @@
    (= reference-port "*")
    (= port reference-port)))
 
+(defn- strip-origin-path
+  "Strips a trailing `/path` from an admin-entered CORS origin entry. Origins have no path component by
+   definition (just scheme + host + port), so a trailing slash or path pasted into an allowlist setting
+   (e.g. `http://localhost:6274/`) shouldn't silently make that entry fail to parse and drop out of the
+   allowlist."
+  [url]
+  (str/replace url #"^((?:https?|app|capacitor)://)?([^/]*)(?:/.*)?$" "$1$2"))
+
 (defn parse-approved-origins
   "Parses the space separated string of approved origins"
   [approved-origins-raw]
   (let [urls (str/split approved-origins-raw #" +")]
-    (keep parse-url urls)))
+    (keep (comp parse-url strip-origin-path) urls)))
 
 (def ^:private loopback-hosts
   "Set of hostnames/IPs that represent loopback addresses.
