@@ -1150,7 +1150,8 @@
           ;; Batch SELECT #2: all existing table-level permissions for this DB
           ;; (needed for schema-permission-value logic and going-granular expansion)
           table-perms    (t2/select :model/DataPermissions
-                                    {:where [:and
+                                    {:select-distinct [:group_id :perm_type :schema_name :perm_value]
+                                     :where [:and
                                              [:= :db_id db-id]
                                              [:not= :table_id nil]
                                              [:in :group_id group-ids]
