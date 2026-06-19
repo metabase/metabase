@@ -535,12 +535,11 @@
                              "within the 2,000-row budget, the response includes a "
                              "continuation_token — pass it back to fetch the next page. A missing "
                              "continuation_token means the budget is exhausted or the table has "
-                             "fewer rows than the page size; it does NOT mean the table has no "
-                             "more rows. If the table is larger than 2,000 rows and you need more, "
-                             "add a filter or aggregation to narrow the result set.\n\n"
-                             "Provide one of: a `query_handle` returned by construct_query "
-                             "(preferred when you have one); a `{\"query\": <object>}` body "
-                             "(same shape as construct_query; see the `construct_notebook_query` "
+                             "fewer rows than the page size. If the table is larger than 2,000 "
+                             "rows and you need more, add a filter or aggregation to narrow "
+                             "the result set.\n\n Provide one of: a `query_handle` returned "
+                             "by construct_query (preferred when you have one); a `{\"query\": <object>}` "
+                             "body (same shape as construct_query; see the `construct_notebook_query` "
                              "tool for the format reference); or a `{\"continuation_token\": "
                              "\"...\"}` from a previous response.")
            :annotations {:read-only? true}}}
