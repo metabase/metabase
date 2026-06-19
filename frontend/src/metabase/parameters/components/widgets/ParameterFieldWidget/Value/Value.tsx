@@ -1,7 +1,7 @@
 import { isValidElement } from "react";
 
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { OptionsType } from "metabase/utils/formatting/types";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { DashboardId, Parameter } from "metabase-types/api";

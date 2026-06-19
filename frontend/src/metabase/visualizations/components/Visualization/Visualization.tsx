@@ -19,7 +19,7 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
 import { connect } from "metabase/redux";

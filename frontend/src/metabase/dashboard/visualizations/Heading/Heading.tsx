@@ -13,7 +13,7 @@ import {
   getIsEditingParameter,
   getParameterValues,
 } from "metabase/dashboard/selectors";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Ellipsified, Flex } from "metabase/ui";
