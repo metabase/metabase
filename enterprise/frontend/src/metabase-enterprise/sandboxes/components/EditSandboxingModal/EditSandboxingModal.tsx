@@ -21,7 +21,7 @@ import { QuestionName } from "metabase/common/components/QuestionName";
 import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Button, Center, Icon, Loader } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import type {

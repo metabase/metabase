@@ -11,7 +11,7 @@ import { usePrevious } from "react-use";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Box, Flex } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {

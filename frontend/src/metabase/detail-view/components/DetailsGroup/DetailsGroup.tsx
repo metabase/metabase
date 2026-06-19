@@ -3,7 +3,7 @@ import {
   getRowValue,
   renderValue,
 } from "metabase/detail-view/utils";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Flex, Group, Stack, Text, rem } from "metabase/ui";
 import type { OptionsType } from "metabase/utils/formatting/types";
 import type { DatasetColumn, RowValues, Table } from "metabase-types/api";

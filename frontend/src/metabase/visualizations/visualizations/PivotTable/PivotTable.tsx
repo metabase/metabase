@@ -18,7 +18,7 @@ import _ from "underscore";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";

@@ -3,7 +3,7 @@ import cx from "classnames";
 import { useEffect, useId, useRef } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Ellipsified } from "metabase/ui";
 import type { VisualizationSettings } from "metabase-types/api";
 

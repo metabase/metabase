@@ -27,8 +27,8 @@ import {
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,

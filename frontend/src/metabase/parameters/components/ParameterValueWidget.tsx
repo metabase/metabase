@@ -4,7 +4,7 @@ import { type ReactNode, useMemo, useState } from "react";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";

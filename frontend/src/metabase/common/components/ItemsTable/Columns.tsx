@@ -8,7 +8,7 @@ import { EntityItem } from "metabase/common/components/EntityItem";
 import { Markdown } from "metabase/common/components/Markdown";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Checkbox, Ellipsified, type IconProps, Tooltip } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";

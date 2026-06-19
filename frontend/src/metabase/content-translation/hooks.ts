@@ -1,4 +1,4 @@
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins/oss/content-translation";
 
 import type { ContentTranslationFunction } from "./types";
 

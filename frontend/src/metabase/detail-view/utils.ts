@@ -1,4 +1,4 @@
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import type { OptionsType } from "metabase/utils/formatting";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";

@@ -43,7 +43,7 @@ import type {
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";

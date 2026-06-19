@@ -3,7 +3,7 @@ import { type MouseEvent, type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
 import { isEmbedding } from "metabase/embedding/config";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
