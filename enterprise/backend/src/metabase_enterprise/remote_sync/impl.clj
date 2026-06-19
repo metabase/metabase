@@ -936,10 +936,14 @@
               (remote-sync.task/update-progress! task-id 0.3)
               (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
                 (remote-sync.task/set-version! task-id written-version))
-              (doseq [{:keys [id file_path content_hash]} synced]
-                (t2/update! :model/RemoteSyncObject :id id
-                            {:status "synced" :file_path file_path :content_hash content_hash
-                             :status_changed_at sync-timestamp}))
+              ;; one batched CASE update per chunk (status/timestamp constant, file_path/content_hash per row)
+              (doseq [chunk (partition-all content-hash-batch-size synced)]
+                (t2/update! :model/RemoteSyncObject
+                            {:id [:in (mapv :id chunk)]}
+                            {:status            "synced"
+                             :status_changed_at sync-timestamp
+                             :file_path         (into [:case] (mapcat (fn [{:keys [id file_path]}] [[:= :id id] file_path])) chunk)
+                             :content_hash      (into [:case] (mapcat (fn [{:keys [id content_hash]}] [[:= :id id] content_hash])) chunk)}))
               (when (seq removed-ids)
                 (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
               (log/infof "Remote sync incremental export: wrote %d, deleted %d"
