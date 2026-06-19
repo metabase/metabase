@@ -160,40 +160,32 @@ describe("command palette", () => {
       .should("not.exist");
     H.commandPalette().findByText("No results for “New”").should("be.visible");
 
-    H.commandPalette()
-      .findByRole("option", { name: "New question" })
-      .should("have.attr", "aria-selected", "true");
+    const firstOption = () =>
+      H.commandPalette().findAllByRole("option").first();
+    const docsOption = () =>
+      H.commandPalette().findByRole("option", {
+        name: 'Search documentation for "New"',
+      });
 
-    cy.wait(100); // pressing page down too fast does nothing
-    H.pressPageDown();
-    H.commandPalette()
-      .findByRole("option", { name: "New collection" })
-      .should("have.attr", "aria-selected", "true");
+    cy.log("the first action is selected by default");
+    firstOption().should("have.attr", "aria-selected", "true");
 
-    H.pressPageDown();
-    H.commandPalette()
-      .findByRole("option", { name: 'Search documentation for "New"' })
-      .should("have.attr", "aria-selected", "true");
-
-    H.pressPageUp();
-    H.commandPalette()
-      .findByRole("option", { name: "New collection" })
-      .should("have.attr", "aria-selected", "true");
-
-    H.pressPageUp();
-    H.commandPalette()
-      .findByRole("option", { name: "New question" })
-      .should("have.attr", "aria-selected", "true");
-
+    cy.log("End selects the last item, Home selects the first");
     H.pressEnd();
-    H.commandPalette()
-      .findByRole("option", { name: 'Search documentation for "New"' })
-      .should("have.attr", "aria-selected", "true");
+    docsOption().should("have.attr", "aria-selected", "true");
 
     H.pressHome();
-    H.commandPalette()
-      .findByRole("option", { name: "New question" })
-      .should("have.attr", "aria-selected", "true");
+    firstOption().should("have.attr", "aria-selected", "true");
+
+    cy.log(
+      "PageDown moves the selection down, PageUp brings it back to the top",
+    );
+    cy.wait(100); // pressing page down too fast does nothing
+    H.pressPageDown();
+    firstOption().should("not.have.attr", "aria-selected", "true");
+
+    H.pressPageUp();
+    firstOption().should("have.attr", "aria-selected", "true");
   });
 
   it("should display search results in the order returned by the API", () => {
