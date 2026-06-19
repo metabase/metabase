@@ -14,7 +14,8 @@
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses-rest.api-test :as api.database-test]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (org.sqlite SQLiteException)))
 
 ;;; ---------------------------------------------------- Tooling -----------------------------------------------------
 
@@ -108,7 +109,7 @@
                               ["DELETE" "DELETE FROM PRODUCTS WHERE PRICE = 12.345;"]]]
               (testing op
                 (is (thrown-with-msg?
-                     org.sqlite.SQLiteException
+                     SQLiteException
                      #"(?i)readonly"
                      (jdbc/execute! conn-spec sql)))))))))))
 
