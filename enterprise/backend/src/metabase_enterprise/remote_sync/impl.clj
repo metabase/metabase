@@ -219,23 +219,24 @@
   500)
 
 (defn- record-exported-metadata!
-  "Writes `file_path` and `content_hash` onto the RemoteSyncObject rows named by `entries` (each
-  {:model_type :model_id :path :content_hash}), in a single batched CASE update per chunk of
-  `content-hash-batch-size` rows — across all model types, not per model. Rows are matched by
-  (model_type, model_id) -> primary key via one select. Rows with no matching entry (e.g. removed/delete
-  rows) are left untouched."
-  [entries]
-  (let [by-key (into {} (map (juxt (juxt :model_type :model_id) identity)) entries)
-        pairs  (keep (fn [{:keys [id model_type model_id]}]
-                       (when-let [e (by-key [model_type model_id])]
-                         [id e]))
-                     (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
-    (doseq [chunk (partition-all content-hash-batch-size pairs)]
-      ;; one atomic combined CASE update per chunk; the honeysql expression compiles per app-db dialect
+  "Reconciles the whole RemoteSyncObject table after a full export, in a single write per row. `entries`
+  ({:model_type :model_id :path :content_hash}) name the exported rows. One select fetches every row; rows
+  are then chunked (bounded statements) and each chunk is one update that sets `status`/`status_changed_at`
+  for every row in it and `file_path`/`content_hash` for the exported ones (a CASE over that chunk's exported
+  rows with ELSE keep-existing). Rows with no entry — removed/delete leftovers — only get their status reset."
+  [entries sync-timestamp]
+  (let [by-key   (into {} (map (juxt (juxt :model_type :model_id) identity)) entries)
+        id+entry (mapv (fn [{:keys [id model_type model_id]}] [id (by-key [model_type model_id])])
+                       (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
+    (doseq [chunk (partition-all content-hash-batch-size id+entry)
+            :let  [exported (filter second chunk)]]
+      ;; one combined update per chunk; the honeysql CASE compiles per app-db dialect
       (t2/update! :model/RemoteSyncObject
                   {:id [:in (mapv first chunk)]}
-                  {:file_path    (into [:case] (mapcat (fn [[id e]] [[:= :id id] (:path e)])) chunk)
-                   :content_hash (into [:case] (mapcat (fn [[id e]] [[:= :id id] (:content_hash e)])) chunk)}))))
+                  (cond-> {:status "synced" :status_changed_at sync-timestamp}
+                    (seq exported)
+                    (assoc :file_path    (into [:case] (concat (mapcat (fn [[id e]] [[:= :id id] (:path e)]) exported) [:else :file_path]))
+                           :content_hash (into [:case] (concat (mapcat (fn [[id e]] [[:= :id id] (:content_hash e)]) exported) [:else :content_hash]))))))))
 
 (defn- import-content-metadata
   "Builds {:model_type :model_id :path :content_hash} entries for the given RemoteSyncObject `rows` (maps
@@ -860,10 +861,9 @@
     ;; serialize once: write the files and get back each entity's path + content_hash (keyed by primary key)
     (let [{:keys [version entries]} (source/store-and-record! targets snapshot task-id message)]
       (remote-sync.task/set-version! task-id version)
-      ;; blanket-reconcile every row to synced (covers removed/delete rows not in this export), then write
-      ;; file_path + content_hash for the exported entities in one batched pass.
-      (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
-      (record-exported-metadata! entries))
+      ;; one write per row: reconcile every row to synced and write file_path + content_hash for the
+      ;; exported entities (removed/delete rows just get their status reset).
+      (record-exported-metadata! entries sync-timestamp))
     {:status :success}))
 
 (defn export!

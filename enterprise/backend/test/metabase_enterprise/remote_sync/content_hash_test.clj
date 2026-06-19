@@ -217,7 +217,7 @@
           (doseq [row rows]
             (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
                                                             :status_changed_at (t/offset-date-time)})))
-          (#'impl/record-exported-metadata! (#'impl/import-content-metadata rows []))
+          (#'impl/record-exported-metadata! (#'impl/import-content-metadata rows []) (t/offset-date-time))
           (doseq [{:keys [model_type model_id] :as row} rows]
             (is (= (source/row->content-hash row)
                    (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
@@ -237,7 +237,7 @@
             entries (#'impl/import-content-metadata rows [])]
         ;; force more than one chunk for the 3 cards
         (with-redefs [impl/content-hash-batch-size 2]
-          (#'impl/record-exported-metadata! entries)))
+          (#'impl/record-exported-metadata! entries (t/offset-date-time))))
       (doseq [card [c1 c2 c3]]
         (is (= (source/row->content-hash {:model_type "Card" :model_id (:id card)})
                (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))
@@ -350,7 +350,9 @@
           (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS" :location "/"}
                          :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
                          :model/RemoteSyncObject _ {:model_type "Collection" :model_id (:id coll) :model_name "RS" :status "create" :status_changed_at (t/offset-date-time)}
-                         :model/RemoteSyncObject _ {:model_type "Card" :model_id (:id card) :model_name "Card" :model_collection_id (:id coll) :status "create" :status_changed_at (t/offset-date-time)}]
+                         :model/RemoteSyncObject _ {:model_type "Card" :model_id (:id card) :model_name "Card" :model_collection_id (:id coll) :status "create" :status_changed_at (t/offset-date-time)}
+                         ;; a leftover row whose entity isn't in the export — full export must reconcile its status
+                         :model/RemoteSyncObject leftover {:model_type "Card" :model_id 999999 :model_name "Gone" :status "delete" :status_changed_at (t/offset-date-time)}]
             ;; force? routes through full-export! -> store-and-record! (no incremental fast-path)
             (let [mock-source (test-helpers/create-mock-source)
                   result      (impl/export! (source.p/snapshot mock-source) task-id "Full export" :force? true)]
@@ -358,7 +360,10 @@
               (let [row (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
                 (is (= "synced" (:status row)))
                 (is (some? (:content_hash row)) "content_hash recorded from store-and-record!'s serialization")
-                (is (some? (:file_path row)) "file_path recorded from store-and-record!'s serialization")))
+                (is (some? (:file_path row)) "file_path recorded from store-and-record!'s serialization"))
+              (let [row (t2/select-one :model/RemoteSyncObject :id (:id leftover))]
+                (is (= "synced" (:status row)) "leftover (non-exported) row reconciled to synced")
+                (is (nil? (:content_hash row)) "leftover row's content_hash left untouched")))
             (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
             (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
                 "a no-op update after a full export stays synced")))))))
