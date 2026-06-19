@@ -8,32 +8,6 @@ import { adjustBrightness, alpha, color } from "metabase/ui/colors";
 
 import { CELL_HEIGHT, RESIZE_HANDLE_WIDTH } from "./constants";
 
-export const RowToggleIconRoot = styled.div`
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 200ms;
-  outline: none;
-
-  ${getRowToggleStyle}
-`;
-
-function getRowToggleStyle({ theme }: { theme: MantineTheme }) {
-  const { textColor, backgroundColor } = theme.other.pivotTable.rowToggle;
-  const hoverColor = adjustBrightness(backgroundColor, 0.2, 0.2);
-
-  return css`
-    color: ${color(textColor)};
-    background-color: ${color(backgroundColor)};
-
-    &:hover {
-      background-color: ${color(hoverColor)};
-    }
-  `;
-}
-
 interface PivotTableCellProps {
   isBold?: boolean;
   isEmphasized?: boolean;

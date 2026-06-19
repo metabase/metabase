@@ -1,98 +1,121 @@
 import { updateIn } from "icepick";
 import _ from "underscore";
 
-import { Icon } from "metabase/ui";
 import { COLLAPSED_ROWS_SETTING } from "metabase/visualizations/lib/data_grid";
 import type {
   PivotTableCollapsedRowsSetting,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { RowToggleIconRoot } from "./PivotTable.styled";
-
-interface RowToggleIconProps {
+export interface RowToggleProps {
   value: number | string[];
   settings: VisualizationSettings;
   updateSettings: (settings: VisualizationSettings) => void;
-  hideUnlessCollapsed?: boolean;
   rowIndex?: string[];
-  "data-testid"?: string;
 }
 
-export function RowToggleIcon({
+/** Returns whether the given row/column is currently collapsed. */
+export function isRowCollapsed(
+  value: number | string[],
+  settings: VisualizationSettings,
+): boolean {
+  const setting = settings[
+    COLLAPSED_ROWS_SETTING
+  ] as PivotTableCollapsedRowsSetting;
+  const ref = JSON.stringify(value);
+  const isColumn = !Array.isArray(value);
+  const columnRef = isColumn
+    ? null
+    : JSON.stringify((value as string[]).length);
+  const settingValue: PivotTableCollapsedRowsSetting["value"] =
+    setting?.value || [];
+  const isColumnCollapsed =
+    !isColumn && settingValue.includes(columnRef as string);
+  return settingValue.includes(ref) || isColumnCollapsed;
+}
+
+/** Fires the collapse/expand toggle for a row or column header cell. */
+export function toggleRow({
   value,
   settings,
   updateSettings,
-  hideUnlessCollapsed,
   rowIndex = [],
-  "data-testid": testId,
-}: RowToggleIconProps) {
+}: RowToggleProps) {
   if (value == null) {
-    return null;
+    return;
   }
   const setting = settings[
     COLLAPSED_ROWS_SETTING
   ] as PivotTableCollapsedRowsSetting;
   const ref = JSON.stringify(value);
   const isColumn = !Array.isArray(value);
-  const columnRef = isColumn ? null : JSON.stringify(value.length);
+  const columnRef = isColumn
+    ? null
+    : JSON.stringify((value as string[]).length);
   const settingValue: PivotTableCollapsedRowsSetting["value"] =
-    setting.value || [];
+    setting?.value || [];
   const isColumnCollapsed =
     !isColumn && settingValue.includes(columnRef as string);
   const isCollapsed = settingValue.includes(ref) || isColumnCollapsed;
 
-  if (hideUnlessCollapsed && !isCollapsed) {
-    // subtotal rows shouldn't have an icon unless the section is collapsed
-    return null;
-  }
-
-  // The giant nested ternary below picks the right function to toggle the current button.
-  // That depends on whether we're a row or column header and whether we're open or closed.
   const toggle =
-    isColumn && !isCollapsed // click on open column
-      ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
-          settingValue
+    isColumn && !isCollapsed
+      ? (sv: PivotTableCollapsedRowsSetting["value"]) =>
+          sv
             .filter((v) => {
               const parsed = JSON.parse(v);
               return !(Array.isArray(parsed) && parsed.length === value);
-            }) // remove any already collapsed items in this column
-            .concat(ref) // add column to list
-      : !isColumn && isColumnCollapsed // single row in collapsed column
-        ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
-            settingValue
-              .filter((v) => v !== columnRef) // remove column from list
+            })
+            .concat(ref)
+      : !isColumn && isColumnCollapsed
+        ? (sv: PivotTableCollapsedRowsSetting["value"]) =>
+            sv
+              .filter((v) => v !== columnRef)
               .concat(
-                // add other rows in this columns so they stay closed
                 rowIndex
                   .filter(
                     (item) =>
-                      // equal length means they're in the same column
-                      item.length === value.length &&
-                      // but not exactly this item
+                      item.length === (value as string[]).length &&
                       !_.isEqual(item, value),
                   )
-                  // serialize those paths
                   .map((item) => JSON.stringify(item)),
               )
-        : isCollapsed // closed row or column
-          ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
-              settingValue.filter((v) => v !== ref)
-          : // open row or column
-            (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
-              settingValue.concat(ref);
+        : isCollapsed
+          ? (sv: PivotTableCollapsedRowsSetting["value"]) =>
+              sv.filter((v) => v !== ref)
+          : (sv: PivotTableCollapsedRowsSetting["value"]) => sv.concat(ref);
 
+  updateSettings({
+    [COLLAPSED_ROWS_SETTING]: updateIn(setting, ["value"], toggle),
+  });
+}
+
+interface RowToggleIconProps {
+  value: number | string[];
+  settings: VisualizationSettings;
+  updateSettings: (settings: VisualizationSettings) => void;
+  rowIndex?: string[];
+  "data-testid"?: string;
+}
+
+/** Column-header toggle button (the small −/+ in the top-left corner). */
+export function RowToggleIcon({
+  value,
+  settings,
+  updateSettings,
+  rowIndex = [],
+  "data-testid": testId,
+}: RowToggleIconProps) {
+  if (value == null) {
+    return null;
+  }
   return (
-    <RowToggleIconRoot
+    <span
       data-testid={testId}
       onClick={(e) => {
         e.stopPropagation();
-        updateSettings({
-          [COLLAPSED_ROWS_SETTING]: updateIn(setting, ["value"], toggle),
-        });
+        toggleRow({ value, settings, updateSettings, rowIndex });
       }}
-    >
-      <Icon name={isCollapsed ? "add" : "dash"} size={8} />
-    </RowToggleIconRoot>
+    />
   );
 }

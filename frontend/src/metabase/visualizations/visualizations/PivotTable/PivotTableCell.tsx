@@ -8,7 +8,7 @@ import { Ellipsified } from "metabase/ui";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
-import { RowToggleIcon } from "./RowToggleIcon";
+import { isRowCollapsed, toggleRow } from "./RowToggleIcon";
 import { LEFT_HEADER_LEFT_SPACING, RESIZE_HANDLE_WIDTH } from "./constants";
 import type { BodyItem, HeaderItem, PivotTableClicked } from "./types";
 
@@ -186,34 +186,39 @@ export const LeftHeaderCell = ({
 }: LeftHeaderCellProps) => {
   const { value, isSubtotal, hasSubtotal, depth, path, clicked, span } = item;
 
-  // For native SQL queries there are no subtotal rows, but rows at depth 0
-  // that span multiple child rows should still be collapsible.
-  const showToggle =
+  // Rows that can be collapsed: subtotal rows, rows with subtotals, or native
+  // depth-0 rows that span multiple children.
+  const isToggleable =
     isSubtotal || hasSubtotal || (isNativeQuery && depth === 0 && span > 1);
+
+  const collapsed =
+    isToggleable && path != null ? isRowCollapsed(path, settings) : false;
+
+  const handleClick =
+    isToggleable && path != null
+      ? (e: React.MouseEvent) => {
+          e.stopPropagation();
+          toggleRow({
+            value: path,
+            settings,
+            updateSettings: onUpdateVisualizationSettings,
+            rowIndex,
+          });
+        }
+      : getCellClickHandler(clicked);
 
   return (
     <Cell
       style={{
         ...style,
         ...(depth === 0 ? { paddingLeft: LEFT_HEADER_LEFT_SPACING } : {}),
+        ...(isToggleable ? { cursor: "pointer" } : {}),
       }}
       value={value}
-      isEmphasized={isSubtotal}
+      isEmphasized={isSubtotal || collapsed}
       isBold={isSubtotal}
-      onClick={getCellClickHandler(clicked)}
+      onClick={handleClick}
       onResize={onResize}
-      icon={
-        showToggle && (
-          <RowToggleIcon
-            data-testid={`${item.rawValue}-toggle-button`}
-            value={path}
-            settings={settings}
-            updateSettings={onUpdateVisualizationSettings}
-            hideUnlessCollapsed={isSubtotal}
-            rowIndex={rowIndex}
-          />
-        )
-      }
     />
   );
 };
