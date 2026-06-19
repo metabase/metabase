@@ -91,6 +91,15 @@
       (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (= 1.0 (:progress completed-task)))
         (is (some? (:ended_at completed-task)))
+        (is (nil? (:error_message completed-task)))
+        (is (nil? (:outcome completed-task)))))))
+
+(deftest complete-sync-task-stores-outcome-test
+  (testing "stores the structured outcome map (round-tripped as JSON) when one is provided"
+    (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+      (rst/complete-sync-task! (:id task) {:kind "pulled" :count 12 :branch "main"})
+      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (is (= {:kind "pulled" :count 12 :branch "main"} (:outcome completed-task)))
         (is (nil? (:error_message completed-task)))))))
 
 ;;; ------------------------------------------------------------------------------------------------

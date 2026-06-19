@@ -1,5 +1,17 @@
 /* eslint-disable import/order */
 
+// Dynamic chunks (e.g. await import("./sandbox")) must load from the Metabase
+// origin, not the host page. This chunk is served at
+// `<metabase>/app/embedding-sdk/chunks/embedding-sdk-chunked.<hash>.js`; its
+// parent directory is the publicPath webpack needs for sibling chunks.
+// eslint-disable-next-line no-var
+declare var __webpack_public_path__: string;
+const currentScriptUrl = (document.currentScript as HTMLScriptElement | null)
+  ?.src;
+if (currentScriptUrl) {
+  __webpack_public_path__ = new URL("../", currentScriptUrl).href;
+}
+
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 // Enable SDK mode as we are in the SDK bundle
@@ -43,6 +55,7 @@ import { getUser } from "metabase/selectors/user";
 import { useInitData } from "./hooks/private/use-init-data";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
+import { executeAction } from "embedding-sdk-bundle/lib/execute-action";
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
 
@@ -75,6 +88,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   useLogVersionInfo,
   validateFunctionSchema,
   MetabotSubscriber,
+  executeAction,
 };
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package

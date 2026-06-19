@@ -16,16 +16,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import type { RecentMetric } from "metabase/browse/metrics";
-import {
-  createMockMetricResult,
-  createMockRecentMetric,
-} from "metabase/browse/metrics/test-utils";
-import type { RecentModel } from "metabase/browse/models";
-import {
-  createMockModelResult,
-  createMockRecentModel,
-} from "metabase/browse/models/test-utils";
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -66,18 +56,14 @@ const MOCK_DATABASE = createSampleDatabase();
 const TEST_COLLECTION = createMockCollection({ id: "root" });
 
 const TEST_RECENT_TABLE = createMockRecentTableItem();
-const TEST_RECENT_METRIC = createMockRecentMetric(
-  createMockMetricResult({
-    collection: TEST_COLLECTION,
-    name: "Metric",
-  }) as unknown as RecentMetric,
-);
-const TEST_RECENT_MODEL = createMockRecentModel(
-  createMockModelResult({
-    collection: TEST_COLLECTION,
-    name: "Model",
-  }) as unknown as RecentModel,
-);
+const TEST_RECENT_METRIC = createMockRecentCollectionItem({
+  model: "metric",
+  name: "Metric",
+});
+const TEST_RECENT_MODEL = createMockRecentCollectionItem({
+  model: "dataset",
+  name: "Model",
+});
 
 const TEST_RECENT_CARD = createMockRecentCollectionItem({
   model: "card",

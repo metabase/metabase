@@ -1379,9 +1379,7 @@
                                                            :name-selected? false}]]
       (testing (str "fields = " (pr-str fields))
         (let [join  (lib/with-join-fields original-join fields)
-              ;; FIXME -- joins replacement broken -- #32026
-              ;; query (lib/replace-clause query original-join join)
-              query (assoc-in query [:stages 0 :joins] [join])
+              query (lib/replace-clause query original-join join)
               cols  (lib/join-fieldable-columns query -1 join)]
           (is (=? [{:name                         "ID"
                     :lib/join-alias "Cat"

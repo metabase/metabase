@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { FormProvider } from "metabase/forms";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
@@ -38,7 +38,7 @@ const setup = ({
   setting = { key: "key", value: true },
   groups = defaultGroups,
 }: SetupOptions = {}) => {
-  render(
+  return renderWithProviders(
     <FormProvider
       initialValues={{ [setting.key]: setting.value }}
       onSubmit={() => {}}
@@ -55,6 +55,7 @@ const setup = ({
         updateSetting={updateSetting}
       />
     </FormProvider>,
+    { withUndos: true },
   );
 };
 
@@ -68,7 +69,7 @@ describe("GroupMappingsWidgetView", () => {
 
       expect(
         await screen.findByText(
-          /Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server\. If no mappings are defined, groups will automatically be assigned based on exactly matching names\./,
+          /If no mappings are defined, groups will automatically be assigned based on exactly matching names/,
         ),
       ).toBeInTheDocument();
     });
@@ -81,7 +82,7 @@ describe("GroupMappingsWidgetView", () => {
 
       expect(
         await screen.findByText(
-          /Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server\. If a group isn‘t mapped, its membership won‘t be synced\./,
+          /If a group isn‘t mapped, its membership won‘t be synced/,
         ),
       ).toBeInTheDocument();
     });
@@ -122,6 +123,61 @@ describe("GroupMappingsWidgetView", () => {
 
       expect(await screen.findByText("No mappings yet")).toBeInTheDocument();
     });
+
+    it("hides the table column headers when there are no mappings", async () => {
+      setup({ mappings: {} });
+
+      expect(await screen.findByText("No mappings yet")).toBeInTheDocument();
+      expect(screen.queryByRole("columnheader")).not.toBeInTheDocument();
+    });
+
+    it("shows the table column headers once a mapping exists", async () => {
+      setup({ mappingSetting: "ldap-group-mappings" });
+
+      expect(
+        await screen.findByRole("columnheader", { name: "Groups" }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("adding a mapping", () => {
+    it("adds a mapping with a unique name on Enter", async () => {
+      const updateSettingSpy = jest.fn();
+      setup({ updateSetting: updateSettingSpy });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "New mapping" }),
+      );
+      await userEvent.type(
+        screen.getByLabelText("New group mapping name"),
+        "cn=People{Enter}",
+      );
+
+      await waitFor(() => {
+        expect(updateSettingSpy).toHaveBeenCalledWith({
+          key: "ldap-group-mappings",
+          value: { "group=Administrators": [1], "cn=People": [] },
+        });
+      });
+
+      // the mapping autosaves, so the user gets a toast confirming it
+      expect(await screen.findByText("Mapping added")).toBeInTheDocument();
+    });
+
+    it("does not add a mapping with a duplicate name on Enter", async () => {
+      const updateSettingSpy = jest.fn();
+      setup({ updateSetting: updateSettingSpy });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "New mapping" }),
+      );
+      await userEvent.type(
+        screen.getByLabelText("New group mapping name"),
+        "group=Administrators{Enter}",
+      );
+
+      expect(updateSettingSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe("when a mapping is set for admin group", () => {
@@ -143,6 +199,8 @@ describe("GroupMappingsWidgetView", () => {
       await waitFor(() => {
         expect(updateSettingSpy).toHaveBeenCalledTimes(1);
       });
+
+      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
     });
   });
 

@@ -967,7 +967,7 @@ describe("scenarios > admin > settings > map settings", () => {
     // Not GeoJSON
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
-    ).type("https://metabase.com");
+    ).type("https://www.metabase.com");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

@@ -224,26 +224,38 @@
 
               nil)))))))
 
-(defn is [{:keys [node lang]}]
+(defn is [{:keys [node lang], :as input}]
   (when (= lang :cljs)
     (warn-about-missing-test-expr-requires-in-cljs node))
-  {:node node})
+  input)
 
 (defn use-fixtures
   "Flag `:parallel/unsafe` forms inside fixtures. Skipped when the surrounding
-   namespace is marked `^:synchronous` -- the ns marker is the author's
-   explicit opt-in to a single-threaded test ns where destructive setup is
-   safe. Without that opt-in, kondo can't know whether sibling deftests will
-   be `^:parallel`, so the conservative default is to flag.
+  namespace is marked `^:synchronous` -- the ns marker is the author's
+  explicit opt-in to a single-threaded test ns where destructive setup is
+  safe. Without that opt-in, kondo can't know whether sibling deftests will
+  be `^:parallel`, so the conservative default is to flag.
 
-   Sister to [[deftest-check-parallel]]: the deftest hook rejects `^:parallel`
-   tests inside a `^:synchronous` ns, so the two checks together form a
-   coherent opt-in: either the whole ns is synchronous (fixtures can be
-   anything; no parallel tests allowed) or it isn't (fixtures must be
-   parallel-safe)."
-  [{:keys [node config], ns-sym :ns}]
+  Sister to [[deftest-check-parallel]]: the deftest hook rejects `^:parallel`
+  tests inside a `^:synchronous` ns, so the two checks together form a
+  coherent opt-in: either the whole ns is synchronous (fixtures can be
+  anything; no parallel tests allowed) or it isn't (fixtures must be
+  parallel-safe)."
+  [{:keys [node config], ns-sym :ns, :as input}]
   (when-not (:synchronous (meta ns-sym))
     (let [linter-config (get-in config [:linters :metabase/validate-deftest])]
       (doseq [form (rest (:children node))]
         (warn-about-disallowed-parallel-forms form linter-config))))
-  {:node node})
+  input)
+
+(defn testing
+  "Check that we don't have an empty `testing` form like
+
+    (testing \"message\")"
+  [{{[_testing _message & body] :children, :as node} :node, :as input}]
+  (when (empty? body)
+    (hooks/reg-finding!
+     (assoc (meta node)
+            :message "A `testing` form that doesn't wrap anything doesn't do anything"
+            :type    :metabase/check-testing-not-empty)))
+  input)
