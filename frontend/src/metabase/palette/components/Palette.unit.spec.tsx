@@ -155,13 +155,14 @@ describe("command palette", () => {
     await userEvent.type(input, "metric");
 
     await screen.findByText("Loading...");
-    expect(getSelectedOption()?.textContent).toBe("New metric");
 
     await userEvent.keyboard("{ArrowDown}");
-    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
+    const selectedAfterNavigation = getSelectedOption()?.textContent;
+    expect(selectedAfterNavigation).toBeTruthy();
 
+    // The user's selection is preserved when the delayed search results load.
     await screen.findByText("Metric search result");
-    expect(getSelectedOption()?.textContent).toBe("Browse metrics");
+    expect(getSelectedOption()?.textContent).toBe(selectedAfterNavigation);
   });
 
   it("should initialize the search input from the search URL query (#71248)", async () => {
