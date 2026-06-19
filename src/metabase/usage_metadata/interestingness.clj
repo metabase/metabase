@@ -24,7 +24,9 @@
    (if (and (some? field-ids) (empty? field-ids))
      {}
      (into {}
-           (map (juxt :field_id :total_count))
+           ;; SUM of an int column comes back as a Long on H2/Postgres but a BigDecimal on
+           ;; MySQL/MariaDB — coerce to long so the `:int` return schema holds across app DBs.
+           (map (juxt :field_id (comp long :total_count)))
            (t2/select [:model/SourceDimensionDaily :field_id [[:sum :count] :total_count]]
                       {:where    (cond-> [:and
                                           [:in :ownership_mode ["direct" "projected"]]
