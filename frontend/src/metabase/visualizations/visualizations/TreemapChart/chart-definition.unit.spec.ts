@@ -247,7 +247,7 @@ describe("TREEMAP_CHART_DEFINITION", () => {
 
     it("excludes the main grouping column from sub-grouping options", () => {
       const getProps = checkNotNull(subGroupingSetting.getProps);
-      const { options } = getProps(
+      const props = getProps(
         makeSeries(columnsWithSubgrouping, [["A", "x", 10]]),
         {
           "treemap.grouping": "Category",
@@ -258,12 +258,20 @@ describe("TREEMAP_CHART_DEFINITION", () => {
         () => undefined,
       );
 
-      expect(options?.map(({ value }: { value: string }) => value)).toContain(
-        "SubCategory",
+      expect(props).toEqual(
+        expect.objectContaining({
+          options: expect.arrayContaining([
+            expect.objectContaining({ value: "SubCategory" }),
+          ]),
+        }),
       );
-      expect(
-        options?.map(({ value }: { value: string }) => value),
-      ).not.toContain("Category");
+      expect(props).not.toEqual(
+        expect.objectContaining({
+          options: expect.arrayContaining([
+            expect.objectContaining({ value: "Category" }),
+          ]),
+        }),
+      );
     });
 
     it("keeps sub-grouping unset when explicitly cleared", () => {
@@ -307,20 +315,20 @@ describe("TREEMAP_CHART_DEFINITION", () => {
         showParentValuesSetting.getHidden,
       );
 
-      expect(getParentLabelsHidden([], {}, {} as never)).toBe(true);
+      expect(getParentLabelsHidden([], {}, {})).toBe(true);
       expect(
         getParentLabelsHidden(
           [],
           { "treemap.sub_grouping": "SubCategory" },
-          {} as never,
+          {},
         ),
       ).toBe(false);
-      expect(getParentValuesHidden([], {}, {} as never)).toBe(true);
+      expect(getParentValuesHidden([], {}, {})).toBe(true);
       expect(
         getParentValuesHidden(
           [],
           { "treemap.sub_grouping": "SubCategory" },
-          {} as never,
+          {},
         ),
       ).toBe(false);
     });
