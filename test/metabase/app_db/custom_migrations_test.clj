@@ -3107,3 +3107,31 @@
           (is (= ecommerce-id (coll-of :metabase_table table-id)))
           (is (exists? :transform transform-id))
           (is (= ecommerce-id (coll-of :transform transform-id))))))))
+
+(deftest ^:mb/old-migrations-test downgrade-leaves-no-orphaned-card-children-test
+  ;; B1 characterization: the migration hand-deletes only the dashcard tables and lets DB-level ON DELETE CASCADE
+  ;; clear report_card's other ~11 children (query_field, query_table, card_bookmark, report_cardfavorite, ...).
+  ;; Its own comment warns that MySQL 9.7 resolves cascades incompletely. This test seeds those children for a
+  ;; sample card and asserts none survive the card's deletion - i.e. it FAILS if the relied-on cascade leaves
+  ;; orphans. It deliberately asserts only on the outcome (no orphans), not on how the cleanup is done.
+  (testing "downgrade leaves no child rows pointing at a deleted sample card"
+    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
+      (binding [custom-migrations/*create-sample-content* true]
+        (migrate!))
+      (let [internal-user 13371338
+            sqlite-db-id  (:id (t2/query-one {:select [:id] :from [:metabase_database]
+                                              :where [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
+            sample-card   (:id (t2/query-one {:select [:id] :from [:report_card] :where [:= :database_id sqlite-db-id] :limit 1}))
+            ins           (fn [t r] (first (t2/insert-returning-pks! t r)))]
+        ;; children of report_card that the migration leaves to ON DELETE CASCADE (not hand-deleted)
+        (ins :query_field {:card_id sample-card :column "TOTAL" :explicit_reference true})
+        (ins :query_table {:card_id sample-card :table "ORDERS"})
+        (ins :card_bookmark {:user_id internal-user :card_id sample-card})
+        (ins :report_cardfavorite {:card_id sample-card :owner_id internal-user :created_at :%now :updated_at :%now})
+        (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
+        (testing "the sample card was deleted"
+          (is (not (t2/exists? :report_card :id sample-card))))
+        (testing "no child table is left with a row pointing at the deleted card"
+          (doseq [table [:query_field :query_table :card_bookmark :report_cardfavorite]]
+            (is (zero? (t2/count table :card_id sample-card))
+                (str table " has an orphaned row referencing the deleted sample card"))))))))
