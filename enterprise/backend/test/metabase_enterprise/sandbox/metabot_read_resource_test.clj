@@ -15,20 +15,27 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(defn- table-query
+  "Legacy MBQL query selecting a table, as a raw map (avoids the deprecated `mt/mbql-query`).
+   Only needs to name the source table — `lib/all-source-table-ids` resolves it for the
+   sandbox check."
+  [table]
+  {:database (mt/id) :type :query :query {:source-table (mt/id table)}})
+
 (deftest card-query-touches-sandboxed-table?-test
   (testing "true for a non-admin sandboxed user when the card queries the sandboxed table"
     (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                             :query      (mt.tu/restricted-column-query (mt/id))}}
                       :attributes {:cat 50}}
-      (mt/with-temp [:model/Card sandboxed-card {:dataset_query (mt/mbql-query venues)}
-                     :model/Card other-card     {:dataset_query (mt/mbql-query checkins)}]
+      (mt/with-temp [:model/Card sandboxed-card {:dataset_query (table-query :venues)}
+                     :model/Card other-card     {:dataset_query (table-query :checkins)}]
         (is (true? (perms/card-query-touches-sandboxed-table? sandboxed-card))
             "card over the sandboxed table is flagged")
         (is (false? (perms/card-query-touches-sandboxed-table? other-card))
             "card over a non-sandboxed table is not flagged"))))
   (testing "false for an admin (superusers are never sandboxed)"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+      (mt/with-temp [:model/Card card {:dataset_query (table-query :venues)}]
         (is (false? (perms/card-query-touches-sandboxed-table? card)))))))
 
 (deftest read-resource-redacts-sandboxed-card-test
@@ -39,7 +46,7 @@
       ;; A model card retains :result_metadata through serdes (questions skip it), so we can assert
       ;; both sandbox-revealing keys are withheld.
       (mt/with-temp [:model/Card {card-eid :entity_id} {:type            :model
-                                                        :dataset_query   (mt/mbql-query venues)
+                                                        :dataset_query   (table-query :venues)
                                                         :result_metadata [{:name "NAME"}]}]
         (let [result (read-resource/read-resource {:uris [(str "metabase://card/" card-eid)]})
               mbr    (get-in result [:resources 0 :content :structured-output :entity])]
@@ -54,7 +61,7 @@
   (testing "an admin reading the same card MBR DOES get the query + metadata"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card {card-eid :entity_id} {:type            :model
-                                                        :dataset_query   (mt/mbql-query venues)
+                                                        :dataset_query   (table-query :venues)
                                                         :result_metadata [{:name "NAME"}]}]
         (let [result (read-resource/read-resource {:uris [(str "metabase://card/" card-eid)]})
               mbr    (get-in result [:resources 0 :content :structured-output :entity])]
