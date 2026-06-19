@@ -9,15 +9,25 @@
 (set! *warn-on-reflection* true)
 
 (def unnamed-inline-kinds
-  "Index kinds with no physical name (warehouse `:name` is nil); matched by kind + key columns instead."
-  #{:sortkey :order-by :distkey})
+  "Index kinds with no physical name (warehouse `:name` is nil); matched by kind + key columns instead. `:distkey` is
+  excluded until a driver fetches one -- it stores a single `:column`, not `:columns`, so it can't be column-keyed yet."
+  #{:sortkey :order-by})
 
 (defn match-key
-  "Join key for a warehouse index map: `[:kind key-columns]` for unnamed-inline kinds, else its `:name`."
-  [{:keys [kind key-columns] index-name :name}]
+  "Join key for a warehouse index map: `[:kind key-columns]` for unnamed-inline kinds, else its `:name`. Kind-specific
+  qualifiers (a sortkey's compound/interleaved style) are deliberately not in the key -- a hint matches its physical
+  counterpart on identity, not on every attribute."
+  [{:keys [kind key-columns] nm :name}]
   (if (contains? unnamed-inline-kinds kind)
     [kind key-columns]
-    index-name))
+    nm))
+
+(defn index-name
+  "The physical index name for a structured definition: a named kind's own `:name`, else a stable name from its
+  `:kind` (so a transform holds at most one sortkey/order-by/etc, enforced by the unique constraint). The canonical
+  rule -- used on create to populate `:index_name`, and to locate that row again when its DDL fails."
+  [structured]
+  (or (:name structured) (name (:kind structured))))
 
 (defn managed-match-key
   "The [[match-key]] for a managed TableIndex row, from its stored structured definition and index name."

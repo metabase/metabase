@@ -561,13 +561,12 @@
 ;;; ------------------------------------------------- Post-Execution Completion -------------------------------------------------
 
 (defn- mark-index-failed!
-  "Best-effort: flag the managed row for `index` (matched by name) failed, with the error message."
+  "Best-effort: flag the managed row for `index` (located by its canonical name) failed, with the error message."
   [transform-id index ^Throwable t]
   (when transform-id
-    (let [idx-name (or (:name index) (name (:kind index)))]
-      (t2/update! :model/TableIndex
-                  :transform_id transform-id :index_name idx-name
-                  {:status :failed :error_message (ex-message t)}))))
+    (t2/update! :model/TableIndex
+                :transform_id transform-id :index_name (reconcile/index-name index)
+                {:status :failed :error_message (ex-message t)})))
 
 (defn- apply-standalone-indexes!
   "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
@@ -613,14 +612,19 @@
       (let [database  (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
             {:keys [schema] table-name :name} (:target transform)
             warehouse (reconcile/fetch-warehouse-indexes database schema table-name)]
-        (when (seq warehouse)
+        ;; An empty fetch is ambiguous -- the table genuinely has no indexes, or the driver can't introspect / the
+        ;; warehouse was unreachable (both degrade to []). Leave statuses untouched rather than flip every managed
+        ;; row to :failed on a transient blip; warn so a stuck-:pending hint is traceable.
+        (if (seq warehouse)
           (let [present-keys (into #{} (map reconcile/match-key) warehouse)
                 by-present   (group-by #(contains? present-keys (reconcile/managed-match-key %)) managed)]
             ;; one update per outcome rather than per row
             (doseq [[present? rows] by-present]
               (t2/update! :model/TableIndex :id [:in (map :id rows)]
                           {:status           (if present? :succeeded :failed)
-                           :last_executed_at :%now}))))))))
+                           :last_executed_at :%now})))
+          (log/warnf "verify-managed-indexes!: no indexes read back for %s.%s; leaving %d managed hint(s) unchanged"
+                     schema table-name (count managed)))))))
 
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.

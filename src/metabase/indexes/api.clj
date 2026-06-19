@@ -58,12 +58,6 @@
    [:access_method        [:maybe :string]]
    [:request {:optional true} MergedRequest]])
 
-(defn- index-name
-  "Physical index name for a structured index: a named kind's own `:name`, else a stable name from its `:kind` (so a
-  transform holds at most one sortkey/order-by/etc, enforced by the unique constraint)."
-  [structured]
-  (or (:name structured) (name (:kind structured))))
-
 (defn- read-check-owner!
   "Read-check the transform a managed index belongs to -- the permission viewing that transform uses."
   [{:keys [transform_id]}]
@@ -100,7 +94,7 @@
                                          [:transform_id ms/PositiveInt]
                                          [:structured :map]]]
   (api/write-check :model/Transform transform_id)
-  (let [idx-name (index-name structured)]
+  (let [idx-name (reconcile/index-name structured)]
     ;; (transform_id, index_name) is unique; reject a duplicate cleanly instead of hitting the constraint.
     (api/check-400 (not (t2/exists? :model/TableIndex :transform_id transform_id :index_name idx-name))
                    (tru "An index named \"{0}\" already exists for this transform." idx-name))
@@ -119,7 +113,7 @@
   ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
   (t2/with-transaction [_conn]
     (t2/update! :model/TableIndex id {:structured    structured
-                                      :index_name    (index-name structured)
+                                      :index_name    (reconcile/index-name structured)
                                       :status        :pending
                                       :error_message nil})
     (t2/select-one :model/TableIndex :id id)))
