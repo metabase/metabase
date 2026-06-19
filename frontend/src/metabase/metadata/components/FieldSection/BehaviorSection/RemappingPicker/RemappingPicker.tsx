@@ -25,7 +25,7 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
-import type { Database, Field, FieldId } from "metabase-types/api";
+import type { Database, Field, FieldId, FieldValue } from "metabase-types/api";
 
 import {
   type ChangeOptions,
@@ -238,7 +238,11 @@ export const RemappingPicker = ({
           async () => {
             const { error } = await updateFieldValues({
               id,
-              values: Array.from(mapping),
+              values: Array.from(
+                mapping,
+                ([key, label]): FieldValue =>
+                  label === undefined ? [key] : [key, label],
+              ),
             });
 
             sendUndoToast(error);

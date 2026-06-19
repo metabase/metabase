@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { Box, Button, Group, Modal, Text, TextInput } from "metabase/ui";
 
 import S from "./CustomMappingModal.module.css";
-import type { ChangeOptions, Mapping } from "./types";
+import type { ChangeOptions, DraftMapping, Mapping } from "./types";
 import {
   areMappingsEqual,
   fillMissingMappings,
@@ -14,7 +14,7 @@ import {
 
 interface Props {
   isOpen: boolean;
-  value: Mapping;
+  value: DraftMapping;
   onChange: (value: Mapping, options?: ChangeOptions) => void;
   onClose: () => void;
 }
@@ -25,7 +25,7 @@ export const CustomMappingModal = ({
   onChange,
   onClose,
 }: Props) => {
-  const [mapping, setMapping] = useState(new Map());
+  const [mapping, setMapping] = useState<Mapping>(new Map());
   const mappingRef = useLatest(mapping);
   const onChangeRef = useLatest(onChange);
   const hasEmptyValues = useMemo(() => getHasEmptyValues(mapping), [mapping]);
