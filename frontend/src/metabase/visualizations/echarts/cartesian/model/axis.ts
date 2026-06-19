@@ -697,10 +697,6 @@ const getCategoryXAxisColumn = (
   }
 
   const xValues = dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
-  if (xValues.every((value) => tryGetDate(value) == null)) {
-    return column;
-  }
-
   const dataTimeSeriesInterval = computeTimeseriesDataInterval(xValues, null);
   const formatUnit = dataTimeSeriesInterval
     ? getFormatUnit(column, dataTimeSeriesInterval)
