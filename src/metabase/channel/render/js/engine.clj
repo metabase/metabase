@@ -15,22 +15,13 @@
 
 (set! *warn-on-reflection* true)
 
-;; GraalVM requires every context that shares an `Engine` to use the *identical* host-access configuration, so these
-;; are singletons (one shared instance, not rebuilt per context) and there is a separate engine per access level.
+;; A singleton (one shared instance, not rebuilt per context) so all contexts sharing the `Engine` have identical
+;; host-access config, as GraalVM requires.
 
 (def ^:private no-host-class-lookup
   "Predicate blocking all host class lookup. A singleton so all contexts sharing an engine have identical config."
   (reify java.util.function.Predicate
     (test [_ _] false)))
-
-(def ^:private ^HostAccess trusted-host-access
-  "Host access for trusted first-party JS: read Clojure collections (list/array/iterable), but no class lookup,
-  method invocation, or filesystem I/O. A singleton (see above)."
-  (.. (HostAccess/newBuilder)
-      (allowListAccess true)
-      (allowArrayAccess true)
-      (allowIterableAccess true)
-      (build)))
 
 (defn- new-js-engine
   "Build a JS `Engine` to be shared across contexts. We run JS interpreted (no Graal compiler on a stock JDK), so
@@ -42,18 +33,11 @@
       (build)))
 
 (defonce ^:private
-  ^{:doc "GraalVM `Engine` shared by every *sandboxed* JS context (e.g. static-viz, untrusted custom-viz plugins). The
-          engine owns the Truffle runtime + parsed-source cache, so contexts (and pool recycles) reuse one engine
-          instead of each standing up its own — the per-context engine native memory is a source of the leak. Sharing
-          requires identical host access across its contexts, hence a dedicated engine for the sandboxed config. The
-          engine is a process-lifetime singleton (intentionally never closed)."}
+  ^{:doc "GraalVM `Engine` shared by every sandboxed JS context (static-viz, color selector, untrusted custom-viz
+          plugins). The engine owns the Truffle runtime + parsed-source cache, so contexts (and pool recycles) reuse
+          one engine instead of each standing up its own. The engine is a process-lifetime singleton (intentionally
+          never closed)."}
   shared-sandboxed-js-engine
-  (delay (new-js-engine)))
-
-(defonce ^:private
-  ^{:doc "GraalVM `Engine` shared by every *trusted* JS context (see [[trusted-context]]). Separate from
-          [[shared-sandboxed-js-engine]] because contexts sharing an engine must use identical host access."}
-  shared-trusted-js-engine
   (delay (new-js-engine)))
 
 (defn threadlocal-fifo-memoizer
@@ -73,21 +57,6 @@
       (engine @shared-sandboxed-js-engine)
       (option "js.intl-402" "true")
       (allowHostAccess HostAccess/NONE)
-      (allowHostClassLookup no-host-class-lookup)
-      (out System/out)
-      (err System/err)
-      (allowIO false)
-      (build)))
-
-(defn trusted-context
-  "Create an org.graalvm.polyglot.Context for trusted first-party javascript only.
-  Allows reading Clojure collections from JS (list/array access) but still blocks
-  Java class lookup, method invocation, and filesystem I/O."
-  ^Context []
-  (.. (Context/newBuilder (into-array String ["js"]))
-      (engine @shared-trusted-js-engine)
-      (option "js.intl-402" "true")
-      (allowHostAccess trusted-host-access)
       (allowHostClassLookup no-host-class-lookup)
       (out System/out)
       (err System/err)
