@@ -151,9 +151,15 @@
    `:result_metadata` (identity + FK references stay). For every other model, and for
    non-sandboxed users / superusers / OSS, `mbr` is returned unchanged.
 
-   Fail-closed by construction: the predicate is an EE `defenterprise` that defaults to `false`
-   only on OSS / no-sandbox; when a sandbox is configured but its source card's metadata is
-   missing, the underlying sandbox machinery still reports the table as sandboxed, so we redact."
+   Relies on the request context: the predicate reads the per-request `*sandboxes-for-user*`
+   cache (bound by `bind-current-user` middleware on the metabot/agent endpoints). It therefore
+   fails OPEN — returns unredacted — if ever called without that binding (e.g. a bare
+   `(binding [*current-user-id* id] ...)`, or future parallelization). read_resource runs on the
+   request thread today, so this holds; a caller that breaks that assumption must rebind the cache.
+
+   Known gap: detection uses `lib/all-source-table-ids`, which only sees `:source-table` refs, so
+   a pure *native* card over a sandboxed table is not detected. Mitigated because native requires
+   native-query perms a column-sandboxed user lacks; tracked as a follow-up, not closed here."
   [model instance mbr]
   (if (and (= model "Card")
            (perms/card-query-touches-sandboxed-table? instance))
