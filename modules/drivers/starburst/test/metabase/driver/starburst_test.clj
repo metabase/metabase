@@ -20,6 +20,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -34,6 +35,18 @@
 (defmethod tx/before-run :starburst
   [_]
   (alter-var-root #'timezones-test/broken-drivers conj :starburst))
+
+(defn- connection-property-names
+  [driver]
+  (letfn [(prop-names [props]
+            (mapcat (fn [prop]
+                      (concat
+                       (when-let [name (:name prop)]
+                         [name])
+                       (when-let [fields (:fields prop)]
+                         (prop-names fields))))
+                    props))]
+    (set (prop-names (driver/connection-properties driver)))))
 
 (deftest have-select-privilege-mixed-tables-test
   (testing "have-select-privilege? correctly handles mixed Hive/Iceberg tables (Issue #63127)"
@@ -73,52 +86,130 @@
                               (throw (SQLException. "Access Denied: Cannot access table restricted_table" nil 42000)))
                             (close [_] nil))))]
         (is (false? (sql-jdbc.sync.interface/have-select-privilege?
-                     :starburst mock-conn "sales_data" "restricted_table")))))))
+                     :starburst mock-conn "sales_data" "restricted_table")))))
+    (testing "Uses an explicit catalog when provided"
+      (let [mock-conn (reify Connection
+                        (getCatalog [_] "hive")
+                        (prepareStatement [_ sql]
+                          (is (= "DESCRIBE \"iceberg\".\"sales_data\".\"iceberg_table\"" sql))
+                          (reify PreparedStatement
+                            (executeQuery [_]
+                              (reify ResultSet
+                                (next [_] true)
+                                (close [_] nil)))
+                            (close [_] nil))))]
+        (is (true? (sql-jdbc.sync.interface/have-select-privilege?
+                    :starburst mock-conn "sales_data" "iceberg_table" :catalog "iceberg")))))))
+
+(deftest ^:parallel multi-catalog-schema-qualification-test
+  (testing "schemas are qualified with the default catalog"
+    (mt/with-temp [:model/Database db {:engine :starburst
+                                       :details {:catalog "hive"}}]
+      (is (= "hive.default"
+             (driver/adjust-schema-qualification :starburst db "default")))
+      (is (= "iceberg.default"
+             (driver/adjust-schema-qualification :starburst db "iceberg.default")))))
+  (testing "schemas are stripped to the bare schema when multi-level-schema is disabled (database routing)"
+    (mt/with-temp [:model/Database db {:engine :starburst
+                                       :details {:catalog "hive"
+                                                 :multi-level-schema false}}]
+      (is (= "default"
+             (driver/adjust-schema-qualification :starburst db "hive.default")))
+      (is (= "default"
+             (driver/adjust-schema-qualification :starburst db "default"))))))
+
+(deftest ^:parallel multi-catalog-connection-properties-test
+  (let [property-names (connection-property-names :starburst)]
+    (is (not (contains? property-names "catalog")))
+    (is (contains? property-names "schema-filters"))))
+
+(deftest ^:parallel catalog-schema-filters-test
+  (testing "inclusion filters can match catalogs and fully qualified catalog.schema names"
+    (let [details {:schema-filters-type "inclusion"
+                   :schema-filters-patterns "mongo.*, mysql*"}]
+      (is (true? (#'starburst/include-catalog-schema-by-filters? details "mongodb" "sample")))
+      (is (true? (#'starburst/include-catalog-schema-by-filters? details "mysql" "sample")))
+      (is (false? (#'starburst/include-catalog-schema-by-filters? details "tpch" "sf1")))))
+  (testing "exclusion filters accept string keys and keyword filter types"
+    (let [details {"schema-filters-type" :exclusion
+                   "schema-filters-patterns" "system.*"}]
+      (is (false? (#'starburst/include-catalog-schema-by-filters? details "system" "jdbc")))
+      (is (true? (#'starburst/include-catalog-schema-by-filters? details "hive" "default")))))
+  (testing "empty filter patterns include all schemas"
+    (is (true? (#'starburst/include-catalog-schema-by-filters? {:schema-filters-type "inclusion"} "hive" "default")))
+    (is (true? (#'starburst/include-catalog-schema-by-filters? {:schema-filters-type "exclusion"} "system" "jdbc"))))
+  (testing "legacy :schema only restricts sync when a legacy catalog exists"
+    (mt/with-temp [:model/Database with-catalog {:engine :starburst
+                                                 :details {:catalog "hive"
+                                                           :schema "default"}}
+                   :model/Database no-catalog   {:engine :starburst
+                                                 :details {:schema "default"}}]
+      (is (true? (#'starburst/include-catalog-schema? with-catalog "hive" "default")))
+      (is (false? (#'starburst/include-catalog-schema? with-catalog "iceberg" "default")))
+      (is (true? (#'starburst/include-catalog-schema? no-catalog "hive" "default")))
+      (is (true? (#'starburst/include-catalog-schema? no-catalog "iceberg" "default"))))))
+
+(deftest ^:parallel multi-catalog-identifier-test
+  (testing "qualified schemas compile as catalog.schema.table identifiers"
+    (is (= ["\"hive\".\"default\".\"venues\""]
+           (sql.qp/format-honeysql
+            :starburst
+            (sql.qp/->honeysql :starburst (h2x/identifier :table "hive.default" "venues")))))
+    (is (= ["\"hive\".\"default\".\"venues\".\"name\""]
+           (sql.qp/format-honeysql
+            :starburst
+            (sql.qp/->honeysql :starburst (h2x/identifier :field "hive.default" "venues" "name")))))
+    (is (= ["\"venues\".\"name\""]
+           (sql.qp/format-honeysql
+            :starburst
+            (sql.qp/->honeysql :starburst (h2x/identifier :field "venues" "name")))))))
 
 (deftest describe-database-test
   (mt/test-driver :starburst
-    (is (= {:tables #{{:name "categories" :schema "default"}
-                      {:name "venues" :schema "default"}
-                      {:name "checkins" :schema "default"}
-                      {:name "users" :schema "default"}}}
-           (-> (driver/describe-database :starburst (mt/db))
-               (update :tables #(into #{} (filter (comp #{"categories"
-                                                          "venues"
-                                                          "checkins"
-                                                          "users"}
-                                                        :name)) %)))))))
+    (let [schema (str (get-in (mt/db) [:details :catalog]) ".default")]
+      (is (= {:tables #{{:name "categories" :schema schema}
+                        {:name "venues" :schema schema}
+                        {:name "checkins" :schema schema}
+                        {:name "users" :schema schema}}}
+             (-> (driver/describe-database :starburst (mt/db))
+                 (update :tables (comp set (partial filter (comp #{"categories"
+                                                                   "venues"
+                                                                   "checkins"
+                                                                   "users"}
+                                                                 :name))))))))))
 
 (deftest describe-table-test
   (mt/test-driver :starburst
-    (is (= {:name   "venues"
-            :schema "default"
-            :fields #{{:name          "name",
-                       ;; for HTTP based starburst driver, this is coming back as varchar(255)
-                       ;; however, for whatever reason, the DESCRIBE statement results do not return the length
-                       :database-type "varchar"
-                       :base-type     :type/Text
-                       :database-position 1}
-                      {:name          "latitude"
-                       :database-type "double"
-                       :base-type     :type/Float
-                       :database-position 3}
-                      {:name          "longitude"
-                       :database-type "double"
-                       :base-type     :type/Float
-                       :database-position 4}
-                      {:name          "price"
-                       :database-type "integer"
-                       :base-type     :type/Integer
-                       :database-position 5}
-                      {:name          "category_id"
-                       :database-type "integer"
-                       :base-type     :type/Integer
-                       :database-position 2}
-                      {:name          "id"
-                       :database-type "integer"
-                       :base-type     :type/Integer
-                       :database-position 0}}}
-           (driver/describe-table :starburst (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))))
+    (let [schema (str (get-in (mt/db) [:details :catalog]) ".default")]
+      (is (= {:name   "venues"
+              :schema schema
+              :fields #{{:name          "name",
+                         ;; for HTTP based starburst driver, this is coming back as varchar(255)
+                         ;; however, for whatever reason, the DESCRIBE statement results do not return the length
+                         :database-type "varchar"
+                         :base-type     :type/Text
+                         :database-position 1}
+                        {:name          "latitude"
+                         :database-type "double"
+                         :base-type     :type/Float
+                         :database-position 3}
+                        {:name          "longitude"
+                         :database-type "double"
+                         :base-type     :type/Float
+                         :database-position 4}
+                        {:name          "price"
+                         :database-type "integer"
+                         :base-type     :type/Integer
+                         :database-position 5}
+                        {:name          "category_id"
+                         :database-type "integer"
+                         :base-type     :type/Integer
+                         :database-position 2}
+                        {:name          "id"
+                         :database-type "integer"
+                         :base-type     :type/Integer
+                         :database-position 0}}}
+             (driver/describe-table :starburst (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :starburst
@@ -179,13 +270,14 @@
 
 (deftest splice-strings-test
   (mt/test-driver :starburst
-    (let [query (mt/mbql-query venues
+    (let [catalog (get-in (mt/db) [:details :catalog])
+          query (mt/mbql-query venues
                   {:aggregation [[:count]]
                    :filter      [:= $name "wow"]})]
       (testing "The native query returned in query results should use user-friendly splicing"
         (is (= (str "SELECT COUNT(*) AS \"count\" "
-                    "FROM \"default\".\"venues\" "
-                    "WHERE \"default\".\"venues\".\"name\" = 'wow'")
+                    "FROM \"" catalog "\".\"default\".\"venues\" "
+                    "WHERE \"" catalog "\".\"default\".\"venues\".\"name\" = 'wow'")
                (:query (qp.compile/compile-with-inline-parameters query))
                (-> (qp/process-query query) :data :native_form :query)))))))
 
@@ -225,7 +317,8 @@
       (let [s           "specific_schema"
             t           "specific_table"
             db-details  (:details (mt/db))
-            with-schema (assoc db-details :schema s)]
+            with-schema (assoc db-details :schema s)
+            synced-schema (str (:catalog db-details) "." s)]
         (execute-ddl! [(format "DROP TABLE IF EXISTS %s.%s" s t)
                        (format "DROP SCHEMA IF EXISTS %s" s)
                        (format "CREATE SCHEMA %s" s)
@@ -234,7 +327,7 @@
           (mt/with-db db
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
             (sync/sync-database! db)
-            (is (= [{:name t, :schema s, :db_id (mt/id)}]
+            (is (= [{:name t, :schema synced-schema, :db_id (mt/id)}]
                    (map #(select-keys % [:name :schema :db_id]) (t2/select :model/Table :db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)
                        (format "DROP SCHEMA %s" s)])))))

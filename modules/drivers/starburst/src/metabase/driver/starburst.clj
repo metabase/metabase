@@ -22,12 +22,13 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys]])
+   [metabase.util.performance :refer [every? mapv not-empty select-keys some]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (io.trino.jdbc TrinoConnection)
@@ -67,6 +68,7 @@
                               :convert-timezone                true
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
+                              :multi-level-schema              true
                               :now                             true
                               :database-routing                true
                               :connection-impersonation        true}]
@@ -95,15 +97,23 @@
       (throw (Exception. "\"Optimized prepared statements\" require Starburst Galaxy, Starburst Enterprise (version 420-e or higher), or starburst (version 418 or higher)"))
       :else (throw e))))
 
+(defn- first-row-value
+  [row]
+  (some-> (first (vals row)) str))
+
+(defn- catalog-present?
+  [jdbc-spec catalog]
+  (when-not (str/blank? catalog)
+    (contains? (into #{} (keep first-row-value) (jdbc/query jdbc-spec "SHOW CATALOGS"))
+               catalog)))
+
 (defmethod driver/can-connect? :starburst
   [driver {:keys [catalog], :as details}]
   (try
-    ((get-method driver/can-connect? :sql-jdbc) driver details)
-    (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
-      ;; jdbc/query is used to see if we throw, we want to ignore the results
-      (let [query (format "SHOW CATALOGS LIKE '%s'" catalog)
-            response (jdbc/query spec query)]
-        (= [{:catalog catalog}] response)))
+    (and ((get-method driver/can-connect? :sql-jdbc) driver details)
+         (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+           (or (str/blank? catalog)
+               (catalog-present? spec catalog))))
     (catch Throwable e
       (handle-execution-error-details e details))))
 
@@ -115,6 +125,150 @@
   ;; starburst does not support finding foreign key metadata tables, but some connectors support foreign keys.
   ;; We have this return nil to avoid running unnecessary queries during fks sync.
   nil)
+
+(defn- detail-value
+  [details k]
+  (or (get details k)
+      (get details (name k))))
+
+(defn- schema-filter-type
+  [details]
+  (some-> (detail-value details :schema-filters-type) name))
+
+(defn- schema-filter-patterns
+  [details]
+  (detail-value details :schema-filters-patterns))
+
+(defn- schema-filters-configured?
+  [details]
+  (or (some? (schema-filter-type details))
+      (not (str/blank? (schema-filter-patterns details)))))
+
+(defn- qualified-schema
+  [catalog schema]
+  (str catalog "." schema))
+
+(defn- split-qualified-schema
+  [schema]
+  (let [parts (when (string? schema)
+                (str/split schema #"\."))]
+    (when (and (= (count parts) 2)
+               (every? (complement str/blank?) parts))
+      parts)))
+
+(defn- catalog+schema
+  [default-catalog schema]
+  (if-let [[catalog schema] (split-qualified-schema schema)]
+    [catalog schema]
+    (do
+      (when (str/blank? default-catalog)
+        (throw (ex-info "Cannot resolve an unqualified Starburst schema without a default catalog."
+                        {:schema schema})))
+      [default-catalog schema])))
+
+(defn- schema-filter-pattern-parts
+  [patterns]
+  (when-not (str/blank? patterns)
+    (not-empty (into [] (comp (map str/trim)
+                              (remove str/blank?))
+                     (str/split patterns #",")))))
+
+(defn- matches-schema-pattern?
+  [pattern value]
+  (when-not (str/blank? value)
+    (.matches (.matcher (driver.s/schema-pattern->re-pattern pattern) value))))
+
+(defn- matches-catalog-schema-pattern?
+  [pattern catalog schema]
+  (let [qualified-schema-name (qualified-schema catalog schema)]
+    (or (matches-schema-pattern? pattern qualified-schema-name)
+        (matches-schema-pattern? pattern catalog)
+        (when-let [[catalog-pattern schema-pattern] (split-qualified-schema pattern)]
+          (and (matches-schema-pattern? catalog-pattern catalog)
+               (matches-schema-pattern? schema-pattern schema))))))
+
+(defn- catalog-schema-matches-patterns?
+  [patterns catalog schema]
+  (boolean (some #(matches-catalog-schema-pattern? % catalog schema)
+                 (schema-filter-pattern-parts patterns))))
+
+(defn- include-catalog-schema-by-filters?
+  [details catalog schema]
+  (let [filter-patterns (schema-filter-patterns details)]
+    (if (str/blank? filter-patterns)
+      true
+      (case (schema-filter-type details)
+        "inclusion" (catalog-schema-matches-patterns? filter-patterns catalog schema)
+        "exclusion" (not (catalog-schema-matches-patterns? filter-patterns catalog schema))
+        true))))
+
+(defn- unsupported-catalog-or-schema?
+  [catalog schema]
+  (cond
+    (or (str/blank? catalog) (str/blank? schema))
+    true
+
+    (or (str/includes? catalog ".") (str/includes? schema "."))
+    (do
+      (log/warnf "Skipping Starburst catalog/schema pair `%s`.`%s` because dots in catalog or schema names are not supported by Metabase multi-catalog sync."
+                 catalog schema)
+      true)
+
+    :else
+    false))
+
+(defn- include-catalog-schema?
+  [database catalog schema]
+  (let [{default-catalog :catalog, legacy-schema :schema, :as details} (driver.conn/effective-details database)
+        legacy-qualified-schema (when (and (not (schema-filters-configured? details))
+                                           (not (str/blank? default-catalog))
+                                           (not (str/blank? legacy-schema)))
+                                  (qualified-schema default-catalog legacy-schema))
+        schema-name (qualified-schema catalog schema)]
+    (cond
+      (unsupported-catalog-or-schema? catalog schema)
+      false
+
+      (not (driver.s/include-schema? nil nil schema))
+      false
+
+      legacy-qualified-schema
+      (= schema-name legacy-qualified-schema)
+
+      :else
+      (include-catalog-schema-by-filters? details catalog schema))))
+
+(defn- split-catalog-schema-components
+  [identifier-type components]
+  (if (or (and (= identifier-type :table)
+               (>= (count components) 2))
+          (and (= identifier-type :field)
+               (>= (count components) 3)))
+    (if-let [catalog-schema (split-qualified-schema (first components))]
+      (into catalog-schema (rest components))
+      components)
+    components))
+
+(defmethod driver/adjust-schema-qualification :starburst
+  [_driver database schema]
+  (let [details      (driver.conn/effective-details database)
+        multi-level? (get details :multi-level-schema true)
+        catalog      (:catalog details)]
+    (cond
+      (or (nil? schema) (str/blank? catalog))
+      schema
+
+      ;; multi-catalog on: qualify a bare schema so it is addressable as `catalog.schema`.
+      (and multi-level? (not (str/includes? schema ".")))
+      (qualified-schema catalog schema)
+
+      ;; multi-catalog off (e.g. a database-routing destination): strip the catalog prefix so the table is
+      ;; resolved against the active connection's catalog rather than the router's. See #76151.
+      (and (not multi-level?) (str/starts-with? schema (str catalog ".")))
+      (subs schema (inc (count catalog)))
+
+      :else
+      schema)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Query Processor
@@ -292,6 +446,10 @@
   [_ bool]
   [:raw (if bool "TRUE" "FALSE")])
 
+(defmethod sql.qp/->honeysql [:starburst ::h2x/identifier]
+  [_driver [tag identifier-type components]]
+  (sql.qp/->honeysql :sql [tag identifier-type (split-catalog-schema-components identifier-type components)]))
+
 (defmethod sql.qp/->honeysql [:starburst :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
@@ -432,6 +590,16 @@
   "The set of schemas that should be excluded when querying all schemas."
   #{"information_schema"})
 
+(defn- query-rows
+  [driver ^Connection conn sql]
+  (with-open [stmt (.createStatement conn)]
+    (let [rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
+      (into [] (jdbc/reducible-result-set rs {})))))
+
+(defn- visible-catalogs
+  [driver ^Connection conn]
+  (into [] (keep first-row-value) (query-rows driver conn "SHOW CATALOGS")))
+
 (defmethod sql-jdbc.sync/database-type->base-type :starburst
   [_ field-type]
   (let [base-type (starburst-type->base-type field-type)]
@@ -439,7 +607,7 @@
     base-type))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :starburst
-  [driver ^Connection conn table-schema table-name]
+  [driver ^Connection conn table-schema table-name & {:keys [catalog]}]
   (try
     ;; Both Hive and Iceberg plugins for Trino expose one another's tables
     ;; at the metadata level, even though they are not queryable through that catalog.
@@ -447,8 +615,8 @@
     ;; queryability. If the table is not queryable for this reason, we will return
     ;; false. It's a slight stretch of the concept of "permissions," but it is true
     ;; that we cannot query these tables...
-    (let [catalog (some-> conn .getCatalog)
-          sql (describe-table-sql driver catalog table-schema table-name)]
+    (let [[catalog schema] (catalog+schema (or catalog (some-> conn .getCatalog)) table-schema)
+          sql (describe-table-sql driver catalog schema table-name)]
       (with-open [stmt (.prepareStatement conn sql)
                   rs (.executeQuery stmt)]
         (.next rs)))
@@ -465,32 +633,49 @@
 (defn- describe-schema
   "Gets a set of maps for all tables in the given `catalog` and `schema`."
   [driver ^Connection conn catalog schema]
-  (with-open [stmt (.createStatement conn)]
-    (let [sql (describe-schema-sql driver catalog schema)
-          rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
-      (into
-       #{}
-       (comp (filter (fn [{table-name :table :as _full}]
-                       (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table-name)))
-             (map (fn [{table-name :table}]
-                    {:name        table-name
-                     :schema      schema})))
-       (jdbc/reducible-result-set rs {})))))
+  (let [qualified-schema-name (qualified-schema catalog schema)
+        sql (describe-schema-sql driver catalog schema)]
+    (into
+     #{}
+     (comp (filter (fn [{table-name :table :as _full}]
+                     (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table-name :catalog catalog)))
+           (map (fn [{table-name :table}]
+                  {:name        table-name
+                   :schema      qualified-schema-name})))
+     (query-rows driver conn sql))))
 
 (defn- all-schemas
   "Gets a set of maps for all tables in all schemas in the given `catalog`."
-  [driver ^Connection conn catalog]
-  (with-open [stmt (.createStatement conn)]
-    (let [sql (describe-catalog-sql driver catalog)
-          rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
-      (into []
-            (keep (fn [{:keys [schema] :as _full}]
-                    (when-not (contains? excluded-schemas schema)
-                      (describe-schema driver conn catalog schema))))
-            (jdbc/reducible-result-set rs {})))))
+  [driver ^Connection conn database catalog]
+  (let [sql (describe-catalog-sql driver catalog)]
+    (into []
+          (keep (fn [{:keys [schema] :as _full}]
+                  (when (and (not (contains? excluded-schemas schema))
+                             (include-catalog-schema? database catalog schema))
+                    (describe-schema driver conn catalog schema))))
+          (query-rows driver conn sql))))
+
+(defn- all-catalogs
+  [driver ^Connection conn database]
+  (let [catalogs (visible-catalogs driver conn)
+        catalog-results (mapv (fn [catalog]
+                                (try
+                                  {:ok? true, :schemas (all-schemas driver conn database catalog)}
+                                  (catch Throwable e
+                                    (log/warnf e "Skipping Starburst catalog `%s` during metadata sync because it could not be enumerated."
+                                               catalog)
+                                    {:ok? false, :catalog catalog})))
+                              catalogs)]
+    (when (and (seq catalogs) (not-any? :ok? catalog-results))
+      (throw (ex-info "Could not enumerate any Starburst catalogs during metadata sync."
+                      {:catalogs catalogs})))
+    (into [] (mapcat :schemas) (filter :ok? catalog-results))))
 
 (defn- table-comments
-  "Returns a map of `[schema table-name] -> comment` for tables in `catalog`, with an optional `schema` filter."
+  "Returns a map of `[qualified-schema table-name] -> comment` for tables in `catalog`, with an optional `schema` filter.
+
+  The schema component of each key is qualified as `catalog.schema` so the keys line up with
+  the qualified `:schema` values produced by [[describe-schema]] under multi-catalog sync."
   [driver ^Connection conn catalog schema]
   (if (str/blank? catalog)
     {}
@@ -506,25 +691,41 @@
             (into {}
                   (keep (fn [{:keys [schema name comment]}]
                           (when-not (str/blank? comment)
-                            [[schema name] comment])))
+                            [[(qualified-schema catalog schema) name] comment])))
                   (jdbc/reducible-result-set rs {})))))
       (catch Throwable e
         (log/debug e "Failed to read table comments from system.metadata.table_comments")
         {}))))
 
+(defn- table-comments-for-tables
+  "Returns a merged map of `[qualified-schema table-name] -> comment` covering every catalog
+  present in `tables` (a set of table maps whose `:schema` is a qualified `catalog.schema`)."
+  [driver ^Connection conn tables]
+  (let [catalogs (into #{}
+                       (comp (map :schema)
+                             (keep split-qualified-schema)
+                             (map first))
+                       tables)]
+    (into {} (mapcat #(table-comments driver conn % nil)) catalogs)))
+
 (defmethod driver/describe-database* :starburst
   [driver database]
-  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
+  (let [details (driver.conn/effective-details database)
+        {:keys [catalog schema]} details]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database
      nil
      (fn [^Connection conn]
-       (let [schemas (if schema
-                       [(describe-schema driver conn catalog schema)]
-                       (all-schemas driver conn catalog))
+       (let [schemas (if (and (not (str/blank? catalog))
+                              (not (schema-filters-configured? details))
+                              (not (str/blank? schema)))
+                       (if (include-catalog-schema? database catalog schema)
+                         #{(describe-schema driver conn catalog schema)}
+                         #{})
+                       (all-catalogs driver conn database))
              tables (reduce set/union #{} schemas)
-             comments (table-comments driver conn catalog schema)]
+             comments (table-comments-for-tables driver conn tables)]
          {:tables (into #{}
                         (map (fn [{:keys [schema name] :as table}]
                                (let [table-comment (get comments [schema name])]
@@ -541,7 +742,8 @@
      nil
      (fn [^Connection conn]
        (with-open [stmt (.createStatement conn)]
-         (let [sql (describe-table-sql driver catalog schema table-name)
+         (let [[catalog schema-name] (catalog+schema catalog schema)
+               sql (describe-table-sql driver catalog schema-name table-name)
                rs  (sql-jdbc.execute/execute-statement! driver stmt sql)]
            {:schema schema
             :name   table-name

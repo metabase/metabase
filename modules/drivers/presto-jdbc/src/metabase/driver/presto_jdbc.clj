@@ -21,12 +21,13 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys]])
+   [metabase.util.performance :refer [every? mapv not-empty select-keys some]])
   (:import
    (com.facebook.presto.jdbc PrestoConnection)
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
@@ -57,6 +58,7 @@
                               :expression-literals              true
                               :expressions                      true
                               :metadata/key-constraints         false
+                              :multi-level-schema               true
                               :native-parameters                true
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
@@ -129,6 +131,154 @@
   "The set of schemas that should be excluded when querying all schemas."
   #{"information_schema"})
 
+(defn- first-row-value
+  [row]
+  (some-> (first (vals row)) str))
+
+(defn- detail-value
+  [details k]
+  (or (get details k)
+      (get details (name k))))
+
+(defn- schema-filter-type
+  [details]
+  (some-> (detail-value details :schema-filters-type) name))
+
+(defn- schema-filter-patterns
+  [details]
+  (detail-value details :schema-filters-patterns))
+
+(defn- schema-filters-configured?
+  [details]
+  (or (some? (schema-filter-type details))
+      (not (str/blank? (schema-filter-patterns details)))))
+
+(defn- qualified-schema
+  [catalog schema]
+  (str catalog "." schema))
+
+(defn- split-qualified-schema
+  [schema]
+  (let [parts (when (string? schema)
+                (str/split schema #"\."))]
+    (when (and (= (count parts) 2)
+               (every? (complement str/blank?) parts))
+      parts)))
+
+(defn- catalog+schema
+  [default-catalog schema]
+  (if-let [[catalog schema] (split-qualified-schema schema)]
+    [catalog schema]
+    (do
+      (when (str/blank? default-catalog)
+        (throw (ex-info "Cannot resolve an unqualified Presto schema without a default catalog."
+                        {:schema schema})))
+      [default-catalog schema])))
+
+(defn- schema-filter-pattern-parts
+  [patterns]
+  (when-not (str/blank? patterns)
+    (not-empty (into [] (comp (map str/trim)
+                              (remove str/blank?))
+                     (str/split patterns #",")))))
+
+(defn- matches-schema-pattern?
+  [pattern value]
+  (when-not (str/blank? value)
+    (.matches (.matcher (driver.s/schema-pattern->re-pattern pattern) value))))
+
+(defn- matches-catalog-schema-pattern?
+  [pattern catalog schema]
+  (let [qualified-schema-name (qualified-schema catalog schema)]
+    (or (matches-schema-pattern? pattern qualified-schema-name)
+        (matches-schema-pattern? pattern catalog)
+        (when-let [[catalog-pattern schema-pattern] (split-qualified-schema pattern)]
+          (and (matches-schema-pattern? catalog-pattern catalog)
+               (matches-schema-pattern? schema-pattern schema))))))
+
+(defn- catalog-schema-matches-patterns?
+  [patterns catalog schema]
+  (boolean (some #(matches-catalog-schema-pattern? % catalog schema)
+                 (schema-filter-pattern-parts patterns))))
+
+(defn- include-catalog-schema-by-filters?
+  [details catalog schema]
+  (let [filter-patterns (schema-filter-patterns details)]
+    (if (str/blank? filter-patterns)
+      true
+      (case (schema-filter-type details)
+        "inclusion" (catalog-schema-matches-patterns? filter-patterns catalog schema)
+        "exclusion" (not (catalog-schema-matches-patterns? filter-patterns catalog schema))
+        true))))
+
+(defn- unsupported-catalog-or-schema?
+  [catalog schema]
+  (cond
+    (or (str/blank? catalog) (str/blank? schema))
+    true
+
+    (or (str/includes? catalog ".") (str/includes? schema "."))
+    (do
+      (log/warnf "Skipping Presto catalog/schema pair `%s`.`%s` because dots in catalog or schema names are not supported by Metabase multi-catalog sync."
+                 catalog schema)
+      true)
+
+    :else
+    false))
+
+(defn- include-catalog-schema?
+  [database catalog schema]
+  (let [{default-catalog :catalog, legacy-schema :schema, :as details} (driver.conn/effective-details database)
+        legacy-qualified-schema (when (and (not (schema-filters-configured? details))
+                                           (not (str/blank? default-catalog))
+                                           (not (str/blank? legacy-schema)))
+                                  (qualified-schema default-catalog legacy-schema))
+        schema-name (qualified-schema catalog schema)]
+    (cond
+      (unsupported-catalog-or-schema? catalog schema)
+      false
+
+      (not (driver.s/include-schema? nil nil schema))
+      false
+
+      legacy-qualified-schema
+      (= schema-name legacy-qualified-schema)
+
+      :else
+      (include-catalog-schema-by-filters? details catalog schema))))
+
+(defn- split-catalog-schema-components
+  [identifier-type components]
+  (if (or (and (= identifier-type :table)
+               (>= (count components) 2))
+          (and (= identifier-type :field)
+               (>= (count components) 3)))
+    (if-let [catalog-schema (split-qualified-schema (first components))]
+      (into catalog-schema (rest components))
+      components)
+    components))
+
+(defmethod driver/adjust-schema-qualification :presto-jdbc
+  [_driver database schema]
+  (let [details      (driver.conn/effective-details database)
+        multi-level? (get details :multi-level-schema true)
+        catalog      (:catalog details)]
+    (cond
+      (or (nil? schema) (str/blank? catalog))
+      schema
+
+      ;; multi-catalog on: qualify a bare schema so it is addressable as `catalog.schema`.
+      (and multi-level? (not (str/includes? schema ".")))
+      (qualified-schema catalog schema)
+
+      ;; multi-catalog off (e.g. a database-routing destination): strip the catalog prefix so the table is
+      ;; resolved against the active connection's catalog rather than the router's. See #76151.
+      (and (not multi-level?) (str/starts-with? schema (str catalog ".")))
+      (subs schema (inc (count catalog)))
+
+      :else
+      schema)))
+
 (defmethod driver/db-start-of-week :presto-jdbc
   [_]
   :monday)
@@ -158,6 +308,10 @@
 (defmethod sql.qp/->honeysql [:presto-jdbc Boolean]
   [_ bool]
   [:raw (if bool "TRUE" "FALSE")])
+
+(defmethod sql.qp/->honeysql [:presto-jdbc ::h2x/identifier]
+  [_driver [tag identifier-type components]]
+  (sql.qp/->honeysql :sql [tag identifier-type (split-catalog-schema-components identifier-type components)]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc (Class/forName "[B")]
   [_driver bs]
@@ -574,30 +728,52 @@
     (catch Throwable _
       false)))
 
+(defn- visible-catalogs
+  [conn]
+  (into [] (keep first-row-value) (jdbc/reducible-query {:connection conn} "SHOW CATALOGS")))
+
 (defn- describe-schema
   "Gets a set of maps for all tables in the given `catalog` and `schema`. Adapted from the legacy Presto driver
   implementation."
   [driver conn catalog schema]
-  (let [sql (describe-schema-sql driver catalog schema)]
+  (let [qualified-schema-name (qualified-schema catalog schema)
+        sql (describe-schema-sql driver catalog schema)]
     (log/tracef "Running statement in describe-schema: %s" sql)
     (into #{} (comp (filter (fn [{table-name :table}]
-                              (have-select-privilege? driver conn schema table-name)))
+                              (have-select-privilege? driver conn qualified-schema-name table-name)))
                     (map (fn [{table-name :table}]
                            {:name        table-name
-                            :schema      schema})))
+                            :schema      qualified-schema-name})))
           (jdbc/reducible-query {:connection conn} sql))))
 
 (defn- all-schemas
   "Gets a set of maps for all tables in all schemas in the given `catalog`. Adapted from the legacy Presto driver
   implementation."
-  [driver conn catalog]
+  [driver conn database catalog]
   (let [sql (describe-catalog-sql driver catalog)]
     (log/tracef "Running statement in all-schemas: %s" sql)
     (into []
-          (map (fn [{:keys [schema]}]
-                 (when-not (contains? excluded-schemas schema)
-                   (describe-schema driver conn catalog schema))))
+          (keep (fn [{:keys [schema]}]
+                  (when (and (not (contains? excluded-schemas schema))
+                             (include-catalog-schema? database catalog schema))
+                    (describe-schema driver conn catalog schema))))
           (jdbc/reducible-query {:connection conn} sql))))
+
+(defn- all-catalogs
+  [driver conn database]
+  (let [catalogs (visible-catalogs conn)
+        catalog-results (mapv (fn [catalog]
+                                (try
+                                  {:ok? true, :schemas (all-schemas driver conn database catalog)}
+                                  (catch Throwable e
+                                    (log/warnf e "Skipping Presto catalog `%s` during metadata sync because it could not be enumerated."
+                                               catalog)
+                                    {:ok? false, :catalog catalog})))
+                              catalogs)]
+    (when (and (seq catalogs) (not-any? :ok? catalog-results))
+      (throw (ex-info "Could not enumerate any Presto catalogs during metadata sync."
+                      {:catalogs catalogs})))
+    (into [] (mapcat :schemas) (filter :ok? catalog-results))))
 
 (defmethod driver/describe-database* :presto-jdbc
   [driver database]
@@ -607,8 +783,13 @@
      database
      nil
      (fn [^Connection conn]
-       (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
-                         (all-schemas driver conn catalog))]
+       (let [schemas (if (and (not (str/blank? catalog))
+                              (not (schema-filters-configured? (driver.conn/effective-details database)))
+                              (not (str/blank? schema)))
+                       (if (include-catalog-schema? database catalog schema)
+                         #{(describe-schema driver conn catalog schema)}
+                         #{})
+                       (all-catalogs driver conn database))]
          {:tables (reduce set/union #{} schemas)})))))
 
 (defn- column->field
@@ -627,7 +808,8 @@
      database
      nil
      (fn [^Connection conn]
-       (let [sql (describe-table-sql driver catalog schema table-name)]
+       (let [[catalog schema-name] (catalog+schema catalog schema)
+             sql (describe-table-sql driver catalog schema-name table-name)]
          (log/tracef "Running statement in describe-table: %s" sql)
          {:schema schema
           :name   table-name
@@ -646,9 +828,9 @@
   [driver {:keys [catalog], :as details}]
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)
        (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
-         ;; jdbc/query is used to see if we throw, we want to ignore the results
-         (jdbc/query spec (format "SHOW SCHEMAS FROM %s" catalog))
-         true)))
+         (or (str/blank? catalog)
+             (contains? (into #{} (keep first-row-value) (jdbc/query spec "SHOW CATALOGS"))
+                        catalog)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            sql-jdbc implementations                                            |

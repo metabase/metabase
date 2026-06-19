@@ -15,17 +15,12 @@ driver:
           - merge:
               - port
               - default: 8080
-    - merge:
-        - dbname
-        - name: catalog
-          placeholder: tpch
-          display-name: Catalog
-          required: true
-          helper-text: Starburst Catalogs contain schemas and reference data sources via a connector.
-    - name: schema
-      display-name: Schema (optional)
-      required: false
-      helper-text: Only add tables to Metabase that come from a specific schema.
+    - name: schema-filters
+      type: schema-filters
+      display-name: Catalogs and Schemas
+      placeholder: >-
+        E.x. hive.default, iceberg.*, system.runtime
+      helper-text: Optionally filter which catalog/schema pairs are visible.
     - merge:
         - user
         - required: false

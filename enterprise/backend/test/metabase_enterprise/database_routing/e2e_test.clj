@@ -276,6 +276,14 @@
    :multi-level-schema false
    :schema-filters-patterns (routed-dataset-name driver)})
 
+;; Presto/Trino multi-catalog qualifies schemas as `catalog.schema`, which would pin the router's catalog in the
+;; compiled SQL and defeat database routing (the routed query must resolve against the destination connection's
+;; catalog). Disable multi-level schema for routing so tables are stored with a bare schema and the connection's
+;; catalog applies, mirroring the Databricks setup above. See #76151.
+(doseq [driver [:presto-jdbc :starburst]]
+  (defmethod router-dataset-details driver [_driver] {:multi-level-schema false})
+  (defmethod routed-dataset-details driver [_driver] {:multi-level-schema false}))
+
 ;; the test requires both datasets share a hash (for the name qualifier)
 ;; this is because the qp when routing a db does not map to the routed table (it reuses metadata of original)
 ;; the end result is the compiled query would retain the routed sha_* qualifier rather than the hash of the original.

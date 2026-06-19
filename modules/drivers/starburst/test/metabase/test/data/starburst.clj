@@ -63,7 +63,9 @@
    :kerberos-config-path               (tx/db-test-env-var :starburst :kerberos-config-path nil)
    :kerberos-service-principal-pattern (tx/db-test-env-var :starburst :kerberos-service-principal-pattern nil)
    :catalog                            database-name
-   :schema                             (tx/db-test-env-var :starburst :schema nil)})
+   ;; Pin the schema so metadata sync takes the single-schema path instead of enumerating every catalog
+   ;; on the server (a Trino/Starburst server typically exposes many catalogs whose tables would all be DESCRIBEd).
+   :schema                             (tx/db-test-env-var :starburst :schema "default")})
 
 (defmethod execute/execute-sql! :starburst
   [& args]

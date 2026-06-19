@@ -80,7 +80,9 @@
          :kerberos-config-path               (tx/db-test-env-var :presto-jdbc :kerberos-config-path nil)
          :kerberos-service-principal-pattern (tx/db-test-env-var :presto-jdbc :kerberos-service-principal-pattern nil)
          :catalog                            (test-catalog-name)
-         :schema                             (tx/db-test-env-var :presto-jdbc :schema nil)}]
+         ;; Pin the schema so metadata sync takes the single-schema path instead of enumerating every catalog
+         ;; on the server (the CI Presto image exposes many catalogs whose tables would all be DESCRIBEd).
+         :schema                             (tx/db-test-env-var :presto-jdbc :schema "default")}]
     (assoc base-details
            :ssl-use-keystore (every? some? (map base-details [:ssl-keystore-path :ssl-keystore-password-value]))
            :ssl-use-truststore (every? some? (map base-details [:ssl-truststore-path :ssl-truststore-password-value])))))
