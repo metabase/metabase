@@ -3,13 +3,12 @@ export const DEFAULT_CELL_WIDTH = 100;
 export const CELL_HEIGHT = 30;
 
 // values for computing header width
-export const ROW_TOGGLE_ICON_WIDTH = 24;
+export const ROW_TOGGLE_ICON_WIDTH = 0;
 export const CELL_PADDING = 16;
 
 export const MIN_HEADER_CELL_WIDTH = 80;
-const MAX_HEADER_CONTENT_WIDTH = 200;
-export const MAX_HEADER_CELL_WIDTH =
-  MAX_HEADER_CONTENT_WIDTH + CELL_PADDING + ROW_TOGGLE_ICON_WIDTH;
+const MAX_HEADER_CONTENT_WIDTH = 320;
+export const MAX_HEADER_CELL_WIDTH = MAX_HEADER_CONTENT_WIDTH + CELL_PADDING;
 
 // the left header has some additional padding on the left to align with the title
 export const LEFT_HEADER_LEFT_SPACING = 24;
