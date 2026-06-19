@@ -33,24 +33,20 @@ This anonymous data helps us figure out things like:
 
 When anonymous tracking is enabled, Metabase collects usage data from embedded components in addition to the general product events described above.
 
-### Static and interactive embedding
+### Data collected by modular embeds
 
-For static and interactive iframe-based embedding, Metabase records query execution counts grouped by embedding type. No query content, result data, or user identifiers are collected.
-
-### Modular embedding
-
-[Modular embedding](../embedding/modular-embedding.md) collects a usage event when components are rendered in your app. Each event includes:
+[Modular embedding components](../embedding/modular-embedding.md) collect usage events when the components are rendered in your app. Each event includes:
 
 - Which components were used (for example, a dashboard or question)
 - The component's configuration options (for example, whether downloads or drill-through are enabled)
-- The authentication method (SSO, API key, or guest)
+- The authentication method (like SSO or guest)
 - Whether a custom locale is configured
 
-**No persistent identifiers.** Within a session, an in-memory identifier groups related events. This identifier is regenerated on every page load and is never written to cookies or localStorage — there is no persistent cross-session identifier.
+Within a session, an in-memory identifier groups related events, but this identifier is regenerated on every page load and is never written to cookies or localStorage, so there's no persistent cross-session identifier.  
 
-**Routing.** Telemetry routes through your Metabase instance, not directly to a third-party analytics host. No additional allowlisting is required in your Content Security Policy.
+### Data collected by iframe embeds
 
-**Opting out.** Disabling the anonymous tracking toggle (see below) stops all modular embedding telemetry.
+For iframe embeds, like public links, or when embedding the full Metabase app, Metabase records query execution counts grouped by embedding type.
 
 ## Opting out of anonymous usage data collection for self-hosted Metabases
 
