@@ -103,10 +103,10 @@
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
 (mr/def ::search-result-item
-  "A table or metric returned from search."
+  "A table, metric, or model returned from search."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:enum "table" "metric"]]
+   [:type [:enum "table" "metric" "model"]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
@@ -117,7 +117,7 @@
    [:created_at {:optional true} [:maybe :any]]])
 
 (mr/def ::search-response
-  "Search results containing tables and metrics matching the query."
+  "Search results containing tables, metrics, and models matching the query."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
@@ -150,14 +150,14 @@
     :else           v))
 
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
-  "Search for tables and metrics.
+  "Search for tables, metrics, and models.
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
-           :title "Search Tables and Metrics"
-           :description (str "Search for tables and metrics in Metabase. "
+           :title "Search Tables, Metrics, and Models"
+           :description (str "Search for tables, metrics, and models in Metabase. "
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
@@ -175,7 +175,7 @@
   (let [results (metabot-search/search
                  {:term-queries     (or (coerce-query-list term-queries) [])
                   :semantic-queries (or (coerce-query-list semantic-queries) [])
-                  :entity-types     ["table" "metric"]
+                  :entity-types     ["table" "metric" "model"]
                   :limit            (or (request/limit) 50)})]
     {:data        results
      :total_count (count results)}))
