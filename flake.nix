@@ -187,7 +187,7 @@
 
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = "sha256-h1tmy/rPNcUc1kCx4AR4TYFpMtK71Aux7vDkouWDLYs=";
+            outputHash = "sha256-gMFXXwW+ia0awRfPVjqEKxkr0Kt3FRyOnRcC9ICnx2Y=";
 
             dontConfigure = true;
             dontFixup = true;
@@ -208,6 +208,7 @@
               mkdir -p "$HOME" "$XDG_CACHE_HOME"
               bun install --frozen-lockfile --ignore-scripts --no-progress
               node ./node_modules/patch-package/index.js
+              find node_modules/.bun -path "*/node_modules/.bin" -type d -prune -exec rm -rf {} +
 
               runHook postBuild
             '';
