@@ -4,7 +4,7 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { Card, Flex, Stack, Switch, Text } from "metabase/ui";
+import { Card, Center, Flex, Stack, Switch, Text, Title } from "metabase/ui";
 
 import { useDataStudioSettings, useLocalSetting } from "../../hooks";
 import type { DataStudioSetting } from "../../types";
@@ -20,10 +20,14 @@ export function SettingsPage() {
           <DataStudioBreadcrumbs role="heading">{t`Settings`}</DataStudioBreadcrumbs>
         }
       />
-      <Stack align="center">
-        {settings.map((setting) => (
-          <Setting key={setting.key} setting={setting} />
-        ))}
+      <Stack flex={1} align="center">
+        {settings.length > 0 ? (
+          settings.map((setting) => (
+            <Setting key={setting.key} setting={setting} />
+          ))
+        ) : (
+          <SettingsEmptyState />
+        )}
       </Stack>
     </PageContainer>
   );
@@ -58,5 +62,22 @@ function Setting({ setting }: { setting: DataStudioSetting }) {
         </Stack>
       </Stack>
     </Card>
+  );
+}
+
+// DataStudioLayout gates on settings.length > 0, so a user shouldn't ever see this
+// but show them something just in case they navigate directly to settings somehow
+function SettingsEmptyState() {
+  return (
+    <Center flex={1}>
+      <Stack align="center" maw="30rem" gap="md">
+        <Title order={3} ta="center">
+          {t`Nothing to configure yet`}
+        </Title>
+        <Text ta="center" c="text-secondary">
+          {t`There aren't any settings for you to change right now.`}
+        </Text>
+      </Stack>
+    </Center>
   );
 }

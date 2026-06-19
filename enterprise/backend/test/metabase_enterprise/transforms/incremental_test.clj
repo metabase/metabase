@@ -228,7 +228,7 @@
             :let [transform-type :native]]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
-          (mt/with-premium-features #{:transforms-basic}
+          (mt/with-premium-features #{:transforms-basic :hosting}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "incremental_test")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -341,7 +341,7 @@
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
-          (mt/with-premium-features #{:transforms-basic :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_incr_to_non_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -394,7 +394,7 @@
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
-          (mt/with-premium-features #{:transforms-basic :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_non_incr_to_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -458,7 +458,7 @@
 (deftest unsupported-checkpoint-column-type-test
   (testing "Transform fails at runtime with unsupported checkpoint column type"
     (mt/test-drivers #{:postgres}
-      (mt/with-premium-features #{:transforms-basic}
+      (mt/with-premium-features #{:transforms-basic :hosting}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table "unsupported_type_test"]
             (let [name-field-id (mt/id :transforms_products :name)

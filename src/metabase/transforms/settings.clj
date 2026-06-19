@@ -40,7 +40,7 @@
 (defn- cloud-enabled-transforms?
   "Whether a cloud instance has enabled transforms.
    If a cloud instance has the transforms token feature, then they've gone through the upsell and enabled transforms.
-   Self-hosted instances always have the transforms token feature, so we require that they explicitly enable transforms via the setting."
+   Self-hosted instances don't go through the upsell, so we require that they explicitly enable transforms via the setting."
   []
   (and (premium-features/is-hosted?)
        (premium-features/has-feature? :transforms-basic)))
@@ -55,13 +55,13 @@
   :audit      :getter
   :getter (fn []
             (let [v (setting/get-value-of-type :boolean :transforms-enabled)]
-              ; if the setting is set (whether true or false), use it, otherwise use the token feature for cloud
+              ;; if the setting is set (whether true or false), use it, otherwise use the token feature for cloud
               (if (some? v)
                 v
                 (cloud-enabled-transforms?)))))
 
 (setting/defsetting transforms-setup-complete
-  (deferred-tru "Whether to show the enable transforms page.")
+  (deferred-tru "Whether transforms setup is complete.")
   :type       :boolean
   :visibility :authenticated
   :export?    false
@@ -69,7 +69,7 @@
   :can-read-from-env? false
   :getter (fn []
             (let [v (setting/get-value-of-type :boolean :transforms-enabled)]
-              ; if the setting is set (whether true or false), then setup is complete. otherwise, check the token feature for cloud
+              ;; if the setting is set (whether true or false), then setup is complete. otherwise, check the token feature for cloud
               (if (some? v)
                 true
                 (cloud-enabled-transforms?)))))

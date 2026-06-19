@@ -240,15 +240,12 @@
         (testing "returns 404 for tables that don't exist"
           (mt/user-http-request :rasta :get 404 (format "table/%d/data" 133713371337)))))))
 
-(defn- query-metadata-defaults []
-  (assoc (table-defaults) :transform nil))
-
 (deftest ^:parallel sensitive-fields-included-test
   (mt/with-premium-features #{}
     (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
       (testing "Sensitive fields are included"
         (is (= (merge
-                (query-metadata-defaults)
+                (table-defaults)
                 (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
@@ -331,7 +328,7 @@
     (testing "GET api/table/:id/query_metadata"
       (testing "Sensitive fields should not be included"
         (is (= (merge
-                (query-metadata-defaults)
+                (table-defaults)
                 (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
@@ -400,9 +397,10 @@
                    :model/Table     {table-id :id} {:db_id        (mt/id)
                                                     :transform_id (:id transform)}]
       (testing "self-hosted (not hosted) without :transforms-basic still hydrates the source transform"
-        (mt/with-premium-features #{}
-          (is (=? {:transform {:id (:id transform)}}
-                  (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" table-id))))))
+        (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+          (mt/with-premium-features #{}
+            (is (=? {:transform {:id (:id transform)}}
+                    (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" table-id)))))))
       (testing "hosted instance without :transforms-basic does not hydrate the source transform"
         (mt/with-premium-features #{:hosting}
           (is (nil? (:transform (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" table-id))))))))))
@@ -660,7 +658,7 @@
   (mt/with-premium-features #{}
     (testing "GET /api/table/:id/query_metadata"
       (is (= (merge
-              (query-metadata-defaults)
+              (table-defaults)
               (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
                           :collection)
               {:schema       "PUBLIC"

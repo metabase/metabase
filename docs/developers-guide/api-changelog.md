@@ -4,6 +4,10 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.63.0
+
+- Self-hosted environments must now explicitly enable transforms before beginning to use them via the API. Admins can enable transforms in Data Studio or by setting the MB_TRANSFORMS_ENABLED environment variable to true.
+
 ## Metabase 0.61.0
 
 - `POST /api/metabot/describe/card` and `POST /api/metabot/describe/dashboard/:id` have been removed. These endpoints
