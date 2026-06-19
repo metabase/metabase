@@ -9,22 +9,25 @@ const displayNameForColumn = (column) =>
 // various props injected by chartSettingNestedSettings HOC
 export class ChartNestedSettingColumns extends Component {
   render() {
-    const { object, objects, onChangeEditingObject } = this.props;
+    const { object, objects, id, getObjectKey, onShowWidget } = this.props;
     if (object) {
       return <div>{this.props.objectSettingsWidgets}</div>;
-    } else {
-      return (
-        <div>
-          {objects.map((column, index) => (
-            <ColumnItem
-              key={index}
-              title={displayNameForColumn(column)}
-              onEdit={() => onChangeEditingObject(column)}
-              onClick={() => onChangeEditingObject(column)}
-            />
-          ))}
-        </div>
-      );
     }
+    return (
+      <div>
+        {objects.map((column, index) => (
+          <ColumnItem
+            key={index}
+            title={displayNameForColumn(column)}
+            onEdit={(target) =>
+              onShowWidget(
+                { id, props: { initialKey: getObjectKey(column) } },
+                target,
+              )
+            }
+          />
+        ))}
+      </div>
+    );
   }
 }
