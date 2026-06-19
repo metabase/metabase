@@ -33,7 +33,7 @@ import {
 } from "metabase/search/containers/SearchApp.styled";
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { Box, Group, Paper, Text } from "metabase/ui";
+import { Box, Group, Paper, Title } from "metabase/ui";
 import type { SearchRequest } from "metabase-types/api";
 
 const getPageFromLocation = (location: SearchAwareLocation) => {
@@ -104,9 +104,7 @@ export function SearchApp({ location }: { location: SearchAwareLocation }) {
 
   return (
     <SearchMain direction="column" gap="2rem" m="auto" data-testid="search-app">
-      <Text size="xl" fw={700}>
-        {jt`Results for "${searchText}"`}
-      </Text>
+      <Title order={2}>{jt`Results for "${searchText}"`}</Title>
       <SearchBody justify="center">
         <SearchControls pb="lg">
           <SearchSidebar value={searchFilters} onChange={onFilterChange} />
