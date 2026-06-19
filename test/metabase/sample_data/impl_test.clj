@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.plugins.impl :as plugins]
+   [metabase.sample-data.example-content :as example-content]
    [metabase.sample-data.impl :as sample-data]
    [metabase.sync.core :as sync]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
@@ -146,8 +147,10 @@
        :model/Collection keep-coll {:name "Keep me"}]
       (let [bundled-engine (#'sample-data/sample-database-engine)
             synced-db-ids  (atom [])]
-        (mt/with-dynamic-fn-redefs [sync/sync-database! (fn [db] (swap! synced-db-ids conj (:id db)) db)]
-          (#'sample-data/update-sample-database-if-needed! old-sample))
+        ;; recreate (collection reuse) is exercised separately; here we only check the database swap + cleanup.
+        (with-redefs [example-content/recreate-example-content! (constantly nil)]
+          (mt/with-dynamic-fn-redefs [sync/sync-database! (fn [db] (swap! synced-db-ids conj (:id db)) db)]
+            (#'sample-data/update-sample-database-if-needed! old-sample)))
         (testing "the old sample DB is deleted, cascading to its cards"
           (is (not (t2/exists? :model/Database :id (:id old-sample))))
           (is (not (t2/exists? :model/Card :id (:id sample-card)))))
@@ -156,9 +159,9 @@
         (testing "a dashboard that still has other cards is kept"
           (is (t2/exists? :model/Dashboard :id (:id mixed-dash)))
           (is (t2/exists? :model/Card :id (:id other-card))))
-        (testing "the old Example collections are deleted, but a non-sample collection is kept"
-          (is (not (t2/exists? :model/Collection :id (:id examples))))
-          (is (not (t2/exists? :model/Collection :id (:id ecommerce))))
+        (testing "the Example collections are preserved (reused on recreate), not deleted by the engine swap"
+          (is (t2/exists? :model/Collection :id (:id examples)))
+          (is (t2/exists? :model/Collection :id (:id ecommerce)))
           (is (t2/exists? :model/Collection :id (:id keep-coll))))
         (testing "a new sample database with the bundled engine is created and synced"
           ;; replace-sample-database! inserts the new sample DB outside any with-temp, so key off the synced id
@@ -198,42 +201,34 @@
         (is (not (t2/exists? :model/Card :id (:id sample-card))))
         (is (not (t2/exists? :model/Dashboard :id (:id sample-dash))))
         (is (not (t2/exists? :model/DashboardTab :id (:id tab)))))
-      (testing "the old Example collection is deleted"
-        (is (not (t2/exists? :model/Collection :id (:id examples))))))))
+      (testing "the Example collection is preserved (the engine swap no longer deletes it)"
+        (is (t2/exists? :model/Collection :id (:id examples)))))))
 
-(deftest replace-sample-database-collection-cascade-test
-  (testing "On H2 -> SQLite replacement, deleting the old Example collection fires the Collection before-delete hook,
-           which leaves no dangling content under the Example tree even for entities the `is_sample` filter doesn't
-           match directly"
-    (mt/with-temp
-      [:model/Database         old-sample {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}
-       :model/Database         other-db   {:engine :h2, :details {:db "mem:other"}}
-       :model/Collection       examples   {:name "Examples", :is_sample true}
-       ;; A user sub-collection nested under Examples that is NOT is_sample - only the `:location` cascade in the
-       ;; before-delete hook can reach it, not the `is_sample` filter.
-       :model/Collection       nested     {:name "My stuff", :location (str "/" (:id examples) "/")}
-       ;; Content filed directly into the Example tree (owned by another database, so only the collection cascade -
-       ;; not the sample-DB deletion - can remove it). The card sits in the nested child to exercise descent.
-       :model/Card             card       {:database_id (:id other-db), :collection_id (:id nested)}
-       :model/Dashboard        dash       {:collection_id (:id examples)}
-       :model/PermissionsGroup group      {}
-       :model/Permissions      _          {:object (format "/collection/%d/" (:id examples)) :group_id (:id group)}
-       :model/Permissions      _          {:object (format "/collection/%d/" (:id nested))   :group_id (:id group)}]
-      ;; Skip recreating the replacement Sample Database (load-sample-content? false): we only exercise the
-      ;; collection-cascade half of the swap, and recreating it would leak an is_sample row other tests select on.
-      (with-redefs [config/load-sample-content? (constantly false)]
-        (#'sample-data/update-sample-database-if-needed! old-sample))
-      (testing "the Example collection and its non-sample descendant are both deleted"
-        (is (not (t2/exists? :model/Collection :id (:id examples))))
-        (is (not (t2/exists? :model/Collection :id (:id nested)))))
-      (testing "content filed into the Example tree is deleted"
-        (is (not (t2/exists? :model/Card :id (:id card))))
-        (is (not (t2/exists? :model/Dashboard :id (:id dash)))))
-      (testing "permission records for the deleted collections are removed"
-        (is (not (t2/exists? :model/Permissions :object (format "/collection/%d/" (:id examples)))))
-        (is (not (t2/exists? :model/Permissions :object (format "/collection/%d/" (:id nested))))))
-      (testing "the other database is untouched"
-        (is (t2/exists? :model/Database :id (:id other-db)))))))
+(def ^:private edn-example-collection-entity-id
+  "Stable entity id of the bundled Examples collection in sample-content.edn."
+  "HyB3nRtqb7pBPhFG26evI")
+
+(deftest recreate-example-content-reuses-collection-test
+  (testing "recreate-example-content! reuses an existing Example collection (matched by entity id) and preserves the
+           user content filed into it, instead of deleting it and creating a brand new collection"
+    (mt/with-model-cleanup [:model/Collection :model/Card :model/Dashboard :model/DashboardCard
+                            :model/Dimension :model/Permissions]
+      (with-temp-sample-database-db [db]
+        (mt/with-temp
+          [:model/Collection examples  {:name "Examples", :is_sample true, :location "/"
+                                        :entity_id edn-example-collection-entity-id}
+           ;; a question a user filed into the Example collection - must survive the engine swap
+           :model/Card       user-card {:name "user question", :collection_id (:id examples), :database_id (:id db)}]
+          (example-content/recreate-example-content! (:id db))
+          (testing "the existing Example collection is reused, not duplicated"
+            (is (t2/exists? :model/Collection :id (:id examples)))
+            (is (= 1 (t2/count :model/Collection :entity_id edn-example-collection-entity-id))))
+          (testing "the user's content survives, still filed in the reused Example collection"
+            (is (t2/exists? :model/Card :id (:id user-card)))
+            (is (= (:id examples) (:collection_id (t2/select-one :model/Card :id (:id user-card))))))
+          (testing "the bundled sample content is recreated on the sample database, in the reused collection"
+            (is (pos? (t2/count :model/Card :database_id (:id db))))
+            (is (t2/exists? :model/Dashboard :collection_id (:id examples)))))))))
 
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"

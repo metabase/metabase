@@ -146,15 +146,30 @@
          "/")))
 
 (defn- insert-collections! [content]
-  ;; Insert root collections before children so location paths can be remapped against ids already assigned.
+  ;; Reuse the existing Example collections (matched by entity id) so user content filed into them survives an
+  ;; engine swap; only create one when it's missing. Roots before children so a new child's location path can be
+  ;; remapped against ids already assigned.
   (loop [pending (sort-by (comp count :location) (:collection content))
          coll-map {}]
     (if-let [row (first pending)]
-      (let [prepared (-> row prep-row (update :location #(remap-collection-location coll-map %)))
-            _        (t2/query {:insert-into :collection :values [prepared]})
-            new-id   (:id (t2/query-one {:select [:id] :from :collection :where [:= :entity_id (:entity_id row)]}))]
+      (let [existing (:id (t2/query-one {:select [:id] :from :collection :where [:= :entity_id (:entity_id row)]}))
+            new-id   (or existing
+                         (let [prepared (-> row prep-row (update :location #(remap-collection-location coll-map %)))]
+                           (t2/query {:insert-into :collection :values [prepared]})
+                           (:id (t2/query-one {:select [:id] :from :collection :where [:= :entity_id (:entity_id row)]}))))]
         (recur (rest pending) (assoc coll-map (:id row) new-id)))
       coll-map)))
+
+(defn- delete-prior-sample-content!
+  "Drop the previously-bundled sample cards and dashboards, matched by their stable EDN entity ids, so reinserting
+  them can't collide and stale ones don't linger. User content never carries these entity ids, so it is untouched;
+  the Example collections are reused, not deleted. Dashboards are removed before cards because deleting a dashboard
+  cascades its dashcards."
+  [content]
+  (doseq [table [:report_dashboard :report_card]]
+    (let [eids (into [] (keep :entity_id) (get content table))]
+      (when (seq eids)
+        (t2/query {:delete-from table :where [:in :entity_id eids]})))))
 
 (defn- insert-cards! [content maps]
   ;; Phase 1: insert with simple FKs remapped and blobs left as-is (no FK enforcement on JSON), so all
@@ -228,12 +243,18 @@
                                             first :id
                                             (get (:collections maps)))]
     (when-let [group-id (:id (t2/query-one {:select [:id] :from :permissions_group :where [:= :name "All Users"]}))]
-      (t2/query {:insert-into :permissions
-                 :values      [{:object        (format "/collection/%s/" example-collection-id)
-                                :group_id      group-id
-                                :perm_type     "perms/collection-access"
-                                :perm_value    "read-and-write"
-                                :collection_id example-collection-id}]}))))
+      ;; A reused Example collection already carries this grant; only insert when it's missing.
+      (when-not (seq (t2/query {:select [1] :from :permissions
+                                :where  [:and [:= :collection_id example-collection-id]
+                                         [:= :group_id group-id]
+                                         [:= :perm_type "perms/collection-access"]]
+                                :limit  1}))
+        (t2/query {:insert-into :permissions
+                   :values      [{:object        (format "/collection/%s/" example-collection-id)
+                                  :group_id      group-id
+                                  :perm_type     "perms/collection-access"
+                                  :perm_value    "read-and-write"
+                                  :collection_id example-collection-id}]})))))
 
 (defn- set-example-dashboard-id! [content maps]
   (when-let [dash (first (:report_dashboard content))]
@@ -248,6 +269,7 @@
   (try
     (t2/with-transaction [_conn]
       (let [content (load-sample-content)
+            _       (delete-prior-sample-content! content)
             maps    (field-id-maps content new-db-id)
             maps    (assoc maps :collections (insert-collections! content))
             maps    (insert-cards! content maps)

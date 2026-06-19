@@ -142,16 +142,16 @@
   Sample Database and its Example collection are only recreated when sample content is enabled - and
   the Example collection is skipped under test endpoints, matching fresh-install seeding.
 
-  The old Example collection is deleted before the new one is recreated; deleting it cascades (via the
-  Collection before-delete hook) to its descendant collections and permission records."
+  The Example collection itself is left in place: [[example-content/recreate-example-content!]] reuses it
+  (matching by entity id) and replaces only the bundled cards/dashboards, so any content a user filed into
+  the Example collection survives the engine swap."
   [engine old-sample-db]
   (log/infof "Bundled sample database engine changed from %s to %s; replacing the sample database"
              (:engine old-sample-db) engine)
   (let [new-db (t2/with-transaction [_conn]
                  (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
                    (t2/delete! :model/Database (:id old-sample-db))
-                   (delete-emptied-dashboards! dashboard-ids)
-                   (t2/delete! :model/Collection :is_sample true))
+                   (delete-emptied-dashboards! dashboard-ids))
                  (when (config/load-sample-content?)
                    (first (t2/insert-returning-instances! :model/Database
                                                           :name sample-database-name

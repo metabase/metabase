@@ -3058,3 +3058,52 @@
           (is (t2/exists? :model/Card :id (:id other-card)))
           (is (t2/exists? :model/Database :id (:id other)))
           (is (t2/exists? :model/Collection :id (:id keep-coll))))))))
+
+(deftest ^:mb/old-migrations-test downgrade-keeps-user-content-and-deletes-sample-dependents-test
+  (testing "Downgrade deletes everything that depends on the sample DB (transitively, even user-created), then keeps
+           any Example collection a user still has their own content in - leaving the RESTRICT FKs intact rather than
+           aborting on them"
+    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
+      (binding [custom-migrations/*create-sample-content* true]
+        (migrate!))
+      (let [examples-id  (:id (t2/query-one {:select [:id] :from [:collection]
+                                             :where [:= :is_sample true] :order-by [[:id :asc]]}))
+            ecommerce-id (:id (t2/query-one {:select [:id] :from [:collection]
+                                             :where [:= :is_sample true] :order-by [[:id :desc]]}))
+            sqlite-db-id (:id (t2/query-one {:select [:id] :from [:metabase_database]
+                                             :where [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
+            sample-card  (:id (t2/query-one {:select [:id] :from [:report_card] :where [:= :database_id sqlite-db-id] :limit 1}))
+            ins          (fn [t r] (first (t2/insert-returning-pks! t r)))
+            other-db     (ins :metabase_database {:name "User DB" :engine "h2" :is_sample false
+                                                  :details "{}" :created_at :%now :updated_at :%now})
+            ;; a user question that doesn't touch the sample DB, filed in Examples -> must survive
+            user-card    (ins :report_card {:name "keep me" :display "table" :dataset_query "{}"
+                                            :visualization_settings "{}" :creator_id 13371338 :database_id other-db
+                                            :collection_id examples-id :created_at :%now :updated_at :%now})
+            ;; a user model built on a sample card -> depends transitively -> must be deleted
+            user-model   (ins :report_card {:name "built on sample" :display "table" :dataset_query "{}"
+                                            :visualization_settings "{}" :creator_id 13371338 :database_id other-db
+                                            :source_card_id sample-card :collection_id examples-id
+                                            :created_at :%now :updated_at :%now})
+            ;; a curated table + a transform filed in E-commerce (RESTRICT FKs) -> keep that collection, FKs intact
+            table-id     (ins :metabase_table {:name "curated" :active true :db_id other-db
+                                               :collection_id ecommerce-id :created_at :%now :updated_at :%now})
+            transform-id (ins :transform {:name "tf" :source "{}" :target "{}" :source_type "query"
+                                          :collection_id ecommerce-id :created_at :%now :updated_at :%now})
+            exists?      (fn [t id] (boolean (seq (t2/query {:select [1] :from [t] :where [:= :id id] :limit 1}))))
+            coll-of      (fn [t id] (:collection_id (t2/query-one {:select [:collection_id] :from [t] :where [:= :id id]})))]
+        (migrate! :down 62)
+        (testing "the sample database and everything depending on it - including the user model - are deleted"
+          (is (not (exists? :metabase_database sqlite-db-id)))
+          (is (not (exists? :report_card sample-card)))
+          (is (not (exists? :report_card user-model))))
+        (testing "a user question that does not depend on the sample DB survives"
+          (is (exists? :report_card user-card)))
+        (testing "Example collections holding surviving user content are kept"
+          (is (exists? :collection examples-id))
+          (is (exists? :collection ecommerce-id)))
+        (testing "the RESTRICT-FK table and transform survive with their collection_id intact (no abort, no null-out)"
+          (is (exists? :metabase_table table-id))
+          (is (= ecommerce-id (coll-of :metabase_table table-id)))
+          (is (exists? :transform transform-id))
+          (is (= ecommerce-id (coll-of :transform transform-id))))))))
