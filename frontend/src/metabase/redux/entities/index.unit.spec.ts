@@ -1,4 +1,4 @@
-import { SOFT_RELOAD_CARD } from "metabase/redux/query-builder";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "./questions-reducer";
 
 import { reducer } from "./index";
 
@@ -129,22 +129,19 @@ describe("entities reducer", () => {
         type: UPDATE,
         payload: {
           entities: {
-            questions: { 1: { id: 1, moderated_status: null } },
+            questions: { 1: { id: 1, name: "Old" } },
           },
         },
       });
 
       const next = reducer(merged, {
-        type: SOFT_RELOAD_CARD,
-        payload: {
-          id: 1,
-          moderation_reviews: [{ status: "verified", most_recent: true }],
-        },
+        type: INJECT_RTK_QUERY_QUESTION_VALUE,
+        payload: { id: 1, name: "New" },
       });
 
       expect(next.questions[1]).toMatchObject({
         id: 1,
-        moderated_status: "verified",
+        name: "New",
       });
     });
   });
