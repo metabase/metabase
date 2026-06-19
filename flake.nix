@@ -65,6 +65,7 @@
                     ".git"
                     ".cache"
                     "node_modules"
+                    "result"
                     "target"
                   ]);
               };
@@ -174,6 +175,7 @@
                   ".git"
                   ".cache"
                   "node_modules"
+                  "result"
                   "target"
                 ]);
             };
@@ -185,7 +187,7 @@
 
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = "sha256-p65GnbXSS/r/4Spjr0Xnk27NNO705Yc2lerrfhkL3VE=";
+            outputHash = "sha256-h1tmy/rPNcUc1kCx4AR4TYFpMtK71Aux7vDkouWDLYs=";
 
             dontConfigure = true;
             dontFixup = true;
@@ -205,6 +207,7 @@
 
               mkdir -p "$HOME" "$XDG_CACHE_HOME"
               bun install --frozen-lockfile --ignore-scripts --no-progress
+              node ./node_modules/patch-package/index.js
 
               runHook postBuild
             '';
@@ -234,6 +237,7 @@
                   ".git"
                   ".cache"
                   "node_modules"
+                  "result"
                   "target"
                 ]);
             };
@@ -247,7 +251,7 @@
 
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = "sha256-Ix2bW3i6zfuuPN4U0kJRUnOHj/oGF29IsGE6PbOXpRU=";
+            outputHash = "sha256-WuXuU2tVnBXIwOKUSdZ3BVnWEQQW9sAAZXBjPfvFAaI=";
 
             dontConfigure = true;
             dontFixup = true;
@@ -281,6 +285,25 @@
               find "$HOME/.m2" \
                 \( -name resolver-status.properties -o -name "*.lastUpdated" -o -name _remote.repositories \) \
                 -delete
+              while IFS= read -r -d "" pack; do
+                [ -e "$pack" ] || continue
+
+                repo="''${pack%/objects/pack/*}"
+                pack_dir="$(dirname "$pack")"
+                tmp_pack_dir="$(mktemp -d)"
+
+                for ext in pack idx rev; do
+                  for file in "$pack_dir"/*."$ext"; do
+                    [ -e "$file" ] && mv "$file" "$tmp_pack_dir"/
+                  done
+                done
+
+                for tmp_pack in "$tmp_pack_dir"/*.pack; do
+                  git -c safe.directory="$repo" -C "$repo" unpack-objects -q < "$tmp_pack"
+                done
+
+                rm -rf "$tmp_pack_dir"
+              done < <(find "$HOME/.gitlibs/_repos" -path "*/objects/pack/*.pack" -print0)
               find "$HOME/.gitlibs/_repos" \
                 \( -name FETCH_HEAD -o -name ORIG_HEAD -o -name hooks -o -name logs -o -path "*/worktrees/*/index" \) \
                 -exec rm -rf {} +
