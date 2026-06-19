@@ -56,17 +56,12 @@
               serdes-paths))))
 
 (defn- sync-objects!
-  "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
-  inserts new ones for each imported entity, marking them as 'synced' with the given timestamp.
-
-  Takes a timestamp instant and imported-data map from spec/extract-imported-entities.
-
-  Uses the spec system to determine how to query and build sync objects for each model type."
-  [timestamp imported-data]
+  "Replaces the RemoteSyncObject table with `rows` (already-built insert maps): deletes all existing records
+  and inserts the new ones in one batched insert."
+  [rows]
   (t2/delete! :model/RemoteSyncObject)
-  (let [all-inserts (spec/sync-all-entities! timestamp imported-data)]
-    (when (seq all-inserts)
-      (t2/insert! :model/RemoteSyncObject all-inserts))))
+  (when (seq rows)
+    (t2/insert! :model/RemoteSyncObject rows)))
 
 (defn- build-entity-id-where-clause
   "Builds a HoneySQL WHERE clause for entity_id filtering.
@@ -243,12 +238,13 @@
                    :content_hash (into [:case] (mapcat (fn [[id e]] [[:= :id id] (:content_hash e)])) chunk)}))))
 
 (defn- import-content-metadata
-  "Builds `record-exported-metadata!` entries for the given RemoteSyncObject `rows` (maps with :model_type
-  and :model_id) after an import. Re-serializes each loaded entity once (grouped by model, under
-  `serdes/with-cache` so FKs are memoized) to compute its `content_hash` — matching what the update-event
-  consumer recomputes. `file_path` is the actual repo path the entity was read from (`repo-paths`, from
-  cached-file-paths) for entity-id models, so later renames/deletes resolve the real file; other models fall
-  back to the freshly computed path. Entities that fail to serialize are skipped."
+  "Builds {:model_type :model_id :path :content_hash} entries for the given RemoteSyncObject `rows` (maps
+  with :model_type and :model_id) after an import — folded into the import insert by `merge-content-metadata`.
+  Re-serializes each loaded entity once (grouped by model, under `serdes/with-cache` so FKs are memoized) to
+  compute its `content_hash` — matching what the update-event consumer recomputes. `file_path` is the actual
+  repo path the entity was read from (`repo-paths`, from cached-file-paths) for entity-id models, so later
+  renames/deletes resolve the real file; other models fall back to the freshly computed path. Entities that
+  fail to serialize are skipped."
   [rows repo-paths]
   (serdes/with-cache
     (let [storage-opts (serdes/storage-base-context)
@@ -276,6 +272,18 @@
                                         (catch Exception _ nil))))
                               (serdes/extract-query model-type extract-opts)))))
             (group-by :model_type rows)))))
+
+(defn- merge-content-metadata
+  "Folds the file_path + content_hash from `metadata` entries ({:model_type :model_id :path :content_hash})
+  into `rows` (RemoteSyncObject insert maps), matched by (model_type, model_id), so the metadata can be
+  written by the import's single insert rather than a follow-up update. Rows with no metadata are unchanged."
+  [rows metadata]
+  (let [by-key (into {} (map (juxt (juxt :model_type :model_id) identity)) metadata)]
+    (mapv (fn [row]
+            (if-let [m (by-key [(:model_type row) (:model_id row)])]
+              (assoc row :file_path (:path m) :content_hash (:content_hash m))
+              row))
+          rows)))
 
 (defn- branch-changed-since-scheduling?
   "Returns true if `pre-task-branch` was captured by the async-* function and the
@@ -315,13 +323,13 @@
       (settings/remote-sync-transforms! true))
     (t2/with-transaction [_conn]
       (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
-      (sync-objects! sync-timestamp imported-data)
-      ;; Record each entity's repo file_path (so later renames/deletes resolve the real file) and its
-      ;; serialized-content hash (so a post-pull edit that doesn't change the content stays synced) in one
-      ;; batched write.
-      (record-exported-metadata!
-       (import-content-metadata (t2/select [:model/RemoteSyncObject :model_type :model_id])
-                                (source.ingestable/cached-file-paths base-ingestable)))
+      ;; Build the RemoteSyncObject rows and fold in each entity's repo file_path (so later renames/deletes
+      ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced), so the
+      ;; whole reconcile is one delete + one batched insert.
+      (let [rows (spec/sync-all-entities! sync-timestamp imported-data)]
+        (sync-objects! (merge-content-metadata
+                        rows
+                        (import-content-metadata rows (source.ingestable/cached-file-paths base-ingestable)))))
       (when finalize! (finalize!)))
     (when (and (not has-transforms?)
                (settings/remote-sync-transforms))
@@ -429,12 +437,13 @@
       (when (seq deletes)
         (t2/delete! :model/RemoteSyncObject {:where (rso-where-for deletes)}))
       (when (seq sync-rows)
-        (t2/delete! :model/RemoteSyncObject {:where (rso-where-for sync-rows)})
-        (t2/insert! :model/RemoteSyncObject sync-rows))
-      (when ingestable
-        ;; record file_path + content_hash for just the rows this incremental load touched
-        (record-exported-metadata!
-         (import-content-metadata sync-rows (source.ingestable/cached-file-paths ingestable))))
+        ;; fold file_path + content_hash into the insert so the touched rows are written once
+        (let [rows (merge-content-metadata
+                    sync-rows
+                    (when ingestable
+                      (import-content-metadata sync-rows (source.ingestable/cached-file-paths ingestable))))]
+          (t2/delete! :model/RemoteSyncObject {:where (rso-where-for sync-rows)})
+          (t2/insert! :model/RemoteSyncObject rows)))
       (when finalize! (finalize!)))
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
     ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
