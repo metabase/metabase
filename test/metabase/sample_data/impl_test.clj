@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.plugins.impl :as plugins]
    [metabase.sample-data.impl :as sample-data]
@@ -160,12 +161,15 @@
           (is (not (t2/exists? :model/Collection :id (:id ecommerce))))
           (is (t2/exists? :model/Collection :id (:id keep-coll))))
         (testing "a new sample database with the bundled engine is created and synced"
-          (let [new-db (t2/select-one :model/Database :is_sample true)]
+          ;; replace-sample-database! inserts the new sample DB outside any with-temp, so key off the synced id
+          ;; (authoritative) rather than (select-one :is_sample true), which would see leaks from other tests.
+          (is (= 1 (count @synced-db-ids)) "the new database (not the old one) is what gets synced")
+          (let [new-db (t2/select-one :model/Database :id (first @synced-db-ids))]
             (is (some? new-db))
             (is (not= (:id old-sample) (:id new-db)))
             (is (= bundled-engine (:engine new-db)))
-            (testing "the new database (not the old one) is what gets synced, after the swap commits"
-              (is (= [(:id new-db)] @synced-db-ids)))))))))
+            ;; clean it up so the leaked is_sample row can't pollute tests that select on is_sample.
+            (t2/delete! :model/Database :id (:id new-db))))))))
 
 (deftest replace-sample-database-cascades-to-synced-schema-test
   (testing "On H2 -> SQLite replacement, deleting the old sample DB also removes its synced schema (Tables, Fields,
@@ -180,7 +184,9 @@
        :model/DashboardTab tab     {:dashboard_id (:id sample-dash)}
        :model/DashboardCard _ {:dashboard_id (:id sample-dash), :card_id (:id sample-card)}
        :model/Collection examples  {:name "Examples", :is_sample true}]
-      (mt/with-dynamic-fn-redefs [sync/sync-database! (fn [db] db)]
+      ;; Skip recreating the replacement Sample Database (load-sample-content? false): this test only checks the
+      ;; old schema cascades away, and recreating it would leak an is_sample row other tests select on.
+      (with-redefs [config/load-sample-content? (constantly false)]
         (#'sample-data/update-sample-database-if-needed! old-sample))
       (testing "the old sample DB is deleted"
         (is (not (t2/exists? :model/Database :id (:id old-sample)))))
