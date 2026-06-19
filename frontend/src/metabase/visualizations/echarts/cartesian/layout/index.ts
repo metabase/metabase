@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   CHART_STYLE,
@@ -93,6 +92,32 @@ const getValuesToMeasure = (min: number, max: number): number[] => {
   return [...middleValues, min, max];
 };
 
+const getYAxisExtentToMeasure = (
+  axisModel: YAxisModel,
+  settings: ComputedVisualizationSettings,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
+): [number, number] => {
+  const [min, max] = axisModel.extent.map((extent) =>
+    yAxisScaleTransforms.fromEChartsAxisValue(extent),
+  );
+
+  if (!settings["graph.y_axis.auto_range"]) {
+    return [
+      settings["graph.y_axis.min"] ?? min,
+      settings["graph.y_axis.max"] ?? max,
+    ];
+  }
+
+  if (
+    settings["graph.y_axis.unpin_from_zero"] ||
+    settings["graph.y_axis.scale"] === "log"
+  ) {
+    return [min, max];
+  }
+
+  return [Math.min(min, 0), Math.max(max, 0)];
+};
+
 /**
  * For log scales, ECharts places ticks at regular intervals in transformed space.
  * These intervals can be at integer positions (giving 1, 10, 100...) or half-integer
@@ -133,9 +158,10 @@ const getYAxisTicksWidth = (
     size: theme.cartesian.label.fontSize,
   };
 
-  // extents need to be untransformed to get the value of the tick label
-  const [min, max] = axisModel.extent.map((extent) =>
-    yAxisScaleTransforms.fromEChartsAxisValue(extent),
+  const [min, max] = getYAxisExtentToMeasure(
+    axisModel,
+    settings,
+    yAxisScaleTransforms,
   );
 
   const isFormattingAutoOrCompact =
@@ -145,23 +171,18 @@ const getYAxisTicksWidth = (
     : [min, max];
 
   if (settings["graph.y_axis.scale"] === "log") {
-    const [transformedMin, transformedMax] = axisModel.extent;
-    valuesToMeasure.push(
-      ...getLogScaleTickValues(
-        transformedMin,
-        transformedMax,
-        yAxisScaleTransforms.fromEChartsAxisValue,
-      ),
-    );
-  }
+    const transformedMin = yAxisScaleTransforms.toEChartsAxisValue(min);
+    const transformedMax = yAxisScaleTransforms.toEChartsAxisValue(max);
 
-  if (!settings["graph.y_axis.auto_range"]) {
-    const customRangeValues = [
-      settings["graph.y_axis.min"],
-      settings["graph.y_axis.max"],
-    ].filter(isNotNull);
-
-    valuesToMeasure.push(...customRangeValues);
+    if (transformedMin != null && transformedMax != null) {
+      valuesToMeasure.push(
+        ...getLogScaleTickValues(
+          transformedMin,
+          transformedMax,
+          yAxisScaleTransforms.fromEChartsAxisValue,
+        ),
+      );
+    }
   }
 
   if (settings["graph.show_goal"] && settings["graph.goal_value"] != null) {
@@ -180,9 +201,10 @@ const getYAxisTicksWidth = (
     (value) => value > -5 && value < 5,
   );
 
+  const columnSettings = settings.column?.(axisModel.column);
+
   const measuredValues = valuesToMeasure.map((rawValue) => {
-    const isPercent =
-      settings.column?.(axisModel.column).number_style === "percent";
+    const isPercent = columnSettings?.number_style === "percent";
 
     let value = rawValue;
 
