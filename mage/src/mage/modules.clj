@@ -297,7 +297,6 @@
    "redshift" [:redshift]
    "snowflake" [:snowflake]
    "sparksql" [:sparksql]
-   "sqlite" [:sqlite]
    "sqlserver" [:sqlserver]
    ;; starburst tests are currently disabled in drivers.yml
    ;; "starburst" [:starburst]
