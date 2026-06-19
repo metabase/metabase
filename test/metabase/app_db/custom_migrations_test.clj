@@ -2939,6 +2939,27 @@
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
 
+(deftest ^:mb/old-migrations-test migrate-away-from-sqlite-sample-database-on-downgrade-rollback-test
+  (testing "Downgrading past the changeset (the real rollback path - the target version has none of the new
+           sample database code) removes the SQLite sample database and the whole Example collection tree that
+           the CreateSampleContent migration installed"
+    ;; Start early enough that CreateSampleContent runs under our binding and installs the real SQLite Sample
+    ;; Database and Example collection tree - the exact state a SQLite-sample version leaves to be torn down.
+    (impl/test-migrations ["v63.2026-06-08T00:00:00"] [migrate!]
+      (binding [custom-migrations/*create-sample-content* true]
+        (migrate!))
+      (let [sample-db-id    (:id (t2/query-one {:select [:id] :from [:metabase_database]
+                                                :where  [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
+            sample-coll-ids (mapv :id (t2/query {:select [:id] :from [:collection] :where [:= :is_sample true]}))]
+        (testing "precondition: the SQLite sample database and its Example collections exist after upgrade"
+          (is (some? sample-db-id))
+          (is (seq sample-coll-ids)))
+        (migrate! :down 62)
+        (testing "the SQLite sample database is gone"
+          (is (not (t2/exists? (t2/table-name :model/Database) :id sample-db-id))))
+        (testing "the entire outgoing Example collection tree is deleted - the cascade is complete"
+          (is (zero? (t2/count (t2/table-name :model/Collection) :id [:in sample-coll-ids]))))))))
+
 (deftest migrate-away-from-sqlite-sample-database-on-downgrade-test
   (testing "Downgrade removes the SQLite sample database and the content it leaves empty, keeping everything else"
     (mt/with-temp
@@ -3037,24 +3058,3 @@
           (is (t2/exists? :model/Card :id (:id other-card)))
           (is (t2/exists? :model/Database :id (:id other)))
           (is (t2/exists? :model/Collection :id (:id keep-coll))))))))
-
-(deftest ^:mb/old-migrations-test migrate-away-from-sqlite-sample-database-on-downgrade-rollback-test
-  (testing "Downgrading past the changeset (the real rollback path - the target version has none of the new
-           sample database code) removes the SQLite sample database and the whole Example collection tree that
-           the CreateSampleContent migration installed"
-    ;; Start early enough that CreateSampleContent runs under our binding and installs the real SQLite Sample
-    ;; Database and Example collection tree - the exact state a SQLite-sample version leaves to be torn down.
-    (impl/test-migrations ["v52.2024-12-03T15:55:22"] [migrate!]
-      (binding [custom-migrations/*create-sample-content* true]
-        (migrate!))
-      (let [sample-db-id    (:id (t2/query-one {:select [:id] :from [:metabase_database]
-                                                :where  [:and [:= :is_sample true] [:= :engine "sqlite"]]}))
-            sample-coll-ids (mapv :id (t2/query {:select [:id] :from [:collection] :where [:= :is_sample true]}))]
-        (testing "precondition: the SQLite sample database and its Example collections exist after upgrade"
-          (is (some? sample-db-id))
-          (is (seq sample-coll-ids)))
-        (migrate! :down 62)
-        (testing "the SQLite sample database is gone"
-          (is (not (t2/exists? (t2/table-name :model/Database) :id sample-db-id))))
-        (testing "the entire outgoing Example collection tree is deleted - the cascade is complete"
-          (is (zero? (t2/count (t2/table-name :model/Collection) :id [:in sample-coll-ids]))))))))
