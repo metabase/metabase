@@ -187,10 +187,11 @@
 ;; See https://mongodb.github.io/mongo-java-driver/3.12/javadoc/com/mongodb/client/AggregateIterable.html
 (defn- init-aggregate!
   [^AggregateIterable aggregate
+   stages
    ^java.lang.Long timeout-ms]
   (doto aggregate
     (.allowDiskUse true)
-    (.batchSize (int default-batch-size))
+    (.batchSize (int (query-batch-size stages)))
     (.maxTime timeout-ms TimeUnit/MILLISECONDS)))
 
 (defn aggregate-database
@@ -200,7 +201,7 @@
    stages timeout-ms]
   (let [pipe      (ArrayList. ^Collection (mongo.conversion/to-document stages))
         aggregate (.aggregate db session pipe)]
-    (init-aggregate! aggregate timeout-ms)))
+    (init-aggregate! aggregate stages timeout-ms)))
 
 (defn- ^:dynamic *aggregate*
   [^MongoDatabase db
@@ -210,7 +211,7 @@
   (let [coll      (.getCollection db coll)
         pipe      (ArrayList. ^Collection (mongo.conversion/to-document stages))
         aggregate (.aggregate coll session pipe)]
-    (init-aggregate! aggregate timeout-ms)))
+    (init-aggregate! aggregate stages timeout-ms)))
 
 (defn- reducible-rows [^MongoCursor cursor first-row post-process]
   {:pre [(fn? post-process)]}
@@ -257,7 +258,6 @@
                                                       session
                                                       query
                                                       driver.settings/*query-timeout-ms*)]
-        (.batchSize aggregate (int (query-batch-size query)))
         (with-open [^MongoCursor cursor (try (.cursor aggregate)
                                              (catch Throwable e
                                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))

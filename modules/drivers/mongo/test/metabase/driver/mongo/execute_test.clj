@@ -29,7 +29,6 @@
 
 (defn- make-mongo-aggregate-iterable [rows]
   (reify com.mongodb.client.AggregateIterable
-    (batchSize [this _] this)
     (cursor [_] (make-mongo-cursor rows))))
 
 (deftest ^:parallel query-batch-size-test
