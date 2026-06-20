@@ -18,6 +18,7 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.query-processor.middleware.cache-backend.valkey :as backend.valkey]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
@@ -32,7 +33,8 @@
 
 (set! *warn-on-reflection* true)
 
-(comment backend.db/keep-me)
+(comment backend.db/keep-me
+         backend.valkey/keep-me)
 
 (def ^:private cache-version
   "Current serialization format version. Basically

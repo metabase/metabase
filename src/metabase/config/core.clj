@@ -63,6 +63,10 @@
    :mb-emoji-in-logs                (str (not is-windows?)) ; disable them by default when running on Windows. Otherwise they're enabled
    :mb-log-team-attribution         "false"
    :mb-qp-cache-backend             "db"
+   :mb-qp-cache-valkey-command-timeout-ms "5000"
+   :mb-qp-cache-valkey-connect-timeout-ms "5000"
+   :mb-qp-cache-valkey-key-prefix   "metabase:qp-cache:"
+   :mb-qp-cache-valkey-uri          "redis://localhost:6379"
    :mb-jetty-async-response-timeout (str (* 10 60 1000)) ; 10m
    :mb-monitor-performance           ""
    :mb-monitor-performance-save-rate ""})

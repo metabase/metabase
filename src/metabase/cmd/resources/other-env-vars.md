@@ -492,7 +492,35 @@ See [Observability with Prometheus](../installation-and-operation/observability-
 Type: string<br>
 Default: `"db"`
 
-Current cache backend. Dynamically rebindable primarily for test purposes.
+Current query processor cache backend. Supported values are `db` and `valkey`.
+
+### `MB_QP_CACHE_VALKEY_COMMAND_TIMEOUT_MS`
+
+Type: integer<br>
+Default: `5000`
+
+Command timeout, in milliseconds, for the Valkey query processor cache backend.
+
+### `MB_QP_CACHE_VALKEY_CONNECT_TIMEOUT_MS`
+
+Type: integer<br>
+Default: `5000`
+
+Connection timeout, in milliseconds, for the Valkey query processor cache backend.
+
+### `MB_QP_CACHE_VALKEY_KEY_PREFIX`
+
+Type: string<br>
+Default: `"metabase:qp-cache:"`
+
+Key prefix used by the Valkey query processor cache backend. Use a unique prefix when multiple Metabase instances share the same Valkey database.
+
+### `MB_QP_CACHE_VALKEY_URI`
+
+Type: string<br>
+Default: `"redis://localhost:6379"`
+
+Valkey or Redis-compatible URI for the query processor cache backend. Use `rediss://` for TLS; username, password, host, port, and database can be supplied in the URI.
 
 ### `MB_SETUP_TOKEN`
 
