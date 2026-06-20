@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.sync.core :as sync]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -294,3 +295,14 @@
              {:steps [["delete-expired-advanced-field-values" {}]
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}
              (sync/update-field-values! (data/db))))))))
+;;; ---------------------------------- table->fields-to-scan ----------------------------------
+
+(deftest table->fields-to-scan-respects-limit-test
+  (testing "returns at most `limit` active, normal-visibility fields so very wide tables don't load every field"
+    (mt/with-temp [:model/Table {table-id :id} {}
+                   :model/Field _ {:table_id table-id :active true :visibility_type :normal}
+                   :model/Field _ {:table_id table-id :active true :visibility_type :normal}
+                   :model/Field _ {:table_id table-id :active true :visibility_type :normal}]
+      (let [table (t2/select-one :model/Table :id table-id)]
+        (is (= 2 (count (#'sync.field-values/table->fields-to-scan table 2))))
+        (is (= 3 (count (#'sync.field-values/table->fields-to-scan table 100))))))))
