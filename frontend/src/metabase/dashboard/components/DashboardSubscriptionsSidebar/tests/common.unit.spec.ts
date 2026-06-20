@@ -267,7 +267,7 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       await userEvent.click(
         await screen.findByRole("switch", {
-          name: /Attach a PDF of the dashboard/,
+          name: /Send dashboard as PDF/,
         }),
       );
 
