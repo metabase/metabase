@@ -242,7 +242,7 @@
    fields :- [:sequential i/FieldInstance]]
   (let [database (table/database table)
         driver   (driver.u/database->driver database)]
-    (if (driver/database-supports? driver :table-rows-sample/projects-fields database)
+    (if (driver.u/supports? driver :table-rows-sample/projects-fields database)
       (partition-all (sync.settings/fingerprint-fields-batch-size) fields)
       [fields])))
 
