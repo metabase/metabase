@@ -159,8 +159,8 @@
       (is (= (+ (field-value-bytes (prim-cell "aa")) (field-value-bytes (prim-cell "bbb")))
              (row-bytes (field-value-list [(prim-cell "aa") (prim-cell "bbb")])))))))
 
-(deftest ^:parallel next-sample-page-size-test
-  (let [next-size @#'bigquery/next-sample-page-size]
+(deftest ^:parallel next-page-size-test
+  (let [next-size @#'bigquery/next-page-size]
     (testing "page size = budget / measured-avg-bytes-per-row"
       ;; 50 rows totalling 500 bytes -> avg 10 -> 1000/10 = 100
       (is (= 100 (next-size 1000 500 50 1000000))))
