@@ -31,12 +31,14 @@ import { useLibrarySearch } from "./useLibrarySearch";
 
 type Params = {
   collections: Collection[];
+  isLoadingCollections: boolean;
   searchQuery: string;
   onPublishTableClick: VoidFunction;
 };
 
 export function useLibraryTreeTableInstance({
   collections,
+  isLoadingCollections,
   searchQuery,
   onPublishTableClick,
 }: Params) {
@@ -99,7 +101,11 @@ export function useLibraryTreeTableInstance({
   );
 
   const isLoading =
-    loadingTables || loadingMetrics || loadingSnippets || isSearchLoading;
+    isLoadingCollections ||
+    loadingTables ||
+    loadingMetrics ||
+    loadingSnippets ||
+    isSearchLoading;
   useErrorHandling(tablesError || metricsError || snippetsError);
 
   const libraryHasContent = useMemo(
@@ -226,18 +232,17 @@ export function useLibraryTreeTableInstance({
     null,
   );
 
-  // Lock browseExpanded only once the collection tree has loaded: `!isLoading` alone fires too
-  // early (section item queries are skipped until `collections` resolves), locking a stale subset.
+  // Lock browseExpanded once loading settles. isLoading now includes the collections fetch, so it
+  // no longer fires early (section item queries are skipped until collections resolve).
   useEffect(() => {
     if (
       browseExpanded === null &&
       !isLoading &&
-      collections.length > 0 &&
       Object.keys(defaultExpanded).length > 0
     ) {
       setBrowseExpanded(defaultExpanded);
     }
-  }, [browseExpanded, defaultExpanded, isLoading, collections.length]);
+  }, [browseExpanded, defaultExpanded, isLoading]);
 
   const expanded = isSearchActive ? true : (browseExpanded ?? defaultExpanded);
   const onExpandedChange = useCallback(
