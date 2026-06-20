@@ -7,6 +7,7 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.batch-processing.settings :as batch-processing.settings]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -26,35 +27,38 @@
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
-      (mt/with-temporary-setting-values [synchronous-batch-updates true]
-        ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
-        ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
-        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-        (with-redefs [process-userland-query/save-execution-metadata!*
-                      (fn [query-executions]
-                        (doseq [{qe-hash :hash, :as query-execution} query-executions
-                                :when qe-hash]
-                          (deliver
-                           result
-                           (if (java.util.Arrays/equals ^bytes qe-hash original-hash)
-                             query-execution
-                             ;; if you're seeing this there is probably some
-                             ;; bug that is causing query hashes to get
-                             ;; calculated in an inconsistent manner; check
-                             ;; `:query` vs `:query-execution-query`
-                             (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
-                                      {:query                 query
-                                       :original-hash         (some-> original-hash codecs/bytes->hex)
-                                       :query-execution       query-execution
-                                       :query-execution-hash  (some-> ^bytes qe-hash codecs/bytes->hex)
-                                       :query-execution-query (:json_query query-execution)})))))]
-          (run
-           (fn qe-result* []
-             (let [qe (deref result 1000 ::timed-out)]
-               (cond-> qe
-                 (:running_time qe) (update :running_time int?)
-                 (:hash qe)         (update :hash (fn [^bytes a-hash]
-                                                    (some-> a-hash codecs/bytes->hex))))))))))))
+      ;; `save-execution-metadata!*` and the `synchronous-batch-updates` setting it reads are both exercised from
+      ;; the QP pipeline transducer, which runs on a worker thread that doesn't inherit dynamic bindings or
+      ;; thread-local setting overrides (and may read a stale cached setting value). Use `with-redefs` so that
+      ;; thread reliably saves synchronously (the grouper runs inline) and sees our capturing redef -- otherwise
+      ;; the async grouper races the `deref` below and the execution is never delivered.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [batch-processing.settings/synchronous-batch-updates (constantly true)
+                    process-userland-query/save-execution-metadata!*
+                    (fn [query-executions]
+                      (doseq [{qe-hash :hash, :as query-execution} query-executions
+                              :when qe-hash]
+                        (deliver
+                         result
+                         (if (java.util.Arrays/equals ^bytes qe-hash original-hash)
+                           query-execution
+                           ;; if you're seeing this there is probably some
+                           ;; bug that is causing query hashes to get
+                           ;; calculated in an inconsistent manner; check
+                           ;; `:query` vs `:query-execution-query`
+                           (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
+                                    {:query                 query
+                                     :original-hash         (some-> original-hash codecs/bytes->hex)
+                                     :query-execution       query-execution
+                                     :query-execution-hash  (some-> ^bytes qe-hash codecs/bytes->hex)
+                                     :query-execution-query (:json_query query-execution)})))))]
+        (run
+         (fn qe-result* []
+           (let [qe (deref result 1000 ::timed-out)]
+             (cond-> qe
+               (:running_time qe) (update :running_time int?)
+               (:hash qe)         (update :hash (fn [^bytes a-hash]
+                                                  (some-> a-hash codecs/bytes->hex)))))))))))
 
 (defmacro with-query-execution! {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution! ~query (fn [~qe-result-binding] ~@body)))
