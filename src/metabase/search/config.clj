@@ -309,6 +309,29 @@
   separate `case` (with an `:hnsw` default) and must be updated by hand when adding a strategy."
   [:hnsw :brute-force])
 
+(def PartitionConfig
+  "Schema for the semantic-engine federated-retrieval partition config (the `partition_config`
+  API param, sent as a JSON object). `:partitions` lists per-partition candidate generation: each
+  partition searches its own `:models` set as one sub-query with its own candidate ceiling (`:k`),
+  cosine cutoff (`:max-cosine-distance`), and vector `:strategy`. An absent param is today's single
+  global KNN, so absent-param = baseline.
+
+  The partition model groupings MUST mirror the partial HNSW indexes built on the active index table
+  (search-eval scripts/manage_index.py) -- the backend emits `model = '<m>'` / `model = ANY (...)`
+  predicates that have to imply the partial-index predicate or the planner ignores it. Mastered here
+  (rather than in the EE module) so the OSS search API param and the EE query builder share one
+  definition. `:fusion` selects the post-union ranking; only `:v1` (union → existing RRF+scoring) is
+  implemented today."
+  [:map {:closed true}
+   [:partitions [:sequential
+                 [:map {:closed true}
+                  [:name                {:optional true} :string]
+                  [:models              [:sequential SearchableModel]]
+                  [:strategy            {:optional true} (into [:enum] vector-search-strategies)]
+                  [:k                   {:optional true} pos-int?]
+                  [:max-cosine-distance {:optional true} [:double {:min 0.0 :max 2.0}]]]]]
+   [:fusion {:optional true} [:enum :v1]]])
+
 (def ^:private ui-contexts
   "Search `context` values issued by the frontend, one per UI surface.
   Selects ranking weights ([[static-context-weights]]) and filter defaults ([[filter-defaults-by-context]]).
@@ -405,6 +428,8 @@
    [:vector-search-strategy {:optional true} [:maybe keyword?]]
    ;; Semantic-engine cosine-distance cut-off override. When absent, the engine uses its hardcoded default.
    [:max-cosine-distance {:optional true} [:maybe number?]]
+   ;; Semantic-engine federated-retrieval partition config. When absent, the engine uses a single global KNN.
+   [:partition-config   {:optional true} [:maybe PartitionConfig]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;

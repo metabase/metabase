@@ -680,16 +680,144 @@
   (or (:vector-search-strategy search-context)
       (semantic-settings/semantic-search-vector-strategy)))
 
+;; ----------------------------------------------------------------------------
+;; Federated / partitioned retrieval (fusion v1)
+;;
+;; Instead of one global KNN over the whole index, emit one candidate sub-query per
+;; partition (a set of model classes), each with its own candidate quota (`:k`),
+;; cosine cutoff, and vector strategy, then UNION ALL them and recompute
+;; `semantic_rank` over the union. Each model-scoped sub-query lets `card`/`dashboard`/
+;; etc. reach the candidate pool regardless of how many `indexed-entity` rows sit
+;; closer in raw cosine distance (the documented crowding problem). The output is
+;; still one-row-per-entity with the same columns the single-KNN path emits, so the
+;; keyword arm, RRF, scoring, permission filter, and rehydration are unchanged.
+;;
+;; The partition map arrives per request as `:partition-config` (see
+;; [[metabase.search.config/PartitionConfig]]); absent → the single global KNN above.
+;; The per-partition model predicate must imply the partial HNSW index predicate built
+;; on the active table (search-eval scripts/manage_index.py) or the planner ignores it.
+
+(defn- sql-string-literal
+  "Quote a string as a SQL literal, doubling embedded single quotes."
+  [s]
+  (str \' (str/replace s "'" "''") \'))
+
+(defn- partition-model-pred
+  "Raw SQL predicate restricting a partition sub-query to its model set. Byte-matches the
+  partial-index predicate emitted by manage_index.py `_model_pred` so the planner uses the
+  partition's partial HNSW index: single model -> `model = '<m>'`; multi ->
+  `model = ANY (ARRAY['a', 'b']::text[])`."
+  [models]
+  (if (= 1 (count models))
+    [:raw (str "model = " (sql-string-literal (first models)))]
+    [:raw (str "model = ANY (ARRAY["
+               (str/join ", " (map sql-string-literal models))
+               "]::text[])")]))
+
+(defn- federated-partition-ctes
+  "Build the candidate + filtered CTE entries for partition `p` (0-indexed `i`).
+  Returns `{:filt-name <kw> :ctes [[cand ...] [filt ...]]}`, or nil when the request's
+  `:models` filter leaves this partition with no models to search.
+
+  HNSW partitions: a pure model-scoped vector scan (matches the partial index) capped at
+  the partition `:k`, with the cosine cutoff + non-model filters applied in the outer
+  `filt` CTE — mirrors [[hnsw-search-query]]. Brute-force partitions: an exact, filter-first
+  MATERIALIZED scan (model predicate + filters), then cutoff + quota — mirrors
+  [[brute-force-search-query]]. Both expose `common-search-columns` + `distance` and contribute
+  at most `:k` rows ordered by distance."
+  [index embedding-literal search-context non-model-filters i p]
+  (let [requested  (:models search-context)
+        eff-models (if (seq requested)
+                     (filterv (set requested) (:models p))
+                     (vec (:models p)))]
+    (when (seq eff-models)
+      (let [model-pred (partition-model-pred eff-models)
+            strategy   (or (:strategy p) (vector-search-strategy search-context))
+            k          (or (:k p) (semantic-settings/semantic-search-results-limit))
+            cutoff     (or (:max-cosine-distance p)
+                           (:max-cosine-distance search-context)
+                           default-max-cosine-distance)
+            dist-expr  [:raw (str "embedding <=> " embedding-literal)]
+            cand-name  (keyword (str "p" i "_candidates"))
+            filt-name  (keyword (str "p" i "_filtered"))
+            cand-cols  (into common-search-columns [[dist-expr :distance]])
+            filt-cols  (into common-search-columns [[:distance :distance]])]
+        {:filt-name filt-name
+         :ctes
+         (case strategy
+           :brute-force
+           [[cand-name
+             (cond-> {:select cand-cols
+                      :from   [(keyword (:table-name index))]
+                      :where  model-pred}
+               non-model-filters (update :where #(into [:and] [% non-model-filters])))
+             :materialized]
+            [filt-name
+             {:select   filt-cols
+              :from     [cand-name]
+              :where    [:<= :distance cutoff]
+              :order-by [[:distance :asc]]
+              :limit    k}]]
+
+           ;; default :hnsw
+           [[cand-name
+             {:select   cand-cols
+              :from     [(keyword (:table-name index))]
+              :where    model-pred
+              :order-by [[dist-expr :asc]]
+              :limit    k}]
+            [filt-name
+             {:select   filt-cols
+              :from     [cand-name]
+              :where    (let [c [:<= :distance cutoff]]
+                          (if non-model-filters (into [:and] [c non-model-filters]) c))
+              :order-by [[:distance :asc]]
+              :limit    k}]])}))))
+
+(defn- federated-semantic-search-query
+  "Build the federated semantic vector subquery: per-partition candidate CTEs UNION ALL-ed,
+  with `semantic_rank` recomputed over the union by raw cosine distance (fusion v1). Returns a
+  query with the same output columns as [[hnsw-search-query]] so it drops into the hybrid join
+  unchanged. Returns nil when no partition matches the request's `:models` filter (caller falls
+  back to the single global KNN)."
+  [index embedding-literal search-context partitions]
+  (let [non-model-filters (search-filters (dissoc search-context :models))
+        parts (keep-indexed
+               (partial federated-partition-ctes index embedding-literal search-context non-model-filters)
+               partitions)]
+    (when (seq parts)
+      (let [all-ctes   (into [] (mapcat :ctes) parts)
+            union-q    {:union-all (mapv (fn [{:keys [filt-name]}]
+                                           {:select (into common-search-columns [[:distance :distance]])
+                                            :from   [filt-name]})
+                                         parts)}]
+        {:with     (conj all-ctes [:union_candidates union-q])
+         :select   (into common-search-columns
+                         [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
+                          [:distance :semantic_distance]])
+         :from     [:union_candidates]
+         :order-by [[:semantic_rank :asc]]
+         :limit    (semantic-settings/semantic-search-results-limit)}))))
+
+(defn- resolve-partition-config
+  "Return the partition list to federate over, or nil for the (default) single global KNN path."
+  [search-context]
+  (some-> (:partition-config search-context) :partitions not-empty))
+
 (defn- semantic-search-query
-  "Build the semantic vector subquery, dispatching on the resolved [[vector-search-strategy]].
-  `:brute-force` is exact and filter-first; `:hnsw` (the default) is approximate and index-backed."
+  "Build the semantic vector subquery. When the request carries a `:partition-config`, emit the
+  federated multi-CTE candidate generation ([[federated-semantic-search-query]]); otherwise dispatch
+  on the resolved [[vector-search-strategy]] -- `:brute-force` (exact, filter-first) or `:hnsw`
+  (approximate, index-backed; the default)."
   [index embedding search-context]
   (let [filters           (search-filters search-context)
         embedding-literal (format-embedding embedding)
         cutoff            (or (:max-cosine-distance search-context) default-max-cosine-distance)]
-    (case (vector-search-strategy search-context)
-      :brute-force (brute-force-search-query index embedding-literal filters cutoff)
-      (hnsw-search-query index embedding-literal filters cutoff))))
+    (or (when-let [partitions (resolve-partition-config search-context)]
+          (federated-semantic-search-query index embedding-literal search-context partitions))
+        (case (vector-search-strategy search-context)
+          :brute-force (brute-force-search-query index embedding-literal filters cutoff)
+          (hnsw-search-query index embedding-literal filters cutoff)))))
 
 (defn- flatten-ctes
   "Flatten nested :with clauses into a single top-level :with.

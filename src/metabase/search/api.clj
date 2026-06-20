@@ -55,6 +55,32 @@
         (log/warn "Failed to parse non-temporal dimension IDs:" (ex-message e))
         nil))))
 
+(defn- process-partition-config
+  "Parse the `partition_config` JSON query param into the partition map consumed by the semantic engine
+  (see [[metabase.search.config/PartitionConfig]]). Returns nil when absent/blank or unparseable.
+  Keywordizes the per-partition `:strategy` and the top-level `:fusion` selector and normalizes
+  `max_cosine_distance` -> `:max-cosine-distance`, dropping any other keys so the closed schema accepts it.
+
+  Shape: `{\"partitions\": [{\"name\": .., \"models\": [..], \"strategy\": \"hnsw\"|\"brute-force\",
+  \"k\": .., \"max_cosine_distance\": ..}], \"fusion\": \"v1\"}`."
+  [partition-config]
+  (when-not (str/blank? partition-config)
+    (try
+      (let [{:keys [partitions fusion]} (json/decode+kw partition-config)]
+        (cond-> {:partitions
+                 (mapv (fn [p]
+                         (let [mcd (or (:max-cosine-distance p) (:max_cosine_distance p))]
+                           (cond-> {:models (:models p)}
+                             (:name p)     (assoc :name (:name p))
+                             (:strategy p) (assoc :strategy (keyword (:strategy p)))
+                             (:k p)        (assoc :k (:k p))
+                             (some? mcd)   (assoc :max-cosine-distance mcd))))
+                       partitions)}
+          fusion (assoc :fusion (keyword fusion))))
+      (catch Exception e
+        (log/warn "Failed to parse partition_config:" (ex-message e))
+        nil))))
+
 (defn- +engine-cookie [handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
@@ -178,6 +204,7 @@
   - `search_native_query`: set to true to search the content of native queries
   - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines
   - `max_cosine_distance`: for the semantic engine, the cosine-distance cut-off above which vector candidates are discarded (default 0.7); ignored by other engines
+  - `partition_config`: for the semantic engine, a JSON object enabling federated/partitioned retrieval (per-partition model set, candidate quota `k`, cosine cutoff, and vector strategy); omit for a single global KNN. Ignored by other engines
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
@@ -206,6 +233,7 @@
     search-engine                       :search_engine
     vector-search-strategy              :vector_search_strategy
     max-cosine-distance                 :max_cosine_distance
+    partition-config                    :partition_config
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
     include-metadata                    :include_metadata
@@ -230,6 +258,7 @@
        [:search_engine                       {:optional true} [:maybe string?]]
        [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
        [:max_cosine_distance                 {:optional true} [:maybe [:double {:min 0.0 :max 2.0}]]]
+       [:partition_config                    {:optional true} [:maybe :string]]
        [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -262,6 +291,7 @@
                 :search-engine                       search-engine
                 :vector-search-strategy              vector-search-strategy
                 :max-cosine-distance                 max-cosine-distance
+                :partition-config                    (process-partition-config partition-config)
                 :search-native-query                 search-native-query
                 :search-string                       (some-> q str/trim not-empty)
                 :table-db-id                         table-db-id

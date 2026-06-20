@@ -266,6 +266,7 @@
    [:search-engine                       {:optional true} [:maybe string?]]
    [:vector-search-strategy              {:optional true} [:maybe string?]]
    [:max-cosine-distance                 {:optional true} [:maybe number?]]
+   [:partition-config                    {:optional true} [:maybe search.config/PartitionConfig]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
@@ -306,6 +307,7 @@
            search-engine
            vector-search-strategy
            max-cosine-distance
+           partition-config
            search-native-query
            search-string
            table-db-id
@@ -351,6 +353,7 @@
                  (some? offset)                              (assoc :offset-int offset)
                  (not (str/blank? vector-search-strategy))    (assoc :vector-search-strategy (keyword vector-search-strategy))
                  (some? max-cosine-distance)                 (assoc :max-cosine-distance max-cosine-distance)
+                 (some? partition-config)                    (assoc :partition-config partition-config)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
