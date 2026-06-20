@@ -181,7 +181,7 @@
 
 (deftest ^:parallel reducible-bigquery-results-nil-page-test
   (testing "a nil initial page reduces to an empty result instead of NPEing (#47339)"
-    (is (= [] (into [] (#'bigquery/reducible-bigquery-results nil nil (constantly nil)))))))
+    (is (= [] (into [] (#'bigquery/reducible-bigquery-results nil nil (constantly nil) (constantly nil)))))))
 
 (deftest ^:synchronized adaptive-sample-next-page-test
   (let [requested (atom [])
