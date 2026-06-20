@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metrics.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.batch-processing.settings :as batch-processing.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -349,7 +350,10 @@
 (deftest dataset-leaf-records-query-execution-test
   (testing "POST /api/metric/dataset (leaf path) writes a QueryExecution row with :context :metric"
     (mt/test-helpers-set-global-values!
-      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      ;; `synchronous-batch-updates` is read on the QP worker thread, where the settings cache can momentarily
+      ;; serve a stale value; redef the setting fn so reads bypass the cache and the QE save runs synchronously.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [batch-processing.settings/synchronous-batch-updates (constantly true)]
         (mt/with-temp [:model/Card metric {:name          "QE Leaf Metric"
                                            :type          :metric
                                            :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
@@ -365,7 +369,10 @@
 (deftest dataset-arithmetic-records-one-qe-per-leaf-test
   (testing "POST /api/metric/dataset (arithmetic) writes one QueryExecution row per leaf"
     (mt/test-helpers-set-global-values!
-      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      ;; `synchronous-batch-updates` is read on the QP worker thread, where the settings cache can momentarily
+      ;; serve a stale value; redef the setting fn so reads bypass the cache and the QE save runs synchronously.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [batch-processing.settings/synchronous-batch-updates (constantly true)]
         (mt/with-temp [:model/Card metric-a {:name          "QE Arith A"
                                              :type          :metric
                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
@@ -387,7 +394,10 @@
 (deftest breakout-values-records-query-execution-test
   (testing "POST /api/metric/breakout-values writes a QueryExecution row with :context :metric"
     (mt/test-helpers-set-global-values!
-      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      ;; `synchronous-batch-updates` is read on the QP worker thread, where the settings cache can momentarily
+      ;; serve a stale value; redef the setting fn so reads bypass the cache and the QE save runs synchronously.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [batch-processing.settings/synchronous-batch-updates (constantly true)]
         (mt/with-temp [:model/Card metric {:name          "QE Breakout Metric"
                                            :type          :metric
                                            :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]

@@ -15,6 +15,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.test-util :as api.test-util]
+   [metabase.batch-processing.settings :as batch-processing.settings]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -65,17 +66,11 @@
        [k v]))))
 
 (defn- most-recent-query-execution-for-query [query]
-  ;; it might take a fraction of a second for the QueryExecution to show up, it's saved asynchronously. So wait a bit
-  ;; and retry if it's not there yet.
-  (letfn [(thunk []
-            (t2/select-one :model/QueryExecution
-                           :hash (qp.util/query-hash query)
-                           {:order-by [[:started_at :desc]]}))]
-    (loop [retries 3]
-      (or (thunk)
-          (when (pos? retries)
-            (Thread/sleep 100)
-            (recur (dec retries)))))))
+  ;; callers force synchronous QueryExecution saves (see `with-redefs` of `synchronous-batch-updates` below), so the
+  ;; row is already persisted by the time the request returns -- no need to poll.
+  (t2/select-one :model/QueryExecution
+                 :hash (qp.util/query-hash query)
+                 {:order-by [[:started_at :desc]]}))
 
 (def ^:private query-defaults
   {:middleware {:add-default-userland-constraints? true
@@ -84,7 +79,10 @@
 (deftest basic-query-test
   (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
-      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      ;; `synchronous-batch-updates` is read on the QP worker thread, where the settings cache can momentarily
+      ;; serve a stale value; redef the setting fn so reads bypass the cache and the QE save runs synchronously.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [batch-processing.settings/synchronous-batch-updates (constantly true)]
         (let [query (mt/mbql-query checkins
                       {:aggregation [[:count]]})
               result (mt/user-http-request :crowberto :post 202 "dataset" query)]
@@ -152,7 +150,10 @@
   (testing "POST /api/dataset"
     (testing "\nA failed query should return a 400 response from the API"
       ;; QueryExecutions are saved in async batches by default; save them synchronously so we can assert on them
-      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      ;; `synchronous-batch-updates` is read on the QP worker thread, where the settings cache can momentarily
+      ;; serve a stale value; redef the setting fn so reads bypass the cache and the QE save runs synchronously.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [batch-processing.settings/synchronous-batch-updates (constantly true)]
         ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
         ;; that it exists and contains the substring "Syntax error in SQL statement"
         (let [query  {:database (mt/id)
