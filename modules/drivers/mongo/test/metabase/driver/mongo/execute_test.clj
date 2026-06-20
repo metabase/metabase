@@ -29,36 +29,23 @@
 
 (defn- make-mongo-aggregate-iterable [rows]
   (reify com.mongodb.client.AggregateIterable
-    ;; batchSize/first are exercised by the always-on byte-budgeting probe in execute-reducible-query
+    ;; batchSize is set from the query's projected field count in execute-reducible-query
     (batchSize [this _] this)
-    (first [_] (when (seq rows) (mongo.conversion/to-document (nth rows 0))))
     (cursor [_] (make-mongo-cursor rows))))
 
-(defn- recording-aggregate-iterable
-  "An AggregateIterable whose `first` returns `probe-doc` and that records each `batchSize` call into `sizes`."
-  [^org.bson.Document probe-doc sizes]
-  (reify com.mongodb.client.AggregateIterable
-    (batchSize [this n] (swap! sizes conj n) this)
-    (first [_] probe-doc)
-    (cursor [_] (make-mongo-cursor []))))
-
-(deftest ^:parallel byte-budgeted-batch-size-test
-  (testing "budgeted-batch-size clamps batchSize to [1, default] from a measured per-document size"
-    (let [bbs @#'mongo.execute/budgeted-batch-size
-          mb  (* 1024 1024)]
-      (is (= 100 (bbs (* 4 mb) 40))      "tiny doc -> default max batch")
-      (is (= 4   (bbs (* 4 mb) mb))      "1MB doc, 4MB budget -> 4 per batch")
-      (is (= 1   (bbs mb (* 50 mb)))     "doc larger than the whole budget -> 1 per batch")))
-  (let [heavy (doto (org.bson.Document.) (.put "blob" (apply str (repeat 2000000 \x))))] ; ~2MB document
-    (testing "every read pipeline is byte-budgeted: probe at batchSize 1, then a small batch for a heavy doc"
-      (let [sizes (atom [])]
-        (binding [mongo.execute/*batch-byte-budget* (* 4 1024 1024)]
-          (#'mongo.execute/apply-byte-budgeted-batch-size! (recording-aggregate-iterable heavy sizes) [{"$match" {}}]))
-        (is (= [1 2] @sizes) "4MB budget / ~2MB doc -> batchSize 2")))
-    (testing "$out/$merge write pipelines are not probed (the probe would execute the write twice)"
-      (let [sizes (atom [])]
-        (#'mongo.execute/apply-byte-budgeted-batch-size! (recording-aggregate-iterable heavy sizes) [{"$out" "dest"}])
-        (is (= [] @sizes))))))
+(deftest ^:parallel query-batch-size-test
+  (testing "cursor batchSize is derived from the projected field count so wide results don't buffer a huge page"
+    (let [qbs @#'mongo.execute/query-batch-size]
+      (testing "narrow projection keeps the default batch size"
+        (is (= 100 (qbs [{"$match" {}} {"$project" {"a" 1 "b" 1}}]))))
+      (testing "wide projection shrinks the batch so rows × columns stays within the cell budget"
+        (binding [mongo.execute/*max-cells-per-batch* 20000]
+          (is (= 20 (qbs [{"$project" (into {} (for [i (range 1000)] [(str "f" i) 1]))}]))
+              "1000 columns, 20000-cell budget -> 20 rows/batch")))
+      (testing "suppressed fields ({... 0}) don't count toward the width"
+        (is (= 100 (qbs [{"$project" {"a" 1 "_id" 0}}]))))
+      (testing "no $project -> default batch size (result width unknown)"
+        (is (= 100 (qbs [{"$match" {}}])))))))
 
 (deftest ^:parallel field-filter-relative-time-native-test
   (mt/test-driver :mongo

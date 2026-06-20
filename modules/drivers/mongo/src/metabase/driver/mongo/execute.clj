@@ -156,45 +156,33 @@
   "Cursor batch size used for normal queries (the historical fixed value)."
   100)
 
-(def ^:dynamic *batch-byte-budget*
-  "Target in-memory bytes for one cursor batch of result documents. Every query's batchSize is derived from this and a
-  one-document probe (see [[apply-byte-budgeted-batch-size!]]), so a wide or heavy collection holds a bounded page
-  rather than [[default-batch-size]] full documents -- which, on a schemaless collection like Mongo's, can be
-  hundreds of MB and OOM the instance. Always on (mirrors the BigQuery driver); dynamic only so tests can shrink it."
-  (* 4 1024 1024))
+(def ^:dynamic *max-cells-per-batch*
+  "Upper bound on the cells (rows × result columns) held in a single cursor batch. The cursor's batchSize is reduced
+  below [[default-batch-size]] for wide results so a collection with many fields per document doesn't buffer a huge
+  page and OOM the instance (e.g. fingerprinting a schemaless collection with thousands of keys). Derived purely from
+  the query's projection -- no extra round-trip or re-execution. Dynamic only so tests can shrink it."
+  20000)
 
-(def ^:private probe-batch-size
-  "batchSize used for the one-document size probe, so the probe itself can never buffer a heavy page."
-  1)
+(defn- result-field-count
+  "Number of fields kept by the pipeline's last `$project`, or nil when there is no `$project` (so the result width is
+  unknown and we can't bound it). Suppressed fields (`{... 0}`/`false`) don't count."
+  [query]
+  (when-let [project (->> query
+                          (filter #(and (instance? java.util.Map %) (.containsKey ^java.util.Map % "$project")))
+                          last)]
+    (count (keep (fn [[k v]] (when-not (suppressing-values v) k))
+                 (get project "$project")))))
 
-(def ^:private value-byte-overhead
-  "Approximate JVM footprint of a decoded BSON value beyond its payload (boxing/wrapper), added per value."
-  16)
-
-(defn- value-bytes
-  "Approximate decoded in-memory size of one BSON value, summed recursively through embedded documents and arrays so
-  the estimate tracks heavy nested values, not just field count."
-  ^long [v]
-  (cond
-    (instance? java.util.Map v)         (reduce (fn [^long acc ^java.util.Map$Entry e]
-                                                  (+ acc value-byte-overhead
-                                                     (long (count (str (.getKey e))))
-                                                     (value-bytes (.getValue e))))
-                                                value-byte-overhead
-                                                (.entrySet ^java.util.Map v))
-    (instance? java.util.Collection v)  (reduce (fn [^long acc x] (+ acc (value-bytes x))) value-byte-overhead v)
-    (instance? CharSequence v)          (+ value-byte-overhead (long (count v)))
-    (bytes? v)                          (+ value-byte-overhead (long (alength ^bytes v)))
-    (instance? org.bson.types.Binary v) (+ value-byte-overhead (long (alength (.getData ^org.bson.types.Binary v))))
-    :else                               value-byte-overhead))
-
-(defn- budgeted-batch-size
-  "Cursor batchSize that keeps one fetched batch within `budget` bytes given a measured per-document size, clamped to
-  [1, [[default-batch-size]]]."
-  ^long [^long budget ^long doc-bytes]
-  (-> (quot budget (max 1 doc-bytes))
-      (max 1)
-      (min default-batch-size)))
+(defn- query-batch-size
+  "Cursor batchSize for `query`: [[default-batch-size]], reduced toward 1 for wide projections so that
+  batchSize x columns stays within [[*max-cells-per-batch*]]. Falls back to [[default-batch-size]] when the result
+  width is unknown (no `$project`)."
+  ^long [query]
+  (if-let [fields (result-field-count query)]
+    (-> (quot (long *max-cells-per-batch*) (max 1 (long fields)))
+        (max 1)
+        (min default-batch-size))
+    default-batch-size))
 
 ;; See https://mongodb.github.io/mongo-java-driver/3.12/javadoc/com/mongodb/client/AggregateIterable.html
 (defn- init-aggregate!
@@ -204,32 +192,6 @@
     (.allowDiskUse true)
     (.batchSize (int default-batch-size))
     (.maxTime timeout-ms TimeUnit/MILLISECONDS)))
-
-(defn- has-write-stage?
-  "True if the aggregation pipeline `query` contains a `$out`/`$merge` write stage. The sizing probe executes the
-  pipeline, so we must not probe those -- it would perform the write twice. (Such pipelines also return no result
-  documents, so there is nothing to byte-budget anyway.)"
-  [query]
-  (boolean (some (fn [stage]
-                   (and (instance? java.util.Map stage)
-                        (or (.containsKey ^java.util.Map stage "$out")
-                            (.containsKey ^java.util.Map stage "$merge"))))
-                 query)))
-
-(defn- apply-byte-budgeted-batch-size!
-  "Always size `aggregate`'s cursor batch by bytes (mirroring the BigQuery driver): probe one document, measure it, and
-  set batchSize so each fetched batch stays within [[*batch-byte-budget*]] rather than buffering [[default-batch-size]]
-  whole documents. This is slower -- an extra single-document probe (which re-runs the pipeline) and smaller batches
-  for heavy documents -- but a slower sync beats OOMing the instance on a wide/heavy collection. Skips the probe (and
-  leaves [[default-batch-size]]) only for `$out`/`$merge` pipelines, which must not be re-executed (see
-  [[has-write-stage?]]). Returns `aggregate`."
-  ^AggregateIterable [^AggregateIterable aggregate query]
-  (when-not (has-write-stage? query)
-    (.batchSize aggregate (int probe-batch-size))
-    (.batchSize aggregate (int (if-let [probe (.first aggregate)]
-                                 (budgeted-batch-size (long *batch-byte-budget*) (value-bytes probe))
-                                 default-batch-size))))
-  aggregate)
 
 (defn aggregate-database
   "Used in testing to enable aggregate on pipelines sourced with $documents stage."
@@ -295,7 +257,7 @@
                                                       session
                                                       query
                                                       driver.settings/*query-timeout-ms*)]
-        (apply-byte-budgeted-batch-size! aggregate query)
+        (.batchSize aggregate (int (query-batch-size query)))
         (with-open [^MongoCursor cursor (try (.cursor aggregate)
                                              (catch Throwable e
                                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
