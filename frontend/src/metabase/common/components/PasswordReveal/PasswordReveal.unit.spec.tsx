@@ -1,19 +1,21 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 
 describe("password reveal", () => {
-  it("should toggle the visibility state when hide / show are clicked", () => {
-    render(<PasswordReveal password="password" />);
-    expect(screen.queryByText("Hide")).not.toBeInTheDocument();
+  it("masks the password and reveals it when the toggle is clicked", () => {
+    renderWithProviders(<PasswordReveal password="password" />);
 
-    fireEvent.click(screen.getByText("Show"));
+    const input = screen.getByLabelText("Temporary password");
+    expect(input).toHaveAttribute("type", "password");
 
-    expect(screen.getByText("Hide")).toBeInTheDocument();
-    expect(screen.queryByText("Show")).not.toBeInTheDocument();
+    // Mantine's PasswordInput toggle fires on mousedown, not click
+    fireEvent.mouseDown(screen.getByLabelText("Show password"));
+
+    expect(input).toHaveAttribute("type", "text");
   });
 
-  it("should render a copy button", () => {
-    render(<PasswordReveal password="password" />);
+  it("renders a copy button", () => {
+    renderWithProviders(<PasswordReveal password="password" />);
     expect(screen.getByTestId("copy-button")).toBeInTheDocument();
   });
 });

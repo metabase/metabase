@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 import { createMockDashboardTab } from "metabase-types/api/mocks";
@@ -292,6 +293,34 @@ describe("DashboardSharingMenu", () => {
         await openMenu();
         expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("invite to view", () => {
+    it("shows the invite item for admins", async () => {
+      setupDashboardSharingMenu({ isAdmin: true });
+      await openMenu();
+      expect(
+        screen.getByText("Invite someone to view this"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show the invite item for non-admins", async () => {
+      setupDashboardSharingMenu({ isAdmin: false });
+      await openMenu();
+      expect(
+        screen.queryByText("Invite someone to view this"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the invite modal for the dashboard", async () => {
+      fetchMock.get("path:/api/permissions/group", []);
+      setupDashboardSharingMenu({ isAdmin: true });
+      await openMenu();
+      await userEvent.click(screen.getByText("Invite someone to view this"));
+      expect(
+        await screen.findByText("Invite someone to view this dashboard"),
+      ).toBeInTheDocument();
     });
   });
 });

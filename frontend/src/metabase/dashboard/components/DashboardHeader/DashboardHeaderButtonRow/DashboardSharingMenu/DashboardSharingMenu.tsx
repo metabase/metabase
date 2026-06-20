@@ -1,15 +1,20 @@
+import { useDisclosure } from "@mantine/hooks";
+import { t } from "ttag";
+
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import {
   getIsDashCardsRunning,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
+import { InviteToViewModal } from "metabase/embedding/components/SharingMenu/InviteToViewModal";
 import {
   CopyLinkMenuItem,
   CopyPublicLinkMenuItem,
 } from "metabase/embedding/components/SharingMenu/MenuItems/CopyLinkMenuItem";
 import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
 import { ExportPdfMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/ExportPdfMenuItem";
+import { InviteToViewMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/InviteToViewMenuItem";
 import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import { SharingMenu } from "metabase/embedding/components/SharingMenu/SharingMenu";
 import type { DashboardSharingModalType } from "metabase/embedding/components/SharingMenu/types";
@@ -62,6 +67,8 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
       resource: dashboard,
       resourceType: "dashboard",
     });
+  const [isInviteOpen, { open: openInvite, close: closeInvite }] =
+    useDisclosure();
   const isDashCardsRunning = useSelector(getIsDashCardsRunning);
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const isAnalytics =
@@ -71,6 +78,7 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   return (
     <Flex>
       <SharingMenu>
+        <InviteToViewMenuItem onClick={openInvite} />
         <CopyDashboardLinkMenuItem dashboard={dashboard} />
         {canShare && isPublicSharingEnabled && (
           <PublicLinkMenuItem
@@ -91,6 +99,12 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
           target={<Box h="2rem" />}
           isOpen
           onClose={() => setModalType(null)}
+        />
+      )}
+      {isInviteOpen && (
+        <InviteToViewModal
+          title={t`Invite someone to view this dashboard`}
+          onClose={closeInvite}
         />
       )}
     </Flex>
