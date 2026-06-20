@@ -77,4 +77,4 @@
   :visibility :internal
   :export?    true
   :type       :integer
-  :default    500)
+  :default    200)
