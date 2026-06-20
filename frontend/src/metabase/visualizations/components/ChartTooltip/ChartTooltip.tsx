@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -91,29 +91,54 @@ const ChartTooltip = ({
   const targetRect = stableRect ?? eventRect;
 
   const isOpen = isNotEmpty && targetRect !== null;
-  const isPadded = !hovered?.stackedTooltipModel;
 
-  if (!isOpen || !targetRect) {
+  const lastDisplayRef = useRef<{
+    content: ReactNode;
+    rect: TargetRect;
+    isPadded: boolean;
+  } | null>(null);
+
+  if (isOpen) {
+    lastDisplayRef.current = {
+      content: tooltip,
+      rect: targetRect,
+      isPadded: !hovered?.stackedTooltipModel,
+    };
+  }
+
+  // Mantine's Tooltip only animates when `opened` transitions; mounting it
+  // already-open skips the fade. Start closed and flip on the next render so the
+  // first appearance animates too.
+  const [opened, setOpened] = useState(false);
+  useEffect(() => {
+    setOpened(isOpen);
+  }, [isOpen]);
+
+  const display = lastDisplayRef.current;
+  if (display === null) {
     return null;
   }
 
   return (
     <Portal>
       <Tooltip
-        opened
-        label={tooltip}
+        opened={opened}
+        label={display.content}
         styles={{
-          tooltip: { maxWidth: "unset", ...(isPadded ? null : { padding: 0 }) },
+          tooltip: {
+            maxWidth: "unset",
+            ...(display.isPadded ? null : { padding: 0 }),
+          },
         }}
       >
         <Box
           data-testid="chart-tooltip-proxy"
           style={{
             position: "fixed",
-            left: targetRect.left,
-            top: targetRect.top,
-            width: targetRect.width,
-            height: targetRect.height,
+            left: display.rect.left,
+            top: display.rect.top,
+            width: display.rect.width,
+            height: display.rect.height,
             pointerEvents: "none",
           }}
         />
