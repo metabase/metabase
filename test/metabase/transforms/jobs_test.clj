@@ -303,7 +303,7 @@
           (#'jobs/reap-orphaned-runs!)
           (is (=? {:status    :timeout
                    :is_active nil
-                   :message   "Timed out: no heartbeat"}
+                   :message   "Timed out: crashed"}
                   (t2/select-one :model/TransformJobRun :id (:id run)))))))))
 
 (deftest job-run-with-tranform-run-failure-test

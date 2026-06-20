@@ -15,6 +15,7 @@
    [metabase.metabot.tools.construct :as tools.construct]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
+   [metabase.metabot.tools.curated-search :as tools.curated-search]
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.navigation :as tools.navigation]
@@ -41,6 +42,8 @@
   sql-search-tool
   nlq-search-tool
   transform-search-tool]
+ [tools.curated-search
+  curated-search-tool]
  [tools.construct
   construct-notebook-query-tool]
  [tools.document
