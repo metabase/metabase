@@ -221,7 +221,7 @@ const getNamespace = (_state: State, props: CollectionIdProps) =>
 
 const getToggleLabel = (namespace?: CollectionNamespace) =>
   namespace === "snippets"
-    ? t`Also change sub-folders`
+    ? t`Also change snippet sub-collections`
     : t`Also change sub-collections`;
 
 const getCollectionDisabledTooltip = (

@@ -84,7 +84,7 @@ const LABELS = {
   metric: () => t`metric`,
   dashboard: () => t`dashboard`,
   collection: () => t`collection`,
-  "snippet-collection": () => t`folder`,
+  "snippet-collection": () => t`collection`,
   document: () => t`document`,
   timeline: () => t`timeline`,
 } as const satisfies Record<MovableModel, () => string>;
@@ -167,7 +167,9 @@ export function useSetCollection() {
         })
         .with({ model: "snippet-collection" }, ({ id }) => {
           if (!isCollectionDestination(destination)) {
-            throw new Error("Cannot move a snippet folder into a dashboard");
+            throw new Error(
+              "Cannot move a snippet collection into a dashboard",
+            );
           }
           return updateCollection({
             id,

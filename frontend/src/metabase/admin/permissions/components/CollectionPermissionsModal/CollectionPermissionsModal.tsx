@@ -33,7 +33,7 @@ import S from "./CollectionPermissionsModal.module.css";
 
 const getDefaultTitle = (namespace?: CollectionNamespace) =>
   namespace === "snippets"
-    ? t`Permissions for this folder`
+    ? t`Permissions for this snippet collection`
     : t`Permissions for this collection`;
 
 const mapStateToProps = (

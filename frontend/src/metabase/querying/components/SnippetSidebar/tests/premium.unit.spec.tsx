@@ -32,19 +32,19 @@ describe("SnippetSidebar (EE with token feature)", () => {
     expect(screen.queryByText("Change permissions")).not.toBeInTheDocument();
   });
 
-  it("should display the `New snippet` and the `New folder` option", async () => {
+  it("should display the `New snippet` and the `New collection` option", async () => {
     await setup();
     await userEvent.click(getIcon("add"));
 
     expect(await screen.findByText("New snippet")).toBeInTheDocument();
-    expect(screen.getByText("New folder")).toBeInTheDocument();
+    expect(screen.getByText("New collection")).toBeInTheDocument();
   });
 
-  it("should open the collection modal when creating a new folder", async () => {
+  it("should open the collection modal when creating a new collection", async () => {
     const { store } = await setup();
 
     await userEvent.click(getIcon("add"));
-    await userEvent.click(await screen.findByText("New folder"));
+    await userEvent.click(await screen.findByText("New collection"));
 
     expect(store.getState().modal).toMatchObject({
       id: "collection",

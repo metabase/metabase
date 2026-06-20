@@ -99,7 +99,7 @@ function SnippetFormInner({
           {hasManyCollections && (
             <FormCollectionPicker
               name="collection_id"
-              title={t`Folder this should be in`}
+              title={t`Collection this should be in`}
               collectionPickerModalProps={{ namespaces: ["snippets"] }}
             />
           )}

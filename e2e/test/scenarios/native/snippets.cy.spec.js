@@ -259,7 +259,7 @@ describe("scenarios > question > snippets (EE)", () => {
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-right").as("sidebar").find(".Icon-add").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.popover().within(() => cy.findByText("New folder").click());
+    H.popover().within(() => cy.findByText("New collection").click());
     H.modal().within(() => {
       cy.findByText("New collection");
       cy.findByLabelText("Name").type("my favorite snippets");
@@ -313,7 +313,7 @@ describe("scenarios > question > snippets (EE)", () => {
 
     H.modal().findByTestId("collection-picker-button").click();
     H.entityPickerModal()
-      .findByRole("button", { name: /New folder/ })
+      .findByRole("button", { name: /New collection/ })
       .click();
     H.collectionOnTheGoModal()
       .findByLabelText("Give it a name")
@@ -405,7 +405,7 @@ describe("scenarios > question > snippets (EE)", () => {
           .click({ force: true });
       });
 
-      H.popover().findByText("Edit folder details").click();
+      H.popover().findByText("Edit collection details").click();
       H.modal().findByTestId("collection-picker-button").click();
 
       H.entityPickerModalItem(1, /Snippet Folder/).should(
@@ -435,7 +435,7 @@ describe("scenarios > question > snippets (EE)", () => {
       H.rightSidebar()
         .findByText("Snippet Folder")
         .parent()
-        .findByRole("button", { name: "Snippet folder options" })
+        .findByRole("button", { name: "Snippet collection options" })
         .click({ force: true });
 
       H.popover().findByText("Change permissions").click();
@@ -523,7 +523,7 @@ describe("scenarios > question > read-only snippets", () => {
 
     cy.findByTestId("sidebar-right").within(() => {
       cy.findByText("My favorite snippets").should("be.visible");
-      cy.findByRole("button", { name: "Snippet folder options" }).should(
+      cy.findByRole("button", { name: "Snippet collection options" }).should(
         "not.exist",
       );
     });
