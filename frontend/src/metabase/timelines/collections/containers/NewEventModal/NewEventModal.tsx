@@ -17,7 +17,7 @@ import type {
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
-function NewEventModalContainer({ params }: ModalComponentProps) {
+function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
   const id = Urls.extractEntityId(params.timelineId);
@@ -49,6 +49,7 @@ function NewEventModalContainer({ params }: ModalComponentProps) {
       source="collections"
       timelines={[timeline]}
       onSubmit={onSubmit}
+      onClose={onClose}
     />
   );
 }

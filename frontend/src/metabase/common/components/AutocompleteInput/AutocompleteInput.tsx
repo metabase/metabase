@@ -120,10 +120,7 @@ export const AutocompleteInput = ({
           }}
         />
       </Popover.Target>
-      <Popover.Dropdown
-        // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={close}
-      >
+      <Popover.Dropdown>
         <OptionsList ref={optionsListRef} onMouseDown={handleListMouseDown}>
           {filteredOptions.map((item, index) => (
             <SelectList.Item
