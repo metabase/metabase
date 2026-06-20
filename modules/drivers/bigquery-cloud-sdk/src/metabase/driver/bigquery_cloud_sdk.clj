@@ -943,6 +943,10 @@
                               ;; tests expect the converted values.
                               :set-timezone                     true
                               :split-part                       true
+                              ;; `table-rows-sample` uses `tabledata.list`, which returns whole rows and can't project
+                              ;; the requested fields, so fingerprinting samples all of a table's fields in one pass
+                              ;; rather than batching them (re-reading whole rows per batch would buy nothing).
+                              :table-rows-sample/projects-fields false
                               ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
                               ;; falls back to a native `COUNT(*)` on the CTAS path.
                               ;; TODO: fix `execute-raw-queries!` to return accurate row counts for DDL

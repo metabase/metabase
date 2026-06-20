@@ -775,6 +775,12 @@
     ;; Does the driver support fingerprint the fields. Default is true
     :fingerprint
     ;;
+    ;; Can [[metabase.driver.common.table-rows-sample/table-rows-sample]] project (read only) the specific fields it is
+    ;; given, rather than reading whole rows regardless of which fields were requested (e.g. BigQuery's `tabledata.list`
+    ;; returns whole rows)? When false, fingerprinting can't shrink the sample query by batching fields, so it samples
+    ;; all of a table's fields in a single pass. Default is true.
+    :table-rows-sample/projects-fields
+    ;;
     ;; Does a connection to this driver correspond to a single database (false), or to multiple databases (true)?
     ;; Default is false; ie. a single database. This is common for classic relational DBs and some cloud databases.
     ;; Some have access to many databases from one connection; eg. Athena connects to an S3 bucket which might have
@@ -942,6 +948,7 @@
                               :schemas                                true
                               :test/jvm-timezone-setting              true
                               :fingerprint                            true
+                              :table-rows-sample/projects-fields      true
                               :upload-with-auto-pk                    true
                               :saved-question-sandboxing              true
                               :test/create-table-without-data         true

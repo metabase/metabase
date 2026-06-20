@@ -232,11 +232,25 @@
         (merge (empty-stats-map 0) stats))
       stats)))
 
+(mu/defn- fingerprint-field-batches :- [:sequential [:sequential i/FieldInstance]]
+  "Split `fields` into the batches to fingerprint separately. On drivers whose `table-rows-sample` projects only the
+  requested fields, batches of [[sync.settings/fingerprint-fields-batch-size]] keep each sample query (and its
+  per-field accumulators) narrow. Drivers that read whole rows regardless (e.g. BigQuery, which lacks
+  `:table-rows-sample/projects-fields`) gain nothing from narrower batches and would just re-read full rows, so they
+  fingerprint all fields in one batch."
+  [table  :- i/TableInstance
+   fields :- [:sequential i/FieldInstance]]
+  (let [database (table/database table)
+        driver   (driver.u/database->driver database)]
+    (if (driver/database-supports? driver :table-rows-sample/projects-fields database)
+      (partition-all (sync.settings/fingerprint-fields-batch-size) fields)
+      [fields])))
+
 (mu/defn- fingerprint-fields-of-table!
-  "Fingerprint the (non-empty) `fields` of `table` in batches of [[sync.settings/fingerprint-fields-batch-size]]. Each
-  batch runs its own warehouse sample query, so peak memory stays bounded by the batch size rather than the table's
-  total field count -- a wide table would otherwise project thousands of columns into a single query and hold one
-  fingerprinter per field at once. Stops at the first failing batch."
+  "Fingerprint the (non-empty) `fields` of `table` in batches (see [[fingerprint-field-batches]]). Each batch runs its
+  own warehouse sample query, so on projecting drivers peak memory stays bounded by the batch size rather than the
+  table's total field count -- a wide table would otherwise project thousands of columns into a single query and hold
+  one fingerprinter per field at once. Stops at the first failing batch."
   [table  :- i/TableInstance
    fields :- [:sequential i/FieldInstance]]
   (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
@@ -245,7 +259,7 @@
                   acc   (merge-with + acc stats)]
               (cond-> acc (:throwable stats) reduced)))
           (empty-stats-map 0)
-          (partition-all (sync.settings/fingerprint-fields-batch-size) fields)))
+          (fingerprint-field-batches table fields)))
 
 (mu/defn fingerprint-table!
   "Generate and save fingerprints for the Fields in `table` that have not been previously analyzed. At most
