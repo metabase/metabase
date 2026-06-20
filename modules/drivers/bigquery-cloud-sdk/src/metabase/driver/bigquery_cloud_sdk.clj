@@ -577,9 +577,10 @@
   ^long [^FieldValueList row]
   (reduce (fn [^long acc cell] (+ acc (field-value-bytes cell))) 0 row))
 
-(defn- next-sample-page-size
+(defn- next-page-size
   "Rows to request for the next page given the average measured bytes/row so far, targeting `budget` bytes/page.
-  Clamped to [1, `remaining`]."
+  Clamped to [1, `remaining`]. Shared by the sampler ([[adaptive-sample-next-page]]) and regular query execution
+  ([[adaptive-query-next-page]])."
   ^long [^long budget ^long measured-bytes ^long measured-rows ^long remaining]
   (let [avg-row-bytes (max 1 (quot measured-bytes (max 1 measured-rows)))]
     (-> (quot budget avg-row-bytes)
@@ -612,7 +613,7 @@
                 remaining              (- max-rows (long rows))]
             (when (pos? remaining)
               (*page-callback*)
-              (list-sample-page bq-table (next-sample-page-size budget bytes rows remaining) token))))))))
+              (list-sample-page bq-table (next-page-size budget bytes rows remaining) token))))))))
 
 (defn- sample-table
   "Process a sample of rows of fields corresponding to the Metabase fields
@@ -765,7 +766,7 @@
             (.getQueryResults client job-id
                               (u/varargs BigQuery$QueryResultsOption
                                 [(BigQuery$QueryResultsOption/pageSize
-                                  (next-sample-page-size budget bytes rows Long/MAX_VALUE))
+                                  (next-page-size budget bytes rows Long/MAX_VALUE))
                                  (BigQuery$QueryResultsOption/pageToken token)]))))))))
 
 (defn- reducible-bigquery-results
