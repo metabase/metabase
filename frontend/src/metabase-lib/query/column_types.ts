@@ -1,4 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
+import * as ARRAY_TYPES from "cljs/metabase.lib.types.array";
 import * as TYPES from "cljs/metabase.lib.types.isa";
 
 import type { ColumnMetadata, ColumnTypeInfo, JsColumnTypeInfo } from "./types";
@@ -15,7 +16,11 @@ export const isNumeric: TypeFn = TYPES.numeric_QMARK_;
 export const isString: TypeFn = TYPES.string_QMARK_;
 export const isStringLike: TypeFn = TYPES.string_like_QMARK_;
 export const isStringOrStringLike: TypeFn = TYPES.string_or_string_like_QMARK_;
+export const isArray: TypeFn = TYPES.array_QMARK_;
 export const isTime: TypeFn = TYPES.time_QMARK_;
+
+export const columnForFilterWidget: TypeFn =
+  ARRAY_TYPES.column_for_filter_widget;
 
 // Semantic type checks. A semantic type can be assigned to a column with an
 // unrelated effective type. Do not imply any effective type when checking for a

@@ -79,6 +79,11 @@
   [column]
   (or (string? column) (string-like? column)))
 
+(defn ^:export array?
+  "Is `column` of an array type?"
+  [column]
+  (field-type? ::lib.types.constants/array column))
+
 (defn ^:export summable?
   "Is `column` of a summable type?"
   [column]

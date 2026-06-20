@@ -508,7 +508,8 @@
 (def boolean-functions
   "Functions that return boolean values. Should match `::BooleanExpression`."
   #{:and :or :not :< :<= :> :>= := :!= :in :not-in :between :starts-with :ends-with :contains
-    :does-not-contain :inside :is-empty :not-empty :is-null :not-null :relative-time-interval :time-interval :during})
+    :does-not-contain :inside :is-empty :not-empty :is-null :not-null :relative-time-interval :time-interval :during
+    :array-contains})
 
 ;; TODO (Tamas 2026-01-05): Remove :measure from this set once FE tests switch to using MBQL5
 (def ^:private aggregations
@@ -944,6 +945,11 @@
   value-or-field        [:ref ::EqualityComparable]
   more-values-or-fields (rest [:ref ::EqualityComparable]))
 
+(defclause array-contains
+  field                 [:ref ::EqualityFilterFieldArg]
+  value-or-field        [:ref ::EqualityComparable]
+  more-values-or-fields (rest [:ref ::EqualityComparable]))
+
 (defn- replace-exclude-date-filters
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause]
@@ -1161,7 +1167,9 @@
    ;; filters drivers must implement
    and or not = != < > <= >= between starts-with ends-with contains
    ;; SUGAR filters drivers do not need to implement
-   in not-in does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval during))
+   in not-in does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval during
+   ;; array filters
+   array-contains))
 
 (mr/def ::Filter
   "Schema for a valid MBQL `:filter` clause."

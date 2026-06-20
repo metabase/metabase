@@ -239,6 +239,9 @@
                {:database-position database-position})
              (when semantic-type
                {:semantic-type semantic-type})
+             (when (isa? base-type :type/Array)
+               (when-let [element-type (driver/array-element-base-type driver (:database-type col))]
+                 {:array-element-type element-type}))
              (when (and json? (driver/database-supports? driver :nested-field-columns db))
                {:visibility-type :details-only
                 :preview-display false})))))))

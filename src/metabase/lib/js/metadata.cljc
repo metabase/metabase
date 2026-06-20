@@ -297,6 +297,7 @@
       :base-type                        (keyword v)
       :coercion-strategy                (keyword v)
       :effective-type                   (keyword v)
+      :array-element-type               (keyword v)
       :fingerprint                      (if (map? v)
                                           (perf/keywordize-keys v)
                                           #?(:cljs (js->clj v :keywordize-keys true)

@@ -725,6 +725,7 @@
   is-empty not-empty
   starts-with ends-with
   contains does-not-contain
+  array-contains
   relative-time-interval
   time-interval
   segment]) ; TODO: Move segment to sit with the `lib.segment` functions.

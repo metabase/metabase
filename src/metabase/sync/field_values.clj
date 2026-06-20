@@ -3,8 +3,6 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
    [metabase.sync.util :as sync-util]
@@ -51,22 +49,8 @@
              (sync-util/name-for-logging table) limit limit))
 
 (defn- can-batch-distinct?
-  "Can this `table`'s database support the UNION ALL distinct-batch query? Requires:
-
-  - A SQL-derived driver (so HoneySQL compilation works).
-  - The `:nested-queries` feature (each UNION arm is wrapped as a subquery in `FROM`).
-  - The table does not require a partition filter. Partitioned BigQuery tables fail without a
-    `WHERE` on the partition column; `metadata-from-qp/table-query` (used by the per-field path)
-    injects one via [[metabase.warehouse-schema.metadata-queries/add-required-filters-if-needed]],
-    but `run-distinct-batch` runs as a native query that bypasses that middleware.
-
-  Tables that fail any check fall back to the per-field path."
   [table]
-  (let [database (t2/select-one :model/Database :id (:db_id table))
-        engine   (:engine database)]
-    (and (isa? driver/hierarchy engine :sql)
-         (driver.u/supports? engine :nested-queries database)
-         (not (:database_require_filter table)))))
+  (distinct-batch/can-batch-distinct? table))
 
 (def ^:private empty-counts
   "Initial counter map for a sync run.

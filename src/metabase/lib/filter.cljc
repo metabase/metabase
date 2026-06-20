@@ -392,6 +392,7 @@
 (lib.common/defop ends-with [whole & parts])
 (lib.common/defop contains [whole & parts])
 (lib.common/defop does-not-contain [whole & parts])
+(lib.common/defop array-contains [x y & more])
 (lib.common/defop relative-time-interval [x value bucket offset-value offset-bucket])
 (lib.common/defop time-interval [x amount unit])
 (lib.common/defop during [t v unit])

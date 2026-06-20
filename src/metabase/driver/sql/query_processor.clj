@@ -319,6 +319,18 @@
     [(driver/dispatch-on-initialized-driver driver) (driver-api/dispatch-by-clause-name-or-class x)])
   :hierarchy #'driver/hierarchy)
 
+(defmulti array-unnest-from
+  "Return a HoneySQL `:from` clause vector for unnesting a 1D array column into rows. Used by the batch
+  distinct-values fetcher to produce `SELECT DISTINCT unnested_element FROM table, UNNEST(col)`. Drivers override this
+  to provide their array-to-rows expansion (e.g. Postgres uses `UNNEST(col) AS _elem`)."
+  {:arglists '([driver table-honeysql col-identifier])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod array-unnest-from :default
+  [_driver _table-honeysql _col-identifier]
+  (throw (ex-info "array-unnest-from is not supported by this driver" {})))
+
 (defn compiled
   "Wraps a `honeysql-expr` in an psudeo-MBQL clause that prevents double-compilation if [[->honeysql]] is called on it
   again."
@@ -1931,6 +1943,10 @@
                                                      (parent-honeysql-col-effective-type-map field)
                                                      (parent-honeysql-col-base-type-map field))]
       [:= field-honeysql (->honeysql driver value)])))
+
+(defmethod ->honeysql [:sql :array-contains]
+  [_driver _clause]
+  (throw (ex-info "array-contains is not supported by this driver" {})))
 
 (defn- correct-null-behaviour
   [driver [op & args :as _clause]]
