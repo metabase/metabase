@@ -217,12 +217,12 @@
                   "the first %d and skipping the rest. Raise MB_FINGERPRINT_MAX_FIELDS_PER_TABLE to fingerprint more.")
              (sync-util/name-for-logging table) limit limit))
 
-(mu/defn- fingerprint-fields-of-table!
-  "Fingerprint the (non-empty) `fields` of `table`. On a non-transient error, advance their fingerprint version so we
-  don't re-attempt every sync; transient errors are left untouched to retry next sync."
+(mu/defn- fingerprint-field-batch!
+  "Fingerprint a single batch of `fields` of `table` via one warehouse sample query, returning a stats map. On a
+  non-transient error, advance the batch's fingerprint version so we don't re-attempt every sync; transient errors are
+  left untouched to retry next sync. The returned map carries `:throwable` when the batch failed."
   [table  :- i/TableInstance
    fields :- [:sequential i/FieldInstance]]
-  (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
   (let [stats (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
                 (fingerprint-fields! table fields))]
     (if-let [throwable (:throwable stats)]
@@ -231,6 +231,21 @@
           (mark-fingerprinting-failed! fields))
         (merge (empty-stats-map 0) stats))
       stats)))
+
+(mu/defn- fingerprint-fields-of-table!
+  "Fingerprint the (non-empty) `fields` of `table` in batches of [[sync.settings/fingerprint-fields-batch-size]]. Each
+  batch runs its own warehouse sample query, so peak memory stays bounded by the batch size rather than the table's
+  total field count -- a wide table would otherwise project thousands of columns into a single query and hold one
+  fingerprinter per field at once. Stops at the first failing batch."
+  [table  :- i/TableInstance
+   fields :- [:sequential i/FieldInstance]]
+  (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
+  (reduce (fn [acc batch]
+            (let [stats (fingerprint-field-batch! table batch)
+                  acc   (merge-with + acc stats)]
+              (cond-> acc (:throwable stats) reduced)))
+          (empty-stats-map 0)
+          (partition-all (sync.settings/fingerprint-fields-batch-size) fields)))
 
 (mu/defn fingerprint-table!
   "Generate and save fingerprints for the Fields in `table` that have not been previously analyzed. At most

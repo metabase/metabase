@@ -187,6 +187,33 @@
                 (sync.fingerprint/fingerprint-table! table)
                 (is (= 2 @saved))))))))))
 
+(deftest fingerprint-table!-batches-fields-test
+  (testing "fields are fingerprinted in batches of fingerprint-fields-batch-size (bounds peak memory on wide tables)"
+    (let [sample-calls (atom 0)
+          saved        (atom 0)]
+      (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {2 #{:type/Float}}]
+        (mt/with-dynamic-fn-redefs [qp/process-query                   (fn [_query rff]
+                                                                         (swap! sample-calls inc)
+                                                                         (transduce identity (rff :metadata) [[1 1] [2 2] [3 3] [4 4] [5 5]]))
+                                    sync.fingerprint/save-fingerprint! (fn [& _] (swap! saved inc))]
+          (mt/with-temp [:model/Table table {}
+                         :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}
+                         :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}]
+            (testing "batch size 1 -> one warehouse sample query per field, all fields still fingerprinted"
+              (reset! sample-calls 0)
+              (reset! saved 0)
+              (mt/with-temporary-setting-values [fingerprint-fields-batch-size 1]
+                (sync.fingerprint/fingerprint-table! table)
+                (is (= 2 @sample-calls) "two batches -> two sample queries")
+                (is (= 2 @saved) "both fields fingerprinted")))
+            (testing "batch size larger than the field count -> a single sample query"
+              (reset! sample-calls 0)
+              (reset! saved 0)
+              (mt/with-temporary-setting-values [fingerprint-fields-batch-size 10000]
+                (sync.fingerprint/fingerprint-table! table)
+                (is (= 1 @sample-calls) "one batch -> one sample query")
+                (is (= 2 @saved) "both fields fingerprinted")))))))))
+
 (deftest  fingerprint-table!-test
   (testing "field is a substype of newer fingerprint version"
     (is (= [one-updated-map true]

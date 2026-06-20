@@ -69,3 +69,12 @@
   :export?    true
   :type       :integer
   :default    10000)
+
+(defsetting fingerprint-fields-batch-size
+  "Number of fields to fingerprint per warehouse sample query. Fingerprinting projects every field in the batch into a
+  single query and keeps one accumulator per field, so peak memory scales with the batch size; a table's eligible
+  fields are fingerprinted in batches of this size to keep that bounded (especially for very wide tables)."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    200)
