@@ -29,7 +29,6 @@
 
 (defn- make-mongo-aggregate-iterable [rows]
   (reify com.mongodb.client.AggregateIterable
-    ;; batchSize is set from the query's projected field count in execute-reducible-query
     (batchSize [this _] this)
     (cursor [_] (make-mongo-cursor rows))))
 
