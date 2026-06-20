@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useMemo, useRef } from "react";
 import _ from "underscore";
 
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -92,6 +92,8 @@ const ChartTooltip = ({
 
   const isOpen = isNotEmpty && targetRect !== null;
 
+  // Freeze the last content and rect so the tooltip fades out in place instead
+  // of blanking and jumping once `hovered` clears.
   const lastDisplayRef = useRef<{
     content: ReactNode;
     rect: TargetRect;
@@ -106,28 +108,20 @@ const ChartTooltip = ({
     };
   }
 
-  // Mantine's Tooltip only animates when `opened` transitions; mounting it
-  // already-open skips the fade. Start closed and flip on the next render so the
-  // first appearance animates too.
-  const [opened, setOpened] = useState(false);
-  useEffect(() => {
-    setOpened(isOpen);
-  }, [isOpen]);
-
   const display = lastDisplayRef.current;
-  if (display === null) {
-    return null;
-  }
 
+  // Keep the Tooltip mounted (closed) from the start so the first appearance
+  // animates: Mantine only fades when `opened` transitions false -> true after
+  // mount.
   return (
     <Portal>
       <Tooltip
-        opened={opened}
-        label={display.content}
+        opened={isOpen}
+        label={display?.content ?? null}
         styles={{
           tooltip: {
             maxWidth: "unset",
-            ...(display.isPadded ? null : { padding: 0 }),
+            ...(display?.isPadded === false ? { padding: 0 } : null),
           },
         }}
       >
@@ -135,10 +129,10 @@ const ChartTooltip = ({
           data-testid="chart-tooltip-proxy"
           style={{
             position: "fixed",
-            left: display.rect.left,
-            top: display.rect.top,
-            width: display.rect.width,
-            height: display.rect.height,
+            left: display?.rect.left ?? 0,
+            top: display?.rect.top ?? 0,
+            width: display?.rect.width ?? 0,
+            height: display?.rect.height ?? 0,
             pointerEvents: "none",
           }}
         />
