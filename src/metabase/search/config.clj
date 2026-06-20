@@ -403,6 +403,8 @@
    ;; Semantic-engine vector-search strategy (:hnsw or :brute-force). When absent, the engine uses its
    ;; configured default setting.
    [:vector-search-strategy {:optional true} [:maybe keyword?]]
+   ;; Semantic-engine cosine-distance cut-off override. When absent, the engine uses its hardcoded default.
+   [:max-cosine-distance {:optional true} [:maybe number?]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;

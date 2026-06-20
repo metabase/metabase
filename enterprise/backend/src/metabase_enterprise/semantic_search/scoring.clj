@@ -77,7 +77,7 @@
   "Map a cosine `distance` (pgvector `<=>`, range [0, 2]) to a [0, 1] score.
   Linear for now: distance 0 scores 1, the maximum distance of 2 scores 0."
   [distance]
-  ;; TODO (Chris 2026-06-02) -- consider rescaling against the retrieval cutoff (index/max-cosine-distance) so the
+  ;; TODO (Chris 2026-06-02) -- consider rescaling against the retrieval cutoff (index/default-max-cosine-distance) so the
   ;; [0, cutoff] band spans the full [0, 1], and/or a non-linear curve. For now keep the raw distance as transparent
   ;; as possible.
   [:- [:inline 1] [:/ distance [:inline cosine-distance-ceiling]]])

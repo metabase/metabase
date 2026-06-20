@@ -177,6 +177,7 @@
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
   - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines
+  - `max_cosine_distance`: for the semantic engine, the cosine-distance cut-off above which vector candidates are discarded (default 0.7); ignored by other engines
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
@@ -204,6 +205,7 @@
     model-ancestors                     :model_ancestors
     search-engine                       :search_engine
     vector-search-strategy              :vector_search_strategy
+    max-cosine-distance                 :max_cosine_distance
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
     include-metadata                    :include_metadata
@@ -227,6 +229,7 @@
        [:model_ancestors                     {:default false} [:maybe :boolean]]
        [:search_engine                       {:optional true} [:maybe string?]]
        [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
+       [:max_cosine_distance                 {:optional true} [:maybe [:double {:min 0.0 :max 2.0}]]]
        [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -258,6 +261,7 @@
                 :offset                              (request/offset)
                 :search-engine                       search-engine
                 :vector-search-strategy              vector-search-strategy
+                :max-cosine-distance                 max-cosine-distance
                 :search-native-query                 search-native-query
                 :search-string                       (some-> q str/trim not-empty)
                 :table-db-id                         table-db-id

@@ -54,6 +54,30 @@
     (is (= (vector-search-sql (semantic.settings/semantic-search-vector-strategy))
            (vector-search-sql nil)))))
 
+(defn- vector-search-params
+  "Format the private vector subquery for `strategy` with an optional `:max-cosine-distance` `cutoff`,
+  returning the set of HoneySQL parameters the query carries."
+  [strategy cutoff]
+  (let [index     {:table-name "idx_tbl"}
+        ctx       (cond-> {:search-string "pasta" :archived? false}
+                    strategy (assoc :vector-search-strategy strategy)
+                    cutoff   (assoc :max-cosine-distance cutoff))
+        embedding [0.1 0.2 0.3]]
+    (set (rest (sql/format (#'semantic.index/semantic-search-query index embedding ctx) :quoted true)))))
+
+(deftest max-cosine-distance-test
+  (testing "the cosine-distance cut-off is parameterized into the vector subquery"
+    (doseq [strategy [:hnsw :brute-force]]
+      (testing (str "strategy = " strategy)
+        (testing "an explicit :max-cosine-distance overrides the default"
+          (let [params (vector-search-params strategy 0.42)]
+            (is (contains? params 0.42))
+            (is (not (contains? params 0.7)))))
+        (testing "an absent :max-cosine-distance falls back to the 0.7 default"
+          (let [params (vector-search-params strategy nil)]
+            (is (contains? params 0.7))
+            (is (not (contains? params 0.42)))))))))
+
 (defn- flattened-vector-candidates-cte
   "Build the brute-force/hnsw hybrid query, flatten it the way `scored-search-query` does, and return the
   hoisted `:vector_candidates` CTE binding (e.g. `[:vector_candidates <query> :materialized]`)."

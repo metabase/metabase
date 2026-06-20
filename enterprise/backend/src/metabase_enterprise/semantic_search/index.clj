@@ -620,11 +620,15 @@
      :order-by [[:keyword_rank :asc]]
      :limit (semantic-settings/semantic-search-results-limit)}))
 
-(def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
+(def ^:private ^:const default-max-cosine-distance
+  "Default cut-off used to filter semantic search results, when the request doesn't override it via the
+  `:max-cosine-distance` search-context key (the `max_cosine_distance` API parameter)."
+  0.7)
 
 (defn- hnsw-search-query
-  "Build the semantic vector subquery using the HNSW index, applying `filters` after candidate selection."
-  [index embedding-literal filters]
+  "Build the semantic vector subquery using the HNSW index, applying `filters` after candidate selection.
+  `max-cosine-distance` is the cut-off above which candidates are discarded."
+  [index embedding-literal filters max-cosine-distance]
   ;; The inner `vector_candidates` CTE is a pure vector search (ORDER BY distance LIMIT) so the planner
   ;; uses the HNSW index. The filters only run in the outer query, so this is approximate: when the
   ;; globally-closest rows are dominated by a cluster the filters reject, slightly-further survivors that
@@ -647,8 +651,9 @@
       base-query)))
 
 (defn- brute-force-search-query
-  "Build the semantic vector subquery as an exact, filter-first search over the rows matching `filters`."
-  [index embedding-literal filters]
+  "Build the semantic vector subquery as an exact, filter-first search over the rows matching `filters`.
+  `max-cosine-distance` is the cut-off above which candidates are discarded."
+  [index embedding-literal filters max-cosine-distance]
   ;; The filtered rows and their cosine distance are computed once, inside a MATERIALIZED CTE: that fences
   ;; the planner off the HNSW index (so the scan is exact) and stores the `distance` column, so the outer
   ;; query reads it rather than recomputing it. The cutoff and ranking run in the outer query.
@@ -680,10 +685,11 @@
   `:brute-force` is exact and filter-first; `:hnsw` (the default) is approximate and index-backed."
   [index embedding search-context]
   (let [filters           (search-filters search-context)
-        embedding-literal (format-embedding embedding)]
+        embedding-literal (format-embedding embedding)
+        cutoff            (or (:max-cosine-distance search-context) default-max-cosine-distance)]
     (case (vector-search-strategy search-context)
-      :brute-force (brute-force-search-query index embedding-literal filters)
-      (hnsw-search-query index embedding-literal filters))))
+      :brute-force (brute-force-search-query index embedding-literal filters cutoff)
+      (hnsw-search-query index embedding-literal filters cutoff))))
 
 (defn- flatten-ctes
   "Flatten nested :with clauses into a single top-level :with.
