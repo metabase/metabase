@@ -566,5 +566,5 @@
   "browserslist": [
     "defaults"
   ],
-  "packageManager": "bun@1.3.7"
+  "packageManager": "bun@1.3.14"
 }
