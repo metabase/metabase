@@ -40,9 +40,15 @@
   "Trigger a StarRez data export. Fetches configured tables and reports, uploads
   CSV files to Azure Blob Storage, and cumulatively merges report rows. Old versions are pruned automatically.
   Rejects with {:error ...} if another export is already running."
-  []
+  [_route-params
+   _query-params
+   {:keys [export_tables export_reports]} :- [:maybe [:map
+                                                      [:export_tables {:optional true} [:maybe :string]]
+                                                      [:export_reports {:optional true} [:maybe :string]]]]]
   (perms/check-has-application-permission :setting)
-  (starrez.export/run-export))
+  (starrez.export/run-export (cond-> {:include-historical-reports? false}
+                               (some? export_tables)  (assoc :export-tables export_tables)
+                               (some? export_reports) (assoc :export-reports export_reports))))
 
 (api.macros/defendpoint :get "/exports"
   "List past StarRez export files in Azure Blob Storage."

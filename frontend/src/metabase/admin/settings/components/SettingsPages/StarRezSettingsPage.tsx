@@ -6,6 +6,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import {
+  type StarRezRunExportRequest,
   useActivateStarRezWeekMutation,
   useDeleteStarRezExportMutation,
   useGetStarRezStatusQuery,
@@ -46,6 +47,29 @@ function getSnapshotLabel(blobFiles: Record<string, string>) {
   }
 
   return keys.join(", ");
+}
+
+function getInputValue(name: string) {
+  const element = document.getElementById(name);
+
+  if (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement
+  ) {
+    return element.value;
+  }
+
+  return undefined;
+}
+
+function getManualExportSettings(): StarRezRunExportRequest {
+  const exportTables = getInputValue("starrez-export-tables");
+  const exportReports = getInputValue("starrez-export-reports");
+
+  return {
+    ...(exportTables != null ? { export_tables: exportTables } : {}),
+    ...(exportReports != null ? { export_reports: exportReports } : {}),
+  };
 }
 
 function ConfigSection() {
@@ -160,7 +184,7 @@ function ExportSection() {
         <Flex gap="md" align="center">
           <Button
             variant="filled"
-            onClick={() => runExport()}
+            onClick={() => runExport(getManualExportSettings())}
             loading={exporting}
           >
             {t`Run Export`}

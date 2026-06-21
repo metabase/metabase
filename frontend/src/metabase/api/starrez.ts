@@ -84,6 +84,11 @@ export interface StarRezExportResult {
   error?: string;
 }
 
+export interface StarRezRunExportRequest {
+  export_tables?: string;
+  export_reports?: string;
+}
+
 const starRezApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     getStarRezStatus: builder.query<StarRezStatus, void>({
@@ -98,10 +103,14 @@ const starRezApi = Api.injectEndpoints({
       query: () => ({ method: "POST", url: "/api/starrez/test" }),
     }),
 
-    runStarRezExport: builder.mutation<StarRezExportResult, void>({
-      query: () => ({
+    runStarRezExport: builder.mutation<
+      StarRezExportResult,
+      StarRezRunExportRequest | void
+    >({
+      query: (body) => ({
         method: "POST",
         url: "/api/starrez/export",
+        body,
       }),
       invalidatesTags: ["starrez-exports", "starrez-weeks"],
     }),

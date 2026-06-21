@@ -91,6 +91,11 @@
        (map str/trim)
        (remove str/blank?)))
 
+(defn- option-or-setting [option setting-fn]
+  (if (some? option)
+    option
+    (setting-fn)))
+
 (defonce ^:private export-running? (atom false))
 
 (defn export-in-progress?
@@ -135,18 +140,22 @@
 (defn run-export
   "Export all configured StarRez tables and reports to blob storage,
   then record snapshots and cumulatively merge report rows by `booking_id`.
+  `export-tables` and `export-reports` can override the saved settings for
+  manual exports. Blank overrides are respected.
   When `include-historical-reports?` is true, previously successful report IDs
   keep getting refreshed even if removed from the current setting.
   Returns {:results [...] :snapshots [...] :merge ...}, or {:error ...} if another export is in progress.
   Only one export may run at a time."
   ([]
    (run-export {:include-historical-reports? false}))
-  ([{:keys [include-historical-reports?]}]
+  ([{:keys [include-historical-reports? export-tables export-reports]}]
    (if-not (compare-and-set! export-running? false true)
      {:error "An export is already in progress. Wait for it to finish."}
      (try
-       (let [tables             (split-csv-setting (starrez.settings/starrez-export-tables))
-             configured-reports (split-csv-setting (starrez.settings/starrez-export-reports))
+       (let [tables             (split-csv-setting
+                                 (option-or-setting export-tables starrez.settings/starrez-export-tables))
+             configured-reports (split-csv-setting
+                                 (option-or-setting export-reports starrez.settings/starrez-export-reports))
              reports            (if include-historical-reports?
                                   (starrez.db/report-ids-for-export configured-reports)
                                   configured-reports)
