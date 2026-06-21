@@ -157,11 +157,11 @@
   100)
 
 (def ^:dynamic *max-cells-per-batch*
-  "Upper bound on the cells (rows × result columns) held in a single cursor batch. The cursor's batchSize is reduced
+  "Upper bound on the cells (rows x result columns) held in a single cursor batch. The cursor's batchSize is reduced
   below [[default-batch-size]] for wide results so a collection with many fields per document doesn't buffer a huge
   page and OOM the instance (e.g. fingerprinting a schemaless collection with thousands of keys). Derived purely from
   the query's projection -- no extra round-trip or re-execution. Dynamic only so tests can shrink it."
-  20000)
+  10000)
 
 (defn- result-field-count
   "Number of fields kept by the pipeline's last `$project`, or nil when there is no `$project` (so the result width is
