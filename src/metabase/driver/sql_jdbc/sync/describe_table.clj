@@ -273,6 +273,15 @@
    (describe-table-fields-xf driver (driver-api/table->database table) table)
    (fields-metadata driver conn table db-name-or-nil)))
 
+(defn- describe-table-field-set
+  "Return the described field set for `table`, reusing the already-loaded `database`
+  when the caller has it instead of resolving it again from `table`."
+  [driver database conn table db-name-or-nil]
+  (into
+   #{}
+   (describe-table-fields-xf driver database table)
+   (fields-metadata driver conn table db-name-or-nil)))
+
 ;;; TODO -- it seems like in practice we usually call this without passing in a DB name, so `db-name-or-nil` is almost
 ;;; always just `nil`. There's currently not a great driver-agnostic way to determine the actual physical Database name
 ;;; anyway... Database `:name` is wrong, because it's a display name rather than a physical name. We might want to
@@ -333,10 +342,10 @@
                                       (assoc field :pk? true)))))))))
 
 (defn- describe-table*
-  [driver ^Connection conn table]
+  [driver database ^Connection conn table]
   {:pre [(instance? Connection conn)]}
   (->> (assoc (select-keys table [:name :schema])
-              :fields (describe-table-fields driver conn table nil))
+              :fields (describe-table-field-set driver database conn table nil))
        ;; find PKs and mark them
        (add-table-pks driver conn)))
 
@@ -348,7 +357,7 @@
    db
    nil
    (fn [^Connection conn]
-     (describe-table* driver conn table))))
+     (describe-table* driver db conn table))))
 
 (defmulti describe-fields-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],
@@ -732,7 +741,7 @@
 
 (defn- table->unfold-json-fields
   "Given a table return a list of json fields that need to unfold."
-  [driver conn table]
+  [driver database conn table]
   (let [fields-with-json-unfolding-disabled
         (->> (t2/select-fn-set :name [:model/Field :name]
                                :table_id (u/the-id table)
@@ -744,7 +753,7 @@
           (comp
            (filter #(isa? (:base-type %) :type/JSON))
            (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
-           (describe-table-fields-xf driver (driver-api/table->database table) table))
+           (describe-table-fields-xf driver database table))
           (describe-table-fields driver conn table nil))))
 
 (defn- sample-json-row-honey-sql
@@ -824,7 +833,7 @@
                                   jdbc-spec
                                   nil
                                   (fn [^Connection conn]
-                                    (let [unfold-json-fields (table->unfold-json-fields driver conn table)
+                                    (let [unfold-json-fields (table->unfold-json-fields driver database conn table)
                                           ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
                                           ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
                                           ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in

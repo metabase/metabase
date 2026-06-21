@@ -231,6 +231,20 @@
                     (into [] (sql-jdbc.describe-table/describe-table-fields-xf :h2 db table))
                     (map :name))))))))
 
+(deftest describe-table-field-set-uses-explicit-database-test
+  (testing "the current sync path can reuse an already-loaded Database"
+    (let [table {:name "venues"}
+          db    {:engine :h2}
+          cols  [{:name "ID" :type_name "BIGINT"}
+                 {:name "NAME" :type_name "CHARACTER VARYING"}]]
+      (with-redefs [driver-api/table->database (fn [_]
+                                                 (throw (ex-info "table->database should not be called" {})))
+                    sql-jdbc.describe-table/fields-metadata (fn [_ _ _ _] cols)]
+        (is (= ["ID" "NAME"]
+               (->> (#'sql-jdbc.describe-table/describe-table-field-set :h2 db nil table nil)
+                    (sort-by :database-position)
+                    (map :name))))))))
+
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
                           (tqpt/timeseries-drivers))
