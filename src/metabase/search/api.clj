@@ -81,6 +81,33 @@
         (log/warn "Failed to parse partition_config:" (ex-message e))
         nil))))
 
+(defn- process-multi-view-config
+  "Parse the `multi_view_config` JSON query param into the view map consumed by the semantic engine
+  (see [[metabase.search.config/MultiViewConfig]]). Returns nil when absent/blank or unparseable.
+  Keywordizes the top-level `:pool` selector and normalizes `max_cosine_distance` -> `:max-cosine-distance`
+  (both top-level and per-view), dropping any other keys so the closed schema accepts it.
+
+  Shape: `{\"views\": [{\"name\": .., \"column\": \"embedding\"|\"embedding_<view>\", \"k\": ..,
+  \"max_cosine_distance\": ..}], \"max_cosine_distance\": .., \"pool\": \"least\"}`."
+  [multi-view-config]
+  (when-not (str/blank? multi-view-config)
+    (try
+      (let [{:keys [views pool] :as cfg} (json/decode+kw multi-view-config)
+            top-mcd (or (:max-cosine-distance cfg) (:max_cosine_distance cfg))]
+        (cond-> {:views
+                 (mapv (fn [v]
+                         (let [mcd (or (:max-cosine-distance v) (:max_cosine_distance v))]
+                           (cond-> {:column (:column v)}
+                             (:name v)   (assoc :name (:name v))
+                             (:k v)      (assoc :k (:k v))
+                             (some? mcd) (assoc :max-cosine-distance mcd))))
+                       views)}
+          (some? top-mcd) (assoc :max-cosine-distance top-mcd)
+          pool            (assoc :pool (keyword pool))))
+      (catch Exception e
+        (log/warn "Failed to parse multi_view_config:" (ex-message e))
+        nil))))
+
 (defn- +engine-cookie [handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
@@ -205,6 +232,7 @@
   - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines
   - `max_cosine_distance`: for the semantic engine, the cosine-distance cut-off above which vector candidates are discarded (default 0.7); ignored by other engines
   - `partition_config`: for the semantic engine, a JSON object enabling federated/partitioned retrieval (per-partition model set, candidate quota `k`, cosine cutoff, and vector strategy); omit for a single global KNN. Ignored by other engines
+  - `multi_view_config`: for the semantic engine, a JSON object enabling multi-view-embedding retrieval (per-view embedding column + candidate quota `k`, pooled by min cosine distance, with a single cosine cutoff); omit for a single global KNN. Ignored by other engines
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
@@ -234,6 +262,7 @@
     vector-search-strategy              :vector_search_strategy
     max-cosine-distance                 :max_cosine_distance
     partition-config                    :partition_config
+    multi-view-config                   :multi_view_config
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
     include-metadata                    :include_metadata
@@ -259,6 +288,7 @@
        [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
        [:max_cosine_distance                 {:optional true} [:maybe [:double {:min 0.0 :max 2.0}]]]
        [:partition_config                    {:optional true} [:maybe :string]]
+       [:multi_view_config                   {:optional true} [:maybe :string]]
        [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -292,6 +322,7 @@
                 :vector-search-strategy              vector-search-strategy
                 :max-cosine-distance                 max-cosine-distance
                 :partition-config                    (process-partition-config partition-config)
+                :multi-view-config                   (process-multi-view-config multi-view-config)
                 :search-native-query                 search-native-query
                 :search-string                       (some-> q str/trim not-empty)
                 :table-db-id                         table-db-id

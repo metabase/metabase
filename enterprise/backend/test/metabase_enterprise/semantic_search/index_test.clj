@@ -105,6 +105,40 @@
       (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy strategy]
         (is (= strategy (semantic.settings/semantic-search-vector-strategy)))))))
 
+(defn- multi-view-search-sql+params
+  "Format the private vector subquery for `mv-config` against a stub index, returning the `[sql & params]`
+  vector `sql/format` produces."
+  [mv-config]
+  (let [index {:table-name "idx_tbl"}
+        ctx   {:search-string "pasta" :archived? false :multi-view-config mv-config}]
+    (sql/format (#'semantic.index/semantic-search-query index [0.1 0.2 0.3] ctx) :quoted true)))
+
+(deftest multi-view-semantic-search-query-test
+  (let [mv          {:views [{:column "embedding"              :name "base"         :k 500}
+                             {:column "embedding_descriptions" :name "descriptions" :k 300}
+                             {:column "embedding_attrs"        :name "attributes"   :k 300}]
+                     :max-cosine-distance 0.6
+                     :pool :least}
+        [sql & params] (multi-view-search-sql+params mv)]
+    (testing "one pure-KNN candidate CTE per view column, each an HNSW-triggering ORDER BY <col> <=> q LIMIT"
+      ;; raw distance expressions interpolate the column unquoted; the trailing space avoids matching
+      ;; `embedding_descriptions` when looking for the base `embedding` column
+      (is (re-find #"ORDER BY embedding <=>[^)]*LIMIT" sql))
+      (is (re-find #"ORDER BY embedding_descriptions <=>[^)]*LIMIT" sql))
+      (is (re-find #"ORDER BY embedding_attrs <=>[^)]*LIMIT" sql)))
+    (testing "synthetic view columns carry the partial-index IS NOT NULL predicate; the base column does not"
+      (is (str/includes? sql "embedding_descriptions IS NOT NULL"))
+      (is (str/includes? sql "embedding_attrs IS NOT NULL"))
+      ;; the base column has a full HNSW, so its candidate CTE must stay an unfiltered pure KNN
+      (is (not (re-find #"\bembedding IS NOT NULL" sql))))
+    (testing "candidates are UNION ALL-ed and pooled to one row per entity by minimum distance"
+      (is (str/includes? sql "UNION ALL"))
+      (is (re-find #"DISTINCT ON\s*\(\"model\", \"model_id\"\)" sql)))
+    (testing "the configured cosine cutoff gates the pooled distance"
+      (is (contains? (set params) 0.6)))
+    (testing "multi-view takes precedence over the per-strategy single-KNN path (no global vector_candidates CTE)"
+      (is (not (str/includes? sql "\"vector_candidates\""))))))
+
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index!)]

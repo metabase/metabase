@@ -332,6 +332,35 @@
                   [:max-cosine-distance {:optional true} [:double {:min 0.0 :max 2.0}]]]]]
    [:fusion {:optional true} [:enum :v1]]])
 
+(def MultiViewConfig
+  "Schema for the semantic-engine multi-view-embeddings config (the `multi_view_config` API param, sent as
+  a JSON object). `:views` lists the embedding columns to pool: each view runs its own per-column KNN with
+  its own candidate ceiling (`:k`), the per-view candidates are UNION-ed, and the per-entity minimum cosine
+  distance across views (`LEAST`, i.e. max-similarity) is kept. A single `:max-cosine-distance` gates the
+  pooled distance; per-view cutoffs are a later (`:v2`) refinement and are not honored today. An absent
+  param is today's single global KNN, so absent-param = baseline.
+
+  The base `embedding` column MUST be one of the views -- it is the only column covering every entity
+  (`indexed-entity` and unenriched rows ride it), so it is the retrievability floor; synthetic views only
+  *add* recall. The view columns MUST exist on the active index table and each synthetic column MUST have a
+  partial HNSW index `WHERE <col> IS NOT NULL` (search-eval scripts/manage_index.py set-views) -- the
+  backend emits exactly that predicate per synthetic view or the planner ignores the index. `:column` is
+  interpolated as a raw SQL identifier, so it is constrained to the `embedding`/`embedding_<suffix>` shape.
+  Mastered here (rather than in the EE module) so the OSS search API param and the EE query builder share
+  one definition. `:pool` selects the cross-view pooling; only `:least` (group-min over the union) is
+  implemented today."
+  [:map {:closed true}
+   [:views [:sequential
+            [:map {:closed true}
+             [:name                {:optional true} :string]
+             [:column              [:re #"^embedding(_[a-z0-9_]+)?$"]]
+             [:k                   {:optional true} pos-int?]
+             ;; Accepted for forward-compat with the eval-side query config; not honored in v1 (a single
+             ;; top-level :max-cosine-distance gates the pooled distance instead).
+             [:max-cosine-distance {:optional true} [:double {:min 0.0 :max 2.0}]]]]]
+   [:max-cosine-distance {:optional true} [:double {:min 0.0 :max 2.0}]]
+   [:pool {:optional true} [:enum :least]]])
+
 (def ^:private ui-contexts
   "Search `context` values issued by the frontend, one per UI surface.
   Selects ranking weights ([[static-context-weights]]) and filter defaults ([[filter-defaults-by-context]]).
@@ -430,6 +459,8 @@
    [:max-cosine-distance {:optional true} [:maybe number?]]
    ;; Semantic-engine federated-retrieval partition config. When absent, the engine uses a single global KNN.
    [:partition-config   {:optional true} [:maybe PartitionConfig]]
+   ;; Semantic-engine multi-view-embeddings config. When absent, the engine uses a single global KNN.
+   [:multi-view-config  {:optional true} [:maybe MultiViewConfig]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;
