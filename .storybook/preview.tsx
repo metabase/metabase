@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 
-import { ThemeProvider } from "metabase/ui";
+import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
+import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
+import { PortalContainer, ThemeProvider } from "metabase/ui";
 
 // @ts-expect-error: See metabase/utils/delay
 // This will skip the skippable delays in stories
@@ -14,13 +18,11 @@ require("metabase/utils/dayjs");
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 
+import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
-import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 
 import { Global, css, useTheme } from "@emotion/react";
 
-import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
-import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 import { initialize, mswLoader } from "msw-storybook-addon";
@@ -136,11 +138,14 @@ const decorators = [
 
     return (
       <EmotionCacheProvider>
-        <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
-          <Global styles={globalStyles} />
-          <CssVariables />
-          <Story />
-        </ThemeProvider>
+        <OverlayStackProvider>
+          <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
+            <Global styles={globalStyles} />
+            <CssVariables />
+            {createPortal(<PortalContainer />, document.body)}
+            <Story />
+          </ThemeProvider>
+        </OverlayStackProvider>
       </EmotionCacheProvider>
     );
   },

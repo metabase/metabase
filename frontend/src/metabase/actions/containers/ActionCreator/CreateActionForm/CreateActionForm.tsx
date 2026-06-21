@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { FormModelPicker } from "metabase/actions/containers/ActionCreator/FormModelPicker";
 import type { CreateQueryActionParams } from "metabase/actions/types";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
@@ -9,7 +10,6 @@ import { FormInput } from "metabase/common/components/FormInput";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { Form, FormProvider } from "metabase/forms";
-import { FormModelPicker } from "metabase/models/containers/FormModelPicker";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 
@@ -60,7 +60,7 @@ function CreateActionForm({
             name="name"
             title={t`Name`}
             placeholder={t`My new fantastic action`}
-            autoFocus
+            data-autofocus
           />
           <FormTextArea
             name="description"

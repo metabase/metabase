@@ -14,12 +14,10 @@
                 "with caching enabled should returns the correct viz-settings #57793")
     (let [query (mt/mbql-query orders {:aggregation [[:count]
                                                      [:sum $total]]})
-          result-for-dashcard (fn [dashboard-id dashcard-id card-id]
+          result-for-dashcard (fn [dashcard]
                                 (-> (mt/as-admin
                                       (notification.payload.execute/execute-dashboard-subscription-card
-                                       {:dashboard_id dashboard-id
-                                        :card_id      card-id
-                                        :id           dashcard-id}
+                                       dashcard
                                        []))
                                     :result))
           result-for-card (fn [card-id]
@@ -39,9 +37,9 @@
                                                   :visualization_settings
                                                   {:table.cell_column "count", :table.columns [{:name "count", :enabled true} {:name "sum", :enabled false}]}}
            :model/Dashboard {dashboard-id :id}   {}
-           :model/DashboardCard {dashcard-1 :id} {:dashboard_id dashboard-id
+           :model/DashboardCard dashcard-1       {:dashboard_id dashboard-id
                                                   :card_id     card-1}
-           :model/DashboardCard {dashcard-2 :id} {:dashboard_id dashboard-id
+           :model/DashboardCard dashcard-2       {:dashboard_id dashboard-id
                                                   :card_id     card-2}
            :model/CacheConfig _                  {:model    "database"
                                                   :model_id (mt/id)
@@ -57,13 +55,13 @@
                                              :metabase.models.visualization-settings/table-column-name "count"}
                                             {:metabase.models.visualization-settings/table-column-enabled true
                                              :metabase.models.visualization-settings/table-column-name "sum"}]}}}
-                    (result-for-dashcard dashboard-id dashcard-1 card-1)))
+                    (result-for-dashcard dashcard-1)))
             (is (=? {:data {:viz-settings {:metabase.models.visualization-settings/table-columns
                                            [{:metabase.models.visualization-settings/table-column-enabled true
                                              :metabase.models.visualization-settings/table-column-name "count"}
                                             {:metabase.models.visualization-settings/table-column-enabled false
                                              :metabase.models.visualization-settings/table-column-name "sum"}]}}}
-                    (result-for-dashcard dashboard-id dashcard-2 card-2))))
+                    (result-for-dashcard dashcard-2))))
           (testing "Card 2 has count visible and sum hidden"
             (is (=? {:data {:viz-settings {:metabase.models.visualization-settings/table-columns
                                            [{:metabase.models.visualization-settings/table-column-enabled false
@@ -103,13 +101,12 @@
           [:model/Card          {card-id :id} {:dataset_query          query
                                                :visualization_settings initial-setting}
            :model/Dashboard     {dash-id :id} {}
-           :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id card-id}
+           :model/DashboardCard dashcard      {:dashboard_id dash-id :card_id card-id}
            :model/CacheConfig   _             {:model    "database"
                                                :model_id (mt/id)
                                                :strategy :duration
                                                :config   {:unit :hours :duration 1}}]
-          (let [dashcard         {:dashboard_id dash-id :card_id card-id :id dc-id}
-                run-sub!         (fn [] (:result (mt/as-admin
+          (let [run-sub!         (fn [] (:result (mt/as-admin
                                                    (notification.payload.execute/execute-dashboard-subscription-card
                                                     dashcard []))))
                 cache-updated-at #(t2/select-one-fn :updated_at :model/QueryCache)]

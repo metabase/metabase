@@ -1,15 +1,11 @@
+import cx from "classnames";
+
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Button, Flex, Icon, Text, isValidIconName } from "metabase/ui";
+import { Box, Button, Flex, Icon, Text, isValidIconName } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./EmptyState.module.css";
-import {
-  EmptyStateActions,
-  EmptyStateHeader,
-  EmptyStateIllustration,
-  type EmptyStateIllustrationProps,
-} from "./EmptyState.styled";
 
 // Don't break existing empty states
 // TODO - remove these and update empty states with proper usage of illustrationElement
@@ -48,7 +44,7 @@ type EmptyStateProps = {
   className?: string;
   icon?: IconName;
   image?: string;
-  spacing?: EmptyStateIllustrationProps["spacing"];
+  spacing?: "sm" | "md";
 };
 
 export const EmptyState = ({
@@ -65,14 +61,14 @@ export const EmptyState = ({
   ...rest
 }: EmptyStateProps) => (
   <div className={className}>
-    <EmptyStateHeader>
+    <Flex direction="column" align="center" justify="center" ta="center">
       {illustrationElement && (
-        <EmptyStateIllustration
-          className="empty-state-illustration"
-          spacing={spacing}
+        <Box
+          className={cx("empty-state-illustration", S.illustration)}
+          data-spacing={spacing}
         >
           {illustrationElement}
-        </EmptyStateIllustration>
+        </Box>
       )}
       <div>
         {isValidIconName(icon) && <LegacyIcon icon={icon} {...rest} />}
@@ -88,12 +84,12 @@ export const EmptyState = ({
           {message}
         </Text>
       )}
-    </EmptyStateHeader>
+    </Flex>
     {/* TODO - we should make this children or some other more flexible way to
       add actions
       */}
     <Flex>
-      <EmptyStateActions className={S.EmptyStateFooter}>
+      <Flex className={S.footer} align="center" mx="auto">
         {action && link && (
           <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
             <Button variant="filled">{action}</Button>
@@ -104,7 +100,7 @@ export const EmptyState = ({
             {action}
           </Button>
         )}
-      </EmptyStateActions>
+      </Flex>
     </Flex>
   </div>
 );

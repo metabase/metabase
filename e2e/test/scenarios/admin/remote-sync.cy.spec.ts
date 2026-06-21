@@ -166,14 +166,14 @@ describe("Remote Sync", () => {
 
       H.clickPushOption();
 
-      // Attempt to push changes
-      cy.findByRole("dialog", { name: "Push to Git" })
-        .button(/Push changes/)
-        .click();
-
-      // push local changes to a different branch, because the remote is ahead of us
-      cy.findByRole("dialog", { name: /branch is behind/ }).within(() => {
-        cy.findByRole("radio", { name: /Create a new branch/ }).click();
+      // The remote has advanced, so pushing runs the preflight and opens the conflict modal directly
+      // (no commit-message step first). The modal title mentions the remote branch whether the merge
+      // is clean ("The remote branch has new changes…") or conflicting ("…conflict with the remote
+      // branch…"). Push our changes to a new branch instead, because the remote is ahead of us.
+      cy.findByRole("dialog", { name: /remote branch/ }).within(() => {
+        cy.findByRole("radio", {
+          name: /Create a new branch and push changes there/,
+        }).click();
         cy.findByPlaceholderText("your-branch-name").type(NEW_BRANCH);
         cy.button("Push changes").click();
       });
@@ -408,7 +408,8 @@ describe("Remote Sync", () => {
             cy.findByText(REMOTE_QUESTION_NAME).should("exist");
           });
 
-          H.modal().findByText("Pushing to Git").should("not.exist");
+          // waitForTask above already closed the sync confirmation modal.
+          H.modal().should("not.exist");
 
           H.clickSwitchBranchOption();
           H.popover().findByRole("option", { name: "main" }).click();
@@ -494,7 +495,9 @@ describe("Remote Sync", () => {
         .findByText("Success")
         .should("exist");
 
-      H.modal().should("not.exist", { timeout: 10000 });
+      // Read-only setup runs an initial import; close its confirmation modal (GHY-3747).
+      H.closeSyncResultModal();
+      H.modal().should("not.exist");
       H.goToMainApp();
 
       // In read-only mode, git sync controls should not be visible in app bar

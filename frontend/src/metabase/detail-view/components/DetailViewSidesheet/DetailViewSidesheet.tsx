@@ -1,19 +1,19 @@
-import { useWindowEvent } from "@mantine/hooks";
+import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import {
+  actionApi,
   skipToken,
   useGetAdhocQueryQuery,
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Modal } from "metabase/common/components/Modal";
 import {
   DetailsGroup,
   Header,
@@ -24,13 +24,15 @@ import {
   getHeaderColumns,
   getRowName,
 } from "metabase/detail-view/utils";
-import { ActionsApi } from "metabase/services";
+import { useDispatch } from "metabase/redux";
 import {
   Box,
   Button,
   Divider,
   Group,
   Icon,
+  Menu,
+  Modal,
   Stack,
   Tooltip,
   rem,
@@ -86,6 +88,7 @@ export function DetailViewSidesheet({
   onNextClick,
   onPreviousClick,
 }: Props) {
+  const dispatch = useDispatch();
   const {
     data: dataset,
     error,
@@ -132,6 +135,8 @@ export function DetailViewSidesheet({
     onUpdate: (action) => setActionId(action.id),
   });
 
+  const [actionsMenuOpened, actionsMenu] = useDisclosure(false);
+
   const handleClose = () => {
     // prevent Esc key from closing both modal and the sidesheet
     if (!isModalOpen) {
@@ -152,11 +157,15 @@ export function DetailViewSidesheet({
       return {};
     }
 
-    return ActionsApi.prefetchValues({
-      id: actionId,
-      parameters: JSON.stringify({ id: String(rowId) }),
-    });
-  }, [actionId, rowId]);
+    return runRtkEndpoint(
+      {
+        id: actionId,
+        parameters: { id: String(rowId) },
+      },
+      dispatch,
+      actionApi.endpoints.prefetchActionValues,
+    );
+  }, [actionId, rowId, dispatch]);
 
   const handleActionSuccess = useCallback(() => {
     onActionSuccess?.();
@@ -183,32 +192,29 @@ export function DetailViewSidesheet({
     }
   }, [linkCopied]);
 
-  useWindowEvent(
-    "keydown",
-    (event) => {
-      const activeElement = document.activeElement;
-      const isInputFocused =
-        activeElement instanceof HTMLElement &&
-        (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
-          activeElement.isContentEditable);
+  const isKeyboardNavigationEnabled =
+    isNavEnabled && !isModalOpen && !actionsMenuOpened;
 
-      if (isNavEnabled && !isInputFocused && !isModalOpen) {
-        if (event.key === "ArrowUp" && onPreviousClick) {
-          event.stopPropagation();
-          onPreviousClick();
+  useHotkeys([
+    [
+      "ArrowUp",
+      () => {
+        if (isKeyboardNavigationEnabled) {
+          onPreviousClick?.();
         }
-
-        if (event.key === "ArrowDown" && onNextClick) {
-          event.stopPropagation();
-          onNextClick();
+      },
+      { preventDefault: false },
+    ],
+    [
+      "ArrowDown",
+      () => {
+        if (isKeyboardNavigationEnabled) {
+          onNextClick?.();
         }
-      }
-    },
-    {
-      // otherwise modals get closed earlier and isModalOpen evaluates to false in the handler
-      capture: true,
-    },
-  );
+      },
+      { preventDefault: false },
+    ],
+  ]);
 
   if (error || isLoading) {
     return (
@@ -274,9 +280,12 @@ export function DetailViewSidesheet({
             )}
 
             {actionItems.length > 0 && (
-              <EntityMenu
-                items={actionItems}
-                renderTrigger={({ onClick }: { onClick: () => void }) => (
+              <Menu
+                position="bottom-end"
+                onOpen={actionsMenu.open}
+                onClose={actionsMenu.close}
+              >
+                <Menu.Target>
                   <Tooltip label={t`Actions`}>
                     <Button
                       aria-label={t`Actions`}
@@ -287,11 +296,21 @@ export function DetailViewSidesheet({
                       p={0}
                       variant="subtle"
                       w={20}
-                      onClick={onClick}
                     />
                   </Tooltip>
-                )}
-              />
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {actionItems.map((item) => (
+                    <Menu.Item
+                      key={item.title}
+                      leftSection={<Icon name={item.icon} aria-hidden />}
+                      onClick={item.action}
+                    >
+                      {item.title}
+                    </Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
             )}
 
             {url && (
@@ -386,7 +405,13 @@ export function DetailViewSidesheet({
         onSuccess={handleActionSuccess}
       />
 
-      <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteModalClose}>
+      <Modal
+        opened={isDeleteModalOpen}
+        onClose={handleDeleteModalClose}
+        size="lg"
+        withCloseButton={false}
+        padding={0}
+      >
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={rowId}

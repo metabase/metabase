@@ -2676,7 +2676,7 @@
    (lib.cache/side-channel-cache
     (keyword "can-save" card-type) a-query
     (fn [_]
-      (lib.core/can-save a-query (keyword card-type))))))
+      (lib.core/can-save? a-query (keyword card-type))))))
 
 (defn ^:export ensure-filter-stage
   "Adds an empty stage to `query` if its last stage contains both breakouts and aggregations.

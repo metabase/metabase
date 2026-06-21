@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -11,6 +10,7 @@ import { trackDataStudioOpened } from "metabase/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
+import { logout } from "metabase/redux/auth";
 import { setOpenModal } from "metabase/redux/ui";
 import { getAdminPaths } from "metabase/selectors/admin";
 import {
@@ -43,7 +43,7 @@ import { useHelpLink } from "./useHelpLink";
 const CURRENT_APP_ICON_OVERRIDES: {
   name: IconName;
   c: ColorName;
-} = { name: "check_filled", c: "brand" };
+} = { name: "check_filled", c: "core-brand" };
 
 export const AppSwitcher = ({ className }: { className?: string }) => {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
@@ -190,7 +190,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               data-testid="mode-switcher-profile-link"
             >
               <Group wrap="nowrap">
-                <Avatar color="brand" radius="lg" size={32}>
+                <Avatar color="core-brand" radius="lg" size={32}>
                   {user ? userInitials(user) : "?"}
                 </Avatar>
                 <Stack gap="xs">

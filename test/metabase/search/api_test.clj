@@ -310,6 +310,23 @@
   [& args]
   (map clean-result (apply search-request-data-with identity args)))
 
+(deftest context-param-test
+  (testing "context is an enum parameter that defaults to :api"
+    (testing "a missing context is accepted and resolves to :api"
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [search/search (fn [search-ctx]
+                                                    (reset! captured search-ctx)
+                                                    {:data [] :total 0 :engine "test"})]
+          (is (=? {:engine string?}
+                  (mt/user-http-request :crowberto :get 200 "search" :q "x"))))
+        (is (= :api (:context @captured)))))
+    (testing "an unknown context value is rejected"
+      (is (=? {:errors {:context #"enum of.*"}}
+              (mt/user-http-request :crowberto :get 400 "search" :q "x" :context "bogus"))))
+    (testing "a known context value is accepted"
+      (is (=? {:engine string?}
+              (mt/user-http-request :crowberto :get 200 "search" :q "x" :context "search-app"))))))
+
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
     (with-search-items-in-root-collection "test"
@@ -1814,6 +1831,16 @@
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 5}))))
         (is (= 5.0 (search.config/scorer-param search-ctx :model :dataset)))))))
 
+(deftest ^:synchronized weights-normalize-context-test
+  (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
+    (testing "the /weights endpoints normalize context, so introspection and overrides match search"
+      (testing "surfaces that share a normalized context report the same weights"
+        (is (= (mt/user-http-request :crowberto :get 200 (weights-url :global {}))
+               (mt/user-http-request :crowberto :get 200 (weights-url :command-palette {})))))
+      (testing "an override set via one normalized surface is read back via another"
+        (mt/user-http-request :crowberto :put 200 (weights-url :command-palette {:recency 9}))
+        (is (= 9.0 (:recency (mt/user-http-request :crowberto :get 200 (weights-url :search-app {})))))))))
+
 (deftest ^:synchronized dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"
     (let [search-name (random-uuid)
@@ -1886,22 +1913,31 @@
 
 (deftest ^:synchronized prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"
-    (let [calls (atom nil)]
-      (mt/with-dynamic-fn-redefs [analytics/inc! #(swap! calls conj %)]
+    (let [calls    (atom nil)
+          observed (atom [])]
+      (mt/with-dynamic-fn-redefs [analytics/inc!     (fn [metric & _] (swap! calls conj metric))
+                                  analytics/observe! (fn [& args] (swap! observed conj (vec args)))]
         (testing "Success response"
-          (search-request :crowberto :q "test")
-          (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
-          (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
+          (let [response (search-request :crowberto :q "test")]
+            (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
+            (is (= 0 (count (filter #{:metabase-search/response-error} @calls))))
+            (testing "result count is observed and matches the response :total"
+              (is (= [[:metabase-search/response-results (:total response)]]
+                     (filter (comp #{:metabase-search/response-results} first) @observed))))))
         (testing "Bad request (400)"
           (mt/user-http-request :crowberto :get 400 "/search" :archived "meow")
           (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
           ;; We do not treat client side errors as errors for our alerts.
-          (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
+          (is (= 0 (count (filter #{:metabase-search/response-error} @calls))))
+          (is (= 1 (count (filter (comp #{:metabase-search/response-results} first) @observed)))
+              "result count is not observed on error responses"))
         (testing "Unexpected server error (500)"
           (mt/with-dynamic-fn-redefs [search/search (fn [& _] (throw (Exception.)))]
             (mt/user-http-request :crowberto :get 500 "/search" :q "test")
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
-            (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
+            (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))
+            (is (= 1 (count (filter (comp #{:metabase-search/response-results} first) @observed)))
+                "result count is not observed on error responses")))))))
 
 (deftest ^:synchronized multiple-limits-test
   (when (search/supports-index?)

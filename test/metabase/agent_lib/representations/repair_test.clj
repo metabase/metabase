@@ -229,6 +229,38 @@
              output)))))
 
 ;;; ============================================================
+;;; Pass 1.75 - strip stray double-quotes from field-reference targets
+;;; ============================================================
+
+(deftest ^:parallel dequote-portable-fk-column-test
+  (testing "a double-quoted column segment in a portable FK is stripped"
+    (let [input  ["field" {} ["Sample" "PUBLIC" "ORDERS" "\"STATUS\""]]
+          output (repair/repair trivial-mp input)]
+      (is (= ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] output)))))
+
+(deftest ^:parallel dequote-leaves-cross-stage-strings-to-resolution-aware-pass-test
+  (testing "a bare cross-stage string target is NOT touched by this pass (the resolution-aware
+           cross-stage pass owns that case and only strips when it resolves)"
+    (let [input  ["field" {} "\"campaign_name\""]
+          output (repair/repair trivial-mp input)]
+      (is (= ["field" {} "\"campaign_name\""] output)))))
+
+(deftest ^:parallel dequote-leaves-filter-literals-untouched-test
+  (testing "only field targets are dequoted; a quoted filter literal is preserved verbatim"
+    (let [input  ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "\"STATUS\""]] "\"paid\""]
+          output (repair/repair trivial-mp input)]
+      (is (= ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "\"paid\""] output)))))
+
+(deftest ^:parallel dequote-is-idempotent-test
+  (testing "dequoting is a fixed point"
+    (let [input ["field" {} ["Sample" "PUBLIC" "ORDERS" "\"STATUS\""]]
+          once  (repair/repair trivial-mp input)]
+      (is (= once (repair/repair trivial-mp once)))))
+  (testing "an already-bare name is left alone"
+    (let [input ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]]
+      (is (= input (repair/repair trivial-mp input))))))
+
+;;; ============================================================
 ;;; Pass 1.81 - rewrite operator-name aliases to canonical lib heads
 ;;; ============================================================
 
@@ -1172,6 +1204,20 @@
           twice (repair/repair trivial-mp once)]
       (is (= once twice)))))
 
+(deftest ^:parallel idempotency-unwrapped-boolean-wrapper-test
+  (testing "unwrapping a boolean wrapper that is the sole element of a parent vector stays idempotent"
+    ;; Regression for a non-idempotency the generative idempotency-property-test surfaced:
+    ;; `["true" {} x]` unwraps to `x`. For a scalar `x`, `unwrap-boolean-wrapper` emits a clause
+    ;; `[x {}]` rather than the bare scalar, so a sole-element parent stays `[[x {}]]` instead of
+    ;; collapsing to `[x]` - which a later `repair` pass would otherwise "fix" to `[x {}]`, breaking
+    ;; the fixed point. Any non-blank scalar triggered it (the shrunk counterexample minimised `x`
+    ;; to a single NUL char).
+    (let [once (repair/repair trivial-mp [["true" {} "x"]])]
+      (is (= [["x" {}]] once)
+          "the wrapped scalar is emitted as a clause, leaving the parent vector intact")
+      (is (= once (repair/repair trivial-mp once))
+          "and the result is a fixed point"))))
+
 ;;; Property-based fuzz: randomly-shaped inputs go through repair twice and must equal on pass 2.
 
 (def ^:private gen-scalar
@@ -1802,6 +1848,45 @@
           once  (repair/repair mp-fks q)
           twice (repair/repair mp-fks once)]
       (is (= once twice)))))
+
+(deftest ^:parallel cross-stage-loose-name-remap-test
+  (testing "a hyphenated cross-stage ref (`count-where`) is remapped to the canonical
+           underscore output column (`count_where`) the aggregation actually produces"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count-where" {}
+                                           [">" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]] 5]]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                         {"lib/type" "mbql.stage/mbql"
+                          "filters"  [[">" {} ["field" {} "count-where"] 0]]}]}
+          out (repair/repair mp-fks q)
+          field-clause (get-in out ["stages" 1 "filters" 0 2])]
+      (testing "the name is canonicalised to the real output column"
+        (is (= "count_where" (nth field-clause 2))))
+      (testing "and base-type is stamped from the resolved prefix column"
+        (is (contains? (nth field-clause 1) "base-type")))
+      (testing "idempotent"
+        (is (= out (repair/repair mp-fks out))))))
+  (testing "a loose key matching no real column is left untouched for the resolver"
+    (let [out (repair/repair mp-fks
+                             (assoc-in multi-stage-base-query
+                                       ["stages" 1 "filters" 0 2 2] "totally-unknown"))]
+      (is (= "totally-unknown" (get-in out ["stages" 1 "filters" 0 2 2])))))
+  (testing "a loose key colliding with two columns is left for the resolver (the hits>1 guard)"
+    ;; `normalize-col-key` folds case and hyphen/space to underscore, so `Count Where` and
+    ;; `count-where` both normalize to `count_where`. Real lib output names don't collide like this,
+    ;; so exercise the guard directly on the private matcher.
+    (is (nil? (#'repair/match-cross-stage-column
+               {"Count Where" {"base-type" "type/Integer"}
+                "count-where" {"base-type" "type/Integer"}}
+               "count_where")))
+    (testing "but a single loose hit still resolves"
+      (is (= ["count_where" {"base-type" "type/Integer"}]
+             (#'repair/match-cross-stage-column
+              {"count_where" {"base-type" "type/Integer"}}
+              "Count-Where"))))))
 
 (deftest ^:parallel cross-stage-field-type-end-to-end-resolve-test
   (testing (str "End-to-end: a multi-stage YAML with a stage-1 cross-stage ref lacking\n"
@@ -2789,3 +2874,75 @@
         (is (not (contains? counts "or")))
         (is (not (contains? counts "case")))
         (is (not (contains? counts "coalesce")))))))
+
+;;; ============================================================
+;;; Pass 1.89 - merge trailing options-map into position-1 opts on N-ary string filters
+;;; ============================================================
+
+(deftest ^:parallel merge-string-filter-trailing-options-test
+  (testing (str "N-ary string-search filters carry case-sensitivity in their position-1 options,\n"
+                "but LLMs append it as a trailing map. These clauses are variadic, so the\n"
+                "fixed-arity merge-trailing-options pass skips them; this pass merges the trailing\n"
+                "map (a string-search value is never a map, so it is unambiguously misplaced opts).")
+    (testing "contains"
+      (is (= ["contains" {"case-sensitive" false}
+              ["field" {} ["S" "P" "T" "EMAIL"]] "@gmail.com"]
+             (repair/repair trivial-mp
+                            ["contains" {}
+                             ["field" {} ["S" "P" "T" "EMAIL"]] "@gmail.com"
+                             {"case-sensitive" false}]))))
+    (testing "starts-with / ends-with / does-not-contain"
+      (doseq [head ["starts-with" "ends-with" "does-not-contain"]]
+        (is (= [head {"case-sensitive" false} ["field" {} ["S" "P" "T" "C"]] "x"]
+               (repair/repair trivial-mp
+                              [head {} ["field" {} ["S" "P" "T" "C"]] "x"
+                               {"case-sensitive" false}]))
+            head)))))
+
+(deftest ^:parallel merge-string-filter-trailing-options-multi-value-test
+  (testing "multiple string values + trailing options: only the trailing map is merged"
+    (is (= ["contains" {"case-sensitive" true} ["field" {} ["S" "P" "T" "C"]] "a" "b"]
+           (repair/repair trivial-mp
+                          ["contains" {} ["field" {} ["S" "P" "T" "C"]] "a" "b"
+                           {"case-sensitive" true}])))))
+
+(deftest ^:parallel merge-string-filter-trailing-options-keys-win-test
+  (testing "trailing keys win on conflict; existing position-1 keys are preserved"
+    (is (= ["contains" {"case-sensitive" false "lib/uuid" "u"} ["field" {} ["S" "P" "T" "C"]] "x"]
+           (repair/repair trivial-mp
+                          ["contains" {"case-sensitive" true "lib/uuid" "u"}
+                           ["field" {} ["S" "P" "T" "C"]] "x"
+                           {"case-sensitive" false}])))))
+
+(deftest ^:parallel merge-string-filter-trailing-options-nested-in-and-test
+  (testing (str "a contains clause with trailing case-sensitivity options, nested inside `and`\n"
+                "inside the stage filters (the gmail-customers repro), is repaired via postwalk")
+    (let [q   {"lib/type" "mbql/query"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "filters"      [["and" {}
+                                             ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "active"]
+                                             ["contains" {}
+                                              ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]
+                                              "@gmail.com" {"case-sensitive" false}]]]}]}
+          out (repair/repair trivial-mp q)
+          ;; and-clause is ["and" {} <=-cond> <contains-cond>]; the contains is at index 3
+          c   (get-in out ["stages" 0 "filters" 0 3])]
+      (is (= ["contains" {"case-sensitive" false}
+              ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "@gmail.com"]
+             c)))))
+
+(deftest ^:parallel merge-string-filter-trailing-options-no-op-test
+  (testing "well-formed string filters are unchanged"
+    (testing "options already in position 1"
+      (let [ok ["contains" {"case-sensitive" false} ["field" {} ["S" "P" "T" "C"]] "x"]]
+        (is (= ok (repair/repair trivial-mp ok)))))
+    (testing "plain contains with no trailing options map"
+      (let [ok ["contains" {} ["field" {} ["S" "P" "T" "C"]] "x"]]
+        (is (= ok (repair/repair trivial-mp ok)))))))
+
+(deftest ^:parallel merge-string-filter-trailing-options-idempotent-test
+  (testing "repair(repair(q)) = repair(q)"
+    (let [bug  ["contains" {} ["field" {} ["S" "P" "T" "C"]] "x" {"case-sensitive" false}]
+          once (repair/repair trivial-mp bug)]
+      (is (= once (repair/repair trivial-mp once))))))

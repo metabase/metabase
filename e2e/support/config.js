@@ -10,6 +10,7 @@ import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
 
 import {
   extractFailedTests,
+  recordFailedTestsForQuarantine,
   reportFailedTestsToConductor,
 } from "./ci_conductor";
 import * as ciTasks from "./ci_tasks";
@@ -126,9 +127,11 @@ const defaultConfig = {
      ********************************************************************/
 
     on("before:browser:launch", (browser = {}, launchOptions) => {
-      //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
-        launchOptions.args.push("--auto-open-devtools-for-tabs");
+        // Open dev tools in Chrome by default when in headed mode
+        if (browser.isHeaded) {
+          launchOptions.args.push("--auto-open-devtools-for-tabs");
+        }
         launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
@@ -198,7 +201,10 @@ const defaultConfig = {
         // a hard backstop around everything — extraction, payload build, and
         // the request. The reporter also handles its own errors internally.
         try {
-          await reportFailedTestsToConductor(extractFailedTests(spec, results));
+          const failedTests = extractFailedTests(spec, results);
+          // Persist ultimate failures for the post-run quarantine gate (DEV-2082).
+          recordFailedTestsForQuarantine(failedTests);
+          await reportFailedTestsToConductor(failedTests);
         } catch (error) {
           console.error("[ci-conductor] reporting failed (ignored)", error);
         }

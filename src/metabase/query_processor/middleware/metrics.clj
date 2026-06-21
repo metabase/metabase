@@ -139,7 +139,7 @@
       (assoc-in query [:stages stage-number :aggregation]
                 (match/replace aggregations
                   [:metric _ metric-id]
-                  (if-let [{replacement :aggregation} (get lookup metric-id)]
+                  (if-let [{replacement :aggregation, metric-name :name} (get lookup metric-id)]
                     ;; We have to replace references from the source-metric with references appropriate for
                     ;; this stage (expression/aggregation -> field, field-id to string)
                     (let [replacement (match/replace replacement
@@ -154,6 +154,9 @@
                                 %
                                 {:name (lib/column-name query stage-number replacement)}
                                 (select-keys % [:name :display-name])
+                                ;; The metric card's name is the column's display-name externally,
+                                ;; overriding the inner aggregation's display-name (#58307).
+                                (when metric-name {:display-name metric-name})
                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))

@@ -128,6 +128,7 @@
            analytics
            api
            collections
+           eid-translation
            lib
            permissions
            public-sharing
@@ -160,6 +161,7 @@
               metabase.agent-api.init}
    :uses    #{api
               auth-identity
+              channel
               collections
               dashboards
               events
@@ -175,6 +177,7 @@
               settings
               util}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Table
@@ -192,6 +195,7 @@
   analytics
   {:team "UX West"
    :api  #{metabase.analytics.api
+           metabase.analytics.api.proxy
            metabase.analytics.core
            metabase.analytics.event
            metabase.analytics.init
@@ -248,7 +252,6 @@
   {:team "Graphy"
    :api  #{metabase.analyze.core}
    :uses #{config
-           driver
            lib
            models
            query-processor
@@ -338,8 +341,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Database
-                    :model/Field
+   :model-imports #{:model/Field
                     :model/QueryCache
                     :model/Secret
                     :model/Setting}}
@@ -492,18 +494,21 @@
            driver
            events
            formatter
+           geojson
            lib
            lib-be
            models
            notification
            parameters
            permissions
+           pivot
            premium-features
            query-processor
            settings
            slackbot
            system
            task
+           tiles
            timeline
            types
            util}
@@ -676,6 +681,18 @@
   {:team "UX West"
    :api  #{}
    :uses :any}
+
+  curated-search
+  {:team "Metabot"
+   :api  #{metabase.curated-search.api
+           metabase.curated-search.core}
+   :uses #{api
+           models
+           premium-features
+           request
+           util}
+   :model-exports #{:model/CuratedSearchEntry}
+   :model-imports #{:model/Card}}
 
   dashboards
   {:team "UX West"
@@ -894,6 +911,7 @@
            metabase.eid-translation.core
            metabase.eid-translation.init}
    :uses #{api
+           batch-processing
            settings
            util}
    :model-imports #{:model/Action
@@ -950,7 +968,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -991,7 +1009,8 @@
   geojson
   {:team "UX West"
    :api  #{metabase.geojson.api
-           metabase.geojson.init}
+           metabase.geojson.init
+           metabase.geojson.settings}
    :uses #{api
            config
            permissions
@@ -1013,6 +1032,17 @@
    :api  #{metabase.graph.core}
    :uses #{util}}
 
+  health-inspector
+  {:team "Querying Platform"
+   :api #{metabase.health-inspector.api
+          metabase.health-inspector.init}
+   :uses #{api
+           lib
+           lib-be
+           settings
+           task
+           util}}
+
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
@@ -1023,6 +1053,7 @@
            legacy-mbql
            lib
            models
+           permissions
            query-processor
            search
            sync
@@ -1244,6 +1275,7 @@
               channel
               collections
               config
+              curated-search
               documents
               driver
               interestingness
@@ -1396,6 +1428,7 @@
    :uses #{analytics
            analytics-interface
            api
+           app-db
            appearance
            auth-identity
            channel
@@ -1426,14 +1459,17 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
+                    :model/TaskHistory
                     :model/User}}
 
   oauth-server
   {:team "UX West"
-   :api  #{metabase.oauth-server.api
+   :api  #{metabase.oauth-server.api       ;; Special case OAuth standard endpoints under `/`
+           metabase.oauth-server.api.admin ;; The usual Metabase internal API endpoints under `/api`
            metabase.oauth-server.core
            metabase.oauth-server.init}
    :uses #{api
+           api-scope
            appearance
            mcp
            models
@@ -1465,8 +1501,7 @@
            models
            query-processor
            util
-           warehouse-schema
-           warehouses}
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Field
@@ -1525,7 +1560,8 @@
 
   pivot
   {:team "UX West"
-   :api  #{metabase.pivot.core}
+   :api  #{metabase.pivot.core
+           metabase.pivot.postprocess}
    :uses #{models
            util}}
 
@@ -1665,6 +1701,7 @@
            dashboards
            documents
            events
+           graph
            lib
            lib-be
            metrics
@@ -1777,7 +1814,8 @@
               metabase.query-processor.streaming.interface
               metabase.query-processor.timezone
               metabase.query-processor.util
-              metabase.query-processor.util.add-alias-info}
+              metabase.query-processor.util.add-alias-info
+              metabase.query-processor.util.persisted-cache}
    :uses #{analytics
            analytics-interface
            analyze
@@ -1811,8 +1849,6 @@
            util
            workspaces}
    :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Database
                     :model/QueryCache
@@ -1870,6 +1906,14 @@
                     :model/Measure
                     :model/Segment
                     :model/Transform}}
+
+  run-tracking
+  {:team "Gadget"
+   :api  #{metabase.run-tracking.core}
+   :uses #{analytics-interface
+           app-db
+           task
+           util}}
 
   sample-data
   {:team "UX West"
@@ -2158,6 +2202,7 @@
            events
            interestingness
            lib
+           lib-be
            models
            premium-features
            query-processor
@@ -2195,13 +2240,13 @@
            metabase.task-history.core
            metabase.task-history.init}
    :uses #{api
-           app-db
            config
            models
            permissions
            premium-features
            query-processor
            request
+           run-tracking
            task
            tracing
            util}
@@ -2242,7 +2287,8 @@
   tiles
   {:team "UX West"
    :api  #{metabase.tiles.api
-           metabase.tiles.init}
+           metabase.tiles.init
+           metabase.tiles.settings}
    :uses #{api
            legacy-mbql
            lib
@@ -2250,7 +2296,8 @@
            parameters
            query-processor
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard}}
 
   timeline
   {:team "UX West"
@@ -2299,6 +2346,7 @@
            query-processor
            remote-sync
            revisions
+           run-tracking
            search
            settings
            task
@@ -2310,6 +2358,7 @@
               enterprise/transforms-python}
    :model-exports #{:model/Transform
                     :model/TransformJob
+                    :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}
@@ -2328,6 +2377,7 @@
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
    ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
    :model-imports #{:model/Database
+                    :model/Field
                     :model/Table
                     :model/Transform
                     :model/TransformRun}
@@ -2362,6 +2412,7 @@
            util}
    :model-imports #{:model/Transform
                     :model/TransformJob
+                    :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
@@ -2398,6 +2449,23 @@
                     :model/Database
                     :model/Field
                     :model/Table}}
+
+  usage-metadata
+  {:team "UX West"
+   :api  #{metabase.usage-metadata.init}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Query
+                    :model/QueryExecution
+                    :model/Segment
+                    :model/Table}
+   :uses #{app-db
+           lib
+           lib-be
+           models
+           settings
+           task
+           util}}
 
   user-key-value
   {:team "UX West"
@@ -2896,6 +2964,15 @@
    :api  #{metabase-enterprise.core.init}
    :uses :any}
 
+  enterprise/curated-search
+  {:team "Metabot"
+   :api  #{metabase-enterprise.curated-search.init}
+   :uses #{premium-features
+           task
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/CuratedSearchEntry}}
+
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
@@ -2999,8 +3076,7 @@
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
-   :uses #{analyze
-           api
+   :uses #{api
            app-db
            collections
            database-routing
@@ -3011,7 +3087,6 @@
            lib
            lib-be
            models
-           native-query-snippets
            permissions
            premium-features
            queries
@@ -3079,7 +3154,8 @@
    :api  #{metabase-enterprise.erd.api}
    :uses #{api
            models
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table}}
@@ -3173,20 +3249,6 @@
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
-  enterprise/notification-admin
-  {:team "Gadget"
-   :api  #{metabase-enterprise.notification-admin.api}
-   :uses #{api
-           app-db
-           models
-           notification
-           request
-           util}
-   :model-imports #{:model/Notification
-                    :model/NotificationHandler
-                    :model/NotificationRecipient
-                    :model/TaskHistory}}
-
   enterprise/permission-debug
   {:team "UX West"
    :api  #{metabase-enterprise.permission-debug.api}
@@ -3216,6 +3278,7 @@
            events
            models
            premium-features
+           search
            settings
            startup
            task
@@ -3353,6 +3416,8 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.api
            metabase-enterprise.semantic-search.core
+           metabase-enterprise.semantic-search.db.datasource
+           metabase-enterprise.semantic-search.embedding
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
@@ -3371,7 +3436,7 @@
            task
            tracing
            util}
-   :model-imports #{:model/Card :model/Collection :model/Dashboard}}
+   :model-imports #{:model/Collection}}
 
   enterprise/serialization
   {:team "Graphy"
@@ -3427,6 +3492,7 @@
            settings
            sso
            system
+           task
            util
            enterprise/scim}
    :model-imports #{:model/PermissionsGroup :model/Session}}
@@ -3564,6 +3630,7 @@
            enterprise/serialization}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
+                    :model/Table
                     :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

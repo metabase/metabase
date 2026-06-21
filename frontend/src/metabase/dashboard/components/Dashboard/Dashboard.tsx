@@ -12,9 +12,9 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader } from "metabase/ui";
+import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { DashboardCard } from "metabase-types/api";
 
-import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
 import { DashboardArchivedEntityBanner } from "../DashboardArchivedEntityBanner";
 import {
   DashboardInfoButton,

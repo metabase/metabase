@@ -21,7 +21,7 @@ import { MoveQuestionsIntoDashboardsInfoModal } from "./MoveQuestionsIntoDashboa
 
 interface MoveQuestionsIntoDashboardsModalProps {
   onClose: () => void;
-  params: { slug: string };
+  params: { slug?: string };
   location: Location<unknown>;
 }
 

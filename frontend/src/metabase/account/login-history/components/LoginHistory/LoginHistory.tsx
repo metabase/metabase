@@ -28,7 +28,7 @@ const LoginHistoryItem = ({ item }: { item: FormattedLoginItem }) => (
       </div>
       <Flex ml="auto">
         {item.active && (
-          <Label c="summarize" className={CS.pr2}>{t`Active`}</Label>
+          <Label c="core-summarize" className={CS.pr2}>{t`Active`}</Label>
         )}
         <Label>{item.time}</Label>
       </Flex>

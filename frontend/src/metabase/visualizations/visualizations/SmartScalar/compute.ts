@@ -291,16 +291,32 @@ function getCurrentMetricData({
   );
   const dateUnit = metricInsight?.unit;
   const dateColumn = cols[dimensionColIndex];
-  const dateColumnWithUnit = { ...dateColumn };
-  dateColumnWithUnit.unit ??= dateUnit;
-  const dateColumnSettings = settings?.column?.(dateColumnWithUnit) ?? {};
 
   const question = new Question(card);
+  const isNative = question.isNative();
+
+  const dateColumnWithUnit = { ...dateColumn };
+  if (!isNative) {
+    dateColumnWithUnit.unit ??= dateUnit;
+  }
+  const dateColumnSettings = settings?.column?.(dateColumnWithUnit) ?? {};
+
+  const { date_granularity } = dateColumnSettings;
+  const displayUnit = isAbsoluteDateTimeUnit(date_granularity)
+    ? date_granularity
+    : undefined;
+  const displaySettings = displayUnit
+    ? { ...dateColumnSettings, time_enabled: null }
+    : dateColumnSettings;
+  if (displayUnit) {
+    dateColumnWithUnit.unit = displayUnit;
+  }
+
   const dateUnitSettings: DateUnitSettings = {
     dateColumn: dateColumnWithUnit,
-    dateColumnSettings,
-    dateUnit,
-    queryType: question.isNative() ? "native" : "query",
+    dateColumnSettings: displaySettings,
+    dateUnit: displayUnit ?? dateUnit,
+    queryType: isNative ? "native" : "query",
   };
 
   const formatOptions = {

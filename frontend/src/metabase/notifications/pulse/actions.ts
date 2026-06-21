@@ -6,7 +6,6 @@ import { subscriptionApi } from "metabase/api";
 import { createThunkAction } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { PulseApi } from "metabase/services";
 import type {
   ChannelApiResponse,
   CreateSubscriptionRequest,
@@ -75,8 +74,10 @@ export const saveEditingPulse = createThunkAction(
 export const testPulse = createThunkAction(
   TEST_PULSE,
   function (pulse: DashboardSubscription | DraftDashboardSubscription) {
-    return async function () {
-      return await PulseApi.test(pulse);
+    return async function (dispatch) {
+      return await dispatch(
+        subscriptionApi.endpoints.testSubscription.initiate(pulse),
+      ).unwrap();
     };
   },
 );
@@ -84,9 +85,11 @@ export const testPulse = createThunkAction(
 export const fetchPulseFormInput = createThunkAction(
   FETCH_PULSE_FORM_INPUT,
   function () {
-    return async function (): Promise<ChannelApiResponse | undefined> {
+    return async function (dispatch): Promise<ChannelApiResponse | undefined> {
       try {
-        return await PulseApi.form_input();
+        return await dispatch(
+          subscriptionApi.endpoints.getChannelInfo.initiate(),
+        ).unwrap();
       } catch {
         // This request is expected to fail when the user lacks
         // "Subscriptions and Alerts" permissions. Swallow the error

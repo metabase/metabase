@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { useGetMostRecentlyViewedDashboardQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { canPlaceEntityInCollectionOrDescendants } from "metabase/data-studio/utils";
 import { useSelector } from "metabase/redux";
@@ -12,7 +13,6 @@ import { DashboardPickerModal } from "../DashboardPicker";
 import { type OmniPickerItem, isInDbTree } from "../EntityPicker";
 import { getCollectionType } from "../EntityPicker/utils";
 
-import { useMostRecentlyViewedDashboard } from "./hooks";
 import { isInPersonalCollection } from "./utils";
 
 const getTitle = ({ type }: Card) => {
@@ -44,7 +44,7 @@ export const AddToDashSelectDashModal = ({
 }: AddToDashSelectDashModalProps) => {
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const { data: mostRecentlyViewedDashboard } =
-    useMostRecentlyViewedDashboard();
+    useGetMostRecentlyViewedDashboardQuery();
 
   const onDashboardSelected = (
     selectedDashboard?: Pick<Dashboard, "id" | "name">,

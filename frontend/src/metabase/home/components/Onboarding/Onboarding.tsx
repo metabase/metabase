@@ -20,6 +20,7 @@ import { useSelector } from "metabase/redux";
 import type { ChecklistItemValue } from "metabase/redux/store";
 import {
   getDocsUrl,
+  getIsHosted,
   getIsPaidPlan,
   getSetting,
 } from "metabase/selectors/settings";
@@ -28,7 +29,6 @@ import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
-import { getIsHosted } from "metabase/setup/selectors";
 import {
   Accordion,
   Box,
@@ -536,7 +536,7 @@ export const Onboarding = () => {
                         className={S.inlineIcon}
                       />
                     )} ${(
-                      <b key="sharing">{t`Sharing`}</b>
+                      <b key="sharing">{t`Share`}</b>
                     )} icon on the top bar, then click on ${(
                       <Icon
                         key="subscription-icon"

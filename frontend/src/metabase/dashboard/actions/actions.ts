@@ -2,10 +2,11 @@ import {
   getActionErrorMessage,
   getActionExecutionMessage,
 } from "metabase/actions/utils";
+import { actionApi, publicApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import type { Dispatch } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { ActionsApi, PublicApi } from "metabase/services";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -32,18 +33,26 @@ export const executeRowAction = async ({
   dispatch,
   shouldToast = true,
 }: ExecuteRowActionPayload): Promise<ActionFormSubmitResult> => {
-  const executeAction =
-    getDashboardType(dashboard.id) === "public"
-      ? PublicApi.executeDashcardAction
-      : ActionsApi.executeDashcardAction;
+  const executeActionRequest = {
+    dashboardId: dashboard.id,
+    dashcardId: dashcard.id,
+    modelId: dashcard.card_id,
+    parameters,
+  };
 
   try {
-    const result = await executeAction({
-      dashboardId: dashboard.id,
-      dashcardId: dashcard.id,
-      modelId: dashcard.card_id,
-      parameters,
-    });
+    const result =
+      getDashboardType(dashboard.id) === "public"
+        ? await runRtkEndpoint(
+            executeActionRequest,
+            dispatch,
+            publicApi.endpoints.executePublicDashcardAction,
+          )
+        : await runRtkEndpoint(
+            executeActionRequest,
+            dispatch,
+            actionApi.endpoints.executeDashcardAction,
+          );
 
     const message = getActionExecutionMessage(
       dashcard.action as WritebackAction,

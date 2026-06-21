@@ -27,8 +27,12 @@ export const Default = {
   render: Template,
 
   args: {
-    value: [color("white"), color("brand")],
-    colors: [color("brand"), color("summarize"), color("filter")],
+    value: [color("white"), color("core-brand")],
+    colors: [
+      color("core-brand"),
+      color("core-summarize"),
+      color("core-filter"),
+    ],
   },
 };
 
@@ -36,8 +40,12 @@ export const WithColorRanges = {
   render: Template,
 
   args: {
-    value: [color("white"), color("brand")],
-    colors: [color("brand"), color("summarize"), color("filter")],
+    value: [color("white"), color("core-brand")],
+    colors: [
+      color("core-brand"),
+      color("core-summarize"),
+      color("core-filter"),
+    ],
     colorRanges: [
       [color("error"), color("white"), color("success")],
       [color("error"), color("warning"), color("success")],
@@ -49,16 +57,28 @@ export const WithColorMapping = {
   render: Template,
 
   args: {
-    value: [color("white"), color("brand")],
-    colors: [color("brand"), color("summarize"), color("filter")],
+    value: [color("white"), color("core-brand")],
+    colors: [
+      color("core-brand"),
+      color("core-summarize"),
+      color("core-filter"),
+    ],
     colorMapping: {
-      [color("brand")]: [color("brand"), color("white"), color("brand")],
-      [color("summarize")]: [
-        color("summarize"),
+      [color("core-brand")]: [
+        color("core-brand"),
+        color("white"),
+        color("core-brand"),
+      ],
+      [color("core-summarize")]: [
+        color("core-summarize"),
         color("white"),
         color("error"),
       ],
-      [color("filter")]: [color("filter"), color("white"), color("filter")],
+      [color("core-filter")]: [
+        color("core-filter"),
+        color("white"),
+        color("core-filter"),
+      ],
     },
   },
 };

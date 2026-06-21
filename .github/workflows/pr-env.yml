@@ -14,6 +14,11 @@ on:
         required: false
         type: boolean
         default: false
+      stats_dump:
+        description: "Load a recent app DB stats dump on first env creation"
+        required: false
+        type: boolean
+        default: false
 jobs:
   build:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -74,6 +79,169 @@ jobs:
           tags: tag:ci
           version: 1.50.1
           sha256sum: d9fe6b480fb5078f0aa57dace686898dda7e2a768884271159faa74846bfb576
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+      - name: Setup psql client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Create app database if not exists
+        id: create_app_db
+        run: |
+          export PGPASSWORD="${PR_ENV_DB_PASSWORD}"
+          export PGUSER="${PR_ENV_DB_USER}"
+          export PGHOST="${PR_ENV_DB_HOST}"
+          export PGDATABASE="${PR_ENV_DB_NAME}"
+          if psql -tc "SELECT 1 FROM pg_database WHERE datname = 'hosting_pr${{ github.event.number }}'" | grep -q 1; then
+            echo "db_created=false" >> "$GITHUB_OUTPUT"
+          else
+            psql -c "CREATE DATABASE hosting_pr${{ github.event.number }}"
+            echo "db_created=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
+          PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
+      - name: Verify stats dump load status
+        id: verify_stats_dump
+        if: ${{ inputs.stats_dump }}
+        run: |
+          export PGPASSWORD="${PR_ENV_DB_PASSWORD}"
+          ADMIN="psql -h ${PR_ENV_DB_HOST} -U ${PR_ENV_DB_USER} -d ${PR_ENV_DB_NAME}"
+          MARKED=$($ADMIN -tAc "SELECT 1 FROM pg_database d WHERE d.datname='hosting_pr${{ github.event.number }}' AND shobj_description(d.oid, 'pg_database') = 'metabase-pr-env stats-dump loaded';")
+          if [ "$MARKED" = "1" ]; then
+            echo "Stats dump already loaded; skipping reload."
+            echo "should_load=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Stats dump not loaded (or previous load incomplete); recreating database."
+            $ADMIN -c "ALTER DATABASE \"hosting_pr${{ github.event.number }}\" CONNECTION LIMIT 0;" || true
+            $ADMIN -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='hosting_pr${{ github.event.number }}' AND pid <> pg_backend_pid();" || true
+            $ADMIN -c "DROP DATABASE IF EXISTS \"hosting_pr${{ github.event.number }}\" WITH (FORCE);"
+            $ADMIN -c "CREATE DATABASE \"hosting_pr${{ github.event.number }}\";"
+            echo "should_load=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
+          PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
+      - name: Locate latest stats dump in S3
+        id: locate_stats_dump
+        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
+        env:
+          STATS_DUMP_BUCKET: metabase-cloud-stats-backups-coredev
+        run: |
+          LATEST_KEY=$(aws s3api list-objects-v2 \
+            --bucket "${STATS_DUMP_BUCKET}" \
+            --query "reverse(sort_by(Contents[?ends_with(Key, '.dump')], &LastModified))[0].Key" \
+            --output text)
+          if [ -z "$LATEST_KEY" ] || [ "$LATEST_KEY" = "None" ]; then
+            echo "No *.dump found in s3://${STATS_DUMP_BUCKET}" >&2
+            exit 1
+          fi
+          echo "Latest dump: $LATEST_KEY"
+          echo "key=$LATEST_KEY" >> "$GITHUB_OUTPUT"
+      - name: Download stats dump
+        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
+        env:
+          STATS_DUMP_BUCKET: metabase-cloud-stats-backups-coredev
+        run: |
+          aws s3 cp --no-progress \
+            "s3://${STATS_DUMP_BUCKET}/${{ steps.locate_stats_dump.outputs.key }}" \
+            /tmp/stats-dump.dump
+          echo "Downloaded $(stat -c%s /tmp/stats-dump.dump) bytes"
+          file /tmp/stats-dump.dump
+      - name: Prepare app database schema
+        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
+        run: |
+          PGPASSWORD="${PR_ENV_DB_PASSWORD}" psql \
+            -h "${PR_ENV_DB_HOST}" \
+            -U "${PR_ENV_DB_USER}" \
+            -d "hosting_pr${{ github.event.number }}" \
+            --no-align --tuples-only --expanded \
+            --command='DROP SCHEMA public CASCADE; CREATE SCHEMA public; CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;'
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
+      - name: Restore stats dump into app database
+        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
+        run: |
+          set +e
+          echo "::group::pg_restore / pg client versions"
+          pg_restore --version
+          psql --version
+          echo "::endgroup::"
+
+          echo "::group::Server version"
+          PGPASSWORD="${PR_ENV_DB_PASSWORD}" psql \
+            -h "${PR_ENV_DB_HOST}" -U "${PR_ENV_DB_USER}" -d "${PR_ENV_DB_NAME}" \
+            -tAc 'SHOW server_version;'
+
+          echo "::group::pg_restore"
+          PGPASSWORD="${PR_ENV_DB_PASSWORD}" pg_restore \
+            -h "${PR_ENV_DB_HOST}" \
+            -U "${PR_ENV_DB_USER}" \
+            -d "hosting_pr${{ github.event.number }}" \
+            --single-transaction \
+            --no-acl \
+            --no-owner \
+            --schema=public \
+            /tmp/stats-dump.dump
+          RESTORE_EXIT=$?
+          echo "::endgroup::"
+          echo "pg_restore exit code: ${RESTORE_EXIT}"
+
+          if [ "${RESTORE_EXIT}" -ne 0 ]; then
+            echo "Restore failed; the database will be rebuilt on the next run because it has not been marked as loaded."
+            exit "${RESTORE_EXIT}"
+          fi
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
+          PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
+      - name: Mark database as stats-dump loaded
+        if: ${{ inputs.stats_dump && steps.verify_stats_dump.outputs.should_load == 'true' }}
+        run: |
+          PGPASSWORD="${PR_ENV_DB_PASSWORD}" psql \
+            -h "${PR_ENV_DB_HOST}" \
+            -U "${PR_ENV_DB_USER}" \
+            -d "hosting_pr${{ github.event.number }}" \
+            -c "COMMENT ON DATABASE \"hosting_pr${{ github.event.number }}\" IS 'metabase-pr-env stats-dump loaded';"
+        env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
+          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
+      - name: Download Deployment YAML template
+        if: ${{ !inputs.self_hosting }}
+        run: aws s3 cp s3://metabase-pr-env/metabase.yml.tmpl ./metabase.yml.tmpl
+      - name: Render Deployment YAML
+        if: ${{ !inputs.self_hosting }}
+        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1.0.1
+        with:
+          input: ./metabase.yml.tmpl
+          output: ./metabase.yml
+        env:
+          IMAGE_TAG: pr${{ github.event.number }}
+          PR_NUMBER: ${{ github.event.number }}
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
+      - name: Inject stats-dump env vars into Deployment YAML
+        if: ${{ !inputs.self_hosting && inputs.stats_dump }}
+        env:
+          MB_ENCRYPTION_SECRET_KEY: ${{ secrets.PR_ENV_STATS_DUMP_ENCRYPTION_KEY }}
+        run: |
+          yq -i 'select(.kind == "Metabase").spec.configuration.envVars += [
+                   {"name": "MB_ENCRYPTION_SECRET_KEY", "value": strenv(MB_ENCRYPTION_SECRET_KEY)},
+                   {"name": "MB_DISABLE_SCHEDULER",    "value": "true"}
+                 ]' ./metabase.yml
       - name: Create OIDC Token
         id: create-oidc-token
         shell: bash
@@ -107,45 +275,6 @@ jobs:
                 cluster: default
                 namespace: default
                 user: oidc-token
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
-        with:
-          role-to-assume: ${{ secrets.PR_ENV_IAM_ROLE }}
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
-          aws-region: us-east-1
-      - name: Setup psql client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
-      - name: Create app database if not exists
-        run: |
-          export PGPASSWORD="${PR_ENV_DB_PASSWORD}"
-          export PGUSER="${PR_ENV_DB_USER}"
-          export PGHOST="${PR_ENV_DB_HOST}"
-          export PGDATABASE="${PR_ENV_DB_NAME}"
-          psql -tc "SELECT 1 FROM pg_database WHERE datname = 'hosting_pr${{ github.event.number }}'" \
-          | grep -q 1 \
-          || psql -c "CREATE DATABASE hosting_pr${{ github.event.number }}"
-        env:
-          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
-          PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
-          PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
-          PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
-      - name: Download Deployment YAML template
-        if: ${{ !inputs.self_hosting }}
-        run: aws s3 cp s3://metabase-pr-env/metabase.yml.tmpl ./metabase.yml.tmpl
-      - name: Render Deployment YAML
-        if: ${{ !inputs.self_hosting }}
-        uses: nowactions/envsubst@c4b8e3977354d294659a7ec164279ce8fba5c2e1 # v1.0.1
-        with:
-          input: ./metabase.yml.tmpl
-          output: ./metabase.yml
-        env:
-          IMAGE_TAG: pr${{ github.event.number }}
-          PR_NUMBER: ${{ github.event.number }}
-          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
       - name: Deploy PR Review ENV
         if: ${{ !inputs.self_hosting }}
         run: |
@@ -209,4 +338,4 @@ jobs:
             ✅ Preview:
                 https://pr${{ github.event.number }}.coredev.metabase.com
             🗒️ [login instructions](https://www.notion.so/metabase/Ephemeral-PR-Environments-c74a3710c87a460dbf4fc0007a001458)
-            📦 Deployment type: ${{ inputs.self_hosting && 'PR-Env-self-hosting' || (inputs.analytics_dev_mode && 'PR-Env-analytics-dev' || 'PR-Env') }}
+            📦 Deployment type: ${{ inputs.self_hosting && 'PR-Env-self-hosting' || (inputs.analytics_dev_mode && 'PR-Env-analytics-dev' || (inputs.stats_dump && 'PR-Env-Stats-Dump' || 'PR-Env')) }}

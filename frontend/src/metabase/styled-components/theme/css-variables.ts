@@ -15,8 +15,8 @@ import {
 import type { MantineTheme } from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
-import { getFontFamilyValue } from "metabase/ui/fonts";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { ColorSettings } from "metabase-types/api";
 
 const createColorVars = (

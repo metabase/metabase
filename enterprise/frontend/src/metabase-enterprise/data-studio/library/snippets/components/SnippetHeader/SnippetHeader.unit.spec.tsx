@@ -28,7 +28,14 @@ const setup = ({ snippet = {}, remoteSyncType }: SetupOps) => {
   const mockSnippet = createMockNativeQuerySnippet(snippet);
 
   setupCollectionByIdEndpoint({
-    collections: [createMockCollection({ id: "root" })],
+    collections: [
+      createMockCollection({ id: "root", name: "Our analytics" }),
+      createMockCollection({
+        id: 10,
+        name: "My folder",
+        effective_ancestors: [createMockCollection({ id: "root" })],
+      }),
+    ],
   });
 
   const tokenFeatures: Partial<TokenFeatures> = {
@@ -73,6 +80,33 @@ describe("SnippetHeader", () => {
       screen.getByRole("button", { name: "Snippet menu options" }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("custom-actions")).toBeInTheDocument();
+  });
+
+  describe("breadcrumbs", () => {
+    it("does not show 'Our analytics' for a snippet in the root folder (metabase#UXW-4170)", async () => {
+      setup({ snippet: { name: "My Snippet", collection_id: null } });
+
+      expect(
+        await screen.findByRole("link", { name: "SQL snippets" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Our analytics" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the folder path for a snippet inside a folder", async () => {
+      setup({ snippet: { name: "My Snippet", collection_id: 10 } });
+
+      expect(
+        await screen.findByRole("link", { name: "SQL snippets" }),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByRole("link", { name: "My folder" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Our analytics" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("when remote sync is set to read-only", () => {

@@ -59,6 +59,7 @@ function setup(options?: Partial<ActionParametersInputModalProps>) {
 async function setupModal(options?: Partial<ActionParametersInputModalProps>) {
   render(
     <ActionParametersInputModal
+      opened
       showEmptyState={false}
       title="Test Modal"
       onClose={_.noop}

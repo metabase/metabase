@@ -1,5 +1,7 @@
 export * from "./advanced-config";
+export * from "./advanced-permissions";
 export * from "./ai-controls";
+export * from "./application-permissions";
 export * from "./api";
 export * from "./audit-info";
 export * from "./billing-info";
@@ -22,5 +24,5 @@ export * from "./table";
 export * from "./tags";
 export * from "./tenants";
 export * from "./upload-management";
-export * from "./workspace";
+export * from "./workspace-manager";
 export * from "./workspace-instance";

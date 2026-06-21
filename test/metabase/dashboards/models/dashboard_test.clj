@@ -182,11 +182,11 @@
              (mi/can-read? dash)))))
     (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
                   "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
-                  "that Collection"))
-    (mt/with-full-data-perms-for-all-users!
-      (binding [api/*current-user-permissions-set* (atom #{})]
-        (is (= false
-               (mi/can-read? dash)))))
+                  "that Collection")
+      (mt/with-full-data-perms-for-all-users!
+        (binding [api/*current-user-permissions-set* (atom #{})]
+          (is (= false
+                 (mi/can-read? dash))))))
     (testing "Do we have *write* Permissions for a Dashboard if we have *write* Permissions for the Collection its in?"
       (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
         (mi/can-write? dash)))))

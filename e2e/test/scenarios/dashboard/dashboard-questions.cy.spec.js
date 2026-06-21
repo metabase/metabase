@@ -1328,5 +1328,6 @@ function selectCollectionItem(name) {
     .parent()
     .parent()
     .findByRole("checkbox")
+    .closest("button")
     .click();
 }

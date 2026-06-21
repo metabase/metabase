@@ -18,7 +18,7 @@ export function EntityListItem({
   name,
   description,
   icon,
-  iconColor = "brand",
+  iconColor = "core-brand",
   href,
 }: EntityListItemProps) {
   return (

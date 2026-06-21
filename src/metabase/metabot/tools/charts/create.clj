@@ -77,7 +77,8 @@
        :chart-link (format-chart-link chart-id)
        :chart-type chart-type
        :query-id query-id
+       :query query
+       :results-url results-url
        :instructions (str "Chart created successfully. The user is now viewing the chart.\n"
                           "Reference the chart using: [Chart](" (format-chart-link chart-id) ") "
-                          "where 'Chart' is a meaningful description.")
-       :reactions [{:type :metabot.reaction/redirect :url results-url}]})))
+                          "where 'Chart' is a meaningful description.")})))

@@ -6,9 +6,8 @@ import {
   useCreateActionPublicLinkMutation,
   useDeleteActionPublicLinkMutation,
 } from "metabase/api";
-import { Button } from "metabase/common/components/Button";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { CopyWidget } from "metabase/common/components/CopyWidget";
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { FormField } from "metabase/common/components/FormField";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { TextArea } from "metabase/common/components/TextArea";
@@ -16,7 +15,7 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Switch, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Switch, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
@@ -42,13 +41,13 @@ export const ActionSettingsTriggerButton = ({
   onClick: () => void;
 }) => (
   <Tooltip label={t`Action settings`}>
-    <Button
-      onlyIcon
+    <ActionIcon
+      variant="viewHeader"
       onClick={onClick}
-      icon="gear"
-      iconSize={16}
       aria-label={t`Action settings`}
-    />
+    >
+      <Icon name="gear" />
+    </ActionIcon>
   </Tooltip>
 );
 
@@ -131,7 +130,7 @@ const InlineActionSettings = ({
         )}
         {action?.public_uuid && hasSharingPermission && (
           <CopyWidgetContainer>
-            <CopyWidget
+            <CopyTextInput
               value={Urls.publicAction(siteUrl, action.public_uuid)}
               aria-label={t`Public action form URL`}
             />

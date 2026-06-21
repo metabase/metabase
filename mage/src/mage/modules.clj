@@ -104,6 +104,7 @@
      collections
      config
      content-verification
+     curated-search
      custom-viz-plugin
      dashboards
      documents
@@ -117,6 +118,7 @@
      enterprise/transforms-inspector
      events
      formatter
+     geojson
      initialization-status
      interestingness
      internal-stats
@@ -145,6 +147,7 @@
      system
      task
      task-history
+     tiles
      timeline
      tracing
      types
@@ -266,7 +269,6 @@
    :bigquery
    :clickhouse
    :databricks
-   :druid
    :druid-jdbc
    :mongo
    :mongo-ssl
@@ -289,7 +291,6 @@
    "bigquery-cloud-sdk" [:bigquery]
    "clickhouse" [:clickhouse]
    "databricks" [:databricks]
-   "druid" [:druid]
    "druid-jdbc" [:druid-jdbc]
    "mongo" [:mongo :mongo-ssl :mongo-sharded-cluster]
    "oracle" [:oracle]
@@ -313,7 +314,7 @@
                       (get driver-directory->drivers dir-name))))
           updated-files)))
 
-;;; driver quarantine
+;;; driver quarantine / status
 
 (def ^:private ci-test-config-url
   "https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json")
@@ -321,12 +322,47 @@
 (defn- read-ci-test-config []
   (json/parse-string (slurp ci-test-config-url) keyword))
 
-(defn- quarantined-drivers []
-  (-> (read-ci-test-config)
-      (get-in [:ignored :drivers] [])
-      (->> (mapcat #(or (get driver-directory->drivers %)
-                        [(keyword %)])))
-      (set)))
+(defn- config-name->drivers
+  "Translate a ci-test-config driver `name` (e.g. \"snowflake\") into the internal driver
+   keyword(s) it targets. Most names map straight to a single keyword; a few (e.g. \"mongo\")
+   fan out to several jobs via [[driver-directory->drivers]]."
+  [driver-name]
+  (or (seq (get driver-directory->drivers driver-name))
+      [(keyword driver-name)]))
+
+(defn- driver-statuses
+  "Map of driver keyword -> status keyword (`:skip` or `:info`) sourced from the top-level
+   `drivers` array in ci-test-config.json. Each entry identifies a driver by its short `name`
+   (e.g. \"snowflake\"). Drivers absent from the config are implicitly `:required` and do not
+   appear in this map.
+
+     :skip  -- do not run the driver at all (subject to the break-quarantine-<driver> label)
+     :info  -- run the driver, but its result must not gate (data collection only)
+
+   This MUST NOT break CI: any failure to read or parse the config (network error,
+   malformed JSON, etc.) is swallowed and yields an empty map, so every driver falls back
+   to `:required` (runs and gates) -- the safe default."
+  []
+  (try
+    (into {}
+          (comp (keep (fn [{driver-name :name, status :status}]
+                        (when-let [status-kw (#{:skip :info} (keyword status))]
+                          [driver-name status-kw])))
+                (mapcat (fn [[driver-name status-kw]]
+                          (map (fn [driver] [driver status-kw])
+                               (config-name->drivers driver-name)))))
+          (get (read-ci-test-config) :drivers []))
+    (catch Throwable e
+      ;; stderr, not stdout: in --github-output-only mode stdout is redirected into $GITHUB_OUTPUT.
+      (binding [*out* *err*]
+        (println (c/yellow (str "WARNING: could not read driver statuses from ci-test-config ("
+                                (.getMessage e) "); treating all drivers as required."))))
+      {})))
+
+(defn- skip-drivers
+  "Set of driver keywords with status `:skip` in `statuses` (these are quarantined: not run)."
+  [statuses]
+  (into #{} (keep (fn [[driver status]] (when (= status :skip) driver))) statuses))
 
 (defn- parse-bool
   "Parse a string boolean from CLI args. Returns true for 'true', false otherwise."
@@ -465,7 +501,9 @@
              :skip (parse-bool (:skip options))
              :particular-driver-changed? particular-driver-changed?
              :verbose? (not github-output-only?)}
-        quarantined (quarantined-drivers)
+        statuses (driver-statuses)
+        ;; `:skip` drivers are quarantined (not run); `:info`/`:required` drivers run normally.
+        quarantined (skip-drivers statuses)
         updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-deps-affected? updated)
@@ -474,7 +512,8 @@
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
                           (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
-                                 :driver driver))
+                                 :driver driver
+                                 :status (get statuses driver :required)))
                         all-drivers)
         ;; Check for quarantined drivers with file changes but no break-quarantine label
         quarantined-with-changes (into #{}
@@ -487,8 +526,9 @@
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
       (do
-        (doseq [{:keys [driver should-run]} decisions]
-          (println (str (name driver) "-should-run=" should-run)))
+        (doseq [{:keys [driver should-run status]} decisions]
+          (println (str (name driver) "-should-run=" should-run))
+          (println (str (name driver) "-status=" (name status))))
         (doseq [driver quarantined-with-changes]
           (println (str (name driver) "-quarantine-conflict=true"))))
       (do
@@ -502,10 +542,14 @@
         (println "")
         ;; Print human-readable decision summary
         (println "=== Driver Decisions ===")
-        (doseq [{:keys [driver should-run reason]} decisions]
-          (println (format "%-25s %s - %s"
+        (doseq [{:keys [driver should-run status reason]} decisions]
+          (println (format "%-25s %s %s - %s"
                            (name driver)
                            (if should-run (c/green "RUN ") (c/yellow "SKIP"))
+                           (case status
+                             :info (c/blue "[info]    ")
+                             :skip (c/yellow "[skip]    ")
+                             "[required]")
                            reason)))
         (println "")
         ;; Print GITHUB_OUTPUT preview with colors

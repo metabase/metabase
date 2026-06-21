@@ -25,6 +25,7 @@ import "metabase/utils/csp";
 
 import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
+import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
@@ -32,7 +33,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
@@ -42,8 +43,10 @@ import { MetabaseReduxProvider } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
+import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { captureConsoleErrors } from "metabase/utils/errors";
+import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
 import registerVisualizations from "metabase/visualizations/register";
@@ -51,6 +54,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import { HistoryProvider } from "./history";
 import { RouterProvider } from "./router";
 import { getStore } from "./store";
+import { OverlayStackProvider } from "./ui/components/overlays/overlay-stack";
 
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
@@ -70,6 +74,12 @@ function _init(reducers, getRoutes, callback) {
   const syncedHistory = syncHistoryWithStore(browserHistory, store);
 
   createSnowplowTracker(() => getUserId(store.getState()));
+  initMetaplow({
+    beforeSend: (_type, payload) => ({
+      ...payload,
+      data: { ...payload.data, user_id: getUserId(store.getState()) },
+    }),
+  });
 
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.
   // Uses bootstrap data so it's available before the first API call.
@@ -88,14 +98,17 @@ function _init(reducers, getRoutes, callback) {
     <MetabaseReduxProvider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
-          <AppThemeProvider>
-            <GlobalStyles />
-            <MetabotProvider>
-              <HistoryProvider history={syncedHistory}>
-                <RouterProvider>{routes}</RouterProvider>
-              </HistoryProvider>
-            </MetabotProvider>
-          </AppThemeProvider>
+          <OverlayStackProvider>
+            <AppThemeProvider>
+              <GlobalStyles />
+              {createPortal(<PortalContainer />, document.body)}
+              <MetabotProvider>
+                <HistoryProvider history={syncedHistory}>
+                  <RouterProvider>{routes}</RouterProvider>
+                </HistoryProvider>
+              </MetabotProvider>
+            </AppThemeProvider>
+          </OverlayStackProvider>
         </DragDropContextProvider>
       </EmotionCacheProvider>
     </MetabaseReduxProvider>,

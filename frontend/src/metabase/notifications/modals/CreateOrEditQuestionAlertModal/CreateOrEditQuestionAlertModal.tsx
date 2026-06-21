@@ -21,11 +21,6 @@ import {
   getHasConfiguredAnyChannel,
   getHasConfiguredEmailOrSlackChannel,
 } from "metabase/pulse";
-import { updateUrl } from "metabase/query_builder/actions/url";
-import {
-  getQuestion,
-  getVisualizationSettings,
-} from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -56,6 +51,7 @@ import type {
   ScheduleType,
   UpdateAlertNotificationRequest,
   UserId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { ChannelSetupModal } from "../ChannelSetupModal";
@@ -98,9 +94,16 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "cron",
 ];
 
-type CreateOrEditQuestionAlertModalWithQuestionProps = {
+type CreateOrEditQuestionAlertModalProps = {
   onClose: () => void;
-  skipUrlUpdate?: boolean;
+  question: Question;
+  /**
+   * The question's effective visualization settings, when the host has them
+   * (e.g. the query builder, where they may include unsaved changes). When
+   * omitted, goal-based trigger detection falls back to the question's saved
+   * settings (see getAlertType).
+   */
+  visualizationSettings?: VisualizationSettings;
 } & (
   | {
       editingNotification?: undefined;
@@ -114,52 +117,15 @@ type CreateOrEditQuestionAlertModalWithQuestionProps = {
     }
 );
 
-type CreateOrEditQuestionAlertModalProps =
-  CreateOrEditQuestionAlertModalWithQuestionProps & {
-    question?: Question;
-  };
-
-export const CreateOrEditQuestionAlertModalWithQuestion = ({
-  editingNotification,
-  onAlertCreated,
-  onAlertUpdated,
-  onClose,
-  skipUrlUpdate,
-}: CreateOrEditQuestionAlertModalWithQuestionProps) => {
-  const question = useSelector(getQuestion);
-
-  if (editingNotification) {
-    return (
-      <CreateOrEditQuestionAlertModal
-        question={question}
-        editingNotification={editingNotification}
-        onAlertUpdated={onAlertUpdated}
-        onClose={onClose}
-        skipUrlUpdate={skipUrlUpdate}
-      />
-    );
-  } else {
-    return (
-      <CreateOrEditQuestionAlertModal
-        question={question}
-        onAlertCreated={onAlertCreated}
-        onClose={onClose}
-        skipUrlUpdate={skipUrlUpdate}
-      />
-    );
-  }
-};
-
 export const CreateOrEditQuestionAlertModal = ({
   editingNotification,
   onAlertCreated,
   onAlertUpdated,
   onClose,
   question,
-  skipUrlUpdate,
+  visualizationSettings,
 }: CreateOrEditQuestionAlertModalProps) => {
   const dispatch = useDispatch();
-  const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const userCanAccessSettings = useSelector(canAccessSettings);
   const isAdmin = useSelector(getUserIsAdmin);
@@ -168,7 +134,7 @@ export const CreateOrEditQuestionAlertModal = ({
     CreateAlertNotificationRequest | UpdateAlertNotificationRequest | null
   >(null);
 
-  const questionId = question?.id();
+  const questionId = question.id();
   const isEditMode = !!editingNotification;
   const subscription = notification?.subscriptions[0];
 
@@ -270,10 +236,6 @@ export const CreateOrEditQuestionAlertModal = ({
       } else {
         onAlertCreated();
       }
-
-      if (!skipUrlUpdate) {
-        await dispatch(updateUrl(question, { dirty: false }));
-      }
     }
   };
 
@@ -374,17 +336,19 @@ export const CreateOrEditQuestionAlertModal = ({
               <Select
                 data-testid="alert-goal-select"
                 data={triggerOptions}
-                value={notification.payload.send_condition}
+                value={notification.payload?.send_condition}
                 w={276}
-                onChange={(value) =>
+                onChange={(value) => {
                   setNotification({
                     ...notification,
                     payload: {
                       ...notification.payload,
-                      send_condition: value as NotificationCardSendCondition,
+                      card_id: notification.payload?.card_id ?? questionId,
+                      send_condition: value,
+                      send_once: false,
                     },
-                  })
-                }
+                  });
+                }}
               />
             )}
           </Flex>
@@ -443,16 +407,20 @@ export const CreateOrEditQuestionAlertModal = ({
             }}
             labelPosition="right"
             size="sm"
-            checked={notification.payload.send_once}
-            onChange={(e) =>
+            checked={notification.payload?.send_once}
+            onChange={(event) => {
               setNotification({
                 ...notification,
                 payload: {
                   ...notification.payload,
-                  send_once: e.target.checked,
+                  card_id: notification.payload?.card_id ?? questionId,
+                  send_condition:
+                    notification.payload?.send_condition ??
+                    triggerOptions[0].value,
+                  send_once: event.target.checked,
                 },
-              })
-            }
+              });
+            }}
           />
         </AlertModalSettingsBlock>
       </Stack>
@@ -465,7 +433,7 @@ export const CreateOrEditQuestionAlertModal = ({
       >
         <Button
           variant="outline"
-          color="brand"
+          color="core-brand"
           loading={isLoading}
           onClick={onSendNow}
         >
@@ -475,7 +443,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            bg={hasError ? "error" : "brand"}
+            bg={hasError ? "error" : "core-brand"}
             disabled={!isValid || isCreating || isUpdating}
             loading={isCreating || isUpdating}
             onClick={onCreateOrEditAlert}
