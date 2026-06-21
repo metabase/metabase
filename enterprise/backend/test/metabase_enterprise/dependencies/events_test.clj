@@ -727,34 +727,10 @@
 
 ;;; ------------------------------------------------ Analysis propagation tests ------------------------------------------------
 
-(deftest ^:sequential card-update-transaction-rollback-test
-  (run-with-dependencies-setup!
-   (fn [mp]
-     (testing "If marking immediate dependents stale fails, analysis upsert is rolled back"
-       (let [products (lib.metadata/table mp (mt/id :products))
-             old-version models.analysis-finding/*current-analysis-finding-version*
-             new-version (inc old-version)]
-         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}]
-           (deps.findings/upsert-analysis! card)
-           (testing "Initial analysis exists"
-             (is (= old-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
-                                                  :analyzed_entity_type :card
-                                                  :analyzed_entity_id card-id))))
-           (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (mt/with-dynamic-fn-redefs [deps.findings/mark-immediate-dependents-stale!
-                                         (fn [_ _] (throw (ex-info "Simulated failure" {})))]
-               ;; analyze-and-propagate! wraps in a transaction, so the upsert should be rolled back
-               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated failure"
-                                     (#'deps.findings/analyze-and-propagate! card)))))
-           (testing "Analysis should be unchanged after rolled-back transaction"
-             (is (= old-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
-                                                  :analyzed_entity_type :card
-                                                  :analyzed_entity_id card-id))))))))))
-
 (deftest ^:sequential card-update-triggers-native-cards-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Card update marks entity stale, and the entity-check job re-analyzes it and marks dependents stale"
+     (testing "Card update marks the card and its transitive dependents stale, and the entity-check job re-analyzes them"
        (mt/with-temp [:model/Card {parent-id :id :as parent} {:dataset_query (lib/native-query mp "select * from products")}
                       :model/Card {child-id :id :as child} {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))}
                       :model/Dependency _ {:from_entity_type :card :from_entity_id child-id
@@ -773,7 +749,7 @@
            (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                          :analyzed_entity_type :card
                                          :analyzed_entity_id parent-id))))
-         (testing "Child should have been re-analyzed via wave propagation"
+         (testing "Child should have been re-analyzed (it was marked stale up front as a transitive dependent)"
            (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                          :analyzed_entity_type :card
                                          :analyzed_entity_id child-id)))))))))
@@ -781,7 +757,7 @@
 (deftest ^:sequential card-update-stops-on-transforms-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Card update marks immediate dependents stale including transforms, wave propagates through"
+     (testing "Card update marks the card and its transitive dependents (including transforms) stale up front"
        (let [products (lib.metadata/table mp (mt/id :products))
              orders (lib.metadata/table mp (mt/id :orders))
              old-version models.analysis-finding/*current-analysis-finding-version*]
@@ -805,9 +781,9 @@
              :transform {transform-id old-version}})
            ;; Event marks parent stale in analysis_finding, which triggers entity-check
            (events/publish-event! :event/card-update {:object parent-card :previous-object parent-card :user-id api/*current-user-id*})
-           ;; Run entity-check job — should propagate through transform to child via waves
+           ;; Run entity-check job to drain the stale entities
            (#'task.entity-check/check-entities!)
-           (testing "All entities should be re-analyzed after wave propagation"
+           (testing "All entities should be re-analyzed after the drain"
              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                            :analyzed_entity_type :card :analyzed_entity_id parent-card-id)))
              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding

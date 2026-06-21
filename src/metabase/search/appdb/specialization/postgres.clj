@@ -99,6 +99,10 @@
      :group-by [:search_index.model]
      :having   [:is-not expr nil]}))
 
+(defmethod specialization/analyze-table! :postgres
+  [table-name]
+  (t2/query (str "ANALYZE " (name table-name))))
+
 (defmethod specialization/index-size-estimate :postgres
   [table-name]
   ;; Use the planner's row estimate (pg_class.reltuples) instead of a full count(*). reltuples/relpages are

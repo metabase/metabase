@@ -227,12 +227,12 @@ async function setup({
           <ModalRoute
             path="new"
             modal={ActionCreator}
-            modalProps={{ enableTransition: false }}
+            modalProps={{ transitionProps: { duration: 0 } }}
           />
           <ModalRoute
             path=":actionId"
             modal={ActionCreator}
-            modalProps={{ enableTransition: false }}
+            modalProps={{ transitionProps: { duration: 0 } }}
           />
         </Route>
       </Route>

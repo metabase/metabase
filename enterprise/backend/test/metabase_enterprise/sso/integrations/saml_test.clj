@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
+   [metabase-enterprise.sso.models.relay-state :as relay-state]
    [metabase-enterprise.sso.providers.saml :as saml.p]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
@@ -240,14 +241,19 @@
     (with-saml-default-setup!
       (do-with-some-validators-disabled!
        (fn []
-         (let [result        (client/client-real-response :get 302 "/auth/sso"
-                                                          {:request-options {:redirect-strategy :none}}
-                                                          :redirect default-redirect-uri)
-               redirect-url (get-in result [:headers "Location"])]
+         (let [result       (client/client-real-response :get 302 "/auth/sso"
+                                                         {:request-options {:redirect-strategy :none}}
+                                                         :redirect default-redirect-uri)
+               redirect-url (get-in result [:headers "Location"])
+               relay-key    (:RelayState (uri->params-map redirect-url))]
            (testing (format "result = %s" (pr-str result))
              (is (string? redirect-url))
-             (is (= default-redirect-uri
-                    (u/decode-base64 (:RelayState (uri->params-map redirect-url))))))))))))
+             (testing "RelayState is a short server-side key, not the encoded continue URL"
+               (is (relay-state/relay-state-key? relay-key))
+               (is (<= (count (.getBytes ^String relay-key "UTF-8")) 80)))
+             (testing "the continue URL is persisted server-side, keyed by the RelayState"
+               (is (= default-redirect-uri
+                      (:continue_url (relay-state/find-unexpired relay-key))))))))))))
 
 (defn- saml-response-from-file [filename]
   (u/encode-base64 (slurp filename)))
@@ -296,11 +302,23 @@
            (re-find #"<script nonce=\"([^\"]+)\">")
            second))
 
-(defn- token-relay-state
-  "Build a RelayState whose decoded continue URL carries a valid SDK token + origin."
-  [continue-base origin]
-  (let [token (token-utils/generate-token)]
-    (str continue-base "?token=" token "&origin=" (codec/url-encode origin))))
+(defn- saml-post-request-options*
+  "POST options where the RelayState is a raw server-side relay-state key. The IdP echoes the RelayState
+  back verbatim, so unlike [[saml-post-request-options]] (which Base64-encodes a legacy continue URL) the
+  key must be sent as-is."
+  [saml-response relay-state-key]
+  {:request-options {:content-type      :x-www-form-urlencoded
+                     :redirect-strategy :none
+                     :form-params       {:SAMLResponse saml-response
+                                         :RelayState   relay-state-key}}})
+
+(defn- embedding-relay-state-key!
+  "Persist a relay-state entry like the embedding GET flow does, returning its RelayState key."
+  [origin]
+  (relay-state/persist! {:id           (relay-state/generate-key)
+                         :continue-url (str (system/site-url) "/auth/sso")
+                         :origin       origin
+                         :embedding?   true}))
 
 (defn- some-saml-attributes [user-nickname]
   {"http://schemas.auth0.com/identities/default/provider"   "auth0"
@@ -702,16 +720,15 @@
                                                           :redirect redirect-url)
                   location   (get-in result [:headers "Location"])
                   _          (is (string? location))
-                  params-map (uri->params-map location)]
+                  params-map (uri->params-map location)
+                  relay-key  (:RelayState params-map)]
               (testing (format "\nresult =\n%s" (u/pprint-to-str params-map))
-                (testing "\nRelay state URL should be base-64 encoded"
-                  (is (= redirect-url
-                         (u/decode-base64 (:RelayState params-map)))))
+                (testing "\nRelayState is a short server-side key"
+                  (is (relay-state/relay-state-key? relay-key)))
                 (testing "\nPOST request should redirect to the original redirect URL"
                   (do-with-some-validators-disabled!
                    (fn []
-                     (let [req-options (saml-post-request-options (saml-test-response)
-                                                                  (u/decode-base64 (:RelayState params-map)))
+                     (let [req-options (saml-post-request-options* (saml-test-response) relay-key)
                            response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                        (is (successful-login? response))
                        (is (= redirect-url
@@ -731,13 +748,13 @@
                                                             :redirect redirect-url)
                     location   (get-in result [:headers "Location"])
                     _          (is (string? location))
-                    params-map (uri->params-map location)]
+                    params-map (uri->params-map location)
+                    relay-key  (:RelayState params-map)]
                 (testing (format "\nresult =\n%s" (u/pprint-to-str params-map))
                   (testing "\nPOST request should redirect to the original redirect URL with the correct site-url path"
                     (do-with-some-validators-disabled!
                      (fn []
-                       (let [req-options (saml-post-request-options (saml-test-response)
-                                                                    (u/decode-base64 (:RelayState params-map)))
+                       (let [req-options (saml-post-request-options* (saml-test-response) relay-key)
                              response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                          (is (successful-login? response))
                          (is (= (str "http://localhost:3001/path" redirect-url)
@@ -827,37 +844,33 @@
           (is (str/starts-with? (-> result :body :url) default-idp-uri)))))))
 
 (deftest saml-embedding-sdk-integration-includes-origin-tests
-  (testing "should include origin in the redirect URL when embedding SDK header is present with origin"
+  (testing "should persist the popup origin server-side, referenced by the RelayState key"
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
-        (let [result (client/client-real-response
-                      :get 200 "/auth/sso"
-                      {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
-                                                   "origin" "https://app.example.com"}}})
-              origin (-> (get-in result [:body :url])
-                         uri->params-map
-                         :RelayState
-                         u/decode-base64
-                         uri->params-map
-                         :origin)]
-          (is (= "https://app.example.com" origin)))))))
+        (let [result    (client/client-real-response
+                         :get 200 "/auth/sso"
+                         {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
+                                                      "origin" "https://app.example.com"}}})
+              relay-key (-> (get-in result [:body :url])
+                            uri->params-map
+                            :RelayState)]
+          (is (relay-state/relay-state-key? relay-key))
+          (is (= "https://app.example.com"
+                 (:origin (relay-state/find-unexpired relay-key)))))))))
 
-(deftest saml-embedding-sdk-integration-includes-token-tests
-  (mt/with-temporary-setting-values [sdk-encryption-validation-key "1FlZMdousOLX9d3SSL+KuWq2+l1gfKoFM7O4ZHqKjTgabo7QdqP8US2bNPN+PqisP1QOKvesxkxOigIrvvd5OQ=="]
-    (testing "should include token in the redirect URL when embedding SDK header is present with origin"
-      (with-other-sso-types-disabled!
-        (with-saml-default-setup!
-          (let [result (client/client-real-response
-                        :get 200 "/auth/sso"
-                        {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
-                                                     "origin" "https://app.example.com"}}})
-                token (-> (get-in result [:body :url])
-                          uri->params-map
-                          :RelayState
-                          u/decode-base64
-                          uri->params-map
-                          :token)]
-            (is (not (nil? token)))))))))
+(deftest saml-embedding-relay-state-within-80-bytes-test
+  (testing "the embedding RelayState stays within the SAML 80-byte limit, so OpenSAML doesn't warn (UXW-4422)"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (let [result    (client/client-real-response
+                         :get 200 "/auth/sso"
+                         {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"
+                                                      "origin" "https://app.example.com"}}})
+              relay-key (-> (get-in result [:body :url])
+                            uri->params-map
+                            :RelayState)]
+          (is (relay-state/relay-state-key? relay-key))
+          (is (<= (count (.getBytes ^String relay-key "UTF-8")) 80)))))))
 
 (deftest saml-embedding-sdk-integration-no-embedding-tests
   (testing "should redirect to IdP when no embedding SDK header is present"
@@ -871,23 +884,85 @@
           (is (str/starts-with? (get-in result [:headers "Location"]) default-idp-uri)))))))
 
 (deftest saml-embedding-sdk-post-integration-tests
-  (testing "should the token when it is included in relay state and embedding SDK header"
+  (testing "should return the popup token HTML when the RelayState resolves to a persisted embedding entry"
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
         (do-with-some-validators-disabled!
          (fn []
-           (let [relay-state (str  "http://localhost:3000/"
-                                   "?token=" (token-utils/generate-token)
-                                   "&origin=https%3A%2F%2Fapp.example.com")
-                 req-options (saml-post-request-options
+           (let [relay-key   (embedding-relay-state-key! "https://app.example.com")
+                 req-options (saml-post-request-options*
                               (saml-test-response)
-                              relay-state)
+                              relay-key)
                  response (client/client-real-response :post 200 "/auth/sso" req-options)]
              (is (partial= {:status 200
                             :headers {"Content-Type" "text/html"}}
                            response))
              (is (str/includes? (:body response) "SAML_AUTH_COMPLETE"))
-             (is (str/includes? (:body response) "authData")))))))))
+             (is (str/includes? (:body response) "authData"))
+             (testing "popup posts back to the persisted origin"
+               (is (str/includes? (:body response) "https://app.example.com")))
+             (testing "the relay-state entry is consumed (single use)"
+               (is (nil? (relay-state/find-unexpired relay-key)))))))))))
+
+(deftest saml-stored-key-survives-failed-login-test
+  (testing "a stored RelayState key is consumed only on success — a failed login keeps it so the user can retry"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (let [relay-key (embedding-relay-state-key! "https://app.example.com")]
+          (testing "login fails (validators enabled, so the sample assertion is rejected) → 401, key NOT consumed"
+            (let [resp (client/client-real-response :post 401 "/auth/sso"
+                                                    (saml-post-request-options* (saml-test-response) relay-key))]
+              (is (not (successful-login? resp))))
+            (is (some? (relay-state/find-unexpired relay-key))))
+          (testing "retrying with the same key succeeds, and only then is the key consumed"
+            (do-with-some-validators-disabled!
+             (fn []
+               (let [resp (client/client-real-response :post 200 "/auth/sso"
+                                                       (saml-post-request-options* (saml-test-response) relay-key))]
+                 (is (str/includes? (:body resp) "SAML_AUTH_COMPLETE"))))))
+          (is (nil? (relay-state/find-unexpired relay-key))))))))
+
+(deftest saml-embedding-sdk-post-expired-relay-state-test
+  (testing "an embedding RelayState key with no live entry (expired or already used) is rejected"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [req-options (saml-post-request-options*
+                              (saml-test-response)
+                              (str "mbsso_" (random-uuid)))
+                 response    (client/client-real-response :post 401 "/auth/sso" req-options)]
+             (is (not (successful-login? response))))))))))
+
+(deftest saml-embedding-legacy-token-relay-state-test
+  (testing "in-flight logins from a previous version that packed the token+origin into the RelayState still work (upgrade compatibility)"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [relay-state (str "http://localhost:3000/"
+                                  "?token=" (token-utils/generate-token)
+                                  "&origin=" (codec/url-encode "https://app.example.com"))
+                 req-options (saml-post-request-options (saml-test-response) relay-state)
+                 response    (client/client-real-response :post 200 "/auth/sso" req-options)]
+             (is (partial= {:status 200
+                            :headers {"Content-Type" "text/html"}}
+                           response))
+             (is (str/includes? (:body response) "SAML_AUTH_COMPLETE"))
+             (testing "popup posts back to the origin carried in the legacy RelayState"
+               (is (str/includes? (:body response) "https://app.example.com"))))))))))
+
+(deftest saml-embedding-legacy-invalid-token-relay-state-test
+  (testing "a legacy-format RelayState carrying an invalid token is rejected"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [relay-state (str "http://localhost:3000/?token=not-a-valid-token"
+                                  "&origin=" (codec/url-encode "https://app.example.com"))
+                 req-options (saml-post-request-options (saml-test-response) relay-state)
+                 response    (client/client-real-response :post 401 "/auth/sso" req-options)]
+             (is (not (successful-login? response))))))))))
 
 (deftest non-string-saml-attributes-dropped-test
   (testing "SAML attributes with non-string values are dropped"
@@ -1138,8 +1213,8 @@
       (with-saml-default-setup!
         (do-with-some-validators-disabled!
          (fn []
-           (let [relay-state  (token-relay-state default-redirect-uri (system/site-url))
-                 req-options  (saml-post-request-options (saml-test-response) relay-state)
+           (let [relay-key    (embedding-relay-state-key! (system/site-url))
+                 req-options  (saml-post-request-options* (saml-test-response) relay-key)
                  response     (client/client-real-response :post 200 "/auth/sso" req-options)
                  header-nonce (extract-csp-script-nonce (get-in response [:headers "Content-Security-Policy"]))
                  body-nonce   (extract-script-tag-nonce (:body response))]
@@ -1158,14 +1233,14 @@
          (fn []
            (let [response-1 (client/client-real-response
                              :post 200 "/auth/sso"
-                             (saml-post-request-options
+                             (saml-post-request-options*
                               (saml-test-response)
-                              (token-relay-state default-redirect-uri (system/site-url))))
+                              (embedding-relay-state-key! (system/site-url))))
                  response-2 (client/client-real-response
                              :post 200 "/auth/sso"
-                             (saml-post-request-options
+                             (saml-post-request-options*
                               (saml-test-response)
-                              (token-relay-state default-redirect-uri (system/site-url))))
+                              (embedding-relay-state-key! (system/site-url))))
                  nonce-1    (extract-script-tag-nonce (:body response-1))
                  nonce-2    (extract-script-tag-nonce (:body response-2))]
              (testing "Both responses have nonces"
