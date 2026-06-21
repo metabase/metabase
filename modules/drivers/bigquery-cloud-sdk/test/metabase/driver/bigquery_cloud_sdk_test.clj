@@ -190,7 +190,7 @@
                      (with-redefs [bigquery/list-sample-page (fn [_bq size _token]
                                                                (swap! requested conj size)
                                                                (mock-page nil []))]
-                       (binding [bigquery/*sample-page-byte-budget* budget]
+                       (binding [bigquery/*page-byte-budget* budget]
                          ((#'bigquery/adaptive-sample-next-page :table max-rows) (mock-page "tok" rows))
                          (first @requested))))
         light      (vec (repeatedly 5 #(field-value-list [(prim-cell "x")])))

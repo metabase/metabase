@@ -543,10 +543,10 @@
 ;;; wildly inaccurate -- a TEXT column may hold 5 bytes or 5 MB), we *measure* it: fetch a small probe page, then
 ;;; recompute the next page size from the average bytes/row actually seen, so each page targets a fixed byte budget.
 
-(def ^:private ^:dynamic *sample-page-byte-budget*
-  "Target measured bytes per `tabledata.list` sample page. The next page size is `budget / measured-bytes-per-row`,
-  clamped to [1, remaining]. Kept well under the server's ~10 MB page cap to leave headroom for JVM object expansion
-  when the page is parsed."
+(def ^:private ^:dynamic *page-byte-budget*
+  "Target measured bytes per result page, for both `tabledata.list` sampling and regular query execution. The next
+  page size is `budget / measured-bytes-per-row`, clamped to [1, remaining]. Kept well under the server's ~10 MB page
+  cap to leave headroom for JVM object expansion when the page is parsed."
   (* 4 1024 1024))
 
 (def ^:private sample-probe-rows
@@ -596,11 +596,11 @@
 
 (defn- adaptive-sample-next-page
   "A swappable page-advance for [[reducible-bigquery-results]], used when sampling. It measures the just-consumed
-  page's real bytes/row and re-issues `.list` from the page token with a size targeting `*sample-page-byte-budget*`
+  page's real bytes/row and re-issues `.list` from the page token with a size targeting `*page-byte-budget*`
   -- a sliding window that adapts per page to the table's actual data instead of guessing from column types. Returns
   nil once the `max-rows` budget is spent or there are no more pages."
   [^Table bq-table ^long max-rows]
-  (let [budget (long *sample-page-byte-budget*)
+  (let [budget (long *page-byte-budget*)
         seen   (atom {:bytes 0, :rows 0})]
     (fn [^TableResult page]
       (let [token (.getNextPageToken page)]
@@ -748,10 +748,10 @@
   "Adaptive page-advance for query-job results (the regular execution path), mirroring [[adaptive-sample-next-page]]
   but paging via `getQueryResults` -- the query result's own `.getNextPage` re-uses the original page size and can't
   be re-sized. Measures the just-consumed page's real bytes/row and re-issues the next page with a `pageSize`
-  targeting [[*sample-page-byte-budget*]], so a wide or heavy result fetches fewer rows per page instead of holding a
+  targeting [[*page-byte-budget*]], so a wide or heavy result fetches fewer rows per page instead of holding a
   large parsed page in memory. Returns nil once the result set is exhausted."
   [^BigQuery client job-id]
-  (let [budget (long *sample-page-byte-budget*)
+  (let [budget (long *page-byte-budget*)
         seen   (atom {:bytes 0, :rows 0})]
     (fn [^TableResult page]
       (let [token (.getNextPageToken page)]
