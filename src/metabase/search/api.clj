@@ -108,6 +108,45 @@
         (log/warn "Failed to parse multi_view_config:" (ex-message e))
         nil))))
 
+(defn- process-federated-multi-view-config
+  "Parse the `federated_multi_view_config` JSON query param into the composed config consumed by the semantic
+  engine (see [[metabase.search.config/FederatedMultiViewConfig]]). Returns nil when absent/blank or
+  unparseable. Keywordizes the per-partition `:strategy` and the top-level `:pool`/`:fusion` selectors and
+  normalizes `max_cosine_distance` -> `:max-cosine-distance` at the top, per-partition, and per-view levels,
+  dropping any other keys so the closed schema accepts it.
+
+  Shape: `{\"partitions\": [{\"name\": .., \"models\": [..], \"strategy\": \"hnsw\"|\"brute-force\", \"k\": ..,
+  \"max_cosine_distance\": .., \"views\": [{\"name\": .., \"column\": \"embedding\"|\"embedding_<view>\",
+  \"k\": .., \"max_cosine_distance\": ..}]}], \"max_cosine_distance\": .., \"pool\": \"least\",
+  \"fusion\": \"v1\"}`."
+  [federated-multi-view-config]
+  (when-not (str/blank? federated-multi-view-config)
+    (try
+      (let [{:keys [partitions pool fusion] :as cfg} (json/decode+kw federated-multi-view-config)
+            top-mcd (or (:max-cosine-distance cfg) (:max_cosine_distance cfg))]
+        (cond-> {:partitions
+                 (mapv (fn [p]
+                         (let [p-mcd (or (:max-cosine-distance p) (:max_cosine_distance p))]
+                           (cond-> {:models (:models p)
+                                    :views  (mapv (fn [v]
+                                                    (let [v-mcd (or (:max-cosine-distance v) (:max_cosine_distance v))]
+                                                      (cond-> {:column (:column v)}
+                                                        (:name v)    (assoc :name (:name v))
+                                                        (:k v)       (assoc :k (:k v))
+                                                        (some? v-mcd) (assoc :max-cosine-distance v-mcd))))
+                                                  (:views p))}
+                             (:name p)     (assoc :name (:name p))
+                             (:strategy p) (assoc :strategy (keyword (:strategy p)))
+                             (:k p)        (assoc :k (:k p))
+                             (some? p-mcd) (assoc :max-cosine-distance p-mcd))))
+                       partitions)}
+          (some? top-mcd) (assoc :max-cosine-distance top-mcd)
+          pool            (assoc :pool (keyword pool))
+          fusion          (assoc :fusion (keyword fusion))))
+      (catch Exception e
+        (log/warn "Failed to parse federated_multi_view_config:" (ex-message e))
+        nil))))
+
 (defn- +engine-cookie [handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
@@ -233,6 +272,7 @@
   - `max_cosine_distance`: for the semantic engine, the cosine-distance cut-off above which vector candidates are discarded (default 0.7); ignored by other engines
   - `partition_config`: for the semantic engine, a JSON object enabling federated/partitioned retrieval (per-partition model set, candidate quota `k`, cosine cutoff, and vector strategy); omit for a single global KNN. Ignored by other engines
   - `multi_view_config`: for the semantic engine, a JSON object enabling multi-view-embedding retrieval (per-view embedding column + candidate quota `k`, pooled by min cosine distance, with a single cosine cutoff); omit for a single global KNN. Ignored by other engines
+  - `federated_multi_view_config`: for the semantic engine, a JSON object composing federated/partitioned retrieval with multi-view embeddings (per-partition model set + quota + cosine cutoff + strategy, each partition pooling its own per-view embedding columns by min cosine distance); omit for a single global KNN. Ignored by other engines
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
@@ -263,6 +303,7 @@
     max-cosine-distance                 :max_cosine_distance
     partition-config                    :partition_config
     multi-view-config                   :multi_view_config
+    federated-multi-view-config         :federated_multi_view_config
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
     include-metadata                    :include_metadata
@@ -289,6 +330,7 @@
        [:max_cosine_distance                 {:optional true} [:maybe [:double {:min 0.0 :max 2.0}]]]
        [:partition_config                    {:optional true} [:maybe :string]]
        [:multi_view_config                   {:optional true} [:maybe :string]]
+       [:federated_multi_view_config         {:optional true} [:maybe :string]]
        [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -323,6 +365,7 @@
                 :max-cosine-distance                 max-cosine-distance
                 :partition-config                    (process-partition-config partition-config)
                 :multi-view-config                   (process-multi-view-config multi-view-config)
+                :federated-multi-view-config         (process-federated-multi-view-config federated-multi-view-config)
                 :search-native-query                 search-native-query
                 :search-string                       (some-> q str/trim not-empty)
                 :table-db-id                         table-db-id

@@ -882,17 +882,142 @@
   (when (some-> (:multi-view-config search-context) :views not-empty)
     (:multi-view-config search-context)))
 
+;; ----------------------------------------------------------------------------
+;; Composed federated + multi-view (fusion v1)
+;;
+;; The Cartesian product of the two features above: partition by model (federation) AND pool across view
+;; columns within each partition (multi-view). For each partition, emit one model-scoped per-column KNN per
+;; view, UNION the partition's views, pool to one row per entity by minimum cosine distance (`LEAST`), then
+;; apply the partition's cutoff + quota; finally UNION ALL the partitions and recompute `semantic_rank`. Since
+;; partitions are model-disjoint, per-partition pooling equals a global pool but preserves the boundary the
+;; per-partition quota needs. Output columns match [[hnsw-search-query]], so the hybrid join / RRF / scoring /
+;; permission filter / rehydration are unchanged.
+;;
+;; The config arrives per request as `:federated-multi-view-config` (see
+;; [[metabase.search.config/FederatedMultiViewConfig]]). For an HNSW partition, each synthetic view's
+;; candidate CTE emits `WHERE <model-pred> AND <col> IS NOT NULL`, which must byte-match a *composite* partial
+;; HNSW index (search-eval scripts/manage_index.py set-federated-views) or the planner post-filters the model
+;; set (correct, slower, and crowding creeps back). Brute-force partitions need no index.
+
+(defn- federated-multi-view-partition-ctes
+  "Build the CTE entries for partition `p` (0-indexed `i`) of the composed query. For each of the partition's
+  views, emit a model-scoped per-column KNN candidate CTE (HNSW: pure KNN capped at the view `:k`, matching
+  the composite partial index `WHERE <model-pred> AND <col> IS NOT NULL`; brute-force: an exact MATERIALIZED
+  model-scoped scan). UNION the views, pool to one row per entity by minimum cosine distance
+  (`DISTINCT ON (model, model_id)`), then apply the partition cutoff, non-model filters, and quota `:k` in a
+  `filt` CTE. Returns `{:filt-name <kw> :ctes [...]}`, or nil when the request's `:models` filter leaves this
+  partition with no models to search."
+  [index embedding-literal search-context non-model-filters config-cutoff i p]
+  (let [requested  (:models search-context)
+        eff-models (if (seq requested)
+                     (filterv (set requested) (:models p))
+                     (vec (:models p)))]
+    (when (seq eff-models)
+      (let [model-pred  (partition-model-pred eff-models)
+            strategy    (or (:strategy p) (vector-search-strategy search-context))
+            part-k      (or (:k p) (semantic-settings/semantic-search-results-limit))
+            cutoff      (or (:max-cosine-distance p)
+                            config-cutoff
+                            (:max-cosine-distance search-context)
+                            default-max-cosine-distance)
+            union-cols  (conj (mapv second common-search-columns) :distance)
+            cand-entries
+            (map-indexed
+             (fn [j v]
+               (let [col        (:column v)
+                     base?      (= col "embedding")
+                     view-k     (or (:k v) part-k)
+                     dist-expr  [:raw (str col " <=> " embedding-literal)]
+                     cand-name  (keyword (str "p" i "_v" j "_candidates"))
+                     cand-cols  (into common-search-columns [[dist-expr :distance]])
+                     where-pred (if base?
+                                  model-pred
+                                  [:and model-pred [:raw (str col " IS NOT NULL")]])]
+                 {:cand-name cand-name
+                  :cte       (case strategy
+                               :brute-force
+                               [cand-name
+                                {:select cand-cols
+                                 :from   [(keyword (:table-name index))]
+                                 :where  where-pred}
+                                :materialized]
+                               ;; default :hnsw
+                               [cand-name
+                                {:select   cand-cols
+                                 :from     [(keyword (:table-name index))]
+                                 :where    where-pred
+                                 :order-by [[dist-expr :asc]]
+                                 :limit    view-k}])}))
+             (:views p))
+            union-name  (keyword (str "p" i "_union"))
+            pooled-name (keyword (str "p" i "_pooled"))
+            filt-name   (keyword (str "p" i "_filtered"))
+            union-q     {:union-all (mapv (fn [{:keys [cand-name]}]
+                                            {:select union-cols :from [cand-name]})
+                                          cand-entries)}
+            pooled-q    {:select-distinct-on (into [[:model :model_id]] union-cols)
+                         :from               [union-name]
+                         :order-by           [[:model :asc] [:model_id :asc] [:distance :asc]]}
+            filt-q      {:select   (into common-search-columns [[:distance :distance]])
+                         :from     [pooled-name]
+                         :where    (let [c [:<= :distance cutoff]]
+                                     (if non-model-filters (into [:and] [c non-model-filters]) c))
+                         :order-by [[:distance :asc]]
+                         :limit    part-k}]
+        {:filt-name filt-name
+         :ctes      (-> (mapv :cte cand-entries)
+                        (conj [union-name union-q])
+                        (conj [pooled-name pooled-q])
+                        (conj [filt-name filt-q]))}))))
+
+(defn- federated-multi-view-semantic-search-query
+  "Build the composed federated + multi-view semantic vector subquery: per-partition, per-view model-scoped
+  KNNs pooled to one row per entity (`LEAST`) and quota'd, then UNION ALL-ed across partitions with
+  `semantic_rank` recomputed over the union by pooled cosine distance. Returns a query with the same output
+  columns as [[hnsw-search-query]] so it drops into the hybrid join unchanged. Returns nil when no partition
+  matches the request's `:models` filter (caller falls back to the single global KNN)."
+  [index embedding-literal search-context config]
+  (let [non-model-filters (search-filters (dissoc search-context :models))
+        config-cutoff     (:max-cosine-distance config)
+        parts (keep-indexed
+               (partial federated-multi-view-partition-ctes
+                        index embedding-literal search-context non-model-filters config-cutoff)
+               (:partitions config))]
+    (when (seq parts)
+      (let [all-ctes (into [] (mapcat :ctes) parts)
+            union-q  {:union-all (mapv (fn [{:keys [filt-name]}]
+                                         {:select (into common-search-columns [[:distance :distance]])
+                                          :from   [filt-name]})
+                                       parts)}]
+        {:with     (conj all-ctes [:union_candidates union-q])
+         :select   (into common-search-columns
+                         [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
+                          [:distance :semantic_distance]])
+         :from     [:union_candidates]
+         :order-by [[:semantic_rank :asc]]
+         :limit    (semantic-settings/semantic-search-results-limit)}))))
+
+(defn- resolve-federated-multi-view-config
+  "Return the composed federated + multi-view config, or nil for the (default) single global KNN path."
+  [search-context]
+  (when (some-> (:federated-multi-view-config search-context) :partitions not-empty)
+    (:federated-multi-view-config search-context)))
+
 (defn- semantic-search-query
-  "Build the semantic vector subquery. When the request carries a `:multi-view-config`, pool per-view KNNs
-  ([[multi-view-semantic-search-query]]); when it carries a `:partition-config`, emit the federated
-  multi-CTE candidate generation ([[federated-semantic-search-query]]); otherwise dispatch on the resolved
-  [[vector-search-strategy]] -- `:brute-force` (exact, filter-first) or `:hnsw` (approximate, index-backed;
-  the default)."
+  "Build the semantic vector subquery. When the request carries a `:federated-multi-view-config`, compose
+  federation and pooling ([[federated-multi-view-semantic-search-query]]); when it carries a
+  `:multi-view-config`, pool per-view KNNs ([[multi-view-semantic-search-query]]); when it carries a
+  `:partition-config`, emit the federated multi-CTE candidate generation
+  ([[federated-semantic-search-query]]); otherwise dispatch on the resolved [[vector-search-strategy]] --
+  `:brute-force` (exact, filter-first) or `:hnsw` (approximate, index-backed; the default). The three
+  experiment configs are mutually exclusive; the composed one wins if more than one is present."
   [index embedding search-context]
   (let [filters           (search-filters search-context)
         embedding-literal (format-embedding embedding)
         cutoff            (or (:max-cosine-distance search-context) default-max-cosine-distance)]
-    (or (when-let [mv-config (resolve-multi-view-config search-context)]
+    (or (when-let [fmv-config (resolve-federated-multi-view-config search-context)]
+          (federated-multi-view-semantic-search-query index embedding-literal search-context fmv-config))
+        (when-let [mv-config (resolve-multi-view-config search-context)]
           (multi-view-semantic-search-query index embedding-literal search-context mv-config))
         (when-let [partitions (resolve-partition-config search-context)]
           (federated-semantic-search-query index embedding-literal search-context partitions))

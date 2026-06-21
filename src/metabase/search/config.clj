@@ -361,6 +361,44 @@
    [:max-cosine-distance {:optional true} [:double {:min 0.0 :max 2.0}]]
    [:pool {:optional true} [:enum :least]]])
 
+(def FederatedMultiViewConfig
+  "Schema for the semantic-engine config that *composes* federated retrieval with multi-view embeddings
+  (the `federated_multi_view_config` API param, sent as a JSON object). It is the Cartesian product of
+  [[PartitionConfig]] and [[MultiViewConfig]]: `:partitions` lists per-partition candidate generation
+  (model set, candidate ceiling `:k`, cosine cutoff, vector `:strategy`) exactly as federation does, and
+  each partition additionally carries its own `:views` -- the embedding columns to pool *within* that
+  partition. The backend runs one model-scoped KNN per (partition, view), pools the per-view candidates to
+  one row per entity by minimum cosine distance (`LEAST`), applies the partition's cutoff + quota, then
+  UNION-s across partitions and recomputes `semantic_rank`. An absent param is today's single global KNN.
+
+  Each partition's `:views` MUST include the base `embedding` column (the retrievability floor covering
+  `indexed-entity` and unenriched rows). For a partition whose `:strategy` is `:hnsw`, every synthetic view
+  must be backed by a *composite* partial HNSW index `WHERE <model-pred> AND <col> IS NOT NULL` on the active
+  table (search-eval scripts/manage_index.py set-federated-views) -- the backend emits exactly that predicate
+  so the planner can stay filter-first; without it Postgres falls back to the multi-view index and
+  post-filters the model set (correct, but reintroduces crowding). Brute-force partitions need no index.
+  Model groupings, view columns, and composite indexes form a three-way contract that must stay in sync.
+  Mastered here (rather than in the EE module) so the OSS search API param and the EE query builder share one
+  definition. `:pool` (`:least`) and `:fusion` (`:v1`) select pooling/ranking; only those values are
+  implemented today. Per-view cutoffs are accepted but not honored (a single per-partition cutoff gates)."
+  [:map {:closed true}
+   [:partitions [:sequential
+                 [:map {:closed true}
+                  [:name                {:optional true} :string]
+                  [:models              [:sequential SearchableModel]]
+                  [:strategy            {:optional true} (into [:enum] vector-search-strategies)]
+                  [:k                   {:optional true} pos-int?]
+                  [:max-cosine-distance {:optional true} [:double {:min 0.0 :max 2.0}]]
+                  [:views [:sequential
+                           [:map {:closed true}
+                            [:name                {:optional true} :string]
+                            [:column              [:re #"^embedding(_[a-z0-9_]+)?$"]]
+                            [:k                   {:optional true} pos-int?]
+                            [:max-cosine-distance {:optional true} [:double {:min 0.0 :max 2.0}]]]]]]]]
+   [:max-cosine-distance {:optional true} [:double {:min 0.0 :max 2.0}]]
+   [:pool {:optional true} [:enum :least]]
+   [:fusion {:optional true} [:enum :v1]]])
+
 (def ^:private ui-contexts
   "Search `context` values issued by the frontend, one per UI surface.
   Selects ranking weights ([[static-context-weights]]) and filter defaults ([[filter-defaults-by-context]]).
@@ -461,6 +499,8 @@
    [:partition-config   {:optional true} [:maybe PartitionConfig]]
    ;; Semantic-engine multi-view-embeddings config. When absent, the engine uses a single global KNN.
    [:multi-view-config  {:optional true} [:maybe MultiViewConfig]]
+   ;; Semantic-engine composed federated + multi-view config. When absent, the engine uses a single global KNN.
+   [:federated-multi-view-config {:optional true} [:maybe FederatedMultiViewConfig]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;

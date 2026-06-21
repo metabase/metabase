@@ -139,6 +139,47 @@
     (testing "multi-view takes precedence over the per-strategy single-KNN path (no global vector_candidates CTE)"
       (is (not (str/includes? sql "\"vector_candidates\""))))))
 
+(defn- federated-multi-view-search-sql+params
+  "Format the private vector subquery for `fmv-config` against a stub index, returning the `[sql & params]`
+  vector `sql/format` produces."
+  [fmv-config]
+  (let [index {:table-name "idx_tbl"}
+        ctx   {:search-string "pasta" :archived? false :federated-multi-view-config fmv-config}]
+    (sql/format (#'semantic.index/semantic-search-query index [0.1 0.2 0.3] ctx) :quoted true)))
+
+(deftest federated-multi-view-semantic-search-query-test
+  (let [fmv {:partitions [{:name     "content"
+                           :models   ["card" "dashboard"]
+                           :strategy :hnsw
+                           :k        400
+                           :views    [{:column "embedding"              :name "base"         :k 500}
+                                      {:column "embedding_descriptions" :name "descriptions" :k 300}]}
+                          {:name     "indexed-entity"
+                           :models   ["indexed-entity"]
+                           :strategy :hnsw
+                           :k        100
+                           :views    [{:column "embedding" :name "base"}]}]
+             :max-cosine-distance 0.55
+             :pool   :least
+             :fusion :v1}
+        [sql & params] (federated-multi-view-search-sql+params fmv)]
+    (testing "each (partition, view) is a model-scoped HNSW-triggering ORDER BY <col> <=> q LIMIT"
+      (is (re-find #"ORDER BY embedding <=>[^)]*LIMIT" sql))
+      (is (re-find #"ORDER BY embedding_descriptions <=>[^)]*LIMIT" sql)))
+    (testing "sub-queries carry their partition's model predicate (multi-model ANY-array; single-model =)"
+      (is (str/includes? sql "model = ANY (ARRAY['card', 'dashboard']::text[])"))
+      (is (str/includes? sql "model = 'indexed-entity'")))
+    (testing "synthetic views add the composite-index IS NOT NULL predicate; the base column does not"
+      (is (str/includes? sql "embedding_descriptions IS NOT NULL"))
+      (is (not (re-find #"\bembedding IS NOT NULL" sql))))
+    (testing "views are pooled per entity (UNION ALL + DISTINCT ON) and partitions UNION ALL-ed"
+      (is (str/includes? sql "UNION ALL"))
+      (is (re-find #"DISTINCT ON\s*\(\"model\", \"model_id\"\)" sql)))
+    (testing "the cosine cutoff gates the pooled distance"
+      (is (contains? (set params) 0.55)))
+    (testing "the composed path takes precedence over the single-KNN path (no global vector_candidates CTE)"
+      (is (not (str/includes? sql "\"vector_candidates\""))))))
+
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index!)]

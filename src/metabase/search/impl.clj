@@ -268,6 +268,7 @@
    [:max-cosine-distance                 {:optional true} [:maybe number?]]
    [:partition-config                    {:optional true} [:maybe search.config/PartitionConfig]]
    [:multi-view-config                   {:optional true} [:maybe search.config/MultiViewConfig]]
+   [:federated-multi-view-config         {:optional true} [:maybe search.config/FederatedMultiViewConfig]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
@@ -310,6 +311,7 @@
            max-cosine-distance
            partition-config
            multi-view-config
+           federated-multi-view-config
            search-native-query
            search-string
            table-db-id
@@ -357,6 +359,7 @@
                  (some? max-cosine-distance)                 (assoc :max-cosine-distance max-cosine-distance)
                  (some? partition-config)                    (assoc :partition-config partition-config)
                  (some? multi-view-config)                   (assoc :multi-view-config multi-view-config)
+                 (some? federated-multi-view-config)         (assoc :federated-multi-view-config federated-multi-view-config)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
