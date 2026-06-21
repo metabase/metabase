@@ -96,11 +96,13 @@ jobs:
             const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
             const commit = process.env.HEAD_SHA.slice(0, 12);
 
-            // version.properties (extracted from the uberjar) carries the build's tag
+            // version.properties (extracted from the uberjar) carries the build's tag.
+            // Non-release (master) builds report tag=vUNKNOWN, so leave Version empty there.
             const versionProps = "${{ github.workspace }}/artifacts/version.properties";
-            const version = fs.existsSync(versionProps)
+            const rawVersion = fs.existsSync(versionProps)
               ? (fs.readFileSync(versionProps, "utf8").match(/^tag=(.*)$/m)?.[1]?.trim() ?? "")
               : "";
+            const version = rawVersion === "vUNKNOWN" ? "" : rawVersion;
 
             const data = measurements.map(measurement => ({
               "Date": date,
