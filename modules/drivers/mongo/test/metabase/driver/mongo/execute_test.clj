@@ -37,9 +37,8 @@
       (testing "narrow projection keeps the default batch size"
         (is (= 100 (qbs [{"$match" {}} {"$project" {"a" 1 "b" 1}}]))))
       (testing "wide projection shrinks the batch so rows × columns stays within the cell budget"
-        (binding [mongo.execute/*max-cells-per-batch* 20000]
-          (is (= 20 (qbs [{"$project" (into {} (for [i (range 1000)] [(str "f" i) 1]))}]))
-              "1000 columns, 20000-cell budget -> 20 rows/batch")))
+        (is (= 10 (qbs [{"$project" (into {} (for [i (range 1000)] [(str "f" i) 1]))}]))
+            "1000 columns, 10000-cell budget -> 10 rows/batch"))
       (testing "suppressed fields ({... 0}) don't count toward the width"
         (is (= 100 (qbs [{"$project" {"a" 1 "_id" 0}}]))))
       (testing "no $project -> default batch size (result width unknown)"
