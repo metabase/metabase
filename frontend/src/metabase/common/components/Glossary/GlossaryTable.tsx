@@ -22,6 +22,7 @@ import type { SortDirection } from "metabase-types/api";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
+import type { FieldId } from "./types";
 
 export type GlossaryTableProps = {
   className?: string;
@@ -48,14 +49,23 @@ export function GlossaryTable({
   const [isCreating, setIsCreating] = useState(false);
   const metabotName = useMetabotName();
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editingField, setEditingField] = useState<
-    "term" | "definition" | null
-  >(null);
+  const [editingField, setEditingField] = useState<FieldId | null>(null);
   const [deletingItem, setDeletingItem] = useState<GlossaryItem | null>(null);
   const [sortColumnName, setSortColumnName] = useState<
     keyof GlossaryItem | null
   >(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const startEditing = (id: number, fieldId: FieldId) => {
+    if (readOnly) {
+      return;
+    }
+    if (isCreating) {
+      setIsCreating(false);
+    }
+    setEditingId(id);
+    setEditingField(fieldId);
+  };
 
   const sortedRows = useMemo(() => {
     if (!sortColumnName) {
@@ -151,7 +161,12 @@ export function GlossaryTable({
           const isEditing = editingId === item.id;
 
           return (
-            <tr className={cx(S.row, { [S.rowEditor]: isEditing })}>
+            <tr
+              className={cx(S.row, {
+                [S.rowEditor]: isEditing,
+                [S.readOnly]: readOnly,
+              })}
+            >
               {isEditing ? (
                 <GlossaryRowEditor
                   item={item}
@@ -171,18 +186,7 @@ export function GlossaryTable({
                   <Box
                     component="td"
                     valign="top"
-                    onClick={
-                      readOnly
-                        ? undefined
-                        : () => {
-                            if (isCreating) {
-                              setIsCreating(false);
-                            }
-
-                            setEditingId(item.id);
-                            setEditingField("term");
-                          }
-                    }
+                    onClick={() => startEditing(item.id, "term")}
                   >
                     <Text lh="1.2" fw="bold" pt="xs">
                       {item.term}
@@ -192,17 +196,7 @@ export function GlossaryTable({
                     component="td"
                     valign="top"
                     style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}
-                    onClick={
-                      readOnly
-                        ? undefined
-                        : () => {
-                            if (isCreating) {
-                              setIsCreating(false);
-                            }
-                            setEditingId(item.id);
-                            setEditingField("definition");
-                          }
-                    }
+                    onClick={() => startEditing(item.id, "definition")}
                   >
                     <Text lh="1.2" pt="xs">
                       {item.definition}
