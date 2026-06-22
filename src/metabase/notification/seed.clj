@@ -64,7 +64,6 @@
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.object.email}}"}}]}]}
-
           ;; alert new confirmation
           {:internal_id   "system-event/alert-new-confirmation"
            :active        true
@@ -82,7 +81,6 @@
                                                           :recipient-type "cc"}}
                             :recipients  [{:type    :notification-recipient/template
                                            :details {:pattern "{{payload.event_info.object.creator.email}}"}}]}]}
-
           ;; slack token invalid
           {:internal_id   "system-event/slack-token-error"
            :active        true
@@ -102,7 +100,6 @@
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
                                            {:type                 :notification-recipient/group
                                             :permissions_group_id (:id (perms/admin-group))}]}]}
-
           ;; new comment appeared
           {:internal_id   "system-event/comment-created"
            :active        true
@@ -120,7 +117,6 @@
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.email}}"}}]}]}
-
           ;; support access grant created
           {:internal_id "system-event/support-access-grant-created"
            :active true
@@ -138,8 +134,8 @@
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
                                      :details {:pattern "{{payload.event_info.support_email}}"}}]}]}
-
-          ;; transform job failed
+          ;; an individual transform within a job failed — notifies the transform's last
+          ;; editor / creator (see metabase.transforms.jobs/notify-transform-failures)
           {:internal_id "system-event/transform-failed"
            :active true
            :payload_type :notification/system-event
@@ -155,7 +151,41 @@
                                             :path "metabase/channel/email/transform_failed.hbs"
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
-                                     :details {:pattern "{{payload.event_info.email}}"}}]}]}]))
+                                     :details {:pattern "{{payload.event_info.email}}"}}]}]}
+          ;; DISABLED: replaced by digest
+          {:internal_id "system-event/transform-job-failed"
+           :active false
+           :payload_type :notification/system-event
+           :subscriptions [{:type :notification-subscription/system-event
+                            :event_name :event/transform-job-failed}]
+           :handlers [{:active true
+                       :channel_type :channel/email
+                       :channel_id nil
+                       :template {:name "Transform Job Failed email template"
+                                  :channel_type :channel/email
+                                  :details {:type "email/handlebars-resource"
+                                            :subject "The job \"{{payload.event_info.job_name}}\" had failures"
+                                            :path "metabase/channel/email/transform_failed.hbs"
+                                            :recipient-type "bcc"}}
+                       :recipients [{:type :notification-recipient/group
+                                     :permissions_group_id (:id (perms/admin-group))}]}]}
+          ;; digest of cron transform job failures
+          {:internal_id   "system-event/transform-failure-digest"
+           :active        true
+           :payload_type  :notification/system-event
+           :subscriptions [{:type       :notification-subscription/system-event
+                            :event_name :event/transform-failure-digest}]
+           :handlers      [{:active       true
+                            :channel_type :channel/email
+                            :channel_id   nil
+                            :template     {:name         "Transform Failure Digest email template"
+                                           :channel_type :channel/email
+                                           :details      {:type           "email/handlebars-resource"
+                                                          :subject        "Transform jobs that failed in the last day"
+                                                          :path           "metabase/channel/email/transform_failure_digest.hbs"
+                                                          :recipient-type "bcc"}}
+                            :recipients   [{:type                 :notification-recipient/group
+                                            :permissions_group_id (:id (perms/admin-group))}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]
@@ -198,7 +228,6 @@
   [{:keys [internal_id] :as row}]
   (let [existing-notification (some-> (t2/select-one :model/Notification :internal_id internal_id)
                                       models.notification/hydrate-notification)]
-
     (u/prog1 (action existing-notification row)
       (case <>
         :create

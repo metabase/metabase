@@ -56,7 +56,6 @@
               :message "SSO has not been enabled and/or configured",
               :status  "error-sso-disabled"}
              (client/client :get 400 "/auth/sso")))
-
            (testing "SSO requests fail if they don't have a valid premium-features token"
              (sso.test-setup/call-with-default-jwt-config!
               (fn []
@@ -68,7 +67,6 @@
                      :message "SSO has not been enabled and/or configured",
                      :status  "error-sso-disabled"}
                     (client/client :get 400 "/auth/sso")))))))))
-
        (testing "SSO requests fail if JWT is enabled but hasn't been configured"
          (mt/with-temporary-setting-values
            [jwt-enabled
@@ -82,7 +80,6 @@
               :message "SSO has not been enabled and/or configured",
               :status  "error-sso-disabled"}
              (client/client :get 400 "/auth/sso")))))
-
        (testing "SSO requests fail if JWT is configured but hasn't been enabled"
          (mt/with-temporary-setting-values
            [jwt-enabled
@@ -98,7 +95,6 @@
               :message "SSO has not been enabled and/or configured",
               :status  "error-sso-disabled"}
              (client/client :get 400 "/auth/sso")))))
-
        (testing "The JWT idp uri must also be included for SSO to be configured"
          (mt/with-temporary-setting-values
            [jwt-enabled true
@@ -111,7 +107,6 @@
               :message "SSO has not been enabled and/or configured",
               :status  "error-sso-disabled"}
              (client/client :get 400 "/auth/sso")))))
-
        (testing "The JWT Shared Secret must also be included for SSO to be configured"
          (mt/with-temporary-setting-values
            [jwt-enabled true
@@ -170,20 +165,17 @@
               (is
                (= {"extra" "keypairs", "are" "also present"}
                   (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))
-
         (testing "with SAML and JWT configured, a GET request without JWT params should redirect to SAML IdP"
           (let [response (client/client-full-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
                                                       :return_to default-redirect-uri)]
             (is (not (sso.test-setup/successful-login? response)))))
-
         (testing "with SAML and JWT configured, a POST without jwt in JSON body dispatches to SAML (not JWT login)"
           (let [response (client/client-real-response :post 401 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
                                                       {}
                                                       :return_to default-redirect-uri)]
             (is (not (sso.test-setup/successful-login? response)))))
-
         (testing "with SAML and JWT configured, a GET request with preferred_method=jwt should sign in via JWT"
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -206,7 +198,6 @@
               (is
                (= {"extra" "keypairs", "are" "also present"}
                   (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))
-
         (testing "with SAML and JWT configured, a GET request with preferred_method=saml should redirect to SAML IdP"
           (let [response (client/client-full-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -497,7 +488,6 @@
                                                         :last_name "User"}
                                                        default-jwt-secret))]
             (is (sso.test-setup/successful-login? response)))
-
           ;; then log in again
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -509,7 +499,6 @@
                                                         :last_name "User"}
                                                        default-jwt-secret))]
             (is (sso.test-setup/successful-login? response))))))
-
     (testing "Existing user login attributes are not changed on subsequent logins"
       (with-jwt-default-setup!
         (mt/with-model-cleanup [:model/User]
@@ -529,7 +518,6 @@
             (testing "initial login attributes are stored"
               (is (= nil
                      (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com")))))
-
           ;; Log in again with different attributes
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -563,11 +551,9 @@
                                                       :last_name "User"}
                                                      default-jwt-secret))]
           (is (sso.test-setup/successful-login? response)))
-
         ;; deactivate the user
         (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
         (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
-
         (let [response (client/client-real-response :get 302 "/auth/sso"
                                                     {:request-options {:redirect-strategy :none}}
                                                     :return_to default-redirect-uri
@@ -579,10 +565,11 @@
                                                      default-jwt-secret))]
           (is (sso.test-setup/successful-login? response))
           (is (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
-
         ;; deactivate the user again
         (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
         (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
+        ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
                       appearance.settings/site-name               (constantly "test")]
           (is (=? {:body "Sorry, but you'll need a test account to view this page. Please contact your administrator."}
@@ -773,6 +760,8 @@
                                                       :name "Tenant McTenantson"
                                                       :is_active false}
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
+          ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)]
             (testing "with user provisioning turned off"
               (testing "a new user cannot log into a deactivated tenant, and the tenant doesn't get activated"
@@ -918,6 +907,8 @@
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
+      ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
                     appearance.settings/site-name               (constantly "test")]
         (is (=? {:body "Sorry, but you'll need a test account to view this page. Please contact your administrator."}
@@ -952,20 +943,17 @@
                                                       "@attribute" "foo"}
                                                      default-jwt-secret))]
           (is (sso.test-setup/successful-login? response))
-
           (testing "scalar attributes are stringified, array attributes are joined with commas, unstringable values dropped"
             (is (= {"string_attr" "valid-string"
                     "number_attr" "42"
                     "boolean_attr" "false"
                     "array_attr" "item1,item2"}
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
-
           (testing "warning messages are logged for non-stringable values"
             (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
             (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value: null" %) (map :message (jwt-log-messages)))))
           (testing "warning messages are logged for `@`-prefixed keys"
             (is (some #(re-find #"Dropping attribute '@attribute', keys beginning with `@` are reserved" %) (map :message (jwt-log-messages)))))
-
           (testing "no warning for valid string attribute"
             (is (not (some #(re-find #"string_attr" %) (map :message (jwt-log-messages)))))))))))
 
@@ -1278,7 +1266,6 @@
                     (is (some? tenant))
                     (is (= {"plan" "enterprise" "region" "us-west"}
                            (:attributes tenant)))))))))))
-
     (testing "Existing tenant - new attributes added, existing preserved"
       (with-jwt-default-setup!
         (mt/with-additional-premium-features #{:tenants}
@@ -1305,7 +1292,6 @@
                       (is (= "enterprise" (get (:attributes tenant) "plan"))))
                     (testing "new 'region' attribute is added"
                       (is (= "us-east" (get (:attributes tenant) "region"))))))))))))
-
     (testing "Invalid @tenant.attributes is ignored"
       (mt/with-model-cleanup [:model/Tenant]
         (with-jwt-default-setup!

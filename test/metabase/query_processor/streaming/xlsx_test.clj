@@ -183,6 +183,19 @@
         (testing "Default currency formatting is dollar sign"
           (is (= "[$$]#,##0.00" (format-string {::mb.viz/currency-in-header false} price-col))))))))
 
+(deftest format-settings->format-string-currency-without-number-style-test
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Currency settings without an explicit number-style still produce a currency cell format (GDGT-2398)"
+      ;; A column that has currency formatting (currency / currency-style / in-cell) but is NOT currency-semantic and
+      ;; never had number-style "currency" persisted -- e.g. an aggregation, native, or model column that dropped its
+      ;; :type/Currency semantic type. CSV emits "$" here, so XLSX must too.
+      (let [non-currency-col {:base_type :type/Float, :effective_type :type/Float}]
+        (is (= "[$$]#,##0.00"
+               (format-string {::mb.viz/currency-in-header false
+                               ::mb.viz/currency-style     "symbol"
+                               ::mb.viz/currency           "USD"}
+                              non-currency-col)))))))
+
 (deftest format-settings->format-string-test-3b
   (mt/with-temporary-setting-values [custom-formatting {}]
     (testing "Currency formatting"
@@ -464,7 +477,6 @@
                                 {}
                                 [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]
                                 :parse-fn parse-format-strings)))))
-
     (testing "Misc format strings are included correctly in exports"
       (is (= ["[$€]#,##0.00"]
              (second (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
@@ -483,26 +495,24 @@
                                   [[#t "2020-03-28T10:12:06.681"]]
                                   :parse-fn parse-format-strings)))))))
 
-(deftest column-order-test
+(deftest ^:parallel column-order-test
   (testing "Column titles are ordered correctly in the output"
     (is (= ["Col1" "Col2"]
            (first (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}] {} []))))
     (is (= ["Col2" "Col1"]
            (first (xlsx-export [{:id 0, :name "Col2"} {:id 1, :name "Col1"}] {} [])))))
-
   (testing "Data in each row is reordered by output-order prior to export"
     (is (= [["b" "a"] ["d" "c"]]
            (rest (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
                               {:output-order [1 0]}
                               [["a" "b"] ["c" "d"]])))))
-
   (testing "Rows not included by index in output-order are excluded from export"
     (is (= [["b"] ["d"]]
            (rest (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
                               {:output-order [1]}
                               [["a" "b"] ["c" "d"]]))))))
 
-(deftest column-title-test
+(deftest ^:parallel column-title-test
   (testing "::mb.viz/column-title precedence over :display_name, which takes precendence over :name"
     (is (= ["Display name"]
            (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}] {} []))))
@@ -514,8 +524,9 @@
     (is (= ["Column title"]
            (first (xlsx-export [{:display_name "Display name", :name "Name"}]
                                {::mb.viz/column-settings {{::mb.viz/column-name "Name"} {::mb.viz/column-title "Column title"}}}
-                               [])))))
+                               []))))))
 
+(deftest ^:parallel column-title-test-2
   (testing "Currency is included in column title if necessary"
     ;; Dollar symbol is included by default if semantic type of column derives from :type/Currency
     (is (= ["Col ($)"]
@@ -572,8 +583,9 @@
                                                           {::mb.viz/currency "USD",
                                                            ::mb.viz/currency-style "code",
                                                            ::mb.viz/currency-in-header false}}}
-                               [])))))
+                               []))))))
 
+(deftest ^:parallel column-title-test-3
   (testing "If a col is remapped to a foreign key field, the title is taken from the viz settings for its fk_field_id (#18573)"
     (is (= ["Correct title"]
            (first (xlsx-export [{:id 0, :fk_field_id 1, :remapped_from "FIELD_1" :field_ref [:field 0]}]
@@ -581,14 +593,14 @@
                                                           {::mb.viz/field-id 1} {::mb.viz/column-title "Correct title"}}}
                                []))))))
 
-(deftest scale-test
+(deftest ^:parallel scale-test
   (testing "scale is applied to data prior to export"
     (is (= [2.0]
            (second (xlsx-export [{:id 0, :name "Col"}]
                                 {::mb.viz/column-settings {{::mb.viz/column-name "Col"} {::mb.viz/scale 2}}}
                                 [[1.0]]))))))
 
-(deftest misc-data-test
+(deftest ^:parallel misc-data-test
   (testing "nil values"
     (is (= [nil]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[nil]])))))
@@ -657,8 +669,8 @@
     (is (= [:DIV0]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[##-Inf]]))))))
 
-(deftest geographic-coordinates-test
-  (testing "Geograpic coordinates are correctly transformed"
+(deftest ^:parallel geographic-coordinates-test
+  (testing "Geographic coordinates are correctly transformed"
     (is (= ["12.34560000° E"
             "12.34560000° W"
             "12.34560000° N"
@@ -713,7 +725,7 @@
     (doseq [col-width widths]
       (is (not= default-width col-width)))))
 
-(deftest auto-sizing-test
+(deftest ^:parallel auto-sizing-test
   (testing "Columns in export are autosized to fit their content"
     (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
                  {}

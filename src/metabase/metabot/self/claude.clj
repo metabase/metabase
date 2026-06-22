@@ -260,9 +260,10 @@
          {:type "text"
           :text suffix}]))))
 
-(defn- anthropic-errors [res]
-  (let [status    (long (:status res 0))
-        error-msg (get-in res [:body :error :message])]
+(defn- anthropic-error-msg
+  "Canonical, status-specific Anthropic error message."
+  [res]
+  (let [status (long (:status res 0))]
     (case status
       401 (tru "Anthropic API key expired or invalid")
       403 (tru "Anthropic API key has insufficient permissions")
@@ -271,20 +272,19 @@
       429 (tru "Anthropic API has rate limited us")
       500 (tru "Anthropic API is not working but not saying why")
       529 (tru "Anthropic API is overloaded and is asking us to wait")
-      (if error-msg
-        (tru "Anthropic API error (HTTP {0}): {1}" status error-msg)
-        (tru "Anthropic API error (HTTP {0})" status)))))
+      (tru "Anthropic API error (HTTP {0})" status))))
 
 (defn list-models
   "List available Anthropic models.
-  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [api-key ai-proxy?]}]
-   (when (and api-key (str/blank? api-key))
+  ([{:keys [credentials ai-proxy?]}]
+   (when (and credentials (str/blank? (:api-key credentials)))
      (throw (core/missing-api-key-ex "Anthropic")))
    (try
      (let [auth   (core/resolve-auth "anthropic" "Anthropic"
-                                     (when-let [k (or (not-empty api-key) (not-empty (llm/llm-anthropic-api-key)))]
+                                     (when-let [k (or (not-empty (:api-key credentials))
+                                                      (not-empty (llm/llm-anthropic-api-key)))]
                                        {:url     (llm/llm-anthropic-api-base-url)
                                         :headers {"x-api-key" k}})
                                      ai-proxy?)
@@ -295,34 +295,57 @@
            models (reverse (sort-by :created_at (:data body)))]
        {:models (map #(select-keys % [:id :display_name]) models)})
      (catch Exception e
-       (core/rethrow-api-error! "anthropic" anthropic-errors e)))))
+       (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))
 
-(mu/defn claude-raw
-  "Perform a streaming request to Claude API."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
+(defn- model-supports-temperature?
+  "Whether `model` accepts an explicit `temperature` parameter.
+
+  Sampling parameters (`temperature`, `top_p`, `top_k`) were removed starting with Claude Opus 4.7.  Strips an
+  optional vendor prefix (e.g. Bedrock's `anthropic.`) before checking."
+  [model]
+  (let [model (str/replace-first (str model) #"^anthropic\." "")]
+    (not (or (str/starts-with? model "claude-fable")
+             (when-let [[_ major minor] (re-find #"^claude-opus-(\d+)(?:-(\d+))?" model)]
+               (let [major (parse-long major)
+                     minor (or (some-> minor parse-long) 0)]
+                 (or (> major 4)
+                     (and (= major 4) (>= minor 7)))))))))
+
+(mu/defn claude-request-body
+  "Build the Anthropic Messages API request body for an LLM request."
+  [{:keys [model system input tools schema tool_choice temperature max-tokens]
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
         all-tools (if (and all-tools (not schema))
                     (add-tools-cache-breakpoint all-tools)
-                    all-tools)
-        req       (cond-> {:model         model
-                           :max_tokens    (or max-tokens 4096)
-                           :stream        true
-                           :cache_control {:type "ephemeral"}
-                           :messages      messages}
-                    system            (assoc :system (system->cached-content-blocks system))
-                    all-tools         (assoc :tools all-tools)
-                    (and all-tools
-                         tool_choice) (assoc :tool_choice (case (name tool_choice)
-                                                            "auto"     {:type "auto"}
-                                                            "required" {:type "any"}))
-                    temperature       (assoc :temperature temperature)
-                    schema            (assoc :tool_choice {:type "tool"
-                                                           :name "structured_output"}
-                                             :tools [{:name         "structured_output"
-                                                      :description  "Output structured data"
-                                                      :input_schema schema}]))]
+                    all-tools)]
+    (cond-> {:model         model
+             :max_tokens    (or max-tokens 4096)
+             :stream        true
+             :cache_control {:type "ephemeral"}
+             :messages      messages}
+      system            (assoc :system (system->cached-content-blocks system))
+      all-tools         (assoc :tools all-tools)
+      schema            (assoc :tool_choice {:type "tool"
+                                             :name "structured_output"}
+                               :tools [{:name         "structured_output"
+                                        :description  "Output structured data"
+                                        :input_schema schema}])
+
+      (and all-tools tool_choice)
+      (assoc :tool_choice (case (name tool_choice)
+                            "auto"     {:type "auto"}
+                            "required" {:type "any"}))
+
+      (and temperature (model-supports-temperature? model))
+      (assoc :temperature temperature))))
+
+(mu/defn claude-raw
+  "Perform a streaming request to Claude API."
+  [{:keys [model input tools ai-proxy?] :as opts
+    :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
+  (let [req (claude-request-body opts)]
     (with-span :info {:name       :metabot.claude/request
                       :model      model
                       :msg-count  (count input)
@@ -347,7 +370,7 @@
                                      :url      "/v1/messages"
                                      :request  req})))
         (catch Exception e
-          (core/rethrow-api-error! "anthropic" anthropic-errors e))))))
+          (core/rethrow-api-error! "anthropic" anthropic-error-msg e))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"

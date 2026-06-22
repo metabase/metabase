@@ -6,6 +6,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -266,16 +267,29 @@
 
 ;;;; Embedding-service provider
 
+(defn- trim-trailing-slashes
+  [s]
+  (cond-> s
+    (string? s) (-> (str/trim)
+                    (str/replace #"/+$" ""))))
+
 (defn- embedding-service-resolve-config!
-  "Returns [endpoint api-key]. Throws if base url is not configured. When api key is not set
-  the ai service proxying is assumed. In that case premium-embedding-token is used for authentication."
+  "Returns [endpoint api-key]. When api key is not set or when service url is not set but
+  `llm.settings/ai-service-base-url` is set the ai service proxying is assumed. In that case premium-embedding-token
+  is used for authentication. Throws if neither base URL is configured."
   []
-  (let [base-url (semantic-settings/ee-embedding-service-base-url)
-        api-key  (semantic-settings/ee-embedding-service-api-key)]
-    (when-not base-url
-      (throw (ex-info "Embedding service base URL not configured"
-                      {:setting "ee-embedding-service-base-url"})))
-    [(str base-url "/v1/embeddings") api-key]))
+  (cond (string? (not-empty (semantic-settings/ee-embedding-service-base-url)))
+        [(str (trim-trailing-slashes (semantic-settings/ee-embedding-service-base-url)) "/v1/embeddings")
+         (semantic-settings/ee-embedding-service-api-key)]
+
+        (string? (not-empty (llm.settings/ai-service-base-url)))
+        [(str (trim-trailing-slashes (llm.settings/ai-service-base-url)) "/v1/embeddings")
+         nil]
+
+        :else
+        (throw (ex-info "Embedding service and ai service base URLs are not configured"
+                        {:settings ["ee-embedding-service-base-url"
+                                    "ai-service-base-url"]}))))
 
 (defmethod get-embedding "ai-service"
   [{:keys [model-name]} text & {:keys [record-tokens? type]}]
@@ -347,6 +361,33 @@
 (defmethod pull-model "openai" [_]
   (log/debug "OpenAI provider does not require pulling a model"))
 
+;;;; Query prefixes for asymmetric retrieval models
+
+(def ^:private model-family-query-prefixes
+  "Query prefixes for embedding-model families trained for asymmetric retrieval.
+  These models expect search queries — but not the indexed documents — to carry a fixed prefix."
+  ;; Patterns must be mutually exclusive: lookup scans entries in unspecified order.
+  ;; Keep patterns narrow: a false positive is unfixable without a code change, since the
+  ;; `ee-embedding-query-prefix` setting can only replace a matched prefix, never suppress it.
+  {#"(?i)snowflake-arctic-embed" "query: "})
+
+(defn- default-query-prefix
+  [model-name]
+  (when model-name
+    (some (fn [[pattern prefix]]
+            (when (re-find pattern model-name)
+              prefix))
+          model-family-query-prefixes)))
+
+(defn prefix-search-query
+  "Prepend the query prefix expected by `embedding-model` to `search-string`.
+  The `ee-embedding-query-prefix` setting overrides the per-model-family default and is prepended verbatim.
+  Returns `search-string` unchanged when neither applies."
+  [embedding-model search-string]
+  (str (or (not-empty (semantic-settings/ee-embedding-query-prefix))
+           (default-query-prefix (:model-name embedding-model)))
+       search-string))
+
 ;;;; Global embedding model
 
 (defn get-configured-model
@@ -390,9 +431,7 @@
                                        (get-embeddings-batch embedding-model batch-texts opts))
                           text-embedding-map (zipmap batch-texts embeddings)]
                       (process-fn text-embedding-map)))]
-
               (transduce (map-indexed process-batch) (partial merge-with +) batches))
-
             (let [embeddings (get-embeddings-batch embedding-model texts opts)
                   text-embedding-map (zipmap texts embeddings)]
               (process-fn text-embedding-map))))))))

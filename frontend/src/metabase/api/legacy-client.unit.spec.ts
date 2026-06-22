@@ -1,333 +1,95 @@
-import { LegacyApi } from "./legacy-client";
+import fetchMock from "fetch-mock";
 
-type OnBeforeRequestHandlerData = {
-  method: "GET" | "POST" | "PUT" | "DELETE";
-  url: string;
-  options: {
-    headers?: Record<string, string>;
-    hasBody: boolean;
-  } & Record<string, unknown>;
-};
+import { api } from "./client";
+import { GET, POST } from "./legacy-client";
 
-describe("api", () => {
-  describe("apiRequestManipulationMiddleware", () => {
-    let apiInstance: LegacyApi;
+describe("legacy-client", () => {
+  afterEach(() => {
+    fetchMock.removeRoutes().clearHistory();
+    api.beforeRequestHandlers = [];
+  });
 
-    beforeEach(() => {
-      apiInstance = new LegacyApi();
+  it("substitutes URL :tags from rawData and routes the remainder to the JSON body for POST", async () => {
+    fetchMock.post("path:/api/card/42/query", { rows: [] });
+
+    await POST("/api/card/:cardId/query")({
+      cardId: 42,
+      parameters: ["a"],
+      ignore_cache: true,
     });
 
-    it("should return the original data when there are no handlers", async () => {
-      const inputData = {
-        method: "GET" as const,
-        url: "/api/test",
-        options: { hasBody: false, json: true },
-        data: {},
-      };
+    const call = fetchMock.callHistory.lastCall();
+    expect(call?.url).toMatch(/\/api\/card\/42\/query$/);
+    expect(call?.url).not.toContain("parameters=");
+    expect(call?.options?.body).toBe(
+      JSON.stringify({ parameters: ["a"], ignore_cache: true }),
+    );
+  });
 
-      const result =
-        await apiInstance.apiRequestManipulationMiddleware(inputData);
+  it("substitutes URL :tags from rawData and routes the remainder to the querystring for GET", async () => {
+    fetchMock.get("path:/api/card/7/params/p/values", { values: [] });
 
-      expect(result).toEqual(inputData);
+    await GET("/api/card/:cardId/params/:paramId/values")({
+      cardId: 7,
+      paramId: "p",
+      limit: 10,
     });
 
-    it("should return the original data when handler returns void", async () => {
-      const inputData = {
-        method: "POST" as const,
-        url: "/api/test",
-        options: { hasBody: true, json: true, headers: { "X-Test": "value" } },
-        data: {},
-      };
+    const call = fetchMock.callHistory.lastCall();
+    expect(call?.url).toContain("/api/card/7/params/p/values");
+    expect(call?.url).toContain("limit=10");
+    expect(call?.options?.body).toBeFalsy();
+  });
 
-      // Mock a handler that returns void
-      const voidHandler = jest.fn().mockResolvedValue(undefined);
-      jest
-        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
-        .mockImplementation(async (data) => {
-          await voidHandler(data);
-          return data;
-        });
+  it("sends FormData bodies as-is and strips Content-Type", async () => {
+    fetchMock.post("path:/api/table/9/append-csv", { success: true });
 
-      const result =
-        await apiInstance.apiRequestManipulationMiddleware(inputData);
+    const formData = new FormData();
+    formData.append("file", new Blob(["a,b\n1,2"]), "x.csv");
 
-      expect(result).toEqual(inputData);
-      expect(voidHandler).toHaveBeenCalledWith(inputData);
-    });
+    await POST("/api/table/9/append-csv")(formData);
 
-    it("should update only the url when handler returns partial modification", async () => {
-      const inputData = {
-        method: "GET" as const,
-        url: "/api/original",
-        options: { hasBody: false, json: true },
-        data: {},
-      };
+    const call = fetchMock.callHistory.lastCall();
+    const sentHeaders = call?.options?.headers as
+      | Record<string, string>
+      | Headers
+      | undefined;
+    const contentType =
+      sentHeaders instanceof Headers
+        ? sentHeaders.get("Content-Type")
+        : sentHeaders?.["Content-Type"];
+    expect(contentType).toBeFalsy();
+  });
 
-      const expectedUrl = "/api/modified";
+  it("lets a middleware-overridden URL substitute :tag tokens from any rawData field (embed flow regression)", async () => {
+    // Regression for the guest-embed flow: legacy `CardApi.query(rawData)` is
+    // called with `{ token, parameters, ... }`. The embed URL override
+    // middleware rewrites `/api/card/:cardId/query` to
+    // `/api/embed/card/:token/query`, and `:token` must be filled from the
+    // (body-shaped) `token` field of the bag — not just from URL params.
+    fetchMock.get("path:/api/embed/card/SOME_JWT/query", { rows: [] });
 
-      jest
-        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
-        .mockImplementation(async (data) => {
-          // Simulate handler that only modifies URL
-          const typedData = data as OnBeforeRequestHandlerData;
-          return {
-            method: typedData.method,
-            url: expectedUrl,
-            options: typedData.options,
-          };
-        });
-
-      const result =
-        await apiInstance.apiRequestManipulationMiddleware(inputData);
-
-      expect(result).toEqual({
-        method: inputData.method,
-        url: expectedUrl,
-        options: inputData.options,
-      });
-    });
-
-    it("should update method, url, and options when handler returns full modification", async () => {
-      const inputData = {
-        method: "GET" as const,
-        url: "/api/original",
-        options: { hasBody: false, json: true },
-        data: {},
-      };
-
-      const modifications = {
-        method: "POST" as const,
-        url: "/api/modified",
-        options: { hasBody: true, json: false, custom: "value" },
-      };
-
-      jest
-        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
-        .mockImplementation(async () => modifications);
-
-      const result =
-        await apiInstance.apiRequestManipulationMiddleware(inputData);
-
-      expect(result).toEqual(modifications);
-    });
-
-    it("should merge options properly when handler returns partial options", async () => {
-      const inputData = {
-        method: "POST" as const,
-        url: "/api/test",
-        options: {
-          hasBody: true,
-          json: true,
-          headers: { "X-Original": "value" },
-          retry: true,
-        },
-        data: {},
-      };
-
-      const newHeaders = { "X-Modified": "new-value" };
-
-      jest
-        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
-        .mockImplementation(async (data) => {
-          const typedData = data as OnBeforeRequestHandlerData;
-          return {
-            method: typedData.method,
-            url: typedData.url,
-            options: {
-              ...typedData.options,
-              headers: { ...typedData.options.headers, ...newHeaders },
-            },
-          };
-        });
-
-      const result =
-        await apiInstance.apiRequestManipulationMiddleware(inputData);
-
-      expect(result.options.headers).toEqual({
-        "X-Original": "value",
-        "X-Modified": "new-value",
-      });
-      expect(result.options.hasBody).toBe(true);
-      expect(result.options.json).toBe(true);
-      expect(result.options.retry).toBe(true);
-    });
-
-    it("should execute multiple handlers in order", async () => {
-      const inputData = {
-        method: "GET" as const,
-        url: "/api/start",
-        options: { hasBody: false, counter: 0 },
-        data: {},
-      };
-
-      const executionOrder: number[] = [];
-
-      const handler1 = jest.fn(
-        async (
-          data: OnBeforeRequestHandlerData & { options: { counter: number } },
-        ) => {
-          executionOrder.push(1);
-          return {
-            ...data,
-            url: data.url + "/step1",
-            options: { ...data.options, counter: data.options.counter + 1 },
-          };
-        },
-      );
-
-      const handler2 = jest.fn(
-        async (
-          data: OnBeforeRequestHandlerData & { options: { counter: number } },
-        ) => {
-          executionOrder.push(2);
-          return {
-            ...data,
-            url: data.url + "/step2",
-            options: { ...data.options, counter: data.options.counter + 10 },
-          };
-        },
-      );
-
-      const handler3 = jest.fn(
-        async (
-          data: OnBeforeRequestHandlerData & { options: { counter: number } },
-        ) => {
-          executionOrder.push(3);
-          return {
-            ...data,
-            url: data.url + "/step3",
-            options: { ...data.options, counter: data.options.counter + 100 },
-          };
-        },
-      );
-
-      // Mock the middleware to use our handlers
-      jest
-        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
-        .mockImplementation(async (data) => {
-          let currentData = data as OnBeforeRequestHandlerData & {
-            options: { counter: number };
-          };
-          for (const handler of [handler1, handler2, handler3]) {
-            const result = await handler(currentData);
-            if (result) {
-              currentData = result;
-            }
-          }
-          return currentData;
-        });
-
-      const result =
-        await apiInstance.apiRequestManipulationMiddleware(inputData);
-
-      expect(executionOrder).toEqual([1, 2, 3]);
-      expect(result.url).toBe("/api/start/step1/step2/step3");
-      expect(result.options.counter).toBe(111); // 0 + 1 + 10 + 100
-      expect(handler1).toHaveBeenCalledWith(
-        expect.objectContaining({ url: "/api/start" }),
-      );
-      expect(handler2).toHaveBeenCalledWith(
-        expect.objectContaining({ url: "/api/start/step1" }),
-      );
-      expect(handler3).toHaveBeenCalledWith(
-        expect.objectContaining({ url: "/api/start/step1/step2" }),
-      );
-    });
-
-    it("should handle async handlers correctly", async () => {
-      const inputData = {
-        method: "POST" as const,
-        url: "/api/async",
-        options: { hasBody: true, json: true },
-        data: {},
-      };
-
-      const asyncHandler = jest.fn(async (data: OnBeforeRequestHandlerData) => {
-        // Simulate async operation
-        await new Promise((resolve) => setTimeout(resolve, 10));
+    api.beforeRequestHandlers.push(async (config) => {
+      if (config.url === "/api/card/:cardId/query") {
         return {
-          ...data,
-          url: "/api/async-modified",
+          ...config,
+          method: "GET" as const,
+          url: "/api/embed/card/:token/query",
         };
-      });
-
-      jest
-        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
-        .mockImplementation(async (data) => {
-          return await asyncHandler(data as OnBeforeRequestHandlerData);
-        });
-
-      const result =
-        await apiInstance.apiRequestManipulationMiddleware(inputData);
-
-      expect(asyncHandler).toHaveBeenCalled();
-      expect(result.url).toBe("/api/async-modified");
+      }
+      return config;
     });
 
-    it("should handle handler that only returns options", async () => {
-      const inputData = {
-        method: "GET" as const,
-        url: "/api/test",
-        options: { hasBody: false },
-        data: {},
-      };
-
-      jest
-        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
-        .mockImplementation(async (data) => {
-          const typedData = data as OnBeforeRequestHandlerData;
-          return {
-            method: typedData.method,
-            url: typedData.url,
-            options: { ...typedData.options, newOption: "added" },
-          };
-        });
-
-      const result =
-        await apiInstance.apiRequestManipulationMiddleware(inputData);
-
-      expect(result.method).toBe("GET");
-      expect(result.url).toBe("/api/test");
-      expect(result.options).toEqual({ hasBody: false, newOption: "added" });
+    await POST("/api/card/:cardId/query")({
+      token: "SOME_JWT",
+      parameters: "[]",
     });
 
-    it("should preserve all original options when handler does not modify them", async () => {
-      const complexOptions = {
-        hasBody: true,
-        json: true,
-        headers: { "X-Custom": "header" },
-        retry: true,
-        retryCount: 5,
-        formData: true,
-        noEvent: false,
-        transformResponse: jest.fn(),
-      };
-
-      const inputData = {
-        method: "POST" as const,
-        url: "/api/complex",
-        options: complexOptions,
-        data: {},
-      };
-
-      jest
-        .spyOn(apiInstance as any, "apiRequestManipulationMiddleware")
-        .mockImplementation(async (data) => {
-          const typedData = data as OnBeforeRequestHandlerData;
-          return {
-            ...typedData,
-            url: "/api/modified-url",
-          };
-        });
-
-      const result =
-        await apiInstance.apiRequestManipulationMiddleware(inputData);
-
-      expect(result.url).toBe("/api/modified-url");
-      expect(result.options).toEqual(complexOptions);
-      expect(result.options.transformResponse).toBe(
-        complexOptions.transformResponse,
-      );
-    });
+    const call = fetchMock.callHistory.lastCall();
+    expect(call?.url).toMatch(/\/api\/embed\/card\/SOME_JWT\/query/);
+    // The override-changed method is GET, so leftover bag fields are folded
+    // into the querystring (a GET request cannot carry a body).
+    expect(call?.url).toContain("parameters=");
+    expect(call?.options?.body).toBeFalsy();
   });
 });

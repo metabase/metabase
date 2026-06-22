@@ -6,12 +6,14 @@ import {
   useGetCollectionQuery,
   useGetDashboardQuery,
 } from "metabase/api";
-import type { MoveDestination } from "metabase/collections/types";
-import { coerceCollectionId } from "metabase/collections/utils";
+import type { MoveDestination } from "metabase/common/collections/types";
+import { coerceCollectionId } from "metabase/common/collections/utils";
+import { Link } from "metabase/common/components/Link";
+import { Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Card, CollectionId, DashboardId } from "metabase-types/api";
 
-import { DestinationLink, StyledIcon, ToastRoot } from "./MoveCardToast.styled";
+import S from "./MoveCardToast.module.css";
 
 type MoveCardToastProps = {
   card: Card;
@@ -23,10 +25,10 @@ function MoveCardToast({ card, destination }: MoveCardToastProps) {
 
   if (!destination) {
     return (
-      <ToastRoot>
-        <StyledIcon name="warning" />
+      <Flex align="center">
+        <Icon name="warning" color="text-primary-inverse" mr="sm" />
         {t`Something went wrong`}
-      </ToastRoot>
+      </Flex>
     );
   }
 
@@ -41,14 +43,14 @@ function MoveCardToast({ card, destination }: MoveCardToastProps) {
     );
 
   return (
-    <ToastRoot data-testid="move-card-toast">
-      <StyledIcon name="collection" />
+    <Flex align="center" data-testid="move-card-toast">
+      <Icon name="collection" color="text-primary-inverse" mr="sm" />
       {match(type)
         .with("question", () => jt`Question moved to ${link}`)
         .with("model", () => jt`Model moved to ${link}`)
         .with("metric", () => jt`Metric moved to ${link}`)
         .exhaustive()}
-    </ToastRoot>
+    </Flex>
   );
 }
 
@@ -62,9 +64,13 @@ const DashboardLink = ({ dashboardId }: { dashboardId: DashboardId }) => {
   }
 
   return (
-    <DestinationLink to={Urls.dashboard(dashboard)}>
+    <Link
+      variant="brand"
+      className={S.destinationLink}
+      to={Urls.dashboard(dashboard)}
+    >
       {dashboard.name}
-    </DestinationLink>
+    </Link>
   );
 };
 
@@ -78,9 +84,13 @@ const CollectionLink = ({ collectionId }: { collectionId: CollectionId }) => {
   }
 
   return (
-    <DestinationLink to={Urls.collection(collection)}>
+    <Link
+      variant="brand"
+      className={S.destinationLink}
+      to={Urls.collection(collection)}
+    >
       {collection.name}
-    </DestinationLink>
+    </Link>
   );
 };
 

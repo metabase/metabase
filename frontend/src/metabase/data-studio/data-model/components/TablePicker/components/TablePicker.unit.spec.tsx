@@ -382,6 +382,44 @@ describe("TablePicker", () => {
         databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
       });
     });
+
+    it("shows the visibility layer for each table", async () => {
+      const hiddenTable = createMockTable({
+        id: nextId(),
+        name: "HIDDEN_TABLE",
+        display_name: "Hidden Table",
+        schema: "public",
+        data_layer: "hidden",
+        fields: [],
+      });
+      const finalTable = createMockTable({
+        id: nextId(),
+        name: "FINAL_TABLE",
+        display_name: "Final Table",
+        schema: "public",
+        data_layer: "final",
+        fields: [],
+      });
+      const layerDatabase = createMockDatabase({
+        id: nextId(),
+        name: "LAYER_DATABASE",
+        tables: [hiddenTable, finalTable],
+      });
+
+      setup({ databases: [layerDatabase] });
+      await waitLoading();
+
+      expect(
+        await screen.findByText(hiddenTable.display_name),
+      ).toBeInTheDocument();
+      expect(item(finalTable)).toBeInTheDocument();
+
+      const labels = screen
+        .getAllByTestId("table-data-layer")
+        .map((cell) => cell.textContent);
+      expect(labels).toContain("Hidden");
+      expect(labels).toContain("Final");
+    });
   });
 
   describe("Search view", () => {

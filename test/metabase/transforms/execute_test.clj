@@ -237,7 +237,6 @@
                                                                :source {:type  :query
                                                                         :query query}
                                                                :target target-table}]
-
                       (is (thrown-with-msg?
                            clojure.lang.ExceptionInfo
                            #"ERROR: permission denied for database transforms-test"
@@ -368,7 +367,9 @@
     (let [calls (atom [])
           record-call! (fn [call-name] (swap! calls conj call-name))
           mock-query "CREATE TABLE test_schema.test_table AS (SELECT 1 AS x);"
-          mock-rows [[1]]
+          ;; `execute-raw-queries!` yields one `{:rows-affected N}` map per statement; `run-transform!`
+          ;; returns `(last …)`, which must satisfy `::driver/run-transform-result`.
+          mock-rows [{:rows-affected 1}]
           transform-details {:output-table :test_schema/test_table
                              :database {:id 1}
                              :transform-type :table}]

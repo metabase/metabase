@@ -12,6 +12,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
@@ -32,7 +33,7 @@
 
   This is not the same as deps.dependency-types/dependency-types, because tables shouldn't be backfilled.  Instead, links
   involving tables are found via analysis of the other side of the relation."
-  [:card :transform :snippet :dashboard :document :sandbox :segment :measure])
+  (vec deps.dependency-types/backfillable-dependency-types))
 
 (def ^:private max-retries 5)
 

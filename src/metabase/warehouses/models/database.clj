@@ -164,6 +164,16 @@
   [_db-id]
   nil)
 
+(defenterprise mark-transforms-stale-on-database-delete!
+  "Hook called from the `:model/Database` before-delete. Transforms whose `source_database_id`
+   is about to be SET NULL by the FK action survive the delete (so the analyst can read the
+   SQL/Python and rebuild against a new DB), but their dependency-analysis findings need to
+   be re-run so they surface on `/data-studio/dependency-diagnostics/broken`. OSS is a no-op
+   (no dependencies module)."
+  metabase-enterprise.dependencies.events
+  [_db-id]
+  nil)
+
 (defn- can-write?
   [db-id]
   (or (some-> db-id db-id->router-db-id can-write?)
@@ -427,6 +437,11 @@
   ;; Runs before any other cleanup so we don't partially unwind sync tasks / secrets
   ;; / fields for a Database whose deletion is about to be refused.
   (reconcile-workspace-database-refs-before-delete! id)
+  ;; Mark transforms with this DB as source as stale so dependency-diagnostics re-analyzes
+  ;; them after the row's gone. Must run BEFORE the FK SET NULL fires (which happens when
+  ;; the database row is deleted below) so we can still resolve the affected transforms by
+  ;; source_database_id.
+  (mark-transforms-stale-on-database-delete! id)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
@@ -644,7 +659,7 @@
                                                     ::serdes/skip))
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub
                  :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
@@ -662,6 +677,7 @@
                  :is_full_sync     true
                  :is_on_demand     false
                  :is_sample        false
+                 :is_stub          false
                  :uploads_enabled  false}}))
 
 (def ^:dynamic *include-h2-in-extract?*

@@ -36,7 +36,6 @@
       (is (str/includes? (:chart-content result) "line"))
       (is (str/starts-with? (:chart-link result) "metabase://chart/"))
       (is (contains? result :instructions))))
-
   (testing "edits chart to various types"
     (let [mp (mt/metadata-provider)
           charts-state {"chart-456" {:chart-id "chart-456"
@@ -48,7 +47,6 @@
                                  :charts-state charts-state})]
           (is (= new-type (:chart-type result))
               (str "New chart type " new-type " should be set correctly"))))))
-
   (testing "throws error for invalid chart type"
     (let [charts-state {"chart-789" {:chart-id "chart-789"}}]
       (is (thrown-with-msg?
@@ -58,7 +56,6 @@
             {:chart-id "chart-789"
              :new-chart-type :invalid-type
              :charts-state charts-state})))))
-
   (testing "throws error when chart not found"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -94,6 +91,7 @@
           external-query (walk/keywordize-keys query-data)
           construct-result (tools.construct/construct-notebook-query-tool
                             {:query         external-query
+                             :title         "Counts by category"
                              :visualization {:chart_type "bar"}})
           query-id (get-in construct-result [:structured-output :query-id])
           query (get-in construct-result [:structured-output :query])
@@ -107,7 +105,8 @@
         (testing "Edit chart can handle charts created using construct-notebook-query-tool"
           ;; (3) call the edit-chart-tool which uses the shared memory
           (let [edit-result (tools.charts/edit-chart-tool {:chart_id chart-id
-                                                           :new_viz_settings {:chart_type "pie"}})
+                                                           :new_viz_settings {:chart_type "pie"}
+                                                           :title "Counts by category"})
                 new-chart-id (get-in edit-result [:structured-output :chart-id])
                 new-chart-in-memory (get (tools.shared/current-charts-state) new-chart-id)]
             (is (= :pie
@@ -141,6 +140,7 @@
             external-query (walk/keywordize-keys query-data)
             result (tools.construct/construct-notebook-query-tool
                     {:query         external-query
+                     :title         "Test chart"
                      :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])]
         (testing "order-by inner clause is now an aggregation reference, not :sum"
@@ -184,6 +184,7 @@
             external-query (walk/keywordize-keys query-data)
             result (tools.construct/construct-notebook-query-tool
                     {:query         external-query
+                     :title         "Test chart"
                      :visualization {:chart_type "bar"}})]
         (testing "tool returns a clear, agent-targeted error rather than producing a chart"
           ;; The outer `construct-notebook-query-tool` catches the ex-info and returns
@@ -216,6 +217,7 @@
             external-query (walk/keywordize-keys query-data)
             result (tools.construct/construct-notebook-query-tool
                     {:query         external-query
+                     :title         "Test chart"
                      :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])]
@@ -270,30 +272,26 @@
 
             construct-result (tools.construct/construct-notebook-query-tool
                               {:query         external-query
+                               :title         "Test chart"
                                :visualization {:chart_type "bar"}})
             query (get-in construct-result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])
             field-opts (second breakout-field)]
-
         (testing "entity_details surfaced the FK target - sanity-check the inputs we fed in"
           (is (= ["Product ID" "PRODUCTS"]
                  [(:display_name product-id-field)
                   (nth products-target-fk 2)])
               "Product ID's fk_target_portable_fk should point at PRODUCTS"))
-
         (testing "repair resolved the portable breakout to PRODUCTS.CATEGORY"
           (is (= (mt/id :products :category) (nth breakout-field 2))))
-
         (testing "repair auto-wired :source-field to ORDERS.PRODUCT_ID"
           (is (= (mt/id :orders :product_id) (:source-field field-opts))))
-
         (testing "query compiles to SQL that joins ORDERS and PRODUCTS"
           (let [{:keys [query]} (qp.compile/compile query)]
             (is (string? query))
             (is (str/includes? query "JOIN"))
             (is (str/includes? (u/upper-case-en query) "PRODUCTS"))
             (is (str/includes? (u/upper-case-en query) "ORDERS"))))
-
         (testing "query executes and returns grouped rows (categories + counts)"
           (let [qp-result (qp/process-query query)
                 rows      (mt/rows qp-result)]

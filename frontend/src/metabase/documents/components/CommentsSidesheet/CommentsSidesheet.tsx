@@ -36,7 +36,7 @@ type SidesheetTab = "open" | "resolved";
 
 interface Props {
   params?: {
-    childTargetId: string;
+    childTargetId?: string;
   };
   onClose: () => void;
 }
@@ -192,7 +192,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
       w="30rem"
       className={Animation.slideLeft}
       style={{
-        borderLeft: "1px solid var(--mb-color-border)",
+        borderLeft: "1px solid var(--mb-color-border-neutral)",
       }}
       data-testid="comments-sidebar"
     >

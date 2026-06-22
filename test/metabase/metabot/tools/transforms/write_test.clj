@@ -7,7 +7,7 @@
 
 ;;; Edit Application Tests
 
-(deftest apply-edits-test
+(deftest ^:parallel apply-edits-test
   (testing "replace mode replaces entire content"
     (let [memory-atom (atom {:state {}})
           result (transforms-write/write-transform-sql
@@ -18,8 +18,9 @@
                    :memory-atom memory-atom})]
       (is (= "SELECT * FROM users"
              (some-> (get-in result [:structured-output :transform :source :query])
-                     lib/raw-native-query)))))
+                     lib/raw-native-query))))))
 
+(deftest ^:parallel apply-edits-test-2
   (testing "edit mode with single edit"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1
@@ -34,8 +35,9 @@
                    :memory-atom memory-atom})]
       (is (= "SELECT id FROM customers"
              (some-> (get-in result [:structured-output :transform :source :query])
-                     lib/raw-native-query)))))
+                     lib/raw-native-query))))))
 
+(deftest ^:parallel apply-edits-test-3
   (testing "edit mode with multiple edits"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1
@@ -51,8 +53,9 @@
                    :memory-atom memory-atom})]
       (is (= "SELECT col_x, col_y FROM table2"
              (some-> (get-in result [:structured-output :transform :source :query])
-                     lib/raw-native-query)))))
+                     lib/raw-native-query))))))
 
+(deftest ^:parallel apply-edits-test-4
   (testing "edit mode fails when text not found"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1
@@ -67,8 +70,9 @@
              :edit_action {:mode "edit"
                            :edits [{:old_string "nonexistent"
                                     :new_string "replacement"}]}
-             :memory-atom memory-atom})))))
+             :memory-atom memory-atom}))))))
 
+(deftest ^:parallel apply-edits-test-5
   (testing "edit mode fails for ambiguous matches without replace_all"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1
@@ -83,8 +87,9 @@
              :edit_action {:mode "edit"
                            :edits [{:old_string "foo"
                                     :new_string "bar"}]}
-             :memory-atom memory-atom})))))
+             :memory-atom memory-atom}))))))
 
+(deftest ^:parallel apply-edits-test-6
   (testing "edit mode with replace_all replaces all occurrences"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1
@@ -104,7 +109,7 @@
 
 ;;; Transform Creation Tests
 
-(deftest create-fresh-transform-test
+(deftest ^:parallel create-fresh-transform-test
   (testing "creates fresh SQL transform when no transform_id"
     (let [memory-atom (atom {:state {}})
           result (transforms-write/write-transform-sql
@@ -121,7 +126,7 @@
 
 ;;; Data Parts Tests
 
-(deftest data-parts-test
+(deftest ^:parallel data-parts-test
   (testing "returns transform_suggestion data part"
     (let [memory-atom (atom {:state {}})
           result (transforms-write/write-transform-sql
@@ -138,7 +143,7 @@
 
 ;;; Memory Storage Tests
 
-(deftest memory-storage-test
+(deftest ^:parallel memory-storage-test
   (testing "stores updated transform in memory when transform_id provided"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1 :name "Existing" :source {:query (lib/native-query mp "SELECT 1")}}
@@ -149,7 +154,6 @@
               :memory-atom memory-atom})]
       (is (= "SELECT 2" (some-> (get-in @memory-atom [:state :transforms "1" :source :query])
                                 lib/raw-native-query)))))
-
   (testing "does not store in memory when no transform_id"
     (let [memory-atom (atom {:state {:transforms {}}})
           _ (transforms-write/write-transform-sql
@@ -161,7 +165,7 @@
 
 ;;; Error Handling Tests
 
-(deftest error-handling-test
+(deftest ^:parallel error-handling-test
   (testing "fails when transform_id not found"
     (let [memory-atom (atom {:state {:transforms {}}})]
       (is (thrown-with-msg?
@@ -171,7 +175,6 @@
             {:transform_id 999
              :edit_action {:mode "replace" :new_content "SELECT 1"}
              :memory-atom memory-atom})))))
-
   (testing "fails when edit_action invalid"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1 :name "Existing" :source {:query (lib/native-query mp "select 1")}}

@@ -2,16 +2,12 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { useSelector } from "metabase/redux";
 import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
 
-import {
-  canManageWorkspaceInstance,
-  getIsDevelopmentMode,
-} from "../../selectors";
-import { WorkspaceInstancePage } from "../WorkspaceInstancePage";
+import { canManageWorkspaces } from "../../selectors";
+import { CurrentWorkspacePage } from "../CurrentWorkspacePage";
 import { WorkspaceListPage } from "../WorkspaceListPage";
 
 export function WorkspaceIndexPage() {
-  const canManageInstance = useSelector(canManageWorkspaceInstance);
-  const isDevelopmentMode = useSelector(getIsDevelopmentMode);
+  const canManageInstance = useSelector(canManageWorkspaces);
 
   const {
     data: workspace,
@@ -23,8 +19,8 @@ export function WorkspaceIndexPage() {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  if (workspace != null || isDevelopmentMode) {
-    return <WorkspaceInstancePage />;
+  if (workspace != null && canManageInstance) {
+    return <CurrentWorkspacePage />;
   }
 
   return <WorkspaceListPage />;

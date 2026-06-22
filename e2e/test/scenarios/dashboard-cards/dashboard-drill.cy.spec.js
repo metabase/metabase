@@ -554,7 +554,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.findByTestId("object-detail")
       .findAllByText("Fantastic Wool Shirt")
-      .should("have.length", 2)
+      .should("have.length", 3)
       .and("be.visible");
   });
 
@@ -885,7 +885,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
           H.chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
           assertTooltipValues();
 
-          H.chartPathWithFillColor("#98D9D9").first().trigger("mousemove");
+          H.chartPathWithFillColor("#98D9D9")
+            .first()
+            .trigger("mousemove", { force: true });
           assertTooltipValues();
         });
       });

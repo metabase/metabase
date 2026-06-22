@@ -40,6 +40,15 @@
                         :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
+(deftest ^:parallel claude-error-event-uses-canonical-error-shape-test
+  (testing "an `error` SSE event becomes an :error part keyed by :error (read by the wire serializer + persistence)"
+    (let [raw   [{:type "message_start" :message {:id "msg_1" :model "claude-haiku-4-5"}}
+                 {:type "error" :error {:type "overloaded_error" :message "Overloaded"}}]
+          parts (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
+          err   (m/find-first #(= :error (:type %)) parts)]
+      (is (=? {:message "Overloaded"} (:error err)))
+      (is (= "3:\"Overloaded\"" (self.core/format-error-line err))))))
+
 (deftest ^:parallel claude-tool-input-conv-test
   (let [raw-chunks (fixture "claude-tool-input"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
@@ -126,7 +135,6 @@
                        :cacheCreationTokens 250
                        :cacheReadTokens     4200}}
               usage))))
-
   (testing "missing cache fields default to 0"
     (let [events [{:type "message_start"
                    :message {:id    "msg-2"
@@ -242,7 +250,6 @@
                      :headers {"x-api-key" "sk-ant-byok"}
                      :body    string?}
                     (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
-
         (testing "Uses ai proxy when explicitly requested"
           (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
                         self.core/sse-reducible             identity
@@ -254,14 +261,12 @@
                      :body    string?}
                     (claude/claude-raw {:input [{:role :user :content "hi"}]
                                         :ai-proxy? true})))))
-
         (testing "Does not fall back to ai proxy when BYOK is missing"
           (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Anthropic API key is set"
                  (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
-
         (testing "Throws an error if nothing is defined"
           (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
             (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
@@ -291,11 +296,9 @@
           (is (= 2 (count (:tools body))))
           (is (not (contains? t1 :cache_control)))
           (is (= {:type "ephemeral"} (:cache_control t2)))))
-
       (testing "no :tools key in request when no tools passed"
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :tools)))))
-
       (testing "no cache_control on structured-output path (schema set)"
         (let [body (capture-claude-request-body!
                     {:input  input
@@ -315,7 +318,6 @@
                                 {:input  input
                                  :system "You are a helpful assistant."
                                  :tools  [(metabot.tu/get-time-tool)]})))))
-
       (testing "top-level cache_control is set on the structured-output path too"
         (is (= {:type "ephemeral"}
                (:cache_control (capture-claude-request-body!
@@ -333,7 +335,6 @@
                    :text          "You are a helpful assistant."
                    :cache_control {:type "ephemeral"}}]
                  (:system body)))))
-
       (testing "system prompt with sentinel is split into cached prefix + uncached suffix"
         (let [body (capture-claude-request-body!
                     {:input  input
@@ -344,7 +345,6 @@
                   {:type "text"
                    :text "Dynamic suffix content."}]
                  (:system body)))))
-
       (testing "no :system key when system is not provided"
         (let [body (capture-claude-request-body! {:input input})]
           (is (not (contains? body :system))))))))
@@ -384,7 +384,6 @@
                                                      {:body "{\"data\":[]}"})]
             (is (= {:models []}
                    (claude/list-models {})))))
-
         (testing "Uses ai proxy when explicitly requested"
           (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)
                                       http/request                        (fn [req]
@@ -396,14 +395,12 @@
                                                                             {:body "{\"data\":[]}"})]
             (is (= {:models []}
                    (claude/list-models {:ai-proxy? true})))))
-
         (testing "Does not fall back to ai proxy when BYOK is missing"
           (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Anthropic API key is set"
                  (claude/list-models {})))))
-
         (testing "Throws an error if nothing is defined"
           (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
             (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
@@ -411,3 +408,36 @@
                    clojure.lang.ExceptionInfo
                    #"No Anthropic API key is set"
                    (claude/list-models {}))))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; temperature support tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel model-supports-temperature?-test
+  (testing "models that accept an explicit temperature"
+    (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
+                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
+      (is (true? (#'claude/model-supports-temperature? model))
+          model)))
+  (testing "sampling parameters were removed starting with Opus 4.7 and on Fable models"
+    (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
+                   "claude-opus-5" "claude-opus-5-0" "claude-fable-5"]]
+      (is (false? (#'claude/model-supports-temperature? model))
+          model))))
+
+(deftest ^:parallel model-supports-temperature?-bedrock-prefixed-test
+  (testing "Bedrock mantle ids carry an anthropic. vendor prefix that is stripped before the check"
+    (doseq [model ["anthropic.claude-opus-4-8" "anthropic.claude-opus-4-7" "anthropic.claude-fable-5"]]
+      (is (false? (#'claude/model-supports-temperature? model))
+          model))
+    (is (true? (#'claude/model-supports-temperature? "anthropic.claude-haiku-4-5")))))
+
+(deftest ^:parallel temperature-omitted-for-removed-sampling-models-test
+  (let [request-body #(claude/claude-request-body {:model       %
+                                                   :input       [{:role :user :content "hi"}]
+                                                   :temperature 0.3})]
+    (testing "temperature is sent for models that accept it"
+      (is (= 0.3 (:temperature (request-body "claude-haiku-4-5")))))
+    (testing "temperature is omitted for models that reject sampling parameters"
+      (is (not (contains? (request-body "claude-opus-4-8") :temperature)))
+      (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))))

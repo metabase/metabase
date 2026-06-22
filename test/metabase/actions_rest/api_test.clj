@@ -437,7 +437,6 @@
                   (is (= uuid
                          (:uuid (mt/user-http-request :crowberto :post 200
                                                       (format "action/%d/public_link" action-id)))))))))
-
           (testing "We cannot share an archived action"
             (mt/with-actions [{:keys [action-id]} (assoc unshared-action-opts :archived true)]
               (is (= "Not found."
@@ -448,17 +447,14 @@
               (mt/with-temporary-setting-values [enable-public-sharing false]
                 (is (= "Public sharing is not enabled."
                        (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id))))))
-
             (testing "We *cannot* share an action if actions are disabled"
               (mt/with-actions-disabled
                 (is (= "Actions are not enabled."
                        (:cause
                         (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id)))))))
-
             (testing "We get a 404 if the Action doesn't exist"
               (is (= "Not found."
                      (mt/user-http-request :crowberto :post 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))
-
         (testing "We *cannot* share an action if we aren't admins"
           (mt/with-actions [{:keys [action-id]} unshared-action-opts]
             (is (= "You don't have permissions to do that."
@@ -479,27 +475,70 @@
               (mt/user-http-request :crowberto :delete 204 (format "action/%d/public_link" action-id))
               (is (= false
                      (t2/exists? :model/Action :id action-id, :public_uuid (:public_uuid action-opts)))))))
-
         (testing "Test that we cannot unshare an action if it's archived"
           (let [action-opts (merge {:archived true} (shared-action-opts))]
             (mt/with-actions [{:keys [action-id]} action-opts]
               (is (= "Not found."
                      (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id)))))))
-
         (testing "Test that we *cannot* unshare a action if we are not admins"
           (let [action-opts (shared-action-opts)]
             (mt/with-actions [{:keys [action-id]} action-opts]
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :delete 403 (format "action/%d/public_link" action-id)))))))
-
         (testing "Test that we get a 404 if Action isn't shared"
           (mt/with-actions [{:keys [action-id]} unshared-action-opts]
             (is (= "Not found."
                    (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id))))))
-
         (testing "Test that we get a 404 if Action doesn't exist"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))))
+
+(deftest remap-parameter-keys-test
+  (testing "remap-parameter-keys translates incoming parameter keys to the destination parameter's :id"
+    (let [action {:parameters [{:id "d800e41d-edde-49cb-b63b-2386aba34334"
+                                :slug "id"
+                                :name "ID"}
+                               {:id "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b"
+                                :slug "discount"
+                                :name "Discount"}]}]
+      (testing "slug-keyed input is remapped to :id"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (#'api.action/remap-parameter-keys action
+                                                  {"id" 1 "discount" 0.1}))))
+      (testing "already-:id-keyed input is passed through unchanged"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (#'api.action/remap-parameter-keys
+                action
+                {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                 "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}))))
+      (testing "display-name keys (`:name`) are NOT accepted — they pass through unchanged"
+        (is (= {"ID" 1 "Discount" 0.1}
+               (#'api.action/remap-parameter-keys action
+                                                  {"ID" 1 "Discount" 0.1}))))
+      (testing "unknown keys pass through unchanged so downstream validation still fires"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "bogus" 42}
+               (#'api.action/remap-parameter-keys action
+                                                  {"id" 1 "bogus" 42}))))
+      (testing "a mix of :id and :slug keys resolve together"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (#'api.action/remap-parameter-keys
+                action
+                {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                 "discount" 0.1}))))
+      (testing "empty parameters map → empty result"
+        (is (= {}
+               (#'api.action/remap-parameter-keys action {}))))
+      (testing "implicit-action style (no :slug) — :id-keyed input still passes through"
+        (let [implicit-action {:parameters [{:id "name" :name "Name"}
+                                            {:id "email" :name "Email"}]}]
+          (is (= {"name" "Foo" "email" "foo@bar.com"}
+                 (#'api.action/remap-parameter-keys
+                  implicit-action
+                  {"name" "Foo" "email" "foo@bar.com"}))))))))
 
 (deftest execute-action-test
   (mt/with-actions-test-data-and-actions-enabled
@@ -528,6 +567,24 @@
                                      :post 404
                                      (format "action/%s/execute" action-id)
                                      {:parameters {:id 1 :name "European"}})))))))
+
+(deftest execute-action-by-entity-id-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+      (let [entity-id (t2/select-one-fn :entity_id :model/Action :id action-id)]
+        (testing "Action can be executed by entity_id"
+          (is (=? {:rows-affected 1}
+                  (mt/user-http-request :crowberto
+                                        :post 200
+                                        (format "action/%s/execute" entity-id)
+                                        {:parameters {:id 1 :name "European"}}))))
+        (testing "Unknown entity_id returns 404"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto
+                                       :post 404
+                                       (format "action/%s/execute"
+                                               "AAAAAAAAAAAAAAAAAAAAA")
+                                       {:parameters {:id 1 :name "European"}}))))))))
 
 (deftest execute-action-test-3
   (mt/with-actions-test-data-and-actions-enabled
@@ -638,27 +695,21 @@
         (testing "403 if user does not have permission to view the action"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
-
         (testing "404 if id does not exist"
           (is (= "Not found."
                  (mt/user-http-request :rasta :get 404 (format "action/%d/execute" Integer/MAX_VALUE) :parameters (json/encode {:id 1})))))
-
         (testing "returns empty map for query actions (not implicit)"
           (is (= {}
                  (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" query-action-id) :parameters (json/encode {:id 1})))))
-
         (testing "Can't fetch for create action"
           (is (= "Values can only be fetched for actions that require a Primary Key."
                  (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" create-action-id) :parameters (json/encode {:id 1})))))
-
         (testing "fetch for update action return name and id"
           (is (= {:id 1 :name "Red Medicine"}
                  (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
-
         (testing "fetch for delete action returns the id only"
           (is (= {:id 1}
                  (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))
-
         (mt/with-actions-disabled
           (testing "error if actions is disabled"
             (is (= "Actions are not enabled."
@@ -674,7 +725,6 @@
                           {update-action :action-id} {:type :implicit
                                                       :kind "row/update"}]
           (testing "an error in SQL will be caught and parsed to a readable erorr message"
-
             (is (= {:message "Unable to update the record."
                     :errors {:user_id "This value does not exist in table \"users\"."}}
                    (mt/user-http-request :rasta :post 400 (format "action/%d/execute" update-action)

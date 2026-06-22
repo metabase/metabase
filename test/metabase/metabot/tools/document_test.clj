@@ -24,13 +24,11 @@
         (is (= {:database_id 1
                 :sql_engine  "h2"}
                (:structured-output result))))))
-
   (testing "returns missing-database message when no database references are present"
     (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {}})]
       (let [result (document-tools/document-schema-collect-tool {})]
         (is (= "You must `@` mention a database to use when not querying an existing model"
                (:output result))))))
-
   (testing "returns multiple-database message when more than one database is referenced"
     (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:1" "Test DB 1"
                                                                             "database:2" "Test DB 2"}})]
@@ -59,7 +57,8 @@
                      :sql "SELECT * FROM test"
                      :viz_settings {:chart_type "bar"}})
             structured (:structured-output result)]
-        (is (true? (:final-response? result)))
+        (is (some? structured)
+            "structured-output present -> a successful, terminal-eligible call")
         (is (= "document_construct_sql_chart" (:tool structured)))
         (is (= "Test Name" (:name structured)))
         (is (= "Test Desc" (:description structured)))
@@ -70,8 +69,9 @@
                 :type "native"
                 :native {:query "SELECT * FROM test"
                          :template-tags {}}}
-               (:dataset_query structured))))))
+               (:dataset_query structured)))))))
 
+(deftest document-construct-sql-chart-tool-test-2
   (testing "returns instructions when SQL validation fails"
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                 (fn [_]
@@ -86,11 +86,12 @@
                      :approach "Test Approach"
                      :sql "SELECT FROM test"
                      :viz_settings {:chart_type "bar"}})]
-        (is (nil? (:final-response? result)))
-        (is (nil? (:structured-output result)))
+        (is (nil? (:structured-output result))
+            "no structured-output -> a failure, which must NOT terminate the turn")
         (is (re-find #"SQL chart draft generation failed" (:output result)))
-        (is (re-find #"syntax error near FROM" (:output result))))))
+        (is (re-find #"syntax error near FROM" (:output result)))))))
 
+(deftest document-construct-sql-chart-tool-test-3
   (testing "returns instructions when query processor rejects generated SQL"
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
                                 (fn [_]
@@ -111,8 +112,8 @@
                      :approach "Test Approach"
                      :sql "SELECT * FROM missing_table"
                      :viz_settings {:chart_type "bar"}})]
-        (is (nil? (:final-response? result)))
-        (is (nil? (:structured-output result)))
+        (is (nil? (:structured-output result))
+            "no structured-output -> a failure, which must NOT terminate the turn")
         (is (re-find #"could not be processed by Metabase" (:output result)))
         (is (re-find #"missing_table" (:output result)))))))
 
@@ -131,7 +132,8 @@
                      :query ""
                      :viz_settings {:chart_type "bar"}})
             structured (:structured-output result)]
-        (is (true? (:final-response? result)))
+        (is (some? structured)
+            "structured-output present -> a successful, terminal-eligible call")
         (is (= "document_construct_model_chart" (:tool structured)))
         (is (= "Test Name" (:name structured)))
         (is (= "Test Desc" (:description structured)))

@@ -7,6 +7,6 @@ export const PasswordCopyButton = styled(CopyButton)`
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

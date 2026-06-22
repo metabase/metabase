@@ -127,7 +127,7 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
         w={24}
         h={24}
         className={S.iconCircle}
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         bg="background-primary"
       >
         <Icon name={icon} c="text-tertiary" size={12} />
@@ -140,7 +140,7 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
   }
 
   return (
-    <Center w={24} h={24} className={S.iconCircle} bg="brand">
+    <Center w={24} h={24} className={S.iconCircle} bg="core-brand">
       <Icon name={icon.name} c="white" size={12} />
     </Center>
   );

@@ -30,25 +30,20 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some]])
+   [metabase.util.performance :as perf :refer [every? some]])
   (:import
    (java.sql Clob Connection ResultSet ResultSetMetaData SQLException Statement Types)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
-   (org.h2.engine SessionLocal)))
+   (org.h2.engine SessionLocal)
+   (org.h2.util StringUtils)))
 
 (set! *warn-on-reflection* true)
 
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
 
-(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
-
-;; h2 can be used to generate mbql5 natively, but this is not the default yet.
-;; we need to gather more data from the experiment (see query-processor/mbql->honeysql)
-;; before we can switch this over. once that happens, make regular :h2 have
-;; :sql-mbql5 as a parent and move the :h2-mbql5 methods below to just :h2.
-(driver/register! :h2-mbql5, :parent #{:h2 :sql-mbql5})
+(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in :sql-mbql5})
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
@@ -97,12 +92,8 @@
     supported?))
 
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
-  [driver [_ arg pattern]]
-  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
-
-(defmethod sql.qp/->honeysql [:h2-mbql5 :regex-match-first]
   [driver [_ _opts arg pattern]]
-  ((get-method sql.qp/->honeysql [:h2 :regex-match-first]) driver [:regex-match-first arg pattern]))
+  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -251,6 +242,43 @@
       (catch org.h2.message.DbException _
         {:command-types [] :remaining-sql nil}))))
 
+(def ^:private unsupported-builtin-functions
+  "H2 built-in functions that operate on the server environment (filesystem, linked databases,
+   session and memory state) rather than on query data. They are not supported in native queries
+   or actions, and can be embedded inside otherwise-ordinary SELECT/CALL statements, so they are
+   matched by name rather than by statement type."
+  #{"ABORT_SESSION"
+    "CANCEL_SESSION"
+    "CSVREAD"
+    "CSVWRITE"
+    "DATABASE_PATH"
+    "DB_OBJECT_ID"
+    "DB_OBJECT_SQL"
+    "FILE_READ"
+    "FILE_WRITE"
+    "LINK_SCHEMA"
+    "MEMORY_FREE"
+    "MEMORY_USED"})
+
+(def ^:private unsupported-builtin-function-regex
+  (re-pattern (str "(?i)\\b(?:" (str/join "|" unsupported-builtin-functions) ")\\b")))
+
+(defn- unsupported-functions-in-query
+  "The set of `unsupported-builtin-functions` referenced by `sql`, or nil if none. Scans the SQL
+   text rather than the parsed command, so it still applies when the H2 parser is unavailable."
+  [sql]
+  (when sql
+    (perf/not-empty
+     (into #{} (map u/upper-case-en)
+           (re-seq unsupported-builtin-function-regex
+                   (StringUtils/toUpperEnglish sql))))))
+
+(defn- check-no-unsupported-functions [sql]
+  (when-let [fns (unsupported-functions-in-query sql)]
+    (throw (ex-info (tru "These functions are not supported in native queries: {0}" (str/join ", " (sort fns)))
+                    {:type      driver-api/qp.error-type.db
+                     :functions fns}))))
+
 (defn- every-command-allowed-for-actions? [{:keys [command-types remaining-sql]}]
   (let [cmd-type-nums command-types]
     (boolean
@@ -281,6 +309,7 @@
 
 (defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
   (when query
+    (check-no-unsupported-functions query)
     (when-let [query-classification (classify-query database query)]
       (when-not (every-command-allowed-for-actions? query-classification)
         (throw (ex-info "DDL commands are not allowed to be used with H2."
@@ -300,6 +329,7 @@
                                                                               [:map
                                                                                [:query string?]]]]]
   (when sql
+    (check-no-unsupported-functions sql)
     (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
                                                sql)]
       (when-not (read-only-statements? query-classification)
@@ -430,15 +460,11 @@
 (defmethod sql.qp/date [:h2 :week-of-year-iso] [_ _ expr] (extract :iso_week expr))
 
 (defmethod sql.qp/->honeysql [:h2 :log]
-  [driver [_ field]]
+  [driver [_ _opts field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
-(defmethod sql.qp/->honeysql [:h2-mbql5 :log]
-  [driver [_ _opts field]]
-  ((get-method sql.qp/->honeysql [:h2 :log]) driver [:log field]))
-
 (defmethod sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
   ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
   ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST.
@@ -447,10 +473,6 @@
   ;; https://github.com/h2database/h2database/issues/1383
   (->> (sql.qp/->honeysql driver value)
        (h2x/cast :text)))
-
-(defmethod sql.qp/->honeysql [:h2-mbql5 ::sql.qp/expression-literal-text-value]
-  [driver [_ _opts value]]
-  ((get-method sql.qp/->honeysql [:h2 ::sql.qp/expression-literal-text-value]) driver [::sql.qp/expression-literal-text-value value]))
 
 (defn- datediff
   "Like H2's `datediff` function but accounts for timestamps with time zones."
@@ -474,10 +496,8 @@
          [:case
           [:and [:< x y] [:> (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           -1
-
           [:and [:> x y] [:< (time-zoned-extract :day x) (time-zoned-extract :day y)]]
           1
-
           :else
           0]))
 
@@ -743,7 +763,10 @@
                      (format "CREATE SCHEMA IF NOT EXISTS \"%s\" AUTHORIZATION \"%s\"" schema-name username)
                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
           (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))
+        (try
+          (.executeBatch ^Statement stmt)
+          (catch Throwable t
+            (throw (driver.u/scrub-exceptions t [password]))))))
     {:schema           schema-name
      :database_details {:db new-db}}))
 

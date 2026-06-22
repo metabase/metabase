@@ -473,7 +473,7 @@ const MODEL_NAME = "Test Action Model";
               cy.findByLabelText("Required").uncheck();
             });
 
-            cy.findByRole("dialog").within(() => {
+            H.modal().within(() => {
               cy.findByText("Save").click();
             });
 
@@ -532,7 +532,7 @@ const MODEL_NAME = "Test Action Model";
               cy.findByLabelText("Required").check();
             });
 
-            cy.findByRole("dialog").within(() => {
+            H.modal().within(() => {
               cy.findByText("Update").click();
             });
 

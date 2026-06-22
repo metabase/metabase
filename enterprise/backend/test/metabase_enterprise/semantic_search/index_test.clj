@@ -3,14 +3,18 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.spec-trace-test-util :as spec-trace]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import
@@ -19,6 +23,63 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
+
+(defn- vector-search-sql
+  "Format the private vector subquery for `strategy` against a stub index, returning the SQL string."
+  [strategy]
+  (let [index   {:table-name "idx_tbl"}
+        ctx     (cond-> {:search-string "pasta" :archived? false}
+                  strategy (assoc :vector-search-strategy strategy))
+        embedding [0.1 0.2 0.3]]
+    (first (sql/format (#'semantic.index/semantic-search-query index embedding ctx) :quoted true))))
+
+(deftest semantic-search-query-strategy-test
+  (testing ":brute-force applies the non-vector filters inside a MATERIALIZED CTE (filter-first, exact)"
+    (let [sql (vector-search-sql :brute-force)]
+      (is (str/includes? sql "AS MATERIALIZED"))
+      ;; filter lives inside the CTE, alongside the distance computation
+      (is (re-find #"AS MATERIALIZED \(SELECT.*\"archived\" = FALSE.*\)" sql))
+      ;; the distance expression appears once -- it is computed and stored in the materialized CTE, and the
+      ;; outer query reads that column rather than recomputing it
+      (is (= 1 (count (re-seq #"embedding <=>" sql))))
+      ;; no pure-vector ORDER BY ... LIMIT that would trigger the HNSW index
+      (is (not (re-find #"ORDER BY embedding <=>[^)]*LIMIT" sql)))))
+  (testing ":hnsw does a pure vector search in the inner CTE then post-filters (approximate)"
+    (let [sql (vector-search-sql :hnsw)]
+      (is (not (str/includes? sql "MATERIALIZED")))
+      (is (re-find #"ORDER BY embedding <=>" sql))
+      ;; the filter is applied in the outer query, after the candidate set is chosen
+      (is (str/includes? sql "\"archived\" = FALSE"))))
+  (testing "no explicit strategy falls back to the configured default setting"
+    (is (= (vector-search-sql (semantic.settings/semantic-search-vector-strategy))
+           (vector-search-sql nil)))))
+
+(defn- flattened-vector-candidates-cte
+  "Build the brute-force/hnsw hybrid query, flatten it the way `scored-search-query` does, and return the
+  hoisted `:vector_candidates` CTE binding (e.g. `[:vector_candidates <query> :materialized]`)."
+  [strategy]
+  (let [index  {:table-name "idx_tbl"}
+        ctx    {:search-string "pasta" :archived? false :vector-search-strategy strategy}
+        hybrid (#'semantic.index/hybrid-search-query index [0.1 0.2 0.3] ctx)
+        {:keys [ctes]} (#'semantic.index/flatten-ctes hybrid)]
+    (first (filter #(= :vector_candidates (first %)) ctes))))
+
+(deftest flatten-ctes-preserves-materialized-test
+  (testing "the :materialized opt survives CTE hoisting (the path every real query takes via scored-search-query)"
+    ;; A regression that dropped the opt would change only the query plan, not the results, so the
+    ;; results-based end-to-end tests can't catch it -- assert on the hoisted binding directly.
+    (is (= :materialized (last (flattened-vector-candidates-cte :brute-force)))))
+  (testing ":hnsw hoists a plain CTE binding with no opts"
+    (is (= 2 (count (flattened-vector-candidates-cte :hnsw))))))
+
+(deftest semantic-search-vector-strategy-setting-test
+  (testing "the setting rejects an unknown strategy"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid vector-search strategy"
+                          (semantic.settings/semantic-search-vector-strategy! :nonsense))))
+  (testing "valid strategies round-trip"
+    (doseq [strategy [:hnsw :brute-force]]
+      (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy strategy]
+        (is (= strategy (semantic.settings/semantic-search-vector-strategy)))))))
 
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
@@ -167,15 +228,12 @@
                                                (swap! realized inc)
                                                (assoc (first docs) :id id))))
                                   (range 123 500))]
-
           (testing "ensure upsert! and delete! don't realize the full reducible at once"
             (semantic.tu/check-index-has-no-mock-docs)
-
             (testing "upsert-index!"
               (with-redefs [semantic.index/upsert-index-pooled! (only-first-call realized @#'semantic.index/upsert-index-pooled!)]
                 (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
               (semantic.tu/check-index-has-mock-card))
-
             (reset! realized 0)
             (testing "delete-from-index!"
               (with-redefs [semantic.index/delete-from-index-batch-sql (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
@@ -247,12 +305,10 @@
                        :content "Dog Training Guide"
                        :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
                      (semantic.tu/query-embeddings {:model "card" :model_id "1"})))
-
               (is (= [{:model "card" :model_id "2" :creator_id 2
                        :content "Elephant Migration"
                        :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
                      (semantic.tu/query-embeddings {:model "card" :model_id "2"})))
-
               (is (= [{:model "card" :model_id "3" :creator_id 3
                        :content "Tiger Conservation"
                        :embedding (semantic.tu/get-mock-embedding "Tiger Conservation")}]
@@ -303,12 +359,10 @@
                :content "Dog Training Guide"
                :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
              (semantic.tu/query-embeddings {:model "card" :model_id "1"})))
-
       (is (= [{:model "card" :model_id "2" :creator_id 2
                :content "Elephant Migration"
                :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
              (semantic.tu/query-embeddings {:model "card" :model_id "2"})))
-
       (is (= [{:model "card" :model_id "3" :creator_id 3
                :content "Dog Training Guide"
                :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
@@ -357,27 +411,23 @@
               (mt/with-test-user :crowberto
                 (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                             {:search-string "dog training"}))
-
               (let [permission-calls (filter #(= :metabase-search/semantic-permission-filter-ms (first %)) @analytics-calls)]
                 (is (= 1 (count permission-calls)))
                 (let [time-ms (first (second (first permission-calls)))]
                   (is (number? time-ms))
                   (is (< time-ms 1000) "Permission filtering should complete within 1000ms"))))
-
             (testing "Semantic search timing metrics"
               (reset! analytics-calls [])
               (mt/with-test-user :crowberto
                 (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                             {:search-string "elephant migration"
                                              :filter-items-in-personal-collection "only"}))
-
               (let [metric-names (set (map first @analytics-calls))]
                 (is (contains? metric-names :metabase-search/semantic-search-ms))
                 (is (contains? metric-names :metabase-search/semantic-embedding-ms))
                 (is (contains? metric-names :metabase-search/semantic-db-query-ms))
                 (is (contains? metric-names :metabase-search/semantic-permission-filter-ms))
                 (is (contains? metric-names :metabase-search/semantic-appdb-scores-ms)))
-
               (testing "timing values  are reasonable"
                 (doseq [[metric args] @analytics-calls
                         :when (#{:metabase-search/semantic-search-ms
@@ -393,7 +443,6 @@
                     (is (number? time-ms) (str "Time for " metric " should be numeric"))
                     (is (>= time-ms 0) (str "Time for " metric " should be non-negative"))
                     (is (< time-ms 1000) (str "Time for " metric " should be under 1000ms")))))
-
               (let [embedding-metrics (filter #(#{:metabase-search/semantic-search-ms
                                                   :metabase-search/semantic-embedding-ms
                                                   :metabase-search/semantic-db-query-ms} (first %)) @analytics-calls)]
@@ -408,26 +457,21 @@
       (testing "filter-type 'all' returns nil (no filter)"
         (is (nil? (#'semantic.index/personal-collection-filter
                    {:filter-items-in-personal-collection "all" :current-user-id user-id}))))
-
       (testing "filter-type nil defaults to 'all' behavior"
         (is (nil? (#'semantic.index/personal-collection-filter
                    {:filter-items-in-personal-collection nil :current-user-id user-id}))))
-
       (testing "filter-type 'only-mine' returns only current user's personal collection items"
         (is (= [:= :personal_owner_id user-id]
                (#'semantic.index/personal-collection-filter
                 {:filter-items-in-personal-collection "only-mine" :current-user-id user-id}))))
-
       (testing "filter-type 'only' returns all personal collection items (any user)"
         (is (= [:is-not :personal_owner_id nil]
                (#'semantic.index/personal-collection-filter
                 {:filter-items-in-personal-collection "only" :current-user-id user-id}))))
-
       (testing "filter-type 'exclude' returns only shared and uncollected items"
         (is (= [:is :personal_owner_id nil]
                (#'semantic.index/personal-collection-filter
                 {:filter-items-in-personal-collection "exclude" :current-user-id user-id}))))
-
       (testing "filter-type 'exclude-others' returns user's personal items plus shared/uncollected items"
         (is (= [:or
                 [:is :personal_owner_id nil]
@@ -445,120 +489,152 @@
         [:model/Collection {shared-coll-id :id} {:name "Shared Collection"}
          :model/Collection {user1-sub-coll-id :id} {:location (str "/" user1-personal-coll-id "/") :name "User1 Sub"}
          :model/Collection {user2-sub-coll-id :id} {:location (str "/" user2-personal-coll-id "/") :name "User2 Sub"}]
-
         (testing "empty input returns empty map"
           (is (empty? (#'semantic.index/batch-resolve-personal-owner-ids [])))
           (is (empty? (#'semantic.index/batch-resolve-personal-owner-ids [nil]))))
-
         (testing "shared collection is absent from result"
           (is (empty? (#'semantic.index/batch-resolve-personal-owner-ids [shared-coll-id]))))
-
         (testing "personal collections map to their owners"
           (is (= {user1-personal-coll-id user1-id
                   user2-personal-coll-id user2-id}
                  (#'semantic.index/batch-resolve-personal-owner-ids
                   [user1-personal-coll-id user2-personal-coll-id]))))
-
         (testing "sub-collections of personal collections map to root personal owner"
           (is (= {user1-sub-coll-id user1-id
                   user2-sub-coll-id user2-id}
                  (#'semantic.index/batch-resolve-personal-owner-ids
                   [user1-sub-coll-id user2-sub-coll-id]))))
-
         (testing "mixed input resolves all in one call"
           (is (= {user1-personal-coll-id user1-id
                   user2-sub-coll-id      user2-id}
                  (#'semantic.index/batch-resolve-personal-owner-ids
                   [user1-personal-coll-id user2-sub-coll-id shared-coll-id nil]))))))))
 
-(deftest filter-read-permitted-indexed-entity-test
+(deftest filter-read-permitted-fast-path-test
   (mt/with-premium-features #{:semantic-search}
-    (testing "filter-read-permitted routes indexed-entity docs through the collection_id-only fast path"
+    (testing "filter-read-permitted routes collection-id-only models through the fast path"
       (mt/with-temp [:model/Collection {readable-coll-id :id} {}
                      :model/Collection {unreadable-coll-id :id} {}]
-        (let [indexed-entity-docs [{:id "1:123"
-                                    :model "indexed-entity"
-                                    :collection_id readable-coll-id}
-                                   {:id "2:456"
-                                    :model "indexed-entity"
-                                    :collection_id unreadable-coll-id}
-                                   {:id "3:789"
-                                    :model "indexed-entity"
-                                    :collection_id nil}]]
-
-          (testing "keeps all entities when user has root permissions"
-            (binding [api/*current-user-permissions-set* (atom #{"/"})]
-              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
-                (is (= 3 (count result))))))
-
-          (testing "drops all entities when user has no permissions"
-            (binding [api/*current-user-permissions-set* (atom #{})]
-              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
-                (is (= 0 (count result))))))
-
-          (testing "keeps only entities in readable collections"
-            (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
-              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
-                (is (= 1 (count result)))
-                (is (= "1:123" (:id (first result)))))))
-
-          (testing "memoizes permission check per collection_id across docs"
-            (let [calls (atom 0)
-                  real-can-read? mi/can-read?]
-              (with-redefs [mi/can-read? (fn [& args]
-                                           (swap! calls inc)
-                                           (apply real-can-read? args))]
-                (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                  (#'semantic.index/filter-read-permitted
-                   (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
-                  (is (= 1 @calls) "expected one can-read? call for the single distinct collection_id")))))
-
-          (testing "handles empty input"
-            (is (= [] (#'semantic.index/filter-read-permitted [])))))))))
-
-(deftest filter-read-permitted-dispatch-test
-  (mt/with-premium-features #{:semantic-search}
-    (testing "fast path dispatches through the per-search-model t2 model"
-      (mt/with-temp [:model/Collection {coll-id :id} {}]
-        (binding [api/*current-user-permissions-set* (atom #{"/"})]
-
-          (testing "card and dashboard in the same collection do NOT share a memo bucket"
-            ;; Card dispatches through :model/Card, Dashboard through :model/Dashboard. Their
-            ;; `can-read?` answers happen to agree today (both route through
-            ;; `can-read-audit-helper` which ignores the model keyword for non-Collection models),
-            ;; but the dispatch MUST still hit each model's own defmethod so future divergence
-            ;; cannot silently ride on Card's semantics.
-            (let [calls (atom 0)
-                  real-can-read? mi/can-read?]
-              (with-redefs [mi/can-read? (fn [& args]
-                                           (swap! calls inc)
-                                           (apply real-can-read? args))]
+        (testing "indexed-entity docs are filtered by denormalized :collection_id"
+          (let [docs [{:id "1:123" :model "indexed-entity" :collection_id readable-coll-id}
+                      {:id "2:456" :model "indexed-entity" :collection_id unreadable-coll-id}
+                      {:id "3:789" :model "indexed-entity" :collection_id nil}]]
+            (testing "keeps all entities when user has root permissions"
+              (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                (is (= 3 (count (#'semantic.index/filter-read-permitted docs))))))
+            (testing "drops all entities when user has no permissions"
+              (binding [api/*current-user-permissions-set* (atom #{})]
+                (is (= 0 (count (#'semantic.index/filter-read-permitted docs))))))
+            (testing "keeps only entities in readable collections"
+              (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
+                (let [result (#'semantic.index/filter-read-permitted docs)]
+                  (is (= 1 (count result)))
+                  (is (= "1:123" (:id (first result)))))))))
+        (testing "card/metric/dataset/dashboard docs use the same fast path"
+          (doseq [model ["card" "metric" "dataset" "dashboard"]]
+            (testing (str "model=" model)
+              (let [docs [{:id 1 :model model :collection_id readable-coll-id}
+                          {:id 2 :model model :collection_id unreadable-coll-id}
+                          {:id 3 :model model :collection_id nil}]]
+                (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
+                  (let [result (#'semantic.index/filter-read-permitted docs)]
+                    (is (= [1] (map :id result))
+                        "only the doc whose denormalized collection_id is readable survives")))))))
+        (testing "memoizes permission check per collection_id across docs"
+          (let [calls       (atom 0)
+                real-helper perms/can-read-via-parent-collection?]
+            (with-redefs [perms/can-read-via-parent-collection? (fn [& args]
+                                                                  (swap! calls inc)
+                                                                  (apply real-helper args))]
+              (binding [api/*current-user-permissions-set* (atom #{"/"})]
                 (#'semantic.index/filter-read-permitted
-                 [{:id 1 :model "card" :collection_id coll-id}
-                  {:id 2 :model "dashboard" :collection_id coll-id}])
-                (is (= 2 @calls)
-                    "card and dashboard must dispatch separately even for the same collection_id"))))
+                 (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
+                (is (= 1 @calls) "expected one can-read-via-parent-collection? call for the single distinct collection_id")))))
+        (testing "handles empty input"
+          (is (= [] (#'semantic.index/filter-read-permitted []))))))))
 
-          (testing "card and indexed-entity share the :model/Card memo bucket"
-            ;; indexed-entity is deliberately routed through :model/Card — its index row's
-            ;; `collection_id` is the parent Card's, denormalized at ingest time.
-            (let [calls (atom 0)
-                  real-can-read? mi/can-read?]
-              (with-redefs [mi/can-read? (fn [& args]
-                                           (swap! calls inc)
-                                           (apply real-can-read? args))]
-                (#'semantic.index/filter-read-permitted
-                 [{:id 1   :model "card"            :collection_id coll-id}
-                  {:id "1:99" :model "indexed-entity" :collection_id coll-id}])
-                (is (= 1 @calls)
-                    "card and indexed-entity both dispatch through :model/Card and memoize together")))))))))
+(deftest collection-id-only-search-models-derived-correctly-test
+  (testing "derived set includes every collection-id-only search-model plus indexed-entity"
+    ;; Update the expected set when `define-collection-based-visibility!` is added to or removed from a model.
+    (is (= #{"card" "metric" "dataset" "dashboard" "indexed-entity"}
+           @@#'semantic.index/collection-id-only-search-models))))
+
+(deftest collection-based-visibility-search-model-claims-verified-test
+  (testing "every search-model registered with :denormalized-from traces to that model from :collection-id"
+    ;; Guards the `:denormalized-from` claim at `define-collection-based-visibility!` call sites against
+    ;; drift. We walk the join equality graph from `:collection-id` and require the claim to be a
+    ;; structural source — not merely any model mentioned in `:joins`. Without this, a stale claim can
+    ;; still pass if the model stays joined for an unrelated field.
+    (let [specs (search/specifications)]
+      (doseq [[search-model denormalized-from] (perms/collection-based-visibility-search-models)]
+        (testing (str search-model " traces :collection-id to " denormalized-from)
+          (let [spec    (get specs search-model)
+                reached (spec-trace/trace-collection-id-source-models spec)]
+            (is (some? spec)
+                (str "no search spec registered for " (pr-str search-model)))
+            (is (contains? reached denormalized-from)
+                (str (pr-str search-model) " claims :denormalized-from " (pr-str denormalized-from)
+                     " but tracing :collection-id through its join equalities only reaches "
+                     reached))))))))
+
+(deftest keyword-form-derived-search-models-trace-to-own-model-test
+  (testing "every keyword-form-derived search-model denormalizes :collection_id from its own t2-model"
+    ;; The string form of `define-collection-based-visibility!` carries an explicit `:denormalized-from`
+    ;; claim verified above. The keyword form has no such claim: sibling specs like "dataset"/"metric"
+    ;; are swept into the fast path purely because their `:model` is a registered t2-model. The fast path
+    ;; checks `can-read-via-parent-collection?` against the index row's `:collection_id`, so this is only
+    ;; correct if the spec's `:collection-id` is its own collection. Assert that structurally — tracing
+    ;; `:collection-id` through join equalities must reach the spec's own registered t2-model — so a future
+    ;; sibling sourcing `:collection-id` from a join (a different collection) fails here instead of
+    ;; silently gaining incorrect read semantics.
+    (let [specs                (search/specifications)
+          registered-t2-models (perms/collection-id-only-read-models)]
+      ;; Guard against a vacuous pass: if the registry is empty the `:when` filter below matches nothing
+      ;; and the only assertion never runs. A future refactor that breaks registry population should fail
+      ;; here rather than silently no-op.
+      (is (seq registered-t2-models)
+          "registry must be populated by search/specifications")
+      (doseq [[search-model spec] specs
+              :let [t2-model (:model spec)]
+              :when (contains? registered-t2-models t2-model)]
+        (testing (str search-model " traces :collection-id to its own model " t2-model)
+          (let [reached (spec-trace/trace-collection-id-source-models spec)]
+            (is (contains? reached t2-model)
+                (str (pr-str search-model) " is derived into the fast path via its registered t2-model "
+                     (pr-str t2-model) " but tracing :collection-id through its join equalities only reaches "
+                     reached " — its denormalized :collection_id is not its own collection"))))))))
+
+(deftest collection-id-only-search-models-cold-start-regression-test
+  (testing "derivation populates correctly even if registry is empty at first access"
+    ;; The derivation must call `search/specifications` before reading either registry — `t2/resolve-model`
+    ;; inside `specifications` loads the model namespaces that populate them.
+    ;; If the order flips, cold start caches an empty set for the JVM lifetime. Both the t2-model registry
+    ;; (card/metric/dataset/dashboard) and the search-model registry (indexed-entity) must be covered.
+    (let [real-specs          (var-get #'search/specifications)
+          real-t2-registry    perms/collection-id-only-read-models
+          real-search-registry perms/collection-based-visibility-search-models
+          specs-loaded?       (atom false)]
+      (with-redefs [search/specifications (fn []
+                                            (reset! specs-loaded? true)
+                                            (real-specs))
+                    perms/collection-id-only-read-models (fn []
+                                                           (if @specs-loaded?
+                                                             (real-t2-registry)
+                                                             #{}))
+                    perms/collection-based-visibility-search-models (fn []
+                                                                      (if @specs-loaded?
+                                                                        (real-search-registry)
+                                                                        {}))]
+        (let [result (#'semantic.index/compute-collection-id-only-search-models)]
+          (is (contains? result "card"))
+          (is (contains? result "dashboard"))
+          (is (contains? result "indexed-entity")))))))
 
 (deftest to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"
     (testing "boolean inputs are returned unchanged"
       (is (true? (#'semantic.index/to-boolean true)))
       (is (false? (#'semantic.index/to-boolean false))))
-
     (testing "MySQL-style integer booleans are converted correctly"
       (is (false? (#'semantic.index/to-boolean 0)))
       (is (true? (#'semantic.index/to-boolean 1))))))
@@ -583,7 +659,6 @@
                     :embeddable_text "test content"
                     :creator_id 1
                     :embedding embedding-vec}]
-
       (testing "MySQL-style integer booleans are converted to real booleans"
         (let [doc-with-mysql-booleans (assoc base-doc
                                              :archived 0
@@ -595,7 +670,6 @@
           (is (true? (:official_collection result)))
           (is (false? (:pinned result)))
           (is (true? (:verified result)))))
-
       (testing "real boolean values are preserved"
         (let [doc-with-real-booleans (assoc base-doc
                                             :archived true
@@ -607,7 +681,6 @@
           (is (false? (:official_collection result)))
           (is (true? (:pinned result)))
           (is (false? (:verified result)))))
-
       (testing "nil boolean fields are handled correctly"
         (let [doc-with-nil-booleans base-doc
               result (#'semantic.index/doc->db-record nil doc-with-nil-booleans)]

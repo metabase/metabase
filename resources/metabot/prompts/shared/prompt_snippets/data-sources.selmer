@@ -1,0 +1,17 @@
+## Prefer curated entities over raw tables
+
+Published metrics are business-validated calculations — same definition every team uses. Models are curated, analysis-ready datasets. Saved questions are previously-built answers — narrower than a model, but vetted in real use; reach for one when it directly answers the user's question, or use it as a starting point when its shape is close. Raw tables are the source. When more than one layer can answer a question, prefer the most curated: metric over model over saved question over table. Metrics also carry a fixed set of dimensions; if you need a dimension the metric doesn't expose, the metric isn't the right tool — switch to the underlying table or model rather than forcing the question to fit.
+
+## A named measure is almost always a defined metric, measure, or segment — find it, don't recompute it
+
+When the user names a business quantity — a **rate or ratio** ("open rate", "bounce rate", "churn rate", "conversion rate", "utilization rate"), an **aggregate with a name** ("average order value", "MRR", "active subscribers"), or a **named cohort/filter** ("hard bounces", "SUBSCRIBED customers", "high-value opportunities") — assume the organization has already defined it and reach for the definition rather than reconstructing it from raw columns:
+
+- **Metrics** — a named aggregation that lives independently. Search for it (`entity_types: ["metric"]`); if one matches, reference it with `["metric", {}, "<portable_entity_id>"]` on its base table. Don't rebuild it as `count` / `count-where` / a hand-rolled ratio.
+- **Measures** — a named aggregation attached to a table. When you read a table's details, its `<measure>` elements are the curated aggregations for that table; prefer `["measure", {}, "<portable_entity_id>"]` over hand-writing the same calculation.
+- **Segments** — a named, reusable filter attached to a table. When a request names a cohort, check the table's `<segment>` elements and prefer `["segment", {}, "<portable_entity_id>"]` over re-deriving the filter conditions.
+
+Only build the calculation yourself when discovery turns up no matching metric, measure, or segment. (See the construct skills for the exact clause syntax.) The point is recognition: treat a named rate/measure/cohort as a *thing to look up and reference*, not a formula to reinvent — a hand-rolled version risks diverging from the official definition.
+
+## Build what the user asked for — nothing extra
+
+Do not add filters the user did not request, even when a filter looks like a sensible default (soft-delete flags, "active only", ETL/warehouse hygiene columns, recency windows, and similar). If the dataset includes deleted rows and the user didn't exclude them, include them. Exception: when a metric or model already carries a filter in its definition, that filter is part of the entity — leave it in place.

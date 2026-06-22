@@ -5,15 +5,13 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { Group, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
 
-import { HelpMenu } from "../../components/HelpMenu";
-
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
+import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceItem } from "./WorkspaceItem";
-import { WorkspaceListEmptyState } from "./WorkspaceListEmptyState";
 
 export function WorkspaceListPage() {
   const {
@@ -42,19 +40,19 @@ export function WorkspaceListPage() {
   return (
     <WorkspaceListPageBody
       workspaces={workspaces}
-      availableDatabases={databasesResponse.data}
+      databases={databasesResponse.data}
     />
   );
 }
 
 type WorkspaceListPageBodyProps = {
   workspaces: Workspace[];
-  availableDatabases: Database[];
+  databases: Database[];
 };
 
 function WorkspaceListPageBody({
   workspaces,
-  availableDatabases,
+  databases,
 }: WorkspaceListPageBodyProps) {
   const hasWorkspaces = workspaces.length > 0;
 
@@ -64,28 +62,17 @@ function WorkspaceListPageBody({
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
-        actions={
-          hasWorkspaces && (
-            <Group gap="sm">
-              <NewWorkspaceButton />
-              <HelpMenu />
-            </Group>
-          )
-        }
+        actions={hasWorkspaces && <NewWorkspaceButton databases={databases} />}
         py={0}
       />
       {hasWorkspaces ? (
-        <Stack data-testid="workspace-list" gap="lg">
+        <Stack data-testid="workspace-list">
           {workspaces.map((workspace) => (
-            <WorkspaceItem
-              key={workspace.id}
-              workspace={workspace}
-              availableDatabases={availableDatabases}
-            />
+            <WorkspaceItem key={workspace.id} workspace={workspace} />
           ))}
         </Stack>
       ) : (
-        <WorkspaceListEmptyState />
+        <WorkspaceEmptyState databases={databases} />
       )}
     </PageContainer>
   );

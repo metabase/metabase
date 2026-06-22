@@ -1,5 +1,6 @@
 import type {
   CreateRecentRequest,
+  Dashboard,
   Field,
   PopularItem,
   PopularItemsResponse,
@@ -11,7 +12,6 @@ import type {
 
 import { Api } from "./api";
 import {
-  TAG_TYPE_MAPPING,
   idTag,
   invalidateTags,
   listTag,
@@ -69,18 +69,26 @@ export const activityApi = Api.injectEndpoints({
             context: "selection",
           },
         }),
-        invalidatesTags: (_, error, item) =>
-          invalidateTags(error, [
-            listTag(TAG_TYPE_MAPPING[item.model]),
-            idTag(TAG_TYPE_MAPPING[item.model], item.model_id),
-          ]),
+        invalidatesTags: (_, error) =>
+          invalidateTags(error, [listTag("activity")]),
       },
     ),
+    getMostRecentlyViewedDashboard: builder.query<Dashboard | null, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/activity/most_recently_viewed_dashboard",
+      }),
+      providesTags: (dashboard) =>
+        dashboard ? [idTag("dashboard", dashboard.id)] : [],
+    }),
   }),
 });
 
-export const { useListPopularItemsQuery, useLogRecentItemMutation } =
-  activityApi;
+export const {
+  useGetMostRecentlyViewedDashboardQuery,
+  useListPopularItemsQuery,
+  useLogRecentItemMutation,
+} = activityApi;
 
 type GetRecentsQueryOptions = Parameters<
   typeof activityApi.useListRecentsQuery

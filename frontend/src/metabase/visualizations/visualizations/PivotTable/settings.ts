@@ -17,17 +17,15 @@ import {
 } from "metabase/visualizations/lib/data_grid";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import {
-  getDimensionReferenceWithoutBaseType,
-  isDimensionReferenceWithOptions,
-} from "metabase-lib/v1/references";
+  getFieldRefForComparison,
+  migratePivotColumnSplitSetting,
+} from "metabase-lib/v1/queries/utils/pivot";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
   DatasetData,
-  DimensionReference,
   PivotTableColumnSplitSetting,
   RawSeries,
   Series,
@@ -262,7 +260,7 @@ export const _columnSettings = {
     inline: true,
     getWrapperStyle: () => ({
       paddingBottom: "1rem",
-      borderBottom: `1px solid var(--mb-color-border)`,
+      borderBottom: `1px solid var(--mb-color-border-neutral)`,
     }),
     getProps: () => ({
       options: [
@@ -330,14 +328,3 @@ export const _columnSettings = {
     getDefault: displayNameForColumn,
   },
 };
-
-/*
-  When comparing field refs for pivot viz settings, ignore `base-type`.
-  Sometimes it's present, sometimes it's not. New pivot settings use column
-  names only and do not depend on field refs.
- */
-function getFieldRefForComparison(fieldRef: DimensionReference) {
-  return isDimensionReferenceWithOptions(fieldRef)
-    ? getDimensionReferenceWithoutBaseType(fieldRef)
-    : fieldRef;
-}

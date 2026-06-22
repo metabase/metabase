@@ -1,6 +1,6 @@
 .metricPill {
   background-color: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--default-border-radius);
   cursor: pointer;
   transition: background-color 150ms ease;
@@ -8,6 +8,14 @@
 
 .metricPill:hover {
   background-color: var(--mb-color-background-secondary);
+}
+
+.metricPillText {
+  color: inherit;
+}
+
+.disabled {
+  color: var(--mb-color-text-tertiary);
 }
 
 .menuTarget {

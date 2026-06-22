@@ -6,6 +6,7 @@
 
   Phase-2 additions (step 11): `import-fk` for `Card` by entity_id."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -13,7 +14,8 @@
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -100,7 +102,7 @@
 ;;; import-table-fk
 ;;; ============================================================
 
-(deftest import-table-fk-test
+(deftest ^:parallel import-table-fk-test
   (testing "happy path"
     (let [r (resolve.mp/import-resolver mp-simple)]
       (is (= 10 (resolve/import-table-fk r ["Sample" "PUBLIC" "ORDERS"])))
@@ -116,7 +118,101 @@
       (is (= 30 (resolve/import-table-fk r ["DW" "RAW"   "ORDERS"])))
       (is (= 31 (resolve/import-table-fk r ["DW" "CLEAN" "ORDERS"]))))))
 
-(deftest import-table-fk-error-test
+(deftest import-table-fk-cache-collision-test
+  (testing "two real tables sharing a name across schemas: app-DB-backed resolver must not drop either"
+    ;; Reproduces a production failure where `query` / `construct_query` returned
+    ;; `:unknown-table` for a portable FK that `entity_details` had just emitted, then
+    ;; verifies the fix.
+    ;;
+    ;; Production wraps every `application-database-metadata-provider` with
+    ;; `cached-metadata-provider`. The cached provider's by-name cache key drops `:schema`
+    ;; and stores at most one metadata per requested name, so when two warehouse tables
+    ;; share a `name` across schemas, `(p/metadatas mp {:name #{n}})` returns at most one
+    ;; row -- the schema post-filter in `find-table` then yields 0 candidates for the
+    ;; schema that didn't win the cache write.
+    ;;
+    ;; The fix in [[resolve.mp/find-table]] bypasses the metadata provider for app-DB-backed
+    ;; lookups and queries `metabase_table` directly with schema in the WHERE clause, the
+    ;; same shape `metabase.models.serialization.resolve.db/import-table-fk` has always
+    ;; used.
+    (mt/with-temp [:model/Database db {:name (str "DW " (random-uuid)) :engine :h2}
+                   :model/Table    raw-orders   {:name "ORDERS" :schema "RAW"   :db_id (:id db)}
+                   :model/Table    clean-orders {:name "ORDERS" :schema "CLEAN" :db_id (:id db)}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)]
+        (is (= (:id raw-orders)   (resolve/import-table-fk r [(:name db) "RAW"   "ORDERS"])))
+        (is (= (:id clean-orders) (resolve/import-table-fk r [(:name db) "CLEAN" "ORDERS"])))))))
+
+(deftest import-table-fk-inactive-table-test
+  (testing "a portable FK to an inactive table (deleted / re-uploaded CSV) must NOT resolve"
+    ;; A deleted / re-uploaded upload leaves an inactive app-DB row whose warehouse table is gone;
+    ;; a stale FK to it must miss, with a message identical to a never-existed miss (asserted
+    ;; below) since distinguishing them would be an existence oracle.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    _gone {:name   "metabot2_38513168ae9131" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active false}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)]
+        (try
+          (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_38513168ae9131"])
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d   (ex-data e)
+                  msg (.getMessage e)]
+              (is (= :unknown-table (:error d)))
+              (is (= 400 (:status-code d)))
+              (is (true? (:agent-error? d)))
+              (is (re-find #"entity_details" msg) "message points the LLM at entity_details to re-list")
+              (testing "inactive-row miss is indistinguishable from a never-existed miss (no oracle)"
+                (let [never-existed (try (resolve/import-table-fk r [(:name db) "PUBLIC" "never_existed_xyz"])
+                                         (catch clojure.lang.ExceptionInfo e2 (.getMessage e2)))]
+                  ;; same wording modulo the echoed portable FK (which the caller supplied either way)
+                  (is (= (str/replace msg #"\[.*?\]" "[FK]")
+                         (str/replace never-existed #"\[.*?\]" "[FK]"))))))))))))
+
+(deftest import-table-fk-inactive-after-cache-warmed-test
+  (testing "a table cached while active, then marked inactive, must NOT resolve via the stale cache"
+    ;; The dangerous case the app-DB-existence check guards against: the cached metadata provider
+    ;; warms its by-name cache with the `:active true` row, then the table is marked inactive
+    ;; (deleted / re-uploaded upload). The cache still surfaces the stale active row, so
+    ;; `table-candidates` MUST consult the app DB for existence — find the inactive row — and treat
+    ;; it as a 0-candidate miss rather than falling back to the stale cache.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    gone  {:name   "metabot2_cafef00dbabe01" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active true}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)
+            by-name #(lib.metadata.protocols/metadatas
+                      mp {:lib/type :metadata/table :name #{"metabot2_cafef00dbabe01"}})]
+        (testing "warm the provider's by-name cache while the table is still active"
+          (is (= [true] (mapv :active (by-name))))
+          (is (= (:id gone) (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))
+        (t2/update! :model/Table (:id gone) {:active false})
+        (testing "the cache still surfaces the stale ACTIVE row by name"
+          (is (= [true] (mapv :active (by-name)))))
+        (testing "...but import-table-fk misses: the app DB sees the inactive row, no stale-cache fallback"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"No table found matching portable FK"
+               (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))))))
+
+(deftest matching-tables-via-provider-drops-inactive-test
+  (testing "matching-tables-via-provider filters the inactive rows the provider surfaces by name"
+    ;; Isolates the provider-side filter. By-name `metadatas` lookups skip the provider's SQL
+    ;; `active = true` clause (it only guards enumerate-all queries), so the inactive row reaches
+    ;; `matching-tables-via-provider`, whose filter is the only thing that drops it.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    _gone {:name   "metabot2_deadbeefcafe01" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active false}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))]
+        (testing "the provider DOES surface the inactive row on a raw by-name lookup"
+          (is (= [false]
+                 (mapv :active
+                       (lib.metadata.protocols/metadatas
+                        mp {:lib/type :metadata/table :name #{"metabot2_deadbeefcafe01"}})))))
+        (testing "...but matching-tables-via-provider drops it"
+          (is (empty? (#'resolve.mp/matching-tables-via-provider mp "PUBLIC" "metabot2_deadbeefcafe01"))))))))
+
+(deftest ^:parallel import-table-fk-error-test
   (testing "unknown table name → :unknown-table, agent-error?, 400, no info leak"
     (let [r (resolve.mp/import-resolver mp-simple)]
       (try
@@ -133,7 +229,9 @@
               (is (nil? (:candidates d)))
               (is (nil? (:available-schemas d))))
             (testing "message points the LLM at entity_details for self-correction"
-              (is (re-find #"entity_details" msg))))))))
+              (is (re-find #"entity_details" msg)))))))))
+
+(deftest ^:parallel import-table-fk-error-test-2
   (testing "schema does not exist in DB → still :unknown-table, no schema enumeration"
     ;; Pre-S1 this returned :unknown-schema + the full schema list. Post-S1 we collapse to
     ;; :unknown-table with no schema enumeration so a sandboxed user can't enumerate
@@ -150,7 +248,9 @@
             (is (nil? (:available-schemas d)))
             (testing "message must not enumerate schemas"
               (is (not (re-find #"PUBLIC" msg)))
-              (is (not (re-find #"Available schemas" msg)))))))))
+              (is (not (re-find #"Available schemas" msg))))))))))
+
+(deftest ^:parallel import-table-fk-error-test-3
   (testing "table exists in other schemas → :unknown-table, no cross-schema leak"
     ;; A sandboxed user with no perms on schema RAW must not learn that RAW.ORDERS exists
     ;; just by hallucinating CLEAN.ORDERS at the agent.
@@ -168,7 +268,9 @@
             (is (= :unknown-table (:error d)))
             (is (nil? (:candidates d)))
             (testing "message must not name RAW.ORDERS as a candidate"
-              (is (not (re-find #"RAW" msg)))))))))
+              (is (not (re-find #"RAW" msg))))))))))
+
+(deftest ^:parallel import-table-fk-error-test-4
   (testing "database name mismatch"
     (let [r (resolve.mp/import-resolver mp-simple)]
       (try
@@ -178,7 +280,9 @@
           (let [d (ex-data e)]
             (is (= :unknown-table (:error d)))
             (is (= "Sample" (:expected-db d)))
-            (is (true? (:agent-error? d))))))))
+            (is (true? (:agent-error? d)))))))))
+
+(deftest ^:parallel import-table-fk-error-test-5
   (testing "fuzzy substring suggestions are NOT surfaced (info-leak guard)"
     ;; Pre-S1 the resolver would surface `PUBLIC.ORDERS` as a "closest tables" candidate
     ;; for an `ORDER` hallucination. Post-S1 nothing is suggested.
@@ -199,7 +303,7 @@
 ;;; import-field-fk
 ;;; ============================================================
 
-(deftest import-field-fk-test
+(deftest ^:parallel import-field-fk-test
   (testing "happy path"
     (let [r (resolve.mp/import-resolver mp-simple)]
       (is (= 100 (resolve/import-field-fk r ["Sample" "PUBLIC" "ORDERS"   "ID"])))
@@ -215,7 +319,7 @@
     (let [r (resolve.mp/import-resolver mp-nested)]
       (is (= 401 (resolve/import-field-fk r ["Nested" "PUBLIC" "ORDERS" "META" "vendor"]))))))
 
-(deftest import-field-fk-error-test
+(deftest ^:parallel import-field-fk-error-test
   (testing "unknown field"
     (let [r (resolve.mp/import-resolver mp-simple)]
       (try
@@ -238,7 +342,7 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :invalid-field-fk (:error (ex-data e)))))))))
 
-(deftest import-field-fk-no-fk-candidate-leak-test
+(deftest ^:parallel import-field-fk-no-fk-candidate-leak-test
   (testing "an unknown field that lives on an FK-reachable table MUST NOT surface that table"
     ;; Pre-S1 the resolver helpfully suggested `[Sample PUBLIC PRODUCTS CATEGORY]` as a
     ;; candidate when the LLM asked for `[Sample PUBLIC ORDERS CATEGORY]`. That leaks the
@@ -256,7 +360,6 @@
             (testing "message must not name PRODUCTS or FK-linked tables"
               (is (not (re-find #"PRODUCTS" msg)))
               (is (not (re-find #"FK-linked" msg)))))))))
-
   (testing "unknown field also doesn't leak when no FK-reachable table has the column"
     (let [r (resolve.mp/import-resolver mp-with-fk)]
       (try
@@ -272,7 +375,7 @@
 ;;; export-table-fk / export-field-fk
 ;;; ============================================================
 
-(deftest export-table-fk-test
+(deftest ^:parallel export-table-fk-test
   (testing "happy path"
     (let [r (resolve.mp/export-resolver mp-simple)]
       (is (= ["Sample" "PUBLIC" "ORDERS"]   (resolve/export-table-fk r 10)))
@@ -288,7 +391,7 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :unknown-table-id (:error (ex-data e)))))))))
 
-(deftest export-field-fk-test
+(deftest ^:parallel export-field-fk-test
   (testing "happy path"
     (let [r (resolve.mp/export-resolver mp-simple)]
       (is (= ["Sample" "PUBLIC" "ORDERS" "TOTAL"] (resolve/export-field-fk r 101)))))
@@ -305,7 +408,7 @@
           path ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
       (is (= path (resolve/export-field-fk er (resolve/import-field-fk ir path)))))))
 
-(deftest export-database-and-card-fks-test
+(deftest ^:parallel export-database-and-card-fks-test
   (let [r (resolve.mp/export-resolver mp-with-cards)]
     (testing "database id exports to the provider's database name"
       (is (= "Sample" (resolve/export-fk-keyed r 1 :model/Database :name)))
@@ -318,7 +421,7 @@
       (is (nil? (resolve/export-fk r nil 'Card)))
       (is (nil? (resolve/export-fk-keyed r nil :model/Database :name))))))
 
-(deftest export-mbql-with-mp-resolver-round-trip-shape-test
+(deftest ^:parallel export-mbql-with-mp-resolver-round-trip-shape-test
   (testing "final numeric pMBQL exports back to portable DB/table/field/card references"
     (let [r        (resolve.mp/export-resolver mp-with-cards)
           exported (resolve/export-mbql
@@ -347,7 +450,7 @@
 ;;; Not-yet-implemented methods
 ;;; ============================================================
 
-(deftest not-implemented-phase1-test
+(deftest ^:parallel not-implemented-phase1-test
   (let [er (resolve.mp/export-resolver mp-simple)]
     (testing "export-fk for non-(Card/Measure/Segment) models still throws :not-implemented-yet"
       (try
@@ -366,7 +469,7 @@
 ;;; import-fk - Card by entity_id (step 11)
 ;;; ============================================================
 
-(deftest import-fk-card-happy-path-test
+(deftest ^:parallel import-fk-card-happy-path-test
   (testing "resolves a saved card's entity_id to its numeric id when the card lives in the same database"
     (mt/with-temp [:model/Card {card-id :id card-eid :entity_id}
                    {:database_id  (mt/id)
@@ -379,7 +482,7 @@
         (testing "also accepts keyword-qualified model name :model/Card"
           (is (= card-id (resolve/import-fk ir card-eid :model/Card))))))))
 
-(deftest import-fk-card-nil-input-returns-nil-test
+(deftest ^:parallel import-fk-card-nil-input-returns-nil-test
   (testing "nil entity_id returns nil (matches table/field FK contract)"
     (let [ir (resolve.mp/import-resolver mp-simple)]
       (is (nil? (resolve/import-fk ir nil 'Card))))))
@@ -398,7 +501,7 @@
               (is (= :unknown-card (:error d)))
               (is (= "nonexistent_entity_id1" (:entity-id d))))))))))
 
-(deftest import-fk-card-cross-database-test
+(deftest ^:parallel import-fk-card-cross-database-test
   (testing "a card that belongs to a different database surfaces a clear :cross-database-card error"
     (mt/with-temp [:model/Database {other-db-id :id} {:name "Other DB" :engine :h2}
                    :model/Card     {_card-id :id card-eid :entity_id}
@@ -421,7 +524,7 @@
 ;;; import-fk / export-fk - Measure & Segment by entity_id
 ;;; ============================================================
 
-(deftest import-fk-measure-happy-path-test
+(deftest ^:parallel import-fk-measure-happy-path-test
   (testing "resolves a measure's entity_id to its numeric id when the measure's table is in the same database"
     (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
                    {:name "Test Measure"
@@ -436,7 +539,7 @@
         (is (= measure-id (resolve/import-fk ir measure-eid 'Measure)))
         (is (= measure-id (resolve/import-fk ir measure-eid :model/Measure)))))))
 
-(deftest import-fk-segment-happy-path-test
+(deftest ^:parallel import-fk-segment-happy-path-test
   (testing "resolves a segment's entity_id to its numeric id when the segment's table is in the same database"
     (let [mp        (lib-be/application-database-metadata-provider (mt/id))
           ;; Look up the field id via lib metadata rather than `(mt/id :orders :total)` —
@@ -486,7 +589,7 @@
               (is (true? (:agent-error? d)))
               (is (= :unknown-segment (:error d))))))))))
 
-(deftest export-fk-measure-happy-path-test
+(deftest ^:parallel export-fk-measure-happy-path-test
   (testing "exports a measure's numeric id back to its portable entity_id"
     (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
                    {:name "Round-trip Measure"
@@ -501,7 +604,7 @@
         (is (= measure-eid (resolve/export-fk er measure-id 'Measure)))
         (is (= measure-eid (resolve/export-fk er measure-id :model/Measure)))))))
 
-(deftest export-fk-segment-happy-path-test
+(deftest ^:parallel export-fk-segment-happy-path-test
   (testing "exports a segment's numeric id back to its portable entity_id"
     (let [mp        (lib-be/application-database-metadata-provider (mt/id))
           orders-id (mt/id :orders)
@@ -522,7 +625,7 @@
           (is (= segment-eid (resolve/export-fk er segment-id 'Segment)))
           (is (= segment-eid (resolve/export-fk er segment-id :model/Segment))))))))
 
-(deftest import-fk-non-supported-models-still-not-implemented-test
+(deftest ^:parallel import-fk-non-supported-models-still-not-implemented-test
   (testing "models we haven't wired up still throw :not-implemented-yet"
     (let [ir (resolve.mp/import-resolver mp-simple)]
       ;; Card, Measure, Segment are wired up — see their happy-path tests below.
@@ -555,7 +658,7 @@
                {:id 300 :name "ID"         :table-id 30 :base-type :type/Integer}
                {:id 301 :name "NAME"       :table-id 30 :base-type :type/Text}]}))
 
-(deftest outbound-fks-from-table-happy-path-test
+(deftest ^:parallel outbound-fks-from-table-happy-path-test
   (testing "returns one entry per outbound FK, with target-table-id resolved"
     (let [edges (resolve.mp/outbound-fks-from-table mp-fks-3 10)]
       (is (= 2 (count edges)))
@@ -564,12 +667,12 @@
       (is (every? :target-field-id edges))
       (is (every? :source-field edges)))))
 
-(deftest outbound-fks-from-table-no-fks-test
+(deftest ^:parallel outbound-fks-from-table-no-fks-test
   (testing "table with no outbound FKs returns empty seq"
     (is (= [] (resolve.mp/outbound-fks-from-table mp-fks-3 20)))
     (is (= [] (resolve.mp/outbound-fks-from-table mp-fks-3 30)))))
 
-(deftest outbound-fks-from-table-simple-mp-test
+(deftest ^:parallel outbound-fks-from-table-simple-mp-test
   (testing "works on the existing simple MP too (no FKs configured)"
     (is (= [] (resolve.mp/outbound-fks-from-table mp-simple 10)))))
 
@@ -591,14 +694,14 @@
     (measure-by-id [_ _measure-id] nil)
     (segment-by-id [_ _segment-id] nil)))
 
-(deftest import-fk-card-via-custom-content-store-happy-path-test
+(deftest ^:parallel import-fk-card-via-custom-content-store-happy-path-test
   (testing "a custom ContentStore lets the resolver work without an app DB"
     (let [card-eid "abcdefghijabcdefghij1"
           store    (map-content-store {card-eid {:id 4242 :database_id 1}})
           ir       (resolve.mp/import-resolver mp-simple store)]
       (is (= 4242 (resolve/import-fk ir card-eid 'Card))))))
 
-(deftest import-fk-card-via-custom-content-store-unknown-test
+(deftest ^:parallel import-fk-card-via-custom-content-store-unknown-test
   (testing "unknown entity_id from a custom store still surfaces :unknown-card"
     (let [ir (resolve.mp/import-resolver mp-simple (map-content-store {}))]
       (try
@@ -609,7 +712,7 @@
             (is (true? (:agent-error? d)))
             (is (= :unknown-card (:error d)))))))))
 
-(deftest import-fk-card-via-custom-content-store-cross-database-test
+(deftest ^:parallel import-fk-card-via-custom-content-store-cross-database-test
   (testing "cross-DB check fires regardless of where the card came from"
     (let [card-eid "abcdefghijabcdefghij2"
           ;; mp-simple's database is id=1; serve a card pinned to a different db.

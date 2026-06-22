@@ -4,17 +4,15 @@ import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
-import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
-import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockDashboardState,
@@ -119,7 +117,7 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
       },
     }),
   });
-  const store = getStore(publicReducers, initialState, [Api.middleware]);
+  const store = getPublicStore(initialState);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -176,10 +174,7 @@ const defaultArgs: Partial<MockDashboardContextProps> = {
   withFooter: true,
 };
 
-const triggerPdfExport = async (
-  canvasElement: HTMLElement,
-  asyncCallback: () => void,
-) => {
+const triggerPdfExport = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
 
   // Wait for the embed frame to render
@@ -196,7 +191,6 @@ const triggerPdfExport = async (
 
   // Wait for the image to be rendered (this is set by openImageBlobOnStorybook)
   await canvas.findByTestId("image-downloaded", {}, { timeout: 30000 });
-  asyncCallback();
 };
 
 export const GridMapPdfExport = {
@@ -205,7 +199,11 @@ export const GridMapPdfExport = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
-    await triggerPdfExport(canvasElement, asyncCallback);
+    try {
+      await triggerPdfExport(canvasElement);
+    } finally {
+      asyncCallback();
+    }
   },
   parameters: {
     loki: { skip: true },

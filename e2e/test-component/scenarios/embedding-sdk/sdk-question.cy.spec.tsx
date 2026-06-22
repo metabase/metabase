@@ -339,6 +339,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     saveInteractiveQuestionAsNewQuestion({
       entityName: "Orders",
       questionName: "Sample Orders 4",
+      getModal: () => cy.findByTestId("modal"),
     });
 
     cy.wait("@createCard").then(({ response }) => {

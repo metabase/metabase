@@ -18,7 +18,7 @@
   }
 
   &[data-error] .track {
-    border: 1px solid var(--mb-color-accent-3);
+    border: 1px solid var(--mb-color-accent3);
   }
 
   .body {
@@ -85,7 +85,7 @@
   }
 
   input:checked + & {
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 
   input:disabled + & {

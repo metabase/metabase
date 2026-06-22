@@ -3,11 +3,11 @@ import { t } from "ttag";
 
 import { useCreateCollectionMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import {
   COLLECTION_FORM_SCHEMA,
   type CollectionFormValues,
-} from "metabase/collections/schemas";
+} from "metabase/common/collections/schemas";
 import { useToast } from "metabase/common/hooks";
 import {
   Form,

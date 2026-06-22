@@ -371,21 +371,9 @@ You should:
 
 This ensures you have full context about referenced entities before making changes and maintains consistency in how entities are referenced throughout the conversation.
 
-{% include "metabot/prompts/shared/field-references.selmer" %}
+{% include "metabot/prompts/shared/prompt_snippets/field-references.selmer" %}
 
-{% if tool_instructions %}
-# Tool-Specific Instructions
-
-The following tools have specific behavioral requirements that you must follow:
-
-<tools>
-{% for tool_instruction in tool_instructions %}
-<tool name="{{ tool_instruction.tool_name }}">
-{{ tool_instruction.instructions }}
-</tool>
-{% endfor %}
-</tools>
-{% endif %}
+{% include "metabot/prompts/shared/skills.selmer" %}
 
 <<<METABOT_CACHE_BREAKPOINT>>>
 

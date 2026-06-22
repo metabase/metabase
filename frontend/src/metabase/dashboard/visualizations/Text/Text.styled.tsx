@@ -70,17 +70,17 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
 
   .${DashboardS.DashCard}:hover &,
   .${DashboardS.DashCard}:focus-within & {
-    border: 1px solid var(--mb-color-brand);
+    border: 1px solid var(--mb-color-core-brand);
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border: 1px solid var(--mb-color-brand);
+    border: 1px solid var(--mb-color-core-brand);
   }
 
   ${({ isEmpty }) =>
     isEmpty &&
     css`
-      border: 1px solid var(--mb-color-brand);
+      border: 1px solid var(--mb-color-core-brand);
       color: var(--mb-color-text-tertiary);
     `}
 
@@ -247,7 +247,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     font-weight: bold;
     cursor: pointer;
     text-decoration: none;
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 
   .text-card-markdown a:hover {
@@ -271,7 +271,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown tr {
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
   }
 
   .text-card-markdown tr:nth-of-type(even) {
@@ -281,7 +281,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   .text-card-markdown th,
   .text-card-markdown td {
     padding: 0.75em;
-    border: 1px solid var(--mb-color-border);
+    border: 1px solid var(--mb-color-border-neutral);
   }
 
   .text-card-markdown code {
@@ -301,7 +301,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
 
   .text-card-markdown blockquote {
     color: var(--mb-color-text-secondary);
-    border-left: 5px solid var(--mb-color-border);
+    border-left: 5px solid var(--mb-color-border-neutral);
     padding: 0 1.5em 0 17px;
     margin: 0.5em 0 0.5em 1em;
   }

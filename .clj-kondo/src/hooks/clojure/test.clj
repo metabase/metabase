@@ -84,6 +84,36 @@
                                                    "Split it up into smaller tests! 🥰")
                                      :type :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests)))))))
 
+(defn- every-top-level-form-in-deftest-is-testing? [{[_deftest _test-name & forms] :children, :as _node}]
+  (every? (fn [{[first-child] :children, :as form}]
+            (and (hooks/list-node? form)
+                 (= (hooks.common/node->qualified-symbol first-child)
+                    'clojure.test/testing)))
+          forms))
+
+(defn- num-top-level-forms-in-deftest [{[_deftest _test-name & forms] :children, :as _node}]
+  (count forms))
+
+(defn- deftest-check-should-not-be-multiple-separate-tests
+  "Warn on long tests (tests over `min-length`) that look like
+
+    (deftest my-test
+      (testing ...)
+      (testing ...)
+      (testing ...))"
+  [node {:keys [min-length], :as _config}]
+  (let [{:keys [row end-row]} (meta node)
+        test-length           (- end-row row)]
+    (when (and min-length
+               (> test-length min-length)
+               (every-top-level-form-in-deftest-is-testing? node)
+               (> (num-top-level-forms-in-deftest node) 1))
+      (hooks/reg-finding!
+       (assoc (meta node)
+              :message (str "This test looks like it contains several logically separate testing forms... break it"
+                            " out into separate deftests to make it easier to test and debug")
+              :type    :metabase/validate-deftest-logically-separate-tests)))))
+
 (defn- ignore? [node error-type]
   (contains? (hooks.common/ignored-linters node) error-type))
 
@@ -155,6 +185,7 @@
             (= lang :clj))
     (deftest-check-parallel node ns-sym (get-in config [:linters :metabase/validate-deftest])))
   (deftest-check-not-horrifically-long node (get-in config [:linters :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]))
+  (deftest-check-should-not-be-multiple-separate-tests node (get-in config [:linters :metabase/validate-deftest-logically-separate-tests]))
   (deftest-check-no-driver-keywords node (get-in config [:linters :metabase/disallow-hardcoded-driver-names-in-tests]))
   (deftest-check-in-valid-module input)
   input)
@@ -193,26 +224,38 @@
 
               nil)))))))
 
-(defn is [{:keys [node lang]}]
+(defn is [{:keys [node lang], :as input}]
   (when (= lang :cljs)
     (warn-about-missing-test-expr-requires-in-cljs node))
-  {:node node})
+  input)
 
 (defn use-fixtures
   "Flag `:parallel/unsafe` forms inside fixtures. Skipped when the surrounding
-   namespace is marked `^:synchronous` -- the ns marker is the author's
-   explicit opt-in to a single-threaded test ns where destructive setup is
-   safe. Without that opt-in, kondo can't know whether sibling deftests will
-   be `^:parallel`, so the conservative default is to flag.
+  namespace is marked `^:synchronous` -- the ns marker is the author's
+  explicit opt-in to a single-threaded test ns where destructive setup is
+  safe. Without that opt-in, kondo can't know whether sibling deftests will
+  be `^:parallel`, so the conservative default is to flag.
 
-   Sister to [[deftest-check-parallel]]: the deftest hook rejects `^:parallel`
-   tests inside a `^:synchronous` ns, so the two checks together form a
-   coherent opt-in: either the whole ns is synchronous (fixtures can be
-   anything; no parallel tests allowed) or it isn't (fixtures must be
-   parallel-safe)."
-  [{:keys [node config], ns-sym :ns}]
+  Sister to [[deftest-check-parallel]]: the deftest hook rejects `^:parallel`
+  tests inside a `^:synchronous` ns, so the two checks together form a
+  coherent opt-in: either the whole ns is synchronous (fixtures can be
+  anything; no parallel tests allowed) or it isn't (fixtures must be
+  parallel-safe)."
+  [{:keys [node config], ns-sym :ns, :as input}]
   (when-not (:synchronous (meta ns-sym))
     (let [linter-config (get-in config [:linters :metabase/validate-deftest])]
       (doseq [form (rest (:children node))]
         (warn-about-disallowed-parallel-forms form linter-config))))
-  {:node node})
+  input)
+
+(defn testing
+  "Check that we don't have an empty `testing` form like
+
+    (testing \"message\")"
+  [{{[_testing _message & body] :children, :as node} :node, :as input}]
+  (when (empty? body)
+    (hooks/reg-finding!
+     (assoc (meta node)
+            :message "A `testing` form that doesn't wrap anything doesn't do anything"
+            :type    :metabase/check-testing-not-empty)))
+  input)

@@ -220,6 +220,55 @@ describe("DataSelector", () => {
     expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
+  it("should auto-advance past a single schema that loads asynchronously", async () => {
+    // Reproduces a flake in the native editor's table picker for single-schema
+    // databases (e.g. Mongo): when the schema list arrives *after* the picker
+    // has already switched to the schema step, the lone schema must still be
+    // auto-selected so the user lands on the table list rather than getting
+    // stranded on the schema step.
+    const fetchDatabases = jest.fn();
+    const fetchSchemas = jest.fn();
+    const fetchSchemaTables = jest.fn();
+
+    const metadataWithoutTables = createMockMetadata({
+      databases: [createMockDatabase({ id: SAMPLE_DB_ID, tables: [] })],
+    });
+
+    const props = {
+      steps: ["SCHEMA", "TABLE"],
+      selectedDatabaseId: SAMPLE_DB_ID,
+      triggerElement: <div />,
+      isOpen: true,
+      fetchDatabases,
+      fetchSchemas,
+      fetchSchemaTables,
+    };
+
+    const { rerender } = render(
+      <DataSelector
+        {...props}
+        databases={[metadataWithoutTables.database(SAMPLE_DB_ID)]}
+        metadata={metadataWithoutTables}
+      />,
+    );
+
+    // entering the schema step triggers a schema fetch
+    await delay(1);
+    expect(fetchSchemas).toHaveBeenCalled();
+    expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+
+    // the schema (and its tables) arrive asynchronously
+    rerender(
+      <DataSelector
+        {...props}
+        databases={[metadata.database(SAMPLE_DB_ID)]}
+        metadata={metadata}
+      />,
+    );
+
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
+  });
+
   it("shouldn't fetch databases until it's opened", async () => {
     const fetchDatabases = jest.fn();
     render(
@@ -379,7 +428,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
-  it("should open database picker with correct database selected", () => {
+  it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
         steps={["DATABASE"]}
@@ -392,7 +441,7 @@ describe("DataSelector", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Sample Database" }),
+      await screen.findByRole("heading", { name: "Sample Database" }),
     ).toBeInTheDocument();
   });
 
@@ -444,7 +493,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Orders")).toBeInTheDocument();
   });
 
-  it("shows an empty state without any databases", () => {
+  it("shows an empty state without any databases", async () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -455,7 +504,9 @@ describe("DataSelector", () => {
     );
 
     expect(
-      screen.getByText("To pick some data, you'll need to add some first"),
+      await screen.findByText(
+        "To pick some data, you'll need to add some first",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -475,10 +526,10 @@ describe("DataSelector", () => {
       { storeInitialState },
     );
 
-    expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+    expect(await screen.findByText("Saved Questions")).toBeInTheDocument();
   });
 
-  it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", () => {
+  it("should not show 'Saved Questions' option when there are no saved questions (metabase#29760)", async () => {
     renderWithProviders(
       <DataSelector
         availableModels={[]}
@@ -494,6 +545,7 @@ describe("DataSelector", () => {
       { storeInitialState },
     );
 
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
     expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
   });
 });

@@ -446,7 +446,9 @@ export function DashCardVisualization({
     });
 
   const actionButtons = useMemo(() => {
-    const result = series[0] as unknown as Dataset;
+    const cardId = dashcard.card_id ?? dashcard.card?.id;
+    const cardResult = cardId ? datasets?.[cardId] : undefined;
+    const result = cardResult ?? (series[0] as unknown as Dataset);
 
     const showMenu =
       question &&
@@ -457,9 +459,6 @@ export function DashCardVisualization({
         result,
       });
 
-    const cardResult = dashcard.card_id
-      ? datasets?.[dashcard.card_id]
-      : undefined;
     const errorStatus =
       cardResult?.error && typeof cardResult.error === "object"
         ? cardResult.error.status
@@ -530,14 +529,14 @@ export function DashCardVisualization({
 
   return (
     <div
-      className={cx(CS.flexFull, CS.fullHeight, {
+      className={cx(S.VisualizationContainer, CS.flexFull, CS.fullHeight, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
       ref={containerRef}
     >
       <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
         <Visualization
-          className={cx(CS.flexFull, {
+          className={cx(S.Visualization, CS.flexFull, {
             [CS.overflowAuto]: visualizationOverlay,
             [CS.overflowHidden]: !visualizationOverlay,
           })}

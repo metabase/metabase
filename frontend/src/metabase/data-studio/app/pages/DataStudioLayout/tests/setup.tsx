@@ -15,9 +15,9 @@ import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
+  CurrentWorkspace,
   RemoteSyncEntity,
   TokenFeatures,
-  WorkspaceInstance,
 } from "metabase-types/api";
 import {
   createMockDirtyCardEntity,
@@ -100,14 +100,12 @@ const setupNavbarEndpoints = (isOpened = true) => {
 
 interface StoreStateOptions {
   isAdmin?: boolean;
-  canManageWorkspaces?: boolean;
   remoteSyncSettings?: Partial<RemoteSyncSettings>;
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
 const createStoreState = ({
   isAdmin = true,
-  canManageWorkspaces = false,
   remoteSyncSettings = {},
   tokenFeatures,
 }: StoreStateOptions = {}) => {
@@ -119,7 +117,6 @@ const createStoreState = ({
       permissions: {
         can_access_data_model: isAdmin,
         can_access_db_details: false,
-        can_manage_workspaces: canManageWorkspaces,
       },
     }),
     settings: mockSettings({
@@ -133,8 +130,7 @@ interface SetupOpts {
   remoteSyncEnabled?: boolean;
   remoteSyncBranch?: string | null;
   isAdmin?: boolean;
-  canManageWorkspaces?: boolean;
-  currentWorkspace?: WorkspaceInstance | null;
+  currentWorkspace?: CurrentWorkspace | null;
   hasDirtyChanges?: boolean;
   hasTransformDirtyChanges?: boolean;
   remoteSyncTransforms?: boolean;
@@ -147,7 +143,6 @@ export const setup = ({
   remoteSyncEnabled = true,
   remoteSyncBranch = null,
   isAdmin = true,
-  canManageWorkspaces = false,
   currentWorkspace = null,
   hasDirtyChanges = false,
   hasTransformDirtyChanges = false,
@@ -195,7 +190,6 @@ export const setup = ({
 
   const state = createStoreState({
     isAdmin,
-    canManageWorkspaces,
     remoteSyncSettings,
     tokenFeatures,
   });
@@ -233,6 +227,7 @@ export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
     advanced_permissions: true,
     library: true,
     dependencies: true,
+    "schema-viewer": true,
     workspaces: true,
   },
 };

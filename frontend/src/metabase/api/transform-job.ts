@@ -1,9 +1,13 @@
 import type {
   CreateTransformJobRequest,
+  ListJobRunTransformRunsRequest,
+  ListTransformJobRunsRequest,
+  ListTransformJobRunsResponse,
   ListTransformJobsRequest,
   Transform,
   TransformJob,
   TransformJobId,
+  TransformRunForJobRun,
   UpdateTransformJobRequest,
 } from "metabase-types/api";
 
@@ -43,6 +47,31 @@ export const transformJobApi = Api.injectEndpoints({
       providesTags: (transforms = [], _error, id) => [
         idTag("transform-job", id),
         ...provideTransformListTags(transforms),
+      ],
+    }),
+    listTransformJobRuns: builder.query<
+      ListTransformJobRunsResponse,
+      ListTransformJobRunsRequest
+    >({
+      query: ({ jobId, ...params }) => ({
+        method: "GET",
+        url: `/api/transform-job/${jobId}/runs`,
+        params,
+      }),
+      providesTags: (_response, _error, { jobId }) => [
+        idTag("transform-job", jobId),
+      ],
+    }),
+    listJobRunTransformRuns: builder.query<
+      TransformRunForJobRun[],
+      ListJobRunTransformRunsRequest
+    >({
+      query: ({ jobId, runId }) => ({
+        method: "GET",
+        url: `/api/transform-job/${jobId}/runs/${runId}/transform-runs`,
+      }),
+      providesTags: (_response, _error, { jobId }) => [
+        idTag("transform-job", jobId),
       ],
     }),
     runTransformJob: builder.mutation<void, TransformJobId>({
@@ -154,6 +183,8 @@ export const transformJobApi = Api.injectEndpoints({
 export const {
   useListTransformJobsQuery,
   useListTransformJobTransformsQuery,
+  useListTransformJobRunsQuery,
+  useListJobRunTransformRunsQuery,
   useGetTransformJobQuery,
   useLazyGetTransformJobQuery,
   useRunTransformJobMutation,

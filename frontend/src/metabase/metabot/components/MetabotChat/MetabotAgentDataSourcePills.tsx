@@ -379,7 +379,7 @@ const TableSourceRow = ({
       location={location}
       messageId={messageId}
       source={{ source_id: id, source_type: "table" }}
-      to={Urls.tableRowsQuery(table.db_id, id)}
+      to={Urls.table({ id, name: table.display_name })}
     />
   );
 };
@@ -431,7 +431,7 @@ const SourceDataSection = ({ children }: { children: React.ReactNode }) => {
       style={{
         borderRadius: "0.5rem",
         overflow: "hidden",
-        border: "1px solid var(--mb-color-border)",
+        border: "1px solid var(--mb-color-border-neutral)",
       }}
     >
       <UnstyledButton
@@ -595,7 +595,7 @@ const NativeSourcesRow = ({
             location={location}
             messageId={messageId}
             source={{ source_id: table.id, source_type: "table" }}
-            to={Urls.tableRowsQuery(databaseId, table.id)}
+            to={Urls.table({ id: table.id, name: label })}
           />
         );
       })}

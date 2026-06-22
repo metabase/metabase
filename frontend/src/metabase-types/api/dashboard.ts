@@ -299,7 +299,19 @@ export type ListDashboardsResponse = Omit<
 export type GetDashboardRequest = {
   id: DashboardId;
   ignore_error?: boolean;
+  dashboard_load_id?: string;
 };
+
+export type DashboardParameterValuesRequest = {
+  dashId?: DashboardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
+};
+
+export type SearchDashboardParameterValuesRequest =
+  DashboardParameterValuesRequest & {
+    query: string;
+  };
 
 export type CreateDashboardRequest = {
   name: string;
@@ -338,6 +350,19 @@ export type UpdateDashboardRequest = {
 
 export type GetDashboardQueryMetadataRequest = {
   id: DashboardId;
+  dashboard_load_id?: string;
+};
+
+export type DashboardCardQueryRequest = {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  cardId: CardId;
+  collection_preview?: boolean;
+  ignore_cache?: boolean;
+  parameters?: unknown[];
+  // Sent in the request body (in addition to the path params above) when
+  // querying a saved dashcard, for query provenance/telemetry.
+  dashboard_id?: DashboardId;
   dashboard_load_id?: string;
 };
 

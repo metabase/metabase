@@ -34,7 +34,7 @@ import {
   provideCardTags,
   provideParameterValuesTags,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
@@ -78,7 +78,7 @@ export const cardApi = Api.injectEndpoints({
           params,
         }),
         providesTags: (cards = []) => provideCardListTags(cards),
-        onQueryStarted: hydrateLegacyEntities([QuestionSchema]),
+        onQueryStarted: hydrateMetadataStore([QuestionSchema]),
       }),
       getCard: builder.query<Card, GetCardRequest>({
         query: ({ id, ignore_error, ...params }) => ({
@@ -88,7 +88,7 @@ export const cardApi = Api.injectEndpoints({
           noEvent: ignore_error,
         }),
         providesTags: (card) => (card ? provideCardTags(card) : []),
-        onQueryStarted: hydrateLegacyEntities(QuestionSchema),
+        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
         query: (id) => ({
@@ -97,10 +97,15 @@ export const cardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata, _error, id) =>
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
-        onQueryStarted: hydrateLegacyEntities(QueryMetadataSchema),
+        onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
       }),
-      getCardQuery: builder.query<Dataset, CardQueryRequest>({
-        query: ({ cardId, ...body }) => ({
+      getCardQuery: builder.query<
+        Dataset,
+        CardQueryRequest & { _refetchDeps?: unknown }
+      >({
+        // `_refetchDeps` is part of the RTK cache key (so imperative runners can
+        // force a unique key per call) but must not be sent to the server.
+        query: ({ cardId, _refetchDeps, ...body }) => ({
           method: "POST",
           url: `/api/card/${cardId}/query`,
           body,
@@ -108,8 +113,11 @@ export const cardApi = Api.injectEndpoints({
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),
       }),
-      getCardQueryPivot: builder.query<Dataset, CardQueryRequest>({
-        query: ({ cardId, ...body }) => ({
+      getCardQueryPivot: builder.query<
+        Dataset,
+        CardQueryRequest & { _refetchDeps?: unknown }
+      >({
+        query: ({ cardId, _refetchDeps, ...body }) => ({
           method: "POST",
           url: `/api/card/pivot/${cardId}/query`,
           body,
@@ -173,9 +181,7 @@ export const cardApi = Api.injectEndpoints({
           return {
             method: "POST",
             url: "/api/upload/csv",
-            body: { formData },
-            formData: true,
-            fetch: true,
+            body: formData,
           };
         },
         invalidatesTags: (_, error) =>

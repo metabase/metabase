@@ -85,9 +85,13 @@
                               (:constraints query))]
             (qp.pivot/run-pivot-query (-> query
                                           (assoc :constraints constraints)
+                                          ;; Use assoc rather than merge so :info comes entirely from the
+                                          ;; server-built map. :info carries :card-id and similar fields the
+                                          ;; server derives, so we replace it rather than combining it with
+                                          ;; whatever was on the incoming query.
                                           (assoc :info info))
                                       rff))
-          (qp/process-query (update query :info merge info) rff))))))
+          (qp/process-query (assoc query :info info) rff))))))
 
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
@@ -182,11 +186,10 @@
              [:database ms/PositiveInt]
              [:settings {:optional true} [:maybe [:map
                                                   [:include_sensitive_fields {:optional true} :boolean]]]]]]
-  (lib-be/with-metadata-provider-cache
-    (queries/batch-fetch-query-metadata
-     [query]
-     (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
-       {:include-sensitive-fields? include-sensitive-fields}))))
+  (queries/batch-fetch-query-metadata
+   [query]
+   (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
+     {:include-sensitive-fields? include-sensitive-fields})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

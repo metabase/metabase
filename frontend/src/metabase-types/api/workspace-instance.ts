@@ -5,18 +5,19 @@ export type TableNamespace = {
   schema?: string | null;
 };
 
-export type WorkspaceInstanceDatabase = {
+export type CurrentWorkspaceDatabase = {
   input_schemas: string[];
   output: TableNamespace;
 };
 
-export type WorkspaceInstance = {
+export type CurrentWorkspace = {
   name: string;
-  databases: Record<DatabaseId, WorkspaceInstanceDatabase>;
+  databases: Record<DatabaseId, CurrentWorkspaceDatabase>;
+  can_write: boolean;
 };
 
 export type GetCurrentWorkspaceResponse = {
-  data: WorkspaceInstance | null;
+  data: CurrentWorkspace | null;
 };
 
 export type TableRemappingId = number;

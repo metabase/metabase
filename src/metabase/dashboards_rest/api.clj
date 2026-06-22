@@ -139,28 +139,27 @@
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (api/create-check :model/Dashboard {:collection_id collection_id})
-  (lib-be/with-metadata-provider-cache
-    (let [dashboard-data {:name                name
-                          :description         description
-                          :parameters          (or parameters [])
-                          :creator_id          api/*current-user-id*
-                          :cache_ttl           cache_ttl
-                          :collection_id       collection_id
-                          :collection_position collection_position}
-          dash           (t2/with-transaction [_conn]
-                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                           ;; collection to change position, check that and fix up if needed
-                           (api/maybe-reconcile-collection-position! dashboard-data)
-                           ;; Ok, now save the Dashboard
-                           (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
-      (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-      (analytics/track-event! :snowplow/dashboard
-                              {:event        :dashboard-created
-                               :dashboard-id (u/the-id dash)})
-      (-> dash
-          hydrate-dashboard-details
-          collection.root/hydrate-root-collection
-          (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))))
+  (let [dashboard-data {:name                name
+                        :description         description
+                        :parameters          (or parameters [])
+                        :creator_id          api/*current-user-id*
+                        :cache_ttl           cache_ttl
+                        :collection_id       collection_id
+                        :collection_position collection_position}
+        dash           (t2/with-transaction [_conn]
+                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                         ;; collection to change position, check that and fix up if needed
+                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         ;; Ok, now save the Dashboard
+                         (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
+    (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+    (analytics/track-event! :snowplow/dashboard
+                            {:event        :dashboard-created
+                             :dashboard-id (u/the-id dash)})
+    (-> dash
+        hydrate-dashboard-details
+        collection.root/hydrate-root-collection
+        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
@@ -984,7 +983,6 @@
           dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
-
       (api/check-500
        (do
          (t2/with-transaction [_conn]
@@ -997,19 +995,7 @@
                                 :present #{:description :position :width :collection_id :collection_position :cache_ttl :archived_directly :embedding_type}
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
-             (when (api/column-will-change? :archived current-dash dash-updates)
-               (if (:archived dash-updates)
-                 (t2/update! :model/Card
-                             :dashboard_id id
-                             :archived false
-                             {:archived true :archived_directly false})
-                 (t2/update! :model/Card
-                             :dashboard_id id
-                             :archived true
-                             :archived_directly false
-                             {:archived false})))
-             (when (api/column-will-change? :collection_id current-dash dash-updates)
-               (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)}))
+             (dashboard/cascade-card-state-from-dashboard-update! current-dash dash-updates)
              (t2/update! :model/Dashboard id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
@@ -1053,7 +1039,6 @@
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
-
            (collections/check-for-remote-sync-update current-dash))
          true))
       (let [dashboard (t2/select-one :model/Dashboard id)]
@@ -1263,11 +1248,10 @@
                                    [:id ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (lib-be/with-metadata-provider-cache
-    (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
-      ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
-      (binding [qp.perms/*param-values-query* true]
-        (parameters.dashboard/param-values dashboard param-key constraint-param-key->value)))))
+  (let [dashboard (api/read-check :model/Dashboard id)]
+    ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
+    (binding [qp.perms/*param-values-query* true]
+      (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1287,12 +1271,11 @@
                                     [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
    constraint-param-key->value  :- [:map-of string? any?]]
-  (lib-be/with-metadata-provider-cache
-    (let [dashboard (api/read-check :model/Dashboard id)]
-      ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
-      (binding [qp.perms/*param-values-query* true
-                chain-filter/*allow-implicit-uuid-field-remapping* false]
-        (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
+  (let [dashboard (api/read-check :model/Dashboard id)]
+    ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
+    (binding [qp.perms/*param-values-query* true
+              chain-filter/*allow-implicit-uuid-field-remapping* false]
+      (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1415,9 +1398,9 @@
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
                body
-               {:dashboard-id dashboard-id
-                :card-id      card-id
-                :dashcard-id  dashcard-id}))))
+               {:dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+                :card      (api/check-404 (t2/select-one :model/Card card-id))
+                :dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1447,9 +1430,9 @@
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
-            {:dashboard-id  dashboard-id
-             :card-id       card-id
-             :dashcard-id   dashcard-id
+            {:dashboard     (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+             :card          (api/check-404 (t2/select-one :model/Card card-id))
+             :dashcard      (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
              :export-format export-format
              :parameters    (cond-> parameters
                               (string? parameters) json/decode+kw)
@@ -1481,7 +1464,7 @@
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
-             {:dashboard-id dashboard-id
-              :card-id      card-id
-              :dashcard-id  dashcard-id
-              :qp           qp.pivot/run-pivot-query})))
+             {:dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+              :card      (api/check-404 (t2/select-one :model/Card card-id))
+              :dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+              :qp        qp.pivot/run-pivot-query})))

@@ -2,10 +2,12 @@ import type { ChangeEvent, ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo } from "react";
 import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
-import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
-import { Button } from "metabase/common/components/Button";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetTableQueryMetadataQuery,
+} from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import type { RadioOption } from "metabase/common/components/Radio";
@@ -13,12 +15,11 @@ import { Radio } from "metabase/common/components/Radio";
 import type { SelectChangeEvent } from "metabase/common/components/Select";
 import { Option, Select } from "metabase/common/components/Select";
 import { SelectButton } from "metabase/common/components/SelectButton";
-import { Questions } from "metabase/entities/questions";
 import { connect, useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -101,7 +102,7 @@ const ValuesSourceTypeModal = ({
       footer={[
         <Button
           key="submit"
-          primary
+          variant="filled"
           disabled={!isValidSourceConfig(sourceType, sourceConfig)}
           onClick={onSubmit}
         >{t`Done`}</Button>,
@@ -668,28 +669,38 @@ const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
 
-const ValuesSourceTypeModalConnected = _.compose(
-  Questions.load({
-    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
-  connect(null, mapDispatchToProps),
+const ValuesSourceTypeModalConnected = connect(
+  null,
+  mapDispatchToProps,
 )(ValuesSourceTypeModal);
 
-// Loads the source card's virtual-table query metadata into the store (so the
-// connected fields are available) before rendering, replacing the former
-// Tables.load HOC.
+// Loads the source card and its virtual-table query metadata into the store (so
+// the question and its connected fields are available) before rendering,
+// replacing the former Questions.load / Tables.load HOCs.
 function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
   const { card_id } = props.sourceConfig;
   const virtualTableId =
     card_id != null ? getQuestionVirtualTableId(card_id) : undefined;
-  const { isLoading, error } = useGetTableQueryMetadataQuery(
-    virtualTableId != null ? { id: virtualTableId } : skipToken,
+  const { isLoading: isMetadataLoading, error: metadataError } =
+    useGetTableQueryMetadataQuery(
+      virtualTableId != null ? { id: virtualTableId } : skipToken,
+    );
+  const { isLoading: isCardLoading, error: cardError } = useGetCardQuery(
+    card_id != null ? { id: card_id } : skipToken,
+  );
+  const question = useSelector((state) =>
+    card_id != null
+      ? (getMetadata(state).question(card_id) ?? undefined)
+      : undefined,
   );
 
   return (
-    <ModalLoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      <ValuesSourceTypeModalConnected {...props} />
+    <ModalLoadingAndErrorWrapper
+      loading={isMetadataLoading || isCardLoading}
+      error={metadataError ?? cardError}
+      noWrapper
+    >
+      <ValuesSourceTypeModalConnected {...props} question={question} />
     </ModalLoadingAndErrorWrapper>
   );
 }

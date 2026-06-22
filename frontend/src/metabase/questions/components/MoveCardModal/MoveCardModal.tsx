@@ -5,18 +5,18 @@ import _ from "underscore";
 
 import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
-import type { MoveDestination } from "metabase/collections/types";
+import { QuestionMoveConfirmModal } from "metabase/common/collections/components/QuestionMoveConfirmModal";
+import type { MoveDestination } from "metabase/common/collections/types";
 import {
   canonicalCollectionId,
   getEntityTypeFromCardType,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { DashboardName } from "metabase/common/components/DashboardName";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers";
 import { MoveModal } from "metabase/common/components/Pickers";
-import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch } from "metabase/redux";
+import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/redux/entities/questions-reducer";
 import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Icon, Radio, Title } from "metabase/ui";
@@ -195,7 +195,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
             </Radio.Group>
           </>
         }
-        confirmButtonProps={{ color: "brand", variant: "filled" }}
+        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
         confirmButtonText={t`Done`}
       />
     );
@@ -226,7 +226,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         }
         message={t`You can move it to a collection if you want to use it in both dashboards.`}
         confirmButtonText={t`Okay`}
-        confirmButtonProps={{ color: "brand", variant: "filled" }}
+        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
       />
     );
   }

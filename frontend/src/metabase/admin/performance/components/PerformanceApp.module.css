@@ -3,7 +3,7 @@
   background-color: var(--mb-color-background-secondary);
   border-bottom-width: 1px;
   margin-top: 1.5rem;
-  border-bottom-color: var(--mb-color-border);
+  border-bottom-color: var(--mb-color-border-neutral);
 }
 
 .Tab {
@@ -14,7 +14,7 @@
   margin-inline-end: 1.25rem;
 
   :hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
     background-color: inherit;
     border-color: transparent;
   }

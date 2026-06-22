@@ -14,6 +14,7 @@ import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
 import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
@@ -136,10 +137,13 @@ const SupportingTextComponent = ({
   node,
   selected,
 }: NodeViewProps) => {
+  const { ref: viewportRef, isInViewport } = useNodeInViewport();
   const childTargetId = useSelector(getChildTargetId);
   const document = useSelector(getCurrentDocument);
   const { _id } = node.attrs;
-  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
+  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+    skip: !isInViewport,
+  });
   const isOpen = childTargetId === _id;
   const commentsPath = document
     ? `/document/${document.id}/comments/${_id}`
@@ -160,6 +164,7 @@ const SupportingTextComponent = ({
 
   return (
     <NodeViewWrapper
+      ref={viewportRef}
       className={cx(S.wrapper, { [S.selected]: selected })}
       data-testid="document-card-supporting-text"
       data-type={SUPPORTING_TEXT_NODE_NAME}

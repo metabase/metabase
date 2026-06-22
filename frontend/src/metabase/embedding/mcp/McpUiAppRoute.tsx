@@ -4,6 +4,8 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
+import { useSelector } from "metabase/redux";
+import { getIsHosted } from "metabase/selectors/settings";
 import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
@@ -60,8 +62,13 @@ export function McpUiAppRoute() {
   );
 
   const theme = useMemo(
-    () => buildMcpAppsTheme(hostCssVariables, scheme),
-    [hostCssVariables, scheme],
+    () =>
+      buildMcpAppsTheme({
+        hostCssVariables,
+        preset: scheme,
+        agentName: hostContext?.userAgent,
+      }),
+    [hostCssVariables, scheme, hostContext?.userAgent],
   );
 
   return (
@@ -92,6 +99,7 @@ function McpUiAppRouteContent({
   sessionToken,
 }: McpUiAppRouteContentProps) {
   const handleDrillThrough = useHandleMcpDrillThrough(app);
+  const isHosted = useSelector(getIsHosted);
 
   const { mcpSessionId = "" } =
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
@@ -142,7 +150,7 @@ function McpUiAppRouteContent({
 
   const footerStyle: CSSProperties = {
     boxSizing: "border-box",
-    borderTop: "1px solid var(--mb-color-border)",
+    borderTop: "1px solid var(--mb-color-border-neutral)",
     paddingRight: Math.max(safeAreaPadding.right, FOOTER_HORIZONTAL_PADDING),
     paddingTop: safeAreaPadding.bottom,
     paddingBottom: safeAreaPadding.bottom,
@@ -181,12 +189,16 @@ function McpUiAppRouteContent({
 
     return (
       <>
-        <McpQuestionView safeAreaPaddingTop={safeAreaPadding.top} />
+        <McpQuestionView
+          queryKey={query}
+          safeAreaPaddingTop={safeAreaPadding.top}
+        />
 
         <McpCardFooter
           app={app}
           footerStyle={footerStyle}
           instanceUrl={instanceUrl}
+          isFeedbackEnabled={Boolean(isHosted)}
           isSubmittingFeedback={isSubmittingFeedback}
           onSelectFeedback={setSelectedFeedback}
           submittedFeedback={submittedFeedback}

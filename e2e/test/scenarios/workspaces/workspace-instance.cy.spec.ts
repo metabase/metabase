@@ -88,7 +88,6 @@ describe("scenarios > workspaces > workspace instance", () => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-      stubDevelopmentModeTokenFeature();
       H.resetTestTable({ type: "postgres", table: "multi_schema" });
       H.queryWritableDB(
         `CREATE SCHEMA IF NOT EXISTS ${POSTGRES_OUTPUT_SCHEMA}`,
@@ -107,11 +106,11 @@ describe("scenarios > workspaces > workspace instance", () => {
 
     it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
       cy.log("set up the workspace");
-      H.WorkspaceInstancePage.visit();
-      H.WorkspaceInstancePage.setupButton().click();
+      H.WorkspaceListPage.visit();
+      H.WorkspaceListPage.setupInstanceButton().click();
       H.SetupWorkspaceModal.uploadConfig(POSTGRES_CONFIG);
       H.SetupWorkspaceModal.setupButton().click();
-      H.WorkspaceInstancePage.get().should("be.visible");
+      H.CurrentWorkspacePage.get().should("be.visible");
 
       cy.log("create and run a transform via the API");
       createAndRunTransform({
@@ -122,8 +121,8 @@ describe("scenarios > workspaces > workspace instance", () => {
       });
 
       cy.log("instance page shows the remapping for the transform target");
-      H.WorkspaceInstancePage.visit();
-      H.WorkspaceInstancePage.database(POSTGRES_DB_NAME)
+      H.CurrentWorkspacePage.visit();
+      H.CurrentWorkspacePage.database(POSTGRES_DB_NAME)
         .should(
           "contain.text",
           `${POSTGRES_INPUT_SCHEMA}/${POSTGRES_TARGET_TABLE}`,
@@ -157,11 +156,11 @@ describe("scenarios > workspaces > workspace instance", () => {
         expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
       });
 
-      cy.log("exit the workspace through the UI");
-      H.WorkspaceInstancePage.visit();
-      H.WorkspaceInstancePage.exitButton().click();
-      H.ExitWorkspaceModal.confirmButton().click();
-      H.WorkspaceInstancePage.setupButton().should("be.visible");
+      cy.log("leave the workspace through the UI");
+      H.CurrentWorkspacePage.visit();
+      H.CurrentWorkspacePage.leaveButton().click();
+      H.LeaveWorkspaceModal.confirmButton().click();
+      H.WorkspaceListPage.setupInstanceButton().should("be.visible");
     });
   });
 
@@ -170,7 +169,6 @@ describe("scenarios > workspaces > workspace instance", () => {
       H.restore("mysql-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
-      stubDevelopmentModeTokenFeature();
       H.resetTestTable({ type: "mysql", table: MYSQL_SOURCE_TABLE });
       H.queryWritableDB(
         `DROP DATABASE IF EXISTS ${MYSQL_OUTPUT_DATABASE}`,
@@ -190,11 +188,11 @@ describe("scenarios > workspaces > workspace instance", () => {
 
     it("runs a transform, surfaces the remapping on the instance page, and queries the remapped table", () => {
       cy.log("set up the workspace");
-      H.WorkspaceInstancePage.visit();
-      H.WorkspaceInstancePage.setupButton().click();
+      H.WorkspaceListPage.visit();
+      H.WorkspaceListPage.setupInstanceButton().click();
       H.SetupWorkspaceModal.uploadConfig(MYSQL_CONFIG);
       H.SetupWorkspaceModal.setupButton().click();
-      H.WorkspaceInstancePage.get().should("be.visible");
+      H.CurrentWorkspacePage.get().should("be.visible");
 
       cy.log("create and run a transform via the API");
       createAndRunTransform({
@@ -205,8 +203,8 @@ describe("scenarios > workspaces > workspace instance", () => {
       });
 
       cy.log("instance page shows the remapping for the transform target");
-      H.WorkspaceInstancePage.visit();
-      H.WorkspaceInstancePage.database(MYSQL_DB_NAME)
+      H.CurrentWorkspacePage.visit();
+      H.CurrentWorkspacePage.database(MYSQL_DB_NAME)
         .should("contain.text", MYSQL_TARGET_TABLE)
         .and(
           "contain.text",
@@ -236,22 +234,14 @@ describe("scenarios > workspaces > workspace instance", () => {
         expect(Number(result.rows[0].count)).to.eq(ROW_COUNT);
       });
 
-      cy.log("exit the workspace through the UI");
-      H.WorkspaceInstancePage.visit();
-      H.WorkspaceInstancePage.exitButton().click();
-      H.ExitWorkspaceModal.confirmButton().click();
-      H.WorkspaceInstancePage.setupButton().should("be.visible");
+      cy.log("leave the workspace through the UI");
+      H.CurrentWorkspacePage.visit();
+      H.CurrentWorkspacePage.leaveButton().click();
+      H.LeaveWorkspaceModal.confirmButton().click();
+      H.WorkspaceListPage.setupInstanceButton().should("be.visible");
     });
   });
 });
-
-function stubDevelopmentModeTokenFeature() {
-  cy.intercept("/api/session/properties", (req) => {
-    req.continue((res) => {
-      res.body["token-features"].development_mode = true;
-    });
-  });
-}
 
 function createAndRunTransform({
   sourceTable,

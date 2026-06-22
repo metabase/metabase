@@ -1,8 +1,8 @@
 import _ from "underscore";
 
 import { databaseApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
-import { updateMetadata } from "metabase/redux/metadata-typed";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import { DatabaseSchema } from "metabase/schema";
 import type { DatabaseData } from "metabase-types/api";
@@ -45,7 +45,7 @@ export const createDatabase = function (inputDatabase: DatabaseData) {
 
   return async function (dispatch: Dispatch) {
     try {
-      const savedDatabase = await entityCompatibleQuery(
+      const savedDatabase = await runRtkEndpoint(
         database,
         dispatch,
         databaseApi.endpoints.createDatabase,

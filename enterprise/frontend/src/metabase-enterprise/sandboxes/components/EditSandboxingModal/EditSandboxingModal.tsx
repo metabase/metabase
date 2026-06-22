@@ -9,6 +9,7 @@ import {
   useGetCardQuery,
   useGetPermissionsGroupQuery,
   useGetTableQuery,
+  useValidateGroupTableAccessPolicyMutation,
 } from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
@@ -16,12 +17,11 @@ import {
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { QuestionLoader } from "metabase/common/components/QuestionLoader";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { EntityName } from "metabase/entities/containers/EntityName";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { GTAPApi } from "metabase/services";
 import { Button, Center, Icon, Loader } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import type {
@@ -111,13 +111,15 @@ const EditSandboxingModal = ({
   const [showPickerModal, { turnOn: showModal, turnOff: hideModal }] =
     useToggle(false);
 
+  const [validatePolicy] = useValidateGroupTableAccessPolicyMutation();
+
   const [{ error }, savePolicy] = useAsyncFn(async () => {
     const shouldValidate = normalizedPolicy.card_id != null;
     if (shouldValidate) {
-      await GTAPApi.validate(normalizedPolicy);
+      await validatePolicy(normalizedPolicy).unwrap();
     }
     onSave(normalizedPolicy);
-  }, [normalizedPolicy]);
+  }, [normalizedPolicy, validatePolicy]);
 
   const remainingAttributesOptions = attributes.filter(
     (attribute) => !(attribute in policy.attribute_remappings),
@@ -284,7 +286,7 @@ const EditSandboxingModal = ({
           <ActionButton
             className={CS.ml1}
             actionFn={savePolicy}
-            primary
+            variant="filled"
             disabled={!canSave}
           >
             {t`Save`}
@@ -353,10 +355,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
           policy.card_id
             ? jt`rows in the ${(
                 <strong key="question-name">
-                  <EntityName
-                    entityType="questions"
-                    entityId={policy.card_id}
-                  />
+                  <QuestionName id={policy.card_id} />
                 </strong>
               )} question`
             : jt`rows in the ${(

@@ -5,6 +5,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
+   [metabase.search.debug :as search.debug]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
@@ -25,24 +26,22 @@
 (p/import-vars
  [search.config
   SearchableModel]
-
+ [search.debug
+  diagnose]
  [search.engine
   model-set]
-
  [search.impl
   search
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context]
-
  [search.ingestion
   bulk-ingest!
   max-searchable-value-length
   searchable-value-trim-sql]
-
  [search.spec
   spec
+  specifications
   define-spec]
-
  [search.util
   collapse-id
   indexed-entity-id->model-index-id

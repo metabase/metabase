@@ -125,7 +125,7 @@
   font-family: var(--mb-default-monospace-font-family, monospace);
   font-size: 0.875rem;
   color: var(--mb-color-text-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 .editorContent
@@ -138,7 +138,7 @@
   overflow-x: auto;
   margin: 0 0 1rem 0;
   font-size: 0.875rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 .editorContent
@@ -154,7 +154,7 @@
 .editorContent
   :global(.ProseMirror)
   :global(blockquote):not(:global(.editor-style-boundary) *) {
-  border-left: 3px solid var(--mb-color-border);
+  border-left: 3px solid var(--mb-color-border-neutral);
   margin: 0 0 1rem 0;
   color: var(--mb-color-text-secondary);
   font-style: italic;
@@ -168,7 +168,7 @@
   :global(.ProseMirror)
   :global(hr):not(:global(.editor-style-boundary) *) {
   border: none;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
   margin: 1.5rem 0;
 }
 
@@ -179,7 +179,7 @@
   margin: 1rem auto;
 
   &:global(.ProseMirror-selectednode) {
-    box-shadow: 0 0 0 1px var(--mb-color-brand);
+    box-shadow: 0 0 0 1px var(--mb-color-core-brand);
     border-radius: var(--mantine-radius-xs);
   }
 }

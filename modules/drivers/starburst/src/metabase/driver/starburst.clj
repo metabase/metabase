@@ -110,8 +110,8 @@
 ;;; The Starburst JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the
 ;;; implementation doesn't try to use it.
 #_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :starburst
-  [_driver _database _table]
+(defmethod driver/describe-fks :starburst
+  [_driver _database & {:as _options}]
   ;; starburst does not support finding foreign key metadata tables, but some connectors support foreign keys.
   ;; We have this return nil to avoid running unnecessary queries during fks sync.
   nil)
@@ -947,7 +947,6 @@
                                   (:tag driver-api/mb-version-info "")
                                   driver-api/local-process-uuid))
                   (cond-> (:prepared-optimized details-map) (assoc :explicitPrepare "false"))
-
                   ;; remove any Metabase specific properties that are not recognized by the starburst JDBC driver, which is
                   ;; very picky about properties (throwing an error if any are unrecognized)
                   ;; all valid properties can be found in the JDBC Driver source here:

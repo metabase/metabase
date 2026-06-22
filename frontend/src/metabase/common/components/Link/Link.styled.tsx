@@ -17,7 +17,7 @@ export const LinkRoot = styled(
   pointer-events: ${(props) => (props.disabled ? "none" : "")};
   transition: opacity 0.3s linear;
 
-  ${focusOutlineStyle("brand")};
+  ${focusOutlineStyle("core-brand")};
 
   ${(props) => variants[props.variant ?? "default"] ?? ""}
 ` as unknown as React.FC<LinkProps & LinkVariantProp>;
@@ -25,14 +25,14 @@ export const LinkRoot = styled(
 const variants = {
   default: "",
   brand: css`
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
 
     &:hover {
       text-decoration: underline;
     }
   `,
   brandBold: css`
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
     font-weight: bold;
 
     &:hover {

@@ -2,20 +2,19 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetMetricQuery } from "metabase/api/metric";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
-import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Card } from "metabase-types/api";
-
-import type { MetricUrls } from "../../../types";
 
 interface MetricTabsProps {
   card: Card;
@@ -27,9 +26,12 @@ export function MetricTabs({ card, urls }: MetricTabsProps) {
   const { data: metric } = useGetMetricQuery(card.id);
   const hasDimensions =
     metric?.dimensions != null && metric.dimensions.length > 0;
+  const canSeeDependencies = useSelector(
+    (state) => getUserIsAdmin(state) || getUserIsAnalyst(state),
+  );
   const tabs = useMemo(
-    () => getTabs(card, metadata, urls, hasDimensions),
-    [card, metadata, urls, hasDimensions],
+    () => getTabs(card, metadata, urls, hasDimensions, canSeeDependencies),
+    [card, metadata, urls, hasDimensions, canSeeDependencies],
   );
   return <PaneHeaderTabs tabs={tabs} />;
 }
@@ -39,6 +41,7 @@ function getTabs(
   metadata: Metadata,
   urls: MetricUrls,
   hasDimensions: boolean,
+  canSeeDependencies: boolean,
 ): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
     {
@@ -64,22 +67,10 @@ function getTabs(
     });
   }
 
-  if (PLUGIN_DEPENDENCIES.isEnabled) {
+  if (PLUGIN_DEPENDENCIES.isEnabled && canSeeDependencies) {
     tabs.push({
       label: t`Dependencies`,
       to: urls.dependencies(card.id),
-    });
-  }
-
-  const isCacheableQuestion =
-    card.can_write &&
-    PLUGIN_CACHING.isGranularCachingEnabled() &&
-    PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
-
-  if (isCacheableQuestion) {
-    tabs.push({
-      label: t`Caching`,
-      to: urls.caching(card.id),
     });
   }
 

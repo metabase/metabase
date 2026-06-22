@@ -18,7 +18,6 @@
               [:field 3 {:source-field 2}]]
              (match/match-many [[:field 1 nil] [:field 3 {:source-field 2}]]
                [(:or :field) & _] &match)))
-
     (t/is (= [[:field 10 nil]
               [:field 20 nil]]
              (match/match-many {:query {:filter [:=
@@ -39,7 +38,6 @@
              ;; return just the dest IDs of Fields in a fk-> clause
              (match/match-many a-query
                [:field dest-id {:source-field (_ :guard integer?)}] (inc dest-id))))
-
     (t/is (= [10 20]
              (match/match-many (:breakout a-query) [:field id nil] id)))))
 
@@ -54,7 +52,6 @@
              (let [a-field-id 2]
                (match/match-many {:fields [[:field 1 nil] [:field 2 nil]]}
                  [:field (id :guard (= id a-field-id)) _] &match)))))
-
   (t/testing "ok, if for some reason we can't use `:guard` in the pattern will `match-many` filter out nil results?"
     (t/is (= [2]
              (match/match-many {:fields [[:field 1 nil] [:field 2 nil]]}
@@ -96,7 +93,6 @@
                                          [:= [:field 2 nil] 5000]]}
                (&match :guard integer?)
                &match))))
-
   (t/testing "can we use a predicate and bind the match at the same time?"
     (t/is (= [2 4001 3 5001]
              (match/match-many {:filter [:and
@@ -112,7 +108,6 @@
                (match/match-many x
                  (m :guard (and (map? m) (string? (:source-table m))))
                  (:source-table m)))))
-
     (t/is (= ["card__1847"]
              (let [x {:source-table "card__1847"}]
                (match/match-many x
@@ -126,7 +121,6 @@
                (match/match-many x
                  (m :guard (and (map? m) (string? (:source-table m))))
                  (:source-table m)))))
-
     (t/is (= ["card__1847"]
              (let [x [{:source-table "card__1847"}]]
                (match/match-many x
@@ -289,7 +283,6 @@
   (t/is (= "a=1 b=2 rest=[3 4 5]"
            (match/match-one [1 2 3 4 5]
              [a b & (rst :guard (> (count rst) 2))] (str "a=" a " b=" b " rest=" rst))))
-
   (t/testing "Edge cases"
     (t/testing "Empty collections"
       (t/is (= :empty-vec (match/match-one []
@@ -386,7 +379,6 @@
                [(_ :guard :b)] 2)))
   (t/is (= :ok (match/match-one [3]
                  [(_ :guard #{1 2 3})] :ok)))
-
   #?(:clj (t/is (thrown? clojure.lang.Compiler$CompilerException
                          (eval '(match/match-one [1]
                                   [(a :guard #(odd? %))] a)))))
@@ -414,11 +406,9 @@
   (t/is (= [100] (match/match-many [[1 2 3] [4 5 6]]
                    (_ :guard keyword?) &match
                    _ 100)))
-
   (t/testing "absent of matches returns nil"
     (t/is (= nil (match/match-many [[1 2 3] [4 5 6]]
                    (_ :guard keyword?) &match))))
-
   (t/testing "nils aren't recorded into the result"
     (t/is (= [15] (match/match-many [[1 2 3] [4 5 6]]
                     [a b c] (when (> a 1)

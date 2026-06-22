@@ -16,6 +16,8 @@ The kind of filter widget that Metabase displays when you create a field filter 
 
 Date fields will either have a simple date filter (for date variables) or a dynamic date picker (for field filters mapped to a date field).
 
+ID parameters also support all three widget types (input box, search box, and dropdown list), so you can power an ID filter with a dropdown or search box instead of a plain input box.
+
 If you want to change the default filter widget for a particular field, you'll need to ask an admin to update that field in [the Table Metadata](../../data-modeling/metadata-editing.md) and set the desired "Filtering on this field" option.
 
 For dropdown lists and search boxes, you can also customize values available in the list. See below.
@@ -58,11 +60,11 @@ When you add a dropdown menu or search box, you can tell Metabase which values p
 2. Next to the option you chose, click **Edit**.
 3. Metabase will pop up a modal where you can select **Where the values should come from**.
 
-You can choose:
+You can choose between:
 
-- **From connected fields**. If you selected the Field filter variable type, you'll also have the option to use the connected field.
-- **From another model or question**. If you select this option, you'll need to pick a model or question, then a field from that model or question that Metabase will use to supply the values for that dropdown or search box. For example, if you want the dropdown to list the different plans an account could be on, you could select an "Account" model you created, and select the field "Plan" to power that dropdown. The dropdown would then list all of the distinct plan options that appear in the "Plan" column in the Accounts model.
-- **Custom list**. Enter each item on a line. You can enter any string values you like.
+- **From connected fields:** If you selected the Field filter variable type, you'll also have the option to use the connected field.
+- **From another model or question:** Pick a model or question (built with either the query builder or SQL), then set the **Column to supply the values** that Metabase should filter on. You can also set a **Column to supply the labels** to display friendly labels in the dropdown while still filtering on the underlying values. For example, if you want the dropdown to list the different plans an account could be on, you could select an "Account" model you created and set the **Column to supply the values** to "Plan". Or, to filter on product IDs while showing product names, set the **Column to supply the values** to "ID" and the **Column to supply the labels** to "Title", so people see product names in the dropdown but the filter passes along the matching ID.
+- **Custom list:** Enter each item on a line. You can enter any string values you like.
 
 You can also [change a dashboard filter's selectable values](../../dashboards/filters.md#change-a-filters-selectable-values).
 

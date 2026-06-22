@@ -64,7 +64,6 @@
       (rst/update-progress! (:id task) 0.5)
       (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (= 0.5 (:progress updated-task))))
-
       (rst/update-progress! (:id task) 0.75)
       (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (= 0.75 (:progress updated-task))))
@@ -76,7 +75,6 @@
       (rst/update-progress! (:id task) 0.0)
       (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (= 0.0 (:progress updated-task))))
-
       (rst/update-progress! (:id task) 1.0)
       (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (= 1.0 (:progress updated-task))))
@@ -93,6 +91,15 @@
       (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (= 1.0 (:progress completed-task)))
         (is (some? (:ended_at completed-task)))
+        (is (nil? (:error_message completed-task)))
+        (is (nil? (:outcome completed-task)))))))
+
+(deftest complete-sync-task-stores-outcome-test
+  (testing "stores the structured outcome map (round-tripped as JSON) when one is provided"
+    (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+      (rst/complete-sync-task! (:id task) {:kind "pulled" :count 12 :branch "main"})
+      (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (is (= {:kind "pulled" :count 12 :branch "main"} (:outcome completed-task)))
         (is (nil? (:error_message completed-task)))))))
 
 ;;; ------------------------------------------------------------------------------------------------
@@ -181,13 +188,11 @@
       (is (= 0.0 (:progress task)))
       (is (nil? (:ended_at task)))
       (is (some? (:started_at task)))
-
       ;; Progress updates
       (rst/update-progress! (:id task) 0.3)
       (let [updated (t2/select-one :model/RemoteSyncTask :id (:id task))]
         (is (< (abs (- 0.3 (:progress updated))) 0.0001))
         (is (nil? (:ended_at updated))))
-
       ;; Completion
       (rst/complete-sync-task! (:id task))
       (let [completed (t2/select-one :model/RemoteSyncTask :id (:id task))]
@@ -200,7 +205,6 @@
     (let [task (rst/create-sync-task! "export" (mt/user->id :rasta))]
       ;; Progress before failure
       (rst/update-progress! (:id task) 0.7)
-
       ;; Failure
       (let [error-msg "Network connection lost"]
         (rst/fail-sync-task! (:id task) error-msg)

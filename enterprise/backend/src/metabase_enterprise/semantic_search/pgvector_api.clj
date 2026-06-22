@@ -54,14 +54,11 @@
               {:index (fresh-index index-metadata embedding-model opts)}))
 
         index-id (or (:id metadata-row) (semantic.index-metadata/record-new-index-table! tx index-metadata index))]
-
     (semantic.index/create-index-table-if-not-exists! tx index)
     (semantic.dlq/create-dlq-table-if-not-exists! tx index-metadata index-id)
-
     (when-not active
       (log/infof "Configured model does not match active index, switching to new index %s" (u/pprint-to-str index))
       (semantic.index-metadata/activate-index! tx index-metadata index-id))
-
     index))
 
 (defn init-semantic-search!
@@ -89,6 +86,12 @@
   [pgvector index-metadata search-context]
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
     (semantic.index/query-index pgvector index search-context)))
+
+(defn diagnose
+  "Engine-owned diagnostic stages for the active semantic index. See [[semantic.index/diagnose-row]]."
+  [pgvector index-metadata search-context model id]
+  (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
+    (semantic.index/diagnose-row pgvector index search-context model id)))
 
 (defn index-documents!
   "Indexes documents into the active semantic search index.

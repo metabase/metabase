@@ -252,6 +252,7 @@ describe("issue 51926", () => {
     H.openVizTypeSidebar();
     H.leftSidebar().within(() => {
       cy.findByTestId("Table-button").click();
+      cy.wait(300); // wait for rerender
       cy.findByTestId("Pivot Table-button").click();
     });
 

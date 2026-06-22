@@ -30,7 +30,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -59,11 +58,7 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 
-(defmethod mi/can-read? :model/Dashboard
-  ([instance]
-   (perms/can-read-audit-helper :model/Dashboard instance))
-  ([_ pk]
-   (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
+(perms/define-collection-based-visibility! :model/Dashboard)
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
@@ -98,7 +93,6 @@
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
-
     (u/prog1 (maybe-populate-initially-published-at dashboard)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
@@ -168,7 +162,6 @@
                                        ;; show it if:
                                        ;; - the card isn't archived
                                        [:= :card.archived false]
-
                                        ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
                                        [:and
                                         [:not= :card.dashboard_id nil]
@@ -212,6 +205,30 @@
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
       (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly false}))))
 
+(defn cascade-card-state-from-dashboard-update!
+  "Mirror dashboard-level state changes onto the dashboard's cards. Specifically:
+   - Archiving the dashboard archives its (non-`archived_directly`) cards. Un-archiving restores them.
+   - Moving the dashboard into a new collection moves its cards into the same collection.
+
+   Shared between the REST `update-dashboard!` and the MCP `update_dashboard` tool so they
+   don't drift. Call inside the same transaction as the dashboard update itself."
+  [current-dash updates]
+  (let [id (:id current-dash)]
+    (when (api/column-will-change? :archived current-dash updates)
+      (if (:archived updates)
+        (t2/update! :model/Card
+                    :dashboard_id id
+                    :archived false
+                    {:archived true :archived_directly false})
+        (t2/update! :model/Card
+                    :dashboard_id id
+                    :archived true
+                    :archived_directly false
+                    {:archived false})))
+    (when (api/column-will-change? :collection_id current-dash updates)
+      (t2/update! :model/Card :dashboard_id id
+                  {:collection_id (:collection_id updates)}))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -233,7 +250,7 @@
       (log/info "Referenced Fields in Dashboard params have changed: Was:" old-param-field-ids
                 "Is Now:" new-param-field-ids
                 "Newly Added:" newly-added-param-field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))
+      ((requiring-resolve 'metabase.sync.field-values/update-field-values-for-on-demand-dbs!) newly-added-param-field-ids))))
 
 (defn add-dashcards!
   "Add Cards to a Dashboard.
@@ -353,8 +370,14 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set ::parameters.schema/parameter-mapping]]]])
 
-(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
-  [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
+(mu/defn dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+  "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration
+  below for an example). Callers that only need the mappings (e.g. the QP) can pass slim dashcards instead of paying
+  for the full hydration."
+  [dashboard :- [:map
+                 [:parameters [:maybe [:sequential :map]]]
+                 [:dashcards [:maybe [:sequential [:map
+                                                   [:parameter_mappings [:maybe [:sequential :map]]]]]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:dashcards dashboard)
@@ -384,7 +407,7 @@
                                :dashcard     ...
                                :target       [:dimension [:field-id 264]]}}}}"
   [_model k dashboards]
-  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card])]
+  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card :series])]
     (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
 
 (defmethod mi/exclude-internal-content-hsql :model/Dashboard

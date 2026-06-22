@@ -524,7 +524,6 @@
                                       {:model    model-name
                                        :key      k
                                        :instance instance})))
-
                     [export-k res])))))
     (catch Exception e
       (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
@@ -559,7 +558,7 @@
 (defn- transform->nested [transform opts batch]
   (let [backward-fk (:backward-fk transform)
         entities    (-> (extract-query (name (:model transform))
-                                       (assoc opts :where [:in backward-fk (map :id batch)]))
+                                       (assoc opts :where [:in backward-fk (map :id batch)] ::nested-fetch true))
                         t2.realize/realize)]
     (group-by backward-fk entities)))
 
@@ -580,22 +579,47 @@
                   cat)
             reducible))
 
+(def stable-storage-order
+  "A deterministic `:order-by` for serdes export queries, so that entities sharing a name within a folder get
+  reproducible filename de-dup suffixes (`foo.yaml` vs `foo_2.yaml`) across exports — otherwise re-exports swap which
+  entity lands in which file and produce large phantom git-sync diffs (GHY-3754).
+
+  Orders by `created_at` first so the *oldest* sibling keeps the unsuffixed file: adding a new same-named entity
+  appends a `_2` rather than displacing the existing file. `entity_id` (random NanoID) would not have this property —
+  a newcomer with a smaller id would steal the base file. `entity_id` is then a deterministic tiebreaker for entities
+  created in the same instant. Assumes the model serializes both columns; use [[stable-storage-order-by]] to gate on a
+  spec."
+  [[:created_at :asc] [:entity_id :asc]])
+
+(defn stable-storage-order-by
+  "[[stable-storage-order]] restricted to the columns `spec` actually serializes (via `:copy` or `:transform`).
+  Returns nil when the model serializes neither column."
+  [spec]
+  (let [serialized? (into (set (:copy spec)) (keys (:transform spec)))]
+    (not-empty (filterv (comp serialized? first) stable-storage-order))))
+
 (defn extract-query-collections
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
   collection."
   [model {:keys [collection-set where] :as opts}]
-  (let [spec (*make-spec* (name model) opts)]
+  (let [spec     (*make-spec* (name model) opts)
+        ;; Nested fetches (e.g. a Dashboard's DashboardCards) are embedded as lists inside the parent's file
+        ;; rather than written to their own files, so they keep their natural order and are left untouched.
+        order-by (when-not (::nested-fetch opts)
+                   (stable-storage-order-by spec))]
     (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
-      (t2/reducible-select model {:where (or where true)})
-      (t2/reducible-select model {:where [:and
-                                          [:or
-                                           [:in :collection_id collection-set]
-                                           (when (some nil? collection-set)
-                                             [:= :collection_id nil])]
-                                          (when where
-                                            where)]}))))
+      (t2/reducible-select model (cond-> {:where (or where true)}
+                                   order-by (assoc :order-by order-by)))
+      (t2/reducible-select model (cond-> {:where [:and
+                                                  [:or
+                                                   [:in :collection_id collection-set]
+                                                   (when (some nil? collection-set)
+                                                     [:= :collection_id nil])]
+                                                  (when where
+                                                    where)]}
+                                   order-by (assoc :order-by order-by))))))
 
 (defmethod extract-query :default [model-name opts]
   (let [spec    (*make-spec* model-name opts)
@@ -834,7 +858,8 @@
 (defn- xform-one [model-name ingested]
   (let [spec (*make-spec* model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
-    (-> (merge (:defaults spec) (select-keys ingested (:copy spec)))
+    (-> (merge (:defaults spec)
+               (select-keys (apply dissoc ingested (::strip ingested)) (:copy spec)))
         (into (for [[k transform] (:transform spec)
                     :when (and (not (::nested transform))
                                ;; handling circuit-breaking
@@ -849,7 +874,8 @@
                                (or (some? res)
                                    (contains? ingested import-k)))]
                 [k res]))
-        (coerce-keys (:coerce spec)))))
+        ;; coercing a stripped key would re-introduce it as an explicit nil
+        (coerce-keys (apply dissoc (:coerce spec) (::strip ingested))))))
 
 (defn- spec-nested! [model-name ingested instance]
   (let [spec (*make-spec* model-name nil)]
@@ -1058,7 +1084,7 @@
   [[*import-database-fk*]] is the inverse."
   [id]
   (when id
-    (t2/select-one-fn :name [:model/Database :id :name] :id id)))
+    (resolve/export-fk-keyed (export-resolver) id :model/Database :name)))
 
 (defn ^:dynamic *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
@@ -1075,9 +1101,7 @@
   [[*import-table-fk*]] is the inverse."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
-          db-name                     (*export-database-fk* db_id)]
-      [db-name schema name])))
+    (resolve/export-table-fk (export-resolver) table-id)))
 
 (mu/defn ^:dynamic *import-table-fk*
   "Given a `table_id` as exported by [[*export-table-fk*]], resolve it back into a numeric `table_id`.
@@ -1150,6 +1174,13 @@
               [:= :name field]
               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
+;; NOTE: field lookups are intentionally NOT routed through the cached resolver, unlike the
+;; database and table exporters above. Fields are unbounded in number (millions on large
+;; instances), and the dominant traffic — each field's own path during a data-model export —
+;; has no reuse, so a cache would retain an O(field-count) map for near-zero hits and can OOM
+;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
+;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
+;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
@@ -1292,13 +1323,16 @@
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
   [x]
-  ;; if required UUIDs are already calculated don't recalculate when we recurse.
-  (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
-    (cond
-      (mbql-ref? x)   (export-mbql-ref x)
-      (sequential? x) (mapv export-mbql x)
-      (map? x)        (export-mbql-map x)
-      :else           x)))
+  (let [x (cond-> x
+            (and (map? x) (= :mbql/query (:lib/type x)))
+            lib/prepare-for-serialization)]
+    ;; if required UUIDs are already calculated don't recalculate when we recurse.
+    (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
+      (cond
+        (mbql-ref? x)   (export-mbql-ref x)
+        (sequential? x) (mapv export-mbql x)
+        (map? x)        (export-mbql-map x)
+        :else           x))))
 
 (defn- portable-id?
   "True if the provided string is either an Entity ID or identity-hash string."

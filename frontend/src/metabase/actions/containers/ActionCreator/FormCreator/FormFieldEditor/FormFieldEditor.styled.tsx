@@ -7,7 +7,7 @@ import { darken } from "metabase/ui/colors";
 
 export const FormFieldContainer = styled.div`
   background-color: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-spacing-sm);
   overflow: hidden;
 `;

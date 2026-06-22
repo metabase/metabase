@@ -4,6 +4,60 @@ databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
 
   - changeSet:
+      id: v62.legacy-library-root-entity-id-old-id-cleanup
+      author: andsalves
+      comment: >-
+        Delete old changeset rows for the Library Data and Library Metrics entity ID backfills. Those changesets were
+        re-id'd after patching their MySQL/MariaDB SQL to resolve a collation mismatch issue, @see #75458.
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM ${databasechangelog.name} WHERE id IN (
+                'v62.2026-05-13T12:00:01',
+                'v62.2026-05-13T12:00:02'
+              ) AND filename = 'migrations/062_update_migrations.yaml';
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v62.2026-05-13T11:59:58
+      author: andsalves
+      comment: Backfill type column value for Library collections
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET type = 'library'
+              WHERE entity_id = 'librarylibrarylibrary' AND (type IS NULL OR type <> 'library');
+
+              UPDATE collection
+              SET type = 'library-data'
+              WHERE entity_id = 'librarylibrarydatadat' AND (type IS NULL OR type <> 'library-data');
+
+              UPDATE collection
+              SET type = 'library-metrics'
+              WHERE entity_id = 'librarylibrarymetrics' AND (type IS NULL OR type <> 'library-metrics');
+      rollback:
+        - empty: {}
+  - changeSet:
+      id: v62.2026-05-13T11:59:59
+      author: andsalves
+      comment: Make sure the root collection with library type and canonical entity_id is unique
+      changes:
+        - sql:
+            sql: >-
+              UPDATE collection
+              SET type = NULL
+              WHERE type = 'library' AND location = '/' AND entity_id != 'librarylibrarylibrary'
+                AND EXISTS (
+                  SELECT 1 FROM (
+                    SELECT entity_id FROM collection WHERE entity_id = 'librarylibrarylibrary'
+                  ) existing
+                );
+      rollback:
+        - empty: {}
+
+  - changeSet:
       id: v62.2026-05-13T12:00:00
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library root collection
@@ -17,7 +71,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T12:00:01
+      id: v62.2026-05-13T12:00:01-updated
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library Data section
       changes:
@@ -54,7 +108,7 @@ databaseChangeLog:
               WHERE type = 'library-data'
                 AND location IN (
                   SELECT loc FROM (
-                    SELECT CONCAT('/', CAST(id AS CHAR), '/') AS loc
+                    SELECT CONCAT('/', CAST(id AS CHAR), '/') COLLATE utf8mb4_unicode_ci AS loc
                     FROM collection
                     WHERE type = 'library' AND location = '/'
                   ) lib_loc
@@ -65,7 +119,7 @@ databaseChangeLog:
                     FROM collection child
                     WHERE child.type = 'library-data'
                       AND child.location IN (
-                        SELECT CONCAT('/', CAST(lib.id AS CHAR), '/')
+                        SELECT CONCAT('/', CAST(lib.id AS CHAR), '/') COLLATE utf8mb4_unicode_ci
                         FROM collection lib
                         WHERE lib.type = 'library' AND lib.location = '/'
                       )
@@ -75,7 +129,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T12:00:02
+      id: v62.2026-05-13T12:00:02-updated
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library Metrics section
       changes:
@@ -112,7 +166,7 @@ databaseChangeLog:
               WHERE type = 'library-metrics'
                 AND location IN (
                   SELECT loc FROM (
-                    SELECT CONCAT('/', CAST(id AS CHAR), '/') AS loc
+                    SELECT CONCAT('/', CAST(id AS CHAR), '/') COLLATE utf8mb4_unicode_ci AS loc
                     FROM collection
                     WHERE type = 'library' AND location = '/'
                   ) lib_loc
@@ -123,7 +177,7 @@ databaseChangeLog:
                     FROM collection child
                     WHERE child.type = 'library-metrics'
                       AND child.location IN (
-                        SELECT CONCAT('/', CAST(lib.id AS CHAR), '/')
+                        SELECT CONCAT('/', CAST(lib.id AS CHAR), '/') COLLATE utf8mb4_unicode_ci
                         FROM collection lib
                         WHERE lib.type = 'library' AND lib.location = '/'
                       )
