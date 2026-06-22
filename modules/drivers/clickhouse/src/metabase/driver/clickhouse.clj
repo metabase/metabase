@@ -324,7 +324,7 @@
   [^String s]
   (loop [i 0, depth 0, q nil, start 0, acc []]
     (if (< i (.length s))
-      (let [c (.charAt s i)]
+      (let [c (nth s i)]
         (cond
           q                            (recur (inc i) depth (when-not (= c q) q) start acc)
           (or (= c \`) (= c \'))       (recur (inc i) depth c start acc)
@@ -364,17 +364,17 @@
                               "ORDER BY name")
                          db table])
                        (perf/mapv (fn [{:keys [name type type_full expr granularity]}]
-                               {:name              name
-                                :kind              :skip-index
-                                :access-method     type
-                                :is-unique         false
-                                :is-primary        false
-                                :is-valid          true
-                                :key-columns       (expr->columns expr)
-                                :include-columns   []
-                                :partial-predicate nil
-                                :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
-                                                           name expr type_full granularity)})))
+                                    {:name              name
+                                     :kind              :skip-index
+                                     :access-method     type
+                                     :is-unique         false
+                                     :is-primary        false
+                                     :is-valid          true
+                                     :key-columns       (expr->columns expr)
+                                     :include-columns   []
+                                     :partial-predicate nil
+                                     :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
+                                                                name expr type_full granularity)})))
         sorting   (-> (jdbc/query
                        conn-spec
                        [(str "SELECT sorting_key FROM system.tables "
