@@ -4,8 +4,7 @@ import * as Yup from "yup";
 
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormInput } from "metabase/common/components/FormInput";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
-import { Form, FormProvider } from "metabase/forms";
+import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import * as Errors from "metabase/utils/errors";
@@ -59,8 +58,8 @@ export const ForgotPasswordForm = ({
             autoFocus
           />
           <FormSubmitButton
-            title={t`Send password reset email`}
-            primary
+            label={t`Send password reset email`}
+            variant="filled"
             fullWidth
           />
           <FormErrorMessage />
