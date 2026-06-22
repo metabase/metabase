@@ -448,6 +448,16 @@
               (#'typed-schemas.api/query-question-collection-values
                {:question-collections (str (:id parent))})))))))
 
+(deftest question-collection-scope-accepts-representation-entity-ids-test
+  (mt/with-temp [:model/Collection parent {:name      "Question Parent"
+                                           :entity_id "question-entity-id-1"
+                                           :location  "/"}
+                 :model/Collection child  {:name "Question Child"
+                                           :location (collection/children-location parent)}]
+    (mt/with-test-user :crowberto
+      (is (= #{(:id parent) (:id child)}
+             (#'typed-schemas.api/collection-scope ["question-entity-id-1"]))))))
+
 (deftest library-schema-includes-metric-mapped-tables-test
   (let [selected-table-ids (atom nil)]
     (with-redefs [typed-schemas.api/library-collection-scope
