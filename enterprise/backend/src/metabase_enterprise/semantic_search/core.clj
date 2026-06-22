@@ -46,12 +46,11 @@
    (semantic.settings/semantic-search-enabled)))
 
 (defn- with-zero-semantic-distance-score
-  "Record a 0 `:semantic-distance` score on `results` that lack it, for a consistent merged-result score breakdown.
-  The 0 is a score, not a distance -- it's the least-relevant end of the scale, the opposite of a zero cosine
-  distance (which would be a perfect match)."
+  "Record a 0 `:semantic-distance` score on `results` that lack it, for a consistent merged-result score breakdown."
   [search-ctx results]
-  ;; Fallback (appdb/in-place) results never went through vector search, so they carry no semantic distance;
-  ;; score them as least-relevant rather than omitting the breakdown entry.
+  ;; Fallback (appdb/in-place) results never went through vector search, so they carry no semantic distance.
+  ;; Score them as least-relevant: the 0 below is a score, not a distance -- the opposite of a zero cosine
+  ;; distance, which would be a perfect match.
   (let [entry {:name         :semantic-distance
                :score        0
                :weight       (search.config/weight search-ctx :semantic-distance)

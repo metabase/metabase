@@ -680,8 +680,7 @@
 
 (defn- semantic-search-query
   "Build the semantic vector subquery, dispatching on the resolved [[vector-search-strategy]].
-  `:brute-force` is exact and filter-first; `:hnsw` (the default) is approximate and index-backed. An
-  unrecognized strategy warns and falls back to `:hnsw`."
+  `:brute-force` is exact and filter-first; `:hnsw` (the default) is approximate and index-backed."
   [index embedding search-context]
   (let [filters           (search-filters search-context)
         embedding-literal (format-embedding embedding)
