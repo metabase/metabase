@@ -1168,8 +1168,7 @@
         ;; Collect all root targets by iterating over enabled specs
         root-targets (into []
                            (comp (map val)
-                                 (mapcat query-export-roots)
-                                 (filter identity))
+                                 (mapcat query-export-roots))
                            specs)]
     (when-let [targets (resolve-targets
                         root-targets
