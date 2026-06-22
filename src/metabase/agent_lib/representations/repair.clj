@@ -389,6 +389,27 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.87 -- rewrite known misspelled `lib/type` markers to their canonical value.
+;;;
+;;; Pass 2's `infer-*` helpers only FILL a missing marker; they never rewrite a present one.
+;;; This pass handles the present-but-wrong case via a small alias table, exactly like the
+;;; `rewrite-operator-name-aliases*` / `rewrite-temporal-bucket-aliases*` passes.
+;;; ============================================================
+
+(def ^:private lib-type-aliases
+  "Known LLM misspellings of a `lib/type` marker -> its canonical value."
+  {"mbql.join/join" "mbql/join"})
+
+(defn- rewrite-lib-type-aliases*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if-let [canonical (and (map? node) (lib-type-aliases (get node "lib/type")))]
+       (assoc node "lib/type" canonical)
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.88 -- merge a trailing extra options-map into the position-1 options.
 ;;;
 ;;; LLMs sometimes place a clause's options at the END of the vector instead of
@@ -2559,6 +2580,7 @@
       rewrite-operator-name-aliases*
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*
+      rewrite-lib-type-aliases*
       merge-trailing-options*
       merge-string-filter-trailing-options*
       wrap-iso-date-bounds*
@@ -2586,6 +2608,8 @@
     1.75. strip stray surrounding double-quotes from the string segments of `field` clauses'
        portable-FK vector targets, e.g. `\"col\"` → `col` (cross-stage string targets are left
        to the resolution-aware cross-stage matching in pass 5);
+    1.87. rewrite a known-misspelled `\"lib/type\"` marker to its canonical value (e.g. the
+       join slip `\"mbql.join/join\"` → `\"mbql/join\"`);
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query and stages;
