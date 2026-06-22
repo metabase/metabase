@@ -110,9 +110,6 @@ const ChartTooltip = ({
 
   const display = lastDisplayRef.current;
 
-  // Keep the Tooltip mounted (closed) from the start so the first appearance
-  // animates: Mantine only fades when `opened` transitions false -> true after
-  // mount.
   return (
     <Portal>
       <Tooltip
