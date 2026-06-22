@@ -19,11 +19,26 @@
                           (me/humanize (mr/explain sql-jdbc.execute/ConnectionOptions options)))
     nil                              nil
     {}                               nil
+    {:stream? true}                  nil
     {:session-timezone nil}          nil
     {:session-timezone "US/Pacific"} nil
     {:session-timezone "X"}          {:session-timezone ["invalid timezone ID: \"X\"" "timezone offset string literal"]}))
 
 (set! *warn-on-reflection* true)
+
+(deftest ^:mb/driver-tests stream-option-test
+  (testing (str "the `:stream?` connection option flips autoCommit off on Postgres/Redshift so the JDBC driver streams "
+                "the ResultSet (a server-side cursor) instead of buffering it all in memory, but leaves other drivers "
+                "untouched")
+    (letfn [(autocommit [opts]
+              (sql-jdbc.execute/do-with-connection-with-options
+               driver/*driver* (mt/id) opts
+               (fn [^Connection conn] (.getAutoCommit conn))))]
+      (mt/test-drivers #{:postgres :redshift}
+        (is (false? (autocommit {:stream? true})) ":stream? -> autoCommit false (streams via cursor)")
+        (is (true?  (autocommit {}))              "no :stream? -> autoCommit true (buffers)"))
+      (mt/test-drivers #{:h2 :mysql}
+        (is (true? (autocommit {:stream? true}))  "non-Postgres-family drivers are unaffected by :stream?")))))
 
 (deftest connection-reuse-test
   (testing "resilient context reuses reconnected connections"
