@@ -147,6 +147,30 @@
    :type    :hidden
    :default false})
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    Index field descriptors (Index Manager)                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Field descriptors for `driver/supported-index-methods`: same shape as the connection-property descriptors above so
+;; the FE renders them the same way, plus a `:columns` type for picking the indexed columns. Each `:name` (and each
+;; select option `:value`) matches a key/enum in the kind's `::index-structured` branch (metabase.indexes.schema).
+
+(def index-name-field
+  "Descriptor for a user-supplied physical index name (named kinds: btree, skip-index)."
+  {:name "name" :display-name (deferred-tru "Index name") :type :string :required true})
+
+(def index-columns-field
+  "Descriptor for the indexed columns, in order, each optionally ascending/descending."
+  {:name "columns" :display-name (deferred-tru "Columns") :type :columns :directions true :required true})
+
+(def index-unique-field
+  "Descriptor for the btree unique toggle."
+  {:name "unique" :display-name (deferred-tru "Unique") :type :boolean})
+
+(def index-granularity-field
+  "Descriptor for a ClickHouse skip-index granularity."
+  {:name "granularity" :display-name (deferred-tru "Granularity") :type :integer})
+
 (def advanced-options-start
   "Map representing the start of the advanced option section in a DB connection form. Fields in this section should
   have their visibility controlled using the `visible-if` property."

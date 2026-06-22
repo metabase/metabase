@@ -73,6 +73,26 @@
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
    [:metered_as {:optional true} [:maybe :string]]])
 
+(def ^:private IndexFieldDescriptor
+  "One form field for requesting an index, same shape as a driver connection-property descriptor (plus `:columns`).
+  Built by `metabase.driver.common`'s index field helpers / the driver `supported-index-methods` impls."
+  [:map
+   [:name :string]
+   ;; deferred i18n object that serializes to the localized label
+   [:display-name :any]
+   [:type [:enum :string :boolean :select :integer :columns]]
+   [:required {:optional true} :boolean]
+   [:directions {:optional true} :boolean]
+   [:options {:optional true} [:sequential [:map
+                                            [:name :any]
+                                            [:value :string]]]]])
+
+(def ^:private RequestableIndex
+  "The lifecycle + form descriptors for one requestable index kind."
+  [:map
+   [:lifecycle [:enum :standalone :inline]]
+   [:fields [:sequential IndexFieldDescriptor]]])
+
 (def ^:private TransformResponse
   [:map {:closed true}
    [:id pos-int?]
@@ -101,7 +121,9 @@
    [:last_checkpoint_value {:optional true} [:maybe :string]]
    [:can_read {:optional true} :boolean]
    [:can_write {:optional true} :boolean]
-   [:can_execute {:optional true} :boolean]])
+   [:can_execute {:optional true} :boolean]
+   ;; Index methods requestable on the target table (driver capability); nil when unsupported. Set only by GET /:id.
+   [:requestable_indexes {:optional true} [:maybe [:map-of :keyword RequestableIndex]]]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}

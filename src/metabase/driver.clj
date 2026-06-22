@@ -1568,8 +1568,10 @@
 
 (defmulti supported-index-methods
   "Return the index methods this driver supports for transform target tables, as a map of `index-kind` -> metadata map.
-  Each metadata map carries at least `:lifecycle`, one of `:standalone` (applied as a separate statement after the
-  table exists) or `:inline` (inlined into the table-creation statement), e.g. `{:btree {:lifecycle :standalone}}`.
+  Each metadata map carries `:lifecycle`, one of `:standalone` (applied as a separate statement after the table exists)
+  or `:inline` (inlined into the table-creation statement), and `:fields`, the form descriptors (same shape as
+  [[connection-properties]]) the FE renders an index-creation form from. E.g.
+  `{:btree {:lifecycle :standalone :fields [...]}}`. See `metabase.driver.common` for the shared field helpers.
 
   Defaults to `{}` for drivers with no index support."
   {:added "0.63.0", :arglists '([driver database])}

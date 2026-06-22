@@ -23,9 +23,14 @@
     (is (false? (driver/database-supports? :redshift :index/standalone-create nil)))))
 
 (deftest ^:parallel supported-index-methods-test
-  (testing "Redshift advertises the sortkey as an inline index method"
-    (is (= {:sortkey {:lifecycle :inline}}
-           (driver/supported-index-methods :redshift nil)))))
+  (testing "Redshift advertises the inline sortkey with columns + style form fields"
+    (let [methods     (driver/supported-index-methods :redshift nil)
+          style-field (->> (get-in methods [:sortkey :fields])
+                           (filter #(= "style" (:name %)))
+                           first)]
+      (is (= {:sortkey :inline} (update-vals methods :lifecycle)))
+      (is (= ["columns" "style"] (map :name (get-in methods [:sortkey :fields]))))
+      (is (= #{"compound" "interleaved"} (set (map :value (:options style-field))))))))
 
 ;;; ------------------------------------------ DDL rendering ------------------------------------------
 

@@ -17,9 +17,12 @@
     (is (true? (driver/database-supports? :postgres :index/standalone-create nil)))))
 
 (deftest ^:parallel supported-index-methods-test
-  (testing "Postgres advertises single-column btree (which supports unique) as a standalone index method"
-    (is (= {:btree {:lifecycle :standalone, :unique true}}
-           (driver/supported-index-methods :postgres nil)))))
+  (testing "Postgres advertises standalone btree with name/columns/unique form fields"
+    (let [methods (driver/supported-index-methods :postgres nil)]
+      (is (= #{:btree} (set (keys methods))))
+      (is (= :standalone (get-in methods [:btree :lifecycle])))
+      (is (= ["name" "columns" "unique"]
+             (map :name (get-in methods [:btree :fields])))))))
 
 (deftest default-impls-test
   (testing "a driver without :index/standalone-create inherits safe defaults"

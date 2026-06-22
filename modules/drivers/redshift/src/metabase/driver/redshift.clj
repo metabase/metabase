@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.postgres :as driver.postgres]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -23,6 +24,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.match :as match]
@@ -238,7 +240,14 @@
   ;; Redshift has no secondary indexes: a sortkey is inlined into the table at creation time. That's the CTAS for a
   ;; SQL transform and the CREATE TABLE for a Python transform, so it is rendered in both `compile-transform`
   ;; and `create-table!`. distkeys come in a later milestone.
-  {:sortkey {:lifecycle :inline}})
+  {:sortkey {:lifecycle :inline
+             :fields    [driver.common/index-columns-field
+                         {:name         "style"
+                          :display-name (deferred-tru "Style")
+                          :type         :select
+                          :required     true
+                          :options      [{:name (deferred-tru "Compound")    :value "compound"}
+                                         {:name (deferred-tru "Interleaved") :value "interleaved"}]}]}})
 
 (defn- sortkey-clause
   "Render the inline clause for a table's `indexes`, e.g. `COMPOUND SORTKEY (\"a\", \"b\")`, or nil when there is no
