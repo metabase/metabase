@@ -11,7 +11,7 @@ const argTypes = {
     control: { type: "inline-radio" },
   },
   order: {
-    options: [1, 2, 3, 4],
+    options: [1, 2, 3, 4, 5, 6],
     control: { type: "inline-radio" },
   },
 };
@@ -36,6 +36,9 @@ const SizeTemplate = (args: TitleProps) => (
       <Title {...args} order={5}>
         Get up and running in no time
       </Title>
+      <Title {...args} order={6}>
+        Get up and running in no time
+      </Title>
     </Stack>
     <Stack maw={400}>
       <Title {...args} order={1}>
@@ -55,6 +58,10 @@ const SizeTemplate = (args: TitleProps) => (
         sandboxes
       </Title>
       <Title {...args} order={5}>
+        Segment access and unlock multi-tenant analytics via row-level data
+        sandboxes
+      </Title>
+      <Title {...args} order={6}>
         Segment access and unlock multi-tenant analytics via row-level data
         sandboxes
       </Title>
