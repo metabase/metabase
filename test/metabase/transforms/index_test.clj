@@ -5,6 +5,7 @@
   [[metabase.transforms.execute/hydrate-transform-indexes]] to inject its case."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -167,7 +168,7 @@
         (is (driver/database-supports? driver/*driver* :index/fetch (mt/db))
             "a driver that implements fetch-table-indexes declares :index/fetch")
         (is (some? cases) (index-util/missing-case-message driver/*driver*))
-        (doseq [{:keys [label table create expected]} cases]
+        (doseq [{:keys [label table create expected definition-contains]} cases]
           (testing label
             (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table)])
             (try
@@ -176,7 +177,12 @@
               (let [indexes (driver/fetch-table-indexes driver/*driver* (mt/db) nil table)]
                 (is (nil? (mr/explain :metabase.driver/fetch-table-indexes.result indexes))
                     "result conforms to ::fetch-table-indexes.result")
-                (is (= expected (into #{} (map #(dissoc % :definition)) indexes))))
+                (is (= expected (into #{} (map #(dissoc % :definition)) indexes)))
+                ;; `:definition` is dropped from the equality check above (it's driver-verbatim), so a case that hinges
+                ;; on it (e.g. Redshift INTERLEAVED vs COMPOUND, identical except for this word) asserts it explicitly.
+                (when definition-contains
+                  (is (some #(str/includes? (:definition %) definition-contains) indexes)
+                      (str "an index definition contains " (pr-str definition-contains)))))
               (finally
                 (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table)])))))
         (testing "a table that does not exist returns [] rather than throwing"

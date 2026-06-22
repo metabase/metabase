@@ -89,9 +89,9 @@
 
 (def fetch-cases
   "Driver -> fetch-correctness cases. Each case creates `:table` via the literal `:create` statements (popular index
-  kinds, made directly so we cover catalog shapes the apply path never produces, e.g. Postgres gin/partial).
-  `:expected` is the set of normalized [[metabase.driver/fetch-table-indexes]] maps (sans `:definition`) it must
-  return. Index models differ, so a case carries however many indexes that driver puts on one table."
+  kinds, made directly so we cover catalog shapes the apply path never produces, e.g. Postgres gin/partial), and
+  `:expected` is the set of normalized [[metabase.driver/fetch-table-indexes]] maps (sans `:definition`) it must return.
+  Index models differ, so a case carries however many indexes that driver puts on one table."
   {:postgres
    [{:label  "btree, unique, composite, INCLUDE, partial, gin, brin, hash, expression, and the primary key"
      :table  "mb_fetch_pg"
@@ -131,6 +131,8 @@
     {:label  "an interleaved sortkey, whose sortkey positions are negative, still orders by abs() position"
      :table  "mb_fetch_rs_interleaved"
      :create ["CREATE TABLE mb_fetch_rs_interleaved (a INT, b INT) INTERLEAVED SORTKEY (a, b)"]
+     ;; same normalized shape as the compound case, so `:definition` is the only signal it's interleaved.
+     :definition-contains "INTERLEAVED"
      :expected #{(idx nil :sortkey nil ["a" "b"])}}
     {:label "a table with no sortkey returns []"
      :table "mb_fetch_rs_empty"
