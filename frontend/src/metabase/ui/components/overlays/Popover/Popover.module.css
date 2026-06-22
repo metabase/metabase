@@ -2,7 +2,7 @@
   padding: 0;
   overflow: auto;
   background: var(--mb-color-background-primary);
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
   color: var(--mb-color-text-primary);
 }
 
