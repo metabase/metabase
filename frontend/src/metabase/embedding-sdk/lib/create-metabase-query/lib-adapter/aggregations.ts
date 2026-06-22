@@ -12,16 +12,14 @@ import {
   isCountAggregation,
   isFieldAggregation,
   isMeasureSchema,
-} from "./guards";
-import {
-  STAGE_INDEX,
-  findLibColumn,
-  isColumnReference,
-} from "./metabase-lib-query-utils";
+} from "../guards";
+import { isColumnReference } from "../query-utils";
 import type {
   FieldAggregationRuntime,
   MeasureReferenceRuntime,
-} from "./runtime-types";
+} from "../runtime-types";
+
+import { STAGE_INDEX, findLibColumn } from "./query-utils";
 
 export function applyAggregations(
   query: Query,

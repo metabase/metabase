@@ -1,7 +1,7 @@
 import type { StructuredDatasetQuery } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import { normalizeBreakout } from "./metabase-lib-query-utils";
+import { normalizeBreakout } from "../query-utils";
 
 export const normalizeDatasetQuery = (
   datasetQuery: StructuredDatasetQuery,

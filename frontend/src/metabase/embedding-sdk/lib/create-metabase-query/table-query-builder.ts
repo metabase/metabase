@@ -15,7 +15,7 @@ import {
   isSegmentSchema,
   isUnaryOperator,
 } from "./guards";
-import { getFieldId, normalizeBreakout } from "./metabase-lib-query-utils";
+import { getFieldId, normalizeBreakout } from "./query-utils";
 import type {
   DimensionFilterRuntime,
   TableQueryRuntime,

@@ -2,11 +2,9 @@ import type { ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-import {
-  STAGE_INDEX,
-  findLibColumn,
-  normalizeBreakout,
-} from "./metabase-lib-query-utils";
+import { normalizeBreakout } from "../query-utils";
+
+import { STAGE_INDEX, findLibColumn } from "./query-utils";
 
 export function applyBreakouts(
   query: Query,

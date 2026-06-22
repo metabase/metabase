@@ -9,10 +9,7 @@ import {
   isTableDimensionFilter,
   isTableFieldSchema,
 } from "./guards";
-import {
-  getMetricDimensionValues,
-  normalizeBreakout,
-} from "./metabase-lib-query-utils";
+import { getMetricDimensionValues, normalizeBreakout } from "./query-utils";
 import type { MetricQueryRuntime } from "./runtime-types";
 
 export const validateMetricTableScopedInputs = (query: MetricQueryRuntime) =>

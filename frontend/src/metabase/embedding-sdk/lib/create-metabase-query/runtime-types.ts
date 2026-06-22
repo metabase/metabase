@@ -4,11 +4,27 @@ import type {
   SchemaColumn,
   TableSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
-import type { FilterOperator as LibFilterOperator } from "metabase-lib/common";
 
 export type ID = string | number;
 
-export type FilterOperator = LibFilterOperator | "time-interval";
+export type FilterOperator =
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | "between"
+  | ">="
+  | "<="
+  | "contains"
+  | "does-not-contain"
+  | "is-empty"
+  | "not-empty"
+  | "starts-with"
+  | "ends-with"
+  | "is-null"
+  | "not-null"
+  | "inside"
+  | "time-interval";
 
 export type SqlParameterValuesRuntime = Record<
   string,

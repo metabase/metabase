@@ -1,6 +1,6 @@
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
-import { buildDatasetQueryWithMetabaseLib } from "./metabase-lib-query-builder";
+import { buildDatasetQueryWithMetabaseLib } from "./dataset-query";
 import type { MetricQueryRuntime, TableQueryRuntime } from "./runtime-types";
 
 export type CreateMetabaseQuery = (

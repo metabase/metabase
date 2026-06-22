@@ -13,14 +13,11 @@ import {
   isTableDimensionFilter,
   isTableFieldSchema,
   isUnaryOperator,
-} from "./guards";
-import {
-  STAGE_INDEX,
-  fieldHasTime,
-  findLibColumn,
-  isColumnReference,
-} from "./metabase-lib-query-utils";
-import type { DimensionFilterRuntime } from "./runtime-types";
+} from "../guards";
+import { isColumnReference } from "../query-utils";
+import type { DimensionFilterRuntime } from "../runtime-types";
+
+import { STAGE_INDEX, fieldHasTime, findLibColumn } from "./query-utils";
 
 type FilterBuilder = (
   query: Query,

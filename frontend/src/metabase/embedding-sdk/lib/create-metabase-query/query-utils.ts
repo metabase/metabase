@@ -1,42 +1,34 @@
 import type {
   FieldSchema,
-  SchemaJavaScriptType,
+  TableSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isNumber } from "metabase/utils/types";
-import type { ColumnMetadata, Query } from "metabase-lib";
-import * as Lib from "metabase-lib";
-import { TYPE } from "metabase-lib/v1/types/constants";
 import { isObject } from "metabase-types/guards";
 
 import { isTableFieldSchema } from "./guards";
-import type { BreakoutRuntime, ColumnReferenceRuntime } from "./runtime-types";
+import type {
+  BreakoutRuntime,
+  ColumnReferenceRuntime,
+  MetricQueryRuntime,
+  TableQueryRuntime,
+} from "./runtime-types";
 
-export const STAGE_INDEX = 0;
+export const getTableFromSchema = (
+  query: TableQueryRuntime,
+): TableSchema | null =>
+  isObject(query.table) ? (query.table as TableSchema) : null;
 
-const JAVASCRIPT_TYPE_BASE_TYPES: Partial<
-  Record<SchemaJavaScriptType, string>
-> = {
-  number: TYPE.Float,
-  boolean: TYPE.Boolean,
-  Date: TYPE.DateTime,
-};
+export const isMetricQueryRuntime = (
+  query: TableQueryRuntime | MetricQueryRuntime,
+): query is MetricQueryRuntime => "metric" in query || "metricId" in query;
 
-export const getBaseType = (jsType?: SchemaJavaScriptType): string =>
-  jsType != null && jsType in JAVASCRIPT_TYPE_BASE_TYPES
-    ? (JAVASCRIPT_TYPE_BASE_TYPES[jsType as SchemaJavaScriptType] ?? TYPE.Text)
-    : TYPE.Text;
+export const hasMetricFromSchema = (query: MetricQueryRuntime): boolean =>
+  isObject(query.metric);
 
-export const getFieldBaseType = (field: FieldSchema): string =>
-  field.baseType ?? getBaseType(field.jsType);
-
-export const getFieldEffectiveType = (field: FieldSchema): string =>
-  field.effectiveType ?? getFieldBaseType(field);
-
-export function fieldHasTime(field: FieldSchema): boolean {
-  const schemaType = field.effectiveType ?? field.baseType;
-
-  return typeof schemaType === "string" && schemaType.includes(TYPE.DateTime);
-}
+export const hasTableFromSchema = (
+  query: TableQueryRuntime | MetricQueryRuntime,
+): query is TableQueryRuntime =>
+  !isMetricQueryRuntime(query) && isObject(query.table);
 
 export function getFieldId(field: unknown): number | null {
   if (hasFieldId(field)) {
@@ -142,44 +134,4 @@ function getBreakoutOptions(breakout: unknown): Record<string, unknown> {
   }
 
   return options;
-}
-
-export function findLibColumn(
-  query: Query,
-  field: ColumnReferenceRuntime,
-  options: Record<string, unknown> = {},
-): ColumnMetadata | null {
-  if (typeof field === "string") {
-    return (
-      Lib.filterableColumns(query, STAGE_INDEX).find(
-        (column) => Lib.displayInfo(query, STAGE_INDEX, column).name === field,
-      ) ?? null
-    );
-  }
-
-  const fieldId = getFieldId(field);
-  if (fieldId != null) {
-    const sourceFieldId = field.sourceFieldId;
-    const fieldOptions =
-      sourceFieldId == null
-        ? options
-        : { ...options, "source-field": sourceFieldId };
-
-    if (Object.keys(fieldOptions).length > 0) {
-      return Lib.fromLegacyColumn(query, STAGE_INDEX, {
-        id: fieldId,
-        name: field.name,
-        display_name: field.displayName ?? field.name,
-        source: "fields",
-        fk_field_id: sourceFieldId,
-        base_type: getFieldBaseType(field),
-        effective_type: getFieldEffectiveType(field),
-        field_ref: ["field", fieldId, fieldOptions],
-      });
-    }
-
-    return Lib.fieldMetadata(query, fieldId);
-  }
-
-  return null;
 }

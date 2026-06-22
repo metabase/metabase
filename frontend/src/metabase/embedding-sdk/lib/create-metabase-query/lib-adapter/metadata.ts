@@ -13,19 +13,19 @@ import type { Metadata as MetadataInput, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { Field, TableId } from "metabase-types/api";
 
-import { isMeasureSchema } from "./guards";
+import { isMeasureSchema } from "../guards";
 import {
-  getFieldBaseType,
-  getFieldEffectiveType,
   getFieldId,
   getMetricDimensionValues,
   hasFieldId,
   isMetricDimensionWithFieldId,
-} from "./metabase-lib-query-utils";
+} from "../query-utils";
 import type {
   MeasureReferenceRuntime,
   MetricQueryRuntime,
-} from "./runtime-types";
+} from "../runtime-types";
+
+import { getFieldBaseType, getFieldEffectiveType } from "./query-utils";
 
 type TableMetadataSource = Omit<TableSchema, "id"> & { id: TableId };
 
