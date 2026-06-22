@@ -873,7 +873,7 @@
   reconcile, etc.). Throws if there is no remote-syncable content. Returns {:status :success}."
   [snapshot task-id message sync-timestamp]
   (let [targets (spec/export-targets)]
-    (when (not targets)
+    (when (empty? targets)
       (throw (ex-info "No remote-syncable content available." {})))
     (remote-sync.task/update-progress! task-id 0.3)
     ;; serialize once: write the files and get back each entity's path + content_hash (keyed by primary key)
