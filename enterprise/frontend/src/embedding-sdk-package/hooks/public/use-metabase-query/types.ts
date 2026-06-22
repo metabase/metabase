@@ -2,6 +2,16 @@ import type {
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
+import type {
+  BooleanFilterOperator,
+  DefaultFilterOperator,
+  ExcludeDateFilterOperator,
+  FilterOperator as LibFilterOperator,
+  StringFilterOperator as LibStringFilterOperator,
+  NumberFilterOperator,
+  SpecificDateFilterOperator,
+  TimeFilterOperator,
+} from "metabase-lib/common";
 import type { TemporalUnit } from "metabase-types/api";
 
 import type {
@@ -196,63 +206,22 @@ type MetricBreakoutForMetric<TMetric> = [
   : MetabaseBreakoutObjectForDimension<MetricDimensionValues<TMetric>>;
 
 export type FilterOperator =
-  | "="
-  | "!="
-  | ">"
-  | ">="
-  | "<"
-  | "<="
-  | "between"
-  | "contains"
-  | "does-not-contain"
-  | "starts-with"
-  | "ends-with"
-  | "is-empty"
-  | "not-empty"
-  | "is-null"
-  | "not-null"
+  | Exclude<LibFilterOperator, "inside">
   | "time-interval";
 
 type UnaryFilterOperator = "is-empty" | "not-empty" | "is-null" | "not-null";
 
 type BetweenFilterOperator = "between";
 
-type StringFilterOperator =
-  | "="
-  | "!="
-  | "contains"
-  | "does-not-contain"
-  | "starts-with"
-  | "ends-with"
-  | "is-empty"
-  | "not-empty"
-  | "is-null"
-  | "not-null";
-
-type NumberFilterOperator =
-  | "="
-  | "!="
-  | ">"
-  | ">="
-  | "<"
-  | "<="
-  | "between"
-  | "is-null"
-  | "not-null";
-
-type BooleanFilterOperator = "=" | "is-null" | "not-null";
+type StringFilterOperator = LibStringFilterOperator | DefaultFilterOperator;
 
 type DateFilterOperator =
-  | "="
-  | "!="
-  | ">"
+  | SpecificDateFilterOperator
+  | ExcludeDateFilterOperator
+  | TimeFilterOperator
   | ">="
-  | "<"
   | "<="
-  | "between"
-  | "time-interval"
-  | "is-null"
-  | "not-null";
+  | "time-interval";
 
 type FilterOperatorForDimension<TDimension> = TDimension extends {
   jsType?: infer TJavaScriptType;
