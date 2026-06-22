@@ -156,12 +156,17 @@
 
   `schema` — the target schema string (from the transform target's schema).
   `nonce`  — 8-char nonce for this run (from [[new-nonce]]).
+  `suffix` — name suffix for the output table (default `\"out\"`). A chained run
+             passes a per-node suffix (e.g. `\"out_<transform-id>\"`) so each
+             node's output gets a distinct scratch table.
 
   Returns `{:schema <string> :table <string>}`, the output table spec that
   `cleanup!` and the orchestrator's read-back query consume."
-  [^String schema ^String nonce]
-  {:schema schema
-   :table  (scratch-table-name nonce "out")})
+  ([^String schema ^String nonce]
+   (scratch-output-target schema nonce "out"))
+  ([^String schema ^String nonce ^String suffix]
+   {:schema schema
+    :table  (scratch-table-name nonce suffix)}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Seeding

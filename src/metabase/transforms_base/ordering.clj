@@ -106,6 +106,24 @@
         (let [{:keys [database_id schema table]} table-ref]
           (get (:by-triple target-refs) [database_id schema table])))))
 
+(defn dependency-producer-map
+  "Return a function `(raw-dep -> producing-transform-id | nil)` resolved against
+  `all-transforms`.
+
+  `raw-dep` is a `table-dependencies` entry (`{:table id}`, `{:transform id}`, or
+  `{:table-ref {…}}`). The returned fn maps it to the id of the transform that
+  produces that table, or nil when no transform in `all-transforms` produces it
+  (i.e. it is a raw warehouse table). Encapsulates the same resolution context
+  (`output-table-map` + `target-ref-map`) that `transform-ordering` uses
+  internally, exposed so callers (e.g. sub-graph leaf detection) can classify a
+  node's inputs as produced-internally vs. boundary leaves."
+  [all-transforms]
+  (let [output-tables (output-table-map all-transforms)
+        all-ids       (into #{} (map :id) all-transforms)
+        target-refs   (target-ref-map all-transforms)]
+    (fn [raw-dep]
+      (resolve-dependency raw-dep output-tables all-ids target-refs))))
+
 (defn transform-ordering
   "Compute the execution ordering for the dependency closure of `start-ids`.
 
