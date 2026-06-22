@@ -1,15 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import {
   isMetricQuery,
   isQuestionQuery,
@@ -166,25 +160,8 @@ function mapQueryData<TRow>(result: QueryQuestionResult) {
   };
 }
 
-function subscribeToSdkBundleLoaded(callback: () => void) {
-  const target = typeof document === "undefined" ? null : document;
-
-  target?.addEventListener("metabase-sdk-bundle-loaded", callback);
-
-  return () => {
-    target?.removeEventListener("metabase-sdk-bundle-loaded", callback);
-  };
-}
-
 const getCreateMetabaseQueryFromBundle = () =>
   getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createMetabaseQuery;
-
-const useCreateMetabaseQueryFromBundle = () =>
-  useSyncExternalStore(
-    subscribeToSdkBundleLoaded,
-    getCreateMetabaseQueryFromBundle,
-    () => undefined,
-  );
 
 /** @internal */
 export function filter<
@@ -349,7 +326,7 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 export function useMetabaseQueryObject(
   query: TableQuery<unknown> | MetricQuery<unknown>,
 ): StructuredDatasetQuery | null {
-  const createQuery = useCreateMetabaseQueryFromBundle();
+  const { loadingState } = useSdkLoadingState();
 
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
   const queryRef = useRef(query);
@@ -358,6 +335,8 @@ export function useMetabaseQueryObject(
 
   return useMemo(
     () => {
+      const createQuery = getCreateMetabaseQueryFromBundle();
+
       // If SDK bundle is not yet loaded, createQuery would be `null`
       if (!createQuery) {
         return null;
@@ -366,7 +345,7 @@ export function useMetabaseQueryObject(
       return createQuery(queryRef.current);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
-    [createQuery, queryKey],
+    [loadingState, queryKey],
   );
 }
 

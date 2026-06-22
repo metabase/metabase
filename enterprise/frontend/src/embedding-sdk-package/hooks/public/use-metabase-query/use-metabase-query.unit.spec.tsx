@@ -1,10 +1,12 @@
-import { waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 
 import { render, screen } from "__support__/ui";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { createMetabaseQuery as createMetabaseQueryInBundle } from "metabase/embedding-sdk/lib/create-metabase-query/create-metabase-query";
 
 import type { MetabaseQueryOptions } from "./use-metabase-query";
@@ -527,6 +529,7 @@ const _invalidMetricAdHocMeasureQuery = {
 
 describe("useMetabaseQuery", () => {
   beforeEach(() => {
+    ensureMetabaseProviderPropsStore().cleanup();
     window.METABASE_EMBEDDING_SDK_BUNDLE = {
       createMetabaseQuery: createMetabaseQueryInBundle,
     } as typeof window.METABASE_EMBEDDING_SDK_BUNDLE;
@@ -571,6 +574,28 @@ describe("useMetabaseQuery", () => {
       render(<MetabaseQueryObjectComponent />);
 
       expect(screen.getByTestId("query-object")).toHaveTextContent("null");
+    });
+
+    it("builds a query object after the SDK bundle loading state changes", () => {
+      delete window.METABASE_EMBEDDING_SDK_BUNDLE;
+
+      render(<MetabaseQueryObjectComponent />);
+
+      expect(screen.getByTestId("query-object")).toHaveTextContent("null");
+
+      window.METABASE_EMBEDDING_SDK_BUNDLE = {
+        createMetabaseQuery: createMetabaseQueryInBundle,
+      } as unknown as typeof window.METABASE_EMBEDDING_SDK_BUNDLE;
+
+      act(() => {
+        ensureMetabaseProviderPropsStore().updateInternalProps({
+          loadingState: SdkLoadingState.Loaded,
+        });
+      });
+
+      expect(
+        JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+      ).toEqual(expectedOrdersQuery);
     });
 
     it("builds explicit count aggregations", () => {
