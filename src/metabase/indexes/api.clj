@@ -3,7 +3,7 @@
   (warehouse indexes plus managed requests); `/request/:id` is CRUD over a single index request. An index
   belongs to a transform's output, so reads require read access to that transform and mutations require write access
   -- the same permission editing the transform itself uses. Validation and the `:status` default live in the model's
-  hooks; these endpoints use toucan2 directly."
+  hooks."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
