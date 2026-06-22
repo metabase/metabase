@@ -1,6 +1,7 @@
 import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
+import { TimezoneIndicator } from "metabase/transforms/components/TimezoneIndicator";
 import {
   formatRunMethod,
   formatStatus,
@@ -31,7 +32,6 @@ import {
 import type { TransformRunSortOptions } from "../types";
 
 import { TagList } from "./TagList";
-import { TimezoneIndicator } from "./TimezoneIndicator";
 
 function getTransformColumn(): TreeTableColumnDef<TransformRun> {
   return {
@@ -53,7 +53,7 @@ function getTransformColumn(): TreeTableColumnDef<TransformRun> {
           {isTransformDeleted ? (
             <Tooltip label={t`${value} has been deleted`}>
               <Text
-                c="text-tertiary"
+                c="text-disabled"
                 component="span"
                 display="inline"
                 fs="italic"
@@ -161,7 +161,7 @@ function getStatusColumn(): TreeTableColumnDef<TransformRun> {
     cell: ({ row }) => {
       const { status } = row.original;
       return (
-        <Box c={isErrorStatus(status) ? "error" : undefined}>
+        <Box c={isErrorStatus(status) ? "feedback-negative" : undefined}>
           {formatStatus(status)}
         </Box>
       );

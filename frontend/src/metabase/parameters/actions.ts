@@ -1,21 +1,22 @@
-import { cardApi } from "metabase/api";
+import { cardApi, dashboardApi, parametersApi } from "metabase/api";
 import type {
   CardParameterValuesRequest,
   SearchCardParameterValuesRequest,
 } from "metabase/api/card";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { DispatchFn } from "metabase/redux";
 import type { GetState } from "metabase/redux/store";
-import { DashboardApi, ParameterApi } from "metabase/services";
 import { stableStringify } from "metabase/utils/objects";
 import { getNonVirtualFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   CardId,
   DashboardId,
+  DashboardParameterValuesRequest,
   FieldId,
   Parameter,
-  ParameterId,
   ParameterValues,
+  SearchDashboardParameterValuesRequest,
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
@@ -104,12 +105,16 @@ export const fetchDashboardParameterValues =
     query,
   }: FetchDashboardParameterValuesOpts) =>
   (dispatch: DispatchFn, getState: GetState) => {
-    const request: DashboardParameterValuesRequest = {
+    const baseRequest: DashboardParameterValuesRequest = {
       ...(entityIdentifier ? { entityIdentifier } : { dashId: dashboardId }),
       paramId: parameter.id,
-      query,
       ...getFilteringParameterValuesMap(parameter, parameters),
     };
+    const request:
+      | DashboardParameterValuesRequest
+      | SearchDashboardParameterValuesRequest = query
+      ? { ...baseRequest, query }
+      : baseRequest;
 
     return fetchParameterValuesWithCache(
       request,
@@ -125,10 +130,17 @@ interface ParameterValuesRequest {
   query?: string;
 }
 
-const loadParameterValues = async (request: ParameterValuesRequest) => {
-  const { values, has_more_values } = request.query
-    ? await ParameterApi.parameterSearch(request)
-    : await ParameterApi.parameterValues(request);
+const loadParameterValues = async (
+  request: ParameterValuesRequest,
+  dispatch: DispatchFn,
+) => {
+  const { values, has_more_values } = await runRtkEndpoint(
+    request,
+    dispatch,
+    request.query
+      ? parametersApi.endpoints.searchParameterValues
+      : parametersApi.endpoints.getParameterValues,
+  );
 
   return {
     values: values,
@@ -165,24 +177,34 @@ const loadCardParameterValues = async (
   }
 };
 
-interface DashboardParameterValuesRequest {
-  dashId?: DashboardId;
-  entityIdentifier?: EntityUuid | EntityToken | null;
-  paramId: ParameterId;
-  query?: string;
-}
-
 const loadDashboardParameterValues = async (
-  request: DashboardParameterValuesRequest,
+  request:
+    | DashboardParameterValuesRequest
+    | SearchDashboardParameterValuesRequest,
+  dispatch: DispatchFn,
 ) => {
-  const { values, has_more_values } = request.query
-    ? await DashboardApi.parameterSearch(request)
-    : await DashboardApi.parameterValues(request);
-
-  return {
-    values: values,
-    has_more_values: request.query ? true : has_more_values,
-  };
+  const isSearch = "query" in request && request.query;
+  // `fetchParameterValuesWithCache` already provides caching keyed on the full
+  // request; bypass RTK's own cache so a refetch actually hits the network.
+  const queryAction = dispatch(
+    isSearch
+      ? dashboardApi.endpoints.searchDashboardParameterValues.initiate(
+          request as SearchDashboardParameterValuesRequest,
+          { forceRefetch: true },
+        )
+      : dashboardApi.endpoints.getDashboardParameterValues.initiate(request, {
+          forceRefetch: true,
+        }),
+  );
+  try {
+    const { values, has_more_values } = await queryAction.unwrap();
+    return {
+      values,
+      has_more_values: isSearch ? true : has_more_values,
+    };
+  } finally {
+    queryAction.unsubscribe?.();
+  }
 };
 
 const fetchParameterValuesWithCache = async <T>(

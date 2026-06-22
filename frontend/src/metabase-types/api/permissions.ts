@@ -16,7 +16,6 @@ export enum DataPermission {
   DATA_MODEL = "data-model",
   DETAILS = "details",
   TRANSFORMS = "transforms",
-  WORKSPACES = "workspaces",
   COLLECTIONS = "collections",
 }
 
@@ -47,6 +46,15 @@ export enum DataPermissionValue {
 export type PermissionsGraph = {
   groups: GroupsPermissions;
   revision: number;
+};
+
+// The `groups`/`revision` pair is always present; advanced-permissions plugins
+// (sandboxing, impersonation, …) append their own top-level keys, hence the
+// open index signature.
+export type UpdatePermissionsGraphRequest = {
+  groups: GroupsPermissions;
+  revision: number;
+  [key: string]: unknown;
 };
 
 export type GroupsPermissions = {
@@ -87,10 +95,6 @@ export type TransformsPermission =
   | DataPermissionValue.NO
   | DataPermissionValue.YES;
 
-export type WorkspacesPermission =
-  | DataPermissionValue.NO
-  | DataPermissionValue.YES;
-
 export type DatabasePermissions = {
   [DataPermission.VIEW_DATA]: SchemasPermissions;
   [DataPermission.CREATE_QUERIES]?: NativePermissions;
@@ -98,7 +102,6 @@ export type DatabasePermissions = {
   [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
   [DataPermission.DETAILS]?: DetailsPermissions;
   [DataPermission.TRANSFORMS]?: TransformsPermission;
-  [DataPermission.WORKSPACES]?: WorkspacesPermission;
 };
 
 export type DataModelPermissions = {
@@ -143,6 +146,12 @@ export type FieldsPermissions =
   | DataPermissionValue.LEGACY_NO_SELF_SERVICE
   | DataPermissionValue.SANDBOXED
   | DataPermissionValue.BLOCKED;
+
+export type UpdateCollectionPermissionsGraphRequest = {
+  namespace?: string | null;
+  revision: number;
+  groups: CollectionPermissions;
+};
 
 export type CollectionPermissionsGraph = {
   groups: CollectionPermissions;

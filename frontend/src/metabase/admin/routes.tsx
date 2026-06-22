@@ -70,6 +70,7 @@ import { getTokenFeature } from "metabase/selectors/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
+import { OAuthAuthorizationsPage } from "./ai/OAuthAuthorizationsPage";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
 import { getSettingsRoutes } from "./settingsRoutes";
@@ -102,7 +103,7 @@ export const getRoutes = (
           </Route>
           <Route path=":databaseId/edit" component={DatabasePage} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
-          {PLUGIN_WORKSPACES.getAdminConnectionInfoRoutes(IsAdmin)}
+          {PLUGIN_WORKSPACES.getWorkspaceDatabaseRoutes(IsAdmin)}
           <Route path=":databaseId" component={DatabaseEditApp}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
@@ -281,6 +282,21 @@ export const getRoutes = (
             <Route key="mcp" path="mcp" component={McpSettingsPage} />
           </Route>
           <Route
+            key="mcp-authorizations-layout"
+            component={(props) => (
+              <MetabotAdminLayout
+                {...props}
+                fullWidth
+                innerContentProps={{ fullWidth: true, fullHeight: true }}
+              />
+            )}
+          >
+            <Route
+              path="mcp/authorizations"
+              component={OAuthAuthorizationsPage}
+            />
+          </Route>
+          <Route
             key="layout"
             component={(props) => (
               <MetabotAdminLayout
@@ -331,18 +347,11 @@ export const getRoutes = (
               <ModalRoute
                 path=":jobKey"
                 modal={JobTriggersModal}
-                modalProps={{ wide: true }}
+                modalProps={{ size: "85%" }}
               />
             </Route>
             <Route path="logs" component={Logs}>
-              <ModalRoute
-                path="levels"
-                modal={LogLevelsModal}
-                modalProps={{
-                  // EventSandbox interferes with mouse text selection in CodeMirror editor
-                  disableEventSandbox: true,
-                }}
-              />
+              <ModalRoute path="levels" modal={LogLevelsModal} />
             </Route>
             {PLUGIN_DEPENDENCIES.isEnabled && (
               <Route

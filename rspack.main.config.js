@@ -10,6 +10,9 @@ const WebpackNotifierPlugin = require("webpack-notifier");
 const {
   COMPRESSION_CONFIG,
 } = require("./frontend/build/shared/rspack/compression");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
 
 const {
   IS_DEV_MODE,
@@ -261,6 +264,7 @@ const config = {
   },
 
   plugins: [
+    ...bundleStatsPlugins("stats-main.json"),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
       filename: isDevMode ? "[name].css" : "[name].[contenthash].css",

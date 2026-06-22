@@ -1,20 +1,19 @@
-// @ts-expect-error There is no type definition
-import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import type { JSONContent } from "@tiptap/react";
 import { HttpResponse, http } from "msw";
-import { type ReactNode, useEffect, useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
+import {
+  ForceDocumentCardRenderDecorator,
+  createWaitForChartsDecorator,
+} from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
-// Side-effect import: provides the `#popover-event-target { position: fixed }`
-// rule that ChartTooltip relies on to anchor near the hovered cell.
-import "metabase/common/components/Popover/Popover.module.css";
 import { Editor } from "metabase/documents/components/Editor/Editor";
 import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
@@ -95,16 +94,7 @@ function DocumentProviders({
 }
 
 const Template: StoryFn<{ theme: "light" | "dark" }> = ({ theme }) => {
-  const asyncCallback = useMemo(() => createAsyncCallback(), []);
   const ready = useHeatmapPlugin();
-
-  useEffect(() => {
-    if (!ready) {
-      return;
-    }
-    const id = setTimeout(asyncCallback, HEATMAP_SNAPSHOT_DELAY_MS);
-    return () => clearTimeout(id);
-  }, [ready, asyncCallback]);
 
   return (
     <DocumentProviders theme={theme}>
@@ -114,6 +104,15 @@ const Template: StoryFn<{ theme: "light" | "dark" }> = ({ theme }) => {
     </DocumentProviders>
   );
 };
+
+// Render the card eagerly, then hold the snapshot until the heatmap paints.
+const decorators = [
+  ForceDocumentCardRenderDecorator,
+  createWaitForChartsDecorator({
+    count: 1,
+    settleMs: HEATMAP_SNAPSHOT_DELAY_MS,
+  }),
+];
 
 export default {
   title: "viz/CustomViz/CalendarHeatmap/Document",
@@ -137,9 +136,11 @@ export default {
 export const Light = {
   render: Template,
   args: { theme: "light" as const },
+  decorators,
 };
 
 export const Dark = {
   render: Template,
   args: { theme: "dark" as const },
+  decorators,
 };

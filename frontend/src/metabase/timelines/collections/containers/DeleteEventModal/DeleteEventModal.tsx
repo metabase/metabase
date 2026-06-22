@@ -13,7 +13,7 @@ import DeleteEventModal from "metabase/timelines/common/components/DeleteEventMo
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-function DeleteEventModalContainer({ params }: ModalComponentProps) {
+function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
   const timelineId = Urls.extractEntityId(params.timelineId);
   const eventId = Urls.extractEntityId(params.timelineEventId);
@@ -44,7 +44,12 @@ function DeleteEventModalContainer({ params }: ModalComponentProps) {
   }
 
   return (
-    <DeleteEventModal event={event} timeline={timeline} onSubmit={onSubmit} />
+    <DeleteEventModal
+      event={event}
+      timeline={timeline}
+      onSubmit={onSubmit}
+      onClose={onClose}
+    />
   );
 }
 

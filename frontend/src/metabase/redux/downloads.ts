@@ -12,11 +12,6 @@ import { api } from "metabase/api/client";
 import { datasetApi } from "metabase/api/dataset";
 import { exportFormatPng } from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
-import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
-import {
-  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
-  DASHBOARD_PDF_EXPORT_ROOT_ID,
-} from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -28,7 +23,11 @@ import { isJWT } from "metabase/utils/jwt";
 import { checkNotNull } from "metabase/utils/types";
 import { isUuid } from "metabase/utils/uuid";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
-import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+import {
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_PDF_EXPORT_ROOT_ID,
+  saveDashboardPdf,
+} from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getCardKey } from "metabase/visualizations/lib/utils";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -40,7 +39,7 @@ import type {
 } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
-import { trackDownloadResults } from "./analytics";
+import { trackDownloadResults, trackExportDashboardToPDF } from "./analytics";
 
 export interface DownloadQueryResultsOpts {
   type: string;
@@ -308,6 +307,7 @@ const getPublicQuestionParams = (
   uuid: string,
   type: string,
   result: Dataset,
+  exportParams: ExportParams,
 ): DownloadQueryResultsParams => {
   const parameters = (result?.json_query?.parameters ?? []).map((param) => ({
     id: param.id,
@@ -319,6 +319,7 @@ const getPublicQuestionParams = (
     url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
     params: new URLSearchParams({
       parameters: JSON.stringify(parameters),
+      ..._.mapObject(exportParams, (value) => String(value)),
     }),
   };
 };
@@ -494,7 +495,7 @@ export const getDatasetParams = ({
       );
     }
     if (resourceType === "question" && uuid) {
-      return getPublicQuestionParams(uuid, type, result);
+      return getPublicQuestionParams(uuid, type, result, exportParams);
     }
   }
 

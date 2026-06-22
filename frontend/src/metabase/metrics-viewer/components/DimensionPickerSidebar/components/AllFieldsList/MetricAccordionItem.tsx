@@ -1,7 +1,7 @@
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types";
 import type { DimensionPickerItem } from "metabase/metrics-viewer/utils";
-import { Box, Flex, Icon, Text, UnstyledButton } from "metabase/ui";
+import { Badge, Box, Flex, Icon, Text, UnstyledButton } from "metabase/ui";
 
 import { AllFieldsSectionList } from "./AllFieldsSectionList";
 import S from "./MetricAccordionItem.module.css";
@@ -20,6 +20,9 @@ export function MetricAccordionItem({
   onToggle: () => void;
   onSelect: (item: DimensionPickerItem) => void;
 }) {
+  const showOccurrenceCount =
+    group.occurrenceCount != null && group.occurrenceCount > 1;
+
   return (
     <Box className={S.metricAccordionItem}>
       <UnstyledButton
@@ -37,6 +40,11 @@ export function MetricAccordionItem({
           <Text className={S.metricAccordionLabel} component="span">
             {group.name}
           </Text>
+          {showOccurrenceCount && (
+            <Badge className={S.occurrenceCountBadge} circle c="text-hover">
+              {group.occurrenceCount}
+            </Badge>
+          )}
         </Flex>
         <Icon name={isExpanded ? "chevronup" : "chevrondown"} size={12} />
       </UnstyledButton>

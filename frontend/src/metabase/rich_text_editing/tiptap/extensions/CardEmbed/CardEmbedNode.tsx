@@ -1,3 +1,4 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   Node,
   findParentNodeClosestToPos,
@@ -31,6 +32,10 @@ import {
 } from "metabase/documents/documents.slice";
 import { useCardData } from "metabase/documents/hooks/use-card-data";
 import { useExternalCardDataLoader } from "metabase/documents/hooks/use-external-card-data";
+import {
+  useNodeInViewport,
+  useReportPrefetchLoading,
+} from "metabase/documents/hooks/use-node-in-viewport";
 import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
@@ -55,9 +60,9 @@ import { DocumentMode } from "metabase/visualizations/click-actions/modes/Docume
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
+import { getDatasetError } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, Dataset } from "metabase-types/api";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -84,15 +89,6 @@ function formatCardEmbed(attrs: CardEmbedAttributes): string {
     return `{% card id=${attrs.id} %}`;
   }
 }
-
-const getDatasetError = (dataset: Dataset) => {
-  if (dataset.error) {
-    return {
-      message: getGenericErrorMessage(),
-      icon: "warning" as const,
-    };
-  }
-};
 
 export interface CardEmbedAttributes {
   id?: number;
@@ -175,12 +171,19 @@ export const CardEmbedComponent = memo(
     getPos,
     deleteNode,
   }: NodeViewProps) => {
+    const { _id } = node.attrs;
+    const {
+      ref: viewportRef,
+      isInViewport,
+      shouldLoadData,
+    } = useNodeInViewport(_id);
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const { _id } = node.attrs;
-    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
+    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+      skip: !isInViewport,
+    });
 
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
@@ -204,12 +207,16 @@ export const CardEmbedComponent = memo(
 
     // Use external hook when viewing an externally-rendered document (e.g. public), otherwise use regular hook
     const isExternalDocument = externalCardData != null;
-    const regularCardData = useCardData({ id });
-    const externalCardDataResult = useExternalCardDataLoader(id);
+    const regularCardData = useCardData({ id, skip: !shouldLoadData });
+    const externalCardDataResult = useExternalCardDataLoader(id, {
+      skip: !shouldLoadData,
+    });
 
     const { card, dataset, isLoading, series, error } = isExternalDocument
       ? externalCardDataResult
       : regularCardData;
+
+    useReportPrefetchLoading(_id, isLoading);
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -219,6 +226,8 @@ export const CardEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
+
+    const setRef = useMergedRef<HTMLDivElement>(viewportRef, cardEmbedRef);
 
     const shouldAllowAddingSupportingText = () => {
       const pos = getPos();
@@ -501,7 +510,7 @@ export const CardEmbedComponent = memo(
             </>
           )}
           <Box
-            ref={cardEmbedRef}
+            ref={setRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
@@ -643,7 +652,7 @@ export const CardEmbedComponent = memo(
                 </Flex>
               </Box>
             )}
-            {series ? (
+            {series && isInViewport ? (
               <>
                 <Box className={styles.questionResults}>
                   <ExplicitSizeRefreshModeContext.Provider value="layout">

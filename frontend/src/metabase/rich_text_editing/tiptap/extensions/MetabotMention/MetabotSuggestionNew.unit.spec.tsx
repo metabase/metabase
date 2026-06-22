@@ -23,7 +23,10 @@ jest.mock("metabase/common/components/Pickers", () => {
       };
 
       return (
-        <div data-testid="mini-picker">
+        <div
+          data-testid="mini-picker"
+          data-search-params={JSON.stringify(props.searchParams)}
+        >
           <button onClick={() => props.onChange(miniItem)}>mini-select</button>
           <button onClick={() => props.onBrowseAll?.()}>browse-all</button>
           {props.children}
@@ -132,6 +135,23 @@ describe("MetabotMentionSuggestionNew", () => {
     expect(
       await screen.findByRole("button", { name: "mini-select" }),
     ).toBeInTheDocument();
+  });
+
+  it("scopes mini picker search to the selected database", () => {
+    setup({ onlyDatabaseId: 5 });
+
+    expect(screen.getByTestId("mini-picker")).toHaveAttribute(
+      "data-search-params",
+      JSON.stringify({ table_db_id: 5 }),
+    );
+  });
+
+  it("does not scope mini picker search when no database is selected", () => {
+    setup();
+
+    expect(screen.getByTestId("mini-picker")).not.toHaveAttribute(
+      "data-search-params",
+    );
   });
 
   it("pressing Escape closes suggestion when focus is on field", () => {

@@ -409,15 +409,9 @@ describe("TablePicker", () => {
       setup({ databases: [layerDatabase] });
       await waitLoading();
 
-      // single-schema databases auto-expand to their tables on click
-      await clickItem(layerDatabase);
-      await waitLoading();
-
-      // The auto-expansion re-renders the tree with the tables after
-      // waitLoading resolves, so wait for the first table to appear.
-      await waitFor(() => {
-        expect(item(hiddenTable)).toBeInTheDocument();
-      });
+      expect(
+        await screen.findByText(hiddenTable.display_name),
+      ).toBeInTheDocument();
       expect(item(finalTable)).toBeInTheDocument();
 
       const labels = screen

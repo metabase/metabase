@@ -62,6 +62,7 @@ function NewEventModalContainer({
       collection={collection}
       onSubmit={onSubmit}
       onSubmitSuccess={onClose}
+      onClose={onClose}
     />
   );
 }

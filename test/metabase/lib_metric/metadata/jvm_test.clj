@@ -40,7 +40,7 @@
                                                        :query {:source-table (mt/id :orders)
                                                                :aggregation [[:count]]}}}]
       (let [mp (metric-jvm/metadata-provider)
-            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id (mt/id :orders)})]
+            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-ids #{(mt/id :orders)}})]
         (is (some #(= (:id metric) (:id %)) metrics))
         (is (every? #(= (mt/id :orders) (:table-id %)) metrics))))))
 
@@ -66,7 +66,7 @@
                                                                 :query {:source-table (mt/id :orders)
                                                                         :aggregation [[:count]]}}}]
       (let [mp (metric-jvm/metadata-provider)
-            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id (mt/id :orders)})]
+            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-ids #{(mt/id :orders)}})]
         (is (some #(= (:id active-metric) (:id %)) metrics))
         (is (not-any? #(= (:id archived-metric) (:id %)) metrics))))))
 
@@ -90,7 +90,7 @@
 (deftest ^:parallel metadatas-routes-columns-to-database-provider-test
   (testing "metadatas should route column requests to the appropriate database provider"
     (let [mp (metric-jvm/metadata-provider)
-          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id (mt/id :orders)})]
+          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-ids #{(mt/id :orders)}})]
       (is (seq columns))
       (is (every? #(= (mt/id :orders) (:table-id %)) columns)))))
 

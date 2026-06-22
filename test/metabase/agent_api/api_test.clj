@@ -399,7 +399,23 @@
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                  {:query (orders-query :limit 1000)})))))
+                                  {:query (orders-query :limit 1000)}))))
+  (testing "No explicit :limit defaults to a 2000-row budget, emitting a continuation token for large tables"
+    ;; Regression: previously the default budget equalled the page size (both 200), so the first
+    ;; page exhausted the budget and no continuation token was ever emitted, causing agents to
+    ;; report a false \"200-row hard cap\". The default budget is now 2000.
+    (let [page1 (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                      {:query (orders-query :order-by [["asc" {} (orders-field-ref "ID")]])})]
+      (is (=? {:status             "completed"
+               :row_count          200
+               :continuation_token string?}
+              page1)
+          "first page should include a continuation token when more data exists within the 2000-row budget")
+      (is (=? {:status "completed"
+               :data   {:rows sequential?}}
+              (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                    {:continuation_token (:continuation_token page1)}))
+          "continuation token should successfully fetch the next page"))))
 
 (deftest combined-query-accepts-resolved-handle-test
   (testing "`/v2/query` executes a base64 `:query` string (a resolved query_handle) directly,
@@ -527,6 +543,19 @@
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestMetric"]}))))))))
+
+(deftest search-finds-models-test
+  (binding [search.ingestion/*force-sync* true]
+    (search.tu/with-new-search-if-available-otherwise-legacy
+      (mt/with-temp [:model/Card _model {:name          "AgentSearchTestModel"
+                                         :type          :model
+                                         :database_id   (mt/id)
+                                         :dataset_query (orders-count-query)}]
+        (testing "Returns models in search results"
+          (is (=? {:data        [{:type "model" :name "AgentSearchTestModel"}]
+                   :total_count 1}
+                  (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                        {:term_queries ["AgentSearchTestModel"]}))))))))
 
 ;;; ------------------------------------------------ Create Question Tests -------------------------------------------
 
@@ -1118,19 +1147,20 @@
       (is (string? (some-> resp :via first :error)))))
   (testing "A successful query records a QueryExecution audit row tagged :agent"
     ;; Bypass-of-userland regression (#1): without `prepare-agent-query` no audit row was
-    ;; written. Verify a row lands and carries the agent context. The QueryExecution
-    ;; insert is async, so poll for the new row.
-    (let [before (t2/count :model/QueryExecution)]
-      (mt/user-http-request :crowberto :post 202 "agent/v1/execute-sql"
-                            {:database_id (mt/id)
-                             :sql         "SELECT 1 AS audit_probe"})
-      (let [latest (u/poll {:thunk       (fn [] (t2/select-one :model/QueryExecution
-                                                               {:order-by [[:started_at :desc]]}))
-                            :done?       (fn [_qe] (> (t2/count :model/QueryExecution) before))
-                            :timeout-ms  5000
-                            :interval-ms 50})]
-        (is (some? latest) "QueryExecution row should be inserted within 5s")
-        (is (= :agent (:context latest)))))))
+    ;; written. Verify a row lands and carries the agent context. QueryExecutions are saved in async batches by
+    ;; default, so save them synchronously to be able to assert on them right away.
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (let [before (t2/count :model/QueryExecution)]
+        (mt/user-http-request :crowberto :post 202 "agent/v1/execute-sql"
+                              {:database_id (mt/id)
+                               :sql         "SELECT 1 AS audit_probe"})
+        (let [latest (u/poll {:thunk       (fn [] (t2/select-one :model/QueryExecution
+                                                                 {:order-by [[:started_at :desc]]}))
+                              :done?       (fn [_qe] (> (t2/count :model/QueryExecution) before))
+                              :timeout-ms  5000
+                              :interval-ms 50})]
+          (is (some? latest) "QueryExecution row should be inserted within 5s")
+          (is (= :agent (:context latest))))))))
 
 ;;; ------------------------------------------------- Read Resource Tests -----------------------------------------
 

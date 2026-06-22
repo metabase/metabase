@@ -13,11 +13,12 @@ redirect_from:
 
 The dependency graph provides a visual representation of how your Metabase content is connected. You can use it to follow how data flows through your Metabase to better understand the impact of any changes you make.
 
+If you're looking for a visual representation of foreign key relationships between tables, check out the [Schema viewer](../schema-viewer.md) instead.
+
 ## What the dependency graph tracks
 
-The dependency graph tracks the relationships between:
+The dependency graph tracks the relationships between Metabase entities:
 
-- Tables
 - [Questions](../../questions/introduction.md)
 - [Models](../../data-modeling/models.md)
 - [Snippets](../../questions/native-editor/snippets.md)
@@ -25,6 +26,10 @@ The dependency graph tracks the relationships between:
 - [Metrics](../../data-modeling/metrics.md)
 - [Dashboards](../../dashboards/introduction.md)
 - [Documents](../../documents/introduction.md)
+
+Dependency graph will also show the dependencies of Metabase entities on the tables that serve as data sources for those entities.
+
+To see foreign key relationships between tables, see the [Schema viewer](../schema-viewer.md) instead.
 
 ## Viewing the dependency graph
 
@@ -77,3 +82,4 @@ You can use the dependency graph to replace query sources in bulk. See [Replace 
 - [Library](../library.md)
 - [Dependency diagnostics](./diagnostics.md)
 - [Replace data sources](./replace-data-sources.md)
+- [Schema viewer](../schema-viewer.md)

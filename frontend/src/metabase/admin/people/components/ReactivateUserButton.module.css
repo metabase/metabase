@@ -4,7 +4,7 @@
   padding: 0.5rem;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 
   &.disabled:hover {

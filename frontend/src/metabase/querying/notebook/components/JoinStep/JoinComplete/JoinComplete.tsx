@@ -136,7 +136,7 @@ export function JoinComplete({
         </Flex>
       </NotebookCell>
       <Flex className={S.JoinConditionOn}>
-        <Text c="brand" fw="bold">{t`on`}</Text>
+        <Text c="core-brand" fw="bold">{t`on`}</Text>
       </Flex>
       <NotebookCell
         className={S.JoinConditionCell}

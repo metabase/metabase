@@ -116,7 +116,7 @@ function UndoToast({
       {undo.showProgress && (
         <Progress
           size="sm"
-          color={undo.pausedAt ? "background-tertiary-inverse" : "brand"}
+          color={undo.pausedAt ? "background-tertiary-inverse" : "core-brand"}
           /* we intentionally break a11y - css animation is smoother */
           value={100}
           pos="absolute"

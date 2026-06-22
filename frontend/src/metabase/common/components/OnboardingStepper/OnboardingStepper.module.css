@@ -91,7 +91,7 @@
 }
 
 .StepNumberText {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-weight: 700;
   line-height: 1;
 }

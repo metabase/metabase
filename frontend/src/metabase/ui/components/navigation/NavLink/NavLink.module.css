@@ -11,7 +11,7 @@
 
       &,
       &:hover {
-        background-color: var(--mb-color-brand);
+        background-color: var(--mb-color-core-brand);
       }
 
       .NavLinkLabel {

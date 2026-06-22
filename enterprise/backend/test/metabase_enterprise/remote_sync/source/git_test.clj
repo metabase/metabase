@@ -151,6 +151,22 @@
           master-snapshot (source.p/snapshot master)]
       (is (= (git/commit-sha master "master") (:version master-snapshot))))))
 
+(deftest commit-sha-missing-object-is-nil-test
+  (testing "GHY-3917: a full SHA whose object isn't in the clone resolves to nil, not a phantom id"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"master.txt" "File in master"})
+            ;; JGit parses any complete 40-hex string into an ObjectId without a presence check; the
+            ;; existence guard is what turns a base commit orphaned by an upstream force-push/rebase into
+            ;; nil here instead of a later MissingObjectException when its tree is read.
+            absent-sha "0000000000000000000000000000000000000000"]
+        (is (some? (git/commit-sha master "master"))
+            "a real ref still resolves")
+        (is (nil? (git/commit-sha master absent-sha))
+            "a syntactically valid but absent full SHA resolves to nil")
+        (is (nil? (source.p/snapshot-at master absent-sha))
+            "snapshot-at returns nil for the orphaned base, so callers take the history-rewritten path")))))
+
 (deftest list-files
   (mt/with-temp-dir [remote-dir nil]
     (let [[master remote] (init-source! "master" remote-dir
@@ -229,6 +245,116 @@
                   "master.txt"
                   "master2.txt"]
                  (git/list-files (assoc remote :version "master")))))))))
+
+(deftest apply-changes
+  (let [subdir (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master remote] (init-source! "master" remote-dir
+                                          :files {"master.txt" "root file"
+                                                  (str subdir "keep.yaml") "keep me"
+                                                  (str subdir "edit.yaml") "old content"
+                                                  (str subdir "remove.yaml") "delete me"})]
+        (testing "apply-changes! overwrites/adds upserts, removes delete-paths, and PRESERVES every other file"
+          (source.p/apply-changes! (source.p/snapshot master) "Incremental"
+                                   [{:path (str subdir "edit.yaml") :content "new content"}
+                                    {:path (str subdir "new.yaml") :content "brand new"}]
+                                   [(str subdir "remove.yaml")])
+          (is (= ["Incremental" "Initial commit"] (map :message (git/log master))))
+          (let [snap (source.p/snapshot master)]
+            (is (= [(str subdir "edit.yaml")
+                    (str subdir "keep.yaml")
+                    (str subdir "new.yaml")
+                    "master.txt"]
+                   (source.p/list-files snap))
+                "edit overwritten + new added, remove deleted; keep.yaml (managed, untouched) and master.txt preserved")
+            (is (= "new content" (source.p/read-file snap (str subdir "edit.yaml"))))
+            (is (= "brand new"   (source.p/read-file snap (str subdir "new.yaml"))))
+            (is (= "keep me"     (source.p/read-file snap (str subdir "keep.yaml")))
+                "a managed-dir file not in the write set is preserved (unlike write-files!)")
+            (is (= "root file"   (source.p/read-file snap "master.txt")))
+            (is (nil? (source.p/read-file snap (str subdir "remove.yaml")))))
+          (testing "the commit was pushed to the remote"
+            (is (= ["Incremental" "Initial commit"]
+                   (map :message (git/log (assoc remote :branch "master")))))))))))
+
+(deftest apply-changes-preserves-deep-unchanged-subtree-test
+  (testing "an incremental upsert leaves deeply-nested, unrelated subtrees untouched (carried forward by id)"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"collections/a/deep/nested/keep.yaml" "deep keep"
+                                                   "collections/a/deep/sibling.yaml"     "deep sibling"
+                                                   "collections/b/edit.yaml"             "old"
+                                                   "notes.txt"                           "root note"})]
+        (source.p/apply-changes! (source.p/snapshot master) "Incremental deep"
+                                 [{:path "collections/b/edit.yaml" :content "new"}]
+                                 [])
+        (let [snap (source.p/snapshot master)]
+          (is (= "new" (source.p/read-file snap "collections/b/edit.yaml")))
+          (is (= "deep keep" (source.p/read-file snap "collections/a/deep/nested/keep.yaml"))
+              "a deeply-nested file in an unrelated subtree is carried forward unchanged")
+          (is (= "deep sibling" (source.p/read-file snap "collections/a/deep/sibling.yaml")))
+          (is (= "root note" (source.p/read-file snap "notes.txt"))))))))
+
+(deftest write-files-reconciles-every-managed-dir-test
+  (testing "a full export wipes every managed dir not covered by the write set, keeps non-managed files, and re-adds an upsert inside a managed dir"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"collections/old/old.yaml" "old collection"
+                                                   "transforms/t1/t.yaml"     "a transform"
+                                                   "transforms/t2/t.yaml"     "another transform"
+                                                   "notes.txt"                "root note"})]
+        (source.p/write-files! (source.p/snapshot master) "Full"
+                               [{:path "collections/new/new.yaml" :content "new collection"}])
+        (let [snap (source.p/snapshot master)]
+          (is (= ["collections/new/new.yaml" "notes.txt"] (source.p/list-files snap))
+              "transforms/ (managed, no upserts) fully removed; collections/ reconciled to the write set; non-managed notes.txt preserved")
+          (is (= "new collection" (source.p/read-file snap "collections/new/new.yaml")))
+          (is (nil? (source.p/read-file snap "collections/old/old.yaml")))
+          (is (nil? (source.p/read-file snap "transforms/t1/t.yaml")))
+          (is (= "root note" (source.p/read-file snap "notes.txt"))))))))
+
+(deftest apply-changes-tolerates-missing-delete-path-test
+  (testing "apply-changes! tolerates a delete-path that doesn't exist — the upsert still applies, no error"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"collections/a/keep.yaml" "keep"})]
+        (source.p/apply-changes! (source.p/snapshot master) "Delete missing + add"
+                                 [{:path "collections/a/new.yaml" :content "new"}]
+                                 ["collections/a/gone.yaml"])
+        (let [snap (source.p/snapshot master)]
+          (is (= ["collections/a/keep.yaml" "collections/a/new.yaml"] (source.p/list-files snap)))
+          (is (= "new" (source.p/read-file snap "collections/a/new.yaml")))
+          (is (= "keep" (source.p/read-file snap "collections/a/keep.yaml"))))))))
+
+(deftest changed-files-test
+  (testing "changed-files classifies the paths whose blob differs between two commits"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"keep.txt"             "unchanged"
+                                                   "edit.txt"             "old content"
+                                                   "remove.txt"           "delete me"
+                                                   "deep/nested/keep.txt" "deep unchanged"})
+            from-version (:version (source.p/snapshot master))]
+        (source.p/apply-changes! (source.p/snapshot master) "Change set"
+                                 [{:path "edit.txt" :content "new content"}
+                                  {:path "add.txt"  :content "brand new"}]
+                                 ["remove.txt"])
+        (let [snap (source.p/snapshot master)]
+          (testing "added / modified / deleted are reported in their own buckets"
+            (is (= {:added    #{"add.txt"}
+                    :modified #{"edit.txt"}
+                    :deleted  #{"remove.txt"}}
+                   (git/changed-files snap from-version))))
+          (testing "unchanged files — including deep untouched subtrees — are not reported"
+            (let [{:keys [added modified deleted]} (git/changed-files snap from-version)
+                  touched (reduce into #{} [added modified deleted])]
+              (is (not (contains? touched "keep.txt")))
+              (is (not (contains? touched "deep/nested/keep.txt")))))
+          (testing "comparing a version against itself reports no changes"
+            (is (= {:added #{} :modified #{} :deleted #{}}
+                   (git/changed-files snap (:version snap)))))
+          (testing "an unresolvable from-version returns nil, signalling a full import"
+            (is (nil? (git/changed-files snap "no-such-ref-or-sha")))))))))
 
 (deftest write-special-collections
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]

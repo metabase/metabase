@@ -167,7 +167,7 @@ const costsEntry = makeMetricEntry(costs);
 const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
   type: "metric",
   sourceId,
-  count: 1,
+  occurrenceCount: 1,
 });
 const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
   type: "operator",
@@ -559,12 +559,12 @@ describe("expression pill display after committing a formula", () => {
     const expr = exprDefs[0];
     expect(expr.tokens).toEqual([
       { type: "open-paren" },
-      { type: "metric", sourceId: "metric:1", count: 1 },
+      { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
       { type: "operator", op: "+" },
-      { type: "metric", sourceId: "metric:2", count: 1 },
+      { type: "metric", sourceId: "metric:2", occurrenceCount: 1 },
       { type: "close-paren" },
       { type: "operator", op: "/" },
-      { type: "metric", sourceId: "metric:3", count: 1 },
+      { type: "metric", sourceId: "metric:3", occurrenceCount: 1 },
     ]);
     expect(expr.name).toBe("(MetricA + MetricB) / MetricC");
   });

@@ -1347,27 +1347,6 @@
         },
         "required" : [ "id", "type", "data", "dependents_count" ]
       },
-      "metabase-enterprise.dependencies.api.broken-cards-response" : {
-        "type" : "object",
-        "properties" : {
-          "bad_cards" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.queries.schema.card"
-            }
-          },
-          "bad_transforms" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms.schema.transform"
-            }
-          },
-          "success" : {
-            "type" : "boolean"
-          }
-        },
-        "required" : [ "success" ]
-      },
       "metabase-enterprise.dependencies.api.broken-dependent-entity" : {
         "description" : "Entity returned by /graph/broken endpoint - includes errors but no dependents_count.",
         "type" : "object",
@@ -1385,96 +1364,6 @@
           }
         },
         "required" : [ "id", "type", "data" ]
-      },
-      "metabase-enterprise.dependencies.api.card-body" : {
-        "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
-        "type" : "object",
-        "properties" : {
-          "dataset_query" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.queries.schema.query"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameter_mappings" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "database_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "document_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "result_metadata" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "collection_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameters" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "dashboard_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }
       },
       "metabase-enterprise.dependencies.api.card-entity" : {
         "type" : "object",
@@ -1865,42 +1754,6 @@
           }
         },
         "required" : [ "id", "type", "data", "dependents_count" ]
-      },
-      "metabase-enterprise.dependencies.api.transform-body" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "source" : {
-            "oneOf" : [ {
-              "type" : "object",
-              "properties" : {
-                "query" : {
-                  "$ref" : "#/components/schemas/metabase.queries.schema.query"
-                },
-                "type" : {
-                  "type" : "string"
-                }
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "target" : {
-            "oneOf" : [ {
-              "description" : "Value must be a map.",
-              "type" : "object",
-              "properties" : { }
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id" ]
       },
       "metabase-enterprise.dependencies.api.transform-entity" : {
         "type" : "object",
@@ -4213,7 +4066,7 @@
         "required" : [ "resources", "output" ]
       },
       "metabase.agent-api.api.search-response" : {
-        "description" : "Search results containing tables and metrics matching the query.",
+        "description" : "Search results containing tables, metrics, and models matching the query.",
         "type" : "object",
         "properties" : {
           "data" : {
@@ -4229,7 +4082,7 @@
         "required" : [ "data", "total_count" ]
       },
       "metabase.agent-api.api.search-result-item" : {
-        "description" : "A table or metric returned from search.",
+        "description" : "A table, metric, or model returned from search.",
         "type" : "object",
         "properties" : {
           "id" : {
@@ -4266,7 +4119,7 @@
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "table", "metric" ]
+            "enum" : [ "table", "metric", "model" ]
           },
           "database_schema" : {
             "oneOf" : [ {
@@ -8743,11 +8596,6 @@
         "type" : "integer",
         "minimum" : 1
       },
-      "metabase.lib.schema.id.collection" : {
-        "description" : "Valid Collection ID",
-        "type" : "integer",
-        "minimum" : 1
-      },
       "metabase.lib.schema.id.dashboard" : {
         "description" : "Valid Dashboard ID",
         "type" : "integer",
@@ -8820,7 +8668,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot" ]
+        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -11363,11 +11211,11 @@
       "metabase.lib.schema.validate.source-entity-type" : {
         "description" : "The type of the source entity causing an error.",
         "type" : "string",
-        "enum" : [ "table", "card" ]
+        "enum" : [ "table", "card", "transform" ]
       },
       "metabase.lib.schema.validate.validate-error-type" : {
         "type" : "string",
-        "enum" : [ "missing-column", "missing-table-alias", "duplicate-column", "syntax-error", "validation-exception-error" ]
+        "enum" : [ "missing-column", "missing-table-alias", "missing-table", "missing-card", "duplicate-column", "syntax-error", "validation-exception-error" ]
       },
       "metabase.logger.api.log-level" : {
         "type" : "string",
@@ -13534,102 +13382,6 @@
         "type" : "string",
         "enum" : [ "static-list", "card" ]
       },
-      "metabase.queries.schema..card.result-metadata" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.lib.schema.metadata.lib-or-legacy-column"
-        }
-      },
-      "metabase.queries.schema.card" : {
-        "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
-        "type" : "object",
-        "properties" : {
-          "dataset_query" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.queries.schema.query"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameter_mappings" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "database_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "document_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "result_metadata" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.queries.schema..card.result-metadata"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "collection_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameters" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "dashboard_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }
-      },
       "metabase.queries.schema.card-type" : {
         "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
       },
@@ -14151,10 +13903,6 @@
         },
         "required" : [ "type" ]
       },
-      "metabase.transforms.schema.id" : {
-        "type" : "integer",
-        "minimum" : 1
-      },
       "metabase.transforms.schema.source-incremental-strategy" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.transforms.schema.checkpoint-strategy"
@@ -14213,31 +13961,6 @@
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.transforms.schema.append-config"
         } ]
-      },
-      "metabase.transforms.schema.transform" : {
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.transforms.schema.id"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "source" : {
-            "$ref" : "#/components/schemas/metabase.transforms.schema.transform-source"
-          },
-          "target" : {
-            "$ref" : "#/components/schemas/metabase.transforms.schema.transform-target"
-          }
-        },
-        "required" : [ "id", "name", "source", "target" ]
       },
       "metabase.transforms.schema.transform-source" : {
         "oneOf" : [ {
@@ -14732,7 +14455,13 @@
           "name" : "id",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.actions.schema.id"
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.actions.schema.id"
+            }, {
+              "description" : "String must be a valid 21-character NanoID string.",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            } ]
           }
         } ],
         "responses" : {
@@ -15314,7 +15043,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-search",
         "summary" : "POST /api/agent/v1/search",
-        "description" : "Search for tables and metrics.\n\n  Supports both term-based and semantic search queries. Results are ranked using\n  Reciprocal Rank Fusion when both query types are provided.",
+        "description" : "Search for tables, metrics, and models.\n\n  Supports both term-based and semantic search queries. Results are ranked using\n  Reciprocal Rank Fusion when both query types are provided.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15628,6 +15357,26 @@
           }
         },
         "tags" : [ "/api/alert" ]
+      }
+    },
+    "/api/analytics-proxy" : {
+      "post" : {
+        "operationId" : "post-api-analytics-proxy",
+        "summary" : "POST /api/analytics-proxy",
+        "description" : "Forward a Snowplow `tp2` payload to `sp.metabase.com` server-side, bypassing the customer page's\n  `connect-src` CSP.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/analytics-proxy" ]
       }
     },
     "/api/analytics/anonymous-stats" : {
@@ -26646,131 +26395,11 @@
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
-    "/api/ee/dependencies/check-card" : {
-      "post" : {
-        "operationId" : "post-api-ee-dependencies-check-card",
-        "summary" : "POST /api/ee/dependencies/check-card",
-        "description" : "Check a proposed edit to a card, and return the cards/transforms this edit will break.\n\n  `broken-cards-response` ensures the stable response order.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.card-body"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
-    "/api/ee/dependencies/check-snippet" : {
-      "post" : {
-        "operationId" : "post-api-ee-dependencies-check-snippet",
-        "summary" : "POST /api/ee/dependencies/check-snippet",
-        "description" : "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "content" : {
-                    "type" : "string"
-                  },
-                  "id" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.id.snippet"
-                  },
-                  "name" : {
-                    "description" : "snippet names cannot include '}' or start with spaces"
-                  }
-                },
-                "required" : [ "id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
-    "/api/ee/dependencies/check-transform" : {
-      "post" : {
-        "operationId" : "post-api-ee-dependencies-check-transform",
-        "summary" : "POST /api/ee/dependencies/check-transform",
-        "description" : "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.transform-body"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
     "/api/ee/dependencies/graph" : {
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph",
         "summary" : "GET /api/ee/dependencies/graph",
-        "description" : "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.\n  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which\n  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.\n\n  Optional :archived parameter controls whether entities in archived collections are included:\n  - false (default): Excludes entities in archived collections\n  - true: Includes entities in archived collections",
+        "description" : "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.\n  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which\n  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.",
         "parameters" : [ {
           "in" : "query",
           "name" : "id",
@@ -26786,13 +26415,6 @@
           "required" : false,
           "schema" : {
             "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         } ],
         "responses" : {
@@ -26820,7 +26442,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph-breaking",
         "summary" : "GET /api/ee/dependencies/graph/breaking",
-        "description" : "Returns a list of entities that are breaking other entities (sources of errors).\n   These are tables or cards that other entities depend on, where those dependents\n   have validation errors traced back to this source entity.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of source entity types - only `:card` or `:table` (default: both)\n   - `card-types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of breaking source entities\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
+        "description" : "Returns a list of entities that are breaking other entities (sources of errors).\n   These are tables or cards that other entities depend on, where those dependents\n   have validation errors traced back to this source entity.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of source entity types - only `:card` or `:table` (default: both)\n   - `card-types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of breaking source entities\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
         "parameters" : [ {
           "in" : "query",
           "name" : "types",
@@ -26857,13 +26479,6 @@
           "required" : false,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         }, {
           "in" : "query",
@@ -27035,7 +26650,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph-dependents",
         "summary" : "GET /api/ee/dependencies/graph/dependents",
-        "description" : "Returns a list of dependents for the specified entity.\n\n   Required parameters:\n   - `id`: The ID of the entity\n   - `type`: The type of the entity (card, table, dashboard, etc.)\n\n   Optional parameters:\n   - `dependent-types`: Dependency types to filter by. Can be single value or array.\n     If not provided, returns all types. Example: ?dependent-types=card&dependent-types=dashboard\n   - `dependent-card-types`: Card types to filter by when dependent-types includes :card.\n     Ignored if dependent-types doesn't include :card. Example: ?dependent-card-types=question&dependent-card-types=model\n   - `archived`: Include entities in archived collections (default: false)\n   - `broken`: Return only broken entities (default: false)\n   - `query`: Search string to filter results by name or location (case-insensitive)\n   - `include-personal-collections`: Include items in personal collections (default: false)\n   - `sort-column`: Column to sort by - name, location, or view-count (default: name)\n   - `sort-direction`: Sort direction - asc or desc (default: asc)",
+        "description" : "Returns a list of dependents for the specified entity.\n\n   Required parameters:\n   - `id`: The ID of the entity\n   - `type`: The type of the entity (card, table, dashboard, etc.)\n\n   Optional parameters:\n   - `dependent-types`: Dependency types to filter by. Can be single value or array.\n     If not provided, returns all types. Example: ?dependent-types=card&dependent-types=dashboard\n   - `dependent-card-types`: Card types to filter by when dependent-types includes :card.\n     Ignored if dependent-types doesn't include :card. Example: ?dependent-card-types=question&dependent-card-types=model\n   - `broken`: Return only broken entities (default: false)\n   - `query`: Search string to filter results by name or location (case-insensitive)\n   - `include-personal-collections`: Include items in personal collections (default: false)\n   - `sort-column`: Column to sort by - name, location, or view-count (default: name)\n   - `sort-direction`: Sort direction - asc or desc (default: asc)",
         "parameters" : [ {
           "in" : "query",
           "name" : "id",
@@ -27081,13 +26696,6 @@
                 "enum" : [ "question", "metric", "model" ]
               }
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         }, {
           "in" : "query",
@@ -27155,7 +26763,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph-unreferenced",
         "summary" : "GET /api/ee/dependencies/graph/unreferenced",
-        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - `card-types`: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
+        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - `card-types`: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - `query`: Search string to filter by name or location\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
         "parameters" : [ {
           "in" : "query",
           "name" : "types",
@@ -27192,13 +26800,6 @@
           "required" : false,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         }, {
           "in" : "query",
@@ -28564,6 +28165,14 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "outcome" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
                       }
                     },
                     "required" : [ "id", "sync_task_type", "progress", "started_at", "status" ]
@@ -28665,6 +28274,14 @@
                     "version" : {
                       "oneOf" : [ {
                         "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "outcome" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : { }
                       }, {
                         "type" : "null"
                       } ]
@@ -28831,6 +28448,122 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "branch" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "force" : {
+                    "type" : "boolean"
+                  },
+                  "merge" : {
+                    "type" : "boolean"
+                  },
+                  "message" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "branch" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/export-preflight" : {
+      "get" : {
+        "operationId" : "get-api-ee-remote-sync-export-preflight",
+        "summary" : "GET /api/ee/remote-sync/export-preflight",
+        "description" : "Dry-run preview of what pushing the current state would do given the live remote branch, without\n  writing anything. Drives the UI's push decision (force / new branch / merge).\n\n  Returns:\n  - has_changes: whether the remote branch has advanced beyond the last synced version\n  - clean: whether a 3-way merge would apply with no conflicts\n  - conflicts: human-readable labels of the entities that conflict (empty when clean)\n  - summary: counts of remote changes a merge would fold in\n  - force_push_casualties: remote content a force push (rather than a merge) would discard, as\n    `{:deleted [labels] :overwritten [labels]}`\n  - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists\n\n  Requires superuser permissions.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "branch",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "clean" : {
+                      "type" : "boolean"
+                    },
+                    "conflicts" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "force_push_casualties" : {
+                      "type" : "object",
+                      "properties" : {
+                        "deleted" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        },
+                        "overwritten" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        }
+                      },
+                      "required" : [ "deleted", "overwritten" ]
+                    },
+                    "has_changes" : {
+                      "type" : "boolean"
+                    },
+                    "reason" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "summary" : {
+                      "type" : "object",
+                      "properties" : {
+                        "added" : {
+                          "type" : "integer"
+                        },
+                        "removed" : {
+                          "type" : "integer"
+                        },
+                        "updated" : {
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "added", "updated", "removed" ]
+                    }
+                  },
+                  "required" : [ "has_changes", "clean", "conflicts", "summary", "force_push_casualties", "reason" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
         "tags" : [ "/api/ee/remote-sync" ]
       }
     },
@@ -28949,10 +28682,18 @@
                     "type" : "string",
                     "minLength" : 1
                   },
+                  "expected_branch" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
                   "force" : {
                     "type" : "boolean"
+                  },
+                  "merge" : {
+                    "type" : "boolean"
                   }
-                }
+                },
+                "required" : [ "expected_branch" ]
               }
             }
           }
@@ -32232,6 +31973,14 @@
                         "items" : {
                           "type" : "object",
                           "properties" : {
+                            "database" : {
+                              "oneOf" : [ {
+                                "type" : "object",
+                                "properties" : { }
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "database_id" : {
                               "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                             },
@@ -32286,7 +32035,7 @@
       "post" : {
         "operationId" : "post-api-ee-workspace-manager",
         "summary" : "POST /api/ee/workspace-manager",
-        "description" : "Create a new Workspace (name only, no databases).",
+        "description" : "Create a new Workspace attached to the given databases (each must be eligible\n   for workspaces) and provision it (blocking).",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -32345,6 +32094,14 @@
                       "items" : {
                         "type" : "object",
                         "properties" : {
+                          "database" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "database_id" : {
                             "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                           },
@@ -32399,12 +32156,19 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "database_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                    },
+                    "minItems" : 1
+                  },
                   "name" : {
                     "type" : "string",
                     "minLength" : 1
                   }
                 },
-                "required" : [ "name" ],
+                "required" : [ "name", "database_ids" ],
                 "additionalProperties" : false
               }
             }
@@ -32485,6 +32249,14 @@
                       "items" : {
                         "type" : "object",
                         "properties" : {
+                          "database" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "database_id" : {
                             "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                           },
@@ -32606,6 +32378,14 @@
                       "items" : {
                         "type" : "object",
                         "properties" : {
+                          "database" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "database_id" : {
                             "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                           },
@@ -32755,434 +32535,6 @@
                     }
                   },
                   "required" : [ "status", "headers", "body" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      }
-    },
-    "/api/ee/workspace-manager/{id}/database" : {
-      "post" : {
-        "operationId" : "post-api-ee-workspace-manager-id-database",
-        "summary" : "POST /api/ee/workspace-manager/{id}/database",
-        "description" : "Add a database to a workspace and provision it immediately (blocking).",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "created_at" : {
-                      "anyOf" : [ { }, { } ]
-                    },
-                    "creator" : {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "common_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "email" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          },
-                          "first_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "last_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          }
-                        },
-                        "required" : [ "id", "first_name", "last_name", "email" ],
-                        "additionalProperties" : false
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "databases" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database_id" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                          },
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string",
-                              "minLength" : 1
-                            }
-                          },
-                          "output_namespace" : {
-                            "type" : "string"
-                          },
-                          "status" : {
-                            "type" : "string",
-                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
-                          }
-                        },
-                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
-                        "additionalProperties" : false
-                      }
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : {
-                      "anyOf" : [ { }, { } ]
-                    }
-                  },
-                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "database_id" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                  },
-                  "input_schemas" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  }
-                },
-                "required" : [ "database_id", "input_schemas" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      }
-    },
-    "/api/ee/workspace-manager/{id}/database/{db-id}" : {
-      "put" : {
-        "operationId" : "put-api-ee-workspace-manager-id-database-db-id",
-        "summary" : "PUT /api/ee/workspace-manager/{id}/database/{db-id}",
-        "description" : "Update a database's input namespaces. Deprovisions the old config and reprovisions\n   with the new one (blocking).",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "path",
-          "name" : "db-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "created_at" : {
-                      "anyOf" : [ { }, { } ]
-                    },
-                    "creator" : {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "common_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "email" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          },
-                          "first_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "last_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          }
-                        },
-                        "required" : [ "id", "first_name", "last_name", "email" ],
-                        "additionalProperties" : false
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "databases" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database_id" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                          },
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string",
-                              "minLength" : 1
-                            }
-                          },
-                          "output_namespace" : {
-                            "type" : "string"
-                          },
-                          "status" : {
-                            "type" : "string",
-                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
-                          }
-                        },
-                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
-                        "additionalProperties" : false
-                      }
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : {
-                      "anyOf" : [ { }, { } ]
-                    }
-                  },
-                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "input_schemas" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  }
-                },
-                "required" : [ "input_schemas" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      },
-      "delete" : {
-        "operationId" : "delete-api-ee-workspace-manager-id-database-db-id",
-        "summary" : "DELETE /api/ee/workspace-manager/{id}/database/{db-id}",
-        "description" : "Deprovision and remove a database from a workspace (blocking).",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "path",
-          "name" : "db-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "created_at" : {
-                      "anyOf" : [ { }, { } ]
-                    },
-                    "creator" : {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "common_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "email" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          },
-                          "first_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "last_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          }
-                        },
-                        "required" : [ "id", "first_name", "last_name", "email" ],
-                        "additionalProperties" : false
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "databases" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database_id" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                          },
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string",
-                              "minLength" : 1
-                            }
-                          },
-                          "output_namespace" : {
-                            "type" : "string"
-                          },
-                          "status" : {
-                            "type" : "string",
-                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
-                          }
-                        },
-                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
-                        "additionalProperties" : false
-                      }
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : {
-                      "anyOf" : [ { }, { } ]
-                    }
-                  },
-                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
-                  "additionalProperties" : false
                 }
               }
             }
@@ -37182,14 +36534,14 @@
       "get" : {
         "operationId" : "get-api-metabot-settings",
         "summary" : "GET /api/metabot/settings",
-        "description" : "Return available models for a provider using its configured API key.",
+        "description" : "Return available models for a provider using its configured credentials.",
         "parameters" : [ {
           "in" : "query",
           "name" : "provider",
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "anthropic", "openai", "metabase", "openrouter" ]
+            "enum" : [ "anthropic", "openai", "azure", "bedrock", "metabase", "openrouter" ]
           }
         } ],
         "responses" : {
@@ -37200,7 +36552,7 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "api-key-error" : {
+                    "credentials-error" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -37254,7 +36606,7 @@
       "put" : {
         "operationId" : "put-api-metabot-settings",
         "summary" : "PUT /api/metabot/settings",
-        "description" : "Update the Metabot provider API key and/or model setting and return the refreshed settings payload.",
+        "description" : "Update the Metabot provider credentials and/or model setting and return the refreshed settings payload.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -37264,7 +36616,7 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "api-key-error" : {
+                    "credentials-error" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -37326,6 +36678,57 @@
                       "type" : "null"
                     } ]
                   },
+                  "credentials" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "access-key-id" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "api-key" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "base-url" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "region" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "secret-access-key" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "session-token" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        }
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "model" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -37335,7 +36738,7 @@
                   },
                   "provider" : {
                     "type" : "string",
-                    "enum" : [ "anthropic", "openai", "metabase", "openrouter" ]
+                    "enum" : [ "anthropic", "openai", "azure", "bedrock", "metabase", "openrouter" ]
                   }
                 },
                 "required" : [ "provider" ]
@@ -39390,6 +38793,82 @@
           }
         },
         "tags" : [ "/api/notify" ]
+      }
+    },
+    "/api/oauth/authorizations" : {
+      "get" : {
+        "operationId" : "get-api-oauth-authorizations",
+        "summary" : "GET /api/oauth/authorizations",
+        "description" : "List OAuth dynamic client registration events (registered, approved, or denied), newest first.\n   Joins client info and, for decision events, the deciding user. Superuser only.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "client-id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "event-type",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "registered", "approved", "denied" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "offset" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "total" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    }
+                  },
+                  "required" : [ "total", "limit", "offset", "data" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/oauth" ]
       }
     },
     "/api/permissions/graph" : {
@@ -42672,7 +42151,7 @@
           "schema" : {
             "default" : "api",
             "type" : "string",
-            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
+            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "basic-actions", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
           }
         }, {
           "in" : "query",
@@ -46185,6 +45664,9 @@
                           "type" : "null"
                         } ]
                       },
+                      "can_read" : {
+                        "type" : "boolean"
+                      },
                       "source_type" : {
                         "type" : "string"
                       },
@@ -46284,7 +45766,15 @@
                                 "type" : "null"
                               } ]
                             },
-                            "start_time" : { }
+                            "start_time" : { },
+                            "job_run_id" : {
+                              "oneOf" : [ {
+                                "type" : "integer",
+                                "minimum" : 1
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }
                           },
                           "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                           "additionalProperties" : false
@@ -46400,6 +45890,9 @@
                           "minimum" : 1
                         }
                       },
+                      "can_write" : {
+                        "type" : "boolean"
+                      },
                       "collection_id" : {
                         "oneOf" : [ {
                           "type" : "integer",
@@ -46407,6 +45900,9 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "can_execute" : {
+                        "type" : "boolean"
                       },
                       "source" : { },
                       "last_checkpoint_value" : {
@@ -46521,6 +46017,9 @@
                         "type" : "null"
                       } ]
                     },
+                    "can_read" : {
+                      "type" : "boolean"
+                    },
                     "source_type" : {
                       "type" : "string"
                     },
@@ -46620,7 +46119,15 @@
                               "type" : "null"
                             } ]
                           },
-                          "start_time" : { }
+                          "start_time" : { },
+                          "job_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
                         },
                         "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                         "additionalProperties" : false
@@ -46736,6 +46243,9 @@
                         "minimum" : 1
                       }
                     },
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
                     "collection_id" : {
                       "oneOf" : [ {
                         "type" : "integer",
@@ -46743,6 +46253,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_execute" : {
+                      "type" : "boolean"
                     },
                     "source" : { },
                     "last_checkpoint_value" : {
@@ -47683,7 +47196,7 @@
       "post" : {
         "operationId" : "post-api-transform-job-job-id-run",
         "summary" : "POST /api/transform-job/{job-id}/run",
-        "description" : "Run a transform job manually.",
+        "description" : "Run a transform job manually. By default, fresh pulled-in dependencies are skipped; pass `run_all`\n  to force-refresh the whole plan.",
         "parameters" : [ {
           "in" : "path",
           "name" : "job-id",
@@ -47711,6 +47224,337 @@
                   },
                   "required" : [ "message", "job_run_id" ],
                   "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "run_all" : {
+                    "default" : false,
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/transform-job" ]
+      }
+    },
+    "/api/transform-job/{job-id}/runs" : {
+      "get" : {
+        "operationId" : "get-api-transform-job-job-id-runs",
+        "summary" : "GET /api/transform-job/{job-id}/runs",
+        "description" : "Get paginated run history for a transform job.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "job-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "started", "succeeded", "failed", "timeout" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "run-method",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "manual", "cron" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "start-time",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-column",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "start_time", "end_time" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-direction",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "asc", "desc" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "message" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "is_active" : {
+                            "oneOf" : [ {
+                              "type" : "boolean"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "run_method" : {
+                            "type" : "string"
+                          },
+                          "updated_at" : { },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "started", "succeeded", "failed", "timeout" ]
+                          },
+                          "job_id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "end_time" : {
+                            "oneOf" : [ { }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "created_at" : { },
+                          "start_time" : { }
+                        },
+                        "required" : [ "id", "job_id", "run_method", "status", "is_active", "start_time", "message", "created_at", "updated_at" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "limit" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "offset" : {
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "limit", "offset", "total" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform-job" ]
+      }
+    },
+    "/api/transform-job/{job-id}/runs/{run-id}/transform-runs" : {
+      "get" : {
+        "operationId" : "get-api-transform-job-job-id-runs-run-id-transform-runs",
+        "summary" : "GET /api/transform-job/{job-id}/runs/{run-id}/transform-runs",
+        "description" : "Get the transform runs that made up a specific job run.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "job-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "run-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "message" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "user_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "checkpoint_hi_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "is_active" : {
+                        "oneOf" : [ {
+                          "type" : "boolean"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "transform_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "id" : {
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "transform" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "run_method" : {
+                        "type" : "string"
+                      },
+                      "checkpoint_lo_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "status" : {
+                        "type" : "string",
+                        "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
+                      },
+                      "transform_entity_id" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "checkpoint_filter_field_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "end_time" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "metered_as" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "transform_name" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "start_time" : { },
+                      "job_run_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "transform_id", "job_run_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
+                    "additionalProperties" : false
+                  }
                 }
               }
             }
@@ -47759,6 +47603,9 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "scheduled" : {
+                        "type" : "boolean"
                       },
                       "id" : {
                         "type" : "integer",
@@ -47825,6 +47672,9 @@
                         "type" : "string"
                       },
                       "updated_at" : { },
+                      "dependency" : {
+                        "type" : "boolean"
+                      },
                       "collection_id" : {
                         "oneOf" : [ {
                           "type" : "integer",
@@ -48396,7 +48246,15 @@
                               "type" : "null"
                             } ]
                           },
-                          "start_time" : { }
+                          "start_time" : { },
+                          "job_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
                         },
                         "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                         "additionalProperties" : false
@@ -48584,7 +48442,15 @@
                         "type" : "null"
                       } ]
                     },
-                    "start_time" : { }
+                    "start_time" : { },
+                    "job_run_id" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
                   },
                   "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                   "additionalProperties" : false
@@ -48671,6 +48537,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_read" : {
+                      "type" : "boolean"
                     },
                     "source_type" : {
                       "type" : "string"
@@ -48771,7 +48640,15 @@
                               "type" : "null"
                             } ]
                           },
-                          "start_time" : { }
+                          "start_time" : { },
+                          "job_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
                         },
                         "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                         "additionalProperties" : false
@@ -48887,6 +48764,9 @@
                         "minimum" : 1
                       }
                     },
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
                     "collection_id" : {
                       "oneOf" : [ {
                         "type" : "integer",
@@ -48894,6 +48774,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_execute" : {
+                      "type" : "boolean"
                     },
                     "source" : { },
                     "last_checkpoint_value" : {
@@ -49016,6 +48899,9 @@
                         "type" : "null"
                       } ]
                     },
+                    "can_read" : {
+                      "type" : "boolean"
+                    },
                     "source_type" : {
                       "type" : "string"
                     },
@@ -49115,7 +49001,15 @@
                               "type" : "null"
                             } ]
                           },
-                          "start_time" : { }
+                          "start_time" : { },
+                          "job_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
                         },
                         "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                         "additionalProperties" : false
@@ -49231,6 +49125,9 @@
                         "minimum" : 1
                       }
                     },
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
                     "collection_id" : {
                       "oneOf" : [ {
                         "type" : "integer",
@@ -49238,6 +49135,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_execute" : {
+                      "type" : "boolean"
                     },
                     "source" : { },
                     "last_checkpoint_value" : {
@@ -49497,6 +49397,9 @@
                           "type" : "null"
                         } ]
                       },
+                      "can_read" : {
+                        "type" : "boolean"
+                      },
                       "source_type" : {
                         "type" : "string"
                       },
@@ -49596,7 +49499,15 @@
                                 "type" : "null"
                               } ]
                             },
-                            "start_time" : { }
+                            "start_time" : { },
+                            "job_run_id" : {
+                              "oneOf" : [ {
+                                "type" : "integer",
+                                "minimum" : 1
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }
                           },
                           "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                           "additionalProperties" : false
@@ -49712,6 +49623,9 @@
                           "minimum" : 1
                         }
                       },
+                      "can_write" : {
+                        "type" : "boolean"
+                      },
                       "collection_id" : {
                         "oneOf" : [ {
                           "type" : "integer",
@@ -49719,6 +49633,9 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "can_execute" : {
+                        "type" : "boolean"
                       },
                       "source" : { },
                       "last_checkpoint_value" : {
