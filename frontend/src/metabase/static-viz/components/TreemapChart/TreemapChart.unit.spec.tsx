@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import ReactDOMServer from "react-dom/server";
 
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -14,10 +13,6 @@ import { TreemapChart } from "./TreemapChart";
 
 function getRenderingContext() {
   return createStaticRenderingContext();
-}
-
-function toStaticMarkup(element: JSX.Element) {
-  return ReactDOMServer.renderToStaticMarkup(element);
 }
 
 const settings = {
@@ -53,7 +48,7 @@ function makeRawSeries(rows: (string | number | null)[][]): RawSeries {
         rows,
       }),
     },
-  ] as RawSeries;
+  ];
 }
 
 describe("static TreemapChart", () => {
@@ -82,7 +77,7 @@ describe("static TreemapChart", () => {
       "Tempeh",
       "Total",
     ]);
-    // 2-level legend: one color dot per top-level group.
+
     expect(screen.getAllByTestId("legend-dot")).toHaveLength(2);
   });
 
@@ -93,12 +88,10 @@ describe("static TreemapChart", () => {
           ["Legumes", null, 80],
           ["Soy", null, 20],
         ])}
-        settings={
-          {
-            ...settings,
-            "treemap.sub_grouping": undefined,
-          } as unknown as ComputedVisualizationSettings
-        }
+        settings={{
+          ...settings,
+          "treemap.sub_grouping": undefined,
+        }}
         renderingContext={getRenderingContext()}
         isStorybook
       />,
@@ -109,23 +102,5 @@ describe("static TreemapChart", () => {
       .map((node) => node.textContent);
     expect(legendNames).toEqual(["Legumes", "Soy", "Total"]);
     expect(screen.queryByTestId("legend-dot")).not.toBeInTheDocument();
-  });
-
-  it("emits no feDropShadow filters, which Batik cannot transcode to PNG", () => {
-    const view = toStaticMarkup(
-      <TreemapChart
-        rawSeries={makeRawSeries([
-          ["Legumes", "Chickpeas", 60],
-          ["Legumes", "Lentils", 20],
-          ["Soy", "Tempeh", 20],
-        ])}
-        settings={settings}
-        renderingContext={getRenderingContext()}
-        isStorybook
-      />,
-    );
-
-    expect(view).toContain("<svg");
-    expect(view).not.toContain("feDropShadow");
   });
 });

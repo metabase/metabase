@@ -76,12 +76,8 @@ export function TreemapChart({
     height: CHART_HEIGHT,
   });
 
-  // The dynamic chart measures labels off the `finished` event; here the same
-  // two passes run synchronously: lay out with the cheap heuristic labels,
-  // measure the rendered tile rects, then re-render with the measured layouts
-  // (which only changes labels, never tile geometry).
+  // first pass to general layout of nodes
   chart.setOption(buildOption({}));
-  // Force the layout pass so the tile rectangles exist to measure.
   chart.renderToSVGString();
   const layouts = measureTreemapLabelLayouts({
     nodes: getTreemapLayoutNodes(chart),
@@ -91,6 +87,8 @@ export function TreemapChart({
     showLeafValues: settings["treemap.show_leaf_values"] ?? true,
     showParentValues: settings["treemap.show_parent_values"] ?? true,
   });
+
+  // 2nd to render/hide labels
   chart.setOption(buildOption(layouts));
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
 

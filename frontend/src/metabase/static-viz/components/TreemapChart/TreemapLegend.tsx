@@ -32,13 +32,6 @@ type TreemapLegendProps = {
   renderingContext: RenderingContext;
 };
 
-/**
- * The static treemap's legend column: per-group rows (bold parent with a color
- * dot, indented regular leaves) — or a flat list for a 1-level treemap — with
- * right-aligned value and percent columns, closed by a Total row above a
- * separator line. Layout (row positions, height) comes from the model; this
- * component only draws it.
- */
 export function TreemapLegend({
   model,
   left,
