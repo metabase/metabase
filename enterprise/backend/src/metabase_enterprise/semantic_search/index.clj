@@ -538,38 +538,37 @@
      [:is :personal_owner_id nil]
      [:= :personal_owner_id current-user-id]]))
 
-(defn- search-filters
-  "Generate WHERE conditions based on search context filters."
+(defn- filter-conditions
+  "Ordered `[filter-key where-condition]` pairs for the structural filters implied by `search-context`. The
+  search query ANDs these together (see [[search-filters]]); the search debug API uses the keys to attribute
+  which specific filter excludes a given row."
   [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by
            table-db-id ids display-type] :as search-context}]
-  (let [conditions (filter some?
-                           [(personal-collection-filter search-context)
-                            (when (some? archived?)
-                              [:= :archived archived?])
-                            (when (some? verified)
-                              [:= :verified verified])
-                            (when (seq models)
-                              [:in :model models])
-                            (when (seq created-by)
-                              [:in :creator_id created-by])
-                            (when (seq last-edited-by)
-                              [:in :last_editor_id last-edited-by])
-                            (when table-db-id
-                              [:= :database_id table-db-id])
-                            (when (seq ids)
-                              [:in :model_id (map str ids)])
-                            (when (seq display-type)
-                              [:in :display_type display-type])
-                            (when (and created-at (:start created-at) (:end created-at))
-                              [:between :model_created_at
-                               (LocalDate/parse (:start created-at))
-                               (LocalDate/parse (:end created-at))])
-                            (when (and last-edited-at (:start last-edited-at) (:end last-edited-at))
-                              [:between :model_updated_at
-                               (LocalDate/parse (:start last-edited-at))
-                               (LocalDate/parse (:end last-edited-at))])])]
-    (when (seq conditions)
-      (into [:and] conditions))))
+  (keep
+   (fn [[k clause]] (when clause [k clause]))
+   [[:personal-collection (personal-collection-filter search-context)]
+    [:archived?           (when (some? archived?) [:= :archived archived?])]
+    [:verified            (when (some? verified) [:= :verified verified])]
+    [:models              (when (seq models) [:in :model models])]
+    [:created-by          (when (seq created-by) [:in :creator_id created-by])]
+    [:last-edited-by      (when (seq last-edited-by) [:in :last_editor_id last-edited-by])]
+    [:table-db-id         (when table-db-id [:= :database_id table-db-id])]
+    [:ids                 (when (seq ids) [:in :model_id (map str ids)])]
+    [:display-type        (when (seq display-type) [:in :display_type display-type])]
+    [:created-at          (when (and created-at (:start created-at) (:end created-at))
+                            [:between :model_created_at
+                             (LocalDate/parse (:start created-at))
+                             (LocalDate/parse (:end created-at))])]
+    [:last-edited-at      (when (and last-edited-at (:start last-edited-at) (:end last-edited-at))
+                            [:between :model_updated_at
+                             (LocalDate/parse (:start last-edited-at))
+                             (LocalDate/parse (:end last-edited-at))])]]))
+
+(defn- search-filters
+  "Generate WHERE conditions based on search context filters."
+  [search-context]
+  (when-let [conditions (seq (map second (filter-conditions search-context)))]
+    (into [:and] conditions)))
 
 (def ^:private common-search-columns
   [[:id :id]
@@ -927,6 +926,56 @@
           (jdbc/execute! db (sql-format-quoted query)))
         {:results final-results
          :raw-count (count raw-results)}))))
+
+(defn- row-present?
+  "Whether a single `(model, id)` row survives `where` against the index `table`."
+  [db table model id where]
+  (some? (jdbc/execute-one! db (sql-format-quoted
+                                {:select [[[:inline 1] :one]]
+                                 :from   [table]
+                                 :where  (into [:and [:= :model model] [:= :model_id (str id)]]
+                                               (when where [where]))})
+                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+
+(defn diagnose-row
+  "Engine-owned diagnostic stages for the semantic index: returns `{:type ..., :details ...}` for the first of
+  `:missing-from-index` / `:filtered` / `:not-matching` that drops `(model, id)`, or `:candidate` if it survives
+  every engine-owned stage. The caller ([[metabase.search.debug]]) handles the engine-independent stages."
+  [db index search-context model id]
+  (let [table (keyword (:table-name index))
+        row   (jdbc/execute-one! db (sql-format-quoted
+                                     {:select [:model :model_id :legacy_input]
+                                      :from   [table]
+                                      :where  [:and [:= :model model] [:= :model_id (str id)]]})
+                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (cond
+      (nil? row)
+      {:type :missing-from-index :details {:table (:table-name index)}}
+
+      :else
+      ;; Check access control before structural filters so a not-permitted row is reported as such even when a
+      ;; query filter would also drop it (matches the appdb engine, where the permission layers come first).
+      (if (empty? (filter-read-permitted [(:legacy_input (decode-legacy-input row))]))
+        {:type :filtered :details {:excluded-by :permissions}}
+        (if-let [excluded-by (some (fn [[k clause]] (when-not (row-present? db table model id clause) k))
+                                   (filter-conditions search-context))]
+          {:type :filtered :details {:excluded-by excluded-by}}
+          (let [search-string (:search-string search-context)]
+            (if (str/blank? search-string)
+              {:type :candidate :details {}}
+              (let [embedding (embedding/get-embedding (:embedding-model index) search-string
+                                                       {:type :query :record-tokens? true})
+                    distance  (-> (jdbc/execute-one! db (sql-format-quoted
+                                                         {:select [[[:raw (str "embedding <=> " (format-embedding embedding))] :distance]]
+                                                          :from   [table]
+                                                          :where  [:and [:= :model model] [:= :model_id (str id)]]})
+                                                     {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                                  :distance)]
+                ;; A row beyond the cosine cutoff is dropped by the vector arm; the keyword arm may still surface it
+                ;; via RRF, so treat it as a candidate within the cutoff and only call it not-matching past it.
+                (if (and distance (> distance max-cosine-distance))
+                  {:type :not-matching :details {:max-cosine-distance max-cosine-distance :distance distance}}
+                  {:type :candidate :details {:distance distance}})))))))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))
