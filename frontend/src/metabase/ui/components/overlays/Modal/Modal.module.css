@@ -3,7 +3,7 @@
 }
 
 .title {
-  font-size: var(--mantine-font-size-xl);
+  font-size: var(--mantine-h2-font-size);
   font-weight: var(--mantine-heading-font-weight);
   line-height: var(--mantine-line-height-md);
   flex: 1 1 auto;
