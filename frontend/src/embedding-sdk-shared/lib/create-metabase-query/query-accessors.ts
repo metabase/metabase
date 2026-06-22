@@ -5,7 +5,6 @@ import {
   type ID,
   type MetricQueryLike,
   type TableQueryLike,
-  isId,
   isMetricReference,
   isTableReference,
 } from "./query-guards";
@@ -37,10 +36,6 @@ export function getTableIdFromQuery(query: unknown): ID | null {
     return query.table.id;
   }
 
-  if ("tableId" in query && isId(query.tableId)) {
-    return query.tableId;
-  }
-
   return null;
 }
 
@@ -49,10 +44,6 @@ export function getTableDatabaseIdFromQuery(
 ): number | null {
   if ("table" in query && isTableReference(query.table)) {
     return query.table.databaseId;
-  }
-
-  if ("databaseId" in query && typeof query.databaseId === "number") {
-    return query.databaseId;
   }
 
   return null;

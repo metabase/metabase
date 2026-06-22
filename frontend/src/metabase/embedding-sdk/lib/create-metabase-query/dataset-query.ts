@@ -1,7 +1,4 @@
-import {
-  getTableDatabaseIdFromQuery,
-  getTableIdFromQuery,
-} from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
+import { getTableIdFromQuery } from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
 import type { MetricQueryInput, TableQueryInput } from "./input-types";
@@ -9,13 +6,7 @@ import {
   buildMetricDatasetQueryFromSchema,
   buildTableDatasetQueryFromSchema,
 } from "./lib-adapter/builder";
-import {
-  getTableFromSchema,
-  hasMetricFromSchema,
-  hasTableFromSchema,
-  isMetricQueryInput,
-} from "./query-utils";
-import { buildTableDatasetQuery } from "./table-query-builder";
+import { getTableFromInput, isMetricQueryInput } from "./query-utils";
 import {
   validateMetricGeneratedDimensions,
   validateMetricTableScopedInputs,
@@ -38,41 +29,20 @@ export const createMetabaseQuery: CreateMetabaseQuery = (
   }
 
   if (isMetricQueryInput(query)) {
-    if (hasMetricFromSchema(query)) {
-      throw new Error(
-        "Generated metric query could not be converted to a dataset query.",
-      );
-    }
-
     throw new Error(
       "Metric query object creation requires a generated metric schema.",
     );
   }
 
-  if (hasTableFromSchema(query)) {
-    throw new Error(
-      "Generated table query could not be converted to a dataset query.",
-    );
-  }
-
-  const databaseId = getTableDatabaseIdFromQuery(query as TableQueryInput);
-
-  if (databaseId == null) {
-    return buildTableDatasetQuery(
-      query as TableQueryInput,
-    ) as StructuredDatasetQuery;
-  }
-
-  return {
-    ...buildTableDatasetQuery(query as TableQueryInput),
-    database: Number(databaseId),
-  };
+  throw new Error(
+    "Table query object creation requires a table reference with id and databaseId.",
+  );
 };
 
 function buildValidatedTableDatasetQueryFromSchema(
   query: TableQueryInput,
 ): StructuredDatasetQuery | null {
-  const table = getTableFromSchema(query);
+  const table = getTableFromInput(query);
 
   if (!table) {
     return null;

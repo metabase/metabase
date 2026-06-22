@@ -20,8 +20,6 @@ export type QuestionQueryLike = {
 
 export type TableQueryLike = {
   table?: TableSchema;
-  tableId?: ID;
-  databaseId?: number;
 };
 
 export type MetricQueryLike = {
@@ -33,9 +31,7 @@ export const isQuestionQuery = (query: unknown): query is QuestionQueryLike =>
   isObject(query) && "questionId" in query && isId(query.questionId);
 
 export const isTableQuery = (query: unknown): query is TableQueryLike =>
-  isObject(query) &&
-  (("table" in query && isTableReference(query.table)) ||
-    ("tableId" in query && isId(query.tableId)));
+  isObject(query) && "table" in query && isTableReference(query.table);
 
 export const isMetricQuery = (query: unknown): query is MetricQueryLike =>
   isObject(query) &&

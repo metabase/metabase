@@ -13,13 +13,23 @@ import type { Metadata as MetadataInput, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { Field, TableId } from "metabase-types/api";
 
-import { isMeasureSchema } from "../guards";
-import type { MeasureReferenceInput, MetricQueryInput } from "../input-types";
+import {
+  isDimensionFilter,
+  isFieldAggregation,
+  isMeasureSchema,
+  isSegmentSchema,
+  isTableFieldSchema,
+} from "../guards";
+import type {
+  MeasureReferenceInput,
+  MetricQueryInput,
+  TableQueryInput,
+} from "../input-types";
 import {
   getFieldId,
   getMetricDimensionValues,
-  hasFieldId,
   isMetricDimensionWithFieldId,
+  normalizeBreakout,
 } from "../query-utils";
 
 import { getFieldBaseType, getFieldEffectiveType } from "./query-utils";
@@ -44,15 +54,24 @@ export function createLibQuery(
 export function createTableMetadata(
   table: TableMetadataSource,
   databaseId: number,
+  query?: TableQueryInput,
 ): MetadataInput {
-  const fields = getTableFields(table);
+  const fields = getTableFields(table, query);
+  const segments = getTableSegments(table, query);
+  const measures = getTableMeasures(table, query);
 
   return {
     databases: {
       [databaseId]: createDatabaseMetadata(databaseId),
     },
     tables: {
-      [table.id]: createTableMetadataRecord(table, databaseId, fields),
+      [table.id]: createTableMetadataRecord(
+        table,
+        databaseId,
+        fields,
+        segments,
+        measures,
+      ),
     },
     fields: Object.fromEntries(
       fields.map((field, index) => [
@@ -61,13 +80,13 @@ export function createTableMetadata(
       ]),
     ),
     segments: Object.fromEntries(
-      Object.values(table.segments ?? {}).map((segment) => [
+      segments.map((segment) => [
         segment.id,
         createSegmentMetadataRecord(segment, table.id),
       ]),
     ),
     measures: Object.fromEntries(
-      Object.values(table.measures ?? {}).map((measure) => [
+      measures.map((measure) => [
         measure.id,
         createMeasureMetadataRecord(measure, table.id),
       ]),
@@ -216,6 +235,8 @@ const createTableMetadataRecord = (
   table: TableMetadataSource,
   databaseId: number,
   fields: FieldSchema[],
+  segments: SegmentSchema[],
+  measures: MeasureReferenceInput[],
 ) => ({
   ...TABLE_METADATA_DEFAULTS,
   id: table.id,
@@ -225,8 +246,8 @@ const createTableMetadataRecord = (
   fields: fields.map((field, index) =>
     createFieldMetadataRecord(field, table.id, index),
   ),
-  segments: Object.values(table.segments ?? {}),
-  measures: Object.values(table.measures ?? {}),
+  segments,
+  measures,
 });
 
 const createFieldMetadataRecord = (
@@ -310,5 +331,72 @@ const createMetricCardMetadataRecord = ({
   },
 });
 
-const getTableFields = (table: TableMetadataSource): FieldSchema[] =>
-  Object.values(table.fields ?? {}).filter(hasFieldId);
+const getTableFields = (
+  table: TableMetadataSource,
+  query?: TableQueryInput,
+): FieldSchema[] =>
+  getUniqueFields([
+    ...Object.values(table.fields ?? {}).filter(hasFieldReferenceId),
+    ...getQueryFieldReferences(query),
+  ]);
+
+const getTableSegments = (
+  table: TableMetadataSource,
+  query?: TableQueryInput,
+): SegmentSchema[] =>
+  getUniqueById([
+    ...Object.values(table.segments ?? {}),
+    ...(query?.filters?.filter(isSegmentSchema) ?? []),
+  ]);
+
+const getTableMeasures = (
+  table: TableMetadataSource,
+  query?: TableQueryInput,
+): MeasureReferenceInput[] =>
+  getUniqueById([
+    ...Object.values(table.measures ?? {}),
+    ...getQueryAggregations(query).filter(isMeasureSchema),
+  ]);
+
+function getQueryFieldReferences(query?: TableQueryInput): FieldSchema[] {
+  const filterFields =
+    query?.filters?.flatMap((filter) =>
+      isDimensionFilter(filter) && isTableFieldSchema(filter.dimension)
+        ? [filter.dimension]
+        : [],
+    ) ?? [];
+
+  const aggregationFields = getQueryAggregations(query).flatMap((aggregation) =>
+    isFieldAggregation(aggregation) && isTableFieldSchema(aggregation.dimension)
+      ? [aggregation.dimension]
+      : [],
+  );
+
+  const breakoutFields =
+    query?.breakouts?.flatMap((breakout) => {
+      const { dimension } = normalizeBreakout(breakout);
+
+      return dimension && isTableFieldSchema(dimension) ? [dimension] : [];
+    }) ?? [];
+
+  return [...filterFields, ...aggregationFields, ...breakoutFields].filter(
+    hasFieldReferenceId,
+  );
+}
+
+const getQueryAggregations = (query?: TableQueryInput): readonly unknown[] =>
+  query?.aggregations ?? query?.measures ?? [];
+
+function getUniqueById<T extends { id: number }>(items: readonly T[]): T[] {
+  return Array.from(new Map(items.map((item) => [item.id, item])).values());
+}
+
+function getUniqueFields(fields: readonly FieldSchema[]): FieldSchema[] {
+  return Array.from(
+    new Map(fields.map((field) => [getFieldId(field), field])).values(),
+  );
+}
+
+function hasFieldReferenceId(field: FieldSchema): boolean {
+  return getFieldId(field) != null;
+}

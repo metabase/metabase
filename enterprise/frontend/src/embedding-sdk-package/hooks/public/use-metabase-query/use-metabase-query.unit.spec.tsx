@@ -204,7 +204,7 @@ type OrdersTable = TestSchema["tables"]["orders"];
 type OrderCountMetric = TestSchema["metrics"]["orderCount"];
 
 const _validTableCustomFilterQuery = {
-  tableId: TEST_SCHEMA.tables.orders.id,
+  table: TEST_SCHEMA.tables.orders,
   filters: [
     filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
     filter(TEST_SCHEMA.tables.orders.fields.amount, ">", 10),
@@ -214,7 +214,7 @@ const _validTableCustomFilterQuery = {
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _validTableCustomFilterObjectQuery = {
-  tableId: TEST_SCHEMA.tables.orders.id,
+  table: TEST_SCHEMA.tables.orders,
   filters: [
     {
       dimension: TEST_SCHEMA.tables.orders.fields.status,
@@ -239,7 +239,7 @@ const _validTableCustomFilterObjectQuery = {
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _validTableBreakoutBucketQuery = {
-  tableId: TEST_SCHEMA.tables.orders.id,
+  table: TEST_SCHEMA.tables.orders,
   breakouts: [
     breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { bucket: "month" }),
     breakout(TEST_SCHEMA.tables.orders.fields.amount, {
@@ -254,7 +254,7 @@ const _validTableBreakoutBucketQuery = {
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _invalidTableAdHocMeasureQuery = {
-  tableId: TEST_SCHEMA.tables.orders.id,
+  table: TEST_SCHEMA.tables.orders,
   measures: [
     // @ts-expect-error table measures must use generated schema.tables.*.measures.* objects
     { name: "count" },
@@ -262,7 +262,7 @@ const _invalidTableAdHocMeasureQuery = {
 } satisfies MetabaseQueryOptions;
 
 const _invalidTableBreakoutUnknownBucketQuery = {
-  tableId: TEST_SCHEMA.tables.orders.id,
+  table: TEST_SCHEMA.tables.orders,
   breakouts: [
     breakout(TEST_SCHEMA.tables.orders.fields.createdAt, {
       // @ts-expect-error temporal buckets must be valid Metabase temporal units
@@ -277,7 +277,7 @@ const _invalidTableBreakoutUnknownBucketQuery = {
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _invalidTableBreakoutNonDateBucketQuery = {
-  tableId: TEST_SCHEMA.tables.orders.id,
+  table: TEST_SCHEMA.tables.orders,
   breakouts: [
     // @ts-expect-error non-date dimensions do not support temporal buckets
     breakout(TEST_SCHEMA.tables.orders.fields.status, { bucket: "month" }),
@@ -285,7 +285,7 @@ const _invalidTableBreakoutNonDateBucketQuery = {
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _invalidTableCustomFilterOperatorQuery = {
-  tableId: TEST_SCHEMA.tables.orders.id,
+  table: TEST_SCHEMA.tables.orders,
   filters: [
     // @ts-expect-error number dimensions do not support string operators
     filter(TEST_SCHEMA.tables.orders.fields.amount, "contains", "10"),
@@ -295,7 +295,7 @@ const _invalidTableCustomFilterOperatorQuery = {
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _invalidTableCustomFilterQuery = {
-  tableId: TEST_SCHEMA.tables.orders.id,
+  table: TEST_SCHEMA.tables.orders,
   filters: [
     {
       // @ts-expect-error custom filter dimensions must belong to the table schema
@@ -307,7 +307,7 @@ const _invalidTableCustomFilterQuery = {
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _validTableAggregationQuery = {
-  tableId: TEST_SCHEMA.tables.orders.id,
+  table: TEST_SCHEMA.tables.orders,
   aggregations: [
     sum(TEST_SCHEMA.tables.orders.fields.amount),
     avg(TEST_SCHEMA.tables.orders.fields.amount),
@@ -318,7 +318,7 @@ const _validTableAggregationQuery = {
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _invalidTableAggregationQuery = {
-  tableId: TEST_SCHEMA.tables.orders.id,
+  table: TEST_SCHEMA.tables.orders,
   aggregations: [
     // @ts-expect-error sum only supports numeric dimensions
     sum(TEST_SCHEMA.tables.orders.fields.status),
@@ -552,6 +552,21 @@ describe("useMetabaseQuery", () => {
       expect(
         createMetabaseQuery({
           table: TEST_SCHEMA.tables.orders,
+          filters: [
+            filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
+          ],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
+        }),
+      ).toEqual(expectedOrdersQuery);
+    });
+
+    it("builds a dataset query from minimal table metadata and referenced fields", () => {
+      expect(
+        createMetabaseQuery({
+          table: {
+            id: TEST_SCHEMA.tables.orders.id,
+            databaseId: TEST_SCHEMA.tables.orders.databaseId,
+          },
           filters: [
             filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
           ],
@@ -905,6 +920,7 @@ describe("useMetabaseQuery", () => {
       expect(queryDatasetApi).toHaveBeenCalledWith({
         datasetQuery: {
           type: "query",
+          database: 1,
           query: {
             "source-table": 1,
             filter: ["=", ["field", 101, {}], "paid"],
@@ -1147,7 +1163,7 @@ const TestComponent = () => {
 
 const InvalidTableMeasureComponent = () => {
   const query = {
-    tableId: TEST_SCHEMA.tables.orders.id,
+    table: TEST_SCHEMA.tables.orders,
     measures: [{ name: "count" }],
   };
 
@@ -1197,7 +1213,7 @@ const SourceCardMetricQueryObjectComponent = () => {
 
 const TableFieldIdComponent = () => {
   useMetabaseQuery<OrdersTable>({
-    tableId: TEST_SCHEMA.tables.orders.id,
+    table: TEST_SCHEMA.tables.orders,
     filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
     breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
   });

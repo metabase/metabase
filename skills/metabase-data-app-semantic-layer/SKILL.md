@@ -147,17 +147,20 @@ const { data, isLoading, error } = useMetabaseQuery({
 Use keyed schema objects:
 
 - Saved questions: `questionId: schema.questions.someQuestion.id`
-- Tables: `tableId: table.id`, `table.fields.*`, `table.segments.*`, `table.measures.*`
+- Tables: `table: table`, `table.fields.*`, `table.segments.*`, `table.measures.*`
 - Metrics: `metric: schema.metrics.someMetric`, `metric.dimensions.<table>.*`
 
 Do not pass raw dimension strings like `"created_at"` or `"segment"`. Metric dimensions are compact table-namespaced aliases to valid mapped table fields; use `metric.dimensions.<table>.*` for the shortest safe path. Direct `schema.tables.*.fields.*`, segments, and measures are valid with metrics only when their table is included in the metric's `mappedTableIds`.
 
-`useMetabaseQuery` and `useMetabaseQueryObject`/`createMetabaseQuery` take different shapes for tables:
+For table queries, pass the generated table object from the schema:
 
-- `useMetabaseQuery` (row-data hook): `{ tableId: table.id, ... }`.
-- `useMetabaseQueryObject` / `createMetabaseQuery` (query-object for `InteractiveQuestion`/`StaticQuestion`): `{ table: table, ... }` — pass the full generated table object (it carries `databaseId`), not `tableId`.
+```ts
+useMetabaseQuery({
+  table: schema.tables.records,
+});
+```
 
-Passing `tableId` to `useMetabaseQueryObject` throws `Query creation requires a generated table schema, generated metric schema, or databaseId.` at runtime.
+The minimal technical table shape is `{ id, databaseId }`, but generated schema objects are preferred because they also carry typed fields, segments, and measures.
 
 ## Query Recipes
 
@@ -181,7 +184,7 @@ const recordsTable = schema.tables.records;
 type RecordsTable = typeof recordsTable;
 
 const { data } = useMetabaseQuery<RecordsTable>({
-  tableId: recordsTable.id,
+  table: recordsTable,
   filters: [
     recordsTable.segments.activeRecords,
     filter(recordsTable.fields.amount, ">", 100),
@@ -195,7 +198,7 @@ For grouped counts, use a curated count measure from the generated schema:
 
 ```ts
 useMetabaseQuery<RecordsTable>({
-  tableId: recordsTable.id,
+  table: recordsTable,
   filters: [recordsTable.segments.activeRecords],
   aggregations: [recordsTable.measures.recordCount],
   breakouts: [breakout(recordsTable.fields.category)],
@@ -206,7 +209,7 @@ For basic field aggregations, use curated measures from the generated schema. If
 
 ```ts
 useMetabaseQuery<RecordsTable>({
-  tableId: recordsTable.id,
+  table: recordsTable,
   aggregations: [
     recordsTable.measures.totalAmount,
     recordsTable.measures.averageAmount,
@@ -431,7 +434,7 @@ const eventsTable = schema.tables.events;
 type EventsTable = typeof eventsTable;
 
 const { data } = useMetabaseQuery<EventsTable>({
-  tableId: eventsTable.id,
+  table: eventsTable,
   filters: [
     eventsTable.segments.recentRecords,
     filter(eventsTable.fields.amount, ">", 1000),

@@ -39,9 +39,7 @@ export type QuestionQueryInput = {
 
 export type TableQueryInput = {
   questionId?: never;
-  table?: TableSchema;
-  tableId?: ID;
-  databaseId?: number;
+  table: TableSchema;
   metric?: never;
   metricId?: never;
   filters?: readonly unknown[];

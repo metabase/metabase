@@ -40,7 +40,7 @@ export function buildTableDatasetQueryFromSchema(
     return null;
   }
 
-  const metadata = createTableMetadata(table, Number(databaseId));
+  const metadata = createTableMetadata(table, Number(databaseId), query);
   let libQuery = createLibQuery(metadata, Number(databaseId), Number(tableId));
 
   const queryWithFilters = applyFilters(

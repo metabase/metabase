@@ -13,22 +13,12 @@ import type {
   TableQueryInput,
 } from "./input-types";
 
-export const getTableFromSchema = (
-  query: TableQueryInput,
-): TableSchema | null =>
+export const getTableFromInput = (query: TableQueryInput): TableSchema | null =>
   isObject(query.table) ? (query.table as TableSchema) : null;
 
 export const isMetricQueryInput = (
   query: TableQueryInput | MetricQueryInput,
 ): query is MetricQueryInput => "metric" in query || "metricId" in query;
-
-export const hasMetricFromSchema = (query: MetricQueryInput): boolean =>
-  isObject(query.metric);
-
-export const hasTableFromSchema = (
-  query: TableQueryInput | MetricQueryInput,
-): query is TableQueryInput =>
-  !isMetricQueryInput(query) && isObject(query.table);
 
 export function getFieldId(field: unknown): number | null {
   if (hasFieldId(field)) {

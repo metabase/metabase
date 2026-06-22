@@ -27,7 +27,6 @@ import type {
   TableSchema,
 } from "../data-schema";
 
-type ID = string | number;
 type Values<T> = T[keyof T];
 type UnionToIntersection<TUnion> = (
   TUnion extends unknown ? (value: TUnion) => void : never
@@ -371,17 +370,9 @@ export type QuestionQuery<TQuestion> = {
   enabled?: boolean;
 };
 
-type TableReference<TTable> =
-  | {
-      table: TTable extends TableSchema ? TTable : TableSchema;
-      tableId?: never;
-      databaseId?: never;
-    }
-  | {
-      table?: never;
-      tableId: ID;
-      databaseId?: number;
-    };
+type TableReference<TTable> = {
+  table: TTable extends TableSchema ? TTable : TableSchema;
+};
 
 export type TableQuery<TTable> = TableReference<TTable> & {
   questionId?: never;
