@@ -34,7 +34,7 @@ Before generating, make sure the user has explicitly chosen the scopes the app n
   - `includeMetricLibrary=true` for the whole `Library / Metrics` tree
   - `libraryCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data/Metrics library subcollections.
 - Saved question scope:
-  - `questionCollections=<collection-id>[,<collection-id>]` for saved questions from normal collections.
+  - `questionCollections=<id-or-entity-id>[,<id-or-entity-id>]` for saved questions from normal collections.
 
 If the user did not already choose a library scope and/or saved question scope, stop and ask what they want:
 
@@ -46,11 +46,12 @@ If the current working tree looks like a Metabase remote-sync repository, inspec
 - `collections/main/library/data.yaml` and `collections/main/library/metrics.yaml` are the top-level Data and Metrics library collections.
 - Child collection YAML under `collections/main/library/data/` or `collections/main/library/metrics/` exposes a stable `entity_id`; use that value in `libraryCollections` when a subcollection name could be ambiguous.
 - Table YAML under `databases/**/tables/**/<table>.yaml` can show `collection_id: librarylibrarydatadat` for tables directly in Data, or another collection `entity_id` for subcollections.
+- Normal collection YAML under `collections/main/**` exposes a stable `entity_id`; use that value in `questionCollections` when targeting saved questions or models from normal collections.
 - Card YAML under `collections/main/**` with `type: question`, `type: model`, or `type: metric` shows normal saved-question/model/metric placement.
 
 Correlate those representation files with the user's request and offer concrete choices.
 
-- Prefer representation `entity_id` values for specific library subcollections.
+- Prefer representation `entity_id` values for specific library subcollections and question collections.
 - Only use `includeDataLibrary=true` / `includeMetricLibrary=true` if the user agrees to include the whole data or metric library.
 - If you cannot tell from representations, say you do not know and ask for collection IDs or entity IDs.
 
@@ -92,7 +93,7 @@ fi
     -o src/metabase.data.ts \
     -H "x-api-key: $VITE_MB_API_KEY" \
     -H "Accept: text/typescript" \
-    "$VITE_MB_URL/api/typed-schemas/v1/typescript?includeDataLibrary=true&includeMetricLibrary=true&questionCollections=10,11"
+    "$VITE_MB_URL/api/typed-schemas/v1/typescript?includeDataLibrary=true&includeMetricLibrary=true&questionCollections=g-jLnamuHKdezZMthJ-z7"
 )
 ```
 
@@ -103,6 +104,7 @@ Other useful filters:
 - `?includeMetricLibrary=true` for every metric in the top-level Metrics library and its subcollections, plus mapped source tables needed by those metrics.
 - `?includeDataLibrary=true&includeMetricLibrary=true` for everything in both top-level semantic libraries.
 - `?includeDataLibrary=true&libraryCollections=g-jLnamuHKdezZMthJ-z7` for the whole Data library plus one specific library subcollection.
+- `?questionCollections=g-jLnamuHKdezZMthJ-z7` for saved questions and models from one normal collection, preferably using the collection `entity_id` from representation YAML.
 - No query parameters only when the user explicitly wants the whole instance.
 
 ## Standard Pattern
