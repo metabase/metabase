@@ -41,20 +41,55 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
+(defn- scan-nestable-sql
+  "Single forward pass keeping track of what state we are currently in.
+   Returns the index of the last top-level semicolon and the state at the end of the string."
+  [^String sql]
+  (let [n (.length sql)]
+    (loop [i 0, state :normal, cut nil]
+      (if (>= i n)
+        {:cut cut, :state state}
+        (let [c    (.charAt sql i)
+              next (when (< (inc i) n) (.charAt sql (inc i)))]
+          (case state
+            :normal        (cond
+                             (Character/isWhitespace c)      (recur (inc i) :normal cut)
+                             (= c \;)                        (recur (inc i) :normal (or cut i))
+                             (and (= c \-) (= next \-))      (recur (+ i 2) :line-comment cut)
+                             (and (= c \/) (= next \*))      (recur (+ i 2) :block-comment cut)
+                             (= c \')                        (recur (inc i) :string nil)
+                             (= c \")                        (recur (inc i) :dquote nil)
+                             (= c \`)                        (recur (inc i) :backtick nil)
+                             :else                           (recur (inc i) :normal nil))
+            :string        (cond
+                             (not= c \')                     (recur (inc i) :string cut)
+                             (= next \')                     (recur (+ i 2) :string cut)
+                             :else                           (recur (inc i) :normal cut))
+            :dquote        (cond
+                             (not= c \")                     (recur (inc i) :dquote cut)
+                             (= next \")                     (recur (+ i 2) :dquote cut)
+                             :else                           (recur (inc i) :normal cut))
+            :backtick      (cond
+                             (not= c \`)                     (recur (inc i) :backtick cut)
+                             (= next \`)                     (recur (+ i 2) :backtick cut)
+                             :else                           (recur (inc i) :normal cut))
+            :line-comment  (cond
+                             (= c \newline)                  (recur (inc i) :normal cut)
+                             :else                           (recur (inc i) :line-comment cut))
+            :block-comment (cond
+                             (and (= c \*) (= next \/))      (recur (+ i 2) :normal cut)
+                             :else                           (recur (inc i) :block-comment cut))))))))
+
 (defn make-nestable-sql*
-  "See [[make-nestable-sql]] but does not wrap in result in parens."
+  "See [[make-nestable-sql]] but does not wrap the result in parens."
   [sql]
-  (-> sql
-      ;; Strip the trailing run of semicolons / whitespace / line comments. Possessive quantifiers (`*+`) make
-      ;; this match in a single forward pass: without them the nested unbounded quantifiers over overlapping
-      ;; character classes backtrack super-linearly (O(n^2) on many trailing comment lines), which can wedge the JVM.
-      (str/replace #";[\s;]*+(?:--.*+[\s;]*+)*+$" "")
-      str/trimr
-      (as-> trimmed
-            ;; Query could potentially end with a comment.
-            (if (re-find #"--.*$" trimmed)
-              (str trimmed "\n")
-              trimmed))))
+  ;; Strip the trailing run of semicolons / whitespace / line comments.
+  (let [cut     (:cut (scan-nestable-sql sql))
+        trimmed (str/trimr (cond-> sql cut (subs 0 cut)))]
+    (cond-> trimmed
+      ;; Query could potentially end with a comment.
+      (= :line-comment (:state (scan-nestable-sql trimmed)))
+      (str "\n"))))
 
 (defn make-nestable-sql
   "Do best effort edit to the `sql`, to make it nestable in subselect.
@@ -65,13 +100,8 @@
   - Removing the semicolon(s).
   - Squashing whitespace at the end of the string and replacinig it with newline. This is required in case some
     comments were preceding semicolon.
-  - Wrapping the result in parens.
-
-  This implementation does not handle few cases cases properly. 100% correct comment and semicolon removal would
-  probably require _parsing_ sql string and not just a regular expression replacement. Link to the discussion:
-  https://github.com/metabase/metabase/pull/30677
-
-  For the limitations see the [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"  [sql]
+  - Wrapping the result in parens."
+  [sql]
   (str "(" (make-nestable-sql* sql) ")"))
 
 (defn- format-sql-source-query [_clause [sql params]]

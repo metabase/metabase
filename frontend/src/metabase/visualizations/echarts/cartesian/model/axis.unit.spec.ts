@@ -1,9 +1,19 @@
 import dayjs from "dayjs";
 
+import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { RowValue } from "metabase-types/api";
+import {
+  createMockDatetimeColumn,
+  createMockSingleSeries,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
 
-import { computeSplit, getXAxisDateRangeFromSortedXAxisValues } from "./axis";
-import type { SeriesExtents } from "./types";
+import {
+  computeSplit,
+  getXAxisDateRangeFromSortedXAxisValues,
+  getXAxisModel,
+} from "./axis";
+import type { DimensionModel, SeriesExtents } from "./types";
 
 describe("computeSplit", () => {
   const extents: SeriesExtents = {
@@ -25,6 +35,35 @@ describe("computeSplit", () => {
     expect(computeSplit(extents).flat()).toHaveLength(
       Object.keys(extents).length,
     );
+  });
+});
+
+describe("getXAxisModel", () => {
+  it("should format untagged datetime values using the inferred temporal unit for ordinal scale (#68179)", () => {
+    const dateColumn = createMockDatetimeColumn({ unit: undefined });
+
+    const dimensionModel: DimensionModel = {
+      column: dateColumn,
+      columnIndex: 0,
+      columnByCardId: { 1: dateColumn },
+    };
+
+    const dataset = [
+      { [X_AXIS_DATA_KEY]: "2022-01-01T00:00:00Z", "0": 10 },
+      { [X_AXIS_DATA_KEY]: "2022-02-01T00:00:00Z", "0": 20 },
+      { [X_AXIS_DATA_KEY]: "2022-03-01T00:00:00Z", "0": 30 },
+      { [X_AXIS_DATA_KEY]: "2022-04-01T00:00:00Z", "0": 40 },
+    ];
+
+    const rawSeries = [createMockSingleSeries({ display: "line" })];
+
+    const settings = createMockVisualizationSettings({
+      "graph.x_axis.scale": "ordinal",
+    });
+
+    const model = getXAxisModel(dimensionModel, rawSeries, dataset, settings);
+
+    expect(model.formatter("2022-04-01T00:00:00Z")).toBe("April 2022");
   });
 });
 

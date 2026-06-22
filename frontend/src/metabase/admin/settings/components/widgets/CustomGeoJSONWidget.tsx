@@ -7,12 +7,11 @@ import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Modal } from "metabase/common/components/Modal";
 import { Option, Select } from "metabase/common/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { Button, Ellipsified, Image, Stack, Text } from "metabase/ui";
+import { Button, Ellipsified, Image, Modal, Stack, Text } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 import { LeafletChoropleth } from "metabase/visualizations/components/LeafletChoropleth";
 import type {
@@ -148,7 +147,13 @@ export const CustomGeoJSONWidget = () => {
       )}
 
       {map ? (
-        <Modal wide>
+        <Modal
+          opened
+          onClose={handleCancel}
+          size="95%"
+          withCloseButton={false}
+          padding={0}
+        >
           <div className={CS.p4}>
             <EditMap
               map={map}

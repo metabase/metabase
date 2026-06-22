@@ -3,7 +3,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateCollectionMutation } from "metabase/api";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
@@ -64,8 +63,6 @@ function CreateCollectionModal({
     [createCollection, dispatch, onCreate, onClose, shouldNavigateOnCreate],
   );
 
-  useEscapeToCloseModal(onClose);
-
   return (
     <Modal
       opened
@@ -74,7 +71,6 @@ function CreateCollectionModal({
       data-testid="new-collection-modal"
       padding="40px"
       title={t`New collection`}
-      closeOnEscape={false}
     >
       <CreateCollectionForm
         {...props}

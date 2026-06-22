@@ -399,7 +399,23 @@
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                  {:query (orders-query :limit 1000)})))))
+                                  {:query (orders-query :limit 1000)}))))
+  (testing "No explicit :limit defaults to a 2000-row budget, emitting a continuation token for large tables"
+    ;; Regression: previously the default budget equalled the page size (both 200), so the first
+    ;; page exhausted the budget and no continuation token was ever emitted, causing agents to
+    ;; report a false \"200-row hard cap\". The default budget is now 2000.
+    (let [page1 (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                      {:query (orders-query :order-by [["asc" {} (orders-field-ref "ID")]])})]
+      (is (=? {:status             "completed"
+               :row_count          200
+               :continuation_token string?}
+              page1)
+          "first page should include a continuation token when more data exists within the 2000-row budget")
+      (is (=? {:status "completed"
+               :data   {:rows sequential?}}
+              (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                    {:continuation_token (:continuation_token page1)}))
+          "continuation token should successfully fetch the next page"))))
 
 (deftest combined-query-accepts-resolved-handle-test
   (testing "`/v2/query` executes a base64 `:query` string (a resolved query_handle) directly,
@@ -527,6 +543,19 @@
                    :total_count 1}
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestMetric"]}))))))))
+
+(deftest search-finds-models-test
+  (binding [search.ingestion/*force-sync* true]
+    (search.tu/with-new-search-if-available-otherwise-legacy
+      (mt/with-temp [:model/Card _model {:name          "AgentSearchTestModel"
+                                         :type          :model
+                                         :database_id   (mt/id)
+                                         :dataset_query (orders-count-query)}]
+        (testing "Returns models in search results"
+          (is (=? {:data        [{:type "model" :name "AgentSearchTestModel"}]
+                   :total_count 1}
+                  (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                        {:term_queries ["AgentSearchTestModel"]}))))))))
 
 ;;; ------------------------------------------------ Create Question Tests -------------------------------------------
 
