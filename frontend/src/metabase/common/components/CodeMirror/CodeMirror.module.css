@@ -116,7 +116,7 @@
       border-radius: 4px;
       background-color: var(--mb-color-background-primary);
       color: var(--mb-color-text-primary);
-      border: 1px solid var(--mb-color-border);
+      border: 1px solid var(--mb-color-border-neutral);
       max-width: 520px;
 
       ul li {

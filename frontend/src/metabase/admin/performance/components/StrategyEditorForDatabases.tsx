@@ -34,7 +34,7 @@ function RoundedBox({
     <Box
       w="100%"
       maw={twoColumns ? "100%" : "30rem"}
-      bd="2px solid var(--mb-color-border)"
+      bd="2px solid var(--mb-color-border-neutral)"
       className={cx(S.roundedBox, { [S.roundedBoxTwoColumns]: twoColumns })}
     >
       {children}

@@ -2726,8 +2726,8 @@
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
       (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
-        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
-                                                                     (apply orig card-id export-format
+        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card export-format & options]
+                                                                     (apply orig card export-format
                                                                             :make-run (constantly (fn [{:keys [constraints]} _]
                                                                                                     {:constraints constraints}))
                                                                             options))]

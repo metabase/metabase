@@ -1,8 +1,9 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { userApi } from "metabase/api";
+import { setupApi, userApi } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createDatabase } from "metabase/redux/databases";
 import {
   initializeSettings,
@@ -18,7 +19,6 @@ import type {
 } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
-import { SetupApi } from "metabase/services";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 
@@ -95,14 +95,18 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
     const locale = getLocale(getState());
 
     try {
-      await SetupApi.create({
-        token,
-        user,
-        prefs: {
-          site_name: user.site_name,
-          site_locale: locale?.code,
+      await runRtkEndpoint(
+        {
+          token,
+          user,
+          prefs: {
+            site_name: user.site_name,
+            site_locale: locale?.code,
+          },
         },
-      });
+        dispatch,
+        setupApi.endpoints.createSetup,
+      );
     } catch (error) {
       return rejectWithValue(error);
     }

@@ -288,6 +288,9 @@
 (derive :type/TextLike :type/*)
 (derive :type/MongoBSONID :type/TextLike)
 (derive :type/MongoBinData :type/TextLike)
+;; binData holds arbitrary binary blobs (files, images, encrypted data) that aren't text-truncated by the sampler, so
+;; fingerprinting them (sampling the full values) can use enormous amounts of memory for no useful result.
+(derive :type/MongoBinData :type/fingerprint-unsupported)
 (derive :type/MySQLEnum :type/Text)
 ;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP
 ;; addresses

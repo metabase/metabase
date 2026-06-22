@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import type {
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { useGetIconBase } from "metabase/hooks/use-icon";
 import { type ItemWithCollection, PLUGIN_LIBRARY } from "metabase/plugins";

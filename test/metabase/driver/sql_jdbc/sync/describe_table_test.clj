@@ -508,26 +508,19 @@
                        {:short_json {"b" "y"}, :long_json nil}}
                      (sample)))
               (testing "If driver.sql/json-field-length is not implemented for the driver don't omit the long value"
-                ;; Temporarily override json-field-length with the default (nyi) implementation.
-                ;; We can't just remove-method — for child drivers (e.g. :postgres-mbql5) the
-                ;; parent's method would still be inherited.
-                (let [default-method  (get-method driver.sql/json-field-length :default)
-                      original-method (get-method driver.sql/json-field-length driver/*driver*)
-                      had-explicit?   (contains? (methods driver.sql/json-field-length) driver/*driver*)]
-                  (defmethod driver.sql/json-field-length driver/*driver* [driver field]
-                    (default-method driver field))
-                  (try
-                    (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
-                             {:short_json {"b" "y"}, :long_json {"b" "yyyyyyyyyy"}}}
-                           (sample)))
-                    (finally
-                      (remove-method driver.sql/json-field-length driver/*driver*)
-                      ;; Re-install the original if there was an explicit method (not just inherited).
-                      ;; For inherited methods (e.g. :postgres-mbql5), remove-method is enough —
-                      ;; the parent's method resumes via hierarchy dispatch.
-                      (when had-explicit?
-                        (defmethod driver.sql/json-field-length driver/*driver* [driver field]
-                          (original-method driver field)))))))
+                (letfn [(do-with-removed-method [thunk]
+                          (let [original-method (get-method driver.sql/json-field-length driver/*driver*)]
+                            (if (= original-method (get-method driver.sql/json-field-length :default))
+                              (thunk)
+                              (do (remove-method driver.sql/json-field-length driver/*driver*)
+                                  (thunk)
+                                  (defmethod driver.sql/json-field-length driver/*driver* [driver field]
+                                    (original-method driver field))))))]
+                  (do-with-removed-method
+                   (fn []
+                     (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
+                              {:short_json {"b" "y"}, :long_json {"b" "yyyyyyyyyy"}}}
+                            (sample)))))))
               (testing "The resulting synced fields exclude the field that corresponds to the long value"
                 (is (= #{"id"
                          "short_json"
