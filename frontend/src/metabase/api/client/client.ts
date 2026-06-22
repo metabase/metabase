@@ -125,23 +125,51 @@ export class ApiClient extends EventEmitter<EventMap> {
     };
   }
 
-  private async _dispatch(
+  /**
+   * Send a prepared request: run it over the network (optionally retrying
+   * transient transport failures), read and parse the body, emit auth/error
+   * events, and throw `{ status, data }` on a non-2xx response. The single
+   * attempt lives in `attempt` so `retry` can re-run it.
+   */
+  private async _send(
     init: RequestInit,
-    withRetries: boolean = false,
+    withRetries: boolean,
   ): Promise<unknown> {
     if (!isRequestMethod(init.method)) {
       throw new Error("Invalid HTTP method");
     }
 
+    const attempt = async (): Promise<unknown> => {
+      const response = await this._fetch(init);
+
+      const { ok, status, body } = await handleResponse(
+        response,
+        init.rawResponse,
+      );
+
+      if (!init.noEvent && (status === 401 || status === 403)) {
+        // Strip basename so listeners (app-main.js) see the relative path.
+        this.emit(status, relativeUrl(this.basename, init.url));
+      }
+
+      if (!ok) {
+        const metabaseVersion = response.headers.get("X-Metabase-Version");
+        this.emit("responseError", { metabaseVersion });
+        throw { status, data: body };
+      }
+
+      return body;
+    };
+
     try {
       if (withRetries) {
-        return await retry(() => this._makeRequest(init), {
+        return await retry(attempt, {
           maxRetries: MAX_RETRIES,
           shouldRetry: isRetriableError,
           signal: init.signal,
         });
       }
-      return await this._makeRequest(init);
+      return await attempt();
     } catch (error) {
       // When the request is aborted, `fetch` rejects with the standard
       // `DOMException` of name "AbortError". Let it propagate untouched so
@@ -185,31 +213,6 @@ export class ApiClient extends EventEmitter<EventMap> {
     updateAntiCsrfToken(response);
 
     return response;
-  }
-
-  private async _makeRequest<RawResponse extends boolean>(
-    init: RequestInit<RawResponse>,
-  ): Promise<ResponseFor<RawResponse>> {
-    const response = await this._fetch(init);
-
-    const { ok, status, body } = await handleResponse(
-      response,
-      init.rawResponse,
-    );
-
-    if (!init.noEvent && (status === 401 || status === 403)) {
-      // Strip basename so listeners (app-main.js) see the relative path.
-      const path = relativeUrl(this.basename, init.url);
-      this.emit(status, path);
-    }
-
-    if (!ok) {
-      const metabaseVersion = response.headers.get("X-Metabase-Version");
-      this.emit("responseError", { metabaseVersion });
-      throw { status, data: body };
-    }
-
-    return body as ResponseFor<RawResponse>;
   }
 
   /**
@@ -304,7 +307,7 @@ export class ApiClient extends EventEmitter<EventMap> {
     } & RequestOptions<Raw>,
   ): Promise<ResponseFor<Raw>> {
     const init = await this._prepareRequest(options);
-    return this._dispatch(init, options.retry ?? false) as ResponseFor<Raw>;
+    return this._send(init, options.retry ?? false) as ResponseFor<Raw>;
   }
 
   /**
