@@ -2,7 +2,6 @@ import type {
   Aggregable,
   AggregationClause,
   ColumnMetadata,
-  MeasureMetadata,
   MetricMetadata,
   Query,
 } from "metabase-lib";
@@ -13,10 +12,7 @@ import {
   isFieldAggregation,
   isMeasureSchema,
 } from "../guards";
-import type {
-  FieldAggregationInput,
-  MeasureReferenceInput,
-} from "../input-types";
+import type { FieldAggregationInput } from "../input-types";
 import { isColumnReference } from "../query-utils";
 
 import { STAGE_INDEX, findLibColumn } from "./query-utils";
@@ -58,7 +54,7 @@ export function applyMetricMeasures(
       return null;
     }
 
-    const measureMetadata = findLibMeasure(nextQuery, measure);
+    const measureMetadata = Lib.measureMetadata(nextQuery, measure.id);
 
     if (!measureMetadata) {
       return null;
@@ -99,7 +95,7 @@ function buildLibAggregation(
   }
 
   if (isMeasureSchema(aggregation)) {
-    return findLibMeasure(query, aggregation);
+    return Lib.measureMetadata(query, aggregation.id);
   }
 
   return null;
@@ -134,13 +130,3 @@ function findLibAggregationClause(
 
   return operator ? Lib.aggregationClause(operator, column) : null;
 }
-
-const findLibMeasure = (
-  query: Query,
-  measure: MeasureReferenceInput,
-): MeasureMetadata | null =>
-  Lib.availableMeasures(query, STAGE_INDEX).find(
-    (availableMeasure) =>
-      Lib.displayInfo(query, STAGE_INDEX, availableMeasure).name ===
-      `measure_${measure.id}`,
-  ) ?? null;

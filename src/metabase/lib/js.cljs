@@ -2138,6 +2138,15 @@
   [a-query stage-number]
   (to-array (lib.core/available-measures a-query stage-number)))
 
+(defn ^:export measure-metadata
+  "Given an integer `measure-id`, returns the Measure's metadata.
+
+  Returns `nil` (JS `null`) if no matching measure is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider measure-id]
+  (lib.metadata/measure query-or-metadata-provider measure-id))
+
 (defn ^:export available-metrics
   "Returns a JS array of opaque metadata values for those Metrics that could be used as aggregations on
   `a-query`.
