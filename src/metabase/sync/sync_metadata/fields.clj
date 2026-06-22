@@ -71,7 +71,7 @@
 (mu/defn- limit-fields-to-sync :- [:set i/TableMetadataField]
   "Cap `db-metadata` to at most [[driver.settings/sync-max-fields-per-table]] fields, keeping the first by name so the
   selection is stable across syncs, and warning when fields are dropped.
-  
+
   Drivers hard-cap their metadata at exactly `limit` fields per table (they read `sync-max-fields-per-table`), so a
   table that comes back with `limit` fields is assumed to have hit the cap -- warn. We only need to truncate when a
   driver returned strictly more than `limit` (i.e. one that doesn't honor the cap)."
