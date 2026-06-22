@@ -6,7 +6,7 @@ export const OuterCircle = styled.div`
   top: 0;
   left: 0;
   border-radius: 50%;
-  background-color: var(--mb-color-border);
+  background-color: var(--mb-color-border-neutral);
   transition: all 0.2s;
 `;
 

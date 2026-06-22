@@ -15,7 +15,7 @@ export const EditUserStrategySettingsButton = ({
         size="lg"
         variant="outline"
         c="text-primary"
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
       >
         <Icon name="gear" />
       </ActionIcon>

@@ -27,7 +27,7 @@
 
 .SegmentedControl_Control {
   &:not(:first-of-type) {
-    border-color: var(--mb-color-border);
+    border-color: var(--mb-color-border-neutral);
   }
 }
 

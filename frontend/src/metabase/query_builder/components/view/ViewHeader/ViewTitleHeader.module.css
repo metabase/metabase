@@ -20,7 +20,7 @@
 
     /* this prevents the divider between the button group from changing color */
     &:hover&.FiltersActive {
-      border-right-color: var(--mb-color-border);
+      border-right-color: var(--mb-color-border-neutral);
     }
   }
 }
@@ -170,7 +170,7 @@
     margin-left: 0;
     width: 100%;
     justify-content: start;
-    border-top: 1px solid var(--mb-color-border);
+    border-top: 1px solid var(--mb-color-border-neutral);
     margin-top: 1rem;
     padding: 0.5rem 1.325rem 0 1.325rem;
   }
@@ -202,7 +202,7 @@
 .ViewHeaderContainer {
   --app-subheader-height: 48px;
 
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 

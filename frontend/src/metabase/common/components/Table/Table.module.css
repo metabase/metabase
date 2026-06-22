@@ -5,12 +5,12 @@
   margin-block: 1rem;
   position: relative;
   border-radius: 0.5rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 
   th {
     text-align: left;
     padding: 0.5rem;
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
     padding-inline: 0.75rem;
   }
 
@@ -25,7 +25,7 @@
   }
 
   td {
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
     padding-inline: 0.75rem;
   }
 
