@@ -15,7 +15,7 @@ import {
   getCollectionIcon,
   isTrashedCollection,
   isValidCollectionId,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
 import { DashboardName } from "metabase/common/components/DashboardName";
 import { FormField } from "metabase/common/components/FormField";

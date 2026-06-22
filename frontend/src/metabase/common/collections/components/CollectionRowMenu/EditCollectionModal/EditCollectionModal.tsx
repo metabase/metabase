@@ -2,12 +2,12 @@ import { type KeyboardEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useUpdateCollectionMutation } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import {
   COLLECTION_FORM_SCHEMA,
   type CollectionFormValues,
-} from "metabase/collections/schemas";
-import type { EntityType } from "metabase/collections/utils";
+} from "metabase/common/collections/schemas";
+import type { EntityType } from "metabase/common/collections/utils";
 import type {
   EntityPickerOptions,
   OmniPickerItem,

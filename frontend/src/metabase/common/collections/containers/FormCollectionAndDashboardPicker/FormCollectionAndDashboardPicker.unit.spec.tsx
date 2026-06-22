@@ -15,7 +15,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { FormProvider } from "metabase/forms";
 import {

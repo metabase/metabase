@@ -3,7 +3,7 @@ import { mockSettings } from "__support__/settings";
 import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
-} from "metabase/collections/constants";
+} from "metabase/common/collections/constants";
 import {
   buildCollectionTree,
   canonicalCollectionId,
@@ -17,7 +17,7 @@ import {
   isRootPersonalCollection,
   isRootTrashCollection,
   normalizedCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { type Collection, SEARCH_MODELS } from "metabase-types/api";
 import {
   createMockCollection,

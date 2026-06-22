@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
