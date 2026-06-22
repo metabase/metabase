@@ -115,7 +115,7 @@
 
 (deftest create-transform-with-routing-fails-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms-basic :database-routing}
+    (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-data-analyst-role! (mt/user->id :lucky)

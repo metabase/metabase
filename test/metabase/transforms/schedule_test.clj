@@ -4,8 +4,9 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [metabase.test :as mt]
    [metabase.transforms.jobs :as transforms.jobs]
-   [metabase.transforms.schedule :as schedule])
+   [metabase.transforms.schedule])
   (:import
+   (metabase.transforms.schedule RunTransforms)
    (org.quartz JobDataMap)))
 
 (set! *warn-on-reflection* true)
@@ -19,7 +20,7 @@
     (.getMergedJobDataMap this)))
 
 (defn- run-transforms-job! [job-id]
-  (.execute (schedule/->RunTransforms) (MockJobExecutionContext. {"job-id" job-id})))
+  (.execute (RunTransforms.) (MockJobExecutionContext. {"job-id" job-id})))
 
 (deftest run-transforms-skips-when-disabled-test
   (testing "RunTransforms skips scheduled job runs when transforms-enabled is explicitly false"
