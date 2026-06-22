@@ -26,7 +26,7 @@ import type {
   TableSchema,
 } from "../data-schema";
 
-export type ID = string | number;
+type ID = string | number;
 type Values<T> = T[keyof T];
 type UnionToIntersection<TUnion> = (
   TUnion extends unknown ? (value: TUnion) => void : never

@@ -6,7 +6,7 @@ import type {
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { FilterOperator as LibFilterOperator } from "metabase-lib/common";
 
-export type ID = string | number;
+type ID = string | number;
 
 export type FilterOperator = LibFilterOperator | "time-interval";
 

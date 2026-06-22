@@ -2,7 +2,7 @@ import { isObject } from "metabase-types/guards";
 
 import type { FieldSchema, MetricSchema, TableSchema } from "./schema";
 
-export type ID = string | number;
+type ID = string | number;
 
 export type MetricReferenceLike = Pick<MetricSchema, "dimensions"> & {
   id: number;
