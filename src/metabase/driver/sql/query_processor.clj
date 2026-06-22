@@ -16,7 +16,6 @@
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.experiment :as experiment]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -2307,7 +2306,10 @@
   [driver query]
   (apply-clauses driver {} query))
 
-(defn- mbql->honeysql* [driver query]
+(mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
+  "Build the HoneySQL form we will compile to SQL and execute."
+  [driver :- :keyword
+   query  :- :map]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]
@@ -2322,32 +2324,6 @@
           inner-query       (or (:query query) query)
           mbql5-query (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)]
       (recur driver mbql5-query))))
-
-(def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5
-                                           :postgres :postgres-mbql5})
-
-(defn- mbql5-experiment-report
-  [driver experimental-driver query]
-  (fn [{:keys [match? candidate-outcome control-outcome] :as result}]
-    (when-let [report-fn @experiment/default-report-fn]
-      (report-fn result))
-    (when-not match?
-      (log/with-context {:experimental-mbql5-driver :mismatch
-                         :driver driver
-                         :experimental-driver experimental-driver}
-        (log/warnf "MBQL5 experiment mismatch:\nQuery: %s\nControl result: %s\nCandidate result: %s"
-                   query control-outcome candidate-outcome)))))
-
-(mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
-  "Build the HoneySQL form we will compile to SQL and execute."
-  [driver :- :keyword
-   query  :- :map]
-  (if-let [experimental-driver (experimental-mbql5-drivers driver)]
-    (experiment/experiment {:name :experimental-mbql5-driver
-                            :report-fn (mbql5-experiment-report driver experimental-driver query)}
-                           (mbql->honeysql* driver query)
-                           (mbql->honeysql* experimental-driver query))
-    (mbql->honeysql* driver query)))
 
 ;;;; MBQL -> Native
 
