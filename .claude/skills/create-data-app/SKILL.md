@@ -121,9 +121,20 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    name: Sales App        # display name shown in the admin UI
    slug: sales            # URL identity → /data-app/sales (match the directory name)
    path: ./dist/index.js  # bundle path, relative to this app's directory — leave as-is unless you change the build output
+   # allowed_hosts:       # optional — external origins the app may fetch/XHR (see below)
+   #   - https://api.example.com
+   #   - https://*.internal.acme.com
    ```
 
    Commit it alongside the built bundle (the file `path` points at).
+
+   **`allowed_hosts`** — only needed if the app calls an **external** API directly
+   with `fetch`/`XHR`. The sandbox blocks all network egress by default; listing an
+   origin here (exact or a `*.` subdomain wildcard) opens it in both `npm run dev`
+   (dev-server CSP) and Metabase (iframe CSP + sandbox). Do **not** list the
+   Metabase instance — Metabase data is read via the `useMetabaseQuery` data hooks
+   and written via `useAction` (the SDK handles auth), never raw `fetch`. Leave
+   `allowed_hosts` out entirely when the app only talks to Metabase.
 
 ## Step 5 — Pull the typed schema
 
@@ -280,7 +291,7 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 
 The Near Membrane sandbox throws at runtime on these globals. Use the endowed alternative instead:
 
-- **Network** (`fetch`, `XMLHttpRequest`, `WebSocket`) → the data hooks for reads, `useAction` for writes. No raw network from the bundle, ever.
+- **Network** (`fetch`, `XMLHttpRequest`, `WebSocket`) → for Metabase data, the data hooks for reads and `useAction` for writes — never raw `fetch`. Raw `fetch`/`XHR` work **only** for external origins explicitly listed in `data_app.yml`'s `allowed_hosts` (see Step 4); everything else (including the Metabase origin) throws. `WebSocket` is always blocked.
 - **UI dialogs** (`alert`, `confirm`, `prompt`) → render a React modal in your own tree.
 - **Storage** (`localStorage`, `sessionStorage`, `indexedDB`, `document.cookie`) → treat the Data App as stateless across reloads; persist via a Metabase action.
 - **Window / history navigation** (`window.open`, `history.pushState`, `history.replaceState`) → `useDataAppLocation().navigate` for in-app, `<a target="_blank" rel="noopener">` for external.
