@@ -323,7 +323,7 @@
   `toStartOfInterval(d, INTERVAL 1 DAY)` nor a quoted name like `weird,name` is torn at an inner comma."
   [^String s]
   (loop [i 0, depth 0, q nil, start 0, acc []]
-    (if (< i (count s))
+    (if (< i (.length s))
       (let [c (.charAt s i)]
         (cond
           q                            (recur (inc i) depth (when-not (= c q) q) start acc)
