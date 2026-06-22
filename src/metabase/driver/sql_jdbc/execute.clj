@@ -118,25 +118,6 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti set-connection-streaming!
-  "Configure `conn` so the next statement run on it *streams* its ResultSet from the server (via a cursor) instead of
-  buffering the whole thing in memory. Called by [[set-default-connection-options!]] when the `:stream?` connection
-  option is set -- i.e. for large reads: sync metadata (describe-database/fields/fks/indexes), `table-rows-sample`,
-  and downloads.
-
-  The default implementation is a no-op. Override per driver ONLY where the JDBC driver buffers the whole ResultSet by
-  default and needs explicit setup to stream (e.g. Postgres/Redshift need `autoCommit` = false to use a server-side
-  cursor). Drivers that already stream (Oracle, SQL Server) or page results themselves (BigQuery, Snowflake) need no
-  override. The statement fetch size is set separately (see [[statement]]/[[prepared-statement]])."
-  {:added    "0.59.0"
-   :arglists '([driver conn])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod set-connection-streaming! :default
-  [_driver _conn]
-  nil)
-
 (defmulti set-parameter
   "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches on driver and class of `object`. By
   default, this calls `.setObject`, but drivers can override this method to convert the object to a different class or
@@ -414,17 +395,23 @@
     ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
     ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
     ;; manually. (metabase#40014)
-    (when-not write?
-      (try
-        (log/trace (pr-str '(.setAutoCommit conn true)))
-        (.setAutoCommit conn true)
-        (catch Throwable e
-          (log/debug e "Error enabling connection autoCommit"))))
-    (when (-> options :stream?)
-      (try
-        (set-connection-streaming! driver conn)
-        (catch Throwable e
-          (log/debug e "Error enabling connection streaming"))))
+    (cond (not (or write?
+                   (and (-> options :stream?) (isa? driver/hierarchy driver :postgres))))
+          (try
+            (log/trace (pr-str '(.setAutoCommit conn true)))
+            (.setAutoCommit conn true)
+            (catch Throwable e
+              (log/debug e "Error enabling connection autoCommit")))
+
+          ;; Postgres/Redshift buffer the *entire* ResultSet unless autoCommit is false (then they use a server-side
+          ;; cursor honoring the statement fetch size). So for streamed reads (`:stream?` -- sync metadata reads,
+          ;; table-rows-sample, downloads) flip autoCommit off, else a huge result OOMs. (#60733, Redshift sync OOM.)
+          (and (-> options :stream?) (isa? driver/hierarchy driver :postgres))
+          (try
+            (log/trace (pr-str '(.setAutoCommit conn false)))
+            (.setAutoCommit conn false)
+            (catch Throwable e
+              (log/debug e "Error setting connection autoCommit to false"))))
     (try
       ;; setNetworkTimeout sets Socket.setSoTimeout() which releases from blocked socker reads.
       ;; This is necessary because .close() doesn't interrupt threads stuck in native socket reads

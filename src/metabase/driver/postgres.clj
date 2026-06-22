@@ -1087,14 +1087,6 @@
   [_]
   "SET SESSION TIMEZONE TO %s;")
 
-;; The Postgres JDBC driver buffers the *entire* ResultSet in memory unless the connection is NOT in autocommit mode,
-;; in which case it uses a server-side cursor and honours the statement fetch size. So for streamed reads (:stream?)
-;; flip autocommit off -- otherwise a huge result (e.g. describe-fields on a Redshift catalog with many schemas) OOMs.
-;; Redshift inherits this via the driver hierarchy. See [[sql-jdbc.execute/set-connection-streaming!]].
-(defmethod sql-jdbc.execute/set-connection-streaming! :postgres
-  [_driver ^Connection conn]
-  (.setAutoCommit conn false))
-
 ;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
 ;; bug with the JDBC driver?
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/TIMESTAMP]
