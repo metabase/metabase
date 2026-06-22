@@ -1,13 +1,17 @@
 import type * as React from "react";
+import { pick } from "underscore";
 
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { getSubpathSafeUrl } from "metabase/urls";
 
-import { createDataAppSandbox } from "./sandbox";
+import {
+  DATA_APP_PROVIDER_PROP_KEYS,
+  type DataAppMetabaseProviderProps,
+  createDataAppSandbox,
+} from "./sandbox";
 
 export interface LoadedDataApp {
   component: React.ComponentType<Record<string, unknown>>;
-  theme?: MetabaseTheme;
+  providerProps: DataAppMetabaseProviderProps;
 }
 
 /**
@@ -73,9 +77,14 @@ export function instantiateDataAppBundle(
 
   if (!def || typeof def.component !== "function") {
     throw new Error(
-      "Factory return value is missing a `component` function (expected { component, theme? })",
+      "Factory return value is missing a `component` function (expected { component, providerProps? })",
     );
   }
 
-  return { component: def.component, theme: def.theme };
+  const providerProps = pick(
+    def.providerProps ?? {},
+    ...DATA_APP_PROVIDER_PROP_KEYS,
+  );
+
+  return { component: def.component, providerProps };
 }
