@@ -503,6 +503,9 @@
    [:federated-multi-view-config {:optional true} [:maybe FederatedMultiViewConfig]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
+   ;; Semantic-engine: when true, disable the appdb fallback entirely -- return semantic results
+   ;; unsupplemented below the min-results threshold, and re-throw (not fall back) on a vector-query error.
+   [:disable-fallback?  {:optional true} [:maybe :boolean]]
    ;;
    ;; optional
    ;;

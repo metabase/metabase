@@ -147,6 +147,24 @@
         (log/warn "Failed to parse federated_multi_view_config:" (ex-message e))
         nil))))
 
+(defn- process-weights
+  "Parse the `weights` JSON query param into the per-request scorer-weight overrides consumed by the
+  scoring layer (the `:weights` key on the search context; see [[metabase.search.config/weights]]).
+  Returns nil when absent/blank or unparseable. Keys are keywordized scorer names and values coerced to
+  doubles; this map is the highest-precedence weight layer, overriding both static defaults and the
+  `experimental-search-weight-overrides` setting for this request only -- nothing global is mutated.
+  Unknown scorer keys are inert (they match no registered scorer column), so no key validation happens
+  here; callers that want a typo to fail validate the key set themselves (e.g. the eval runner's --weights).
+
+  Shape: `{\"rrf\": 1, \"exact\": 0, \"semantic-distance\": 10, ...}`."
+  [weights]
+  (when-not (str/blank? weights)
+    (try
+      (update-vals (json/decode+kw weights) double)
+      (catch Exception e
+        (log/warn "Failed to parse weights:" (ex-message e))
+        nil))))
+
 (defn- +engine-cookie [handler]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
@@ -273,6 +291,8 @@
   - `partition_config`: for the semantic engine, a JSON object enabling federated/partitioned retrieval (per-partition model set, candidate quota `k`, cosine cutoff, and vector strategy); omit for a single global KNN. Ignored by other engines
   - `multi_view_config`: for the semantic engine, a JSON object enabling multi-view-embedding retrieval (per-view embedding column + candidate quota `k`, pooled by min cosine distance, with a single cosine cutoff); omit for a single global KNN. Ignored by other engines
   - `federated_multi_view_config`: for the semantic engine, a JSON object composing federated/partitioned retrieval with multi-view embeddings (per-partition model set + quota + cosine cutoff + strategy, each partition pooling its own per-view embedding columns by min cosine distance); omit for a single global KNN. Ignored by other engines
+  - `weights`: a JSON object of per-request scorer-weight overrides (e.g. `{\"rrf\": 1, \"exact\": 0}`); the highest-precedence weight layer, overriding static defaults and the `experimental-search-weight-overrides` setting for this request only. Unknown scorer keys are inert
+  - `disable_fallback`: for the semantic engine, set to true to disable the appdb fallback entirely -- the engine returns its own results unsupplemented even when below the min-results threshold, and re-throws (rather than silently falling back) if the vector query errors. Ignored by other engines
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
@@ -304,6 +324,8 @@
     partition-config                    :partition_config
     multi-view-config                   :multi_view_config
     federated-multi-view-config         :federated_multi_view_config
+    weights                             :weights
+    disable-fallback                    :disable_fallback
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
     include-metadata                    :include_metadata
@@ -331,6 +353,8 @@
        [:partition_config                    {:optional true} [:maybe :string]]
        [:multi_view_config                   {:optional true} [:maybe :string]]
        [:federated_multi_view_config         {:optional true} [:maybe :string]]
+       [:weights                             {:optional true} [:maybe :string]]
+       [:disable_fallback                    {:optional true} [:maybe :boolean]]
        [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -366,6 +390,8 @@
                 :partition-config                    (process-partition-config partition-config)
                 :multi-view-config                   (process-multi-view-config multi-view-config)
                 :federated-multi-view-config         (process-federated-multi-view-config federated-multi-view-config)
+                :weights                             (process-weights weights)
+                :disable-fallback?                   disable-fallback
                 :search-native-query                 search-native-query
                 :search-string                       (some-> q str/trim not-empty)
                 :table-db-id                         table-db-id

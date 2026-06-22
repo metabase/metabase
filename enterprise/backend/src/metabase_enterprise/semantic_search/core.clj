@@ -73,11 +73,15 @@
                                          search-ctx)
             final-count (count results)
             threshold (semantic.settings/semantic-search-min-results-threshold)]
-        (if (or (>= final-count threshold)
-                (and (zero? raw-count)
-                     ;; :search-string is nil when using search to populate the list of tables for a given database in
-                     ;; the native query editor. Semantic search doesn't support this, so fallback in this case.
-                     (not (str/blank? (:search-string search-ctx)))))
+        (if (or ;; Per-request opt-out: return semantic results unsupplemented regardless of count. Used by
+             ;; the eval runner to measure the semantic engine in isolation (the additive appdb fallback
+             ;; otherwise contaminates a semantic-only run with keyword hits).
+             (:disable-fallback? search-ctx)
+             (>= final-count threshold)
+             (and (zero? raw-count)
+                  ;; :search-string is nil when using search to populate the list of tables for a given database in
+                  ;; the native query editor. Semantic search doesn't support this, so fallback in this case.
+                  (not (str/blank? (:search-string search-ctx)))))
           results
           ;; Fallback: semantic search found results but some were filtered out (e.g. due to permission checks), so try to
           ;; supplement with appdb search.
@@ -105,6 +109,11 @@
                   deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
               (take total-limit deduped-results)))))
       (catch Exception e
+        ;; Per-request opt-out: surface the error instead of masking it with appdb results. A broken vector
+        ;; query (e.g. wrong pgvector DB, missing view column) otherwise silently degrades to keyword-only,
+        ;; which has previously made eval runs "succeed" against the wrong engine.
+        (when (:disable-fallback? search-ctx)
+          (throw e))
         (log/error e "Error executing semantic search, falling back to appdb")
         (let [fallback (fallback-engine)]
           (analytics/inc! :metabase-search/semantic-error-fallback {:fallback-engine fallback})
