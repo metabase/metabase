@@ -39,6 +39,19 @@
            :sources        [{:type :field, :field-id 3815}]}
           247))))
 
+(deftest metric-dimension-schema-preserves-source-field-id-test
+  (is (= 102
+         (:sourceFieldId
+          (#'typed-schemas.api/dimension-schema
+           {:id              "550e8400-e29b-41d4-a716-446655440001"
+            :name            "category"
+            :display-name    "Category"
+            :effective-type  :type/Text
+            :table-id        12
+            :source-field-id 102
+            :sources         [{:type :field, :field-id 3815}]}
+           247)))))
+
 (deftest field-schema-uses-field-id-test
   (is (= {:name          "created_at"
           :displayName   "Created At"
@@ -81,6 +94,19 @@
                             :name         "created_at"
                             :display_name "Created At"
                             :base_type    "type/DateTime"}]}))))
+
+(deftest metric-source-id-test
+  (testing "integer source-table emits sourceTableId but not sourceCardId"
+    (let [card {:dataset_query {:query {:source-table 10}}}]
+      (is (= 10 (#'typed-schemas.api/source-table-id card)))
+      (is (nil? (#'typed-schemas.api/source-card-id card)))))
+  (testing "card source-table emits sourceCardId but not sourceTableId"
+    (let [card {:dataset_query {:query {:source-table "card__42"}}}]
+      (is (nil? (#'typed-schemas.api/source-table-id card)))
+      (is (= 42 (#'typed-schemas.api/source-card-id card)))))
+  (testing "stage source-card emits sourceCardId"
+    (is (= 42 (#'typed-schemas.api/source-card-id
+               {:dataset_query {:stages [{:source-card 42}]}})))))
 
 (deftest keyed-map-disambiguates-duplicate-keys-with-readable-suffix-test
   (is (= {"channelOrderItems" {:key     "channelOrderItems"
@@ -182,12 +208,13 @@
 (deftest javascript-endpoint-test
   (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/javascript")]
     (is (= "text/javascript; charset=utf-8" (get-in response [:headers "Content-Type"])))
-    (is (str/starts-with? (:body response) "export default {"))
+    (is (str/starts-with? (:body response) "const questions = "))
+    (is (str/includes? (:body response) "\nconst schema = {"))
     (is (str/includes? (:body response) "\n  schemaVersion: 2"))
-    (is (str/includes? (:body response) "\n  questions: {"))
-    (is (str/includes? (:body response) "\n  tables: {"))
-    (is (str/includes? (:body response) "\n  metrics: {"))
-    (is (str/ends-with? (:body response) "};\n"))
+    (is (str/includes? (:body response) "\n  questions: questions"))
+    (is (str/includes? (:body response) "\n  tables: tables"))
+    (is (str/includes? (:body response) "\n  metrics: metrics"))
+    (is (str/ends-with? (:body response) "export default schema;\n"))
     (is (not (str/includes? (:body response) "\"schemaVersion\"")))
     (is (not (str/includes? (:body response) "operators: [ ]")))
     (is (not (str/includes? (:body response) "parameters: [ ]")))
@@ -196,28 +223,50 @@
 (deftest typescript-endpoint-test
   (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/typescript")]
     (is (= "text/typescript; charset=utf-8" (get-in response [:headers "Content-Type"])))
-    (is (str/starts-with? (:body response) "export default {"))
+    (is (str/starts-with? (:body response) "const questions = "))
+    (is (str/includes? (:body response) "\nconst schema = {"))
     (is (str/includes? (:body response) "\n  schemaVersion: 2"))
-    (is (str/ends-with? (:body response) "} as const;\n"))))
+    (is (str/ends-with? (:body response) "export default schema;\n"))))
 
 (deftest typescript-renderer-compacts-runtime-objects-test
   (let [body (#'typed-schemas.api/render-typescript
               {:schemaVersion 2
-               :tables        {"orders" {:kind         "table"
-                                         :key          "orders"
-                                         :id           10
-                                         :name         "Orders"
-                                         :databaseId   1
-                                         :databaseName "Boba"
-                                         :fields       {"paymentMethod" {:name         "payment_method"
-                                                                         :displayName  "Payment Method"
-                                                                         :baseType     "type/Text"
-                                                                         :semanticType "type/Category"
-                                                                         :jsType       "string"
-                                                                         :key          "paymentMethod"
-                                                                         :id           3970
-                                                                         :fieldId      3970
-                                                                         :tableId      10}}}}
+               :tables        {"orders"     {:kind         "table"
+                                             :key          "orders"
+                                             :id           10
+                                             :name         "Orders"
+                                             :databaseId   1
+                                             :databaseName "Boba"
+                                             :fields       {"paymentMethod" {:name         "payment_method"
+                                                                             :displayName  "Payment Method"
+                                                                             :baseType     "type/Text"
+                                                                             :semanticType "type/Category"
+                                                                             :jsType       "string"
+                                                                             :key          "paymentMethod"
+                                                                             :id           3970
+                                                                             :fieldId      3970
+                                                                             :tableId      10}}}
+                               "franchises" {:kind       "table"
+                                             :key        "franchises"
+                                             :id         20
+                                             :name       "Franchises"
+                                             :databaseId 1
+                                             :fields     {"name" {:name        "name"
+                                                                  :displayName "Name"
+                                                                  :baseType    "type/Text"
+                                                                  :jsType      "string"
+                                                                  :key         "name"
+                                                                  :id          500
+                                                                  :fieldId     500
+                                                                  :tableId     20}
+                                                          "ownerName" {:name        "owner_name"
+                                                                       :displayName "Owner Name"
+                                                                       :baseType    "type/Text"
+                                                                       :jsType      "string"
+                                                                       :key         "ownerName"
+                                                                       :id          501
+                                                                       :fieldId     501
+                                                                       :tableId     20}}}}
                :metrics       {"revenue" {:kind           "metric"
                                           :key            "revenue"
                                           :id             5
@@ -225,20 +274,49 @@
                                           :databaseId     1
                                           :sourceTableId  10
                                           :description    "Total order revenue"
-                                          :mappedTableIds [10]
-                                          :dimensions     {"createdAt" {:name        "created_at"
-                                                                        :displayName "Created At"
-                                                                        :baseType    "type/DateTime"
-                                                                        :jsType      "Date"
-                                                                        :key         "createdAt"
-                                                                        :id          "dimension-uuid"
-                                                                        :fieldId     3971
-                                                                        :tableId     10
-                                                                        :metricId    5}}}}})]
+                                          :mappedTableIds [10 20]
+                                          :dimensions     {"paymentMethod" {:name        "payment_method"
+                                                                            :displayName "Payment Method"
+                                                                            :baseType    "type/Text"
+                                                                            :semanticType "type/Category"
+                                                                            :jsType      "string"
+                                                                            :key         "paymentMethod"
+                                                                            :id          "dimension-uuid"
+                                                                            :fieldId     3970
+                                                                            :tableId     10
+                                                                            :metricId    5}
+                                                           "franchiseName" {:name          "name"
+                                                                            :displayName   "Name"
+                                                                            :baseType      "type/Text"
+                                                                            :jsType        "string"
+                                                                            :key           "franchiseName"
+                                                                            :id            "franchise-dimension-uuid"
+                                                                            :fieldId       500
+                                                                            :tableId       20
+                                                                            :sourceFieldId 42
+                                                                            :metricId      5}
+                                                           "franchiseOwnerName" {:name          "owner_name"
+                                                                                 :displayName   "Owner Name"
+                                                                                 :baseType      "type/Text"
+                                                                                 :jsType        "string"
+                                                                                 :key           "franchiseOwnerName"
+                                                                                 :id            "franchise-owner-dimension-uuid"
+                                                                                 :fieldId       501
+                                                                                 :tableId       20
+                                                                                 :sourceFieldId 42
+                                                                                 :metricId      5}}}
+                               "modelRevenue" {:kind          "metric"
+                                               :key           "modelRevenue"
+                                               :id            6
+                                               :name          "Model Revenue"
+                                               :databaseId    1
+                                               :sourceCardId  42
+                                               :mappedTableIds [10]
+                                               :columns       [{:name "count" :jsType "number"}]}}})]
     (is (str/includes? body (str "/" "/ Display name: Payment Method")))
     (is (str/includes? body (str "/" "/ Semantic type: type/Category")))
     (is (not (str/includes? body (str "/" "/ id: 3970"))))
-    (is (str/includes? body "paymentMethod: {\n          name: \"payment_method\""))
+    (is (str/includes? body "paymentMethod: {\n        name: \"payment_method\""))
     (is (str/includes? body "fieldId: 3970"))
     (is (str/includes? body "tableId: 10"))
     (is (not (str/includes? body "displayName: \"Payment Method\"")))
@@ -246,9 +324,14 @@
     (is (str/includes? body (str "/" "/ Description: Total order revenue")))
     (is (str/includes? body "databaseId: 1"))
     (is (str/includes? body "sourceTableId: 10"))
-    (is (str/includes? body "createdAt: {\n          id: \"dimension-uuid\""))
-    (is (str/includes? body "fieldId: 3971"))
-    (is (str/includes? body "metricId: 5"))))
+    (is (str/includes? body "sourceCardId: 42"))
+    (is (str/includes? body "mappedTableIds: [ 10, 20 ]"))
+    (is (str/includes? body "function pickFields"))
+    (is (str/includes? body "dimensions: {\n      orders: pickFields(tables.orders.fields, [ \"paymentMethod\" ])"))
+    (is (str/includes? body "franchises: pickFields(tables.franchises.fields, [ \"name\", \"ownerName\" ], { sourceFieldId: 42 })"))
+    (is (= 1 (count (re-seq #"sourceFieldId: 42" body))))
+    (is (not (str/includes? body "dimensionIds")))
+    (is (not (str/includes? body "metricId: 5")))))
 
 (deftest json-endpoint-test
   (let [response (mt/user-http-request-full-response :crowberto :get 200 "typed-schemas/v1/json")]

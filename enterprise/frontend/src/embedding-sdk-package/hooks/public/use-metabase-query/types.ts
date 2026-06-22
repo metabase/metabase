@@ -7,7 +7,6 @@ import type { TemporalUnit } from "metabase-types/api";
 import type {
   FieldSchema,
   InferSchema,
-  MetricDimensionSchema,
   QueryData,
   QuestionSchema,
   SchemaColumn,
@@ -35,9 +34,11 @@ type FieldValues<TEntity> = TEntity extends {
 type MetricDimensionValues<TEntity> = TEntity extends {
   dimensions?: infer TDimensions;
 }
-  ? NonNullable<TDimensions> extends readonly MetricDimensionSchema[]
-    ? NonNullable<TDimensions>[number]
-    : Values<NonNullable<TDimensions>>
+  ? Values<NonNullable<TDimensions>> extends infer TDimensionGroup
+    ? TDimensionGroup extends unknown
+      ? Values<TDimensionGroup>
+      : never
+    : never
   : never;
 
 type DimensionValues<TEntity> =
@@ -45,16 +46,17 @@ type DimensionValues<TEntity> =
   | MetricDimensionValues<TEntity>;
 
 type DimensionInput<TEntity> = [DimensionValues<TEntity>] extends [never]
-  ? string | FieldSchema | MetricDimensionSchema
+  ? string | FieldSchema
   : DimensionValues<TEntity>;
 
 export type MetricReference<TMappedTableId extends number = number> = {
   id: ID;
   databaseId?: ID;
   sourceTableId?: ID;
+  sourceCardId?: ID;
   mappedTableIds: readonly TMappedTableId[];
   columns?: readonly SchemaColumn[];
-  dimensions?: Record<string, MetricDimensionSchema>;
+  dimensions?: Record<string, Record<string, FieldSchema>>;
 };
 
 export type SegmentReference<TTableId extends number = number> = {
@@ -176,19 +178,6 @@ type MappedTableId<TMetric> = TMetric extends {
   ? NonNullable<TMetric["mappedTableIds"]>[number]
   : number;
 
-type MetricEntityId<TMetric> = TMetric extends { id: infer TId extends ID }
-  ? TId
-  : ID;
-
-type MetricDimensionReference<TMetricId extends ID = ID> =
-  MetricDimensionSchema & {
-    metricId: TMetricId;
-  };
-
-type TableFieldReference<TTableId extends number = number> = FieldSchema & {
-  tableId: TTableId;
-};
-
 type SegmentForMetric<TMetric> = SegmentReference<MappedTableId<TMetric>>;
 
 type MeasureForMetric<TMetric> = MeasureReference<MappedTableId<TMetric>>;
@@ -199,26 +188,11 @@ type MetricDimensionFilterForMetric<TMetric> = [
   ? MetabaseMetricDimensionFilter
   : MetabaseDimensionFilterForDimension<MetricDimensionValues<TMetric>>;
 
-type TableDimensionFilterForMetric<TMetric> =
-  MetabaseDimensionFilterForDimension<
-    TableFieldReference<MappedTableId<TMetric>>
-  >;
-
-type TableBreakoutForMetric<TMetric> = MetabaseBreakoutObjectForDimension<
-  TableFieldReference<MappedTableId<TMetric>>
->;
-
 type MetricBreakoutForMetric<TMetric> = [
   MetricDimensionValues<TMetric>,
 ] extends [never]
   ? MetabaseMetricBreakout
-  : MetabaseBreakoutObjectForDimension<
-      MetricDimensionReference<MetricEntityId<TMetric>>
-    >;
-
-type BreakoutForMetric<TMetric> =
-  | MetricBreakoutForMetric<TMetric>
-  | TableBreakoutForMetric<TMetric>;
+  : MetabaseBreakoutObjectForDimension<MetricDimensionValues<TMetric>>;
 
 export type FilterOperator =
   | "="
@@ -422,11 +396,11 @@ export type MetabaseDimensionFilter<TEntity = unknown> = [
     }
   : MetabaseDimensionFilterForDimension<DimensionValues<TEntity>>;
 
-export type MetabaseMetricBreakout<TDimension = MetricDimensionSchema> =
+export type MetabaseMetricBreakout<TDimension = FieldSchema> =
   MetabaseBreakoutForDimension<TDimension>;
 
 export type MetabaseMetricDimensionFilter =
-  MetabaseDimensionFilterForDimension<MetricDimensionSchema>;
+  MetabaseDimensionFilterForDimension<FieldSchema>;
 
 export type QuestionQuery<TQuestion> = {
   questionId: SdkQuestionId;
@@ -489,14 +463,13 @@ export type MetricQuery<TMetric> = {
     ? readonly (
         | SegmentForMetric<TMetric>
         | MetricDimensionFilterForMetric<TMetric>
-        | TableDimensionFilterForMetric<TMetric>
       )[]
     : readonly unknown[];
   measures?: TMetric extends MetricReference
     ? readonly MeasureForMetric<TMetric>[]
     : readonly MeasureReference[];
   breakouts?: TMetric extends MetricReference
-    ? readonly BreakoutForMetric<TMetric>[]
+    ? readonly MetricBreakoutForMetric<TMetric>[]
     : readonly MetabaseBreakout[];
   enabled?: boolean;
 };
