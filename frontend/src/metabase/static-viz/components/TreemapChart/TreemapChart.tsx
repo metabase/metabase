@@ -27,7 +27,6 @@ import Watermark from "../../watermark.svg?component";
 import { TreemapLegend } from "./TreemapLegend";
 import { getMonochromeTreemapColors } from "./colors";
 import { TREEMAP_LEGEND_WIDTH, getTreemapLegendModel } from "./legend";
-import { stripTextShadows } from "./strip-text-shadows";
 
 const CHART_WIDTH = 965;
 const CHART_HEIGHT = 764;
@@ -62,23 +61,20 @@ export function TreemapChart({
     : getMonochromeTreemapColors(tree, renderingContext.getColor("brand"));
   const formatters = getTreemapFormatters(treemapColumns, settings);
 
-  // `stripTextShadows`: the label text shadows would render as `feDropShadow`
-  // filters, which Batik (the backend's SVG→PNG transcoder) cannot handle.
-  const buildOption = (layouts: Partial<TreemapMeasuredLabelLayouts>) =>
-    stripTextShadows({
-      animation: false,
-      ...getTreemapChartOption({
-        tree,
-        colors,
-        showParentLabels: shouldShowParentLabels(undefined, settings),
-        showLeafLabels: settings["treemap.show_leaf_labels"] ?? true,
-        labelLayout: layouts.leafLabelLayout,
-        parentLabelLayout: layouts.parentLabelLayout,
-        formatValue: formatters.value,
-        formatPercent: formatters.percent,
-        renderingContext,
-      }),
-    });
+  const buildOption = (layouts: Partial<TreemapMeasuredLabelLayouts>) => ({
+    animation: false,
+    ...getTreemapChartOption({
+      tree,
+      colors,
+      showParentLabels: shouldShowParentLabels(undefined, settings),
+      showLeafLabels: settings["treemap.show_leaf_labels"] ?? true,
+      labelLayout: layouts.leafLabelLayout,
+      parentLabelLayout: layouts.parentLabelLayout,
+      formatValue: formatters.value,
+      formatPercent: formatters.percent,
+      renderingContext,
+    }),
+  });
 
   const chart = init(null, null, {
     renderer: "svg",
