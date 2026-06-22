@@ -158,7 +158,8 @@
 }
 
 .AdminTable thead {
-  border-bottom: var(--border-size) var(--border-style) var(--mb-color-border-neutral);
+  border-bottom: var(--border-size) var(--border-style)
+    var(--mb-color-border-neutral);
 }
 
 .AdminTable tbody tr:first-child td {
