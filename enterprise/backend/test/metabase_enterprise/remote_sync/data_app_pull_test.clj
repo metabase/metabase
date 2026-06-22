@@ -43,7 +43,7 @@
 (def ^:private coll-file
   {coll-path (rs.test/generate-collection-yaml "M-Q4pcV0qkiyJ0kiSWECl" "Some Collection")})
 
-(defn- pull-outcome
+(defn- pull-outcome!
   "Establish `v0` as the baseline, then pull `v1` (a normal, non-forced pull) and
   return its `:outcome`."
   [v0 v1]
@@ -59,8 +59,8 @@
       (mt/with-premium-features #{:data-apps}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp]
-            (let [outcome (pull-outcome (app-tree "sales" "BUNDLE-V1")
-                                        (app-tree "sales" "BUNDLE-V2"))]
+            (let [outcome (pull-outcome! (app-tree "sales" "BUNDLE-V1")
+                                         (app-tree "sales" "BUNDLE-V2"))]
               (is (= "pulled" (:kind outcome)) "not reported as skipped")
               (is (= 1 (:count outcome)) "the one changed data app is counted"))))))))
 
@@ -72,7 +72,7 @@
           (mt/with-model-cleanup [:model/DataApp :model/Collection]
             ;; v1 adds a collection; the data app is byte-for-byte the same as v0.
             (let [app     (app-tree "sales" "BUNDLE")
-                  outcome (pull-outcome app (merge coll-file app))]
+                  outcome (pull-outcome! app (merge coll-file app))]
               (is (= "pulled" (:kind outcome)))
               (is (= 1 (:count outcome)) "the collection counts; the unchanged app adds 0"))))))))
 
@@ -83,7 +83,7 @@
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection]
             ;; v1 adds a collection AND changes the data app's bundle.
-            (let [outcome (pull-outcome (app-tree "ops" "BUNDLE")
-                                        (merge coll-file (app-tree "ops" "BUNDLE-V2")))]
+            (let [outcome (pull-outcome! (app-tree "ops" "BUNDLE")
+                                         (merge coll-file (app-tree "ops" "BUNDLE-V2")))]
               (is (= "pulled" (:kind outcome)))
               (is (= 2 (:count outcome)) "the collection (1) plus the changed data app (1)"))))))))
