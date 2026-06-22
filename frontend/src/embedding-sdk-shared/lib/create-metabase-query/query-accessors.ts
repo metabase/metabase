@@ -2,14 +2,13 @@ import type { TableId } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import {
-  type ID,
   type MetricQueryLike,
   type TableQueryLike,
   isMetricReference,
   isTableReference,
 } from "./query-guards";
 
-export type { ID };
+type ID = string | number;
 
 export function getMetricIdFromQuery(query: unknown): number | null {
   if (!isObject(query)) {
