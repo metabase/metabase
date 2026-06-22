@@ -8,7 +8,7 @@ import {
   useUpdateCollectionMutation,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
-import { isRootCollection } from "metabase/collections/utils";
+import { isRootCollection } from "metabase/common/collections/utils";
 import { useConfirmation } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
