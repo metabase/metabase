@@ -16,16 +16,12 @@ import {
   type TreemapMeasuredLabelLayouts,
   measureTreemapLabelLayouts,
 } from "metabase/visualizations/echarts/graph/treemap/model/measure";
-import {
-  getTreemapLayoutNodes,
-  hasChildren,
-} from "metabase/visualizations/echarts/graph/treemap/model/tree";
+import { getTreemapLayoutNodes } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
 
 import Watermark from "../../watermark.svg?component";
 
 import { TreemapLegend } from "./TreemapLegend";
-import { getMonochromeTreemapColors } from "./colors";
 import { TREEMAP_LEGEND_WIDTH, getTreemapLegendModel } from "./legend";
 
 const CHART_WIDTH = 965;
@@ -55,10 +51,7 @@ export function TreemapChart({
     treemapRows,
     settings,
   );
-  const treeHasChildren = tree.some(hasChildren);
-  const colors = treeHasChildren
-    ? getTreemapColors(tree, treemapRows)
-    : getMonochromeTreemapColors(tree, renderingContext.getColor("brand"));
+  const colors = getTreemapColors(tree, treemapRows);
   const formatters = getTreemapFormatters(treemapColumns, settings);
 
   const buildOption = (layouts: Partial<TreemapMeasuredLabelLayouts>) => ({
