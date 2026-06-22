@@ -24,7 +24,6 @@ import {
   createTableMetadata,
 } from "./metabase-lib-query-metadata";
 import { normalizeDatasetQuery } from "./metabase-lib-query-normalization";
-import { buildMetricDatasetQuery } from "./metric-query-builder";
 import type { MetricQueryRuntime, TableQueryRuntime } from "./runtime-types";
 import type { TableSchema } from "./schema";
 import { buildTableDatasetQuery } from "./table-query-builder";
@@ -92,6 +91,7 @@ export function buildTableDatasetQueryWithMetabaseLib(
 
   return normalizeDatasetQuery(
     Lib.toLegacyQuery(queryWithBreakouts) as StructuredDatasetQuery,
+    query.breakouts,
   );
 }
 
@@ -149,6 +149,7 @@ export function buildMetricDatasetQueryWithMetabaseLib(
 
   return normalizeDatasetQuery(
     Lib.toLegacyQuery(queryWithBreakouts) as StructuredDatasetQuery,
+    query.breakouts,
   );
 }
 
@@ -166,28 +167,17 @@ export function buildDatasetQueryWithMetabaseLib(
 
   if (isMetricQueryRuntime(query)) {
     if (hasGeneratedMetric(query)) {
-      if (hasBinningBreakout(query)) {
-        return buildMetricDatasetQuery(query as MetricQueryRuntime);
-      }
-
       throw new Error(
         "Generated metric query could not be built with metabase-lib.",
       );
     }
 
-    return buildMetricDatasetQuery(query as MetricQueryRuntime);
+    throw new Error(
+      "Metric query object creation requires a generated metric schema.",
+    );
   }
 
   if (hasGeneratedTable(query)) {
-    if (hasBinningBreakout(query)) {
-      const tableQuery = query as TableQueryRuntime;
-
-      return {
-        ...buildTableDatasetQuery(tableQuery),
-        database: Number(getTableDatabaseIdFromQuery(tableQuery)),
-      };
-    }
-
     throw new Error(
       "Generated table query could not be built with metabase-lib.",
     );
@@ -221,13 +211,3 @@ const hasGeneratedTable = (
   query: TableQueryRuntime | MetricQueryRuntime,
 ): query is TableQueryRuntime =>
   !isMetricQueryRuntime(query) && isObject(query.table);
-
-const hasBinningBreakout = (
-  query: TableQueryRuntime | MetricQueryRuntime,
-): boolean =>
-  Boolean(
-    query.breakouts?.some(
-      (breakout) =>
-        isObject(breakout) && "binning" in breakout && breakout.binning != null,
-    ),
-  );

@@ -447,7 +447,7 @@ function findLibColumnForBreakout(
   }
 
   if (options.binning != null) {
-    return buildBinnedColumn(query, column, options.binning);
+    return buildBinnedColumn(query, column, dimension, options.binning);
   }
 
   return column;
@@ -472,6 +472,7 @@ type BinningOptions =
 function buildBinnedColumn(
   query: Query,
   column: ColumnMetadata,
+  field: unknown,
   binningOptions: unknown,
 ): ColumnMetadata | null {
   if (!isBinningOptions(binningOptions)) {
@@ -487,7 +488,7 @@ function buildBinnedColumn(
 
     return Lib.binning(columnWithDefaultBinning)
       ? columnWithDefaultBinning
-      : null;
+      : column;
   }
 
   const bucket = Lib.availableBinningStrategies(
@@ -500,7 +501,7 @@ function buildBinnedColumn(
       getBinningStrategyDisplayName(binningOptions),
   );
 
-  return bucket ? Lib.withBinning(column, bucket) : null;
+  return bucket ? Lib.withBinning(column, bucket) : column;
 }
 
 function isBinningOptions(value: unknown): value is BinningOptions {
@@ -532,13 +533,21 @@ function getBinningStrategyDisplayName(
   return `Bin every ${binningOptions["bin-width"]}`;
 }
 
-function findLibColumn(query: Query, field: unknown): ColumnMetadata | null {
+function findLibColumn(
+  query: Query,
+  field: unknown,
+  options: Record<string, unknown> = {},
+): ColumnMetadata | null {
   const fieldId = getFieldId(field);
 
   if (fieldId != null) {
     const sourceFieldId = getObjectNumber(field, "sourceFieldId");
+    const fieldOptions =
+      sourceFieldId == null
+        ? options
+        : { ...options, "source-field": sourceFieldId };
 
-    if (sourceFieldId != null) {
+    if (Object.keys(fieldOptions).length > 0) {
       return Lib.fromLegacyColumn(query, STAGE_INDEX, {
         id: fieldId,
         name: getObjectString(field, "name") ?? String(fieldId),
@@ -554,7 +563,7 @@ function findLibColumn(query: Query, field: unknown): ColumnMetadata | null {
         effective_type: isTableFieldSchema(field)
           ? getFieldEffectiveType(field)
           : undefined,
-        field_ref: ["field", fieldId, { "source-field": sourceFieldId }],
+        field_ref: ["field", fieldId, fieldOptions],
       });
     }
 

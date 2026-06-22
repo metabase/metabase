@@ -853,6 +853,34 @@ describe("useMetabaseQuery", () => {
       });
     });
 
+    it("builds binned metric breakouts through metabase-lib", () => {
+      expect(
+        createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          breakouts: [
+            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.amount, {
+              binning: { strategy: "num-bins", "num-bins": 10 },
+            }),
+          ],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["metric", 34]],
+          breakout: [
+            [
+              "field",
+              102,
+              { binning: { strategy: "num-bins", "num-bins": 10 } },
+            ],
+          ],
+        },
+        parameters: [],
+      });
+    });
+
     it("memoizes a complete dataset query from a generated metric schema", () => {
       render(<MetricQueryObjectComponent />);
 
