@@ -132,14 +132,9 @@
     [{:model "card" :id 1 :name "Sales,  Revenue"}
      {:model "card" :id 2 :name "Sales Revenue Report"}]
     (testing "Exact matching ignores commas and collapses whitespace runs"
-      (let [expected [["card" 1 "Sales,  Revenue"]
-                      ["card" 2 "Sales Revenue Report"]]]
-        (case (mdb/db-type)
-          (:postgres :h2) (is (= expected (search-results :exact "sales revenue")))
-          ;; appdb search is gated to postgres and h2; make a new driver fail loudly rather than via case's
-          ;; opaque "No matching clause" error.
-          (throw (ex-info "exact-normalization-test has no expectation for this appdb"
-                          {:db-type (mdb/db-type)})))))))
+      (is (= [["card" 1 "Sales,  Revenue"]
+              ["card" 2 "Sales Revenue Report"]]
+             (search-results :exact "sales revenue"))))))
 
 (deftest ^:parallel prefix-test
   (with-index-contents
