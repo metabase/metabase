@@ -405,7 +405,7 @@
 
           ;; Postgres/Redshift buffer the *entire* ResultSet unless autoCommit is false (then they use a server-side
           ;; cursor honoring the statement fetch size). So for streamed reads (`:stream?` -- sync metadata reads,
-          ;; table-rows-sample, downloads) flip autoCommit off, else a huge result OOMs. (#60733, Redshift sync OOM.)
+          ;; table-rows-sample, downloads) flip autoCommit off, else a huge result OOMs.
           (and (-> options :stream?) (isa? driver/hierarchy driver :postgres))
           (try
             (log/trace (pr-str '(.setAutoCommit conn false)))
