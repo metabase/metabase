@@ -26,6 +26,8 @@ import { GlossaryRowEditor } from "./GlossaryRowEditor";
 export type GlossaryTableProps = {
   className?: string;
   glossary: GlossaryItem[];
+  /** When true, the table is display-only: no create/edit/delete controls. */
+  readOnly?: boolean;
   onCreate: (term: string, definition: string) => Promise<void> | void;
   onEdit: (
     id: number,
@@ -38,6 +40,7 @@ export type GlossaryTableProps = {
 export function GlossaryTable({
   className,
   glossary,
+  readOnly = false,
   onCreate,
   onEdit,
   onDelete,
@@ -79,20 +82,22 @@ export function GlossaryTable({
         <Text>
           {t`Define terms to help your team and ${metabotName} understand your data.`}
         </Text>
-        <Button
-          variant="default"
-          size="sm"
-          leftSection={<Icon name="add" />}
-          onClick={() => {
-            if (editingId) {
-              setEditingId(null);
-              setEditingField(null);
-            }
-            setIsCreating(true);
-          }}
-        >
-          {t`New term`}
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="default"
+            size="sm"
+            leftSection={<Icon name="add" />}
+            onClick={() => {
+              if (editingId) {
+                setEditingId(null);
+                setEditingField(null);
+              }
+              setIsCreating(true);
+            }}
+          >
+            {t`New term`}
+          </Button>
+        )}
       </Group>
       <CommonTable
         className={cx(S.table, className)}
@@ -166,14 +171,18 @@ export function GlossaryTable({
                   <Box
                     component="td"
                     valign="top"
-                    onClick={() => {
-                      if (isCreating) {
-                        setIsCreating(false);
-                      }
+                    onClick={
+                      readOnly
+                        ? undefined
+                        : () => {
+                            if (isCreating) {
+                              setIsCreating(false);
+                            }
 
-                      setEditingId(item.id);
-                      setEditingField("term");
-                    }}
+                            setEditingId(item.id);
+                            setEditingField("term");
+                          }
+                    }
                   >
                     <Text lh="1.2" fw="bold" pt="xs">
                       {item.term}
@@ -183,13 +192,17 @@ export function GlossaryTable({
                     component="td"
                     valign="top"
                     style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}
-                    onClick={() => {
-                      if (isCreating) {
-                        setIsCreating(false);
-                      }
-                      setEditingId(item.id);
-                      setEditingField("definition");
-                    }}
+                    onClick={
+                      readOnly
+                        ? undefined
+                        : () => {
+                            if (isCreating) {
+                              setIsCreating(false);
+                            }
+                            setEditingId(item.id);
+                            setEditingField("definition");
+                          }
+                    }
                   >
                     <Text lh="1.2" pt="xs">
                       {item.definition}
@@ -203,17 +216,19 @@ export function GlossaryTable({
                     p="sm"
                     w="25px"
                   >
-                    <Tooltip label={t`Delete`}>
-                      <ActionIcon
-                        aria-label={t`Delete`}
-                        variant="subtle"
-                        c="text-tertiary"
-                        className={cx(S.action)}
-                        onClick={() => setDeletingItem(item)}
-                      >
-                        <Icon name="trash" />
-                      </ActionIcon>
-                    </Tooltip>
+                    {!readOnly && (
+                      <Tooltip label={t`Delete`}>
+                        <ActionIcon
+                          aria-label={t`Delete`}
+                          variant="subtle"
+                          c="text-tertiary"
+                          className={cx(S.action)}
+                          onClick={() => setDeletingItem(item)}
+                        >
+                          <Icon name="trash" />
+                        </ActionIcon>
+                      </Tooltip>
+                    )}
                   </Box>
                 </>
               )}
