@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import {
@@ -22,8 +23,8 @@ import type {
   QuestionSchema,
   SchemaJavaScriptType,
   TableSchema,
-} from "../data-schema";
-import { mapQueryData } from "../data-schema";
+} from "../../../lib/public/data-schema";
+import { mapRowsToObjects } from "../../../lib/public/data-schema";
 
 import { mapDatasetQueryData } from "./map-dataset-query-data";
 import { stableStringifyQuery } from "./stable-query-key";
@@ -154,6 +155,16 @@ const isOrderableJavaScriptType = (
   value === "number" ||
   value === "boolean" ||
   value === "Date";
+
+function mapQueryData<TRow>(result: QueryQuestionResult) {
+  const rawRows = result.rows;
+
+  return {
+    ...result,
+    rows: mapRowsToObjects<TRow>(result.columns, rawRows),
+    rawRows,
+  };
+}
 
 function subscribeToSdkBundleLoaded(callback: () => void) {
   const target = typeof document === "undefined" ? null : document;

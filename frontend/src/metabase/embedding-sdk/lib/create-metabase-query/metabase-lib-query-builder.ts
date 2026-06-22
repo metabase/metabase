@@ -1,3 +1,4 @@
+import type { TableSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -25,7 +26,6 @@ import {
 } from "./metabase-lib-query-metadata";
 import { normalizeDatasetQuery } from "./metabase-lib-query-normalization";
 import type { MetricQueryRuntime, TableQueryRuntime } from "./runtime-types";
-import type { TableSchema } from "./schema";
 import { buildTableDatasetQuery } from "./table-query-builder";
 import {
   validateMetricGeneratedDimensions,

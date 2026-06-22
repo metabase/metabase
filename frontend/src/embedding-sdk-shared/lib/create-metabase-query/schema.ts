@@ -14,10 +14,25 @@ export type SchemaColumn = {
   effectiveType?: string;
 };
 
+export type SchemaParameter = {
+  slug: string;
+  type?: string;
+};
+
+export type QuestionSchema<TQuestionId = string | number> = {
+  id: TQuestionId;
+  columns: readonly SchemaColumn[];
+  parameters?: readonly SchemaParameter[];
+};
+
+/**
+ * Metadata for a generated table field or metric dimension.
+ */
 export type FieldSchema = SchemaColumn & {
   id?: string | number;
   fieldId?: number;
   tableId?: number;
+  sourceFieldId?: number;
 };
 
 export type SegmentSchema<TTableId extends number = number> = {
@@ -40,4 +55,14 @@ export type TableSchema = {
   fields?: Record<string, FieldSchema>;
   segments?: Record<string, SegmentSchema>;
   measures?: Record<string, MeasureSchema>;
+};
+
+export type MetricSchema = {
+  id: number;
+  databaseId?: number;
+  sourceTableId?: number;
+  sourceCardId?: number;
+  columns: readonly SchemaColumn[];
+  mappedTableIds?: readonly number[];
+  dimensions?: Record<string, Record<string, FieldSchema>>;
 };

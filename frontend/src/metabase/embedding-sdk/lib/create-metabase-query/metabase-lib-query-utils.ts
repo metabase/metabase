@@ -1,9 +1,12 @@
+import type {
+  FieldSchema,
+  SchemaJavaScriptType,
+} from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isNumber } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isObject } from "metabase-types/guards";
 
 import { isTableFieldSchema } from "./guards";
-import type { FieldSchema, SchemaJavaScriptType } from "./schema";
 
 export const STAGE_INDEX = 0;
 

@@ -13,7 +13,7 @@ import type {
   SchemaJavaScriptType,
   SchemaValue,
   TableSchema,
-} from "../data-schema";
+} from "../../../lib/public/data-schema";
 
 export type ID = string | number;
 type Values<T> = T[keyof T];

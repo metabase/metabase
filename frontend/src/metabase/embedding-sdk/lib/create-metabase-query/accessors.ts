@@ -1,4 +1,5 @@
 import { isMetricReference } from "embedding-sdk-shared/lib/create-metabase-query/query-guards";
+import type { TableSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { TableId } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -7,7 +8,6 @@ import type {
   MetricQueryRuntime,
   TableQueryRuntime,
 } from "./runtime-types";
-import type { TableSchema } from "./schema";
 
 export function getMetricIdFromQuery(query: unknown): ID | null {
   if (!isObject(query)) {

@@ -1,5 +1,4 @@
-export { isUnaryOperator } from "embedding-sdk-shared/lib/create-metabase-query/query-guards";
-
+import type { FieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isObject } from "metabase-types/guards";
 
 import type {
@@ -9,7 +8,8 @@ import type {
   MeasureReferenceRuntime,
   SegmentReferenceRuntime,
 } from "./runtime-types";
-import type { FieldSchema } from "./schema";
+
+export { isUnaryOperator } from "embedding-sdk-shared/lib/create-metabase-query/query-guards";
 
 export const isDimensionFilter = (
   value: unknown,

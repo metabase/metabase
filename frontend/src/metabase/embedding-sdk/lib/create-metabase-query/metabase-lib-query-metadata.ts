@@ -1,3 +1,8 @@
+import type {
+  FieldSchema,
+  SegmentSchema,
+  TableSchema,
+} from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { Field, TableId } from "metabase-types/api";
 
 import {
@@ -21,7 +26,6 @@ import type {
   MeasureReferenceRuntime,
   MetricQueryRuntime,
 } from "./runtime-types";
-import type { FieldSchema, SegmentSchema, TableSchema } from "./schema";
 
 type TableMetadataSource = Omit<TableSchema, "id"> & { id: TableId };
 
