@@ -15,6 +15,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.options :as lib.options]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
@@ -428,6 +430,84 @@
          (column-name-pivot-options query viz-settings)
          (field-ref-pivot-options query viz-settings))
        {:column-sort-order (column-sort-order query viz-settings)}))))
+
+(defn- resolve-refs-to-uuids
+  "Resolve a sequence of pivot column refs to breakout `:lib/uuid` values. Refs that don't resolve (or that throw from
+  `find-column-for-legacy-ref`) are silently dropped — matches today's `keep` semantics."
+  [query refs]
+  (when (seq refs)
+    (let [breakout-cols (filter :lib/breakout? (lib/returned-columns query))
+          resolver      (if (every? string? refs)
+                          (into {} (map (juxt :name :lib/source-uuid)) breakout-cols)
+                          (fn ref-resolver [a-ref]
+                            (try
+                              (:lib/source-uuid (lib.equality/find-column-for-legacy-ref query -1 a-ref breakout-cols))
+                              (catch Throwable _ nil))))]
+      (into [] (keep resolver) refs))))
+
+(defn- build-pivot-clause
+  "Build a `:pivot` clause from viz-settings, or nil if nothing should be attached."
+  [query viz-settings]
+  (when-let [{:keys [rows columns]} (:pivot_table.column_split viz-settings)]
+    (let [row-uuids (resolve-refs-to-uuids query rows)
+          col-uuids (resolve-refs-to-uuids query columns)]
+      (when (or (seq row-uuids) (seq col-uuids))
+        {:rows               (or row-uuids [])
+         :columns            (or col-uuids [])
+         :show-row-totals    (lib.pivot/read-show-flag viz-settings :pivot.show_row_totals    "pivot.show_row_totals")
+         :show-column-totals (lib.pivot/read-show-flag viz-settings :pivot.show_column_totals "pivot.show_column_totals")}))))
+
+(mu/defn apply-pivot-viz-settings :- ::lib.schema/query
+  "Translate the legacy pivot viz-settings (`pivot_table.column_split`, `pivot.show_row_totals`,
+  `pivot.show_column_totals`) into an MBQL5 `:pivot` clause attached to `query`.
+
+  No-op when `query` already carries a `:pivot` clause, when `viz-settings` is missing, or when no refs resolve.
+  Idempotent."
+  [query        :- ::lib.schema/query
+   viz-settings :- [:maybe :map]]
+  (let [clause (when (and (not (:pivot query))
+                          (seq viz-settings))
+                 (build-pivot-clause query viz-settings))]
+    (cond-> query
+      clause (assoc :pivot clause))))
+
+(def ^:private legacy-pivot-keys
+  [:pivot-rows :pivot_rows
+   :pivot-cols :pivot_cols
+   :pivot-measures :pivot_measures
+   :show-row-totals :show_row_totals
+   :show-column-totals :show_column_totals])
+
+(mu/defn apply-legacy-pivot-keys :- ::lib.schema/query
+  "Translate MBQL4 top-level pivot keys (positional indices into the last stage's breakouts) into the MBQL5 `:pivot`
+  clause, then strip the legacy keys. Out-of-range indices are silently dropped, matching the legacy column-name /
+  field-ref paths. If `:pivot` is already attached, leaves it alone and just strips. `:pivot-measures` is
+  presentation-only and is dropped.
+
+  Intended to be invoked by the pivot dispatcher only when routing a query through the new MBQL5 pivot path — the
+  legacy multi-query path can't tolerate `:pivot` and reads the indices itself, so this conversion must not run
+  universally during MBQL4→MBQL5 normalization."
+  [query :- ::lib.schema/query]
+  (let [rows-idxs (or (:pivot-rows query) (:pivot_rows query))
+        cols-idxs (or (:pivot-cols query) (:pivot_cols query))
+        stripped  (reduce dissoc query legacy-pivot-keys)]
+    (if (or (:pivot query)
+            (and (nil? rows-idxs) (nil? cols-idxs)))
+      stripped
+      (let [breakouts   (vec (-> query :stages last :breakout))
+            n           (count breakouts)
+            index->uuid (fn [i]
+                          (when (and (nat-int? i) (< i n))
+                            (lib.options/uuid (nth breakouts i))))
+            row-uuids   (into [] (keep index->uuid) (or rows-idxs []))
+            col-uuids   (into [] (keep index->uuid) (or cols-idxs []))]
+        (if (and (empty? row-uuids) (empty? col-uuids))
+          stripped
+          (assoc stripped :pivot
+                 {:rows               row-uuids
+                  :columns            col-uuids
+                  :show-row-totals    (lib.pivot/read-show-flag query :show-row-totals    :show_row_totals)
+                  :show-column-totals (lib.pivot/read-show-flag query :show-column-totals :show_column_totals)}))))))
 
 (defn- remapped-field
   [breakout]

@@ -4,15 +4,16 @@
   (:refer-clojure :exclude [empty? mapv])
   (:require
    [medley.core :as m]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [empty? mapv]]))
 
-(def ^:private pivot-column-gropuing-metadata
-  {:name                     "pivot-grouping"
-   :display_name             "pivot-grouping"
-   :lib/desired-column-alias "pivot-grouping"
+(def ^:private pivot-grouping-column-metadata
+  {:name                     lib.pivot/pivot-grouping-column-name
+   :display_name             lib.pivot/pivot-grouping-column-name
+   :lib/desired-column-alias lib.pivot/pivot-grouping-column-name
    :base_type                :type/Integer
    :effective_type           :type/Integer})
 
@@ -20,7 +21,7 @@
   (vec
    (concat
     (take num-breakouts cols)
-    [pivot-column-gropuing-metadata]
+    [pivot-grouping-column-metadata]
     (drop num-breakouts cols))))
 
 (defn add-pivot-grouping

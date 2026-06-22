@@ -260,6 +260,16 @@
    [:page  pos-int?]
    [:items pos-int?]])
 
+(mr/def ::pivot
+  "Top-level pivot intent. `:rows` and `:columns` are sequences of UUIDs that reference `:lib/uuid` values on breakouts
+  in the query. `:show-row-totals` and `:show-column-totals` default to `true` when absent."
+  [:map
+   {:decode/normalize common/normalize-map}
+   [:rows               [:sequential ::common/uuid]]
+   [:columns            [:sequential ::common/uuid]]
+   [:show-row-totals    {:optional true} :boolean]
+   [:show-column-totals {:optional true} :boolean]])
+
 (defn- normalize-mbql-stage [m]
   (normalize-stage-common m))
 
@@ -311,7 +321,8 @@
      :aggregation-idents ":aggregation-idents is deprecated and should not be used"
      :breakout-idents    ":breakout-idents is deprecated and should not be used"
      :expression-idents  ":expression-idents is deprecated and should not be used"
-     :filter             ":filter is not allowed in an MBQL 5 stage, use :filters instead"})])
+     :filter             ":filter is not allowed in an MBQL 5 stage, use :filters instead"
+     :pivot              ":pivot is a top-level query clause, not a stage clause"})])
 
 ;;; the schemas are constructed this way instead of using `:or` because they give better error messages
 (mr/def ::stage.type
@@ -532,6 +543,7 @@
     [:settings    {:optional true} [:ref ::lib.schema.settings/settings]]
     [:constraints {:optional true} [:ref ::lib.schema.constraints/constraints]]
     [:middleware  {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
+    [:pivot       {:optional true} [:ref ::pivot]]
     ;; TODO -- `:viz-settings` ?
     ;;
     ;; INFO

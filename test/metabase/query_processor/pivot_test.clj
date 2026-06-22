@@ -9,6 +9,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
@@ -224,6 +225,177 @@
                                                (:pivot-cols pivot-options)
                                                (:show-row-totals pivot-options)
                                                (:show-column-totals pivot-options)))))))
+
+;;; ---- apply-pivot-viz-settings ----
+
+(defn- two-breakout-query []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/aggregate (lib/count))
+      (lib/breakout (meta/field-metadata :orders :created-at))
+      (lib/breakout (meta/field-metadata :orders :user-id))))
+
+(defn- breakout-uuid [query i]
+  (-> query lib/breakouts (nth i) lib.options/uuid))
+
+(deftest ^:parallel apply-pivot-viz-settings-column-name-test
+  (testing "column-name viz-settings resolve to breakout :lib/uuid values"
+    (let [q     (two-breakout-query)
+          cols  (filter :lib/breakout? (lib/returned-columns q))
+          viz   {:pivot_table.column_split {:rows    [(:name (first cols))]
+                                            :columns [(:name (second cols))]}}]
+      (is (= {:rows               [(breakout-uuid q 0)]
+              :columns            [(breakout-uuid q 1)]
+              :show-row-totals    true
+              :show-column-totals true}
+             (:pivot (qp.pivot/apply-pivot-viz-settings q viz)))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-field-ref-test
+  (testing "legacy field-ref viz-settings resolve to breakout :lib/uuid values"
+    (let [q   (two-breakout-query)
+          viz {:pivot_table.column_split {:rows    [[:field (meta/id :orders :created-at) nil]]
+                                          :columns [[:field (meta/id :orders :user-id) nil]]}}]
+      (is (= {:rows               [(breakout-uuid q 0)]
+              :columns            [(breakout-uuid q 1)]
+              :show-row-totals    true
+              :show-column-totals true}
+             (:pivot (qp.pivot/apply-pivot-viz-settings q viz)))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-idempotent-test
+  (testing "second invocation on the result yields the same query"
+    (let [q     (two-breakout-query)
+          cols  (filter :lib/breakout? (lib/returned-columns q))
+          viz   {:pivot_table.column_split {:rows [(:name (first cols))] :columns []}}
+          once  (qp.pivot/apply-pivot-viz-settings q viz)
+          twice (qp.pivot/apply-pivot-viz-settings once viz)]
+      (is (= once twice)))))
+
+(deftest ^:parallel apply-pivot-viz-settings-noop-when-pivot-already-present-test
+  (testing "if :pivot is already attached, viz-settings are ignored"
+    (let [q          (two-breakout-query)
+          cols       (filter :lib/breakout? (lib/returned-columns q))
+          existing   {:rows [(breakout-uuid q 0)] :columns [] :show-row-totals false :show-column-totals false}
+          with-pivot (assoc q :pivot existing)
+          viz        {:pivot_table.column_split {:rows    []
+                                                 :columns [(:name (second cols))]}}]
+      (is (= existing (:pivot (qp.pivot/apply-pivot-viz-settings with-pivot viz)))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-noop-when-viz-settings-missing-test
+  (testing "no-op when viz-settings is nil or empty"
+    (let [q (two-breakout-query)]
+      (is (= q (qp.pivot/apply-pivot-viz-settings q nil)))
+      (is (= q (qp.pivot/apply-pivot-viz-settings q {}))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-noop-when-no-refs-resolve-test
+  (testing "if every ref fails to resolve, no :pivot is attached"
+    (let [q   (two-breakout-query)
+          viz {:pivot_table.column_split {:rows ["NOT_A_COLUMN"] :columns ["ALSO_NOT"]}}]
+      (is (nil? (:pivot (qp.pivot/apply-pivot-viz-settings q viz)))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-drops-unresolvable-refs-test
+  (testing "unresolvable refs are silently dropped; resolvable ones survive"
+    (let [q    (two-breakout-query)
+          cols (filter :lib/breakout? (lib/returned-columns q))
+          viz  {:pivot_table.column_split {:rows    [(:name (first cols)) "NOT_A_COLUMN"]
+                                           :columns []}}]
+      (is (= [(breakout-uuid q 0)]
+             (-> q (qp.pivot/apply-pivot-viz-settings viz) :pivot :rows))))))
+
+(deftest ^:parallel apply-pivot-viz-settings-respects-totals-flags-test
+  (testing "totals flags default to true when absent and preserve explicit false"
+    (let [q       (two-breakout-query)
+          name0   (:name (first (filter :lib/breakout? (lib/returned-columns q))))
+          base-vs {:pivot_table.column_split {:rows [name0] :columns []}}]
+      (testing "defaults"
+        (is (=? {:show-row-totals true :show-column-totals true}
+                (:pivot (qp.pivot/apply-pivot-viz-settings q base-vs)))))
+      (testing "explicit false (keyword keys)"
+        (is (=? {:show-row-totals false :show-column-totals false}
+                (:pivot (qp.pivot/apply-pivot-viz-settings q
+                                                           (assoc base-vs
+                                                                  :pivot.show_row_totals    false
+                                                                  :pivot.show_column_totals false))))))
+      (testing "explicit false (string keys)"
+        (is (=? {:show-row-totals false :show-column-totals false}
+                (:pivot (qp.pivot/apply-pivot-viz-settings q
+                                                           (assoc base-vs
+                                                                  "pivot.show_row_totals"    false
+                                                                  "pivot.show_column_totals" false)))))))))
+
+;;; ---- apply-legacy-pivot-keys ----
+
+(defn- two-breakout-query-with-legacy-pivot-keys
+  "Build the same two-breakout MBQL5 query as [[two-breakout-query]], then assoc legacy top-level pivot keys."
+  [extra]
+  (merge (two-breakout-query) extra))
+
+(deftest ^:parallel apply-legacy-pivot-keys-kebab-case-test
+  (testing "kebab-case legacy indices resolve to breakout :lib/uuid values"
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [1 0] :pivot-cols [0]})]
+      (is (=? {:rows               [(breakout-uuid q 1) (breakout-uuid q 0)]
+               :columns            [(breakout-uuid q 0)]
+               :show-row-totals    true
+               :show-column-totals true}
+              (:pivot (qp.pivot/apply-legacy-pivot-keys q)))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-snake-case-test
+  (testing "snake_case legacy indices resolve to the same UUIDs"
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot_rows [1] :pivot_cols [0]})]
+      (is (=? {:rows    [(breakout-uuid q 1)]
+               :columns [(breakout-uuid q 0)]}
+              (:pivot (qp.pivot/apply-legacy-pivot-keys q)))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-totals-flags-test
+  (testing "totals flags default to true and preserve explicit false (both shapes)"
+    (let [q-defaults (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0]})
+          q-kebab    (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0]
+                                                                 :show-row-totals false :show-column-totals false})
+          q-snake    (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0]
+                                                                 :show_row_totals false :show_column_totals false})]
+      (is (=? {:show-row-totals true  :show-column-totals true}  (:pivot (qp.pivot/apply-legacy-pivot-keys q-defaults))))
+      (is (=? {:show-row-totals false :show-column-totals false} (:pivot (qp.pivot/apply-legacy-pivot-keys q-kebab))))
+      (is (=? {:show-row-totals false :show-column-totals false} (:pivot (qp.pivot/apply-legacy-pivot-keys q-snake)))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-drops-out-of-range-indices-test
+  (testing "out-of-range indices are silently dropped (matching legacy)"
+    (let [q (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0 5] :pivot-cols [99]})]
+      (is (=? {:rows [(breakout-uuid q 0)] :columns []}
+              (:pivot (qp.pivot/apply-legacy-pivot-keys q))))))
+  (testing "no :pivot attached when every index is out of range"
+    (let [q   (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [5] :pivot-cols [99]})
+          out (qp.pivot/apply-legacy-pivot-keys q)]
+      (is (nil? (:pivot out))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-strips-all-legacy-keys-test
+  (testing "all 10 legacy key variants are stripped, including :pivot-measures"
+    (let [q   (two-breakout-query-with-legacy-pivot-keys {:pivot-rows [0] :pivot_rows [0]
+                                                          :pivot-cols [1] :pivot_cols [1]
+                                                          :pivot-measures [0] :pivot_measures [0]
+                                                          :show-row-totals true :show_row_totals true
+                                                          :show-column-totals true :show_column_totals true})
+          out (qp.pivot/apply-legacy-pivot-keys q)]
+      (doseq [k [:pivot-rows :pivot_rows :pivot-cols :pivot_cols
+                 :pivot-measures :pivot_measures
+                 :show-row-totals :show_row_totals
+                 :show-column-totals :show_column_totals]]
+        (testing (str "stripped: " k)
+          (is (not (contains? out k))))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-noop-when-pivot-already-present-test
+  (testing "existing :pivot is preserved; legacy keys still get stripped"
+    (let [q        (two-breakout-query)
+          existing {:rows [(breakout-uuid q 0)] :columns [] :show-row-totals false :show-column-totals false}
+          input    (-> q
+                       (assoc :pivot existing)
+                       (assoc :pivot-rows [1] :pivot-cols [0]))
+          output   (qp.pivot/apply-legacy-pivot-keys input)]
+      (is (= existing (:pivot output)))
+      (is (not (contains? output :pivot-rows)))
+      (is (not (contains? output :pivot-cols))))))
+
+(deftest ^:parallel apply-legacy-pivot-keys-noop-when-no-legacy-keys-test
+  (testing "no legacy keys → query passes through unchanged"
+    (let [q (two-breakout-query)]
+      (is (= q (qp.pivot/apply-legacy-pivot-keys q))))))
 
 (deftest ^:parallel nested-question-pivot-options-test
   (testing "#35025"

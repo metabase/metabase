@@ -15,6 +15,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -39,7 +40,13 @@
 
 (defmethod lib.metadata.calculation/returned-columns-method :mbql/query
   [query stage-number a-query options]
-  (lib.metadata.calculation/returned-columns query stage-number (lib.util/query-stage a-query stage-number) options))
+  (cond-> (lib.metadata.calculation/returned-columns query stage-number
+                                                     (lib.util/query-stage a-query stage-number)
+                                                     options)
+    ;; pivot is a top-level query concern, so its synthetic column only belongs in the query's final returned columns
+    (and (lib.pivot/has-pivot? query)
+         (nil? (lib.util/next-stage-number a-query stage-number)))
+    lib.pivot/splice-pivot-grouping))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql/query
   [query stage-number x style]
