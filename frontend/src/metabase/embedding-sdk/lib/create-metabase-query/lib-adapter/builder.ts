@@ -13,13 +13,15 @@ import type { MetricQueryInput, TableQueryInput } from "../input-types";
 
 import {
   applyAggregations,
-  applyBreakouts,
-  applyFilters,
   applyMetricAggregation,
   applyMetricMeasures,
+} from "./aggregations";
+import { applyBreakouts } from "./breakouts";
+import {
+  applyFilters,
   buildLibMetricDatasetFilter,
   buildLibTableFilter,
-} from "./clauses";
+} from "./filters";
 import {
   createLibQuery,
   createMetricMetadata,
