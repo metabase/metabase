@@ -37,6 +37,7 @@ import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeReplacement } from "./replacement";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
 import { initializePlugin as initializeSandboxes } from "./sandboxes";
+import { initializePlugin as initializeSchemaViewer } from "./schema_viewer";
 import { initializePlugin as initializeSecurityCenter } from "./security_center";
 import { initializePlugin as initializeSemanticSearch } from "./semantic_search";
 import { initializePlugin as initializeSharing } from "./sharing";
@@ -52,6 +53,7 @@ import { initializePlugin as initializeTransformsPython } from "./transforms-pyt
 import { initializePlugin as initializeUploadManagement } from "./upload_management";
 import { initializePlugin as initializeUserProvisioning } from "./user_provisioning";
 import { initializePlugin as initializeWhitelabel } from "./whitelabel";
+import { initializePlugin as initializeWorkspaces } from "./workspaces";
 import { initializePlugin as initializeWritableConnection } from "./writable_connection";
 
 /**
@@ -94,6 +96,7 @@ export function initializePlugins() {
   initializeDatabaseReplication();
   initializeTableEditing();
   initializeDependencies();
+  initializeSchemaViewer();
   initializeSecurityCenter();
   initializeSemanticSearch();
   initializeTransforms();
@@ -102,5 +105,6 @@ export function initializePlugins() {
   initializeSupport();
   initializeTenants?.();
   initializeWritableConnection();
+  initializeWorkspaces();
   initializeAiControls();
 }

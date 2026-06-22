@@ -54,18 +54,15 @@
            (is (user-exists? user-1))
            (is (not (user-exists? user-2)))
            (throw transaction-exception)))))
-
     (testing "top-level transaction aborted"
       (is (not (user-exists? user-1)))
       (is (not (user-exists? user-2))))
-
     (testing "make sure we set autocommit back after the transaction"
       (t2/with-connection [^java.sql.Connection conn]
         (t2/with-transaction [_t-conn conn]
           ;; dummy op
           (is (false? (.getAutoCommit conn))))
         (is (true? (.getAutoCommit conn)))))
-
     (testing "throw error when trying to create nested transaction when nested-transaction-rule=:prohibit"
       (t2/with-connection [conn]
         (t2/with-transaction [t-conn conn]
@@ -73,7 +70,6 @@
                clojure.lang.ExceptionInfo
                #"Attempted to create nested transaction with :nested-transaction-rule set to :prohibit"
                (t2/with-transaction [_ t-conn {:nested-transaction-rule :prohibit}]))))))
-
     (testing "reuse transaction when creating nested transaction with nested-transaction-rule=:ignore"
       (is (not (user-exists? user-1)))
       (try
@@ -100,7 +96,6 @@
           (when-not (is-transaction-exception? e)
             (throw e))))
       (is (not (user-exists? user-1))))
-
     (testing "nested transaction anomalies -- this is not desired behavior"
       (testing "commit and rollback"
         (try
@@ -172,7 +167,6 @@
            ;; Register a new callback from within a callback
            (mdb.connection/after-commit! (fn [] (swap! result conj :second))))))
       (is (= [:first :second] @result) "Both callbacks should execute")))
-
   (testing "Deeply chained callbacks all execute"
     (let [result (atom [])]
       (t2/with-transaction []
@@ -211,7 +205,6 @@
           (catch Exception _)))
       (is (= [:outer] @result)
           "Only the outer callback should run; the inner one from the rolled-back savepoint should be discarded")))
-
   (testing "Transaction state from rolled-back nested transaction is also discarded"
     (t2/with-transaction []
       (swap! mdb.connection/*transaction-state* assoc :outer-key "outer-val")

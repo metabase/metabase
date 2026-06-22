@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -49,7 +50,7 @@
   (mt/test-driver :h2
     (assert (uses-default-describe-table? :h2)
             "Make sure H2 uses the default `describe-table` implementation")
-    (is (= {:name "VENUES",
+    (is (= {:name "VENUES"
             :fields
             #{{:name                       "ID"
                :database-type              "BIGINT"
@@ -183,7 +184,7 @@
     [_driver _feature _database]
     true))
 
-(deftest describe-fields-shared-attributes-test
+(deftest ^:parallel describe-fields-shared-attributes-test
   (testing "common metadata attributes"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (is (=?
@@ -199,7 +200,10 @@
                        :database-required
                        :database-is-auto-increment
                        (comp boolean :pk?))
-                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))
+                 (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))))))))
+
+(deftest ^:parallel describe-fields-shared-attributes-test-2
+  (testing "common metadata attributes"
     (mt/test-drivers (mt/normal-drivers-without-feature :actions)
       (is (=?
            [[0 (driver/database-supports? driver/*driver* ::describe-pks (mt/db))]
@@ -318,12 +322,12 @@
       (is (= types (#'sql-jdbc.describe-table/json-map->types row)))))
   (testing "JSON json-map->types handles bigint that comes in and gets interpreted as Java bigint OK (#22732)"
     (let [int-row   {:zlob (json/encode {"blob" (java.math.BigInteger. "123124124312134235234235345344324352")})}]
-      (is (= #{{:name              "zlob → blob",
-                :database-type     "decimal",
-                :base-type         :type/BigInteger,
-                :database-position 0,
+      (is (= #{{:name              "zlob → blob"
+                :database-type     "decimal"
+                :base-type         :type/BigInteger
+                :database-position 0
                 :json-unfolding    false
-                :visibility-type   :normal,
+                :visibility-type   :normal
                 :nfc-path          [:zlob "blob"]}}
              (-> int-row
                  (#'sql-jdbc.describe-table/json-map->types)
@@ -340,68 +344,68 @@
                       (filter #(= (:name %) "json_bit"))
                       first
                       ((juxt :base-type :semantic-type)))))
-          (is (= #{{:name "json_bit → 1234123412314",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+          (is (= #{{:name "json_bit → 1234123412314"
+                    :database-type "timestamp"
+                    :base-type :type/DateTime
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "1234123412314"]}
-                   {:name "json_bit → boop",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → boop"
+                    :database-type "timestamp"
+                    :base-type :type/DateTime
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "boop"]}
-                   {:name "json_bit → genres",
-                    :database-type "text",
-                    :base-type :type/Array,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → genres"
+                    :database-type "text"
+                    :base-type :type/Array
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "genres"]}
-                   {:name "json_bit → 1234",
-                    :database-type "decimal",
-                    :base-type :type/Integer,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → 1234"
+                    :database-type "decimal"
+                    :base-type :type/Integer
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "1234"]}
-                   {:name "json_bit → doop",
-                    :database-type "text",
-                    :base-type :type/Text,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → doop"
+                    :database-type "text"
+                    :base-type :type/Text
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "doop"]}
-                   {:name "json_bit → noop",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → noop"
+                    :database-type "timestamp"
+                    :base-type :type/DateTime
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "noop"]}
-                   {:name "json_bit → zoop",
-                    :database-type "timestamp",
-                    :base-type :type/DateTime,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → zoop"
+                    :database-type "timestamp"
+                    :base-type :type/DateTime
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "zoop"]}
-                   {:name "json_bit → published",
-                    :database-type "text",
-                    :base-type :type/Text,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → published"
+                    :database-type "text"
+                    :base-type :type/Text
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "published"]}
-                   {:name "json_bit → title",
-                    :database-type "text",
-                    :base-type :type/Text,
-                    :database-position 0,
-                    :json-unfolding false,
-                    :visibility-type :normal,
+                   {:name "json_bit → title"
+                    :database-type "text"
+                    :base-type :type/Text
+                    :database-position 0
+                    :json-unfolding false
+                    :visibility-type :normal
                     :nfc-path [:json_bit "title"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
@@ -417,13 +421,11 @@
                      [{:field-name "array_col" :base-type :type/JSON}
                       {:field-name "string_col" :base-type :type/JSON}]
                      [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]]])
-
         (testing "there should be no nested fields"
           (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
                       driver/*driver*
                       (mt/db)
                       {:name "json_table" :id (mt/id "json_table")}))))
-
         (sync/sync-database! (mt/db))
         (is (=? (if (mysql/mariadb? (mt/db))
                   #{{:name "id"
@@ -479,9 +481,9 @@
 
 (mt/defdataset long-json
   [["long_json_table"
-     ;; `short_json` and `long_json` have the same schema,
-     ;; in the first row, both have an "a" key.
-     ;; in the second row, both have a "b" key, except `long_json` has a longer value.
+    ;; `short_json` and `long_json` have the same schema
+    ;; in the first row, both have an "a" key.
+    ;; in the second row, both have a "b" key, except `long_json` has a longer value.
     [{:field-name "short_json", :base-type :type/JSON}
      {:field-name "long_json",  :base-type :type/JSON}]
     [[(json/encode {:a "x"}) (json/encode {:a "x"})]
@@ -666,7 +668,6 @@
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "indexed"}}
                (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
-
       (testing "for composite indexes, we only care about the 1st column"
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
@@ -776,7 +777,6 @@
 
 (doseq [driver [:presto-jdbc
                 :h2 ;; TODO
-                :druid
                 :druid-jdbc]]
   (defmethod driver/database-supports? [driver ::describe-view-fields]
     [_driver _feature _database]
@@ -786,7 +786,6 @@
                 :h2 ;; TODO
                 :snowflake ;; Requires enterprise account
                 :presto-jdbc
-                :druid
                 :druid-jdbc
                 :mysql
                 :sqlserver
@@ -849,3 +848,81 @@
             (log/error e "Exception occurred."))
           (finally
             (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?})))))))
+
+(deftest ^:parallel describe-fks-with-jdbc-metadata-test
+  (testing "Make sure the fallback default JDBC-metadata-based implementation of `describe-fks` works correctly"
+    (are [options] (= #{{:fk-table-schema "PUBLIC"
+                         :fk-table-name   "ORDERS"
+                         :fk-column-name  "USER_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "PEOPLE"
+                         :pk-column-name  "ID"}
+                        {:fk-table-schema "PUBLIC"
+                         :fk-table-name   "CHECKINS"
+                         :fk-column-name  "VENUE_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "VENUES"
+                         :pk-column-name  "ID"}
+                        {:fk-table-schema "PUBLIC"
+                         :fk-table-name   "ORDERS"
+                         :fk-column-name  "PRODUCT_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "PRODUCTS"
+                         :pk-column-name  "ID"}
+                        {:fk-table-schema "PUBLIC"
+                         :fk-table-name   "VENUES"
+                         :fk-column-name  "CATEGORY_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "CATEGORIES"
+                         :pk-column-name  "ID"}
+                        {:fk-table-schema "PUBLIC"
+                         :fk-table-name   "REVIEWS"
+                         :fk-column-name  "PRODUCT_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "PRODUCTS"
+                         :pk-column-name  "ID"}
+                        {:fk-table-schema "PUBLIC"
+                         :fk-table-name   "CHECKINS"
+                         :fk-column-name  "USER_ID"
+                         :pk-table-schema "PUBLIC"
+                         :pk-table-name   "USERS"
+                         :pk-column-name  "ID"}}
+                      (into
+                       #{}
+                       (#'sql-jdbc.describe-table/describe-fks-with-jdbc-metadata
+                        :h2
+                        (lib.metadata/database (mt/metadata-provider))
+                        options)))
+      {}
+      {:schema-names ["PUBLIC"]}
+      {:schema-names ["PUBLIC" "PUBLIC2"]})
+    (testing "Filter by schema/table name that does not exist, should return nothing"
+      (are [options] (= #{}
+                        (into
+                         #{}
+                         (#'sql-jdbc.describe-table/describe-fks-with-jdbc-metadata
+                          :h2
+                          (lib.metadata/database (mt/metadata-provider))
+                          options)))
+        {:schema-names ["PUBLIC2"]}
+        {:schema-names ["PUBLIC2"], :table-names ["CHECKINS"]}
+        {:table-names ["CHECKINS2"]}))
+    (testing "Filter by table name"
+      (is (= #{{:fk-table-schema "PUBLIC"
+                :fk-table-name   "CHECKINS"
+                :fk-column-name  "VENUE_ID"
+                :pk-table-schema "PUBLIC"
+                :pk-table-name   "VENUES"
+                :pk-column-name  "ID"}
+               {:fk-table-schema "PUBLIC"
+                :fk-table-name   "CHECKINS"
+                :fk-column-name  "USER_ID"
+                :pk-table-schema "PUBLIC"
+                :pk-table-name   "USERS"
+                :pk-column-name  "ID"}}
+             (into
+              #{}
+              (#'sql-jdbc.describe-table/describe-fks-with-jdbc-metadata
+               :h2
+               (lib.metadata/database (mt/metadata-provider))
+               {:table-names ["CHECKINS"]})))))))

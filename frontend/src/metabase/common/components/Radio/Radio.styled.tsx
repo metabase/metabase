@@ -148,9 +148,9 @@ export const RadioLabelText = styled.span`
 const getSchemeColor = (colorScheme: RadioColorScheme): string => {
   switch (colorScheme) {
     case "default":
-      return color("brand");
+      return color("core-brand");
     case "accent7":
-      return color("filter");
+      return color("core-filter");
   }
 };
 

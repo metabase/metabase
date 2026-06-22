@@ -2,6 +2,7 @@
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
+import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useArePluginsReady } from "embedding-sdk-bundle/hooks/private/use-are-plugins-ready";
@@ -25,6 +26,7 @@ import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
+import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { initializePlugins } from "sdk-ee-plugins";
 
@@ -44,10 +46,6 @@ let hasInitializedPlugins = false;
 /**
  * Initializes EE plugins synchronously during render
  * to avoid an extra frame where children render without plugins.
- *
- * Uses reduxStore.dispatch directly instead of the useDispatch hook,
- * since the hook-based dispatch may not be available during render.
- * This follows the same pattern as use-init-data-internal.ts.
  */
 function useInitPlugins(reduxStore: SdkStore) {
   const tokenFeatures = useSelector(
@@ -57,20 +55,25 @@ function useInitPlugins(reduxStore: SdkStore) {
   // Modular Embedding already initializes the plugins in its entrypoint.
   // We have to avoid re-initializing SDK plugins as they could override
   // some of plugins needed by EAJS
-  if (isEmbeddingEajs() || !tokenFeatures) {
-    return;
-  }
+  const shouldInitialize = !isEmbeddingEajs() && !!tokenFeatures;
 
-  if (!hasInitializedPlugins) {
+  if (shouldInitialize && !hasInitializedPlugins) {
     hasInitializedPlugins = true;
 
     initializePlugins();
   }
 
-  // Mark ready for this store instance on first render.
-  if (!reduxStore.getState().sdk?.pluginsReady) {
-    reduxStore.dispatch(setPluginsReady(true));
-  }
+  // Dispatch is deferred to an effect to avoid scheduling updates on other
+  // subscribed components mid-render (React "setState while rendering" warning).
+  useEffect(() => {
+    if (!shouldInitialize) {
+      return;
+    }
+
+    if (!reduxStore.getState().sdk?.pluginsReady) {
+      reduxStore.dispatch(setPluginsReady(true));
+    }
+  }, [shouldInitialize, reduxStore]);
 }
 
 export const ComponentProviderInternal = (
@@ -104,6 +107,7 @@ export const ComponentProviderInternal = (
   });
 
   useInitPlugins(reduxStore);
+  useInitSdkTracker(authConfig, reduxStore, locale != null);
 
   useSdkCustomLoader();
 
@@ -138,42 +142,44 @@ export const ComponentProviderInternal = (
 
   return (
     <EmotionCacheProvider>
-      <SdkThemeProvider theme={theme}>
-        <EnsureSingleInstance
-          groupId="component-providers"
-          instanceId={ensureSingleInstanceId}
-        >
-          {({ isInstanceToRender }) => (
-            <>
-              <LocaleProvider locale={locale || instanceLocale}>
-                {children}
+      <OverlayStackProvider>
+        <SdkThemeProvider theme={theme}>
+          <EnsureSingleInstance
+            groupId="component-providers"
+            instanceId={ensureSingleInstanceId}
+          >
+            {({ isInstanceToRender }) => (
+              <>
+                <LocaleProvider locale={locale || instanceLocale}>
+                  {children}
 
-                {isInstanceToRender && pluginsReady && (
-                  <ContentTranslationsProvider />
+                  {isInstanceToRender && pluginsReady && (
+                    <ContentTranslationsProvider />
+                  )}
+                </LocaleProvider>
+
+                {isInstanceToRender && (
+                  <>
+                    <Global styles={SCOPED_CSS_RESET} />
+
+                    <SdkFontsGlobalStyles
+                      baseUrl={authConfig.metabaseInstanceUrl}
+                    />
+
+                    <SdkUsageProblemDisplay
+                      authConfig={authConfig}
+                      allowConsoleLog={allowConsoleLog}
+                      isLocalHost={isLocalHost}
+                    />
+
+                    <PortalContainer />
+                  </>
                 )}
-              </LocaleProvider>
-
-              {isInstanceToRender && (
-                <>
-                  <Global styles={SCOPED_CSS_RESET} />
-
-                  <SdkFontsGlobalStyles
-                    baseUrl={authConfig.metabaseInstanceUrl}
-                  />
-
-                  <SdkUsageProblemDisplay
-                    authConfig={authConfig}
-                    allowConsoleLog={allowConsoleLog}
-                    isLocalHost={isLocalHost}
-                  />
-
-                  <PortalContainer />
-                </>
-              )}
-            </>
-          )}
-        </EnsureSingleInstance>
-      </SdkThemeProvider>
+              </>
+            )}
+          </EnsureSingleInstance>
+        </SdkThemeProvider>
+      </OverlayStackProvider>
     </EmotionCacheProvider>
   );
 };

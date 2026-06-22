@@ -159,7 +159,7 @@
   position: relative;
   display: inline-block;
   border-radius: var(--default-border-radius);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   margin-top: var(--margin-2);
   padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
 }
@@ -195,7 +195,7 @@
   font-size: 0.9em;
   z-index: 2;
   background-color: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 /* for medium breakpoint only expand if data reference is not shown */
@@ -207,7 +207,7 @@
 
 /* un-expanded (default) */
 .GuiBuilderRow {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .GuiBuilderRow:last-child {
@@ -224,7 +224,7 @@
 }
 
 .GuiBuilderView {
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
 }
 
 /* expanded */
@@ -234,11 +234,11 @@
 
 .GuiBuilder.GuiBuilderExpand .GuiBuilderRow:last-child {
   border-right-color: transparent;
-  border-bottom-color: var(--mb-color-border);
+  border-bottom-color: var(--mb-color-border-neutral);
 }
 
 .GuiBuilder.GuiBuilderExpand .GuiBuilderFilteredBy {
-  border-right-color: var(--mb-color-border);
+  border-right-color: var(--mb-color-border-neutral);
 }
 
 .GuiBuilderSection {
@@ -256,37 +256,6 @@
   padding-right: 10px;
 }
 
-/* VISUALIZATION SETTINGS */
-
-.RunButton {
-  opacity: 1;
-  transition:
-    transform 0.25s,
-    opacity 0.25s;
-}
-
-.RunButton.RunButtonCircular {
-  padding: 0.25rem 1.5rem;
-  border: none;
-
-  .RunButtonIcon {
-    transform: translateX(2px);
-  }
-}
-
-.RunButton.RunButtonHidden {
-  transform: translateY(-20px);
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion) {
-  .RunButton,
-  .RunButton.RunButtonCircular,
-  .RunButton.RunButtonHidden {
-    transition-duration: 10ms;
-  }
-}
-
 /* DATA REFERENCE */
 
 .ObjectJSON {
@@ -294,7 +263,7 @@
   overflow: scroll;
   padding: 1em;
   background-color: var(--mb-color-background-secondary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 2px;
   white-space: pre-wrap;
 }
@@ -339,7 +308,7 @@
     &:hover {
       background-color: color-mix(
         in srgb,
-        var(--mb-color-brand) 3%,
+        var(--mb-color-core-brand) 3%,
         color-mix(in srgb, var(--mb-color-background-primary) 75%, transparent)
       );
     }

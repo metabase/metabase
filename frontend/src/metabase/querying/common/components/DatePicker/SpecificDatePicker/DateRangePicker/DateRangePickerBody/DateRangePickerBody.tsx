@@ -19,6 +19,8 @@ import S from "./DateRangePickerBody.module.css";
 interface DateRangePickerBodyProps {
   value: [Date, Date];
   hasTime: boolean;
+  minDate?: Date;
+  maxDate?: Date;
   onChange: (value: [Date, Date]) => void;
   valueFormat?: string;
 }
@@ -26,6 +28,8 @@ interface DateRangePickerBodyProps {
 export function DateRangePickerBody({
   value,
   hasTime,
+  minDate,
+  maxDate,
   onChange,
   valueFormat = "LL",
 }: DateRangePickerBodyProps) {
@@ -88,6 +92,8 @@ export function DateRangePickerBody({
           className={S.FlexDateInput}
           value={startDate}
           valueFormat={valueFormat}
+          minDate={minDate}
+          maxDate={maxDate}
           popoverProps={{ opened: false }}
           aria-label={t`Start date`}
           onChange={(val) => val && handleStartDateChange(dayjs(val).toDate())}
@@ -97,6 +103,8 @@ export function DateRangePickerBody({
           className={S.FlexDateInput}
           value={endDate}
           valueFormat={valueFormat}
+          minDate={minDate}
+          maxDate={maxDate}
           popoverProps={{ opened: false }}
           aria-label={t`End date`}
           onChange={(val) => val && handleEndDateChange(dayjs(val).toDate())}
@@ -123,6 +131,8 @@ export function DateRangePickerBody({
         type="range"
         value={inProgressDateRange ?? value}
         date={displayedDate}
+        minDate={minDate}
+        maxDate={maxDate}
         numberOfColumns={2}
         allowSingleDateInRange
         onChange={handleRangeChange}

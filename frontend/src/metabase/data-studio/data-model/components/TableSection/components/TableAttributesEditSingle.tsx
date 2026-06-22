@@ -48,6 +48,9 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           owner_email: table.owner_email,
           owner_user_id: table.owner_user_id,
         });
+        if (!error) {
+          onUpdate();
+        }
         sendUndoToast(error);
       });
     }
@@ -74,6 +77,9 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           owner_email: table.owner_email,
           owner_user_id: table.owner_user_id,
         });
+        if (!error) {
+          onUpdate();
+        }
         sendUndoToast(error);
       });
     }
@@ -92,11 +98,15 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
     if (error) {
       sendErrorToast(t`Failed to update table visibility layer`);
     } else {
+      onUpdate();
       sendSuccessToast(t`Table visibility layer updated`, async () => {
         const { error } = await updateTable({
           id: table.id,
           data_layer: table.data_layer,
         });
+        if (!error) {
+          onUpdate();
+        }
         sendUndoToast(error);
       });
     }
@@ -187,18 +197,24 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           className={S.gridLabelInput}
         />
 
-        <TransformLink table={table} />
+        {table.data_source === "metabase-transform" && (
+          <TransformLink table={table} />
+        )}
       </div>
     </TableSectionGroup>
   );
 }
 function TransformLink({ table }: { table: Table }) {
   const { transform } = table;
-  const shouldShowTransform =
-    transform !== undefined && table.data_source === "metabase-transform";
 
-  if (!shouldShowTransform) {
-    return null;
+  if (!transform) {
+    return (
+      <Box
+        c="error"
+        className={S.transformLink}
+        fz="sm"
+      >{t`Transform does not exist anymore`}</Box>
+    );
   }
 
   return (
@@ -217,13 +233,13 @@ function TransformLink({ table }: { table: Table }) {
           textDecoration: "none",
         }}
         bg="background-brand"
-        c="brand"
+        c="core-brand"
       >
         <Icon name="insight" size={12} />
         <Text
           size="sm"
           fw="bold"
-          c="brand"
+          c="core-brand"
           style={{
             fontSize: 12,
             lineHeight: "16px",

@@ -37,6 +37,14 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ^:parallel hour-bucketing-time-without-database-type-test
+  (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
+                "fields referenced by name from a source query, #75193) should use TIMEFROMPARTS and "
+                "not produce a DATETIME2FROMPARTS result that requires a date component")
+    (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
+      (is (= ["TIMEFROMPARTS(DATEPART(hour, \"test_col\"), 0, 0, 0, 0)"]
+             (sql.qp/format-honeysql :sqlserver (sql.qp/date :sqlserver :hour expr)))))))
+
 (deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"
     (let [original {:joins [{:alias        "C3"
@@ -175,34 +183,34 @@
 (deftest ^:parallel dont-add-top-clauses-for-top-level-test
   (mt/test-driver :sqlserver
     (testing (str "We don't need to add TOP clauses for top-level order by. Normally we always add one anyway because "
-                  "of the max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL"))
-    ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
-    ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
-    (let [preprocessed (-> (mt/mbql-query venues
-                             {:source-query {:source-table $$venues
-                                             :fields       [$name]
-                                             :order-by     [[:asc $id]]}
-                              :order-by     [[:asc $id]]})
-                           qp.preprocess/preprocess
-                           (lib/limit nil))]
-      (mt/with-metadata-provider (mt/id)
-        (is (= {:query  ["SELECT"
-                         "  \"__mb_source\".\"name\" AS \"name\""
-                         "FROM"
-                         "  ("
-                         "    SELECT"
-                         "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                         "    FROM"
-                         "      \"dbo\".\"venues\""
-                         "    ORDER BY"
-                         "      \"dbo\".\"venues\".\"id\" ASC"
-                         "  ) AS \"__mb_source\""
-                         "ORDER BY"
-                         "  \"__mb_source\".\"id\" ASC"]
-                :params nil}
-               (-> (driver/mbql->native :sqlserver preprocessed)
-                   (update :query (fn [sql]
-                                    (str/split-lines (driver/prettify-native-form :sqlserver sql)))))))))))
+                  "of the max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL")
+      ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
+      ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
+      (let [preprocessed (-> (mt/mbql-query venues
+                               {:source-query {:source-table $$venues
+                                               :fields       [$name]
+                                               :order-by     [[:asc $id]]}
+                                :order-by     [[:asc $id]]})
+                             qp.preprocess/preprocess
+                             (lib/limit nil))]
+        (mt/with-metadata-provider (mt/id)
+          (is (= {:query  ["SELECT"
+                           "  \"__mb_source\".\"name\" AS \"name\""
+                           "FROM"
+                           "  ("
+                           "    SELECT"
+                           "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                           "    FROM"
+                           "      \"dbo\".\"venues\""
+                           "    ORDER BY"
+                           "      \"dbo\".\"venues\".\"id\" ASC"
+                           "  ) AS \"__mb_source\""
+                           "ORDER BY"
+                           "  \"__mb_source\".\"id\" ASC"]
+                  :params nil}
+                 (-> (driver/mbql->native :sqlserver preprocessed)
+                     (update :query (fn [sql]
+                                      (str/split-lines (driver/prettify-native-form :sqlserver sql))))))))))))
 
 (deftest ^:parallel max-results-should-actually-work-test
   (mt/test-driver :sqlserver
@@ -798,17 +806,14 @@
       (let [database {:lib/type :metadata/database
                       :details {:user "login_user" :role "db_user"}}]
         (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
-
     (testing "returns nil when no role is configured"
       (let [database {:lib/type :metadata/database
                       :details {:user "login_user"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
-
     (testing "returns nil even when user is 'sa'"
       (let [database {:lib/type :metadata/database
                       :details {:user "sa"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
-
     (testing "ignores user field and only uses role field"
       (let [database {:lib/type :metadata/database
                       :details {:user "login_user" :role "impersonation_user"}}]
@@ -832,7 +837,6 @@
                                          {driver-api/qp.add.source-table  (mt/id :venues)
                                           driver-api/qp.add.source-alias  "name"
                                           driver-api/qp.add.desired-alias "name"}]]}}]
-
         (is (= {:where
                 [:=
                  [::h2x/identifier :field ["JoinedCategories" "LiteralString"]]
@@ -923,3 +927,27 @@
             :sqlserver (mt/id) nil
             (fn [conn]
               (driver.sql-jdbc/set-role-statement :sqlserver conn "role'; SELECT sleep(10); --")))))))
+
+(mt/defdataset ^:private datetime-offset
+  [["datetime-offset"
+    [{:field-name "start", :base-type {:native "DATETIMEOFFSET"}}
+     {:field-name "end", :base-type {:native "DATETIMEOFFSET"}}]
+    [["2025-10-10 09:00:00 +02:00" "2025-10-10 10:00:00 +02:00"]
+     ["2025-10-11 09:15:00 +02:00" "2025-10-11 09:30:00 +02:00"]]]])
+
+(deftest ^:parallel datetime-diff-with-datetime-offset-test
+  (mt/test-driver :sqlserver
+    (mt/dataset datetime-offset
+      (let [mp (mt/metadata-provider)
+            datetime-table (lib.metadata/table mp (mt/id :datetime-offset))
+            start-col (lib.metadata/field mp (mt/id :datetime-offset :start))
+            end-col (lib.metadata/field mp (mt/id :datetime-offset :end))
+            diff-minutes (lib/expression-clause :datetime-diff
+                                                [start-col end-col :minute]
+                                                nil)]
+        (is (= [[1 "2025-10-10T07:00:00Z" "2025-10-10T08:00:00Z" 60]
+                [2 "2025-10-11T07:15:00Z" "2025-10-11T07:30:00Z" 15]]
+               (-> (lib/query mp datetime-table)
+                   (lib/expression "diff-minutes" diff-minutes)
+                   (qp/process-query)
+                   (mt/rows))))))))

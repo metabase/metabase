@@ -255,7 +255,6 @@
           (is (=? [tag [:field 12 nil] "ABC" {:case-sensitive false}]
                   (lib.convert/->legacy-MBQL
                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC"]))))))
-
       (testing "with multiple arguments (MBQL 5 style)"
         (testing "->mbql5"
           (is (=? [tag {:lib/uuid string?} [:field {} 12] "ABC" "HJK" "XYZ"]
@@ -264,7 +263,6 @@
                    [:field {} 12] "ABC" "HJK" "XYZ"]
                   (lib.convert/->mbql5 [tag {:case-sensitive false}
                                         [:field 12 nil] "ABC" "HJK" "XYZ"]))))
-
         (testing "->legacy-MBQL"
           (is (=? [tag {} [:field 12 nil] "ABC" "HJK" "XYZ"]
                   (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC" "HJK" "XYZ"])))
@@ -574,7 +572,6 @@
               :breakout [[:field 1677 nil]]
               :source-table 517}
       :type :query}))
-
   (test-round-trip
    {:database 67
     :query {:aggregation [[:aggregation-options
@@ -881,7 +878,6 @@
     {:type :query
      :database 1}
     {:type :query})
-
   (is (nil? (-> {:database 1
                  :type :query
                  :query {:source-table 224
@@ -1666,3 +1662,17 @@
                                     ["case"
                                      [[["<" ["aggregation" 0 {"base-type" "type/Float"}] 0.591] "60%"]]]
                                     {"name" "A", "display-name" "B"}]))))
+
+(deftest ^:parallel legacy-query-from-inner-query-test
+  (is (=? {:database 1
+           :native   {:query         "SELECT * FROM table WHERE {{checkin_date}};"
+                      :template-tags {}}
+           :type     :native}
+          (lib.convert/legacy-query-from-inner-query
+           1
+           {:native        "SELECT * FROM table WHERE {{checkin_date}};"
+            :template-tags {"checkin_date" {:name         "checkin_date"
+                                            :display-name "Checkin Date"
+                                            :type         :dimension
+                                            :widget-type  :date/all-options
+                                            :dimension    [:field 2 nil]}}}))))

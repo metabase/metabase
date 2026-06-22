@@ -50,7 +50,6 @@
  ;; Limit — metabase.query-processor.middleware.limit
  [qp.limit
   disable-max-results]
-
  ;; Pivot — metabase.query-processor.pivot
  [qp.pivot
   run-pivot-query]

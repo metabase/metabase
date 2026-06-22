@@ -273,23 +273,19 @@
                 :query    {:expressions {"expr" [:abs [:get-year [:field (mt/id :times :dt) nil]]]}
                            :filter      [:= [:field (mt/id :times :index) nil] 1]
                            :fields      [[:expression "expr"]]}}
-
                {:title     "Nested with arithmetic"
                 :expected  [4008]
                 :query     {:expressions {"expr" [:* [:get-year [:field (mt/id :times :dt) nil]] 2]}
                             :filter      [:= [:field (mt/id :times :index) nil] 1]
                             :fields      [[:expression "expr"]]}}
-
                {:title    "Filter using the extracted result - equality"
                 :expected [1]
                 :query    {:filter [:= [:get-year [:field (mt/id :times :dt) nil]] 2004]
                            :fields [[:field (mt/id :times :index) nil]]}}
-
                {:title    "Filter using the extracted result - comparable"
                 :expected [1]
                 :query    {:filter [:< [:get-year [:field (mt/id :times :dt) nil]] 2005]
                            :fields [[:field (mt/id :times :index) nil]]}}
-
                {:title    "Nested expression in fitler"
                 :expected [1]
                 :query    {:filter [:= [:* [:get-year [:field (mt/id :times :dt) nil]] 2] 4008]
@@ -306,7 +302,6 @@
                 :query    {:expressions {"expr" [:abs [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]]]}
                            :filter      [:= [:field (mt/id :times :index) nil] 1]
                            :fields      [[:expression "expr"]]}}
-
                {:title    "Interval addition nested in numeric addition"
                 :expected [2006]
                 :query    {:expressions {"expr" [:+ [:get-year [:+ [:field (mt/id :times :dt) nil] [:interval 1 :year]]] 1]}
@@ -377,6 +372,37 @@
           (mt/with-temporary-setting-values [start-of-week :monday]
             (is (= [1 1 2 2 2 2 2 2 2 1]
                    (test-extract-week (mt/id :weeks :d) :instance)))))))))
+
+(deftest day-of-week-preserves-null-test
+  (testing "day-of-week breakout should preserve NULL inputs, not bucket them into day 7 (#76107)"
+    ;; The bug only manifests when the offset between `start-of-week` and the driver's `db-start-of-week`
+    ;; is non-zero. Iterating over all 7 settings guarantees we hit a non-zero offset on every driver.
+    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions)
+      (mt/dataset daily-bird-counts
+        (let [mp          (mt/metadata-provider)
+              bird-count  (lib.metadata/table mp (mt/id :bird-count))
+              date-field  (lib.metadata/field mp (mt/id :bird-count :date))
+              count-field (lib.metadata/field mp (mt/id :bird-count :count))
+              ;; `nullable_date` = `date` when `count` is not NULL, otherwise NULL.
+              ;; The `daily-bird-counts` dataset has 5 rows with NULL `count`.
+              base        (-> (lib/query mp bird-count)
+                              (lib/expression "nullable_date"
+                                              (lib/case [[(lib/not-null count-field) date-field]])))
+              expr-col    (->> (lib/breakoutable-columns base)
+                               (filter (comp #{:source/expressions} :lib/source))
+                               first)
+              query       (-> base
+                              (lib/aggregate (lib/count))
+                              (lib/breakout (lib/with-temporal-bucket expr-col :day-of-week)))]
+          (doseq [start-of-week [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]]
+            (mt/with-temporary-setting-values [start-of-week start-of-week]
+              (testing (str "start-of-week = " start-of-week)
+                (let [rows (mt/formatted-rows [identity int] (qp/process-query query))]
+                  (testing (str "rows = " (pr-str rows))
+                    (is (some (comp nil? first) rows)
+                        "NULL date should produce a NULL day-of-week bucket")
+                    (is (= 5 (some (fn [[dow cnt]] (when (nil? dow) cnt)) rows))
+                        "the NULL day-of-week bucket should hold the 5 rows whose date is NULL")))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Date arithmetics tests                                            |
@@ -468,6 +494,26 @@
                                :breakout    [[:expression "expr"]]}}]]
             (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
               (is (= (set expected) (set (test-datetime-math query)))))))))))
+
+(deftest ^:parallel datetime-arithmetic-expression-temporal-bucket-in-breakout-test
+  (testing "Breaking out by a datetime-arithmetic expression with a `:temporal-unit` truncates the value (#27808)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
+      (mt/dataset times-mixed
+        (let [mp     (mt/metadata-provider)
+              times  (lib.metadata/table mp (mt/id :times))
+              dt     (lib.metadata/field mp (mt/id :times :dt))
+              base   (-> (lib/query mp times)
+                         (lib/expression "shifted" (lib/datetime-subtract dt 2 :year)))
+              query  (-> base
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (-> (lib/expression-ref base "shifted")
+                                           (lib/with-temporal-bucket :year))))]
+          (is (= #{["2002-01-01T00:00:00Z" 1]
+                   ["2006-01-01T00:00:00Z" 1]
+                   ["2010-01-01T00:00:00Z" 2]}
+                 (set (mt/formatted-rows
+                       [u.date/temporal-str->iso8601-str int]
+                       (qp/process-query query))))))))))
 
 (deftest temporal-arithmetic-with-literal-date-test
   (mt/with-temporary-setting-values [start-of-week   :sunday
@@ -600,12 +646,10 @@
                   :expected [2006 2010 2014]
                   :query    {:expressions {"expr" [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]]}
                              :fields      [[:expression "expr"]]}}
-
                  {:title    "Nested date math twice"
                   :expected ["2006-05-19 09:19:09" "2010-08-20 10:20:10" "2015-01-21 11:21:11"]
                   :query    {:expressions {"expr" [:datetime-add [:datetime-add [:field (mt/id :times :dt) nil] 2 :year] 2 :month]}
                              :fields      [[:expression "expr"]]}}
-
                  {:title    "filter with date math"
                   :expected [1]
                   :query    {:filter [:= [:get-year [:datetime-add [:field (mt/id :times :dt) nil] 2 :year]] 2006]
@@ -1049,7 +1093,6 @@
                       (let [a-str "2022-10-02T01:00:00+01:00"  ; 2022-10-01T23:00:00-01:00 <- datetime in report-timezone offset
                             b-str "2022-10-03T00:00:00Z"
                             units [:second :minute :hour :day :week :month :quarter :year]]
-
                         (->> (mt/run-mbql-query times
                                {:filter [:and [:= a-str $a_dt_tz_text] [:= b-str $b_dt_tz_text]]
                                 :expressions (into {} (for [unit units]

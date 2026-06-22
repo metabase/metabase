@@ -29,7 +29,7 @@ export const CardAlerts = ({ alerts, fullWidth }: CardAlertsProps) => {
           color={match(alert.severity)
             .with("error", () => "error" as const)
             .with("warning", () => "warning" as const)
-            .otherwise(() => "brand" as const)}
+            .otherwise(() => "core-brand" as const)}
           variant="light"
         >
           {alert.message}

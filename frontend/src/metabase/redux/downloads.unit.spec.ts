@@ -1,4 +1,4 @@
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import Question from "metabase-lib/v1/Question";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -8,6 +8,7 @@ import {
   getChartFileName,
   getDatasetDownloadUrl,
   getDatasetParams,
+  readDownloadBlob,
 } from "./downloads";
 
 describe("getDatasetResponse", () => {
@@ -32,7 +33,7 @@ describe("getDatasetResponse", () => {
   describe("subpath deployment", () => {
     /**
      * We will assert that the result is a relative path without subpath.
-     * Because this URL will be pass to `frontend/src/metabase/api/legacy-client.ts`
+     * Because this URL will be pass to `frontend/src/metabase/api/client`
      * which already takes care of the subpath (api.basename)
      */
     const origin = "http://localhost";
@@ -126,6 +127,46 @@ describe("getDatasetParams - embed question (token-based)", () => {
 
     const url = new URLSearchParams(downloadParams.params);
     expect(JSON.parse(url.get("parameters") ?? "")).toEqual({});
+  });
+});
+
+describe("getDatasetParams - public question (uuid-based)", () => {
+  const PUBLIC_UUID = "11111111-2222-3333-4444-555555555555";
+  const question = new Question(createMockCard({ id: 1 }), undefined);
+  const result = createMockDataset();
+
+  it("forwards format_rows and pivot_results to the public question endpoint (#75545)", () => {
+    const downloadParams = getDatasetParams({
+      type: "xlsx",
+      question,
+      result,
+      uuid: PUBLIC_UUID,
+      enableFormatting: true,
+      enablePivot: true,
+    });
+
+    const url = new URLSearchParams(downloadParams.params);
+    expect(url.get("format_rows")).toBe("true");
+    expect(url.get("pivot_results")).toBe("true");
+  });
+});
+
+describe("readDownloadBlob", () => {
+  it("returns the blob when the response reads to completion", async () => {
+    const blob = new Blob(["a,b,c"], { type: "text/csv" });
+    const response = { blob: () => Promise.resolve(blob) } as Response;
+
+    await expect(readDownloadBlob(response)).resolves.toBe(blob);
+  });
+
+  it("surfaces a localized error when the stream was aborted mid-download", async () => {
+    const response = {
+      blob: () => Promise.reject(new TypeError("Failed to fetch")),
+    } as unknown as Response;
+
+    await expect(readDownloadBlob(response)).rejects.toThrow(
+      "The download was interrupted and the file may be incomplete. Please try again.",
+    );
   });
 });
 

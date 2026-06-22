@@ -1,6 +1,6 @@
 (ns metabase.lib.validate-test
   (:require
-   [clojure.test :refer [deftest ^:parallel is testing]]
+   [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -173,6 +173,46 @@
                 :source-entity-id 101
                 :name "missingcol2"}}
              (set errors))))))
+
+(deftest ^:parallel find-bad-refs-with-source-inactive-source-table-test
+  (testing "a query whose `:source-table` is inactive returns a missing-table error attributing the table"
+    (let [orders (meta/table-metadata :orders)
+          query  (-> (lib.tu/mock-metadata-provider
+                      meta/metadata-provider
+                      {:tables [(assoc orders :active false)]})
+                     (lib/query orders))]
+      (is (= #{{:type               :missing-table
+                :source-entity-type :table
+                :source-entity-id   (meta/id :orders)}}
+             (lib/find-bad-refs-with-source query)))))
+  (testing "a query on an active source table has no source-table errors"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (empty? (lib/find-bad-refs-with-source query)))))
+  (testing "a query whose `:source-table` can't be resolved (deleted table) is flagged, not thrown"
+    (let [orders-query           (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          query-on-deleted-table (-> (lib.tu/mock-metadata-provider
+                                      {:database (lib.metadata/database meta/metadata-provider)
+                                       :tables   [(meta/table-metadata :products)]})
+                                     (lib/query orders-query))]
+      (is (= #{{:type               :missing-table
+                :source-entity-type :table
+                :source-entity-id   (meta/id :orders)}}
+             (lib/find-bad-refs-with-source query-on-deleted-table))))))
+
+(deftest ^:parallel find-bad-refs-with-source-deleted-source-card-test
+  (let [card-id        101
+        products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+        card-query     (as-> (lib.tu/metadata-provider-with-card-from-query
+                              meta/metadata-provider card-id products-query) provider
+                         (lib/query provider (lib.metadata/card provider card-id)))]
+    (testing "a query on a resolvable source card has no source-card errors"
+      (is (empty? (lib/find-bad-refs-with-source card-query))))
+    (testing "a query whose `:source-card` resolves to nil (deleted card) returns a missing-card error"
+      (let [query-on-deleted-card (lib/query meta/metadata-provider card-query)]
+        (is (= #{{:type               :missing-card
+                  :source-entity-type :card
+                  :source-entity-id   card-id}}
+               (lib/find-bad-refs-with-source query-on-deleted-card)))))))
 
 (deftest ^:parallel find-bad-refs-with-source-multi-stage-test
   (testing "invalid query referencing previous stage has no source"

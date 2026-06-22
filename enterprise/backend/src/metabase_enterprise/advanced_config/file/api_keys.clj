@@ -69,12 +69,10 @@
                                            {:name name})))
             prefix       (api-key/prefix (u.secret/expose unhashed-key))
             creator      (get-admin-user-by-email creator)]
-
         ;; Check if there's an existing API key with the same prefix
         (when (t2/exists? :model/ApiKey :key_prefix prefix)
           (throw (ex-info (format "API key with prefix '%s' already exists. Keys must have unique prefixes." prefix)
                           {:name name :prefix prefix})))
-
         (log/info (u/format-color :green "Creating new API key %s" (pr-str name)))
         ;; Create a user for the API key
         (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))

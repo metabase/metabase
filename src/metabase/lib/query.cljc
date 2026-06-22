@@ -96,24 +96,23 @@
        (:database query)
        (boolean (can-run-method query card-type))))
 
-(defmulti can-save-method
+(defmulti can-save?-method
   "Returns whether the query can be saved based on first stage :lib/type."
   {:arglists '([query card-type])}
   (fn [query _card-type]
     (:lib/type (lib.util/query-stage query 0))))
 
-(defmethod can-save-method :default
+(defmethod can-save?-method :default
   [_query _card-type]
   true)
 
-;;; TODO FIXME -- boolean functions should end in `?`
-(mu/defn can-save :- :boolean
+(mu/defn can-save? :- :boolean
   "Returns whether `query` for a card of `card-type` can be saved."
   [query :- ::lib.schema/query
    card-type :- ::lib.schema.metadata/card.type]
   (and (lib.metadata/editable? query)
        (can-run query card-type)
-       (boolean (can-save-method query card-type))))
+       (boolean (can-save?-method query card-type))))
 
 (mu/defn can-preview :- :boolean
   "Returns whether the query can be previewed.
@@ -142,14 +141,14 @@
           (if (some #{:mbql/stage-metadata} &parents)
             &match
             (update &match 1 merge
-                   ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
-                   ;;       case no change is performed. Find a way how to handle this properly!
+                    ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
+                    ;;       case no change is performed. Find a way how to handle this properly!
                     (when-not (and (some? (:base-type options))
                                    (not= (:base-type options)
                                          (:base-type (lib.metadata/field metadata-provider id))))
-                     ;; Following key is used to track which base-types we added during `query` call. It is used in
-                     ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
-                     ;; as legacy -> MBQL 5 -> legacy looks closer to the original.
+                      ;; Following key is used to track which base-types we added during `query` call. It is used in
+                      ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
+                      ;; as legacy -> MBQL 5 -> legacy looks closer to the original.
                       (merge (when-not (contains? options :base-type)
                                {:lib/transformation-added-base-type true})
                              (-> (lib.metadata/field metadata-provider id)

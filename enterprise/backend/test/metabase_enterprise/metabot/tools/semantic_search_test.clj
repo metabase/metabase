@@ -42,11 +42,9 @@
                          :name "Sales Dashboard"
                          :description "Dashboard for sales"
                          :verified true}]
-
           (with-redefs [perms/impersonated-user? (fn [] false)
                         perms/sandboxed-user? (fn [] false)
                         api/*current-user-id* 1]
-
             (testing "search returns postprocessed results for term queries"
               (with-redefs [search-core/search (fn [_] {:data [order-table]})]
                 (let [args {:term-queries ["orders"]
@@ -54,7 +52,6 @@
                       results (search/search args)
                       expected [(#'search/postprocess-search-result order-table)]]
                   (is (= expected results)))))
-
             (testing "search returns postprocessed results for semantic queries"
               (with-redefs [search-core/search (fn [_] {:data [dashboard]})]
                 (let [args {:semantic-queries ["sales metrics"]
@@ -62,7 +59,6 @@
                       results (search/search args)
                       expected [(#'search/postprocess-search-result dashboard)]]
                   (is (= expected results)))))
-
             (testing "search combines term and semantic queries using RRF"
               (with-redefs [search-core/search (fn [context]
                                                  (if (= (:search-string context) "orders")
@@ -72,29 +68,26 @@
                             :semantic-queries ["sales"]
                             :entity-types ["table" "dashboard"]}
                       results (search/search args)]
-                   ;; Should return both results combined via RRF
+                  ;; Should return both results combined via RRF
                   (is (= 2 (count results)))
                   (is (some #(= (:id %) 1) results))
                   (is (some #(= (:id %) 2) results)))))
-
             (testing "search applies RRF to overlapping results"
               (with-redefs [search-core/search (fn [_]
                                                  {:data [order-table dashboard]})]
                 (let [args {:term-queries ["orders" "sales"]
                             :entity-types ["table" "dashboard"]}
                       results (search/search args)]
-                   ;; Both queries return same results, RRF should boost them
+                  ;; Both queries return same results, RRF should boost them
                   (is (= 2 (count results)))
                   (is (some #(= (:id %) 1) results))
                   (is (some #(= (:id %) 2) results)))))
-
             (testing "search handles empty results"
               (with-redefs [search-core/search (fn [_] {:data []})]
                 (let [args {:term-queries ["nonexistent"]
                             :entity-types ["table"]}
                       results (search/search args)]
                   (is (empty? results)))))
-
             (testing "search with metabot verified content flag"
               (let [metabot {:entity_id "test-bot"
                              :use_verified_content true}]

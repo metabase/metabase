@@ -61,7 +61,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
                 status={item.extra.moderatedStatus}
                 filled
                 size={14}
-                color="brand"
+                color="core-brand"
                 style={{
                   verticalAlign: "text-bottom",
                 }}

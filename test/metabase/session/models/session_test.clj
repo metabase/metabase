@@ -64,7 +64,7 @@
                                           metabase.login-history.record/maybe-send-login-from-new-device-email
                                           (fn [login-history]
                                             (when-let [futur (original-maybe-send login-history)]
-                                ;; block in tests
+                                              ;; block in tests
                                               (u/deref-with-timeout futur 10000)))]
                 (mt/with-temp [:model/LoginHistory _ {:user_id   user-id
                                                       :device_id (str (random-uuid))}
@@ -76,7 +76,6 @@
                     :device_id device
                     :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"
                     :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"})
-
                   (is (malli= [:sequential {:min 1}
                                [:map {:closed true}
                                 [:from ms/Email]
@@ -91,21 +90,20 @@
                     (testing (format "\nMessage = %s\nsite-url = %s" (pr-str message) (pr-str site-url))
                       (is (string? message))
                       (when (string? message)
-                        (doseq [expected-str [(format "We've noticed a new login on your <a href=\"%s\">Metabase</a> account."
-                                                      (or site-url ""))
-                                              (format "We noticed a login on your <a href=\"%s\">Metabase</a> account from a new device."
-                                                      (or site-url ""))
+                        (doseq [expected-str ["We've noticed a new login on your Metabase account."
+                                              (format "Hi, %s. We noticed a login on your Metabase account from a new device."
+                                                      first-name)
                                               "Browser (Chrome/Windows) - San Francisco, California, United States"
                                               ;; `format-human-readable` has slightly different output on different JVMs
                                               (u.date/format-human-readable #t "2021-04-02T15:52:00-07:00[US/Pacific]")]]
                           (is (str/includes? message expected-str))))))
-
                   (testing "don't send email on subsequent login from same device"
                     (mt/reset-inbox!)
                     (mt/with-temp [:model/LoginHistory _ {:user_id user-id, :device_id device}]
                       (is (= {}
-                             @mt/inbox))))))))))))
+                             @mt/inbox)))))))))))))
 
+(deftest send-email-on-first-login-from-new-device-test-2
   (testing "don't send email if the setting is disabled by setting MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE=FALSE"
     (mt/with-temp [:model/User {user-id :id}]
       (mt/with-fake-inbox
@@ -129,7 +127,7 @@
                                                           metabase.login-history.record/maybe-send-login-from-new-device-email
                                                           (fn [login-history]
                                                             (when-let [futur (original-maybe-send login-history)]
-                                                ;; block in tests
+                                                              ;; block in tests
                                                               (u/deref-with-timeout futur 10000)))]
                                 (let [device (str (random-uuid))]
                                   (mt/with-temp [:model/LoginHistory _ {:user_id   user-id
@@ -148,12 +146,10 @@
                                     email :email} {:first_name "Ngoc"
                                                    :last_name  "Khuat"}]
           (is (contains? (new-login-email user-id email) "We've Noticed a New Metabase Login, Ngoc"))))
-
       (testing "fallback to last name if user has no first_name"
         (mt/with-temp [:model/User {user-id :id email :email} {:first_name nil :last_name  "Khuat"}]
           (is (contains? (new-login-email user-id email)
                          "We've Noticed a New Metabase Login, Khuat"))))
-
       (testing "Else Use email if both first_name and last_name are null"
         (mt/with-temp [:model/User {user-id :id email :email} {:first_name nil
                                                                :last_name  nil

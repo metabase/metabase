@@ -56,7 +56,7 @@
 (defn- create-card!
   "Checks that the query is runnable by the current user then saves"
   [{query :dataset_query :as card} creator]
-  (query-perms/check-run-permissions-for-query query)
+  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
   (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
 
 (mu/defn- update-cards-in-ast :- [:map [:document :any]
@@ -219,7 +219,6 @@
     (api/write-check existing-document)
     (when (api/column-will-change? :collection_id existing-document body)
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
-
     ;; Handle archiving logic
     (let [document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
       (t2/with-transaction [_conn]
@@ -456,7 +455,7 @@
        [:pivot_results {:default false} ms/BooleanValue]]]
   (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
-   card-id export-format
+   (api/check-404 (t2/select-one :model/Card card-id)) export-format
    :parameters  (cond-> parameters
                   (string? parameters) json/decode+kw)
    :constraints nil

@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
    [metabase.pivot.core :as pivot]
-   [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -60,29 +60,6 @@
                                 string))
                (when must-quote (.write writer "\"")))))
 
-(defn get-formatter
-  "Returns a memoized formatter for a column"
-  [timezone settings format-rows?]
-  (memoize
-   (fn [column]
-     (formatter/create-formatter timezone column settings format-rows?))))
-
-(defn- create-formatters
-  [columns indexes timezone settings format-rows?]
-  (let [formatter-fn (get-formatter timezone settings format-rows?)]
-    (mapv (fn [idx]
-            (let [column (nth columns idx)
-                  formatter (formatter-fn column)]
-              (fn [value]
-                (formatter (streaming.common/format-value value)))))
-          indexes)))
-
-(defn- make-formatters
-  [columns row-indexes col-indexes val-indexes settings timezone format-rows?]
-  {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)
-   :col-formatters (create-formatters columns col-indexes timezone settings format-rows?)
-   :val-formatters (create-formatters columns val-indexes timezone settings format-rows?)})
-
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer                  (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
@@ -94,7 +71,7 @@
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
         (let [col-names            (vec (streaming.common/column-titles ordered-cols viz-settings format-rows?))
-              pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index col-names)]
+              pivot-grouping-index (pivot.postprocess/pivot-grouping-index col-names)]
           (cond
             (and pivot? pivot-export-options)
             (vreset! pivot-data
@@ -109,10 +86,8 @@
             ;; removed from the exported data
             pivot-export-options
             (vreset! pivot-data {:pivot-grouping-index pivot-grouping-index}))
-
           (vreset! ordered-formatters
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
-
           ;; Write the column names for non-pivot tables
           (when (or (not pivot?) (not enable-pivoted-exports?))
             (let [header (m/remove-nth (or pivot-grouping-index (inc (count col-names))) col-names)]
@@ -130,7 +105,7 @@
             (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
             (if pivot-group
               ;; Non-pivoted pivot table: we have to remove the pivot-grouping column
-              (when (= qp.pivot.postprocess/non-pivot-row-group (int pivot-group))
+              (when (= pivot.postprocess/non-pivot-row-group (int pivot-group))
                 (let [formatted-row (->> (mapv (fn [formatter r]
                                                  (formatter (streaming.common/format-value r)))
                                                @ordered-formatters ordered-row)
@@ -147,8 +122,8 @@
           (let [{:keys [data settings timezone format-rows? pivot-export-options]} @pivot-data
                 {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
                 columns (pivot/columns-without-pivot-group (:cols data))
-                formatters (make-formatters columns pivot-rows pivot-cols pivot-measures settings timezone format-rows?)
-                output (qp.pivot.postprocess/build-pivot-output
+                formatters (formatter/make-formatters columns pivot-rows pivot-cols pivot-measures settings timezone format-rows?)
+                output (pivot.postprocess/build-pivot-output
                         (update-in @pivot-data [:data :rows] persistent!)
                         formatters)]
             (doseq [xf-row output]

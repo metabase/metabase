@@ -48,7 +48,7 @@ export function BrowseMetrics() {
   const isEmpty = !isLoading && !error && !metrics?.length;
   const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
 
-  const libraryMetricCollection =
+  const { data: libraryMetricCollection } =
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-metrics",
     });

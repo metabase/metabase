@@ -9,10 +9,10 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { Databases } from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { UploadFileProps } from "metabase/redux/uploads";
 import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type {
@@ -48,12 +48,8 @@ export function CollectionContent({
 
   const canCreateUploadInDb = useSelector(
     (state) =>
-      uploadDbId &&
-      Databases.selectors
-        .getObject(state, {
-          entityId: uploadDbId,
-        })
-        ?.canUpload(),
+      uploadDbId != null &&
+      !!getMetadata(state).database(uploadDbId)?.canUpload(),
   );
 
   const isAdmin = useSelector(getUserIsAdmin);

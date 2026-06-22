@@ -240,16 +240,16 @@
     (if (and
          (empty? (lib.core/aggregations a-query stage-number))
          (empty? (lib.core/breakouts a-query stage-number)))
-    ;; No extra stage needed with no aggregations.
+      ;; No extra stage needed with no aggregations.
       #js {:query      a-query
            :stageIndex stage-number}
-    ;; An extra stage is needed, so see if one already exists.
+      ;; An extra stage is needed, so see if one already exists.
       (if-let [next-stage (->> (lib.util/canonical-stage-index a-query stage-number)
                                (lib.util/next-stage-number a-query))]
-      ;; Already an extra stage, so use it.
+        ;; Already an extra stage, so use it.
         #js {:query      a-query
              :stageIndex next-stage}
-      ;; No new stage, so append one.
+        ;; No new stage, so append one.
         #js {:query      (lib.core/append-stage a-query)
              :stageIndex -1}))))
 
@@ -1789,10 +1789,10 @@
   > **Code health:** Healthy"
   [a-query stage-number expression-position]
   (lib.cache/side-channel-cache
-    ;; Caching is based on both the stage and expression position, since they can return different sets.
-    ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
-    ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
-    ;; support that currently.
+   ;; Caching is based on both the stage and expression position, since they can return different sets.
+   ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
+   ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
+   ;; support that currently.
    (keyword "expressionable-columns" (str "stage-" stage-number "-" expression-position)) a-query
    (fn [_]
      (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
@@ -1810,10 +1810,10 @@
   > **Code health:** Healthy"
   [a-query stage-number expression-position]
   (lib.cache/side-channel-cache
-    ;; Caching is based on both the stage and expression position, since they can return different sets.
-    ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
-    ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
-    ;; support that currently.
+   ;; Caching is based on both the stage and expression position, since they can return different sets.
+   ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
+   ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
+   ;; support that currently.
    (keyword "aggregable-columns" (str "stage-" stage-number "-" expression-position)) a-query
    (fn [_]
      (to-array (lib.core/aggregable-columns a-query stage-number expression-position)))))
@@ -2676,7 +2676,7 @@
    (lib.cache/side-channel-cache
     (keyword "can-save" card-type) a-query
     (fn [_]
-      (lib.core/can-save a-query (keyword card-type))))))
+      (lib.core/can-save? a-query (keyword card-type))))))
 
 (defn ^:export ensure-filter-stage
   "Adds an empty stage to `query` if its last stage contains both breakouts and aggregations.

@@ -39,17 +39,17 @@
 
 (deftest comment-should-not-overwrite-custom-description-test
   (testing (str "test changing the description in metabase db so we can check it is not overwritten by comment in "
-                "source db when resyncing"))
-  (mt/test-drivers #{:h2 :postgres}
-    (mt/dataset update-desc
-      (mt/with-temp-copy-of-db
-        ;; change the description in metabase while the source table comment remains the same
-        (t2/update! :model/Field {:id (mt/id "update_desc" "updated_desc")}, {:description "updated description"})
-        ;; now sync the DB again, this should NOT overwrite the manually updated description
-        (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
-        (is (= #{{:name (mt/format-name "id"), :description nil}
-                 {:name (mt/format-name "updated_desc"), :description "updated description"}}
-               (db->fields (mt/db))))))))
+                "source db when resyncing")
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/dataset update-desc
+        (mt/with-temp-copy-of-db
+          ;; change the description in metabase while the source table comment remains the same
+          (t2/update! :model/Field {:id (mt/id "update_desc" "updated_desc")}, {:description "updated description"})
+          ;; now sync the DB again, this should NOT overwrite the manually updated description
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id "update_desc")))
+          (is (= #{{:name (mt/format-name "id"), :description nil}
+                   {:name (mt/format-name "updated_desc"), :description "updated description"}}
+                 (db->fields (mt/db)))))))))
 
 (tx/defdataset ^:private comment-after-sync
   [["comment_after_sync"
@@ -117,7 +117,7 @@
             added-comment (mt/random-name)
             dbdef (basic-table table-name nil)]
         (mt/dataset dbdef
-         ;; create the comment
+          ;; create the comment
           (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                          [(sql.tx/standalone-table-comment-sql
                            driver/*driver*

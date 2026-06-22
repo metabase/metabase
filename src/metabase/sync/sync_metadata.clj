@@ -60,16 +60,35 @@
    ;; Sync the metabase metadata table if it exists.
    (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))])
 
+(mu/defn- sync-db-metadata!*
+  "Shared core of [[sync-db-metadata!]] and [[sync-db-metadata-explicit!]]: the metadata sync work,
+  without the surrounding `*-sync-operation` wrapper (which is what applies the eligibility gating)."
+  [database :- i/DatabaseInstance]
+  (let [db-metadata (try
+                      (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
+                        (fetch-metadata/db-metadata database))
+                      (catch Throwable e
+                        (sync-util/set-initial-database-sync-aborted! database)
+                        (throw e)))]
+    (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata))
+      (if (some sync-util/abandon-sync? (map second (:steps <>)))
+        (sync-util/set-initial-database-sync-aborted! database)
+        (sync-util/set-initial-database-sync-complete! database)))))
+
 (mu/defn sync-db-metadata!
-  "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
+  "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized.
+  Subject to the `disable-auto-sync` setting; for an explicit user-requested sync use
+  [[sync-db-metadata-explicit!]]."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
-    (let [db-metadata (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
-                        (fetch-metadata/db-metadata database))]
-      (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata))
-        (if (some sync-util/abandon-sync? (map second (:steps <>)))
-          (sync-util/set-initial-database-sync-aborted! database)
-          (sync-util/set-initial-database-sync-complete! database))))))
+    (sync-db-metadata!* database)))
+
+(mu/defn sync-db-metadata-explicit!
+  "Like [[sync-db-metadata!]], but for an explicit, user-requested sync (e.g. the Sync-now button):
+  runs even when the `disable-auto-sync` setting is enabled."
+  [database :- i/DatabaseInstance]
+  (sync-util/explicit-sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
+                                     (sync-db-metadata!* database)))
 
 (mu/defn sync-table-metadata!
   "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."

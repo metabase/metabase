@@ -301,7 +301,7 @@ const ErrorAlert = ({
       styles={{
         root: {
           backgroundColor: "transparent",
-          border: "1px solid var(--mb-color-border)",
+          border: "1px solid var(--mb-color-border-neutral)",
         },
         wrapper: {
           alignItems: "flex-start",

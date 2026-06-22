@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -19,6 +20,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -74,6 +76,7 @@
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
 (defmethod driver/database-supports? [:sql-jdbc :jdbc/statements] [_driver _feature _db] true)
+(defmethod driver/database-supports? [:sql-jdbc :jdbc/set-query-timeout] [_driver _feature _db] true)
 
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
@@ -113,14 +116,11 @@
   [driver database & {:as args}]
   (sql-jdbc.sync/describe-indexes driver database args))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :sql-jdbc
-  [driver database table]
-  (sql-jdbc.sync/describe-table-fks driver database table))
-
-(defmethod driver/describe-fks :sql-jdbc
-  [driver database & {:as args}]
-  (sql-jdbc.sync/describe-fks driver database args))
+(mu/defmethod driver/describe-fks :sql-jdbc :- ::driver/describe-fks.result
+  [driver          :- :keyword
+   database        :- ::lib.schema.metadata/database
+   & {:as options} :- ::driver/describe-fks.options]
+  (sql-jdbc.sync/describe-fks driver database options))
 
 (defmethod driver/describe-table-indexes :sql-jdbc
   [driver database table]
@@ -413,35 +413,39 @@
   [driver database test-table]
   (let [test-workspace {:id   perm-check-workspace-id
                         :name "_mb_perm_check_"}]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     database
-     {:write? true}
-     (fn [^Connection conn]
-       (.setAutoCommit conn false)
-       (try
-         (let [init-result (try
-                             (driver/init-workspace-isolation! driver database test-workspace)
-                             (catch Exception e
-                               (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE SCHEMA/USER): {0}"
-                                                    (ex-message e))
-                                               {:step :init} e))))
-               workspace-with-details (merge test-workspace init-result)]
-           (when test-table
+    (driver.conn/with-admin-connection
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       {:write? true}
+       (fn [^Connection conn]
+         (.setAutoCommit conn false)
+         (try
+           (let [init-result (try
+                               (driver/init-workspace-isolation! driver database test-workspace)
+                               (catch Exception e
+                                 (throw (ex-info (tru "Failed to initialize workspace isolation (CREATE SCHEMA/USER): {0}"
+                                                      (ex-message e))
+                                                 {:step :init} e))))
+                 workspace-with-details (merge test-workspace init-result)]
+             (when test-table
+               (try
+                 ;; `grant-workspace-read-access!` takes a vector of schema-name
+                 ;; strings; per-table grants no longer exist.
+                 (driver/grant-workspace-read-access! driver database workspace-with-details
+                                                      [(:schema test-table)])
+                 (catch Exception e
+                   (throw (ex-info (tru "Failed to grant read access to schema {0}: {1}"
+                                        (:schema test-table) (ex-message e))
+                                   {:step :grant :table test-table} e)))))
              (try
-               (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+               (driver/destroy-workspace-isolation! driver database workspace-with-details)
                (catch Exception e
-                 (throw (ex-info (tru "Failed to grant read access to table {0}.{1}: {2}"
-                                      (:schema test-table) (:name test-table) (ex-message e))
-                                 {:step :grant :table test-table} e)))))
-           (try
-             (driver/destroy-workspace-isolation! driver database workspace-with-details)
-             (catch Exception e
-               (throw (ex-info (tru "Failed to destroy workspace isolation (DROP SCHEMA/USER): {0}"
-                                    (ex-message e))
-                               {:step :destroy} e)))))
-         nil
-         (catch Exception e
-           (ex-message e))
-         (finally
-           (.rollback conn)))))))
+                 (throw (ex-info (tru "Failed to destroy workspace isolation (DROP SCHEMA/USER): {0}"
+                                      (ex-message e))
+                                 {:step :destroy} e)))))
+           nil
+           (catch Exception e
+             (ex-message e))
+           (finally
+             (.rollback conn))))))))

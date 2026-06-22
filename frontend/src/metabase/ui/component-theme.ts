@@ -211,7 +211,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
         textColor: "var(--mb-color-text-secondary)",
         backgroundColor: "var(--mb-color-background-secondary)",
         hoverTextColor: "var(--mb-color-text-primary-inverse)",
-        hoverBackgroundColor: "var(--mb-color-brand)",
+        hoverBackgroundColor: "var(--mb-color-core-brand)",
       },
     },
     emptyContent: {
@@ -243,7 +243,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       textColor: "var(--mb-color-text-primary)",
     },
     idColumn: {
-      textColor: "var(--mb-color-brand)",
+      textColor: "var(--mb-color-core-brand)",
     },
   },
   pivotTable: {

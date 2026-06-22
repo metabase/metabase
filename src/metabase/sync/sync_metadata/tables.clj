@@ -20,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -170,6 +171,43 @@
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
+(def ^:private table-name-max-length
+  "Maximum length of the `metabase_table.name` column in the application DB (a `varchar(256)`). Tables whose name is
+  longer than this can't be stored.
+
+  As with Fields, an alternative would be to widen the column, but `name` is part of the `idx_unique_table` unique
+  constraint whose key also includes the `varchar(254)` schema helper, so on MySQL/InnoDB there's only room to grow
+  `name` to roughly `varchar(512)` — still short of e.g. BigQuery's 1024-character table names. Truncating is not an
+  option either: `name` is the real warehouse table name used to generate SQL."
+  256)
+
+(def ^:private table-schema-max-length
+  "Maximum length of the `metabase_table.schema` column in the application DB (a `varchar(254)`). Tables in a
+  schema/dataset whose name is longer than this can't be stored — BigQuery dataset names, for instance, can be up to
+  1024 characters."
+  254)
+
+(defn- table-name-or-schema-too-long?
+  "Whether `table`'s name or schema is too long to store in the application DB (see `table-name-max-length` /
+  `table-schema-max-length`)."
+  [{table-name :name, table-schema :schema}]
+  (or (< table-name-max-length (count table-name))
+      (< table-schema-max-length (count (or table-schema "")))))
+
+(mu/defn- remove-tables-with-too-long-names :- [:set i/DatabaseMetadataTable]
+  "Drop any tables in `db-metadata-tables` whose name or schema is too long to store in the application DB (see
+  `table-name-max-length` / `table-schema-max-length`), logging a warning. A single over-long table name or schema
+  would otherwise abort creation of all remaining new tables for the database."
+  [database           :- i/DatabaseInstance
+   db-metadata-tables :- [:set i/DatabaseMetadataTable]]
+  (let [{too-long true, ok false} (group-by table-name-or-schema-too-long? db-metadata-tables)]
+    (when (seq too-long)
+      (log/warnf "Skipping %d Table(s) in %s whose name or schema is too long to store: %s"
+                 (count too-long)
+                 (sync-util/name-for-logging database)
+                 (pr-str (sort (map (fn [{:keys [schema name]}] (str schema "." name)) too-long)))))
+    (set ok)))
+
 (mu/defn- create-or-reactivate-tables!
   "Create `new-tables` for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance
@@ -177,7 +215,7 @@
   (doseq [table-metadata new-table-metadatas]
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
-  (doseq [table-metadata new-table-metadatas]
+  (doseq [table-metadata (sort-by (juxt :schema :name) new-table-metadatas)]
     (create-or-reactivate-table! database table-metadata)))
 
 (mu/defn- retire-tables!
@@ -326,7 +364,6 @@
         archived (atom 0)]
     (doseq [table tables-to-archive
             :let [new-name (str (:name table) suffix)]]
-
       (if (> (count new-name) 256)
         (log/warnf "Cannot archive table %s, name too long" (:name table))
         (do
@@ -364,6 +401,16 @@
    ;; determine what's changed between what info we have and what's in the DB
    (let [driver                (driver.u/database->driver database)
          db-table-metadatas    (table-set db-metadata)
+         ;; drop tables whose names can't be stored in the app DB before they reach an INSERT and abort creation of
+         ;; the remaining new tables for this database
+         db-table-metadatas    (remove-tables-with-too-long-names database db-table-metadatas)
+         ;; DEV-1898: workspace-isolated tables (`ws_*`) live on the warehouse but must not
+         ;; become :model/Table rows. They back canonical Tables via remap, not their own identity.
+         db-table-metadatas    (ws.table-remapping/filter-workspace-side-tables db-table-metadatas (:id database))
+         ;; Inject synthetic canonical-side tuples for any remap whose to-side is materialized.
+         ;; Without this, the diff retires canonical Table rows whose physical backing only
+         ;; exists at the workspace location (not at the canonical name on the warehouse).
+         db-table-metadatas    (ws.table-remapping/inject-workspace-canonical-tuples db-table-metadatas (:id database))
          name+schema           #(select-keys % [:name :schema])
          name+schema->db-table (m/index-by name+schema db-table-metadatas)
          our-metadata          (db->our-metadata database)
@@ -384,7 +431,6 @@
      (sync-util/with-error-handling (format "Error updating table schemas for %s"
                                             (sync-util/name-for-logging database))
        (adjust-table-schemas! database schemas-to-update))
-
      ;; update database metadata from database
      (when (some? (:version db-metadata))
        (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
@@ -400,14 +446,11 @@
      (when (seq old-table-metadatas)
        (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
          (retire-tables! database old-table-metadatas)))
-
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
        ;; we need to fetch the tables again because we might have retired tables in the previous steps
        (update-tables-metadata-if-needed! db-table-metadatas (db->our-metadata database) database))
-
      (let [archived-tables (sync-util/with-error-handling (format "Error archiving tables for %s"
                                                                   (sync-util/name-for-logging database))
                              (archive-tables! database))]
-
        {:updated-tables (+ (count new-table-metadatas) (count old-table-metadatas) (or archived-tables 0))
         :total-tables   (count our-metadata)}))))

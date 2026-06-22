@@ -45,8 +45,8 @@
         {:model "FieldUserSettings" :id "1"}))
 
 (defmethod serdes/dependencies "FieldUserSettings" [fv]
-  ;; Take the path, but drop the FieldUserSettings section at the end, to get the parent Field's path instead.
-  [(pop (serdes/path fv))])
+  (let [db-path (first (serdes/path fv))]
+    [[db-path]]))
 
 (defmethod serdes/load-find-local "FieldUserSettings" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldUserSettings.

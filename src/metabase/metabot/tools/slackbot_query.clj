@@ -1,7 +1,11 @@
 (ns metabase.metabot.tools.slackbot-query
   "Slackbot-specific notebook query tool.
   Like construct-notebook-query-tool but emits adhoc_viz data parts
-  instead of creating charts. Does not save or navigate."
+  instead of creating charts. Does not save or navigate.
+
+  This tool consumes the same MBQL 5 portable representations format (JSON, validated against
+  `::lib.schema/external-query`) as the main `construct_notebook_query` tool and shares its
+  prompt."
   (:require
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
@@ -12,11 +16,15 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private slackbot-query-schema
+  "Slackbot variant of `construct_notebook_query`. Same self-describing JSON query as the main
+  tool (`:query` is a `::lib.schema/external-query` map), plus `:title` and `:display` for the
+  Slack visualization wrapper.
+
+  The query body carries the database identity via its first stage's `source-table:` /
+  `source-card:`, so the schema deliberately omits `:source_entity` and `:referenced_entities`."
   [:map {:closed true}
    [:reasoning :string]
-   [:source_entity [:map [:type :string] [:id :int]]]
-   [:referenced_entities {:optional true} [:maybe [:sequential [:map [:type :string] [:id :int]]]]]
-   [:program construct/construct-program-schema]
+   [:query :map]
    [:title {:optional true} [:maybe :string]]
    [:display {:optional true
               :description "Visualization type for displaying the query results in Slack. Required in practice whenever the user asks for a chart or graph, and it must match any requested chart type. Valid values: 'table', 'bar', 'line', 'pie', 'area', 'row', 'scatter', 'funnel'. Use requested chart types like 'line', 'bar', 'area', 'pie', 'scatter', 'funnel', 'row', or 'table' when they fit the query. Omitting this field falls back to Metabase's default table display, so do not omit it for chart or graph requests. Only omit it when you intentionally want a plain table and the user did not request a chart type."}
@@ -25,10 +33,15 @@
 (mu/defn ^{:tool-name "construct_notebook_query"
            :scope     scope/agent-notebook-create}
   slackbot-construct-notebook-query-tool
-  "Construct a notebook query from a metric, model, or table. The query results will be rendered as a visualization in Slack."
-  [{:keys [_reasoning source_entity referenced_entities program title display]} :- slackbot-query-schema]
+  "Construct a notebook query from a metric, model, or table. The query results will be
+  rendered as a visualization in Slack.
+
+  See `resources/metabot/prompts/tools/construct_notebook_query.md` for the JSON format the
+  `:query` argument must follow — the prompt is shared with the main `construct_notebook_query`
+  tool."
+  [{:keys [_reasoning query title display]} :- slackbot-query-schema]
   (try
-    (let [query-result (construct/execute-program source_entity referenced_entities program)
+    (let [query-result (construct/execute-representations-query query)
           structured   (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [metabase-link (streaming/query->question-url (:query structured) display)

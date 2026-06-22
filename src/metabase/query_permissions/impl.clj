@@ -283,12 +283,15 @@
                         {:query query}))))))
 
 (defn- has-perm-for-db?
+  "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm db-id]
   (perms/at-least-as-permissive? perm-type
                                  (perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
                                  required-perm))
 
 (defn- has-perm-for-table?
+  "Checks that the current user has the permissions for tables specified in `table-id->perm`. Returns true if access
+  is allowed, otherwise false."
   [perm-type table-id->required-perm db-id]
   (every? (fn [[table-id required-perm]]
             (perms/user-has-permission-for-table?
@@ -366,19 +369,19 @@
                                 {:card-id card-id}))))))
 
 (defn check-data-perms
-  "Checks whether the current user has sufficient view data and query permissions to run `query`."
+  "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
+  user has perms for the query, and throws an exception otherwise (exceptions can be disabled by setting
+  `throw-exceptions?` to `false`)."
   [query required-perms & {:keys [throw-exceptions?]
                            :or   {throw-exceptions? true}}]
   (try
     (when-let [paths (:paths required-perms)]
       (or (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* paths)
           (throw (perms-exception paths))))
-
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
     (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
               (not (has-perm-for-query? query :perms/create-queries required-perms)))
       (throw (perms-exception required-perms)))
-
     true
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?
@@ -391,11 +394,9 @@
   (try
     (let [required-perms (required-perms-for-query query)]
       (check-data-perms query required-perms)
-
       ;; Check card read permissions for any cards referenced in subqueries!
       (doseq [card-id (:card-ids required-perms)]
         (check-card-read-perms database-id card-id))
-
       true)
     (catch clojure.lang.ExceptionInfo _e
       false)))

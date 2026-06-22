@@ -12,7 +12,7 @@
   padding: 1.25rem 1.5rem 1rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
 }
 
 .inputContainer {
@@ -23,10 +23,10 @@
   border-radius: 0.5rem;
   box-shadow: 0 3px 6px 0 #0000000d;
   min-height: 3rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 
   &:focus-within {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
   }
 }
 
@@ -34,18 +34,28 @@
   background: var(--mb-color-background-secondary);
 }
 
+.messagesScrollArea {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
 .messagesContainer {
-  padding: 1rem 1rem 1.5rem;
+  padding: var(--metabot-chat-messages-padding-top, 1rem) 0 1.5rem;
   height: 100%;
   display: flex;
   flex-direction: column;
   overflow: auto;
+  scrollbar-gutter: stable both-edges;
 }
 
 .messages {
   display: flex;
   flex-direction: column;
-  padding-inline: 0.5rem;
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
 }
 
 .messageContainer {
@@ -58,7 +68,7 @@
 .messageContainerUser {
   align-items: flex-end;
   align-self: flex-end;
-  max-width: 90%;
+  max-width: min(100%, 46.5rem);
   min-width: 6rem;
   width: fit-content;
 }
@@ -78,7 +88,7 @@
 .messageUser {
   padding: 0.5rem 1rem;
   border-radius: 1rem;
-  background: var(--mb-color-background-tertiary);
+  background: var(--mb-color-background-secondary);
   max-width: 100%;
   overflow: hidden;
 }
@@ -129,6 +139,10 @@
    * this prevents a jump once suggestions have loaded in most cases */
   min-height: 106px;
   flex-shrink: 0;
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
 }
 
 .promptSuggestionButton {
@@ -146,4 +160,7 @@
 
 .textInputContainer {
   padding: 0 1rem 1rem;
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
 }

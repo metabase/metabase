@@ -89,6 +89,14 @@
   :encryption :no
   :default (* 1000 60 5))
 
+(defsetting remote-sync-git-timeout-seconds
+  (deferred-tru "Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.")
+  :type :integer
+  :visibility :authenticated
+  :export? false
+  :encryption :no
+  :default 60)
+
 (def ^:const transforms-root-id
   "Sentinel value for the virtual Transforms root collection.
    Used to represent the entire transforms feature being enabled/disabled."
@@ -181,7 +189,6 @@
                  (str/starts-with? remote-sync-url "https://"))
      (throw (ex-info "Invalid repository URL: only HTTPS URLs are supported (e.g., https://git-host.example.com/yourcompany/repo.git)"
                      {:url remote-sync-url})))
-
    (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token nil)]
      (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))

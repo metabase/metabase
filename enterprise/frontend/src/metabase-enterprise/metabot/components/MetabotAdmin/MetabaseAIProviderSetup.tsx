@@ -2,17 +2,17 @@ import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useMetabotSetupContext } from "metabase/admin/ai/MetabotSetup";
 import {
   useRefreshTokenStatusMutation,
   useUpdateMetabotSettingsMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
+import { useAIProviderConfigurationContext } from "metabase/metabot";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getStoreUsers } from "metabase/selectors/store-users";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Anchor,
   Box,
@@ -65,7 +65,7 @@ export function MetabaseAIProviderSetup({
     !!hasPremiumFeature(METABOT_V3_FEATURE);
   const isConfigured = !!useSetting("llm-metabot-configured?");
 
-  const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const [updateMetabotSettings, updateMetabotSettingsResult] =
     useUpdateMetabotSettingsMutation();
@@ -107,7 +107,7 @@ export function MetabaseAIProviderSetup({
     hasMetabaseManagedAiProviderFeature,
     hasDeprecatedMetabaseAiProvider,
     isConfigured,
-    isStoreUser,
+    isAdmin,
   })
     .with({ isConfigured: true }, () => null)
     .with({ hasMetabaseManagedAiProviderFeature: true }, () => handleConnect)
@@ -116,7 +116,7 @@ export function MetabaseAIProviderSetup({
       { hasMetabaseManagedAiProviderFeature: false, hasAcceptedTerms: false },
       () => null,
     )
-    .with({ isStoreUser: false }, () => null)
+    .with({ isAdmin: false }, () => null)
     .otherwise(() => handleMetabasePurchase);
 
   const onDisconnect = useCallback(async () => {
@@ -164,8 +164,8 @@ export function MetabaseAIProviderSetup({
     removeCloudAddOn,
   ]);
 
-  const { isLoading, handleDisconnect, resetProvider, isModal } =
-    useMetabotSetupContext(connectAction, onDisconnect);
+  const { isMutating, handleDisconnect, resetProvider, isModal } =
+    useAIProviderConfigurationContext(connectAction, onDisconnect);
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(
@@ -228,7 +228,7 @@ export function MetabaseAIProviderSetup({
             hasDeprecatedMetabaseAiProvider,
             hasMetabaseManagedAiProviderFeature,
             offerMetabaseManagedAi,
-            isStoreUser,
+            isAdmin,
           })
             .with(
               {
@@ -244,16 +244,15 @@ export function MetabaseAIProviderSetup({
             )
             .with({ hasDeprecatedMetabaseAiProvider: true }, () => null)
             .with({ hasMetabaseManagedAiProviderFeature: true }, () => null)
-            .with({ isStoreUser: false }, () => (
+            .with({ isAdmin: false }, () => (
               <Text fw="bold">
-                {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
-                {t`Please ask a Metabase Store Admin${anyStoreUserEmailAddress && ` (${anyStoreUserEmailAddress})`} of your organization to enable this for you.`}
+                {t`Please ask an Admin user to enable this for you.`}
               </Text>
             ))
             .otherwise(() => (
               <Checkbox
                 checked={hasAcceptedTerms}
-                disabled={isLoading}
+                disabled={isMutating}
                 onChange={(event) =>
                   setHasAcceptedTerms(event.currentTarget.checked)
                 }
@@ -382,7 +381,7 @@ function MetabaseManagedProviderCard({
               ) : (
                 <Flex align="center" justify="space-between" gap="md">
                   <Skeleton h="1rem" w="7rem" />
-                  <Box flex={1} h={1} bg="border" />
+                  <Box flex={1} h={1} bg="border-neutral" />
                   <Skeleton h="1rem" w="8rem" />
                 </Flex>
               )}
@@ -403,7 +402,7 @@ function MetabaseManagedProviderCard({
               ) : (
                 <Flex align="center" justify="space-between" gap="md">
                   <Skeleton h="1rem" w="7rem" />
-                  <Box flex={1} h={1} bg="border" />
+                  <Box flex={1} h={1} bg="border-neutral" />
                   <Skeleton h="1rem" w="8rem" />
                 </Flex>
               )}
@@ -428,7 +427,7 @@ function MetabaseUsageRow({ label, value }: { label: string; value: string }) {
         h={1}
         style={{
           alignSelf: "end",
-          borderBottom: "1px dotted var(--mb-color-border)",
+          borderBottom: "1px dotted var(--mb-color-border-neutral)",
         }}
       />
       <Text lh={1} fw="500">
@@ -470,7 +469,7 @@ function MetabasePricingRow({
         h={1}
         style={{
           alignSelf: "end",
-          borderBottom: "1px dotted var(--mb-color-border)",
+          borderBottom: "1px dotted var(--mb-color-border-neutral)",
         }}
       />
       <Text lh={1} fw="500">

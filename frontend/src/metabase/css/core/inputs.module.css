@@ -1,5 +1,5 @@
 :root {
-  --input-border-color: var(--mb-color-border);
+  --input-border-color: var(--mb-color-border-neutral);
   --input-border-radius: 8px;
 }
 
@@ -22,7 +22,7 @@
 
 .input:focus {
   outline: none;
-  border: 1px solid var(--mb-color-brand);
+  border: 1px solid var(--mb-color-core-brand);
   transition: border 0.3s linear;
   color: var(--mb-color-text-primary);
 }

@@ -51,6 +51,7 @@ function LibraryPageContent() {
   const { treeTableInstance, isChildrenLoading, isLoading, emptyMessage } =
     useLibraryTreeTableInstance({
       collections,
+      isLoadingCollections,
       searchQuery,
       onPublishTableClick: openPublishTableModal,
     });

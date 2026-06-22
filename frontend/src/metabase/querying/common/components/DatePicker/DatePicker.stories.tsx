@@ -5,10 +5,9 @@ import { userEvent, within } from "@storybook/test";
 import { merge } from "icepick";
 import { type ComponentProps, useEffect } from "react";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -16,17 +15,13 @@ import { Box, Popover } from "metabase/ui";
 
 import { DatePicker } from "./DatePicker";
 
-import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import "metabase/embedding/theme.module.css";
 
 const storeInitialState = createMockState({
   settings: mockSettings(),
   entities: createMockEntitiesState({}),
 });
-const store = getStore(
-  publicReducers,
-  storeInitialState,
-  [],
-) as unknown as Store<State>;
+const store = getPublicStore(storeInitialState, []) as unknown as Store<State>;
 
 const ReduxDecorator = (Story: StoryFn) => {
   return (

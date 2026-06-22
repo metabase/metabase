@@ -1,9 +1,9 @@
 import type {
   CollectionContentTableColumn,
   CollectionContentTableColumnsMap,
-} from "metabase/collections/components/CollectionContent";
-import type { OnToggleSelectedWithItem } from "metabase/collections/types";
-import { isRootTrashCollection } from "metabase/collections/utils";
+} from "metabase/common/collections/columns";
+import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
+import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { type BreakpointName, breakpoints } from "metabase/ui/theme";
 import type { Collection } from "metabase-types/api";

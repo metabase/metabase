@@ -58,7 +58,7 @@
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
   {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
-                                            {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
+  {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
   com.taoensso/encore                       {:mvn/version "3.160.1"}            ; Utilities library (used by Nippy)
   com.taoensso/nippy                        {:mvn/version "3.6.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
@@ -113,7 +113,7 @@
   org.apache.commons/commons-compress           {:mvn/version "1.28.0"}             ; compression utils
   org.apache.commons/commons-lang3              {:mvn/version "3.20.0"}             ; helper methods for working with java.lang stuff
   org.apache.datasketches/datasketches-java     ^:antq/exclude                      ; Sketching algorithms (used for fingerprinting)
-                                                {:mvn/version "7.0.1"}              ; version is fixed to ensure JDK21 compatibility.
+  {:mvn/version "7.0.1"}              ; version is fixed to ensure JDK21 compatibility.
   org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.4.4"}              ; pinned: ClickHouse JDBC 0.9.7 needs httpcore5 5.3.4+; must pair with httpclient5 5.4.x
   org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.3.5"}              ; pinned: ClickHouse JDBC 0.9.7 requires URIBuilder.optimize() added in 5.3
   org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.3.5"}              ; pinned: must match httpcore5 version
@@ -126,12 +126,13 @@
   {:mvn/version "2.25.4"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
   {:mvn/version "2.25.4"}             ; allows the slf4j2 API to work with log4j 2
+  org.apache.pdfbox/pdfbox                  {:mvn/version "3.0.5"}              ; PDF generation (backend dashboard PDF prototype)
   org.apache.poi/poi                        {:mvn/version "5.5.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.5.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
   org.apache.poi/poi-ooxml-full             {:mvn/version "5.5.1"}
-  org.apache.sshd/sshd-core                 {:mvn/version "3.0.0-M2"              ; ssh tunneling and test server
+  org.apache.sshd/sshd-core                 {:mvn/version "2.16.0"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "3.2.3"}
@@ -211,7 +212,7 @@
   weavejester/dependency                    {:mvn/version "1.0.0"}              ; Dependency graphs and topological sorting
   xerces/xercesImpl                         {:mvn/version "2.12.2"}}            ; SAX2 parser, transient dependency of batik
 
-;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  ;; !!         PLEASE KEEP NEW DEPENDENCIES ABOVE ALPHABETICALLY ORGANIZED AND ADD COMMENTS EXPLAINING THEM.         !!
  ;; !!                            *PLEASE DO NOT* ADD NEW ONES TO THE BOTTOM OF THE LIST.                            !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -292,7 +293,7 @@
     ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
-   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
+   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
@@ -497,7 +498,6 @@
     "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/clickhouse/test"
     "modules/drivers/databricks/test"
-    "modules/drivers/druid/test"
     "modules/drivers/druid-jdbc/test"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/test"
@@ -561,8 +561,6 @@
     "modules/drivers/databricks/test"
     "modules/drivers/druid-jdbc/src"
     "modules/drivers/druid-jdbc/test"
-    "modules/drivers/druid/src"
-    "modules/drivers/druid/test"
     "modules/drivers/hive-like/src"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/src"
@@ -600,7 +598,6 @@
                 "modules/drivers/bigquery-cloud-sdk/src"
                 "modules/drivers/clickhouse/src"
                 "modules/drivers/databricks/src"
-                "modules/drivers/druid/src"
                 "modules/drivers/druid-jdbc/src"
                 "modules/drivers/hive-like/src"
                 "modules/drivers/mongo/src"
@@ -626,7 +623,6 @@
                                  "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/clickhouse/src"
                                  "modules/drivers/databricks/src"
-                                 "modules/drivers/druid/src"
                                  "modules/drivers/druid-jdbc/src"
                                  "modules/drivers/hive-like/src"
                                  "modules/drivers/mongo/src"
@@ -773,10 +769,9 @@
   ;;    ./bin/mage cljfmt-all
   ;;
   ;; ./bin/mage cljfmt-all -h for more info
-  :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:mvn/version "0.15.3"}}
-   :ns-default cljfmt.tool
-   :exec-fn    cljfmt.tool/fix}
+  ;;
+  ;; (this doc was here because we previously had a `:cljfmt` alias here, now specified in `bb.edn`, but leaving these
+  ;; dox here in case anyone comes looking for it -- Cam
 
 ;;; building Uberjar, build and release scripts
 
@@ -947,7 +942,7 @@
   {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
                       "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
 
-;; test all MBQL related stuff: Lib, the legacy shared `metabase.legacy-mbql` code, and the QP
+  ;; test all MBQL related stuff: Lib, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql
@@ -1007,4 +1002,4 @@
     "-Dmb.db.connection.uri=jdbc:mysql://localhost:3307/metabase_test?user=root&password="]}}}
 
 ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
-  ;; on them all from a single REPL process.
+;; on them all from a single REPL process.

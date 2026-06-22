@@ -45,7 +45,7 @@
 
   &[data-variant="default"] {
     color: var(--mb-color-text-primary);
-    border-color: var(--mb-color-border);
+    border-color: var(--mb-color-border-neutral);
     background-color: var(--mb-color-background-primary);
 
     &[aria-pressed="true"],
@@ -85,7 +85,7 @@
   }
 
   &[data-variant="visualizer"] {
-    --button-color: var(--mb-color-brand);
+    --button-color: var(--mb-color-core-brand);
     --button-color-hover: var(--mb-color-background-hover);
 
     border-radius: 8px;
@@ -122,7 +122,7 @@
 
   &[data-variant="inverse"] {
     /* need to implement variantColorResolver to support other colors */
-    --button-color: var(--mb-color-brand);
+    --button-color: var(--mb-color-core-brand);
     --button-color-hover: var(--mb-color-background-hover);
 
     display: flex;
@@ -160,7 +160,7 @@
   &:disabled,
   &:disabled:hover {
     color: var(--mb-color-text-tertiary);
-    border-color: var(--mb-color-border);
+    border-color: var(--mb-color-border-neutral);
     background-color: var(--mb-color-background-disabled);
   }
 }

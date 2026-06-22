@@ -2,15 +2,17 @@ import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
-import { snippetApi } from "metabase/api";
+import { databaseApi, snippetApi } from "metabase/api";
+import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
 import * as CardLib from "metabase/common/utils/card";
-import { Databases } from "metabase/entities/databases";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
+import * as metadataActions from "metabase/redux/metadata";
 import * as sharedQB from "metabase/redux/query-builder";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -91,7 +93,7 @@ async function baseSetup({
   jest.runAllTimers();
 
   const actions = dispatch.mock.calls.find(
-    (call) => call[0]?.type === "metabase/qb/INITIALIZE_QB",
+    (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
   );
   const hasDispatchedInitAction = Array.isArray(actions);
   const result = hasDispatchedInitAction ? actions[0].payload : null;
@@ -170,9 +172,19 @@ const NATIVE_QUESTION_WITH_SNIPPET: NativeDatasetQuery = {
   },
 };
 
+// Silence `console.warn` / `console.error` at module load so that describe-body
+// invocations of `setErrorPage(...)` (which logs via `console.error`) don't
+// produce noise. `beforeAll` would fire too late — describes are registered
+// during module evaluation.
+const originalWarn = console.warn;
+const originalError = console.error;
+console.warn = jest.fn();
+console.error = jest.fn();
+
 describe("QB Actions > initializeQB", () => {
-  beforeAll(() => {
-    console.warn = jest.fn();
+  afterAll(() => {
+    console.warn = originalWarn;
+    console.error = originalError;
   });
 
   afterEach(() => {
@@ -639,10 +651,6 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("does not load snippets if missing DB write permissions", async () => {
-          Databases.selectors.getObject = jest.fn().mockReturnValue({
-            native_permissions: "none",
-          });
-
           const { initiateSpy } = await setupSnippets({
             hasDatabaseWritePermission: false,
           });
@@ -668,30 +676,30 @@ describe("QB Actions > initializeQB", () => {
     });
   });
 
+  function startInitializeDB(
+    card: Card,
+    dispatch: jest.Mock,
+    getState: () => ReturnType<typeof createMockState>,
+  ) {
+    return initializeQB(getLocationForCard(card), getQueryParamsForCard(card))(
+      dispatch,
+      getState,
+    );
+  }
+
+  function makeState() {
+    const state = createMockState({
+      entities: createMockEntitiesState({
+        databases: [createSampleDatabase()],
+      }),
+      currentUser: createMockUser({
+        permissions: createMockUserPermissions({ can_create_queries: true }),
+      }),
+    });
+    return { state, getState: () => state };
+  }
+
   describe("staleness / overlapping initializeQB calls", () => {
-    function startInit(
-      card: Card,
-      dispatch: jest.Mock,
-      getState: () => ReturnType<typeof createMockState>,
-    ) {
-      return initializeQB(
-        getLocationForCard(card),
-        getQueryParamsForCard(card),
-      )(dispatch, getState);
-    }
-
-    function makeState() {
-      const state = createMockState({
-        entities: createMockEntitiesState({
-          databases: [createSampleDatabase()],
-        }),
-        currentUser: createMockUser({
-          permissions: createMockUserPermissions({ can_create_queries: true }),
-        }),
-      });
-      return { state, getState: () => state };
-    }
-
     it("aborts a stale initializeQB once a newer one is in flight", async () => {
       const firstCard = createSavedStructuredCard({ id: 1, name: "first" });
       const secondCard = createSavedStructuredCard({ id: 2, name: "second" });
@@ -713,11 +721,15 @@ describe("QB Actions > initializeQB", () => {
       fetchMock.get(`path:/api/card/${secondCard.id}`, secondCard);
 
       // First init: hangs on loadCard
-      const firstInit = startInit(firstCard as Card, dispatch, getState);
+      const firstInit = startInitializeDB(
+        firstCard as Card,
+        dispatch,
+        getState,
+      );
       await Promise.resolve();
 
       // Second init runs to completion, superseding the first
-      await startInit(secondCard as Card, dispatch, getState);
+      await startInitializeDB(secondCard as Card, dispatch, getState);
       jest.runAllTimers();
 
       // Unblock the first init; it should bail out once it sees the version
@@ -727,7 +739,7 @@ describe("QB Actions > initializeQB", () => {
       jest.runAllTimers();
 
       const initActions = dispatch.mock.calls.filter(
-        (call) => call[0]?.type === "metabase/qb/INITIALIZE_QB",
+        (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
       );
       expect(initActions).toHaveLength(1);
       expect(initActions[0][0].payload.card.id).toBe(secondCard.id);
@@ -764,10 +776,14 @@ describe("QB Actions > initializeQB", () => {
       fetchMock.get(`path:/api/card/${firstCard.id}`, firstCard);
       fetchMock.get(`path:/api/card/${secondCard.id}`, secondCard);
 
-      const firstInit = startInit(firstCard as Card, dispatch, getState);
+      const firstInit = startInitializeDB(
+        firstCard as Card,
+        dispatch,
+        getState,
+      );
       await Promise.resolve();
 
-      await startInit(secondCard as Card, dispatch, getState);
+      await startInitializeDB(secondCard as Card, dispatch, getState);
       jest.runAllTimers();
 
       resolveFirstLoad(firstCard as Card);
@@ -778,6 +794,40 @@ describe("QB Actions > initializeQB", () => {
         expect.objectContaining({ data: { error_code: "archived" } }),
       );
       expect(dispatch).not.toHaveBeenCalledWith(archiveError);
+    });
+  });
+
+  describe("database list preload", () => {
+    it("loads the database list before dispatching INITIALIZE_QB so the data selector mounts with a complete list (metabase#75173)", async () => {
+      const card = createSavedStructuredCard({ id: 1, name: "first" });
+      const { getState } = makeState();
+      const dispatch = jest.fn((action) => action);
+
+      jest.spyOn(cardActions, "loadCard").mockResolvedValue(card);
+
+      const databasesRequest = defer();
+      const runRtkEndpointSpy = jest
+        .spyOn(rtkEndpointUtils, "runRtkEndpoint")
+        .mockReturnValue(databasesRequest.promise);
+
+      const initializeDBPromise = startInitializeDB(card, dispatch, getState);
+
+      expect(runRtkEndpointSpy).toHaveBeenCalledWith(
+        { "can-query": true },
+        dispatch,
+        databaseApi.endpoints.listDatabases,
+        { forceRefetch: false },
+      );
+      expect(dispatch).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: sharedQB.INITIALIZE_QB }),
+      );
+
+      databasesRequest.resolve();
+      await initializeDBPromise;
+
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: sharedQB.INITIALIZE_QB }),
+      );
     });
   });
 
@@ -908,6 +958,68 @@ describe("QB Actions > initializeQB", () => {
         user: createMockUser({ is_qbnewb: true }),
       });
       expect(result.uiControls.isShowingNewbModal).toBeFalsy();
+    });
+  });
+
+  describe("table route (/table/:slug)", () => {
+    function setupTableRoute(
+      tableId: TableId,
+      opts: Omit<BaseSetupOpts, "location" | "params"> = {},
+    ) {
+      const slug = `${tableId}-orders`;
+      const location: LocationDescriptorObject = {
+        pathname: `/table/${slug}`,
+        hash: "",
+        query: {},
+      };
+      return baseSetup({ location, params: { slug }, ...opts });
+    }
+
+    it("builds the table's default ad-hoc question from the slug", async () => {
+      const { result, metadata } = await setupTableRoute(ORDERS_ID);
+      const expectedCard = checkNotNull(
+        metadata.table(ORDERS_ID)?.question().card(),
+      );
+
+      expect(
+        Lib.areLegacyQueriesEqual(
+          result.card.dataset_query,
+          expectedCard.dataset_query,
+        ),
+      ).toBe(true);
+      expect(result.originalCard).toBeUndefined();
+    });
+
+    it("treats the slug as a table, not a saved card (does not load a card)", async () => {
+      const loadCardSpy = jest.spyOn(cardActions, "loadCard");
+      await setupTableRoute(ORDERS_ID);
+      expect(loadCardSpy).not.toHaveBeenCalled();
+    });
+
+    it("renders an unsaved (ad-hoc) question", async () => {
+      const { result } = await setupTableRoute(ORDERS_ID);
+      expect(result.card.id).toBeUndefined();
+      expect(result.card.displayIsLocked).toBeFalsy();
+    });
+
+    it("fetches database metadata for schema breadcrumbs (metabase#75393)", async () => {
+      const fetchDatabaseMetadataSpy = jest.spyOn(
+        metadataActions,
+        "fetchDatabaseMetadata",
+      );
+
+      await setupTableRoute(ORDERS_ID);
+
+      expect(fetchDatabaseMetadataSpy).toHaveBeenCalledWith(SAMPLE_DB_ID);
+    });
+
+    it("shows a not-found error for an unknown table", async () => {
+      const { dispatch } = await setupTableRoute(999999);
+      expect(dispatch).toHaveBeenCalledWith(
+        setErrorPage(
+          expect.objectContaining({ data: { error_code: "not-found" } }),
+        ),
+      );
     });
   });
 });

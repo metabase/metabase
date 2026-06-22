@@ -4,14 +4,14 @@ import { type ComponentType, type ReactNode, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken, useGetTableQuery } from "metabase/api";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
-import { Tables } from "metabase/entities/tables";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { connect, useSelector } from "metabase/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";
-import type { ConcreteTableId, Segment, Table } from "metabase-types/api";
+import type { ConcreteTableId, Segment } from "metabase-types/api";
 
 type LocationWithQuery = Location<{
   table?: string;
@@ -76,20 +76,17 @@ export function FilteredToUrlTable(
   return connect(null, { push })(Inner);
 }
 
-type TableSelectorInnerProps = {
-  table?: Table & {
-    // Attributes from entity framework object wrapper
-    displayName(): string;
-  };
+type TableSelectorProps = {
   tableId: ConcreteTableId | null;
   setTableId: (tableId: ConcreteTableId | null) => void;
 };
 
-function TableSelectorInner({
-  table,
-  tableId,
-  setTableId,
-}: TableSelectorInnerProps) {
+function TableSelector({ tableId, setTableId }: TableSelectorProps) {
+  useGetTableQuery(tableId != null ? { id: tableId } : skipToken);
+  const table = useSelector((state) =>
+    tableId != null ? getMetadata(state).table(tableId) : null,
+  );
+
   return (
     <FieldSet
       noPadding
@@ -129,9 +126,3 @@ function TableSelectorInner({
     </FieldSet>
   );
 }
-
-const TableSelector = Tables.load({
-  id: (_state: State, props: { tableId: ConcreteTableId | null }) =>
-    props.tableId,
-  loadingAndErrorWrapper: false,
-})(TableSelectorInner);

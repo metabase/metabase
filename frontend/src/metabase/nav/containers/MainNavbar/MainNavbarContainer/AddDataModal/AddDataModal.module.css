@@ -3,7 +3,7 @@
   border-radius: var(--mantine-radius-md);
 
   &[data-active="true"] {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
     background-color: var(--mb-color-background-selected);
   }
 }
@@ -38,7 +38,7 @@
 
 .dropZone {
   background-color: var(--mb-color-background-secondary);
-  border: 1px dashed var(--mb-color-border);
+  border: 1px dashed var(--mb-color-border-neutral);
   border-radius: var(--default-border-radius);
   flex: 1;
 

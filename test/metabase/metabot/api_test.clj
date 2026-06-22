@@ -61,23 +61,23 @@
                       lines    (str/split-lines response)
                       conv     (t2/select-one :model/MetabotConversation :id conversation-id)
                       messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
-              ;; Native agent emits AI SDK v4 line protocol directly
+                  ;; Native agent emits AI SDK v4 line protocol directly
                   (testing "response contains expected line types"
-                ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
+                    ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
                     (is (=? [#"f:.*"
                              #"0:.*"
                              #"2:.*"
                              #"d:.*"]
                             (m/distinct-by #(subs % 0 2) lines)))
-                ;; Text chunks reassemble to full message
+                    ;; Text chunks reassemble to full message
                     (let [text-lines (filter #(str/starts-with? % "0:") lines)]
                       (is (= "Hello from native agent!"
                              (apply str (map #(json/decode (subs % 2)) text-lines)))))
-                ;; Finish line includes usage
+                    ;; Finish line includes usage
                     (is (str/includes? (last lines) "promptTokens")))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
-              ;; Native agent stores parts in raw format
+                  ;; Native agent stores parts in raw format
                   (is (=? [{:total_tokens 0
                             :role         :user
                             :data         [{:role "user" :content (:content question)}]}
@@ -182,16 +182,21 @@
                     (mt/with-model-cleanup [:model/MetabotMessage
                                             [:model/MetabotConversation :created_at]]
                       (let [conversation-id (str (random-uuid))
-                            body (mt/user-real-request :rasta :post 202 "metabot/agent-streaming"
-                                                       {:request-options {:as              :stream
-                                                                          :decompress-body false}}
-                                                       {:message         "Test closure"
-                                                        :context         {}
-                                                        :conversation_id conversation-id
-                                                        :history         []
-                                                        :state           {}})]
-                        (.read ^java.io.InputStream body) ;; start the handler
-                        (.close ^java.io.Closeable body)
+                            response (mt/user-real-request-full-response
+                                      :rasta :post 202 "metabot/agent-streaming"
+                                      {:request-options {:as              :stream
+                                                         :decompress-body false}}
+                                      {:message         "Test closure"
+                                       :context         {}
+                                       :conversation_id conversation-id
+                                       :history         []
+                                       :state           {}})]
+                        (.read ^java.io.InputStream (:body response)) ;; start the handler
+                        ;; Close the underlying client, not the body stream: closing the body would
+                        ;; make clj-http drain the (now chunked) response to completion, which looks
+                        ;; like a normal finish rather than a disconnect. Closing the client aborts
+                        ;; the connection, which is what the server's cancel loop detects.
+                        (.close ^java.io.Closeable (:http-client response))
                         (u/poll {:thunk       #(deref stored-parts)
                                  :done?       some?
                                  :interval-ms 10
@@ -229,25 +234,28 @@
                           (reset! stored-kwargs (apply hash-map kwargs)))]
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                    {:message         "go"
-                                     :context         {}
-                                     :conversation_id (str (random-uuid))
-                                     :history         []
-                                     :state           {}})
-              (u/poll {:thunk       #(deref stored-kwargs)
-                       :done?       some?
-                       :interval-ms 10
-                       :timeout-ms  3000})
-              (is (some? @stored-kwargs)
-                  "finalize-assistant-turn! is called from the finally even when setup threw")
-              (is (true? (:finished? @stored-kwargs))
-                  "a thrown turn is :finished? true — `finished=false` is reserved for client aborts")
-              (is (=? {:message #"(?i)agent setup exploded"
-                       :type    "clojure.lang.ExceptionInfo"
-                       :data    {:status 503 :provider :test}}
-                      (:error @stored-kwargs))
-                  "the throwable becomes a structured error payload"))))))))
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   {:message         "go"
+                                                    :context         {}
+                                                    :conversation_id (str (random-uuid))
+                                                    :history         []
+                                                    :state           {}})]
+                (u/poll {:thunk       #(deref stored-kwargs)
+                         :done?       some?
+                         :interval-ms 10
+                         :timeout-ms  3000})
+                (is (some? @stored-kwargs)
+                    "finalize-assistant-turn! is called from the finally even when setup threw")
+                (is (true? (:finished? @stored-kwargs))
+                    "a thrown turn is :finished? true — `finished=false` is reserved for client aborts")
+                (is (=? {:message #"(?i)agent setup exploded"
+                         :type    "clojure.lang.ExceptionInfo"
+                         :data    {:status 503 :provider :test}}
+                        (:error @stored-kwargs))
+                    "the throwable becomes a structured error payload")
+                (testing "the failure is streamed to the client as an AI SDK error part (3:...) rather than a silent close"
+                  (is (some #(str/starts-with? % "3:") (str/split-lines response)))
+                  (is (re-find #"(?i)agent setup exploded" response)))))))))))
 
 (deftest settings-get-returns-live-models-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
@@ -257,9 +265,9 @@
                                                             (is (= "anthropic" provider))
                                                             {:models [{:id "claude-haiku-4-5"
                                                                        :display_name "Claude Haiku 4.5"}]})
-                                                           ([provider {:keys [api-key]}]
+                                                           ([provider {:keys [credentials]}]
                                                             (is (= "anthropic" provider))
-                                                            (is (= "sk-ant-valid" api-key))
+                                                            (is (= {:api-key "sk-ant-valid"} credentials))
                                                             {:models [{:id "claude-sonnet-4-5"
                                                                        :display_name "Claude Sonnet 4.5"}
                                                                       {:id "claude-haiku-4-5"
@@ -285,8 +293,8 @@
 
 (deftest settings-get-normalizes-legacy-anthropic-ids-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-valid"]
-    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [api-key]}]
-                                                           (is (= "sk-ant-valid" api-key))
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                           (is (= {:api-key "sk-ant-valid"} credentials))
                                                            {:models [{:id "claude-3-haiku-20240307"
                                                                       :display_name "Claude 3 Haiku"}
                                                                      {:id "claude-haiku-4-5"
@@ -303,8 +311,8 @@
 
 (deftest settings-get-groups-openrouter-models-test
   (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-valid"]
-    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [api-key]}]
-                                                           (is (= "sk-or-v1-valid" api-key))
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                           (is (= {:api-key "sk-or-v1-valid"} credentials))
                                                            {:models [{:id "openai/gpt-4.1-mini"
                                                                       :display_name "OpenAI: GPT-4.1 mini"}
                                                                      {:id "anthropic/claude-sonnet-4.5"
@@ -345,9 +353,9 @@
                                                             (is (= "openai" provider))
                                                             {:models [{:id "gpt-4.1-mini"
                                                                        :display_name "GPT-4.1 mini"}]})
-                                                           ([provider {:keys [api-key]}]
+                                                           ([provider {:keys [credentials]}]
                                                             (is (= "openai" provider))
-                                                            (is (= "sk-valid" api-key))
+                                                            (is (= {:api-key "sk-valid"} credentials))
                                                             {:models [{:id "gpt-4.1-mini"
                                                                        :display_name "GPT-4.1 mini"}]}))]
       (is (= {:value  "openai/gpt-4.1-mini"
@@ -403,17 +411,18 @@
 
 (deftest settings-put-verifies-and-saves-api-keys-test
   (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
-    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-anthropic-api-key nil]
       (let [calls (atom 0)]
-        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
                                                                (swap! calls inc)
                                                                (is (= "anthropic" provider))
-                                                               (is (= "sk-ant-valid" api-key))
+                                                               (is (= {:api-key "sk-ant-valid"} credentials))
                                                                (is (nil? (llm.settings/llm-anthropic-api-key))
                                                                    "verification should happen before saving the key")
                                                                {:models [{:id "claude-haiku-4-5"
                                                                           :display_name "Claude Haiku 4.5"}]})]
-          (is (= {:value  (metabot.settings/llm-metabot-provider)
+          (is (= {:value  "anthropic/claude-haiku-4-5"
                   :models [{:id "claude-haiku-4-5"
                             :display_name "Claude Haiku 4.5"
                             :group "Haiku"}]}
@@ -430,10 +439,10 @@
     (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-opus-4-1"
                                        llm.settings/llm-anthropic-api-key nil]
       (let [calls (atom 0)]
-        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
                                                                (swap! calls inc)
                                                                (is (= "anthropic" provider))
-                                                               (is (= "sk-ant-valid" api-key))
+                                                               (is (= {:api-key "sk-ant-valid"} credentials))
                                                                (is (nil? (llm.settings/llm-anthropic-api-key))
                                                                    "verification should happen before saving the key")
                                                                {:models [{:id "claude-opus-4-1"
@@ -459,10 +468,10 @@
     (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"
                                        llm.settings/llm-anthropic-api-key nil]
       (let [calls (atom 0)]
-        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
                                                                (swap! calls inc)
                                                                (is (= "anthropic" provider))
-                                                               (is (= "sk-ant-valid" api-key))
+                                                               (is (= {:api-key "sk-ant-valid"} credentials))
                                                                (is (nil? (llm.settings/llm-anthropic-api-key))
                                                                    "verification should happen before saving the key")
                                                                {:models [{:id "claude-sonnet-4-6"
@@ -492,9 +501,9 @@
 (deftest settings-put-blank-model-does-not-reset-when-provider-is-unchanged-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-opus-4-1"
                                      llm.settings/llm-anthropic-api-key "sk-ant-valid"]
-    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
                                                            (is (= "anthropic" provider))
-                                                           (is (= "sk-ant-valid" api-key))
+                                                           (is (= {:api-key "sk-ant-valid"} credentials))
                                                            {:models [{:id "claude-sonnet-4-6"
                                                                       :display_name "Claude Sonnet 4.6"}
                                                                      {:id "claude-opus-4-1"
@@ -516,10 +525,10 @@
 (deftest settings-put-rejects-invalid-api-key-test
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
     (let [calls (atom 0)]
-      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
                                                              (swap! calls inc)
                                                              (is (= "openai" provider))
-                                                             (is (= "sk-invalid" api-key))
+                                                             (is (= {:api-key "sk-invalid"} credentials))
                                                              (is (nil? (llm.settings/llm-openai-api-key))
                                                                  "failed verification should not save the key")
                                                              (throw (ex-info "OpenAI API key expired or invalid"
@@ -533,11 +542,25 @@
               "should stop after the failed verification call")
           (is (nil? (llm.settings/llm-openai-api-key))))))))
 
+(deftest settings-put-blank-api-key-clears-saved-key-test
+  (mt/with-temp-env-var-value! [mb-llm-openai-api-key nil]
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "openai/gpt-4.1-mini"
+                                       llm.settings/llm-openai-api-key       "sk-valid"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider _opts]
+                                                             (is false (str "unexpected list-models call: " provider)))]
+        (testing "an explicit nil api-key clears the saved key without validating against the old one"
+          (is (=? {:value  "openai/gpt-4.1-mini"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider "openai"
+                                         :api-key  nil})))
+          (is (nil? (llm.settings/llm-openai-api-key))))))))
+
 (deftest settings-put-does-not-treat-outages-as-invalid-keys-test
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
-    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
                                                            (is (= "openai" provider))
-                                                           (is (= "sk-valid" api-key))
+                                                           (is (= {:api-key "sk-valid"} credentials))
                                                            (throw (ex-info "OpenAI API is not working but not saying why"
                                                                            {:api-error true
                                                                             :status-code 500})))]
@@ -550,9 +573,9 @@
 (deftest settings-put-does-not-save-model-when-preflight-fails-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
                                      llm.settings/llm-anthropic-api-key      "sk-ant-valid"]
-    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
                                                            (is (= "anthropic" provider))
-                                                           (is (= "sk-ant-valid" api-key))
+                                                           (is (= {:api-key "sk-ant-valid"} credentials))
                                                            (throw (ex-info "Anthropic API key has insufficient permissions"
                                                                            {:api-error true
                                                                             :status-code 403})))]
@@ -563,17 +586,56 @@
         (is (= "anthropic/claude-haiku-4-5"
                (metabot.settings/llm-metabot-provider)))))))
 
-(deftest settings-get-surfaces-invalid-api-key-error-test
+(deftest settings-get-surfaces-credentials-error-test
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-invalid"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
                                                            (throw (ex-info "OpenAI API key expired or invalid"
                                                                            {:api-error true
                                                                             :status-code 401})))]
-      (is (= {:value         (metabot.settings/llm-metabot-provider)
-              :api-key-error "OpenAI API key expired or invalid"
-              :models        []}
+      (is (= {:value             (metabot.settings/llm-metabot-provider)
+              :credentials-error "OpenAI API key expired or invalid"
+              :models            []}
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openai"))))))
+
+(deftest settings-get-degrades-non-credential-provider-4xx-test
+  (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-valid"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                           ;; e.g. a base URL pointing at the wrong Azure surface;
+                                                           ;; rethrow-api-error! tags these with :status, not :status-code
+                                                           (throw (ex-info "OpenAI API error (HTTP 400) — Missing required query parameter: api-version"
+                                                                           {:api-error true
+                                                                            :status    400})))]
+      (let [response (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                           :provider "openai")]
+        (is (= [] (:models response)))
+        (is (re-find #"api-version" (:credentials-error response))
+            "a non-401 provider 4xx (misconfigured surface) keeps GET /settings loadable and returns the provider message")))))
+
+(deftest settings-put-rejects-env-shadowed-provider-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                mb-llm-openai-api-key   nil]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                           (is false "should reject before verifying credentials"))]
+      (let [response (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                           {:provider "openai"
+                                            :model    "gpt-5.1"
+                                            :api-key  "sk-new"})]
+        (is (re-find #"MB_LLM_METABOT_PROVIDER" (:message response))
+            "a provider/model write is rejected when the provider setting is env-controlled")))))
+
+(deftest settings-put-allows-api-key-rotation-when-provider-env-set-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider "openai/gpt-5.1"
+                                mb-llm-openai-api-key   nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-old"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
+                                                             (is (= {:api-key "sk-new"} credentials))
+                                                             {:models [{:id "gpt-5.1" :display_name "GPT-5.1"}]})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider "openai"
+                               :api-key  "sk-new"})
+        (is (= "sk-new" (llm.settings/llm-openai-api-key))
+            "rotating the key for an env-set provider does not require a provider write and so is allowed")))))
 
 (deftest settings-permissions-test
   (mt/user-http-request :rasta :get 403 "metabot/settings" :provider "anthropic")
@@ -714,17 +776,14 @@
              {:type :tool-input :id "t1"}
              ;; second usage is cumulative (subsumes first)
              {:type :usage :usage {:promptTokens 250 :completionTokens 50} :model "gpt-4"}]))))
-
   (testing "handles multiple models independently"
     (is (= {"model-a" {:prompt 100 :completion 20}
             "model-b" {:prompt 200 :completion 40}}
            (metabot.persistence/extract-usage
             [{:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "model-a"}
              {:type :usage :usage {:promptTokens 200 :completionTokens 40} :model "model-b"}]))))
-
   (testing "returns empty map when no usage parts"
     (is (= {} (metabot.persistence/extract-usage [{:type :text :text "hi"}]))))
-
   (testing "missing model defaults to unknown"
     (is (= {"unknown" {:prompt 50 :completion 10}}
            (metabot.persistence/extract-usage
@@ -735,13 +794,11 @@
     (is (= [{:type :tool, :id 1} {:type :tool, :id 2}]
            (into [] (metabot.persistence/combine-text-parts-xf)
                  [{:type :tool, :id 1} {:type :tool, :id 2}]))))
-
   (testing "combines consecutive text parts"
     (is (= [{:type :text, :text "hello world"}]
            (into [] (metabot.persistence/combine-text-parts-xf)
                  [{:type :text, :text "hello "}
                   {:type :text, :text "world"}]))))
-
   (testing "combines multiple runs"
     (is (= [{:type :text, :text "ab"}
             {:type :tool, :id 1}
@@ -752,10 +809,8 @@
                   {:type :tool, :id 1}
                   {:type :text, :text "c"}
                   {:type :text, :text "d"}]))))
-
   (testing "handles empty input"
     (is (= [] (into [] (metabot.persistence/combine-text-parts-xf) []))))
-
   (testing "handles single text part"
     (is (= [{:type :text, :text "solo"}]
            (into [] (metabot.persistence/combine-text-parts-xf)
@@ -792,7 +847,6 @@
       (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
              (:usage msg))
           "usage keys should be bare model names, not metabase/anthropic/...")))
-
   (testing "BYOK provider (no metabase/ prefix) sets ai_proxied false"
     (let [msg (start-and-finalize-with-provider! "anthropic/claude-sonnet-4-6")]
       (is (false? (:ai_proxied msg)))
@@ -1179,3 +1233,456 @@
                              :conversation_id (str (random-uuid))
                              :history         []
                              :state           {}}))))
+
+;;; ------------------------------------------------ Bedrock settings ------------------------------------------------
+
+(deftest settings-get-groups-bedrock-models-test
+  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                     llm.settings/llm-bedrock-secret-access-key "test-secret"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
+                                                           (is (= "bedrock" provider))
+                                                           (is (=? {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                                    :secret-access-key "test-secret"}
+                                                                   credentials)
+                                                               "the configured AWS credentials are passed to the model lister")
+                                                           {:models [{:id "openai.gpt-5.5"
+                                                                      :display_name "openai.gpt-5.5"}
+                                                                     {:id "anthropic.claude-haiku-4-5"
+                                                                      :display_name "anthropic.claude-haiku-4-5"}]})]
+      (is (= {:value  (metabot.settings/llm-metabot-provider)
+              :models [{:id           "anthropic.claude-haiku-4-5"
+                        :display_name "anthropic.claude-haiku-4-5"
+                        :group        "Anthropic"}
+                       {:id           "openai.gpt-5.5"
+                        :display_name "openai.gpt-5.5"
+                        :group        "OpenAI"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "bedrock"))))))
+
+(deftest settings-put-saves-bedrock-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
+                                       llm.settings/llm-bedrock-secret-access-key nil
+                                       llm.settings/llm-bedrock-session-token     nil
+                                       llm.settings/llm-bedrock-region            "us-east-1"
+                                       metabot.settings/llm-metabot-provider      "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
+                                                             (is (= "bedrock" provider))
+                                                             (is (= {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                                     :secret-access-key "test-secret"
+                                                                     :region            "us-east-2"
+                                                                     :session-token     "test-token"}
+                                                                    credentials)
+                                                                 "model verification should run against the request credentials")
+                                                             (is (nil? (llm.settings/llm-bedrock-access-key-id))
+                                                                 "verification should happen before saving the credentials")
+                                                             {:models [{:id "anthropic.claude-haiku-4-5"
+                                                                        :display_name "anthropic.claude-haiku-4-5"}]})]
+        (testing "connecting bedrock saves the credentials and selects the default bedrock model"
+          (is (=? {:value "bedrock/anthropic.claude-opus-4-8"}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "bedrock"
+                                         :credentials {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                       :secret-access-key "test-secret"
+                                                       :region            "us-east-2"
+                                                       :session-token     "test-token"}}))))
+        (is (= "AKIAIOSFODNN7EXAMPLE" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "test-secret" (llm.settings/llm-bedrock-secret-access-key)))
+        (is (= "us-east-2" (llm.settings/llm-bedrock-region)))
+        (is (= "test-token" (llm.settings/llm-bedrock-session-token)))))))
+
+(deftest settings-put-rejects-env-shadowed-bedrock-credential-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-secret-access-key "env-secret"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                           (is false "should reject before verifying credentials"))]
+      (let [response (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                           {:provider    "bedrock"
+                                            :credentials {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                          :secret-access-key "test-secret"}})]
+        (is (re-find #"MB_LLM_BEDROCK_SECRET_ACCESS_KEY" (:message response))
+            "a bedrock credentials write is rejected when one of its settings is env-controlled")))))
+
+(deftest settings-put-bedrock-rejects-incomplete-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
+                                       llm.settings/llm-bedrock-secret-access-key nil
+                                       metabot.settings/llm-metabot-provider      "anthropic/claude-sonnet-4-6"]
+      (testing "credentials missing the secret access key fail verification and nothing is saved"
+        (is (=? {:message      "AWS Bedrock credentials are incomplete."
+                 :missing-keys ["secret-access-key"]}
+                (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                      {:provider    "bedrock"
+                                       :credentials {:access-key-id "AKIAIOSFODNN7EXAMPLE"}})))
+        (is (nil? (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-bedrock-rejects-blank-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
+                                       llm.settings/llm-bedrock-secret-access-key nil
+                                       metabot.settings/llm-metabot-provider      "anthropic/claude-sonnet-4-6"]
+      (testing "all-blank credentials with nothing saved fail verification instead of throwing a 500"
+        (is (=? {:message      "AWS Bedrock credentials are incomplete."
+                 :missing-keys ["access-key-id" "secret-access-key"]}
+                (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                      {:provider    "bedrock"
+                                       :credentials {:access-key-id     ""
+                                                     :secret-access-key ""
+                                                     :session-token     ""
+                                                     :region            ""}})))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-bedrock-clears-stale-session-token-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAOLDOLDOLDOLDOLD1"
+                                       llm.settings/llm-bedrock-secret-access-key "old-secret"
+                                       llm.settings/llm-bedrock-session-token     "old-token"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider    "bedrock"
+                               :credentials {:access-key-id     "AKIANEWNEWNEWNEWNEW1"
+                                             :secret-access-key "new-secret"
+                                             :session-token     nil}})
+        (testing "an explicit nil session token sent alongside rotated keys clears the saved token"
+          (is (nil? (llm.settings/llm-bedrock-session-token))))
+        (is (= "AKIANEWNEWNEWNEWNEW1" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "new-secret" (llm.settings/llm-bedrock-secret-access-key)))))))
+
+(deftest settings-put-bedrock-rotation-without-session-token-field-keeps-token-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAOLDOLDOLDOLDOLD1"
+                                       llm.settings/llm-bedrock-secret-access-key "old-secret"
+                                       llm.settings/llm-bedrock-session-token     "old-token"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider    "bedrock"
+                               :credentials {:access-key-id     "AKIANEWNEWNEWNEWNEW1"
+                                             :secret-access-key "new-secret"}})
+        (testing "new key material without a session-token field keeps the saved token; clearing it takes an explicit nil"
+          (is (= "old-token" (llm.settings/llm-bedrock-session-token))))
+        (is (= "AKIANEWNEWNEWNEWNEW1" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "new-secret" (llm.settings/llm-bedrock-secret-access-key)))))))
+
+(deftest settings-put-bedrock-nil-session-token-clears-token-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "test-secret"
+                                       llm.settings/llm-bedrock-session-token     "stale-token"
+                                       llm.settings/llm-bedrock-region            "us-east-2"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
+                                                             (is (= "bedrock" provider))
+                                                             (is (= {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                                     :secret-access-key "test-secret"
+                                                                     :session-token     nil
+                                                                     :region            "us-east-2"}
+                                                                    credentials)
+                                                                 "validation should run without the cleared session token")
+                                                             {:models []})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider    "bedrock"
+                               :credentials {:session-token nil}})
+        (testing "an explicit nil session token clears the saved token without touching the keys"
+          (is (nil? (llm.settings/llm-bedrock-session-token))))
+        (is (= "AKIAIOSFODNN7EXAMPLE" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "test-secret" (llm.settings/llm-bedrock-secret-access-key)))
+        (is (= "us-east-2" (llm.settings/llm-bedrock-region)))))))
+
+(deftest settings-put-bedrock-blank-session-token-clears-token-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "test-secret"
+                                       llm.settings/llm-bedrock-session-token     "stale-token"
+                                       llm.settings/llm-bedrock-region            "us-east-2"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider    "bedrock"
+                               :credentials {:session-token ""}})
+        (testing "a blank session token field counts as an explicit clear, same as nil"
+          (is (nil? (llm.settings/llm-bedrock-session-token))))
+        (is (= "AKIAIOSFODNN7EXAMPLE" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "test-secret" (llm.settings/llm-bedrock-secret-access-key)))))))
+
+(deftest settings-put-bedrock-nil-region-resets-to-default-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "test-secret"
+                                       llm.settings/llm-bedrock-session-token     "test-token"
+                                       llm.settings/llm-bedrock-region            "us-east-2"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider    "bedrock"
+                               :credentials {:region nil}})
+        (testing "an explicit nil region resets the setting to its default"
+          (is (= "us-east-1" (llm.settings/llm-bedrock-region))))
+        (is (= "AKIAIOSFODNN7EXAMPLE" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "test-secret" (llm.settings/llm-bedrock-secret-access-key)))
+        (is (= "test-token" (llm.settings/llm-bedrock-session-token)))))))
+
+(deftest settings-put-bedrock-preserves-session-token-without-new-key-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "test-secret"
+                                       llm.settings/llm-bedrock-session-token     "test-token"
+                                       llm.settings/llm-bedrock-region            "us-east-1"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider    "bedrock"
+                               :credentials {:region "us-east-2"}})
+        (testing "editing an unrelated field without new key material leaves the session token intact"
+          (is (= "test-token" (llm.settings/llm-bedrock-session-token))))
+        (is (= "us-east-2" (llm.settings/llm-bedrock-region)))
+        (is (= "AKIAIOSFODNN7EXAMPLE" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "test-secret" (llm.settings/llm-bedrock-secret-access-key)))))))
+
+(deftest settings-put-nil-bedrock-credentials-clears-saved-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "test-secret"
+                                       llm.settings/llm-bedrock-session-token     "test-token"
+                                       llm.settings/llm-bedrock-region            "us-east-2"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider _opts]
+                                                             (is false (str "unexpected list-models call: " provider)))]
+        (testing "an explicit nil credentials clears the saved key material without validating against it"
+          (is (=? {:value  "bedrock/anthropic.claude-opus-4-8"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "bedrock"
+                                         :credentials nil})))
+          (is (nil? (llm.settings/llm-bedrock-access-key-id)))
+          (is (nil? (llm.settings/llm-bedrock-secret-access-key)))
+          (is (nil? (llm.settings/llm-bedrock-session-token))))
+        (testing "the clear also resets the region to its default"
+          (is (= "us-east-1" (llm.settings/llm-bedrock-region))))))))
+
+(deftest settings-put-bedrock-absent-credentials-leaves-saved-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "test-secret"
+                                       llm.settings/llm-bedrock-session-token     "test-token"
+                                       llm.settings/llm-bedrock-region            "us-east-2"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
+                                                             (is (= "bedrock" provider))
+                                                             (is (= {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                                     :secret-access-key "test-secret"
+                                                                     :session-token     "test-token"
+                                                                     :region            "us-east-2"}
+                                                                    credentials)
+                                                                 "a model-only change validates against the saved credentials")
+                                                             {:models [{:id "anthropic.claude-haiku-4-5"
+                                                                        :display_name "anthropic.claude-haiku-4-5"}]})]
+        (testing "a body without a credentials key leaves the saved credentials untouched"
+          (is (=? {:value "bedrock/anthropic.claude-haiku-4-5"}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider "bedrock"
+                                         :model    "anthropic.claude-haiku-4-5"})))
+          (is (= "AKIAIOSFODNN7EXAMPLE" (llm.settings/llm-bedrock-access-key-id)))
+          (is (= "test-secret" (llm.settings/llm-bedrock-secret-access-key)))
+          (is (= "test-token" (llm.settings/llm-bedrock-session-token)))
+          (is (= "us-east-2" (llm.settings/llm-bedrock-region))))))))
+
+;;; ------------------------------------------------ Azure ------------------------------------------------
+
+(deftest settings-put-saves-azure-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider   nil
+                                mb-llm-azure-api-key      nil
+                                mb-llm-azure-api-base-url nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key        nil
+                                       llm.settings/llm-azure-api-base-url   nil
+                                       metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials model]}]
+                                                             (is (= "azure" provider))
+                                                             (is (= {:api-key  "azure-key"
+                                                                     :base-url "https://my-resource.services.ai.azure.com/anthropic"}
+                                                                    credentials)
+                                                                 "validation runs against the normalized request credentials")
+                                                             (is (= "anthropic/claude-sonnet-4-5" model)
+                                                                 "the candidate model selects the surface family to validate")
+                                                             (is (nil? (llm.settings/llm-azure-api-key))
+                                                                 "validation should happen before saving the credentials")
+                                                             {:models []})]
+        (testing "connecting azure saves the credentials and the composed provider/model value"
+          (is (=? {:value  "azure/anthropic/claude-sonnet-4-5"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "azure"
+                                         :model       "anthropic/claude-sonnet-4-5"
+                                         :credentials {:api-key  "azure-key"
+                                                       :base-url "https://my-resource.services.ai.azure.com/anthropic/"}}))))
+        (is (= "azure-key" (llm.settings/llm-azure-api-key)))
+        (testing "the trailing slash is trimmed before persisting"
+          (is (= "https://my-resource.services.ai.azure.com/anthropic"
+                 (llm.settings/llm-azure-api-base-url))))))))
+
+(deftest settings-put-azure-requires-model-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider   nil
+                                mb-llm-azure-api-key      nil
+                                mb-llm-azure-api-base-url nil]
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                             (is false "should reject before verifying credentials"))]
+        (testing "switching to azure without a model is rejected — there is no default deployment"
+          (is (re-find #"model provider and deployment name are required"
+                       (:message (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                                       {:provider    "azure"
+                                                        :credentials {:api-key  "azure-key"
+                                                                      :base-url "https://my-resource.services.ai.azure.com/openai"}}))))
+          (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest settings-put-azure-rejects-invalid-model-format-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider   nil
+                                mb-llm-azure-api-key      nil
+                                mb-llm-azure-api-base-url nil]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                           (is false "should reject before verifying credentials"))]
+      (testing "an unsupported wire family is rejected before the validation round-trip"
+        (is (re-find #"Invalid Azure model"
+                     (:message (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                                     {:provider    "azure"
+                                                      :model       "gemini/some-deployment"
+                                                      :credentials {:api-key  "azure-key"
+                                                                    :base-url "https://my-resource.services.ai.azure.com/openai"}}))))))))
+
+(deftest settings-put-azure-rejects-incomplete-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider   nil
+                                mb-llm-azure-api-key      nil
+                                mb-llm-azure-api-base-url nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key        nil
+                                       llm.settings/llm-azure-api-base-url   nil
+                                       metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+      (testing "credentials missing the base URL fail before validation and nothing is saved"
+        (is (=? {:message      "Azure credentials are incomplete."
+                 :missing-keys ["base-url"]}
+                (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                      {:provider    "azure"
+                                       :model       "openai/gpt-4.1-mini"
+                                       :credentials {:api-key "azure-key"}})))
+        (is (nil? (llm.settings/llm-azure-api-key)))
+        (is (= "anthropic/claude-sonnet-4-6" (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-azure-key-rotation-uses-saved-base-url-and-model-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider   nil
+                                mb-llm-azure-api-key      nil
+                                mb-llm-azure-api-base-url nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key        "old-key"
+                                       llm.settings/llm-azure-api-base-url   "https://my-resource.services.ai.azure.com/anthropic"
+                                       metabot.settings/llm-metabot-provider "azure/anthropic/claude-sonnet-4-5"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials model]}]
+                                                             (is (= {:api-key  "new-key"
+                                                                     :base-url "https://my-resource.services.ai.azure.com/anthropic"}
+                                                                    credentials)
+                                                                 "the new key is layered over the saved base URL")
+                                                             (is (= "anthropic/claude-sonnet-4-5" model)
+                                                                 "a credentials-only rotation validates against the saved model's family")
+                                                             {:models []})]
+        (is (=? {:value "azure/anthropic/claude-sonnet-4-5"}
+                (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                      {:provider    "azure"
+                                       :credentials {:api-key "new-key"}})))
+        (is (= "new-key" (llm.settings/llm-azure-api-key)))
+        (is (= "https://my-resource.services.ai.azure.com/anthropic"
+               (llm.settings/llm-azure-api-base-url)))))))
+
+(deftest settings-put-nil-azure-credentials-clears-saved-credentials-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider   nil
+                                mb-llm-azure-api-key      nil
+                                mb-llm-azure-api-base-url nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key        "azure-key"
+                                       llm.settings/llm-azure-api-base-url   "https://my-resource.services.ai.azure.com/openai"
+                                       metabot.settings/llm-metabot-provider "azure/openai/gpt-4.1-mini"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider _opts]
+                                                             (is false (str "unexpected list-models call: " provider)))]
+        (testing "an explicit nil credentials clears both saved settings without validating against them"
+          (is (=? {:value  "azure/openai/gpt-4.1-mini"
+                   :models []}
+                  (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                        {:provider    "azure"
+                                         :credentials nil})))
+          (is (nil? (llm.settings/llm-azure-api-key)))
+          (is (nil? (llm.settings/llm-azure-api-base-url))))))))
+
+(deftest settings-put-rejects-env-shadowed-azure-settings-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider nil
+                                mb-llm-azure-api-key    "env-key"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                           (is false "should reject before verifying credentials"))]
+      (testing "an azure credentials write is rejected when an azure setting is env-controlled"
+        (is (re-find #"MB_LLM_AZURE_API_KEY"
+                     (:message (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                                     {:provider    "azure"
+                                                      :model       "openai/gpt-4.1-mini"
+                                                      :credentials {:api-key  "new-key"
+                                                                    :base-url "https://my-resource.services.ai.azure.com/openai"}})))))))
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider   nil
+                                mb-llm-azure-api-key      nil
+                                mb-llm-azure-api-base-url "https://env.services.ai.azure.com/openai"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                           (is false "should reject before verifying credentials"))]
+      (testing "the base URL env var is guarded the same way"
+        (is (re-find #"MB_LLM_AZURE_API_BASE_URL"
+                     (:message (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                                     {:provider    "azure"
+                                                      :model       "openai/gpt-4.1-mini"
+                                                      :credentials {:api-key "new-key"}}))))))))
+
+(deftest settings-get-azure-returns-empty-models-test
+  (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key        "azure-key"
+                                     llm.settings/llm-azure-api-base-url   "https://my-resource.services.ai.azure.com/anthropic"
+                                     metabot.settings/llm-metabot-provider "azure/anthropic/claude-sonnet-4-5"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
+                                                           (is (= "azure" provider))
+                                                           (is (= {:api-key  "azure-key"
+                                                                   :base-url "https://my-resource.services.ai.azure.com/anthropic"}
+                                                                  credentials))
+                                                           {:models []})]
+      (testing "azure never returns models — deployment names are free text, not a dropdown"
+        (is (= {:value  "azure/anthropic/claude-sonnet-4-5"
+                :models []}
+               (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "azure")))))))

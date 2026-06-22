@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -15,6 +16,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -23,6 +25,14 @@
   (mt/test-driver :sqlite
     (is (= "UTC"
            (driver/db-default-timezone :sqlite (mt/db))))))
+
+(deftest ^:parallel hour-bucketing-time-without-database-type-test
+  (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
+                "fields referenced by name from a source query, #75193) should use the time-aware path "
+                "and not produce a DATETIME-format result")
+    (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
+      (is (= ["TIME(STRFTIME('%H:00', \"test_col\"))"]
+             (sql.qp/format-honeysql :sqlite (sql.qp/date :sqlite :hour expr)))))))
 
 (deftest current-user-table-privileges-test
   (testing "SQLite table privileges normalization"
@@ -157,7 +167,6 @@
               (testing "database should be synced"
                 (is (= {:tables (set (map default-table-result ["timestamp_table"]))}
                        (driver/describe-database driver db))))
-
               (testing "timestamp column should exist"
                 (is (=? {:name "timestamp_table"
                          :schema nil
@@ -296,3 +305,23 @@
                     (lib/query mp)
                     (qp/process-query)
                     (mt/rows))))))))
+
+;; From #75204 which has a similar fix for a related issue
+(deftest ^:parallel date-bucketed-breakout-preserves-temporal-type-test
+  (testing (str "SQLite has no date type: a :month-bucketed breakout compiles to date()/strftime() whose JDBC "
+                "type is reported as TEXT. The returned column must still be typed temporally, not :type/Text, so "
+                "that date drills, date filters, and date dimension mapping are offered (GHY-3790).")
+    (mt/test-driver :sqlite
+      (let [mp       (mt/metadata-provider)
+            date-col (lib.metadata/field mp (mt/id :checkins :date))
+            query    (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket date-col :month)))
+            col      (-> (qp/process-query query) mt/cols first)]
+        (testing "driver reports a non-temporal JDBC storage type for the truncation output"
+          (is (= "TEXT" (:database_type col))))
+        (testing "but the column carries a temporal unit"
+          (is (= :month (:unit col))))
+        (testing "so its base/effective type stays temporal (Lib's type wins over the storage affinity)"
+          (is (isa? (:base_type col) :type/Temporal))
+          (is (isa? (:effective_type col) :type/Temporal)))))))

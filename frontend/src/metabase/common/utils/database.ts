@@ -23,10 +23,20 @@ export const hasActionsEnabled = (database: Pick<Database, "settings">) => {
   return Boolean(database.settings?.["database-enable-actions"]);
 };
 
+export const hasWorkspacesEnabled = (database: Pick<Database, "settings">) => {
+  return Boolean(database.settings?.["database-enable-workspaces"]);
+};
+
 export const hasWritableConnectionDetails = (
   database: Pick<Database, "write_data_details">,
 ) => {
   return database.write_data_details != null;
+};
+
+export const hasAdminConnectionDetails = (
+  database: Pick<Database, "admin_details">,
+) => {
+  return database.admin_details != null;
 };
 
 export const hasDbRoutingEnabled = (

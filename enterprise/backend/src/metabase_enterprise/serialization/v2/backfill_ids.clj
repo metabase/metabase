@@ -27,9 +27,9 @@
   "Returns true if the model has an `:entity_id` column."
   [model]
   (or
-    ;; toucan1 models
+   ;; toucan1 models
    (isa? model ::mi/entity-id)
-    ;; toucan2 models
+   ;; toucan2 models
    (isa? model :hook/entity-id)))
 
 (defn backfill-ids!

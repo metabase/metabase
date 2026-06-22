@@ -195,8 +195,8 @@
   (u/auto-retry 5
     (let [api-key (generate-key)
           prefix (prefix (u.secret/expose api-key))]
-     ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
-     ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
+      ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
+      ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
       (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
         api-key
         (throw (ex-info (tru "could not generate key with unique prefix") {}))))))

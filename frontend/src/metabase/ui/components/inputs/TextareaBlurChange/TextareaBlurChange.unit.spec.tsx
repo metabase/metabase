@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { cleanup, render, screen } from "__support__/ui";
+import { act, cleanup, render, screen } from "__support__/ui";
 
 import type { TextareaBlurChangeProps } from "./TextareaBlurChange";
 import { TextareaBlurChange } from "./TextareaBlurChange";
@@ -38,7 +38,11 @@ describe("TextareaBlurChange", () => {
     expect(onBlurChange).toHaveBeenCalledTimes(0);
 
     await userEvent.type(inputEl, "test");
-    inputEl.blur();
+    // `blur()` synchronously updates the component's internal value, so it
+    // must be wrapped in `act` to keep the state update flushed.
+    act(() => {
+      inputEl.blur();
+    });
 
     expect(onBlurChange).toHaveBeenCalledTimes(1);
     expect(onBlurChange.mock.results[0].value).toBe("test");

@@ -32,7 +32,7 @@ export interface DottedBackgroundProps extends Omit<
  * ```
  */
 export function DottedBackground({
-  dotColor = "var(--mb-color-brand)",
+  dotColor = "var(--mb-color-core-brand)",
   dotOpacity = 0.2,
   dotSpacing = "1rem",
   dotSize = "1px",

@@ -199,7 +199,7 @@
                                                                                 :aggregation [:sum [:field numeric-field-id nil]]
                                                                                 :breakout [[:field category-field-id nil]]}}}
                   :model/Card       {card-id-root :id} {:table_id table-id
-                                                 ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
+                                                        ;; https://en.wikipedia.org/wiki/Filename#Reserved_characters_and_words
                                                         :name root-card-name
                                                         :dataset_query {:type :query
                                                                         :database db-id
@@ -248,7 +248,7 @@
                                                                 :card_id card-id}
                   :model/DashboardCard       {dashcard-top-level-click-id :id} {:dashboard_id dashboard-id
                                                                                 :card_id card-id-nested
-                                                                         ;; this is how click actions on a non-table card work (ex: a chart)
+                                                                                ;; this is how click actions on a non-table card work (ex: a chart)
                                                                                 :visualization_settings {:click_behavior {:targetId card-id-nested-query
                                                                                                                           :linkType :question
                                                                                                                           :type     :link}}}

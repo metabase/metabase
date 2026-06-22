@@ -1,15 +1,15 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ActionMenu from "metabase/collections/components/ActionMenu";
+import ActionMenu from "metabase/common/collections/components/ActionMenu";
 import type {
   CreateBookmark,
   DeleteBookmark,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import {
   isFullyParameterized,
   isPreviewShown,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
 import { useGetIcon } from "metabase/hooks/use-icon";

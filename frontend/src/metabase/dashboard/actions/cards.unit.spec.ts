@@ -2,15 +2,13 @@ import type { Store } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { getStore } from "__support__/entities-store";
+import { getMainStore } from "__support__/entities-store";
 import {
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { Api } from "metabase/api";
-import { mainReducers } from "metabase/reducers-main";
 import type { State, StoreDashcard } from "metabase/redux/store";
 import {
   createMockDashboardState,
@@ -178,10 +176,8 @@ function setup({
     dashcards: _.indexBy(dashcards, "id"),
   });
 
-  const store = getStore(
-    { ...mainReducers, [Api.reducerPath]: Api.reducer },
+  const store = getMainStore(
     createMockState({ dashboard: dashboardState }),
-    [Api.middleware],
   ) as Store<State>;
 
   return { store };
@@ -360,7 +356,7 @@ async function runAddCardToDashboard({
     dashId,
     tabId,
     cardId,
-  })(store.dispatch, store.getState);
+  })(store.dispatch);
   const nextState = store.getState();
 
   const tempDashCardId =

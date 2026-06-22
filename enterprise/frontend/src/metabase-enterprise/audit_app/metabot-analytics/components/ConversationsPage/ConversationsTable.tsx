@@ -10,6 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { useDispatch } from "metabase/redux";
 import { Badge, Ellipsified, Flex } from "metabase/ui";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatNumber } from "metabase/utils/formatting";
 import { getUserName } from "metabase/utils/user";
 import type { SortingOptions } from "metabase-types/api";
@@ -50,8 +51,16 @@ export function ConversationsTable({
     <table className={cx(AdminS.ContentTable, S.table)}>
       <thead>
         <tr>
-          <th>{t`User`}</th>
-          <th>{t`Profile`}</th>
+          <SortableColumnHeader
+            name="user"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          >{t`User`}</SortableColumnHeader>
+          <SortableColumnHeader
+            name="profile_id"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          >{t`Profile`}</SortableColumnHeader>
           <SortableColumnHeader
             name="created_at"
             sortingOptions={sortingOptions}
@@ -70,7 +79,11 @@ export function ConversationsTable({
           >{t`Tokens`}</SortableColumnHeader>
           <th>{t`Queries`}</th>
           <th>{t`Searches`}</th>
-          <th>{t`IP`}</th>
+          <SortableColumnHeader
+            name="ip_address"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={onSortingOptionsChange}
+          >{t`IP`}</SortableColumnHeader>
         </tr>
       </thead>
       <tbody>
@@ -117,7 +130,7 @@ export function ConversationsTable({
                 <td>{formatNumber(convo.total_tokens)}</td>
                 <td>{formatNumber(convo.query_count)}</td>
                 <td>{formatNumber(convo.search_count)}</td>
-                <td>{convo.ip_address ?? "—"}</td>
+                <td>{convo.ip_address ?? EMPTY_CELL_PLACEHOLDER}</td>
               </tr>
             ))}
           </>

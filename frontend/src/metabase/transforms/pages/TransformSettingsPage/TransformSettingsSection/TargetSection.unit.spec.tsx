@@ -101,23 +101,23 @@ function setup({
 }
 
 describe("TransformSettingsSection", () => {
-  it("should disable the change target button when the transform is running", () => {
+  it("should disable the change target button when the transform is running", async () => {
     setup({
       transform: createMockTransform({
         last_run: createMockTransformRun({ status: "started" }),
       }),
     });
-    const button = screen.getByRole("button", { name: "Change target" });
+    const button = await screen.findByRole("button", { name: "Change target" });
     expect(button).toBeDisabled();
   });
 
-  it("should not disable the change target button when the transform is not running", () => {
+  it("should not disable the change target button when the transform is not running", async () => {
     setup({
       transform: createMockTransform({
         last_run: createMockTransformRun({ status: "failed" }),
       }),
     });
-    const button = screen.getByRole("button", { name: "Change target" });
+    const button = await screen.findByRole("button", { name: "Change target" });
     expect(button).toBeEnabled();
   });
 
@@ -126,16 +126,19 @@ describe("TransformSettingsSection", () => {
       setup({ remoteSyncType: "read-only" });
     });
 
-    it("does not show the change target button", () => {
+    it("does not show the change target button", async () => {
+      await screen.findByRole("switch", {
+        name: /Only process new data/,
+      });
       expect(
         screen.queryByRole("button", { name: "Change target" }),
       ).not.toBeInTheDocument();
     });
 
-    it("makes Incremental transformation switch disabled", () => {
+    it("makes Incremental transformation switch disabled", async () => {
       expect(
-        screen.getByRole("switch", {
-          name: /Only process new and changed data/,
+        await screen.findByRole("switch", {
+          name: /Only process new data/,
         }),
       ).toBeDisabled();
     });
@@ -143,17 +146,17 @@ describe("TransformSettingsSection", () => {
 });
 
 describe("OwnerSection", () => {
-  it("should render the ownership section with title and description", () => {
+  it("should render the ownership section with title and description", async () => {
     setup({
       transform: createMockTransform(),
     });
-    expect(screen.getByText("Ownership")).toBeInTheDocument();
+    expect(await screen.findByText("Ownership")).toBeInTheDocument();
     expect(
       screen.getByText("Specify who is responsible for this transform."),
     ).toBeInTheDocument();
   });
 
-  it("should render the owner label", () => {
+  it("should render the owner label", async () => {
     setup({
       transform: createMockTransform({
         owner_user_id: 1,
@@ -164,17 +167,17 @@ describe("OwnerSection", () => {
         }),
       }),
     });
-    expect(screen.getByText("Owner")).toBeInTheDocument();
+    expect(await screen.findByText("Owner")).toBeInTheDocument();
   });
 
-  it("should display external email when owner_email is set", () => {
+  it("should display external email when owner_email is set", async () => {
     setup({
       transform: createMockTransform({
         owner_email: "external@example.com",
         owner: createMockTransformOwner({ email: "external@example.com" }),
       }),
     });
-    expect(screen.getByText("Ownership")).toBeInTheDocument();
+    expect(await screen.findByText("Ownership")).toBeInTheDocument();
   });
 });
 
