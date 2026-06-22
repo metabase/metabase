@@ -10,13 +10,13 @@ import {
   useRestore,
   useSetArchive,
 } from "metabase/archive/hooks";
-import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
+import { trackCollectionItemBookmarked } from "metabase/common/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
   OnCopy,
   OnMove,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import {
   canArchiveItem,
   canBookmarkItem,
@@ -24,7 +24,7 @@ import {
   canPreviewItem,
   isItemPinned,
   isPreviewEnabled,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import {

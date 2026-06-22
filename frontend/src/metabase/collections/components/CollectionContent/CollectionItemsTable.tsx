@@ -18,8 +18,8 @@ import CollectionEmptyState from "metabase/collections/components/CollectionEmpt
 import type {
   CreateBookmark,
   DeleteBookmark,
-} from "metabase/collections/types";
-import { isRootTrashCollection } from "metabase/collections/utils";
+} from "metabase/common/collections/types";
+import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { ItemsTable } from "metabase/common/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { PaginationControls } from "metabase/common/components/PaginationControls";

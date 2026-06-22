@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import * as Urls from "metabase/urls";
 import { useListTenantsQuery } from "metabase-enterprise/api";

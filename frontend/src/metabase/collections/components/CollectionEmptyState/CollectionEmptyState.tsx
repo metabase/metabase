@@ -5,7 +5,7 @@ import EmptyStateIcon from "assets/img/empty-states/collection.svg";
 import {
   isLibraryCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { PLUGIN_LIBRARY } from "metabase/plugins";

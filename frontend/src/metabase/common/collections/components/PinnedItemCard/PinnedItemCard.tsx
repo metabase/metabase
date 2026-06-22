@@ -2,11 +2,11 @@ import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import ActionMenu from "metabase/collections/components/ActionMenu";
+import ActionMenu from "metabase/common/collections/components/ActionMenu";
 import type {
   CreateBookmark,
   DeleteBookmark,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { useGetIcon } from "metabase/hooks/use-icon";
