@@ -11,7 +11,6 @@ import { PortalContainer, ThemeProvider } from "metabase/ui";
 window.METABASE_REMOVE_DELAYS = true;
 
 require("metabase/css/core/index.css");
-require("metabase/css/vendor.css");
 require("metabase/css/index.module.css");
 require("metabase/utils/dayjs");
 
