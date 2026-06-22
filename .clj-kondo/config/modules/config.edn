@@ -3100,6 +3100,7 @@
            metabase-enterprise.data-apps.sync}
    :uses #{api
            models
+           premium-features
            settings
            util}}
 

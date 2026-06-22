@@ -15,6 +15,12 @@ export interface DataApp {
   bundle_path: string;
   /** Admin toggle. When false the app is not served. */
   enabled: boolean;
+  /**
+   * External origins the app's sandboxed bundle may `fetch`/XHR, from its
+   * `data_app.yml`. Empty means none (Metabase data still flows through the
+   * SDK). Each entry is an origin, optionally with a `*.` wildcard.
+   */
+  allowed_hosts: string[];
   /** SHA-256 of the cached bundle; `null` until the first successful sync. */
   bundle_hash: string | null;
   /** Git commit the cached bundle was synced from; `null` until first sync. */

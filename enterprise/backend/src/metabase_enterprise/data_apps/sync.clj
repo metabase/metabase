@@ -55,16 +55,16 @@
 (defn- discover-app-configs
   "Given the snapshot's `list-files` and `read-file` fns (where `read-file`
    returns file text or nil), return one entry per `data_apps/<dir>/data_app.yml`,
-   each either a parsed app `{:slug :display_name :bundle}` (with `:bundle` the
-   repo-root relative bundle path) or `{:config-error <message>}`. Parse/read
+   each either a parsed app `{:slug :display_name :bundle :allowed_hosts}` (with
+   `:bundle` the repo-root relative bundle path) or `{:config-error <message>}`. Parse/read
    failures are isolated per app so one bad config can't abort the whole sync."
   [list-files read-file]
   (for [config-path (filter #(re-matches config-path-regex %) (list-files))
         :let [dir (subs config-path 0 (str/last-index-of config-path "/"))]]
     (try
       (if-let [content (read-file config-path)]
-        (let [{:keys [slug display_name path]} (data-app.config/parse-app-config (->bytes content) dir)]
-          {:slug slug, :display_name display_name, :bundle (str dir "/" path)})
+        (let [{:keys [slug display_name path allowed_hosts]} (data-app.config/parse-app-config (->bytes content) dir)]
+          {:slug slug, :display_name display_name, :bundle (str dir "/" path), :allowed_hosts allowed_hosts})
         {:config-error (tru "Could not read {0}." config-path)})
       (catch Throwable e
         {:config-error (ex-message e)}))))
@@ -83,7 +83,7 @@
   "Materialize one app. On bundle failure, the row's metadata is still upserted
    with `sync_error` set so the app appears in the list with its failure; the
    previously cached bundle (if any) is kept."
-  [{:keys [slug display_name bundle sha read-file]}]
+  [{:keys [slug display_name bundle sha read-file allowed_hosts]}]
   (try
     (let [content (read-file bundle)
           _       (when-not content
@@ -95,6 +95,7 @@
                              slug (quot max-bundle-bytes (* 1024 1024)))
                         {:status-code 413})))
       (upsert-by-name! slug {:display_name    display_name
+                             :allowed_hosts   allowed_hosts
                              :bundle_path     bundle
                              :bundle          bytes
                              :bundle_hash     (bytes-hash bytes)
@@ -102,9 +103,10 @@
                              :last_synced_at  :%now
                              :sync_error      nil}))
     (catch Throwable e
-      (upsert-by-name! slug {:display_name display_name
-                             :bundle_path  bundle
-                             :sync_error   (ex-message e)})
+      (upsert-by-name! slug {:display_name  display_name
+                             :allowed_hosts allowed_hosts
+                             :bundle_path   bundle
+                             :sync_error    (ex-message e)})
       (log/warnf e "[data-app] failed to sync app %s" slug))))
 
 (defn import-from-snapshot!
@@ -131,8 +133,9 @@
       (throw (ex-info (tru "Two data apps in the repository share a slug.")
                       {:status-code 400})))
     (t2/with-transaction [_conn]
-      (doseq [{:keys [slug display_name bundle]} good]
+      (doseq [{:keys [slug display_name bundle allowed_hosts]} good]
         (sync-app! {:slug slug, :display_name display_name, :bundle bundle
+                    :allowed_hosts allowed_hosts
                     :sha sha, :read-file read-file}))
       ;; Prune apps whose directory is gone — but only when every config parsed.
       ;; With an unparsed config we can't tell a removed app from one we failed to
