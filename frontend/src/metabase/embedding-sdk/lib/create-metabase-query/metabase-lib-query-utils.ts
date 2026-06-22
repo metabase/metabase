@@ -7,6 +7,8 @@ import { TYPE } from "metabase-lib/v1/types/constants";
 import { isObject } from "metabase-types/guards";
 
 import { isTableFieldSchema } from "./guards";
+import type { ColumnMetadata, Query } from "./metabase-lib-query-lib";
+import { Lib } from "./metabase-lib-query-lib";
 
 export const STAGE_INDEX = 0;
 
@@ -135,4 +137,52 @@ function getBreakoutOptions(breakout: unknown): Record<string, unknown> {
   }
 
   return options;
+}
+
+export function findLibColumn(
+  query: Query,
+  field: unknown,
+  options: Record<string, unknown> = {},
+): ColumnMetadata | null {
+  const fieldId = getFieldId(field);
+
+  if (fieldId != null) {
+    const sourceFieldId = getObjectNumber(field, "sourceFieldId");
+    const fieldOptions =
+      sourceFieldId == null
+        ? options
+        : { ...options, "source-field": sourceFieldId };
+
+    if (Object.keys(fieldOptions).length > 0) {
+      return Lib.fromLegacyColumn(query, STAGE_INDEX, {
+        id: fieldId,
+        name: getObjectString(field, "name") ?? String(fieldId),
+        display_name:
+          getObjectString(field, "displayName") ??
+          getObjectString(field, "name") ??
+          String(fieldId),
+        source: "fields",
+        fk_field_id: sourceFieldId,
+        base_type: isTableFieldSchema(field)
+          ? getFieldBaseType(field)
+          : undefined,
+        effective_type: isTableFieldSchema(field)
+          ? getFieldEffectiveType(field)
+          : undefined,
+        field_ref: ["field", fieldId, fieldOptions],
+      });
+    }
+
+    return Lib.fieldMetadata(query, fieldId);
+  }
+
+  if (typeof field !== "string") {
+    return null;
+  }
+
+  return (
+    Lib.filterableColumns(query, STAGE_INDEX).find(
+      (column) => Lib.displayInfo(query, STAGE_INDEX, column).name === field,
+    ) ?? null
+  );
 }

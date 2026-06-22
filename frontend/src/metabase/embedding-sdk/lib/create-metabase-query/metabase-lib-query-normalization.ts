@@ -1,4 +1,5 @@
 import type { StructuredDatasetQuery } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { normalizeBreakout } from "./metabase-lib-query-utils";
 
@@ -91,5 +92,5 @@ function stripFieldRefBaseTypes<TValue>(value: TValue): TValue {
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value != null && !Array.isArray(value);
+  return isObject(value) && !Array.isArray(value);
 }
