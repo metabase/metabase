@@ -57,13 +57,29 @@
 (def ^:private allowed-host-re
   "A single `allowed_hosts` entry: an origin the app's sandboxed bundle may
    `fetch`/XHR — scheme + host, an optional `*.` subdomain wildcard, and an
-   optional port. No path/query/bare `*`/non-http(s) scheme: it names an
+   optional port. No path/query/`*`/non-http(s) scheme: it names an
    origin, e.g. `https://api.example.com` or `https://*.internal.acme.com`."
   #"(?i)https?://(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d+)?")
 
+(defn- normalized-allowed-host
+  "Trim, lowercase, and drop trailing slashes from one `allowed_hosts` entry."
+  [entry]
+  (some-> entry str str/trim u/lower-case-en (str/replace #"/+$" "")))
+
+(defn- parse-allowed-host
+  "Normalize + validate a single `allowed_hosts` entry (see [[allowed-host-re]]).
+   Throws an `ex-info` with `:status-code` 400 when it isn't an origin-only value."
+  [entry ^String dir]
+  (let [s (normalized-allowed-host entry)]
+    (when-not (and (seq s) (re-matches allowed-host-re s))
+      (throw (ex-info (tru "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
+                           dir config-file-name (str entry))
+                      {:status-code 400})))
+    s))
+
 (defn- parse-allowed-hosts
   "Validate + normalize the optional `allowed_hosts` list from a parsed config.
-   Each entry must be a bare origin (see [[allowed-host-re]]); returns a
+   Each entry must be an origin-only value (see [[allowed-host-re]]); returns a
    lowercased, de-duplicated vector, or `[]` when the key is absent. Throws an
    `ex-info` with `:status-code` 400 on a non-list value or an invalid entry."
   [parsed ^String dir]
@@ -75,13 +91,7 @@
                       {:status-code 400}))
       :else
       (->> raw
-           (mapv (fn [entry]
-                   (let [s (some-> entry str str/trim u/lower-case-en (str/replace #"/+$" ""))]
-                     (when-not (and s (re-matches allowed-host-re s))
-                       (throw (ex-info (tru "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
-                                            dir config-file-name (str entry))
-                                       {:status-code 400})))
-                     s)))
+           (map #(parse-allowed-host % dir))
            distinct
            vec))))
 

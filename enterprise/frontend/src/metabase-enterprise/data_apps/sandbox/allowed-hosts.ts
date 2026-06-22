@@ -23,6 +23,21 @@ interface AllowedOrigin {
   port: string; // "" means "any port" (the entry omitted one)
 }
 
+/**
+ * A valid `allowed_hosts` entry is *origin-only*: an http(s) scheme + host (+ an
+ * optional port), with no path, query, fragment, or credentials.
+ */
+function isRawHttpOrigin(url: URL): boolean {
+  return (
+    (url.protocol === "https:" || url.protocol === "http:") &&
+    url.pathname === "/" &&
+    url.search === "" &&
+    url.hash === "" &&
+    url.username === "" &&
+    url.password === ""
+  );
+}
+
 function parseAllowedOrigin(entry: string): AllowedOrigin | null {
   let url: URL;
   try {
@@ -34,15 +49,7 @@ function parseAllowedOrigin(entry: string): AllowedOrigin | null {
     return null;
   }
 
-  // Must be a bare http(s) origin: no path, query, fragment, or credentials.
-  if (
-    (url.protocol !== "https:" && url.protocol !== "http:") ||
-    url.pathname !== "/" ||
-    url.search !== "" ||
-    url.hash !== "" ||
-    url.username !== "" ||
-    url.password !== ""
-  ) {
+  if (!isRawHttpOrigin(url)) {
     return null;
   }
   const wildcard = url.hostname.startsWith("*.");

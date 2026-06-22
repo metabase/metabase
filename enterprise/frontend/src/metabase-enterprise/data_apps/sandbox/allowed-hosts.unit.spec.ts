@@ -56,6 +56,22 @@ describe("isHostAllowed", () => {
     ).toBe(true);
   });
 
+  it("treats an explicit default port the same as none (agrees with CSP)", () => {
+    // `URL` strips the default port (`:443`/`:80` → ""), so an entry that spells
+    // it out must still match a default-port request — otherwise the JS allowlist
+    // would disagree with the browser's CSP matching.
+    expect(
+      isHostAllowed(u("https://api.example.com/"), [
+        "https://api.example.com:443",
+      ]),
+    ).toBe(true);
+    expect(
+      isHostAllowed(u("http://api.example.com/"), [
+        "http://api.example.com:80",
+      ]),
+    ).toBe(true);
+  });
+
   it("denies everything for an empty allowlist", () => {
     expect(isHostAllowed(u("https://api.example.com/"), [])).toBe(false);
   });
