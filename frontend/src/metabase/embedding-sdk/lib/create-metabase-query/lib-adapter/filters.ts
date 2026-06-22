@@ -22,6 +22,7 @@ import { isColumnReference } from "../query-utils";
 import { findLibColumn } from "./column";
 import {
   isBooleanFilterOperator,
+  isDateFilterOperator,
   isDefaultFilterOperator,
   isNumberFilterOperator,
   isSpecificDateFilterOperator,
@@ -175,8 +176,19 @@ function buildLibFieldFilter(
       });
     })
     .with("Date", () => {
-      if (!isSpecificDateFilterOperator(filter.operator)) {
+      if (!isDateFilterOperator(filter.operator)) {
         return null;
+      }
+
+      if (!values.every(isDateFilterValue)) {
+        return null;
+      }
+
+      if (!isSpecificDateFilterOperator(filter.operator)) {
+        return Lib.expressionClause(filter.operator, [
+          column,
+          ...values.map(normalizeDateFilterExpressionValue),
+        ]);
       }
 
       return Lib.specificDateFilterClause({
@@ -361,3 +373,12 @@ const isBooleanFilterValue = (value: unknown): value is boolean =>
 
 const isStringFilterValue = (value: unknown): value is string =>
   typeof value === "string";
+
+const isDateFilterValue = (value: unknown): value is string | number | Date =>
+  typeof value === "string" ||
+  typeof value === "number" ||
+  value instanceof Date;
+
+const normalizeDateFilterExpressionValue = (
+  value: string | number | Date,
+): string | number => (value instanceof Date ? value.toISOString() : value);

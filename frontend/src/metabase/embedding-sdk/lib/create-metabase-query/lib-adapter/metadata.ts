@@ -35,6 +35,7 @@ import {
 import { getFieldBaseType, getFieldEffectiveType } from "./query-utils";
 
 type TableMetadataSource = Omit<TableSchema, "id"> & { id: TableId };
+type QueryMetadataInput = TableQueryInput | MetricQueryInput;
 
 export function createLibQuery(
   metadata: MetadataInput,
@@ -54,7 +55,7 @@ export function createLibQuery(
 export function createTableMetadata(
   table: TableMetadataSource,
   databaseId: number,
-  query?: TableQueryInput,
+  query?: QueryMetadataInput,
 ): MetadataInput {
   const fields = getTableFields(table, query);
   const segments = getTableSegments(table, query);
@@ -133,7 +134,7 @@ export function createMetricMetadata(
         };
 
   return {
-    ...createTableMetadata(table, databaseId),
+    ...createTableMetadata(table, databaseId, query),
     questions: {
       [metricId]: createMetricCardMetadataRecord({
         metricId,
@@ -238,7 +239,7 @@ const createMetricCardMetadataRecord = ({
 
 const getTableFields = (
   table: TableMetadataSource,
-  query?: TableQueryInput,
+  query?: QueryMetadataInput,
 ): FieldSchema[] =>
   getUniqueFields([
     ...Object.values(table.fields ?? {}).filter(hasFieldReferenceId),
@@ -247,7 +248,7 @@ const getTableFields = (
 
 const getTableSegments = (
   table: TableMetadataSource,
-  query?: TableQueryInput,
+  query?: QueryMetadataInput,
 ): SegmentSchema[] =>
   getUniqueById([
     ...Object.values(table.segments ?? {}),
@@ -256,14 +257,14 @@ const getTableSegments = (
 
 const getTableMeasures = (
   table: TableMetadataSource,
-  query?: TableQueryInput,
+  query?: QueryMetadataInput,
 ): MeasureReferenceInput[] =>
   getUniqueById([
     ...Object.values(table.measures ?? {}),
     ...getQueryAggregations(query).filter(isMeasureSchema),
   ]);
 
-function getQueryFieldReferences(query?: TableQueryInput): FieldSchema[] {
+function getQueryFieldReferences(query?: QueryMetadataInput): FieldSchema[] {
   const filterFields =
     query?.filters?.flatMap((filter) =>
       isDimensionFilter(filter) && isTableFieldSchema(filter.dimension)
@@ -289,8 +290,12 @@ function getQueryFieldReferences(query?: TableQueryInput): FieldSchema[] {
   );
 }
 
-const getQueryAggregations = (query?: TableQueryInput): readonly unknown[] =>
-  query?.aggregations ?? query?.measures ?? [];
+const getQueryAggregations = (query?: QueryMetadataInput): readonly unknown[] =>
+  query == null
+    ? []
+    : "aggregations" in query
+      ? (query.aggregations ?? query.measures ?? [])
+      : (query.measures ?? []);
 
 const getUniqueById = <T extends { id: number }>(items: readonly T[]): T[] =>
   Array.from(new Map(items.map((item) => [item.id, item])).values());

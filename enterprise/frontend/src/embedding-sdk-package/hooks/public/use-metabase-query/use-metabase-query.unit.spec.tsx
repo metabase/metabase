@@ -699,6 +699,25 @@ describe("useMetabaseQuery", () => {
       });
     });
 
+    it("builds public date comparison operators", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            filter(
+              TEST_SCHEMA.tables.orders.fields.orderDate,
+              ">=",
+              "2026-06-18",
+            ),
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          filter: [">=", ["field", 105, {}], "2026-06-18"],
+        },
+      });
+    });
+
     it("builds time-interval filters through metabase-lib", () => {
       expect(
         createMetabaseQuery({
@@ -848,6 +867,24 @@ describe("useMetabaseQuery", () => {
           ],
           filter: ["=", ["field", 101, {}], "paid"],
           breakout: [["field", 103, { "temporal-unit": "month" }]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("builds generated metric segment filters", () => {
+      expect(
+        createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          filters: [TEST_SCHEMA.tables.orders.segments.completed],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["metric", 34]],
+          filter: ["segment", 11],
         },
         parameters: [],
       });

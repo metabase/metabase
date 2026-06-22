@@ -3,12 +3,21 @@ import { P, isMatching } from "ts-pattern";
 import type {
   BooleanFilterOperator,
   DefaultFilterOperator,
+  ExcludeDateFilterOperator,
   NumberFilterOperator,
   SpecificDateFilterOperator,
   StringFilterOperator,
+  TimeFilterOperator,
 } from "metabase-lib";
 
 import type { FilterOperator } from "../input-types";
+
+type DateFilterOperators =
+  | SpecificDateFilterOperator
+  | ExcludeDateFilterOperator
+  | TimeFilterOperator
+  | ">="
+  | "<=";
 
 export const isDefaultFilterOperator: (
   operator: FilterOperator,
@@ -32,6 +41,12 @@ export const isSpecificDateFilterOperator: (
   operator: FilterOperator,
 ) => operator is SpecificDateFilterOperator = isMatching(
   P.union("=", ">", "<", "between"),
+);
+
+export const isDateFilterOperator: (
+  operator: FilterOperator,
+) => operator is DateFilterOperators = isMatching(
+  P.union("=", "!=", ">", "<", "between", ">=", "<=", "is-null", "not-null"),
 );
 
 export const isStringFilterOperator: (
