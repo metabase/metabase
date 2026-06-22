@@ -82,14 +82,12 @@ export const CollectionBreadcrumbs = ({
     );
 
   return (
-    <>
-      <Flex align="center" miw="0">
-        {content}
-        <CollectionBadge
-          collectionId={collection.id}
-          onClick={onClick ? () => onClick(collection) : undefined}
-        />
-      </Flex>
+    <Flex align="center" miw="0">
+      {content}
+      <CollectionBadge
+        collectionId={collection.id}
+        onClick={onClick ? () => onClick(collection) : undefined}
+      />
       {dashboard && (
         <>
           {separator}
@@ -99,7 +97,7 @@ export const CollectionBreadcrumbs = ({
           </Breadcrumb>
         </>
       )}
-    </>
+    </Flex>
   );
 };
 
