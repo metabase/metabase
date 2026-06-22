@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
    [metabase.mcp.core :as mcp]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting]
@@ -222,9 +223,19 @@
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
 (def ^:private cljs-dev-port (or (env/env :mb-cljs-dev-port) "9630"))
 
+(defenterprise data-app-connect-src-hosts
+  "Origins the data app identified by `slug` may reach (its `allowed_hosts`),
+   added to the data-app iframe document's CSP `connect-src` so the sandboxed
+   bundle can `fetch`/XHR them. Returns `[]` in OSS, when the `:data-apps`
+   feature is absent, or when there's no enabled app for `slug`. EE
+   implementation: [[metabase-enterprise.data-apps.csp]]."
+  metabase-enterprise.data-apps.csp
+  [_slug]
+  [])
+
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce data-app-iframe?]
+  [nonce data-app-iframe? data-app-connect-hosts]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -289,22 +300,28 @@
                                           (into ["*"] always-allowed-resource-hosts))
                                   ;; Data apps need blob: to load icons for custom viz
                                   data-app-iframe? (conj "blob:"))
-                  :connect-src  ["'self'"
-                                 ;; Google Identity Services
-                                 "https://accounts.google.com"
-                                 ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
-                                 "metabase.us10.list-manage.com"
-                                 ;; Snowplow analytics
-                                 (when (analytics/anon-tracking-enabled)
-                                   (setting/get-value-of-type :string :snowplow-url))
-                                 (when (analytics/anon-tracking-enabled)
-                                   (setting/get-value-of-type :string :metaplow-url))
-                                 ;; Webpack dev server
-                                 (when config/is-dev?
-                                   (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
-                                 ;; CLJS REPL
-                                 (when config/is-dev?
-                                   (str "ws://*:" cljs-dev-port))]
+                  :connect-src  (into
+                                 ["'self'"
+                                  ;; Google Identity Services
+                                  "https://accounts.google.com"
+                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
+                                  "metabase.us10.list-manage.com"
+                                  ;; Snowplow analytics
+                                  (when (analytics/anon-tracking-enabled)
+                                    (setting/get-value-of-type :string :snowplow-url))
+                                  (when (analytics/anon-tracking-enabled)
+                                    (setting/get-value-of-type :string :metaplow-url))
+                                  ;; Webpack dev server
+                                  (when config/is-dev?
+                                    (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
+                                  ;; CLJS REPL
+                                  (when config/is-dev?
+                                    (str "ws://*:" cljs-dev-port))]
+                                 ;; Per-app `allowed_hosts` for the data-app iframe document, so its
+                                 ;; sandboxed bundle can fetch/XHR the origins the app declared. Added
+                                 ;; separately from `'self'` (which stays for the host-side SDK calls)
+                                 ;; and empty for every non-data-app document.
+                                 data-app-connect-hosts)
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
@@ -327,8 +344,8 @@
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce data-app-iframe?]
-  (update (content-security-policy-header nonce data-app-iframe?)
+  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts]
+  (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode))))
 
@@ -431,12 +448,12 @@
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
    `:self` (same-origin only), or `:none` (default — no framing unless interactive
    embedding is configured)."
-  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe?]
+  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts]
       :or   {frame-ancestors :none, allow-cache? false, data-app-iframe? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe?)
+   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
@@ -462,6 +479,12 @@
   [request]
   (str/starts-with? (:uri request) "/embed/data-app/"))
 
+(defn- data-app-iframe-slug
+  "Slug of the data-app iframe document being served, parsed from
+   `/embed/data-app/<slug>` (and any deeper sub-route), or nil."
+  [request]
+  (second (re-matches #"/embed/data-app/([^/]+).*" (:uri request))))
+
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
@@ -476,7 +499,10 @@
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
                  :allow-cache?                (request/cacheable? request)
-                 :data-app-iframe?     (data-app-iframe-request? request))
+                 :data-app-iframe?            (data-app-iframe-request? request)
+                 ;; Per-app `allowed_hosts` → `connect-src` for the data-app iframe document.
+                 :data-app-connect-hosts      (when-let [slug (data-app-iframe-slug request)]
+                                                (data-app-connect-src-hosts slug)))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"

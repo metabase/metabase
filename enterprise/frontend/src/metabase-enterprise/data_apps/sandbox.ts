@@ -40,13 +40,18 @@ function isLiveTarget(target: object): boolean {
 export function createDataAppSandbox(
   label: string = "",
   targetWindow: Window = window,
+  allowedHosts: string[] = [],
 ) {
   let captured: unknown;
 
   const env = createVirtualEnvironment(
     targetWindow as Window & typeof globalThis,
     {
-      distortionCallback: makeDistortionCallback(label),
+      distortionCallback: makeDistortionCallback(
+        label,
+        targetWindow as Window & typeof globalThis,
+        allowedHosts,
+      ),
       liveTargetCallback: isLiveTarget,
       endowments: Object.getOwnPropertyDescriptors({
         React,

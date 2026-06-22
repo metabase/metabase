@@ -24,6 +24,7 @@ import "sdk-specific-imports";
 import { sdkBundleExports } from "./sdk-bundle-exports";
 
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
+import { SDK_BUNDLE_LOADED } from "embedding-sdk-shared/constants/event-names";
 
 defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");
 
@@ -33,4 +34,4 @@ window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
 // Signal that the bundle is ready. In the bootstrap flow (chunked loading),
 // rspack defers entry execution until all chunks are registered, so this event
 // fires only after everything is ready.
-document.dispatchEvent(new CustomEvent("metabase-sdk-bundle-loaded"));
+document.dispatchEvent(new CustomEvent(SDK_BUNDLE_LOADED));

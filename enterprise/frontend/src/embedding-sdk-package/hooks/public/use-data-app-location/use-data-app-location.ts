@@ -6,6 +6,7 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import { SDK_BUNDLE_LOADED } from "embedding-sdk-shared/constants/event-names";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 
 export type UseDataAppLocationResult = {
@@ -32,9 +33,9 @@ const useDataAppRouting = () =>
     (notify) => {
       const target = typeof document !== "undefined" ? document : null;
       const handler = () => notify();
-      target?.addEventListener("metabase-sdk-bundle-loaded", handler);
+      target?.addEventListener(SDK_BUNDLE_LOADED, handler);
       return () => {
-        target?.removeEventListener("metabase-sdk-bundle-loaded", handler);
+        target?.removeEventListener(SDK_BUNDLE_LOADED, handler);
       };
     },
     () => getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.dataAppRouting,
