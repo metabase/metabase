@@ -41,10 +41,6 @@
 
 ;;; --------------------------------------------------- Defaults ------------------------------------------------------
 
-(def ^:private ^:const default-query-row-limit
-  "Default row cap when :limit is omitted from a table query request."
-  200)
-
 (def ^:private ^:const page-size
   "Rows returned per page when paginating the combined query endpoint via continuation tokens.
    Also used as the query processor's per-call row constraint."
@@ -103,10 +99,10 @@
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
 (mr/def ::search-result-item
-  "A table or metric returned from search."
+  "A table, metric, or model returned from search."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:enum "table" "metric"]]
+   [:type [:enum "table" "metric" "model"]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
@@ -117,7 +113,7 @@
    [:created_at {:optional true} [:maybe :any]]])
 
 (mr/def ::search-response
-  "Search results containing tables and metrics matching the query."
+  "Search results containing tables, metrics, and models matching the query."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
@@ -150,14 +146,14 @@
     :else           v))
 
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
-  "Search for tables and metrics.
+  "Search for tables, metrics, and models.
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
-           :title "Search Tables and Metrics"
-           :description (str "Search for tables and metrics in Metabase. "
+           :title "Search Tables, Metrics, and Models"
+           :description (str "Search for tables, metrics, and models in Metabase. "
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
@@ -175,7 +171,7 @@
   (let [results (metabot-search/search
                  {:term-queries     (or (coerce-query-list term-queries) [])
                   :semantic-queries (or (coerce-query-list semantic-queries) [])
-                  :entity-types     ["table" "metric"]
+                  :entity-types     ["table" "metric" "model"]
                   :limit            (or (request/limit) 50)})]
     {:data        results
      :total_count (count results)}))
@@ -340,11 +336,11 @@
     decoded))
 
 (defn- clamp-total-limit
-  "Default a missing :limit and cap it at the combined endpoint's hard maximum.
-   This is the app-level total-row budget enforced across paginated responses; each page's QP-level
-   cap comes from `:page.items`, which `remaining-page-rows` clamps to respect this total."
+  "Cap `limit` at the combined endpoint's hard maximum.
+   A nil `limit` (no explicit limit in the query) defaults to the full 2000-row budget so that
+   omitting :limit doesn't silently collapse pagination to a single page."
   [limit]
-  (min (or limit default-query-row-limit) max-total-row-limit))
+  (min (or limit max-total-row-limit) max-total-row-limit))
 
 (defn- total-row-limit
   "The user's requested :limit read from a resolved lib query, defaulted and capped."
@@ -534,11 +530,16 @@
    :tool  {:name "query"
            :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query and return results with column "
-                             "metadata. If more rows are available, the response includes a "
-                             "continuation_token — pass it back to get the next page.\n\n"
-                             "Provide one of: a `query_handle` returned by construct_query "
-                             "(preferred when you have one); a `{\"query\": <object>}` body "
-                             "(same shape as construct_query; see the `construct_notebook_query` "
+                             "metadata, paginating automatically up to 2,000 rows total.\n\n"
+                             "Results are returned in pages of 200 rows. When more pages remain "
+                             "within the 2,000-row budget, the response includes a "
+                             "continuation_token — pass it back to fetch the next page. A missing "
+                             "continuation_token means the budget is exhausted or the table has "
+                             "fewer rows than the page size. If the table is larger than 2,000 "
+                             "rows and you need more, add a filter or aggregation to narrow "
+                             "the result set.\n\n Provide one of: a `query_handle` returned "
+                             "by construct_query (preferred when you have one); a `{\"query\": <object>}` "
+                             "body (same shape as construct_query; see the `construct_notebook_query` "
                              "tool for the format reference); or a `{\"continuation_token\": "
                              "\"...\"}` from a previous response.")
            :annotations {:read-only? true}}}

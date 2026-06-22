@@ -24,6 +24,7 @@ import type {
 
 import { JobEditor } from "../../components/JobEditor";
 import { JobMoreMenu } from "../../components/JobMoreMenu";
+import { JobTabs } from "../../components/JobTabs";
 import { POLLING_INTERVAL } from "../../constants";
 
 type JobPageParams = {
@@ -157,6 +158,7 @@ function JobPageBody({
     <JobEditor
       job={job}
       menu={!readOnly && <JobMoreMenu job={job} />}
+      tabs={<JobTabs jobId={job.id} />}
       readOnly={readOnly}
       isCheckingPermissions={isCheckingPermissions}
       onNameChange={handleNameChange}
