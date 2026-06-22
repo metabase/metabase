@@ -32,15 +32,6 @@ import S from "./ManageDataAppsPage.module.css";
 
 const REMOTE_SYNC_SETTINGS_PATH = "/admin/settings/remote-sync";
 
-// The data-app skills to install. `skills add metabase/metabase` alone would
-// discover *every* skill in the repo, so each is selected explicitly.
-const DATA_APP_SKILLS = [
-  "create-data-app",
-  "add-data-app-routing",
-  "metabase-data-app-actions",
-  "metabase-data-app-semantic-layer",
-];
-
 // Keep the sync status fresh while the page is open: the backend polls the repo
 // on its own schedule, so re-fetch the list periodically to reflect those syncs.
 // Skipped automatically when the tab is unfocused.
@@ -61,20 +52,18 @@ export function ManageDataAppsPage() {
 
   const isConfigured = status?.configured ?? false;
 
-  // Pin the data-app skills to the branch matching this instance:
-  // `release-x.<major>.x`, or `master` for local/dev builds that have no release
-  // branch. (Each skill re-derives the same branch from the instance version
-  // when it clones the template, so the two always agree.)
+  // Pin the data-app skills (and the template bundled inside `create-data-app`)
+  // to the branch matching this instance: `release-x.<major>.x`, or `master` for
+  // local/dev builds that have no release branch.
   const { tag } = useSetting("version");
   const majorVersion = tag ? versionToNumericComponents(tag)?.[1] : undefined;
   const skillBranch =
     tag && !isLocalOrSnapshotVersion(tag) && majorVersion != null
       ? `release-x.${majorVersion}.x`
       : "master";
-  const skillSelectors = DATA_APP_SKILLS.map(
-    (skill) => `--skill ${skill}`,
-  ).join(" ");
-  const installSkillCommand = `npx skills add metabase/metabase#${skillBranch} ${skillSelectors}`;
+  // The data-app skills live under the repo's `skills/` dir; pointing `skills add`
+  // there installs all of them (and the bundled template) pinned to this branch.
+  const installSkillCommand = `npx skills add metabase/metabase/skills#${skillBranch}`;
 
   return (
     <SettingsPageWrapper>
