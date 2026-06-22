@@ -346,6 +346,28 @@
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
               (lib.drill-thru/drill-thru query drill))))))
 
+(deftest ^:parallel chart-other-slice-click-test
+  (testing "chart clicks with grouped breakout values use an in filter (#5334)"
+    (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                       (lib/aggregate (lib/count))
+                       (lib/breakout (meta/field-metadata :products :category)))
+          cols     (lib/returned-columns query)
+          category (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Category"})
+          context  {:column     nil
+                    :column-ref nil
+                    :value      nil
+                    :dimensions [{:column     category
+                                  :column-ref (lib/ref category)
+                                  :value      ["Gadget" "Doohickey"]}]}
+          drill    (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                 (lib.drill-thru/available-drill-thrus query context))]
+      (is (=? {:lib/type :mbql/query
+               :stages [{:filters     [[:in {} [:field {} (meta/id :products :category)] "Gadget" "Doohickey"]]
+                         :aggregation (symbol "nil #_\"key is not present.\"")
+                         :breakout    (symbol "nil #_\"key is not present.\"")
+                         :fields      (symbol "nil #_\"key is not present.\"")}]}
+              (lib.drill-thru/drill-thru query drill))))))
+
 (deftest ^:parallel preserve-temporal-bucket-test
   (testing "preserve the temporal bucket on a breakout column in the previous stage (#13504 #36582)"
     (let [base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

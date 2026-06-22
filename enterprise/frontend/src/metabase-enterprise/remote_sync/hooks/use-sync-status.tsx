@@ -9,8 +9,10 @@ import {
   getHasPendingMutation,
   getIsError,
   getIsRunning,
+  getIsSuccess,
   getProgress,
   getShowModal,
+  getTaskOutcome,
   getTaskType,
 } from "../selectors";
 import { modalDismissed } from "../sync-task-slice";
@@ -27,6 +29,8 @@ export const useSyncStatus = () => {
   const progress = useSelector(getProgress);
   const isError = useSelector(getIsError);
   const errorMessage = useSelector(getErrorMessage);
+  const isSuccess = useSelector(getIsSuccess);
+  const outcome = useSelector(getTaskOutcome);
   const hasPendingMutation = useSelector(getHasPendingMutation);
 
   const shouldPoll = isRunning && showModal && !hasPendingMutation;
@@ -44,6 +48,8 @@ export const useSyncStatus = () => {
         progress={progress}
         isError={isError}
         errorMessage={errorMessage}
+        isSuccess={isSuccess}
+        outcome={outcome}
         onDismiss={() => dispatch(modalDismissed())}
       />
     ) : null;

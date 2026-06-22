@@ -100,7 +100,9 @@ export function ImageUploadWidget({
               align="center"
               justify="center"
               w="7.5rem"
-              style={{ borderRight: "1px solid var(--mb-color-border)" }}
+              style={{
+                borderRight: "1px solid var(--mb-color-border-neutral)",
+              }}
             >
               {!isDefaultImage && typeof imageSource === "string" && (
                 <PreviewImage src={imageSource} aria-label={t`Image preview`} />

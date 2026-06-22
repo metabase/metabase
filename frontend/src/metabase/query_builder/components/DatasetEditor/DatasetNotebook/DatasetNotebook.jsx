@@ -45,7 +45,7 @@ const Handle = forwardRef(function Handle(props, ref) {
       <Box
         w="6.25rem"
         h="xs"
-        bg={darken("border", 0.03)}
+        bg={darken("border-neutral", 0.03)}
         style={{
           borderRadius: "xs",
         }}

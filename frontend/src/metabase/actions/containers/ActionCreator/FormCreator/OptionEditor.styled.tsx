@@ -26,7 +26,7 @@ export const ErrorMessage = styled.div`
 export const TextArea = styled.textarea`
   resize: none;
   border: none;
-  outline: 1px solid var(--mb-color-border);
+  outline: 1px solid var(--mb-color-border-neutral);
   width: 20rem;
   border-radius: var(--mantine-spacing-sm);
   padding: var(--mantine-spacing-sm);

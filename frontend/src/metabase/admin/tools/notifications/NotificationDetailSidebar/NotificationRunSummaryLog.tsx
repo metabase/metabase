@@ -70,7 +70,11 @@ export const NotificationRunSummaryLog = ({
               tt="none"
               fw="normal"
               c={isFailing ? undefined : "text-secondary"}
-              bd={isFailing ? undefined : "1px solid var(--mb-color-border)"}
+              bd={
+                isFailing
+                  ? undefined
+                  : "1px solid var(--mb-color-border-neutral)"
+              }
               style={hasError ? { cursor: "pointer" } : undefined}
             >
               {isFailing ? t`Failed` : t`Successful`}

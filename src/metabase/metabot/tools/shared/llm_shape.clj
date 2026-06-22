@@ -73,9 +73,10 @@
          (seq data))
     (str "```json\n" (json/encode data {:pretty true}) "\n```")))
 
-(defn- escape-xml
+(defn escape-xml
   "Escape XML special characters in a string.
-   Only needed for content that bypasses Selmer's auto-escaping (marked with |safe)."
+   Only needed for content that bypasses Selmer's auto-escaping (marked with |safe) or is interpolated
+   into hand-built XML."
   [s]
   (when s
     (-> (str s)

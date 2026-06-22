@@ -4066,7 +4066,7 @@
         "required" : [ "resources", "output" ]
       },
       "metabase.agent-api.api.search-response" : {
-        "description" : "Search results containing tables and metrics matching the query.",
+        "description" : "Search results containing tables, metrics, and models matching the query.",
         "type" : "object",
         "properties" : {
           "data" : {
@@ -4082,7 +4082,7 @@
         "required" : [ "data", "total_count" ]
       },
       "metabase.agent-api.api.search-result-item" : {
-        "description" : "A table or metric returned from search.",
+        "description" : "A table, metric, or model returned from search.",
         "type" : "object",
         "properties" : {
           "id" : {
@@ -4119,7 +4119,7 @@
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "table", "metric" ]
+            "enum" : [ "table", "metric", "model" ]
           },
           "database_schema" : {
             "oneOf" : [ {
@@ -15043,7 +15043,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-search",
         "summary" : "POST /api/agent/v1/search",
-        "description" : "Search for tables and metrics.\n\n  Supports both term-based and semantic search queries. Results are ranked using\n  Reciprocal Rank Fusion when both query types are provided.",
+        "description" : "Search for tables, metrics, and models.\n\n  Supports both term-based and semantic search queries. Results are ranked using\n  Reciprocal Rank Fusion when both query types are provided.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -28165,6 +28165,14 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "outcome" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
                       }
                     },
                     "required" : [ "id", "sync_task_type", "progress", "started_at", "status" ]
@@ -28266,6 +28274,14 @@
                     "version" : {
                       "oneOf" : [ {
                         "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "outcome" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : { }
                       }, {
                         "type" : "null"
                       } ]

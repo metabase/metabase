@@ -199,14 +199,15 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
           onClose={toggleEditModal}
         />
       )}
-      {isPermissionsModalOpen && collection.namespace === "snippets" && (
+      {collection.namespace === "snippets" ? (
         <PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal
+          opened={isPermissionsModalOpen}
           collectionId={collection.id}
           onClose={togglePermissionsModal}
         />
-      )}
-      {isPermissionsModalOpen && collection.namespace !== "snippets" && (
+      ) : (
         <PLUGIN_LIBRARY.CollectionPermissionsModal
+          opened={isPermissionsModalOpen}
           collectionId={collection.id}
           namespace={collection.namespace}
           onClose={togglePermissionsModal}
