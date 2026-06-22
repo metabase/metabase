@@ -280,14 +280,8 @@
   (loop [[{raw-path :path leaf-type :type :as dbfield} & dbfields*] dbfields
          ftree {:children {}}
          seen  #{}]
-    (cond
-      (nil? dbfield)
+    (if (or (nil? dbfield) (>= (count seen) limit))
       ftree
-
-      (>= (count seen) limit)
-      ftree
-
-      :else
       (let [ftree-paths (raw-path->ftree-paths raw-path)
             parents-paths (butlast ftree-paths)
             leaf-path (last ftree-paths)
