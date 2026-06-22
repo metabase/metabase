@@ -1,7 +1,7 @@
+import type { ColumnMetadata, Query } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-import type { ColumnMetadata, Query } from "./metabase-lib-query-lib";
-import { Lib } from "./metabase-lib-query-lib";
 import {
   STAGE_INDEX,
   findLibColumn,

@@ -9,11 +9,11 @@ import type {
   SegmentSchema,
   TableSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
+import type { Metadata as MetadataInput, Query } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type { Field, TableId } from "metabase-types/api";
 
 import { isMeasureSchema } from "./guards";
-import type { MetadataInput, Query } from "./metabase-lib-query-lib";
-import { Lib } from "./metabase-lib-query-lib";
 import {
   getFieldBaseType,
   getFieldEffectiveType,

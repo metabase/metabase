@@ -3,12 +3,12 @@ import type {
   SchemaJavaScriptType,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isNumber } from "metabase/utils/types";
+import type { ColumnMetadata, Query } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isObject } from "metabase-types/guards";
 
 import { isTableFieldSchema } from "./guards";
-import type { ColumnMetadata, Query } from "./metabase-lib-query-lib";
-import { Lib } from "./metabase-lib-query-lib";
 
 export const STAGE_INDEX = 0;
 

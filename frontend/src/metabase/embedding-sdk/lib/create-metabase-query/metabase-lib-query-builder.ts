@@ -6,6 +6,7 @@ import {
   getTableIdFromQuery,
 } from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
 import type { TableSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
+import * as Lib from "metabase-lib";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -18,7 +19,6 @@ import {
   buildLibMetricDatasetFilter,
   buildLibTableFilter,
 } from "./metabase-lib-query-clauses";
-import { Lib } from "./metabase-lib-query-lib";
 import {
   createLibQuery,
   createMetricMetadata,

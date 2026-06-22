@@ -1,8 +1,3 @@
-import {
-  isCountAggregation,
-  isFieldAggregation,
-  isMeasureSchema,
-} from "./guards";
 import type {
   Aggregable,
   AggregationClause,
@@ -10,8 +5,14 @@ import type {
   MeasureMetadata,
   MetricMetadata,
   Query,
-} from "./metabase-lib-query-lib";
-import { Lib } from "./metabase-lib-query-lib";
+} from "metabase-lib";
+import * as Lib from "metabase-lib";
+
+import {
+  isCountAggregation,
+  isFieldAggregation,
+  isMeasureSchema,
+} from "./guards";
 import {
   STAGE_INDEX,
   findLibColumn,

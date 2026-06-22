@@ -1,3 +1,10 @@
+import type {
+  ColumnMetadata,
+  ExpressionClause,
+  Query,
+  SegmentMetadata,
+} from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { isObject } from "metabase-types/guards";
 
 import {
@@ -7,13 +14,6 @@ import {
   isTableFieldSchema,
   isUnaryOperator,
 } from "./guards";
-import type {
-  ColumnMetadata,
-  ExpressionClause,
-  Query,
-  SegmentMetadata,
-} from "./metabase-lib-query-lib";
-import { Lib } from "./metabase-lib-query-lib";
 import {
   STAGE_INDEX,
   fieldHasTime,
