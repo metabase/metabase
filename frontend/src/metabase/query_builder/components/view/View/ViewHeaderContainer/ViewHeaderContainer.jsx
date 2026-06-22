@@ -54,7 +54,7 @@ export const ViewHeaderContainer = (props) => {
             className={CS.spread}
             style={{
               ...style,
-              borderBottom: "1px solid var(--mb-color-border)",
+              borderBottom: "1px solid var(--mb-color-border-neutral)",
             }}
           >
             <Flex direction="column" gap="xs">

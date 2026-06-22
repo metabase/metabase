@@ -12,7 +12,7 @@
   --stepper-outline-thickness: 0.0625rem;
   --stepper-outline-color: color-mix(
     in srgb,
-    var(--mb-color-border),
+    var(--mb-color-border-neutral),
     black 14%
   );
 }
@@ -45,7 +45,7 @@
 }
 
 .stepCard {
-  border: 1px solid var(--mb-color-border) !important;
+  border: 1px solid var(--mb-color-border-neutral) !important;
   cursor: pointer;
   transition:
     background-color 250ms ease,

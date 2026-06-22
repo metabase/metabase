@@ -59,7 +59,7 @@ const setup = ({ error, presets = [PRESET_A, PRESET_B] }: SetupOpts = {}) => {
       <ModalRoute
         path="levels"
         modal={LogLevelsModal}
-        modalProps={{ enableTransition: false }}
+        modalProps={{ transitionProps: { duration: 0 } }}
       />
     </Route>,
     {

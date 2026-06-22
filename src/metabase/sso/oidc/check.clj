@@ -4,6 +4,7 @@
    Validates OIDC provider configuration by probing the discovery document
    and testing client credentials against the token endpoint."
   (:require
+   [clojure.string :as str]
    [metabase.sso.oidc.discovery :as discovery]
    [metabase.sso.oidc.http :as oidc.http]
    [metabase.util.log :as log]))
@@ -21,17 +22,17 @@
   (discovery/invalidate-cache! issuer-uri)
   (let [doc (discovery/discover-oidc-configuration issuer-uri)]
     (if (nil? doc)
-      {:step :discovery
+      {:step    :discovery
        :success false
-       :error (str "Could not fetch OIDC discovery document from " issuer-uri)}
+       :error   (str "Could not fetch OIDC discovery document from " issuer-uri)}
       (let [config {:discovery-document doc}]
         (if (discovery/validate-configuration config)
-          {:step :discovery
-           :success true
+          {:step           :discovery
+           :success        true
            :token-endpoint (discovery/get-token-endpoint config)}
-          {:step :discovery
+          {:step    :discovery
            :success false
-           :error "Discovery document is missing required endpoints (authorization, token, or JWKS)"})))))
+           :error   "Discovery document is missing required endpoints (authorization, token, or JWKS)"})))))
 
 (defn check-credentials
   "Validate client credentials by POSTing a client_credentials grant to the token endpoint.
@@ -44,17 +45,18 @@
 
    Returns `{:step :credentials, :success bool, :verified bool, :error str?}`.
    When `:verified` is false, the IdP did not confirm the credentials but didn't reject them either."
-  [token-endpoint client-id client-secret]
+  [token-endpoint client-id client-secret scopes]
   (try
-    (let [response (oidc.http/oidc-post token-endpoint
-                                        {:form-params {:grant_type    "client_credentials"
-                                                       :client_id     client-id
-                                                       :client_secret client-secret}
-                                         :coerce :always})
-          status   (:status response)
-          body     (:body response)
-          error-code  (or (:error body)
-                          (when (string? body) body))]
+    (let [response   (oidc.http/oidc-post token-endpoint
+                                          {:form-params {:grant_type    "client_credentials"
+                                                         :client_id     client-id
+                                                         :client_secret client-secret
+                                                         :scope         (str/join " " scopes)}
+                                           :coerce      :always})
+          status     (:status response)
+          body       (:body response)
+          error-code (or (:error body)
+                         (when (string? body) body))]
       (cond
         (= 200 status)
         {:step :credentials :success true :verified true}
@@ -66,17 +68,17 @@
         {:step :credentials :success false :verified true :error "Invalid client ID or client secret"}
 
         :else
-        {:step :credentials
-         :success false
+        {:step     :credentials
+         :success  false
          :verified true
-         :error (str "Unexpected response from token endpoint (HTTP " status "): "
-                     (or (:error_description body) error-code body))}))
+         :error    (str "Unexpected response from token endpoint (HTTP " status "): "
+                        (or (:error_description body) error-code body))}))
     (catch Exception e
       (log/warnf e "OIDC credential check failed for %s" token-endpoint)
-      {:step :credentials
-       :success false
+      {:step     :credentials
+       :success  false
        :verified false
-       :error (str "Could not connect to token endpoint: " (.getMessage e))})))
+       :error    (str "Could not connect to token endpoint: " (.getMessage e))})))
 
 (defn check-oidc-configuration
   "Run full OIDC configuration validation: discovery then credentials.
@@ -85,13 +87,14 @@
    - issuer-uri: The OIDC issuer URL
    - client-id: OAuth2 client ID
    - client-secret: OAuth2 client secret
+   - scopes: OAuth2 scopes to request (e.g. `[\"openid\" \"email\" \"profile\"]`)
 
    Returns `{:ok bool, :discovery {...}, :credentials {...}}`."
-  [issuer-uri client-id client-secret]
+  [issuer-uri client-id client-secret scopes]
   (let [disc (check-discovery issuer-uri)]
     (if-not (:success disc)
       {:ok false :discovery disc}
-      (let [cred (check-credentials (:token-endpoint disc) client-id client-secret)]
-        {:ok (:success cred)
-         :discovery disc
+      (let [cred (check-credentials (:token-endpoint disc) client-id client-secret scopes)]
+        {:ok          (:success cred)
+         :discovery   disc
          :credentials cred}))))

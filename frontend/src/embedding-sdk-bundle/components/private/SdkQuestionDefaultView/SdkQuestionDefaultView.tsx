@@ -236,7 +236,7 @@ export const SdkQuestionDefaultView = ({
                           mx="xs"
                           orientation="vertical"
                           style={{
-                            color: "var(--mb-color-border) !important",
+                            color: "var(--mb-color-border-neutral) !important",
                           }}
                         />
                       )}

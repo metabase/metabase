@@ -1,5 +1,5 @@
 .SelectRoot {
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
   padding: 0;
 
   & > div {
@@ -22,16 +22,6 @@
   &:has([data-position]) {
     .SelectInput {
       padding-right: var(--input-right-section-width);
-    }
-  }
-}
-
-.Select {
-  &:has(.SelectLabel),
-  &:has(.SelectDescription),
-  &:has(.SelectError) {
-    .SelectWrapper {
-      margin-top: var(--mb-spacing-xs);
     }
   }
 }
@@ -92,8 +82,6 @@
   --combobox-option-padding: 0;
 
   color: var(--mb-color-text-primary);
-  font-size: var(--select-item-font-size);
-  line-height: var(--select-item-line-height);
   margin-top: 1px;
 
   &:hover {
@@ -122,7 +110,7 @@
       margin-top: calc(var(--mantine-spacing-sm) - 1px);
       margin-bottom: var(--mantine-spacing-sm);
       margin-inline: var(--mantine-spacing-sm);
-      border-top: 1px solid var(--mb-color-border);
+      border-top: 1px solid var(--mb-color-border-neutral);
     }
   }
 }
@@ -139,8 +127,6 @@
 .SelectItemsNothingFound {
   color: var(--mb-color-text-tertiary);
   padding: var(--mantine-spacing-sm);
-  font-size: var(--select-item-font-size);
-  line-height: var(--select-item-line-height);
 }
 
 .SelectItems_Options {
@@ -154,7 +140,7 @@
 
 .Dropdown {
   background-color: var(--mb-color-background-primary);
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 }
 
 .SelectError {

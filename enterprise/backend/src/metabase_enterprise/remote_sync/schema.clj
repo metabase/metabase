@@ -24,6 +24,7 @@
    [:version {:optional true} [:maybe :string]]
    [:cancelled {:optional true} [:maybe :boolean]]
    [:error_message {:optional true} [:maybe :string]]
+   [:outcome {:optional true} [:maybe :map]]
    [:conflicts {:optional true} [:maybe [:sequential :string]]]
    [:status TaskStatus]])
 

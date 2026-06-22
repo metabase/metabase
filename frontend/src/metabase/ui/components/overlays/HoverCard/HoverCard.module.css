@@ -2,5 +2,5 @@
   padding: 0;
   overflow: auto;
   background-color: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }

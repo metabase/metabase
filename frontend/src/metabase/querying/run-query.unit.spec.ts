@@ -1,10 +1,8 @@
 import fetchMock from "fetch-mock";
 
-import { getStore } from "__support__/entities-store";
+import { getMainStore } from "__support__/entities-store";
 import { createMockEntitiesState } from "__support__/store";
 import { waitFor } from "__support__/ui";
-import { Api } from "metabase/api";
-import { mainReducers } from "metabase/reducers-main";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
@@ -87,11 +85,7 @@ function getQueryEndpointPath(question: Question) {
 }
 
 function getRtkStore() {
-  return getStore(
-    { ...mainReducers, [Api.reducerPath]: Api.reducer },
-    createMockState(),
-    [Api.middleware],
-  );
+  return getMainStore(createMockState());
 }
 
 async function setupRunQuestionQuery(question: Question) {

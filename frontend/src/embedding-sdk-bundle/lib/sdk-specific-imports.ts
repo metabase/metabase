@@ -25,3 +25,8 @@ import "jspdf";
  * from an already-loaded chunk instead of 404ing.
  */
 import "metabase/visualizations/visualizations/Map/MapRenderer";
+
+// react-virtualized powers the pivot table grid and is lazily imported in the
+// main app. The SDK bundle can't fetch on-demand chunks at runtime, so force the
+// pivot table module to be included eagerly here.
+import "metabase/visualizations/visualizations/PivotTable/PivotTableInner";

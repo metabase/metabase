@@ -3,6 +3,7 @@ import type { UniqueIdentifier } from "@dnd-kit/core";
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import cx from "classnames";
 import type {
   ChangeEventHandler,
   HTMLAttributes,
@@ -22,7 +23,7 @@ import {
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Popover } from "metabase/ui";
+import { ActionIcon, Icon, Popover } from "metabase/ui";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -32,8 +33,8 @@ import {
   getTabPanelId,
 } from "../Tab";
 
+import S from "./TabButton.module.css";
 import {
-  MenuButton,
   TabButtonInput,
   TabButtonInputResizer,
   TabButtonInputWrapper,
@@ -163,20 +164,20 @@ const _TabButton = forwardRef(function TabButton(
           trapFocus
         >
           <Popover.Target>
-            <MenuButton
-              icon="chevrondown"
-              iconSize={10}
-              isSelected={isSelected}
-              isOpen={isMenuOpen}
+            <ActionIcon
+              variant="subtle"
+              size="xs"
+              className={cx(S.menuButton, {
+                [S.menuButtonOpen]: isMenuOpen && !disabled,
+              })}
               onClick={() => setIsMenuOpen(true)}
               ref={menuButtonRef}
               disabled={disabled}
-            />
+            >
+              <Icon name="chevrondown" size={10} />
+            </ActionIcon>
           </Popover.Target>
-          <Popover.Dropdown
-            // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-            setupSequencedCloseHandler={() => setIsMenuOpen(false)}
-          >
+          <Popover.Dropdown>
             <TabButtonMenu
               menuItems={menuItems}
               value={value}
