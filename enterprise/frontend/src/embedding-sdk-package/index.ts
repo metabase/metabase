@@ -185,9 +185,11 @@ export type {
   SdkActionId,
 } from "embedding-sdk-bundle/types";
 export type {
+  FieldSchema,
   MetricSchema,
   QuestionSchema,
   QueryData,
+  RowValue,
   SchemaColumn,
   SchemaJavaScriptType,
   SchemaParameter,
