@@ -1,6 +1,6 @@
 (ns metabase.util.json-test
   (:require
-   [clojure.test :refer [are deftest is testing]]
+   [clojure.test :refer [deftest is testing]]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
