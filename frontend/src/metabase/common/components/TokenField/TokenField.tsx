@@ -2,10 +2,9 @@ import cx from "classnames";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
-import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { Icon, Popover } from "metabase/ui";
 import { isObscured } from "metabase/utils/dom";
 import {
   KEYCODE_BACKSPACE,
@@ -680,13 +679,14 @@ const DefaultTokenFieldLayout = ({
   isFocused,
 }: DefaultTokenFieldLayoutProps) => (
   <div>
-    <TippyPopover
-      visible={isFocused && !!optionsList}
-      content={<div data-testid="token-field-popover">{optionsList}</div>}
-      placement="bottom-start"
-    >
-      <div>{valuesList}</div>
-    </TippyPopover>
+    <Popover opened={Boolean(isFocused && optionsList)} position="bottom-start">
+      <Popover.Target>
+        <div>{valuesList}</div>
+      </Popover.Target>
+      <Popover.Dropdown data-testid="token-field-popover">
+        {optionsList}
+      </Popover.Dropdown>
+    </Popover>
   </div>
 );
 

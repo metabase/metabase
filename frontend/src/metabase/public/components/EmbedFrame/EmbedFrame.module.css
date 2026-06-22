@@ -24,7 +24,7 @@ body:where(:global(.mb-wrapper)) {
     var(--mb-color-background-primary),
     var(--mb-color-bg-dashboard) 15%
   );
-  border-bottom-color: var(--mb-color-border);
+  border-bottom-color: var(--mb-color-border-neutral);
 }
 
 /**
@@ -51,9 +51,7 @@ body:where(:global(.mb-wrapper)) {
     var(--mb-color-text-primary-inverse) 45%,
     transparent
   );
-  --mb-color-background-secondary: var(
-    --mb-color-background-tertiary-inverseer
-  );
+  --mb-color-background-secondary: var(--mb-color-background-tertiary-inverse);
 }
 
 [data-metabase-theme="transparent"][data-metabase-theme="transparent"] {

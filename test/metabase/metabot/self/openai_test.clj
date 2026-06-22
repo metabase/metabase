@@ -9,7 +9,8 @@
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -91,6 +92,94 @@
                         :completionTokens pos-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
+(deftest ^:parallel openai-reasoning-items-are-ignored-test
+  (testing "reasoning output items (emitted by GPT-5 / o-series models) are skipped without breaking the stream"
+    (let [base      (fixture "openai-text"
+                             {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
+          ;; GPT-5 reasoning models emit a reasoning output item before the text message item
+          reasoning [{:type "response.output_item.added" :item {:type "reasoning" :id "rs_1"}}
+                     {:type "response.output_item.done"  :item {:type "reasoning" :id "rs_1"}}]
+          ;; splice the reasoning events in right after response.created
+          patched   (into [] (mapcat (fn [chunk]
+                                       (if (= (:type chunk) "response.created")
+                                         (cons chunk reasoning)
+                                         [chunk])))
+                          base)]
+      (testing "no reasoning artifacts leak into the translated chunk types"
+        (is (=? [{:type :start} {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
+                (into [] (comp (openai/openai->aisdk-chunks-xf) (m/distinct-by :type)) patched))))
+      (testing "full pipeline still produces text + usage"
+        (is (=? [{:type :start}
+                 {:type :text :text string?}
+                 {:type  :usage
+                  :usage {:promptTokens     pos-int?
+                          :completionTokens pos-int?}}]
+                (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)))))))
+
+(deftest ^:parallel openai-response-failed-surfaces-error-test
+  (testing "a terminal response.failed event is surfaced as an :error chunk (not silently dropped)"
+    ;; The error detail lives nested under `response.error`, unlike a top-level `error` event. Without
+    ;; this branch a mid-stream failure ends silently after :start, with no error shown to the user.
+    (let [raw [{:type "response.created"     :response {:id "resp_1" :model "gpt-5.5"}}
+               {:type "response.in_progress" :response {:id "resp_1"}}
+               {:type "response.failed"
+                :response {:id    "resp_1"
+                           :error {:code    "server_error"
+                                   :message "The server had an error while processing your request. Sorry about that!"}}}]]
+      (is (=? [{:type :start}
+               {:type      :error
+                :errorText "The server had an error while processing your request. Sorry about that!"}]
+              (into [] (openai/openai->aisdk-chunks-xf) raw))))))
+
+(deftest ^:parallel openai-response-failed-without-message-test
+  (testing "response.failed with no message falls back to the error code, then a generic message"
+    (let [code-only [{:type "response.created" :response {:id "resp_1"}}
+                     {:type "response.failed"  :response {:id "resp_1" :error {:code "server_error"}}}]
+          bare      [{:type "response.created" :response {:id "resp_1"}}
+                     {:type "response.failed"  :response {:id "resp_1"}}]]
+      (is (=? [{:type :start} {:type :error :errorText "server_error"}]
+              (into [] (openai/openai->aisdk-chunks-xf) code-only)))
+      (is (=? [{:type :start} {:type :error :errorText "The model provider failed to complete the response"}]
+              (into [] (openai/openai->aisdk-chunks-xf) bare))))))
+
+(deftest ^:parallel openai-response-failed-reaches-wire-and-persistence-test
+  (testing "a response.failed error flows through to both the wire line and the persisted turn error"
+    ;; Regression guard: once collected into a part (via aisdk-chunks->part), the AI SDK v5 `:errorText`
+    ;; chunk must become an `{:error {:message ...}}` part, which is what self.core/format-error-line and
+    ;; metabot.api's finalize-turn `(:error part)` lookup both read.
+    (let [raw   [{:type "response.created" :response {:id "resp_1" :model "gpt-5.5"}}
+                 {:type "response.failed"  :response {:id "resp_1" :error {:code "server_error" :message "boom"}}}]
+          parts (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
+          err   (m/find-first #(= :error (:type %)) parts)]
+      (testing "persistence picks up a non-nil error payload"
+        (is (=? {:message "boom"} (:error err))))
+      (testing "wire serializer emits the message (not an empty string)"
+        (is (= "3:\"boom\"" (self.core/format-error-line err)))))))
+
+(deftest ^:parallel openai-response-incomplete-keeps-partial-text-and-usage-test
+  (testing "a terminal response.incomplete event keeps the partial text and still emits usage (not an error)"
+    ;; An incomplete response (e.g. truncated at max_output_tokens) has valid partial output, so we record
+    ;; its usage like a completed response rather than discarding it or surfacing an error.
+    (let [raw-chunks (fixture "openai-text"
+                              {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
+          ;; turn the terminal response.completed into a response.incomplete carrying the same usage
+          patched    (mapv (fn [chunk]
+                             (if (= (:type chunk) "response.completed")
+                               (-> chunk
+                                   (assoc :type "response.incomplete")
+                                   (assoc-in [:response :incomplete_details] {:reason "max_output_tokens"}))
+                               chunk))
+                           raw-chunks)
+          parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)]
+      (is (=? [{:type :start}
+               {:type :text :text string?}
+               {:type  :usage
+                :usage {:promptTokens     pos-int?
+                        :completionTokens pos-int?}}]
+              parts))
+      (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
+        (is (empty? (filter #(= :error (:type %)) parts)))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Usage normalization tests
 ;;; ──────────────────────────────────────────────────────────────────
@@ -164,6 +253,45 @@
               :output  #"Error:.*failed"}]
             (openai/parts->openai-input
              [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; temperature support tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel model-supports-temperature?-test
+  (testing "non-reasoning models accept an explicit temperature"
+    (doseq [model ["gpt-4.1-mini" "gpt-4.1" "gpt-4o" "gpt-3.5-turbo"]]
+      (is (true? (#'openai/model-supports-temperature? model))
+          model)))
+  (testing "GPT-5 family and o-series reasoning models do not"
+    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07"
+                   "o1" "o1-mini" "o3" "o3-mini" "o4-mini"]]
+      (is (false? (#'openai/model-supports-temperature? model))
+          model))))
+
+(deftest ^:parallel model-supports-temperature?-bedrock-prefixed-test
+  (testing "Bedrock mantle ids carry an openai. vendor prefix that is stripped before the check"
+    (doseq [model ["openai.gpt-5.5" "openai.gpt-5.4" "openai.gpt-5.5-2026-04-23" "openai.o3-mini"]]
+      (is (false? (#'openai/model-supports-temperature? model))
+          model))
+    (is (true? (#'openai/model-supports-temperature? "openai.gpt-4.1-mini")))))
+
+(deftest temperature-omitted-for-reasoning-models-test
+  (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
+    (let [request-body (fn [opts]
+                         (with-redefs [self.core/sse-reducible identity
+                                       debug/capture-stream    (fn [r _] r)
+                                       http/request            (fn [req] {:body req})]
+                           (json/decode+kw (:body (openai/openai-raw
+                                                   (merge {:input [{:role :user :content "hi"}]
+                                                           :temperature 0.3}
+                                                          opts))))))]
+      (testing "temperature is sent for a non-reasoning model"
+        (is (= 0.3 (:temperature (request-body {:model "gpt-4.1-mini"})))))
+      (testing "temperature is omitted for a GPT-5 model"
+        (is (not (contains? (request-body {:model "gpt-5"}) :temperature))))
+      (testing "temperature is omitted for an o-series model"
+        (is (not (contains? (request-body {:model "o3-mini"}) :temperature)))))))
 
 (deftest openai-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}

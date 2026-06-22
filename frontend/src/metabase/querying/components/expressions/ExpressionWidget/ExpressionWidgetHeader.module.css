@@ -1,12 +1,12 @@
 .Header {
   color: var(--mb-color-text-secondary);
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   display: flex;
   align-items: center;
   height: 3rem;
 
-  .HeaderButton {
+  .HeaderButton[data-variant="subtle"] {
     color: var(--mb-color-text-tertiary);
 
     &:not(:disabled):hover {

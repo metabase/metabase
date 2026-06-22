@@ -109,14 +109,15 @@
 
 (defn list-models
   "List available OpenRouter models.
-  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [api-key ai-proxy?]}]
-   (when (and api-key (str/blank? api-key))
+  ([{:keys [credentials ai-proxy?]}]
+   (when (and credentials (str/blank? (:api-key credentials)))
      (throw (core/missing-api-key-ex "OpenRouter")))
    (try
      (let [auth (core/resolve-auth "openrouter" "OpenRouter"
-                                   (when-let [k (or (not-empty api-key) (not-empty (llm/llm-openrouter-api-key)))]
+                                   (when-let [k (or (not-empty (:api-key credentials))
+                                                    (not-empty (llm/llm-openrouter-api-key)))]
                                      {:url     (llm/llm-openrouter-api-base-url)
                                       :headers {"Authorization" (str "Bearer " k)}})
                                    ai-proxy?)

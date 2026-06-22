@@ -24,9 +24,11 @@
               (inc valid)
               valid)}))
 
-(defn- percent [n] (* 100 (int n)))
+(defn- percent [n] (int (* 100 n)))
 
-(defn- validate-queries []
+(defn ^:internal validate-queries
+  "Determine how many saved queries are valid according to the malli schema."
+  []
   (let [queries (t2/reducible-select :report_card {:where [:= :archived false]})
         {:keys [total valid]} (reduce validate-query {:total 0 :valid 0} queries)
         ratio (if (zero? total)

@@ -5,5 +5,5 @@
   padding: 1rem;
   overflow: auto;
   line-height: 1.4;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 }

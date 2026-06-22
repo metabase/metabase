@@ -3,6 +3,7 @@ import type { UniqueIdentifier } from "@dnd-kit/core";
 import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import cx from "classnames";
 import type {
   ChangeEventHandler,
   HTMLAttributes,
@@ -21,8 +22,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { ControlledPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { ActionIcon, Icon, Popover } from "metabase/ui";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -32,8 +33,8 @@ import {
   getTabPanelId,
 } from "../Tab";
 
+import S from "./TabButton.module.css";
 import {
-  MenuButton,
   TabButtonInput,
   TabButtonInputResizer,
   TabButtonInputWrapper,
@@ -156,29 +157,34 @@ const _TabButton = forwardRef(function TabButton(
         />
       </TabButtonInputWrapper>
       {showMenu && (
-        <ControlledPopoverWithTrigger
-          visible={isMenuOpen}
-          onOpen={() => setIsMenuOpen(true)}
-          onClose={() => setIsMenuOpen(false)}
-          renderTrigger={({ onClick }) => (
-            <MenuButton
-              icon="chevrondown"
-              iconSize={10}
-              isSelected={isSelected}
-              isOpen={isMenuOpen}
-              onClick={onClick}
+        <Popover
+          opened={isMenuOpen}
+          onChange={setIsMenuOpen}
+          position="bottom-start"
+          trapFocus
+        >
+          <Popover.Target>
+            <ActionIcon
+              variant="subtle"
+              size="xs"
+              className={cx(S.menuButton, {
+                [S.menuButtonOpen]: isMenuOpen && !disabled,
+              })}
+              onClick={() => setIsMenuOpen(true)}
               ref={menuButtonRef}
               disabled={disabled}
-            />
-          )}
-          popoverContent={({ closePopover }) => (
+            >
+              <Icon name="chevrondown" size={10} />
+            </ActionIcon>
+          </Popover.Target>
+          <Popover.Dropdown>
             <TabButtonMenu
               menuItems={menuItems}
               value={value}
-              closePopover={closePopover}
+              closePopover={() => setIsMenuOpen(false)}
             />
-          )}
-        />
+          </Popover.Dropdown>
+        </Popover>
       )}
     </TabButtonRoot>
   );
