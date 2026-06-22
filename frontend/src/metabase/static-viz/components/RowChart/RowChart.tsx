@@ -2,6 +2,7 @@ import { Group } from "@visx/group";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { getChartHeight } from "metabase/static-viz/lib/utils";
 import type { FontStyle, TextWidthMeasurer } from "metabase/utils/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
@@ -101,9 +102,8 @@ export const StaticRowChart = ({
   });
 
   const legendHeight = legend != null ? legend.height + CHART_PADDING : 0;
-  const chartHeight = fitWithinBounds
-    ? Math.max(height - legendHeight, 1)
-    : height;
+  const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
+
   const fullChartHeight = fitWithinBounds ? height : height + legendHeight;
 
   return (

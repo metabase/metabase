@@ -3,6 +3,7 @@ import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
+import { getChartHeight } from "metabase/static-viz/lib/utils";
 import { registerEChartsModules } from "metabase/visualizations/echarts";
 import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
@@ -45,9 +46,7 @@ export function ScatterPlot({
       verticalPadding: LEGEND_PADDING,
     });
 
-  const chartHeight = fitWithinBounds
-    ? Math.max(height - legendHeight, 1)
-    : height;
+  const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
 
   const chart = init(null, null, {
     renderer: "svg",

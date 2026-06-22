@@ -87,16 +87,15 @@ export const AddEditEmailSidebar = ({
   const currentUser = useSelector(getUser);
 
   // Return true if the results of all cards can be downloaded
-  const allowDownload = pulse.cards?.every(
+  const allowDownload = pulse.cards.every(
     (card) => card.download_perms !== DataPermissionValue.NONE,
   );
 
   // Whether to attach a server-rendered PDF of the whole dashboard. Stored per-channel in
   // `details.include_pdf` (the same place as `attachment_only`); the BE reads it on the email path.
   const includePdf =
-    !!allowDownload &&
-    (pulse.channels?.some((channel) => !!channel.details?.include_pdf) ??
-      false);
+    allowDownload &&
+    pulse.channels.some((channel) => !!channel.details?.include_pdf);
 
   const handleToggleIncludePdf = (checked: boolean) => {
     setPulse({

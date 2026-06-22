@@ -24,13 +24,14 @@ function getPieLegendItems(
   formatters: PieChartFormatters,
   settings: ComputedVisualizationSettings,
 ): LegendItem[] {
+  const pieChartVisibility = settings["pie.percent_visibility"];
+
   return getArrayFromMapValues(chartModel.sliceTree)
     .filter((s) => s.includeInLegend)
     .map((s) => ({
       name: s.name,
       percent:
-        settings["pie.percent_visibility"] === "legend" ||
-        settings["pie.percent_visibility"] === "both"
+        pieChartVisibility === "legend" || pieChartVisibility === "both"
           ? formatters.formatPercent(s.normalizedPercentage, "legend")
           : undefined,
       color: s.color,
