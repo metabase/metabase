@@ -46,10 +46,8 @@ export const QuestionSources = () => {
         {sourcesWithIcons.map(({ href, name, iconProps }, index) => (
           <Fragment key={`${href}-${name}`}>
             <Link to={href} variant="brand">
-              <Flex gap="sm" lh="1.25rem" maw="20rem">
-                {iconProps ? (
-                  <Icon mt={2} c="text-primary" {...iconProps} />
-                ) : null}
+              <Flex gap="sm" lh="1.25rem" maw="20rem" align="center">
+                {iconProps ? <Icon {...iconProps} /> : null}
                 {name}
               </Flex>
             </Link>
