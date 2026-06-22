@@ -52,13 +52,13 @@ function makeRawSeries(rows: (string | number | null)[][]): RawSeries {
 }
 
 describe("static TreemapChart", () => {
-  it("renders the chart SVG with a legend row per group and leaf plus a total", () => {
+  it("renders one legend row per top-level group, sorted by value desc, plus a total", () => {
     render(
       <TreemapChart
         rawSeries={makeRawSeries([
+          ["Soy", "Tempeh", 20],
           ["Legumes", "Chickpeas", 60],
           ["Legumes", "Lentils", 20],
-          ["Soy", "Tempeh", 20],
         ])}
         settings={settings}
         renderingContext={getRenderingContext()}
@@ -69,14 +69,7 @@ describe("static TreemapChart", () => {
     const legendNames = screen
       .getAllByTestId("legend-name")
       .map((node) => node.textContent);
-    expect(legendNames).toEqual([
-      "Legumes",
-      "Chickpeas",
-      "Lentils",
-      "Soy",
-      "Tempeh",
-      "Total",
-    ]);
+    expect(legendNames).toEqual(["Legumes", "Soy", "Total"]);
 
     expect(screen.getAllByTestId("legend-dot")).toHaveLength(2);
   });

@@ -49,7 +49,9 @@ export function getTreemapLegendModel(
   const rows: TreemapLegendRow[] = [];
   let top = 0;
 
-  tree.forEach((node, index) => {
+  const sortedTree = [...tree].sort((a, b) => b.value - a.value);
+
+  sortedTree.forEach((node, index) => {
     if (index > 0) {
       top += TREEMAP_LEGEND_GROUP_GAP - TREEMAP_LEGEND_ROW_GAP;
     }
@@ -63,18 +65,6 @@ export function getTreemapLegendModel(
       top,
     });
     top += TREEMAP_LEGEND_ROW_HEIGHT + TREEMAP_LEGEND_ROW_GAP;
-
-    node.children?.forEach((leaf) => {
-      rows.push({
-        type: "leaf",
-        name: leaf.displayName,
-        valueLabel: formatValue(leaf.value),
-        percentLabel: formatShare(leaf.value),
-        indent: true,
-        top,
-      });
-      top += TREEMAP_LEGEND_ROW_HEIGHT + TREEMAP_LEGEND_ROW_GAP;
-    });
   });
 
   if (rows.length > 0) {
