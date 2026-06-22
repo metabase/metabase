@@ -8,11 +8,7 @@ export const STAGE_INDEX = 0;
 
 const JAVASCRIPT_TYPE_BASE_TYPES: Partial<
   Record<SchemaJavaScriptType, string>
-> = {
-  number: TYPE.Float,
-  boolean: TYPE.Boolean,
-  Date: TYPE.DateTime,
-};
+> = { number: TYPE.Float, boolean: TYPE.Boolean, Date: TYPE.DateTime };
 
 export const getBaseType = (jsType?: SchemaJavaScriptType): string =>
   jsType != null && jsType in JAVASCRIPT_TYPE_BASE_TYPES
