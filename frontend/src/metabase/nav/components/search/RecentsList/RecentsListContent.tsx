@@ -78,7 +78,6 @@ export const RecentsListContent = ({
               onClick={() => onClick?.(item)}
               isActive={isActive}
               isSelected={cursorIndex === index}
-              p="sm"
             >
               <ItemIcon active={isActive} item={item} type={item.model} />
               <ResultNameSection justify="center" gap="xs">

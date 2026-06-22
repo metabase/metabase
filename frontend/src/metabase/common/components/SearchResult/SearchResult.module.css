@@ -25,23 +25,8 @@
   background-color: var(--mb-color-background-hover);
 }
 
-/* parent state drives the title color; the title can't know it on its own */
-.active:hover .title,
-.selected .title {
-  color: var(--mb-color-core-brand);
-}
-
 .title {
   line-height: unset;
-  color: var(--mb-color-text-primary);
-
-  &:hover,
-  &:focus,
-  &:focus-visible {
-    color: var(--mb-color-core-brand);
-    text-decoration: none;
-    outline: 0;
-  }
 
   /* When the title is a real link, stretch its hit area over the whole row
      (positioned by .root) so middle/ctrl-click opens the result in a new tab
@@ -52,6 +37,28 @@
     position: absolute;
     inset: 0;
   }
+}
+
+/* Title colors are scoped under .root so they outrank Mantine Anchor's own
+   .root color (a bare .title only ties on specificity and would lose by
+   non-deterministic CSS-module emission order). The brand states all carry a
+   higher specificity than the base, so the cascade stays order-independent. */
+.root .title {
+  color: var(--mb-color-text-primary);
+}
+
+.root .title:hover,
+.root .title:focus,
+.root .title:focus-visible {
+  color: var(--mb-color-core-brand);
+  text-decoration: none;
+  outline: 0;
+}
+
+/* parent state drives the title color; the title can't know it on its own */
+.root.selected .title,
+.root.active:hover .title {
+  color: var(--mb-color-core-brand);
 }
 
 .nameSection {

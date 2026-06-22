@@ -14,9 +14,15 @@ import {
 } from "__support__/ui";
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
 import { createWrappedSearchResult } from "metabase/common/components/SearchResult/tests/util";
+import { trackSearchClick } from "metabase/common/search/analytics";
 import { modelToUrl } from "metabase/urls";
 import type { SearchResult as ApiSearchResult } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
+
+jest.mock("metabase/common/search/analytics", () => ({
+  ...jest.requireActual("metabase/common/search/analytics"),
+  trackSearchClick: jest.fn(),
+}));
 
 const TEST_REGULAR_COLLECTION = createMockCollection({
   id: 1,
@@ -108,6 +114,58 @@ describe("SearchResult", () => {
     // a ⌘/ctrl-click must not navigate in-app; the browser opens the new tab
     // via the href instead
     expect(history?.getCurrentLocation().pathname).toBe("/");
+  });
+
+  it("tracks a search click when a result is opened via a ⌘/ctrl-click", () => {
+    const trackSearchClickMock = jest.mocked(trackSearchClick);
+    trackSearchClickMock.mockClear();
+
+    setup({ result: TEST_RESULT_QUESTION });
+    fireEvent.click(screen.getByTestId("search-result-item-name"), {
+      metaKey: true,
+    });
+
+    expect(trackSearchClickMock).toHaveBeenCalledWith(
+      expect.objectContaining({ itemType: "item", position: 0 }),
+    );
+  });
+
+  it("tracks a search click when a result is opened via a middle-click", () => {
+    const trackSearchClickMock = jest.mocked(trackSearchClick);
+    trackSearchClickMock.mockClear();
+
+    setup({ result: TEST_RESULT_QUESTION });
+    fireEvent(
+      screen.getByTestId("search-result-item-name"),
+      new MouseEvent("auxclick", {
+        button: 1,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(trackSearchClickMock).toHaveBeenCalledWith(
+      expect.objectContaining({ itemType: "item", position: 0 }),
+    );
+  });
+
+  it("does not track a result open when a child control is middle-clicked", () => {
+    const trackSearchClickMock = jest.mocked(trackSearchClick);
+    trackSearchClickMock.mockClear();
+
+    setup({ result: TEST_RESULT_INDEXED_ENTITY });
+    // middle-clicking the x-ray button opens nothing for the result itself, so
+    // the bubbled auxclick must not record a result-open
+    fireEvent(
+      getIcon("bolt"),
+      new MouseEvent("auxclick", {
+        button: 1,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(trackSearchClickMock).not.toHaveBeenCalled();
   });
 
   describe("indexed entities", () => {

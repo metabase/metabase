@@ -131,9 +131,10 @@ export function SearchResult({
     );
   };
 
-  // the row navigates via the title's stretched link; only a real URL turns the
-  // row into a link the browser can open in a new tab
-  const url = onClick ? undefined : modelToUrl(result);
+  // the row navigates via the title's stretched link; gate it on isActive so an
+  // item that isn't ready yet (e.g. a still-syncing table) isn't a link at all,
+  // which keeps plain, modified, and middle clicks all inert
+  const url = isActive && !onClick ? modelToUrl(result) : undefined;
 
   const trackClick = () => {
     trackSearchClick({
@@ -150,8 +151,10 @@ export function SearchResult({
 
   const handleClick = (e: MouseEvent) => {
     // let the browser open the result in a new tab/window on a modified click
-    // instead of doing an in-app navigation
+    // instead of doing an in-app navigation, but still record the open
     if (url && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+      e.stopPropagation();
+      trackClick();
       return;
     }
 
@@ -170,8 +173,9 @@ export function SearchResult({
     onChangeLocation(modelToUrl(result));
   };
 
-  // onClick never fires for a middle-click; the browser opens the href natively,
-  // so just record the analytics event here
+  // attached to the title link (not the row) so a middle-click on a lifted
+  // child such as a breadcrumb or the x-ray button doesn't record a result
+  // open; onClick never fires for a middle-click, so record the open here
   const handleAuxClick = (e: MouseEvent) => {
     if (e.button === 1 && url) {
       trackClick();
@@ -183,7 +187,6 @@ export function SearchResult({
       className={className}
       data-testid="search-result-item"
       onClick={handleClick}
-      onAuxClick={handleAuxClick}
       isActive={isActive}
       isSelected={isSelected}
       data-model-type={model}
@@ -204,6 +207,7 @@ export function SearchResult({
             data-testid="search-result-item-name"
             truncate
             href={url}
+            onAuxClick={handleAuxClick}
           >
             {name}
           </ResultTitle>
