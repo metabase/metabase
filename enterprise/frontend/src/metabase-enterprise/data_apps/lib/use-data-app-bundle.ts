@@ -36,7 +36,7 @@ export function useDataAppBundle(name: string): {
     setFailed(false);
 
     const load = async () => {
-      const code = await fetchDataAppBundleCode(name);
+      const { code, allowedHosts } = await fetchDataAppBundleCode(name);
 
       if (cancelled) {
         return;
@@ -46,6 +46,7 @@ export function useDataAppBundle(name: string): {
         code,
         name,
         window,
+        allowedHosts,
       );
 
       setData({ component, providerProps });

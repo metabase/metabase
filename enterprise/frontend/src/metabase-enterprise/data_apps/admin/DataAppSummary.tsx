@@ -4,6 +4,7 @@ import { Group, Stack, Text } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
 
+import { DataAppAllowedHosts } from "./DataAppAllowedHosts";
 import { DataAppIcon } from "./DataAppIcon";
 
 type Props = {
@@ -66,6 +67,7 @@ export function DataAppSummary({ app }: Props) {
           </Text>
           <SyncStatus app={app} />
         </Group>
+        <DataAppAllowedHosts hosts={app.allowed_hosts} />
       </Stack>
     </Group>
   );
