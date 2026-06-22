@@ -78,6 +78,7 @@
     :model/OAuthAccessToken                  metabase.oauth-server.models.oauth-access-token
     :model/OAuthAuthorizationCode            metabase.oauth-server.models.oauth-authorization-code
     :model/OAuthClient                       metabase.oauth-server.models.oauth-client
+    :model/OAuthClientEvent                  metabase.oauth-server.models.oauth-client-event
     :model/OAuthRefreshToken                 metabase.oauth-server.models.oauth-refresh-token
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models

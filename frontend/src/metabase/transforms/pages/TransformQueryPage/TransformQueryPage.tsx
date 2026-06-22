@@ -33,6 +33,7 @@ import type {
   Transform,
 } from "metabase-types/api";
 
+import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import {
   TransformEditor,
   type TransformEditorProps,
@@ -219,6 +220,7 @@ function TransformQueryPageBody({
           isEditMode={isEditMode}
           readOnly={readOnly}
         />
+        <TransformDisconnectedDatabaseBanner transform={transform} />
         <Box
           w="100%"
           bg="background-primary"
@@ -229,7 +231,7 @@ function TransformQueryPageBody({
             overflow: "hidden",
           }}
         >
-          {!transform.source_readable ? (
+          {transform.can_read === false ? (
             <Center h="100%">
               <EmptyState
                 title={t`Sorry, you don't have permission to view this transform.`}

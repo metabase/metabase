@@ -897,6 +897,7 @@
            metabase.eid-translation.core
            metabase.eid-translation.init}
    :uses #{api
+           batch-processing
            settings
            util}
    :model-imports #{:model/Action
@@ -953,7 +954,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -1431,11 +1432,13 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/TaskHistory
+                    :model/TaskRun
                     :model/User}}
 
   oauth-server
   {:team "UX West"
-   :api  #{metabase.oauth-server.api
+   :api  #{metabase.oauth-server.api       ;; Special case OAuth standard endpoints under `/`
+           metabase.oauth-server.api.admin ;; The usual Metabase internal API endpoints under `/api`
            metabase.oauth-server.core
            metabase.oauth-server.init}
    :uses #{api
@@ -1470,8 +1473,7 @@
            models
            query-processor
            util
-           warehouse-schema
-           warehouses}
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Field
@@ -1815,8 +1817,6 @@
            util
            workspaces}
    :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Database
                     :model/QueryCache
@@ -2208,7 +2208,7 @@
            task
            tracing
            util}
-   :model-exports #{:model/TaskHistory}
+   :model-exports #{:model/TaskHistory :model/TaskRun}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
   tenants
@@ -2253,7 +2253,8 @@
            parameters
            query-processor
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard}}
 
   timeline
   {:team "UX West"

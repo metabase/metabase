@@ -83,115 +83,118 @@
 (deftest basic-query-test
   (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
-      (let [query (mt/mbql-query checkins
-                    {:aggregation [[:count]]})
-            result (mt/user-http-request :crowberto :post 202 "dataset" query)]
-        (testing "\nAPI Response"
-          (is (=?
-               {:data                   {:rows             [[1000]]
-                                         :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
-                                         :native_form      true
-                                         :results_timezone "UTC"}
-                :row_count              1
-                :status                 "completed"
-                :context                "ad-hoc"
-                :json_query             (-> (mt/mbql-query checkins
-                                              {:aggregation [[:count]]})
-                                            (assoc-in [:query :aggregation] [["count"]])
-                                            (assoc :type "query")
-                                            (merge query-defaults))
-                :started_at             true
-                :running_time           true
-                :average_execution_time nil
-                :database_id            (mt/id)}
-               (format-response result))))
-        (testing "\nSaved QueryExecution"
-          (is (= {:hash             true
-                  :row_count        1
-                  :result_rows      1
-                  :context          :ad-hoc
-                  :executor_id      (mt/user->id :crowberto)
-                  :native           false
-                  :pulse_id         nil
-                  :card_id          nil
-                  :is_sandboxed     false
-                  :dashboard_id     nil
-                  :transform_id     nil
-                  :lens_id          nil
-                  :lens_params      nil
-                  :error            nil
-                  :id               true
-                  :action_id        nil
-                  :cache_hit        false
-                  :cache_hash       false
-                  :parameterized    false
-                  :database_id      (mt/id)
-                  :started_at       true
-                  :running_time     true
-                  :embedding_client nil
-                  :embedding_hostname nil
-                  :embedding_path nil
-                  :embedding_route nil
-                  :embedding_sdk_version nil
-                  :metabase_version true
-                  :auth_method      true
-                  :ip_address       nil
-                  :is_db_routed     false
-                  :is_impersonated  false
-                  :parameters       nil
-                  :tenant_id        nil
-                  :user_agent       nil
-                  :sanitized_user_agent nil}
-                 (format-response (most-recent-query-execution-for-query query)))))))))
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        (let [query (mt/mbql-query checkins
+                      {:aggregation [[:count]]})
+              result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+          (testing "\nAPI Response"
+            (is (=?
+                 {:data                   {:rows             [[1000]]
+                                           :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
+                                           :native_form      true
+                                           :results_timezone "UTC"}
+                  :row_count              1
+                  :status                 "completed"
+                  :context                "ad-hoc"
+                  :json_query             (-> (mt/mbql-query checkins
+                                                {:aggregation [[:count]]})
+                                              (assoc-in [:query :aggregation] [["count"]])
+                                              (assoc :type "query")
+                                              (merge query-defaults))
+                  :started_at             true
+                  :running_time           true
+                  :average_execution_time nil
+                  :database_id            (mt/id)}
+                 (format-response result))))
+          (testing "\nSaved QueryExecution"
+            (is (= {:hash             true
+                    :row_count        1
+                    :result_rows      1
+                    :context          :ad-hoc
+                    :executor_id      (mt/user->id :crowberto)
+                    :native           false
+                    :pulse_id         nil
+                    :card_id          nil
+                    :is_sandboxed     false
+                    :dashboard_id     nil
+                    :transform_id     nil
+                    :lens_id          nil
+                    :lens_params      nil
+                    :error            nil
+                    :id               true
+                    :action_id        nil
+                    :cache_hit        false
+                    :cache_hash       false
+                    :parameterized    false
+                    :database_id      (mt/id)
+                    :started_at       true
+                    :running_time     true
+                    :embedding_client nil
+                    :embedding_hostname nil
+                    :embedding_path nil
+                    :embedding_route nil
+                    :embedding_sdk_version nil
+                    :metabase_version true
+                    :auth_method      true
+                    :ip_address       nil
+                    :is_db_routed     false
+                    :is_impersonated  false
+                    :parameters       nil
+                    :tenant_id        nil
+                    :user_agent       nil
+                    :sanitized_user_agent nil}
+                   (format-response (most-recent-query-execution-for-query query))))))))))
 
 (deftest failure-test
   ;; clear out recent query executions!
   (t2/delete! :model/QueryExecution)
   (testing "POST /api/dataset"
     (testing "\nA failed query should return a 400 response from the API"
-      ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
-      ;; that it exists and contains the substring "Syntax error in SQL statement"
-      (let [query  {:database (mt/id)
-                    :type     "native"
-                    :native   {:query "foobar"}}
-            result (mt/user-http-request :crowberto :post 400 "dataset" query)]
-        (testing "\nAPI Response"
-          (is (malli= [:map
-                       [:data        [:map
-                                      [:rows [:= []]]
-                                      [:cols [:= []]]]]
-                       [:row_count   [:= 0]]
-                       [:status      [:= "failed"]]
-                       [:context     [:= "ad-hoc"]]
-                       [:error       #"Syntax error in SQL statement"]
-                       [:json_query  [:map
-                                      [:database   [:= (mt/id)]]
-                                      [:type       [:= "native"]]
-                                      [:native     [:map
-                                                    [:query [:= "foobar"]]]]
-                                      [:middleware [:map
-                                                    [:add-default-userland-constraints? [:= true]]
-                                                    [:js-int-to-string?                 [:= true]]]]]]
-                       [:database_id [:= (mt/id)]]
-                       [:state       [:= "42000"]]
-                       [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
-                      result)))
-        (testing "\nSaved QueryExecution"
-          (is (malli=
-               [:map
-                [:hash         (ms/InstanceOfClass (Class/forName "[B"))]
-                [:id           ms/PositiveInt]
-                [:result_rows  [:= 0]]
-                [:row_count    [:= 0]]
-                [:context      [:= :ad-hoc]]
-                [:error        #"Syntax error in SQL statement"]
-                [:database_id  [:= (mt/id)]]
-                [:executor_id  [:= (mt/user->id :crowberto)]]
-                [:native       [:= true]]
-                [:pulse_id     nil?]
-                [:card_id      nil?]
-                [:dashboard_id nil?]]
-               (most-recent-query-execution-for-query query))))))))
+      ;; QueryExecutions are saved in async batches by default; save them synchronously so we can assert on them
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
+        ;; that it exists and contains the substring "Syntax error in SQL statement"
+        (let [query  {:database (mt/id)
+                      :type     "native"
+                      :native   {:query "foobar"}}
+              result (mt/user-http-request :crowberto :post 400 "dataset" query)]
+          (testing "\nAPI Response"
+            (is (malli= [:map
+                         [:data        [:map
+                                        [:rows [:= []]]
+                                        [:cols [:= []]]]]
+                         [:row_count   [:= 0]]
+                         [:status      [:= "failed"]]
+                         [:context     [:= "ad-hoc"]]
+                         [:error       #"Syntax error in SQL statement"]
+                         [:json_query  [:map
+                                        [:database   [:= (mt/id)]]
+                                        [:type       [:= "native"]]
+                                        [:native     [:map
+                                                      [:query [:= "foobar"]]]]
+                                        [:middleware [:map
+                                                      [:add-default-userland-constraints? [:= true]]
+                                                      [:js-int-to-string?                 [:= true]]]]]]
+                         [:database_id [:= (mt/id)]]
+                         [:state       [:= "42000"]]
+                         [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
+                        result)))
+          (testing "\nSaved QueryExecution"
+            (is (malli=
+                 [:map
+                  [:hash         (ms/InstanceOfClass (Class/forName "[B"))]
+                  [:id           ms/PositiveInt]
+                  [:result_rows  [:= 0]]
+                  [:row_count    [:= 0]]
+                  [:context      [:= :ad-hoc]]
+                  [:error        #"Syntax error in SQL statement"]
+                  [:database_id  [:= (mt/id)]]
+                  [:executor_id  [:= (mt/user->id :crowberto)]]
+                  [:native       [:= true]]
+                  [:pulse_id     nil?]
+                  [:card_id      nil?]
+                  [:dashboard_id nil?]]
+                 (most-recent-query-execution-for-query query)))))))))
 
 (defn- test-download-response-headers
   [url]

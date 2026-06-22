@@ -903,6 +903,7 @@ function withAvailableModels(WrappedComponent) {
       calculate_available_models: true,
       limit: 0,
       models: ["dataset"],
+      context: "data-picker",
     });
     const { data: _data, ...metadata } = response ?? {};
     return (
