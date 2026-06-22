@@ -3,6 +3,7 @@ import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
+  createMockCollection,
   createMockStructuredDatasetQuery,
   createMockTemplateTag,
   createMockTransform,
@@ -10,7 +11,11 @@ import {
   createMockTransformTarget,
 } from "metabase-types/api/mocks";
 
-import { buildTreeData, getIncrementalWarning } from "./utils";
+import {
+  buildTreeData,
+  getDescendantCollectionIds,
+  getIncrementalWarning,
+} from "./utils";
 
 jest.mock("metabase/transforms/utils", () => ({
   getLibQuery: jest.fn(),
@@ -120,6 +125,41 @@ describe("buildTreeData", () => {
     expect(result[1].owner).toMatchObject({ email: "external@example.com" });
     expect(result[1].owner_email).toBe("external@example.com");
     expect(result[2].owner).toBeUndefined();
+  });
+});
+
+describe("getDescendantCollectionIds", () => {
+  it("includes the folder's own collection id and all nested folder ids", () => {
+    const collections = [
+      createMockCollection({
+        id: 1,
+        name: "Parent",
+        children: [
+          createMockCollection({
+            id: 2,
+            name: "Child",
+            children: [createMockCollection({ id: 3, name: "Grandchild" })],
+          }),
+        ],
+      }),
+    ];
+
+    const [parentNode] = buildTreeData(collections, []);
+
+    expect(getDescendantCollectionIds(parentNode)).toEqual(new Set([1, 2, 3]));
+  });
+
+  it("ignores transform leaves and counts only collection ids", () => {
+    const collections = [
+      createMockCollection({ id: 10, name: "Folder", children: [] }),
+    ];
+    const transforms = [
+      createMockTransform({ id: 99, name: "T", collection_id: 10 }),
+    ];
+
+    const [folderNode] = buildTreeData(collections, transforms);
+
+    expect(getDescendantCollectionIds(folderNode)).toEqual(new Set([10]));
   });
 });
 

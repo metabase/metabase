@@ -1,18 +1,25 @@
-import { useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { getCollectionIcon } from "metabase/common/collections/utils";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Collection, CollectionId, Transform } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  RemoteSyncEntityModel,
+  Transform,
+} from "metabase-types/api";
 
 import {
   type TreeNode,
   getCollectionNodeId,
   getTransformNodeId,
+  isCollectionNode,
 } from "./types";
 
 export function getIncrementalWarning(
@@ -169,4 +176,69 @@ export function getDefaultExpandedIds(
   expandedIds[getCollectionNodeId(targetCollectionId)] = true;
 
   return expandedIds;
+}
+
+export function getDescendantCollectionIds(node: TreeNode): Set<number> {
+  const ids = new Set<number>();
+  const visit = (current: TreeNode) => {
+    if (isCollectionNode(current)) {
+      ids.add(current.collection.id as number);
+    }
+    current.children?.forEach(visit);
+  };
+  visit(node);
+  return ids;
+}
+
+const EMPTY_DIRTY_TRANSFORM_IDS = new Set<number>();
+
+const TRANSFORM_MODEL = "transform" satisfies RemoteSyncEntityModel;
+const PYTHON_LIBRARY_MODEL = "pythonlibrary" satisfies RemoteSyncEntityModel;
+
+export function useIsNodeDirty(): (node: TreeNode) => boolean {
+  const { isVisible: isRemoteSyncVisible } =
+    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
+  const { dirty, hasDirtyInCollectionTree } =
+    PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState();
+
+  const dirtyTransformIds = useMemo(() => {
+    if (!isRemoteSyncVisible) {
+      return EMPTY_DIRTY_TRANSFORM_IDS;
+    }
+    return new Set(
+      dirty
+        .filter((entity) => entity.model === TRANSFORM_MODEL)
+        .map((entity) => entity.id),
+    );
+  }, [isRemoteSyncVisible, dirty]);
+
+  const isPythonLibraryDirty =
+    isRemoteSyncVisible &&
+    dirty.some((entity) => entity.model === PYTHON_LIBRARY_MODEL);
+
+  return useCallback(
+    (node: TreeNode): boolean => {
+      if (!isRemoteSyncVisible) {
+        return false;
+      }
+      if (node.nodeType === "transform") {
+        return (
+          node.transformId != null && dirtyTransformIds.has(node.transformId)
+        );
+      }
+      if (node.nodeType === "library") {
+        return isPythonLibraryDirty;
+      }
+      if (isCollectionNode(node)) {
+        return hasDirtyInCollectionTree(getDescendantCollectionIds(node));
+      }
+      return false;
+    },
+    [
+      isRemoteSyncVisible,
+      dirtyTransformIds,
+      isPythonLibraryDirty,
+      hasDirtyInCollectionTree,
+    ],
+  );
 }

@@ -25,7 +25,11 @@ import CS from "metabase/css/core/index.css";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_REPLACEMENT,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -56,6 +60,7 @@ import {
   buildTreeData,
   getDefaultExpandedIds,
   useGetTransformWarnings,
+  useIsNodeDirty,
 } from "./utils";
 
 const getNodeId = (node: TreeNode) => node.id;
@@ -144,6 +149,7 @@ export const TransformListPage = ({
   );
 
   const warningsByTransformId = useGetTransformWarnings(transforms);
+  const isNodeDirty = useIsNodeDirty();
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
@@ -192,6 +198,7 @@ export const TransformListPage = ({
             row,
             hasPythonTransformsFeature,
             warningsByTransformId,
+            isDirty: isNodeDirty(row.original),
           }),
       },
       {
@@ -265,7 +272,7 @@ export const TransformListPage = ({
           ) : null,
       },
     ];
-  }, [hasPythonTransformsFeature, warningsByTransformId]);
+  }, [hasPythonTransformsFeature, warningsByTransformId, isNodeDirty]);
 
   const getRowHref = useCallback((row: Row<TreeNode>) => {
     if (isRowDisabled(row)) {
@@ -375,10 +382,12 @@ function getNameCell({
   row,
   hasPythonTransformsFeature,
   warningsByTransformId,
+  isDirty,
 }: {
   row: Row<TreeNode>;
   hasPythonTransformsFeature: boolean;
   warningsByTransformId: Map<number, string>;
+  isDirty: boolean;
 }) {
   const getTooltipProps = (message: string | undefined) => {
     if (!message) {
@@ -409,6 +418,7 @@ function getNameCell({
     row.original.nodeType === "library" && !hasPythonTransformsFeature;
 
   const hasWarning = !!getWarningMessage();
+  const SyncStatusBadge = PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge;
 
   return (
     <Group gap="sm" wrap="nowrap" miw={0}>
@@ -419,6 +429,7 @@ function getNameCell({
         name={row.original.name}
         ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
       />
+      {isDirty && SyncStatusBadge && <SyncStatusBadge />}
       {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
     </Group>
   );
