@@ -1,5 +1,4 @@
 import { getTableIdFromQuery } from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
-import { isNotNull } from "metabase/utils/types";
 import type {
   Aggregation,
   ConcreteFieldReference,
@@ -14,10 +13,9 @@ import {
   isFieldAggregation,
   isMeasureSchema,
   isSegmentSchema,
-  isTableFieldSchema,
   isUnaryOperator,
 } from "./guards";
-import { normalizeBreakout } from "./metabase-lib-query-utils";
+import { getFieldId, normalizeBreakout } from "./metabase-lib-query-utils";
 import type {
   DimensionFilterRuntime,
   TableQueryRuntime,
@@ -85,18 +83,22 @@ function buildTableFilter(filter: unknown) {
 
 function buildTableAggregationClauses(query: TableQueryRuntime): Aggregation[] {
   const aggregations = query.aggregations ?? query.measures;
-  const clauses = aggregations?.map(buildAggregationClause).filter(isNotNull);
+  const clauses = aggregations?.flatMap((aggregation) => {
+    const clause = buildAggregationClause(aggregation);
+
+    return clause ? [clause] : [];
+  });
 
   if (clauses?.length) {
     return clauses;
   }
 
-  return query.breakouts?.length ? [buildCountClause()] : [];
+  return query.breakouts?.length ? [["count"] as Aggregation] : [];
 }
 
 function buildAggregationClause(aggregation: unknown): Aggregation | null {
   if (isCountAggregation(aggregation)) {
-    return buildCountClause();
+    return ["count"] as Aggregation;
   }
 
   if (isFieldAggregation(aggregation)) {
@@ -112,8 +114,6 @@ function buildAggregationClause(aggregation: unknown): Aggregation | null {
 
   return ["measure", {}, aggregation.id] as Aggregation;
 }
-
-const buildCountClause = (): Aggregation => ["count"] as Aggregation;
 
 function buildTableBreakout(breakout: unknown): ConcreteFieldReference {
   const { dimension, options } = normalizeBreakout(breakout);
@@ -145,12 +145,10 @@ function buildFieldReference(
   field: unknown,
   options: Record<string, unknown> = {},
 ): FieldReference {
-  if (isTableFieldSchema(field) && typeof field.fieldId === "number") {
-    return ["field", field.fieldId, options] as FieldReference;
-  }
+  const fieldId = getFieldId(field);
 
-  if (isTableFieldSchema(field) && typeof field.id === "number") {
-    return ["field", field.id, options] as FieldReference;
+  if (fieldId != null) {
+    return ["field", fieldId, options] as FieldReference;
   }
 
   if (typeof field === "object" && field != null) {
