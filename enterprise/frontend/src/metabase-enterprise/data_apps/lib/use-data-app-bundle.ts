@@ -1,19 +1,18 @@
 import { type ComponentType, useEffect, useState } from "react";
 
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-
 import {
   DataAppBundleError,
   fetchDataAppBundleCode,
   instantiateDataAppBundle,
 } from "../loader";
+import type { DataAppMetabaseProviderProps } from "../sandbox";
 
 import { describeError } from "./describe-error";
 import { reportErrorToParent } from "./report-error-to-parent";
 
 export interface LoadedApp {
   component: ComponentType<Record<string, unknown>>;
-  theme: MetabaseTheme | undefined;
+  providerProps: DataAppMetabaseProviderProps;
 }
 
 /**
@@ -43,9 +42,13 @@ export function useDataAppBundle(name: string): {
         return;
       }
 
-      const { component, theme } = instantiateDataAppBundle(code, name, window);
+      const { component, providerProps } = instantiateDataAppBundle(
+        code,
+        name,
+        window,
+      );
 
-      setData({ component, theme });
+      setData({ component, providerProps });
     };
 
     load().catch((error: unknown) => {

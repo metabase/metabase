@@ -180,6 +180,19 @@
         ;; sub-routes under the data-app entrypoint are the same SPA shell
         (is (str/includes? (script-src-for "/embed/data-app/boba/sub/route") "'unsafe-eval'"))))))
 
+(deftest data-app-blob-img-csp-test
+  (testing "Only data-app iframe responses allow the blob: scheme in img-src"
+    (with-redefs [config/is-dev? false]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            img-src-for     (fn [uri]
+                              (-> (wrapped-handler {:uri uri :headers {}} identity identity)
+                                  (csp-directive-from-response "img-src")))]
+        (is (not (str/includes? (img-src-for "/") "blob:")))
+        (is (str/includes? (img-src-for "/embed/data-app/boba") "blob:"))
+        (is (str/includes? (img-src-for "/embed/data-app/boba/sub/route") "blob:"))))))
+
 (deftest ^:parallel test-parse-url
   (testing "Should parse valid urls"
     (are [url expected] (= expected
