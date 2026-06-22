@@ -2290,7 +2290,7 @@
                                      :name "orphan_target"}}]
           ;; Delete the database — ON DELETE SET NULL nulls source_database_id and target_db_id.
           (t2/delete! :model/Database db-id)
-          (let [reloaded (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags)
+          (let [reloaded (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags :indexes)
                 ser (serdes/extract-one "Transform" {} reloaded)]
             (is (nil? (:source_database_id reloaded))
                 "Database deletion should have nulled the column")
