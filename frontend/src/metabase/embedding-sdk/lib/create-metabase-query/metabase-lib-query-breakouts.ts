@@ -102,11 +102,7 @@ function buildBinnedColumn(
     query,
     STAGE_INDEX,
     column,
-  ).find(
-    (bucket) =>
-      Lib.displayInfo(query, STAGE_INDEX, bucket).displayName ===
-      getBinningStrategyDisplayName(binningOptions),
-  );
+  ).find((bucket) => Lib.isBinningStrategy(bucket, binningOptions));
 
   return bucket ? Lib.withBinning(column, bucket) : column;
 }
@@ -129,14 +125,4 @@ function isBinningOptions(value: unknown): value is BinningOptions {
     "bin-width" in value &&
     typeof value["bin-width"] === "number"
   );
-}
-
-function getBinningStrategyDisplayName(
-  binningOptions: Exclude<BinningOptions, { strategy: "default" }>,
-) {
-  if (binningOptions.strategy === "num-bins") {
-    return `${binningOptions["num-bins"]} bins`;
-  }
-
-  return `Bin every ${binningOptions["bin-width"]}`;
 }

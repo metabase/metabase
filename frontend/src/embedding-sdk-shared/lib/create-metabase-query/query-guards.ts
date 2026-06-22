@@ -1,52 +1,63 @@
 import { isObject } from "metabase-types/guards";
 
-import type { FieldSchema, TableSchema } from "./schema";
+import type { FieldSchema, MetricSchema, TableSchema } from "./schema";
+
+export type ID = string | number;
+
+export type MetricReferenceLike = Pick<MetricSchema, "dimensions"> & {
+  id: number;
+  databaseId?: number;
+  sourceTableId?: number;
+  sourceCardId?: number;
+  mappedTableIds: readonly number[];
+  columns?: MetricSchema["columns"];
+};
 
 export type QuestionQueryLike = {
-  questionId: unknown;
+  questionId: ID;
   parameters?: unknown;
 };
 
 export type TableQueryLike = {
-  table?: unknown;
-  tableId?: unknown;
-  databaseId?: unknown;
+  table?: TableSchema;
+  tableId?: ID;
+  databaseId?: number;
 };
 
 export type MetricQueryLike = {
-  metric?: unknown;
-  metricId?: unknown;
+  metric?: MetricReferenceLike;
+  metricId?: number;
 };
 
 export const isQuestionQuery = (query: unknown): query is QuestionQueryLike =>
-  isObject(query) && "questionId" in query && query.questionId != null;
+  isObject(query) && "questionId" in query && isId(query.questionId);
 
 export const isTableQuery = (query: unknown): query is TableQueryLike =>
   isObject(query) &&
-  (("table" in query && query.table != null) ||
-    ("tableId" in query && query.tableId != null));
+  (("table" in query && isTableReference(query.table)) ||
+    ("tableId" in query && isId(query.tableId)));
 
 export const isMetricQuery = (query: unknown): query is MetricQueryLike =>
   isObject(query) &&
   (("metric" in query && isMetricReference(query.metric)) ||
-    ("metricId" in query && query.metricId != null));
+    ("metricId" in query && typeof query.metricId === "number"));
 
 export const isMetricReference = (
   value: unknown,
-): value is {
-  id: string | number;
-  databaseId?: string | number;
-  sourceTableId?: string | number;
-  sourceCardId?: string | number;
-  mappedTableIds: readonly number[];
-} =>
+): value is MetricReferenceLike =>
   isObject(value) &&
-  "id" in value &&
+  isId(value.id) &&
   "mappedTableIds" in value &&
-  Array.isArray(value.mappedTableIds);
+  Array.isArray(value.mappedTableIds) &&
+  value.mappedTableIds.every((id) => typeof id === "number");
 
 export const isTableReference = (value: unknown): value is TableSchema =>
-  isObject(value) && "id" in value && "databaseId" in value;
+  isObject(value) &&
+  typeof value.id === "number" &&
+  typeof value.databaseId === "number";
+
+export const isId = (value: unknown): value is ID =>
+  typeof value === "string" || typeof value === "number";
 
 export function isTableFieldSchema(value: unknown): value is FieldSchema {
   if (!isObject(value) || "metricId" in value) {

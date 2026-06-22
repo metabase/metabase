@@ -7,6 +7,7 @@ import type { TemporalUnit } from "metabase-types/api";
 import type {
   FieldSchema,
   InferSchema,
+  MetricSchema,
   QueryData,
   QuestionSchema,
   SchemaColumn,
@@ -50,13 +51,13 @@ type DimensionInput<TEntity> = [DimensionValues<TEntity>] extends [never]
   : DimensionValues<TEntity>;
 
 export type MetricReference<TMappedTableId extends number = number> = {
-  id: ID;
-  databaseId?: ID;
-  sourceTableId?: ID;
-  sourceCardId?: ID;
+  id: number;
+  databaseId?: number;
+  sourceTableId?: number;
+  sourceCardId?: number;
   mappedTableIds: readonly TMappedTableId[];
   columns?: readonly SchemaColumn[];
-  dimensions?: Record<string, Record<string, FieldSchema>>;
+  dimensions?: MetricSchema["dimensions"];
 };
 
 export type SegmentReference<TTableId extends number = number> = {
@@ -423,7 +424,7 @@ type TableReference<TTable> =
   | {
       table?: never;
       tableId: ID;
-      databaseId?: ID;
+      databaseId?: number;
     };
 
 export type TableQuery<TTable> = TableReference<TTable> & {

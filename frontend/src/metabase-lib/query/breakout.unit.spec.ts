@@ -27,6 +27,64 @@ const findTemporalBucket = (
 };
 
 describe("breakout", () => {
+  describe("binning", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const findBreakoutableColumn = columnFinder(
+      query,
+      Lib.breakoutableColumns(query, 0),
+    );
+
+    it("should match numeric binning strategies by options", () => {
+      const totalColumn = findBreakoutableColumn("ORDERS", "TOTAL");
+      const strategies = Lib.availableBinningStrategies(query, 0, totalColumn);
+
+      expect(
+        strategies.some((strategy) =>
+          Lib.isBinningStrategy(strategy, {
+            strategy: "num-bins",
+            "num-bins": 10,
+          }),
+        ),
+      ).toBe(true);
+
+      expect(
+        strategies.some((strategy) =>
+          Lib.isBinningStrategy(strategy, {
+            strategy: "num-bins",
+            "num-bins": 7,
+          }),
+        ),
+      ).toBe(false);
+    });
+
+    it("should match coordinate binning strategies by options", () => {
+      const latitudeColumn = findBreakoutableColumn("PEOPLE", "LATITUDE");
+      const strategies = Lib.availableBinningStrategies(
+        query,
+        0,
+        latitudeColumn,
+      );
+
+      expect(
+        strategies.some((strategy) =>
+          Lib.isBinningStrategy(strategy, {
+            strategy: "bin-width",
+            "bin-width": 0.1,
+          }),
+        ),
+      ).toBe(true);
+
+      expect(
+        strategies.some((strategy) =>
+          Lib.isBinningStrategy(strategy, {
+            strategy: "bin-width",
+            "bin-width": 0.2,
+          }),
+        ),
+      ).toBe(false);
+    });
+  });
+
   describe("add breakout", () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const findBreakoutableColumn = columnFinder(

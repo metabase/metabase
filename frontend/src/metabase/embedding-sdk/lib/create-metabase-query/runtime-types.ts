@@ -1,20 +1,51 @@
+import type {
+  FieldSchema,
+  MetricSchema,
+  SchemaColumn,
+  TableSchema,
+} from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { FilterOperator as LibFilterOperator } from "metabase-lib/common";
 
 export type ID = string | number;
 
 export type FilterOperator = LibFilterOperator | "time-interval";
 
+export type SqlParameterValuesRuntime = Record<
+  string,
+  | string
+  | number
+  | boolean
+  | readonly (string | number | boolean | null)[]
+  | null
+  | undefined
+>;
+
+export type ColumnReferenceRuntime = string | FieldSchema;
+
+export type BreakoutBinningRuntime =
+  | { strategy: "default" }
+  | { strategy: "num-bins"; "num-bins": number }
+  | { strategy: "bin-width"; "bin-width": number };
+
+export type BreakoutRuntime<TDimension = ColumnReferenceRuntime> =
+  | TDimension
+  | {
+      dimension: TDimension;
+      bucket?: string;
+      binning?: BreakoutBinningRuntime;
+    };
+
 export type QuestionQueryRuntime = {
   questionId: ID;
-  parameters?: unknown;
+  parameters?: SqlParameterValuesRuntime;
   enabled?: boolean;
 };
 
 export type TableQueryRuntime = {
   questionId?: never;
-  table?: unknown;
+  table?: TableSchema;
   tableId?: ID;
-  databaseId?: ID;
+  databaseId?: number;
   metric?: never;
   metricId?: never;
   filters?: readonly unknown[];
@@ -28,8 +59,8 @@ export type MetricQueryRuntime = {
   questionId?: never;
   table?: never;
   tableId?: never;
-  metric?: unknown;
-  metricId?: ID;
+  metric?: MetricReferenceRuntime;
+  metricId?: number;
   filters?: readonly unknown[];
   measures?: readonly unknown[];
   breakouts?: readonly unknown[];
@@ -51,7 +82,7 @@ export type MeasureReferenceRuntime = {
   kind: "measure";
   id: number;
   tableId: number;
-  columns?: readonly unknown[];
+  columns?: readonly SchemaColumn[];
 };
 
 export type CountAggregationRuntime = {
@@ -63,15 +94,16 @@ export type FieldAggregationRuntime<TDimension = unknown> = {
   dimension: TDimension;
 };
 
-export type MetricReferenceRuntime = {
-  id: ID;
-  databaseId?: ID;
-  sourceTableId?: ID;
-  sourceCardId?: ID;
+export type MetricReferenceRuntime = Pick<MetricSchema, "dimensions"> & {
+  id: number;
+  databaseId?: number;
+  sourceTableId?: number;
+  sourceCardId?: number;
   mappedTableIds: readonly number[];
+  columns?: MetricSchema["columns"];
 };
 
-export type DimensionFilterRuntime<TDimension = unknown> = {
+export type DimensionFilterRuntime<TDimension = ColumnReferenceRuntime> = {
   dimension: TDimension;
   operator: FilterOperator;
   value?: unknown;

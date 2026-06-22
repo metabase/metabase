@@ -559,6 +559,22 @@
    (-> (lib.core/available-binning-strategies a-query stage-number x)
        to-array)))
 
+(defn- binning-options-js->clj
+  [binning-options]
+  (some-> binning-options
+          (js->clj :keywordize-keys true)
+          (update :strategy keyword)))
+
+(defn ^:export binning-strategy?
+  "Returns true if `binning-option` matches the provided JS binning options.
+
+  `binning-option` should be one of the opaque values returned by [[available-binning-strategies]].
+  `binning-options` should be a JS object like `{ strategy: \"num-bins\", \"num-bins\": 10 }`.
+
+  > **Code health:** Healthy"
+  [binning-option binning-options]
+  (lib.binning/strategy= binning-option (binning-options-js->clj binning-options)))
+
 (def ^:private aggregation-display-name-patterns-for-locale
   "Cached aggregation patterns, keyed by locale."
   (memoize/lru (fn [_locale] (lib.aggregation/aggregation-display-name-patterns)) :lru/threshold 2))

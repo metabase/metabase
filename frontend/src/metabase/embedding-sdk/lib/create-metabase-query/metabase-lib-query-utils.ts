@@ -9,10 +9,9 @@ import { TYPE } from "metabase-lib/v1/types/constants";
 import { isObject } from "metabase-types/guards";
 
 import { isTableFieldSchema } from "./guards";
+import type { BreakoutRuntime, ColumnReferenceRuntime } from "./runtime-types";
 
 export const STAGE_INDEX = 0;
-
-export type ColumnReference = string | FieldSchema;
 
 const JAVASCRIPT_TYPE_BASE_TYPES: Partial<
   Record<SchemaJavaScriptType, string>
@@ -22,8 +21,8 @@ const JAVASCRIPT_TYPE_BASE_TYPES: Partial<
   Date: TYPE.DateTime,
 };
 
-export const getBaseType = (jsType: unknown): string =>
-  typeof jsType === "string" && jsType in JAVASCRIPT_TYPE_BASE_TYPES
+export const getBaseType = (jsType?: SchemaJavaScriptType): string =>
+  jsType != null && jsType in JAVASCRIPT_TYPE_BASE_TYPES
     ? (JAVASCRIPT_TYPE_BASE_TYPES[jsType as SchemaJavaScriptType] ?? TYPE.Text)
     : TYPE.Text;
 
@@ -61,7 +60,9 @@ export const isMetricDimensionWithFieldId = (
 ): value is FieldSchema & { fieldId: number } =>
   isTableFieldSchema(value) && hasFieldId(value);
 
-export const isColumnReference = (value: unknown): value is ColumnReference =>
+export const isColumnReference = (
+  value: unknown,
+): value is ColumnReferenceRuntime =>
   typeof value === "string" || isTableFieldSchema(value);
 
 export function getMetricDimensionValues<TDimension>(
@@ -98,13 +99,18 @@ const getObjectProperty = (value: unknown, key: string): unknown =>
   isObject(value) && key in value ? value[key] : undefined;
 
 export const normalizeBreakout = (
-  breakout: unknown,
-): { dimension: ColumnReference | null; options: Record<string, unknown> } => ({
+  breakout: BreakoutRuntime | unknown,
+): {
+  dimension: ColumnReferenceRuntime | null;
+  options: Record<string, unknown>;
+} => ({
   dimension: getBreakoutDimension(breakout),
   options: getBreakoutOptions(breakout),
 });
 
-function getBreakoutDimension(breakout: unknown): ColumnReference | null {
+function getBreakoutDimension(
+  breakout: BreakoutRuntime | unknown,
+): ColumnReferenceRuntime | null {
   if (typeof breakout === "string" || isTableFieldSchema(breakout)) {
     return breakout;
   }
@@ -140,7 +146,7 @@ function getBreakoutOptions(breakout: unknown): Record<string, unknown> {
 
 export function findLibColumn(
   query: Query,
-  field: ColumnReference,
+  field: ColumnReferenceRuntime,
   options: Record<string, unknown> = {},
 ): ColumnMetadata | null {
   if (typeof field === "string") {

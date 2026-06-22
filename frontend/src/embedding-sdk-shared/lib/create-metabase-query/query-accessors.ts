@@ -2,21 +2,23 @@ import type { TableId } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import {
+  type ID,
   type MetricQueryLike,
   type TableQueryLike,
+  isId,
   isMetricReference,
   isTableReference,
 } from "./query-guards";
 
-export type ID = string | number;
+export type { ID };
 
-export function getMetricIdFromQuery(query: unknown): ID | null {
+export function getMetricIdFromQuery(query: unknown): number | null {
   if (!isObject(query)) {
     return null;
   }
 
-  if ("metricId" in query && query.metricId != null) {
-    return query.metricId as ID;
+  if ("metricId" in query && typeof query.metricId === "number") {
+    return query.metricId;
   }
 
   if ("metric" in query && isMetricReference(query.metric)) {
@@ -35,20 +37,22 @@ export function getTableIdFromQuery(query: unknown): ID | null {
     return query.table.id;
   }
 
-  if ("tableId" in query && query.tableId != null) {
-    return query.tableId as ID;
+  if ("tableId" in query && isId(query.tableId)) {
+    return query.tableId;
   }
 
   return null;
 }
 
-export function getTableDatabaseIdFromQuery(query: TableQueryLike): ID | null {
+export function getTableDatabaseIdFromQuery(
+  query: TableQueryLike,
+): number | null {
   if ("table" in query && isTableReference(query.table)) {
     return query.table.databaseId;
   }
 
-  if ("databaseId" in query && query.databaseId != null) {
-    return query.databaseId as ID;
+  if ("databaseId" in query && typeof query.databaseId === "number") {
+    return query.databaseId;
   }
 
   return null;
@@ -61,21 +65,21 @@ export const getMetricMappedTableIdsFromQuery = (
 
 export const getMetricDatabaseIdFromQuery = (
   query: MetricQueryLike,
-): ID | null =>
+): number | null =>
   isMetricReference(query.metric) && query.metric.databaseId != null
     ? query.metric.databaseId
     : null;
 
 export const getMetricSourceTableIdFromQuery = (
   query: MetricQueryLike,
-): ID | null =>
+): number | null =>
   isMetricReference(query.metric) && query.metric.sourceTableId != null
     ? query.metric.sourceTableId
     : null;
 
 export const getMetricSourceCardIdFromQuery = (
   query: MetricQueryLike,
-): ID | null =>
+): number | null =>
   isMetricReference(query.metric) && query.metric.sourceCardId != null
     ? query.metric.sourceCardId
     : null;
