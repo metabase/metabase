@@ -20,8 +20,8 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-import type { SortableColumnHeaderProps } from "./BaseItemsTable";
-import { SortableColumnHeader } from "./BaseItemsTable";
+import type { SortableColumnHeaderProps } from "./BaseItemsTable/BaseItemsTable";
+import { SortableColumnHeader } from "./BaseItemsTable/BaseItemsTable";
 import {
   BulkSelectWrapper,
   ColumnHeader,
