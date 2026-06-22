@@ -8,6 +8,7 @@ import {
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
+import { JobRunListPage } from "./pages/JobRunListPage";
 import { JobSectionLayout } from "./pages/JobSectionLayout";
 import { NewJobPage } from "./pages/NewJobPage";
 import {
@@ -32,6 +33,7 @@ export function getDataStudioTransformRoutes() {
           <IndexRoute component={JobListPage} />
           <Route path="new" component={NewJobPage} />
           <Route path=":jobId" component={JobPage} />
+          <Route path=":jobId/runs" component={JobRunListPage} />
         </Route>
 
         <Route path="new/query" component={NewQueryTransformPage} />

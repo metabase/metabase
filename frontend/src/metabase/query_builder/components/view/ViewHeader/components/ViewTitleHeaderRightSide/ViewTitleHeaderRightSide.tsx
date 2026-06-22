@@ -215,7 +215,6 @@ export function ViewTitleHeaderRightSide({
             )}
             iconSize={16}
             onlyIcon
-            medium
             isRunning={isRunning}
             isDirty={isResultDirty}
             onRun={() => runQuestionQuery({ ignoreCache: true })}

@@ -10,7 +10,7 @@
 
 .compactChartTypeButton {
   background: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.75rem;
   color: var(--mb-color-text-primary);
   height: 2.5rem;

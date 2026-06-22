@@ -21,6 +21,7 @@
    [metabase.collections-rest.api]
    [metabase.comments.api]
    [metabase.config.core :as config]
+   [metabase.curated-search.api]
    [metabase.dashboards-rest.api]
    [metabase.data-studio.api]
    [metabase.documents.api]
@@ -88,6 +89,7 @@
          metabase.cloud-migration.api/keep-me
          metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
+         metabase.curated-search.api/keep-me
          metabase.dashboards-rest.api/keep-me
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
@@ -178,6 +180,7 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
+   "/curated-search"       (+auth 'metabase.curated-search.api)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)

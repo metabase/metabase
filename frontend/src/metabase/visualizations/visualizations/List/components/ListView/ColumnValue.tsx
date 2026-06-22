@@ -289,7 +289,7 @@ export function ColumnValue({
           style={{
             objectFit: "cover",
             borderRadius: "0.5rem",
-            border: "1px solid var(--mb-color-border)",
+            border: "1px solid var(--mb-color-border-neutral)",
           }}
         />
       );

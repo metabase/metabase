@@ -30,12 +30,15 @@
 
 (defn- write-targets
   "Which [label table-name-fn] pairs the current batch upserts into.
-   A committing background rebuild targets ONLY the pending table — the active table keeps serving and is
-   swapped in by [[index/activate-table!]]. Every other write dual-writes to active AND pending so that an
-   in-flight rebuild stays current with live edits (pending may be nil, in which case it is simply skipped)."
-  [mode]
-  (if (and (index/commits-per-batch? mode) (index/pending-table))
-    [[:pending index/pending-table]]
+   A committing background rebuild targets ONLY `reindex-table` — the destination captured once at the
+   start of the run (see [[index-docs!]]) — so a concurrent TTL resync that transiently blanks the tracking
+   atom can't redirect writes into the live active table mid-rebuild. We hand back a `(constantly
+   reindex-table)` fn so per-batch resolution never re-reads the atom. Every other write dual-writes to
+   active AND pending so an in-flight rebuild stays current with live edits (pending may be nil, in which
+   case it is simply skipped)."
+  [mode reindex-table]
+  (if (and (index/commits-per-batch? mode) reindex-table)
+    [[:pending (constantly reindex-table)]]
     [[:active index/active-table] [:pending index/pending-table]]))
 
 (defn- do-batch-upsert!
@@ -104,15 +107,16 @@
 
 (defn- batch-update!
   "Upsert one batch of documents into the tables chosen by `mode` (see [[write-targets]]).
+   `reindex-table` is the destination captured once for a committing background rebuild (nil otherwise).
    When the mode commits per batch, the writes run in a dedicated connection and each batch issues an
    explicit COMMIT so the partial build is visible to other connections during a long rebuild."
-  [mode documents]
+  [mode reindex-table documents]
   (let [commit?   (index/commits-per-batch? mode)
         do-writes (fn []
                     (let [entries         (map document/document->entry documents)
                           written         (into {} (map (fn [[label table-name-fn]]
                                                           [label (safe-batch-upsert! label table-name-fn entries)]))
-                                                (write-targets mode))
+                                                (write-targets mode reindex-table))
                           active-updated  (:active written)
                           pending-updated (:pending written)]
                       (when (or active-updated pending-updated)
@@ -131,10 +135,17 @@
    `mode` is one of [[index/background-mode]], [[index/in-place-mode]], or [[index/incremental-mode]]."
   [mode document-reducible]
   (tracing/with-span :search "search.appdb.index-docs" {:search/mode (.getSimpleName (class mode))}
-    (transduce (comp (partition-all insert-batch-size)
-                     (map (partial batch-update! mode)))
-               (partial merge-with +)
-               document-reducible)))
+    ;; Capture the destination table ONCE for a committing background rebuild: the pending table when a
+    ;; rebuild is staging one, otherwise the freshly-activated active table for an initial build. Resolving
+    ;; this per batch is unsafe -- a concurrent TTL resync of the tracking atom can transiently blank
+    ;; :pending, which would otherwise flip the write target to the live active table mid-rebuild and
+    ;; silently drop documents from the index we are about to activate.
+    (let [reindex-table (when (index/commits-per-batch? mode)
+                          (or (index/pending-table) (index/active-table)))]
+      (transduce (comp (partition-all insert-batch-size)
+                       (map (partial batch-update! mode reindex-table)))
+                 (partial merge-with +)
+                 document-reducible))))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! (index/incremental-mode) document-reducible))

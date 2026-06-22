@@ -21,31 +21,28 @@
 (deftest reindex-mode-write-routing-test
   (let [write-targets     #'search.writer/write-targets
         commits?          #'search.index/commits-per-batch?
-        target-labels     (fn [mode] (map first (write-targets mode)))]
-    (testing "a background full reindex with a pending table writes ONLY to pending"
-      ;; the active table keeps serving queries and is swapped in by activate-table! when the build finishes
+        target-labels     (fn [mode reindex-table] (map first (write-targets mode reindex-table)))]
+    (testing "a committing background rebuild writes ONLY to the captured reindex table"
+      ;; the destination is captured once at the start of the run (pending while a rebuild stages one, else the
+      ;; freshly-activated active table); the active table keeps serving and is swapped in by activate-table!
       (binding [search.index/*state-store*    (index-state/mock-store {:active :active-t :pending :pending-t})
                 search.ingestion/*force-sync* false]
-        (is (= [:pending] (target-labels (search.index/background-mode))))
-        (is (true? (commits? (search.index/background-mode))))))
-    (testing "a background reindex with no pending yet (e.g. initial populate) writes through to active"
-      (binding [search.index/*state-store*    (index-state/mock-store {:active :active-t :pending nil})
-                search.ingestion/*force-sync* false]
-        (is (= [:active :pending] (target-labels (search.index/background-mode))))
-        (is (true? (commits? (search.index/background-mode))))))
+        (is (true? (commits? (search.index/background-mode))))
+        (is (= [:pending] (target-labels (search.index/background-mode) :pending-t)))))
     (testing "*force-sync* disables per-batch commits and keeps active current via dual-write"
-      ;; synchronous runs happen inside the caller's transaction, so we must not open a side connection
+      ;; synchronous runs happen inside the caller's transaction, so we must not open a side connection;
+      ;; there is no captured reindex table, so writes dual-write to active AND pending
       (binding [search.index/*state-store*    (index-state/mock-store {:active :active-t :pending :pending-t})
                 search.ingestion/*force-sync* true]
         (is (false? (commits? (search.index/background-mode))))
-        (is (= [:active :pending] (target-labels (search.index/background-mode))))))
+        (is (= [:active :pending] (target-labels (search.index/background-mode) nil)))))
     (testing "in-place and incremental modes always dual-write without committing"
       ;; dual-write keeps an in-flight background rebuild current with live edits
       (binding [search.index/*state-store*    (index-state/mock-store {:active :active-t :pending :pending-t})
                 search.ingestion/*force-sync* false]
         (doseq [mode [(search.index/in-place-mode) (search.index/incremental-mode)]]
           (is (false? (commits? mode)))
-          (is (= [:active :pending] (target-labels mode))))))))
+          (is (= [:active :pending] (target-labels mode nil))))))))
 
 ;;; ---------------------------------- Batch upsert error recovery ----------------------------------
 

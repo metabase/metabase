@@ -4,7 +4,7 @@ import {
   isInstanceAnalyticsCollection,
   isLibraryCollection,
   isTrashedCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";

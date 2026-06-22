@@ -262,7 +262,7 @@ export const AgentSuggestionMessage = ({
           align="center"
           justify="space-between"
           style={{
-            borderTop: opened ? `1px solid var(--mb-color-border)` : "",
+            borderTop: opened ? `1px solid var(--mb-color-border-neutral)` : "",
           }}
         >
           <Flex

@@ -120,7 +120,7 @@ export const AgentToolCallMessage = ({
       <Flex
         p="sm"
         pl="md"
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         bdrs="sm"
         direction="row"
         align="center"
