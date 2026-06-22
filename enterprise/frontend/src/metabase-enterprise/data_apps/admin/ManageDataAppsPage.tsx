@@ -32,6 +32,20 @@ import S from "./ManageDataAppsPage.module.css";
 
 const REMOTE_SYNC_SETTINGS_PATH = "/admin/settings/remote-sync";
 
+const REPOSITORY_NAME = "metabase/metabase";
+const MAIN_BRANCH_NAME = "master";
+const RELEASE_BRANCH_PREFIX = "release";
+const PUBLIC_SKILLS_PATH = "/skills";
+
+// The data-app skills to install. `skills add metabase/metabase` alone would
+// discover *every* skill in the repo, so each is selected explicitly.
+const DATA_APP_SKILLS = [
+  "create-data-app",
+  "add-data-app-routing",
+  "metabase-data-app-actions",
+  "metabase-data-app-semantic-layer",
+];
+
 // Keep the sync status fresh while the page is open: the backend polls the repo
 // on its own schedule, so re-fetch the list periodically to reflect those syncs.
 // Skipped automatically when the tab is unfocused.
@@ -59,11 +73,12 @@ export function ManageDataAppsPage() {
   const majorVersion = tag ? versionToNumericComponents(tag)?.[1] : undefined;
   const skillBranch =
     tag && !isLocalOrSnapshotVersion(tag) && majorVersion != null
-      ? `release-x.${majorVersion}.x`
-      : "master";
-  // The data-app skills live under the repo's `skills/` dir; pointing `skills add`
-  // there installs all of them (and the bundled template) pinned to this branch.
-  const installSkillCommand = `npx skills add metabase/metabase/skills#${skillBranch}`;
+      ? `${RELEASE_BRANCH_PREFIX}-x.${majorVersion}.x`
+      : MAIN_BRANCH_NAME;
+  const skillSelectors = DATA_APP_SKILLS.map(
+    (skill) => `--skill ${skill}`,
+  ).join(" ");
+  const installSkillCommand = `npx skills add ${REPOSITORY_NAME}${PUBLIC_SKILLS_PATH}#${skillBranch} ${skillSelectors}`;
 
   return (
     <SettingsPageWrapper>
