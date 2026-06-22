@@ -399,8 +399,8 @@
 ;; ----- Metric -----
 
 (defn- fetch-metric [id-str]
-  (when-let [card (mbr/resolve-user-entity :model/Card id-str)]
-    (if (= :metric (:type card))
+  (let [card (mbr/resolve-user-entity :model/Card id-str)]
+    (if (and card (= :metric (:type card)))
       (mbr/entity-result (mbr/extract-as-user "Card" card))
       {:status-code 404 :output (str "Metric " id-str " not found")})))
 

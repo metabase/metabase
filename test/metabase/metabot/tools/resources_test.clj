@@ -322,6 +322,15 @@
                 (is (error? (read-resource/read-resource {:uris [uri]}))
                     (str uri " should return an :error response when user lacks read perms"))))))))))
 
+(deftest fetch-metric-missing-id-errors-test
+  (testing "a non-existent metric id returns a clean :error, not a silent empty body"
+    ;; fetch-metric used when-let with no else, so a missing id fell through to nil and rendered
+    ;; an empty `**Error:**` instead of a 404 — every sibling handler returns an explicit 404.
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [result (read-resource/read-resource {:uris ["metabase://metric/999999999"]})]
+        (is (error? result))
+        (is (str/includes? (-> result :resources first :error) "not found"))))))
+
 (deftest read-check-throws-on-missing-perm-transform-test
   (testing "transform URIs error when the transform itself is unreadable"
     (mt/with-premium-features #{:transforms}
