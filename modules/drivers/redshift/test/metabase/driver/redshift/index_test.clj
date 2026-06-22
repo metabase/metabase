@@ -15,7 +15,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.tx]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel feature-flags-test
   (testing "Redshift inlines indexes into the table-creation statement and does not create them afterwards"
@@ -28,6 +29,7 @@
           style-field (->> (get-in methods [:sortkey :fields])
                            (filter #(= "style" (:name %)))
                            first)]
+      (is (mr/validate :metabase.driver/supported-index-methods methods))
       (is (= {:sortkey :inline} (update-vals methods :lifecycle)))
       (is (= ["columns" "style"] (map :name (get-in methods [:sortkey :fields]))))
       (is (= #{"compound" "interleaved"} (set (map :value (:options style-field))))))))

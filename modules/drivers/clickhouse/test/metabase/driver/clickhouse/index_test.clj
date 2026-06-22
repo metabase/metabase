@@ -13,7 +13,8 @@
    [metabase.driver :as driver]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel feature-flags-test
   (testing "ClickHouse advertises both index lifecycles"
@@ -26,6 +27,7 @@
           type-field (->> (get-in methods [:skip-index :fields])
                           (filter #(= "type" (:name %)))
                           first)]
+      (is (mr/validate :metabase.driver/supported-index-methods methods))
       (is (= {:order-by :inline, :skip-index :standalone}
              (update-vals methods :lifecycle)))
       (is (= ["columns"] (map :name (get-in methods [:order-by :fields]))))

@@ -29,6 +29,12 @@
   (-> (into {:kind kind} (map (fn [{nm :name :as f}] [(keyword nm) (sample-value f)])) fields)
       schema/keywordize-structured))
 
+(deftest return-conforms-to-schema-test
+  (testing "the supported-index-methods return validates against ::driver/supported-index-methods"
+    (is (mr/validate ::driver/supported-index-methods (driver/supported-index-methods :postgres nil)))
+    (testing "including the empty default for a driver with no index support"
+      (is (mr/validate ::driver/supported-index-methods (driver/supported-index-methods :h2 nil))))))
+
 (deftest postgres-descriptors-match-schema-test
   (testing "a body built from each advertised kind's descriptors validates against ::index-structured"
     (doseq [[kind {:keys [fields]}] (driver/supported-index-methods :postgres nil)]

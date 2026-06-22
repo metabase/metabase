@@ -1566,11 +1566,38 @@
 ;; "Index" is used in the broad sense here: anything that shapes the physical layout of a transform's target table.
 ;; Postgres/MySQL use real indexes, Snowflake/BigQuery clustering keys, Redshift sort/dist keys.
 
+(mr/def ::index-field
+  "One form field describing how to request an index: the same shape as a [[connection-properties]] descriptor, plus a
+  `:columns` type for the indexed columns. Built by the `metabase.driver.common` index field helpers."
+  [:map
+   ;; the key to write into the structured request body (e.g. "unique", "type")
+   [:name :string]
+   ;; deferred-i18n label (or string)
+   [:display-name :any]
+   [:type [:enum :string :boolean :select :integer :columns]]
+   [:required {:optional true} :boolean]
+   ;; `:columns` only: whether per-column asc/desc is offered
+   [:directions {:optional true} :boolean]
+   ;; `:select` only: choices, each `:value` an enum value of the kind's `::index-structured` branch
+   [:options {:optional true} [:sequential [:map
+                                            [:name :any]
+                                            [:value :string]]]]])
+
+(mr/def ::index-method
+  "Metadata for one index kind a driver supports: its `:lifecycle` and the `:fields` to request it."
+  [:map
+   [:lifecycle [:enum :standalone :inline]]
+   [:fields [:sequential [:ref ::index-field]]]])
+
+(mr/def ::supported-index-methods
+  "Return shape of [[supported-index-methods]]: index-kind -> metadata."
+  [:map-of :keyword [:ref ::index-method]])
+
 (defmulti supported-index-methods
-  "Return the index methods this driver supports for transform target tables, as a map of `index-kind` -> metadata map.
-  Each metadata map carries `:lifecycle`, one of `:standalone` (applied as a separate statement after the table exists)
-  or `:inline` (inlined into the table-creation statement), and `:fields`, the form descriptors (same shape as
-  [[connection-properties]]) the FE renders an index-creation form from. E.g.
+  "Return the index methods this driver supports for transform target tables, as a map of `index-kind` -> metadata map
+  matching `::supported-index-methods`. Each metadata map carries `:lifecycle`, one of `:standalone` (applied as a
+  separate statement after the table exists) or `:inline` (inlined into the table-creation statement), and `:fields`,
+  the form descriptors (same shape as [[connection-properties]]) the FE renders an index-creation form from. E.g.
   `{:btree {:lifecycle :standalone :fields [...]}}`. See `metabase.driver.common` for the shared field helpers.
 
   Defaults to `{}` for drivers with no index support."
