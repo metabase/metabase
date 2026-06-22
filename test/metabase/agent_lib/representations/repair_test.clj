@@ -1000,6 +1000,11 @@
     (let [input {"foo" "bar"}]
       (is (= input (repair/repair trivial-mp input))))))
 
+(deftest ^:parallel add-join-lib-type-test
+  (testing "a join with no lib/type gets mbql/join"
+    (let [output (repair/repair trivial-mp (update-in lib-type-join-query ["stages" 0 "joins" 0] dissoc "lib/type"))]
+      (is (= "mbql/join" (join-lib-type output))))))
+
 ;;; ============================================================
 ;;; Pass 1.9 - stamp top-level `database:` from the first stage's source
 ;;;
