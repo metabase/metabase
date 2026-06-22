@@ -775,26 +775,19 @@
         :remote-sync/unsyncable-record))))
 
 (defn- incremental-updates-for-row
-  "The (content-free, pass-1) updates a single dirty `row` contributes to an incremental plan: a map of
+  "The (content-free, pass-1) updates a single dirty `row` contributes to an incremental plan, given its
+  precomputed `info` — `{:eid :new-path :file-exists? :file-eid}` for create/update rows, or nil when the
+  entity no longer exists (or the row needs no extraction). Returns a map of
   {:writes :delete-paths :removed-ids :pull} (any subset), or `:remote-sync/unsyncable-record` if the row
   can't be synced incrementally and the whole batch must fall back to a full export. A `:writes` entry is
   `{:id :model_type :model_id :file_path}` naming a validated target path; pass 2 (export-incremental!)
-  re-serializes the content. This pass only computes paths and reads the (small) existing repo file — it
-  never renders the entity's YAML, so the dirty set's content is not held in memory."
-  [opts snapshot {:keys [status file_path] :as row}]
+  re-serializes the content."
+  [{:keys [status file_path] :as row} info]
   (try
-    (let [info  (delay (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-                         (let [new-path (source/entity->path opts entity)
-                               content  (source.p/read-file snapshot new-path)]
-                           {:eid          (:entity_id entity)
-                            :new-path     new-path
-                            :file-exists? (boolean content)
-                            ;; errors parsing the existing repo file should throw and invalidate the row
-                            :file-eid     (when content (:entity_id (yaml/parse-string content)))})))
-          write (fn [] {:id         (:id row)
+    (let [write (fn [] {:id         (:id row)
                         :model_type (:model_type row)
                         :model_id   (:model_id row)
-                        :file_path  (:new-path @info)})]
+                        :file_path  (:new-path info)})]
       (cond
         (not= :entity-id ;; only entity-id models can be synced incrementally
               (:identity (spec/spec-for-model-type (:model_type row))))
@@ -812,23 +805,23 @@
          :removed-ids [(:id row)]}
 
         ;; past here, we're seeing create and update statuses
-        (not @info) ;; entity no longer exists
+        (not info) ;; entity no longer exists
         :remote-sync/unsyncable-record
 
         ;; create: brand-new file, no old path to delete.
         ;; Target must be free or same entity id
         (and (= "create" status)
-             (or (not (:file-exists? @info))
-                 (= (:eid @info) (:file-eid @info))))
+             (or (not (:file-exists? info))
+                 (= (:eid info) (:file-eid info))))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
          :writes [(write)]}
 
         ;; in-place update: at its stored path, or (no stored path) the repo file at
         ;; new-path is already this entity — overwrite.
         (and (= "update" status)
-             (or (= file_path (:new-path @info))
+             (or (= file_path (:new-path info))
                  (and (str/blank? file_path)
-                      (= (:eid @info) (:file-eid @info)))))
+                      (= (:eid info) (:file-eid info)))))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
          :writes [(write)]}
 
@@ -836,9 +829,9 @@
         ;; new file and delete the old one.
         (and (= "update" status)
              (not (str/blank? file_path))
-             (not= file_path (:new-path @info))
-             (or (not (:file-exists? @info))
-                 (= (:eid @info) (:file-eid @info))))
+             (not= file_path (:new-path info))
+             (or (not (:file-exists? info))
+                 (= (:eid info) (:file-eid info))))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
          :writes [(write)]
          :delete-paths [file_path]}
@@ -871,14 +864,36 @@
   - `:remote-sync/unsyncable-batch` — a row (or a dependency path collision) forces a full export."
   [snapshot dirty-rows]
   (let [opts (serdes/storage-base-context)
-        plan (->> dirty-rows
-                  (map #(incremental-updates-for-row opts snapshot %))
-                  (reduce (fn [plan updates]
-                            (if (= updates :remote-sync/unsyncable-record)
-                              (reduced :remote-sync/unsyncable-batch)
-                              (merge-with into plan updates)))
-                          {:writes [] :delete-paths [] :removed-ids [] :pull #{}}))
-        deps (delay (dep-writes snapshot opts (:pull plan)))]
+        ;; Batch-extract the create/update rows on entity-id models in one query per model/chunk (rather than
+        ;; a read per row), computing each row's target path + existing-repo-file info up front. removed/delete
+        ;; rows and non-entity-id rows need no extraction; a create/update row whose entity is gone gets no
+        ;; info entry and is treated as unsyncable. An extraction error sends the whole batch to a full export.
+        cu-rows  (filterv #(and (#{"create" "update"} (:status %))
+                                (= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
+                          dirty-rows)
+        id->info (try
+                   (into {}
+                         (stream-extract
+                          (fn [row entity]
+                            (let [new-path (source/entity->path opts entity)
+                                  content  (source.p/read-file snapshot new-path)]
+                              [(:id row) {:eid          (:entity_id entity)
+                                          :new-path     new-path
+                                          :file-exists? (boolean content)
+                                          ;; parse errors on the existing repo file invalidate the batch
+                                          :file-eid     (when content (:entity_id (yaml/parse-string content)))}]))
+                          cu-rows))
+                   (catch Exception _ ::extract-error))
+        plan     (if (= id->info ::extract-error)
+                   :remote-sync/unsyncable-batch
+                   (->> dirty-rows
+                        (map #(incremental-updates-for-row % (id->info (:id %))))
+                        (reduce (fn [plan updates]
+                                  (if (= updates :remote-sync/unsyncable-record)
+                                    (reduced :remote-sync/unsyncable-batch)
+                                    (merge-with into plan updates)))
+                                {:writes [] :delete-paths [] :removed-ids [] :pull #{}})))
+        deps     (delay (dep-writes snapshot opts (:pull plan)))]
     (cond
       (= plan :remote-sync/unsyncable-batch)
       :remote-sync/unsyncable-batch
