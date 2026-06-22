@@ -30,13 +30,6 @@
 
 ;; import! tests
 
-(deftest import!-with-no-source-configured-test
-  (testing "import! with no snapshot configured"
-    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          result (impl/import! nil task-id)]
-      (is (= :error (:status result)))
-      (is (re-find #"Remote sync source is not enabled" (:message result))))))
-
 (deftest import!-successful-without-collections-test
   (testing "import! successful without collections (imports all remote-synced)"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
@@ -152,7 +145,21 @@
               result (impl/import! (source.p/snapshot mock-source) task-id-2 :force? false)]
           (is (= :success (:status result)))
           (is (= source-version (:version result)))
-          (is (re-find #"Skipping import.*matches last imported version" (:message result))))))))
+          (is (= {:kind "pull-skipped"} (:outcome result))))))))
+
+(deftest handle-task-result!-stores-outcome-test
+  (testing "handle-task-result! records the success result's :outcome on the task (GHY-3747)"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                             {:sync_task_type "import"
+                                              :initiated_by (mt/user->id :rasta)})]
+        (impl/handle-task-result! {:status :success
+                                   :outcome {:kind "pulled" :count 3 :branch "main"}}
+                                  task-id)
+        (let [task (t2/select-one :model/RemoteSyncTask :id task-id)]
+          (is (some? (:ended_at task)))
+          (is (= {:kind "pulled" :count 3 :branch "main"} (:outcome task)))
+          (is (= :successful (:status (t2/hydrate task :status)))))))))
 
 (deftest import!-proceeds-when-version-matches-with-force-test
   (testing "import! proceeds with import when source version matches last imported version but force? is true"
@@ -177,7 +184,8 @@
               result (impl/import! (source.p/snapshot mock-source) task-id-2 :force? true)]
           (is (= :success (:status result)))
           (is (= source-version (:version result)))
-          (is (= "Successfully reloaded from git repository" (:message result))))))))
+          (is (= "pulled" (get-in result [:outcome :kind])))
+          (is (number? (get-in result [:outcome :count]))))))))
 
 ;; export! tests
 
@@ -270,7 +278,7 @@
                 import-result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
             (remote-sync.task/complete-sync-task! (:id import-task))
             (is (= :success (:status import-result)))
-            (is (= "Successfully reloaded from git repository" (:message import-result)))
+            (is (= "pulled" (get-in import-result [:outcome :kind])))
             (is (t2/exists? :model/Collection :id coll-id))
             (is (t2/exists? :model/Card :id card-id))
             (let [collection (t2/select-one :model/Collection :id coll-id)

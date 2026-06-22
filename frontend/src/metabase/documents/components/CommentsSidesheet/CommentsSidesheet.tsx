@@ -206,7 +206,7 @@ export const CommentsSidesheet = ({ params }: Props) => {
       w="30rem"
       className={Animation.slideLeft}
       style={{
-        borderLeft: "1px solid var(--mb-color-border)",
+        borderLeft: "1px solid var(--mb-color-border-neutral)",
       }}
       data-testid="comments-sidebar"
     >

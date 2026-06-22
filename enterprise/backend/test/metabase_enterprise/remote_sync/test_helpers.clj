@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -293,8 +294,22 @@ width: fixed
       :or   {current "v-remote" branch "main" managed-dirs ingest/legal-top-level-paths}}]
   (let [managed     (set managed-dirs)
         state       (atom {:current current :trees (or trees {}) :counter 0})
+        diff-trees  (fn [old-tree new-tree]
+                      (let [oks (set (keys old-tree)) nks (set (keys new-tree))]
+                        {:added    (into #{} (remove oks) nks)
+                         :deleted  (into #{} (remove nks) oks)
+                         :modified (into #{} (filter #(and (contains? old-tree %) (not= (old-tree %) (new-tree %)))) nks)}))
         mk-snapshot (fn mk-snapshot [version]
-                      (reify source.p/SourceSnapshot
+                      (reify
+                        source.p/Diffable
+                        ;; In-memory mirror of git's tree diff: nil when the base version is unknown (models
+                        ;; a base orphaned by force-push), so the importer falls back to a full import.
+                        (changed-files* [_ from-version]
+                          (let [trees (:trees @state)]
+                            (when (and (contains? trees from-version) (contains? trees version))
+                              (diff-trees (get trees from-version) (get trees version)))))
+
+                        source.p/SourceSnapshot
                         (list-files [_] (vec (keys (get-in @state [:trees version] {}))))
                         (read-file [_ path] (get-in @state [:trees version path]))
                         (write-files! [_ _message files]
@@ -399,6 +414,20 @@ width: fixed
   "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
   model tables (Transform, TransformTag, PythonLibrary) are clean."
   (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
+
+(defn commit-with-temp
+  "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a
+  `:rollback-only` transaction (by binding `*thread-local*` false).
+
+  Required by remote-sync tests that call `import!`: the import reports progress on a separate pool
+  connection (`wrap-progress-ingestable`), and on MySQL that connection blocks on the uncommitted
+  `RemoteSyncTask` row for the full 50s `innodb_lock_wait_timeout` — once per ingested entity — turning
+  each such test into minutes (and timing out the EE MySQL app-db job). Committing the temp rows avoids
+  the cross-connection lock wait. Safe because these tests are non-parallel and clean up via other
+  fixtures. No effect on H2 (same-connection/MVCC). Compose after `clean-remote-sync-state`."
+  [thunk]
+  (binding [tu.thread-local/*thread-local* false]
+    (thunk)))
 
 (defn generate-table-yaml
   "Generate YAML content for a table with the given `table-name` and `db-name`.

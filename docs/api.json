@@ -4066,7 +4066,7 @@
         "required" : [ "resources", "output" ]
       },
       "metabase.agent-api.api.search-response" : {
-        "description" : "Search results containing tables and metrics matching the query.",
+        "description" : "Search results containing tables, metrics, and models matching the query.",
         "type" : "object",
         "properties" : {
           "data" : {
@@ -4082,7 +4082,7 @@
         "required" : [ "data", "total_count" ]
       },
       "metabase.agent-api.api.search-result-item" : {
-        "description" : "A table or metric returned from search.",
+        "description" : "A table, metric, or model returned from search.",
         "type" : "object",
         "properties" : {
           "id" : {
@@ -4119,7 +4119,7 @@
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "table", "metric" ]
+            "enum" : [ "table", "metric", "model" ]
           },
           "database_schema" : {
             "oneOf" : [ {
@@ -15043,7 +15043,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-search",
         "summary" : "POST /api/agent/v1/search",
-        "description" : "Search for tables and metrics.\n\n  Supports both term-based and semantic search queries. Results are ranked using\n  Reciprocal Rank Fusion when both query types are provided.",
+        "description" : "Search for tables, metrics, and models.\n\n  Supports both term-based and semantic search queries. Results are ranked using\n  Reciprocal Rank Fusion when both query types are provided.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -28165,6 +28165,14 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "outcome" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
                       }
                     },
                     "required" : [ "id", "sync_task_type", "progress", "started_at", "status" ]
@@ -28266,6 +28274,14 @@
                     "version" : {
                       "oneOf" : [ {
                         "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "outcome" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : { }
                       }, {
                         "type" : "null"
                       } ]
@@ -45750,7 +45766,15 @@
                                 "type" : "null"
                               } ]
                             },
-                            "start_time" : { }
+                            "start_time" : { },
+                            "job_run_id" : {
+                              "oneOf" : [ {
+                                "type" : "integer",
+                                "minimum" : 1
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }
                           },
                           "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                           "additionalProperties" : false
@@ -46095,7 +46119,15 @@
                               "type" : "null"
                             } ]
                           },
-                          "start_time" : { }
+                          "start_time" : { },
+                          "job_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
                         },
                         "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                         "additionalProperties" : false
@@ -47222,6 +47254,321 @@
         "tags" : [ "/api/transform-job" ]
       }
     },
+    "/api/transform-job/{job-id}/runs" : {
+      "get" : {
+        "operationId" : "get-api-transform-job-job-id-runs",
+        "summary" : "GET /api/transform-job/{job-id}/runs",
+        "description" : "Get paginated run history for a transform job.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "job-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "started", "succeeded", "failed", "timeout" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "run-method",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "manual", "cron" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "start-time",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-column",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "start_time", "end_time" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-direction",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "asc", "desc" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "message" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "is_active" : {
+                            "oneOf" : [ {
+                              "type" : "boolean"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "run_method" : {
+                            "type" : "string"
+                          },
+                          "updated_at" : { },
+                          "status" : {
+                            "type" : "string",
+                            "enum" : [ "started", "succeeded", "failed", "timeout" ]
+                          },
+                          "job_id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "end_time" : {
+                            "oneOf" : [ { }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "created_at" : { },
+                          "start_time" : { }
+                        },
+                        "required" : [ "id", "job_id", "run_method", "status", "is_active", "start_time", "message", "created_at", "updated_at" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "limit" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "offset" : {
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "limit", "offset", "total" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform-job" ]
+      }
+    },
+    "/api/transform-job/{job-id}/runs/{run-id}/transform-runs" : {
+      "get" : {
+        "operationId" : "get-api-transform-job-job-id-runs-run-id-transform-runs",
+        "summary" : "GET /api/transform-job/{job-id}/runs/{run-id}/transform-runs",
+        "description" : "Get the transform runs that made up a specific job run.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "job-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "run-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "message" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "user_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "checkpoint_hi_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "is_active" : {
+                        "oneOf" : [ {
+                          "type" : "boolean"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "transform_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "id" : {
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "transform" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "run_method" : {
+                        "type" : "string"
+                      },
+                      "checkpoint_lo_value" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "status" : {
+                        "type" : "string",
+                        "enum" : [ "started", "succeeded", "failed", "timeout", "canceled", "canceling" ]
+                      },
+                      "transform_entity_id" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "checkpoint_filter_field_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "end_time" : {
+                        "oneOf" : [ { }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "metered_as" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "transform_name" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "start_time" : { },
+                      "job_run_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
+                    "required" : [ "id", "transform_id", "job_run_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
+                    "additionalProperties" : false
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/transform-job" ]
+      }
+    },
     "/api/transform-job/{job-id}/transforms" : {
       "get" : {
         "operationId" : "get-api-transform-job-job-id-transforms",
@@ -47899,7 +48246,15 @@
                               "type" : "null"
                             } ]
                           },
-                          "start_time" : { }
+                          "start_time" : { },
+                          "job_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
                         },
                         "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                         "additionalProperties" : false
@@ -48087,7 +48442,15 @@
                         "type" : "null"
                       } ]
                     },
-                    "start_time" : { }
+                    "start_time" : { },
+                    "job_run_id" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
                   },
                   "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                   "additionalProperties" : false
@@ -48277,7 +48640,15 @@
                               "type" : "null"
                             } ]
                           },
-                          "start_time" : { }
+                          "start_time" : { },
+                          "job_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
                         },
                         "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                         "additionalProperties" : false
@@ -48630,7 +49001,15 @@
                               "type" : "null"
                             } ]
                           },
-                          "start_time" : { }
+                          "start_time" : { },
+                          "job_run_id" : {
+                            "oneOf" : [ {
+                              "type" : "integer",
+                              "minimum" : 1
+                            }, {
+                              "type" : "null"
+                            } ]
+                          }
                         },
                         "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                         "additionalProperties" : false
@@ -49120,7 +49499,15 @@
                                 "type" : "null"
                               } ]
                             },
-                            "start_time" : { }
+                            "start_time" : { },
+                            "job_run_id" : {
+                              "oneOf" : [ {
+                                "type" : "integer",
+                                "minimum" : 1
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }
                           },
                           "required" : [ "id", "transform_id", "run_method", "status", "is_active", "start_time", "message", "user_id" ],
                           "additionalProperties" : false

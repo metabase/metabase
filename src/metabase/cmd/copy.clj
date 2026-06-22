@@ -139,6 +139,7 @@
     :model/MetabotSourceFeedback
     :model/MetabotUsedTable
     :model/MetabotPrompt
+    :model/CuratedSearchEntry
     ;; 62+
     :model/Exploration
     :model/ExplorationThread

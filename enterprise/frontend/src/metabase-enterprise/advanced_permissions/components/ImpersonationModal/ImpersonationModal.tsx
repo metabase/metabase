@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { useCallback } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
-import { useAsyncFn, useMount } from "react-use";
+import { useMount } from "react-use";
 
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
 import { DataPermissionType } from "metabase/admin/permissions/types";
@@ -17,14 +17,13 @@ import type {
   ImpersonationParams,
 } from "metabase-enterprise/advanced_permissions/types";
 import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";
+import { useGetImpersonationQuery } from "metabase-enterprise/api";
 import { useEnterpriseSelector } from "metabase-enterprise/redux";
-import { ImpersonationApi } from "metabase-enterprise/services";
 import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import {
   DataPermission,
   DataPermissionValue,
-  type Impersonation,
   type UserAttributeKey,
 } from "metabase-types/api";
 
@@ -53,25 +52,6 @@ const ImpersonationModalInner = ({
   params,
   location,
 }: ImpersonationModalProps) => {
-  const [
-    {
-      loading: isImpersonationLoading,
-      value: impersonation,
-      error: impersonationError,
-    },
-    fetchImpersonation,
-  ] = useAsyncFn(
-    async (
-      groupId: number,
-      databaseId: number,
-    ): Promise<Impersonation | undefined> =>
-      ImpersonationApi.get({
-        db_id: databaseId,
-        group_id: groupId,
-      }),
-    [],
-  );
-
   const { groupId, databaseId } = parseParams(params);
 
   const {
@@ -85,6 +65,15 @@ const ImpersonationModalInner = ({
   const attributes = useEnterpriseSelector(getUserAttributes);
   const draftImpersonation = useEnterpriseSelector(
     getImpersonation(databaseId, groupId),
+  );
+
+  const {
+    data: impersonation,
+    isLoading: isImpersonationLoading,
+    error: impersonationError,
+  } = useGetImpersonationQuery(
+    { db_id: databaseId, group_id: groupId },
+    { skip: Boolean(draftImpersonation) },
   );
 
   const selectedAttribute =
@@ -132,10 +121,6 @@ const ImpersonationModalInner = ({
 
   useMount(() => {
     dispatch(fetchUserAttributes());
-
-    if (!draftImpersonation) {
-      fetchImpersonation(groupId, databaseId);
-    }
   });
 
   const isLoading =

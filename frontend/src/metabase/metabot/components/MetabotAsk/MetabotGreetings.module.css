@@ -20,10 +20,16 @@
   flex-direction: column;
   padding: 0.5rem 1rem 1rem;
   border-radius: 0.75rem;
-  border: 1px solid var(--mb-color-border);
+  box-shadow:
+    0 0 0 1px var(--mb-color-border-neutral),
+    0 4px 24px rgba(0, 0, 0, 0.08);
+  min-height: 7rem;
+  transition: box-shadow 150ms ease;
 
-  :global(.ProseMirror) {
-    min-height: 7.5rem;
+  &:focus-within {
+    box-shadow:
+      0 0 0 1px var(--mb-color-border-neutral),
+      0 4px 24px rgba(0, 0, 0, 0.12);
   }
 }
 

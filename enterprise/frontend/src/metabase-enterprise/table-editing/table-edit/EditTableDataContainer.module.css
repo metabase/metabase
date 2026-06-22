@@ -11,7 +11,7 @@
 }
 
 .gridFooter {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background-primary);
   color: var(--mb-color-text-secondary);
   padding: 0.5rem 1.5rem;
@@ -23,5 +23,5 @@
 
 .filtersSection {
   background-color: var(--mb-color-background-primary);
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 }

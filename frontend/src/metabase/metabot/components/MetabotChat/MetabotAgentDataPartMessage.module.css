@@ -1,6 +1,6 @@
 .sourceDataHeader {
   box-sizing: border-box;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .sourceDataHeader[data-expanded="false"] {
@@ -13,13 +13,13 @@
 }
 
 .sourceDataRow:not(:last-child) {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .sourceFeedbackButton {
   color: var(--mb-color-text-secondary);
   background-color: var(--mb-color-background);
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 }
 
 .sourceFeedbackButton:hover {

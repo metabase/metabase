@@ -625,7 +625,7 @@ export const CardEmbedComponent = memo(
                           lineHeight: 1.55,
                           backgroundColor: "transparent",
                           "&:focus": {
-                            border: "1px solid var(--mb-color-border)",
+                            border: "1px solid var(--mb-color-border-neutral)",
                             backgroundColor:
                               "var(--mb-color-background-primary)",
                             padding: "0 0.25rem",

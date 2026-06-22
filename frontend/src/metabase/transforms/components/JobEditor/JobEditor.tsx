@@ -26,6 +26,7 @@ type JobEditorProps = {
   job: TransformJobInfo;
   menu?: ReactNode;
   actions?: ReactNode;
+  tabs?: ReactNode;
   readOnly?: boolean;
   isCheckingPermissions?: boolean;
   onNameChange: (name: string) => void;
@@ -40,6 +41,7 @@ export function JobEditor({
   job,
   menu,
   actions,
+  tabs,
   readOnly,
   isCheckingPermissions,
   onNameChange,
@@ -61,11 +63,11 @@ export function JobEditor({
             />
             {isMeterLocked && (
               <LockedTransformsHoverCard>
-                <TransformBadge bg="background-warning-secondary">{t`Disabled`}</TransformBadge>
+                <TransformBadge bg="background_surface-warning-strong">{t`Disabled`}</TransformBadge>
               </LockedTransformsHoverCard>
             )}
             {!isMeterLocked && !job.active && (
-              <TransformBadge bg="background-warning-secondary">
+              <TransformBadge bg="background_surface-warning-strong">
                 {t`Disabled`}
               </TransformBadge>
             )}
@@ -82,6 +84,7 @@ export function JobEditor({
         }
         menu={menu}
         actions={actions}
+        tabs={tabs}
         data-testid="jobs-header"
       />
       <Stack gap="3.5rem">

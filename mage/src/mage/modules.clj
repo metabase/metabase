@@ -105,6 +105,7 @@
      config
      content-verification
      contextual-interestingness
+     curated-search
      custom-viz-plugin
      dashboards
      documents

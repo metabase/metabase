@@ -10,7 +10,7 @@
   font-size: 0.75rem;
   text-decoration: none;
   gap: 0.75rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.75rem;
   padding: 0.4688rem 0.75rem;
   background: var(--mb-color-background-primary);
@@ -22,7 +22,7 @@
 }
 
 .dark {
-  --mb-color-border: var(--mb-color-text-secondary);
+  --mb-color-border-neutral: var(--mb-color-text-secondary);
   --mb-color-background-primary: #2f353a;
   /* SVG logo */
   --mb-color-logo-text: var(--mb-color-text-primary);
