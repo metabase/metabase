@@ -165,7 +165,7 @@ export const NotebookContainer = ({
               handle={<Handle />}
               onResizeStop={handleResizeStop}
               style={{
-                borderLeft: "1px solid var(--mb-color-border)",
+                borderLeft: "1px solid var(--mb-color-border-neutral)",
                 marginInlineStart: "0.25rem",
               }}
             >

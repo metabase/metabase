@@ -218,6 +218,18 @@ jobs:
       self_hosting: false
       analytics_dev_mode: true
 
+  pr-env-stats-dump:
+      needs: [uberjar]
+      if: |
+        !cancelled() &&
+        contains(github.event.pull_request.labels.*.name, 'PR-Env-Stats-Dump')
+      uses: ./.github/workflows/pr-env.yml
+      secrets: inherit
+      with:
+        self_hosting: false
+        analytics_dev_mode: false
+        stats_dump: true
+
   containerize:
     needs: [uberjar]
     if: |

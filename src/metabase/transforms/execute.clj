@@ -38,11 +38,24 @@
 (defn execute!
   "Run `transform` and sync its target table.
 
-  This is executing synchronously, but supports being kicked off in the background
-  by delivering the `start-promise` just before the start when the beginning of the execution has been booked
-  in the database."
+  Executes synchronously, but the start is observable: once the run row is booked in the database,
+  `:on-start` is called with the transform run id and `:start-promise` (if any) is delivered
+  `[:started run-id]`. A throw before that point delivers the throwable to the promise instead, so
+  callers awaiting the start never hang."
   ([transform]
    (execute! transform nil))
-  ([transform opts]
-   #_{:clj-kondo/ignore [:discouraged-var]}
-   (transforms.i/execute! (resolve-target transform) opts)))
+  ([transform {:keys [start-promise on-start] :as opts}]
+   (let [opts (merge opts
+                     {:on-start (fn [run-id]
+                                  (when start-promise
+                                    (deliver start-promise [:started run-id]))
+                                  (when on-start
+                                    (on-start run-id)))})]
+     (try
+       #_{:clj-kondo/ignore [:discouraged-var]}
+       (transforms.i/execute! (resolve-target transform) opts)
+       (catch Throwable t
+         ;; so a caller awaiting the start isn't left hanging on a pre-start failure;
+         ;; a no-op when the run had already started and the promise was delivered
+         (when start-promise (deliver start-promise t))
+         (throw t))))))

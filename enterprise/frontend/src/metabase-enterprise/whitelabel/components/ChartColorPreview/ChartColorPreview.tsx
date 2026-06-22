@@ -25,7 +25,7 @@ const ChartColorPreview = ({
   return (
     <Flex
       direction="column"
-      bd="1px solid var(--mb-color-border)"
+      bd="1px solid var(--mb-color-border-neutral)"
       bdrs="0.5rem"
       p="3rem 1.5rem"
     >

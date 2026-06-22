@@ -73,9 +73,10 @@
          (seq data))
     (str "```json\n" (json/encode data {:pretty true}) "\n```")))
 
-(defn- escape-xml
+(defn escape-xml
   "Escape XML special characters in a string.
-   Only needed for content that bypasses Selmer's auto-escaping (marked with |safe)."
+   Only needed for content that bypasses Selmer's auto-escaping (marked with |safe) or is interpolated
+   into hand-built XML."
   [s]
   (when s
     (-> (str s)
@@ -808,22 +809,25 @@
      {:list-type :databases     ; keyword, becomes the type attribute
       :items     [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
       :total     5
-      :truncated false}
+      :page      1
+      :pages     1}
 
    Output shape:
-     <list type=\"databases\" total=\"5\" truncated=\"false\">
+     <list type=\"databases\" total=\"5\" page=\"1\" pages=\"1\" showing=\"5\" truncated=\"false\">
        <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
        ...
      </list>"
-  [{:keys [list-type items total truncated]}]
+  [{:keys [list-type items total page pages]}]
   (let [type-attr (clojure.core/name (or list-type :items))
         item-xml  (str/join "\n" (map list-item->xml items))
         showing   (count items)
+        truncated (< page pages)
         note      (when truncated
-                    (str "<truncation-note>Showing " showing " of " total ". "
-                         "More items exist — read individual items via their URIs above "
-                         "or refine via search.</truncation-note>"))]
+                    (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
+                         "Append ?page=" (inc page) " to the URI to fetch the next page.</truncation-note>"))]
     (str "<list type=\"" type-attr "\" total=\"" total
+         "\" page=\"" (or page 1)
+         "\" pages=\"" (or pages 1)
          "\" showing=\"" showing
          "\" truncated=\"" (boolean truncated) "\">\n"
          (when (seq items) (str item-xml "\n"))

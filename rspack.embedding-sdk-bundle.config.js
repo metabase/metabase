@@ -8,6 +8,9 @@ const BundleAnalyzerPlugin =
 const prefixwrap = require("postcss-prefixwrap");
 
 const mainConfig = require("./rspack.main.config");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
 const { resolve } = require("path");
 const path = require("path");
 
@@ -234,6 +237,7 @@ const config = {
   },
 
   plugins: [
+    ...bundleStatsPlugins("stats-embedding-sdk.json"),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
     // https://github.com/remarkjs/remark/discussions/903

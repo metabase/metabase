@@ -38,6 +38,7 @@ import {
   buildIncrementalTarget,
   getInitialValues,
 } from "../../components/IncrementalTransform/form";
+import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import {
   TransformEditor,
   type TransformEditorProps,
@@ -241,17 +242,18 @@ function TransformQueryPageBody({
           isEditMode={isEditMode}
           readOnly={readOnly}
         />
+        <TransformDisconnectedDatabaseBanner transform={transform} />
         <Box
           w="100%"
           bg="background-primary"
           bdrs="md"
-          bd="1px solid var(--mb-color-border)"
+          bd="1px solid var(--mb-color-border-neutral)"
           flex={1}
           style={{
             overflow: "hidden",
           }}
         >
-          {!transform.source_readable ? (
+          {transform.can_read === false ? (
             <Center h="100%">
               <EmptyState
                 title={t`Sorry, you don't have permission to view this transform.`}
