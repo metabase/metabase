@@ -2,11 +2,22 @@ import createVirtualEnvironment from "@locker/near-membrane-dom";
 import * as React from "react";
 import * as ReactJsxRuntime from "react/jsx-runtime";
 
+import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import * as sdkExports from "embedding-sdk-package";
 import * as dataAppExports from "embedding-sdk-package/data-app";
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import { makeDistortionCallback } from "./sandbox/distortions";
+
+// The MetabaseProvider props a data app may customize.
+export const DATA_APP_PROVIDER_PROP_KEYS = [
+  "theme",
+  "allowedCustomVisualizations",
+] as const;
+
+export type DataAppMetabaseProviderProps = Pick<
+  MetabaseProviderProps,
+  (typeof DATA_APP_PROVIDER_PROP_KEYS)[number]
+>;
 
 /**
  * The bundle's factory returns:
@@ -14,12 +25,12 @@ import { makeDistortionCallback } from "./sandbox/distortions";
  *     `DataAppProvider`. Should be pure content; no `<MetabaseProvider>`
  *     inside — the host owns the provider wrap so the SDK store/theme/
  *     portal context live in host realm.
- *   - `theme` — the theme passed to `<DataAppProvider theme={…}>`. Same
- *     shape as the SDK's public `MetabaseTheme`.
+ *   - `providerProps` — the `MetabaseProvider` props the data app wants to
+ *     customize (theme, allowedCustomVisualizations).
  */
 export type DataAppFactory = () => {
   component: React.ComponentType<Record<string, unknown>>;
-  theme?: MetabaseTheme;
+  providerProps?: DataAppMetabaseProviderProps;
 };
 
 function isLiveTarget(target: object): boolean {

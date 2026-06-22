@@ -85,7 +85,11 @@ function BundleHost({ name }: { name: string }) {
     );
   }
 
-  return <DataAppProvider theme={data?.theme}>{content}</DataAppProvider>;
+  return (
+    <DataAppProvider providerProps={data?.providerProps}>
+      {content}
+    </DataAppProvider>
+  );
 }
 
 /**
