@@ -131,7 +131,7 @@ Generate `src/metabase.data.ts` by invoking the
 [`metabase-data-app-semantic-layer`](../metabase-data-app-semantic-layer/SKILL.md)
 skill, which pulls the typed schema from the target Metabase and writes the file.
 
-The schema is the **single source of truth** for what data the app can render. Every saved question, table, metric, segment, measure, and field the app references must come from it (`schema.questions.<name>`, `schema.tables.<t>.fields.<f>`, `schema.metrics.<m>.dimensions.<d>`, etc.). Never copy numeric IDs into constants; never invent fields the schema doesn't have. Re-run the schema skill whenever the upstream semantic layer changes (new question, renamed metric, added column).
+The schema is the **single source of truth** for what data the app can render. Every saved question, table, metric, segment, measure, and field the app references must come from it (`schema.questions.<name>`, `schema.tables.<t>.fields.<f>`, `schema.metrics.<m>.dimensions.<table>.<field>`, etc.). Never copy numeric IDs into constants; never invent fields the schema doesn't have. For metric filters and breakouts, use only fields exposed under `schema.metrics.<m>.dimensions`; do not substitute arbitrary `schema.tables.*.fields.*` fields. Re-run the schema skill whenever the upstream semantic layer changes (new question, renamed metric, added column).
 
 This step is mandatory before Step 6 — the schema is the catalog you'll check the user's brief against, and the agent needs it loaded into context before discussing what the app should do.
 
