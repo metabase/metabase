@@ -523,10 +523,6 @@
   [_]
   :type/DateTime)
 
-(defmethod date-type-expected :sqlite
-  [_]
-  :type/Text)
-
 (defmethod date-type-expected :mongo
   [_]
   :type/*)
