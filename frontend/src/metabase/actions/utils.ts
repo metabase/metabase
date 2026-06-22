@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -312,16 +313,11 @@ export const getSubmitButtonColor = (
     return "error";
   }
 
-  const color = action.visualization_settings?.submitButtonColor;
-  switch (color) {
-    case "danger":
-      return "error";
-    case "success":
-    case "warning":
-      return color;
-    default:
-      return "brand";
-  }
+  return match(action.visualization_settings?.submitButtonColor)
+    .returnType<ButtonProps["color"]>()
+    .with("danger", () => "error")
+    .with("success", "warning", (color) => color)
+    .otherwise(() => "brand");
 };
 
 export const getSubmitButtonLabel = (action: WritebackAction): string => {

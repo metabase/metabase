@@ -58,16 +58,6 @@ function ActionForm({
     [form, hiddenFields],
   );
 
-  const submitButtonProps = useMemo(
-    () => ({
-      label: getSubmitButtonLabel(action),
-      variant: "filled",
-      color: getSubmitButtonColor(action),
-      fullWidth: submitButtonFullWidth,
-    }),
-    [action, submitButtonFullWidth],
-  );
-
   const handleSubmit = useCallback(
     (
       values: ParametersForActionExecution,
@@ -92,7 +82,12 @@ function ActionForm({
           {onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
           )}
-          <FormSubmitButton {...submitButtonProps} />
+          <FormSubmitButton
+            label={getSubmitButtonLabel(action)}
+            variant="filled"
+            color={getSubmitButtonColor(action)}
+            fullWidth={submitButtonFullWidth}
+          />
         </Flex>
 
         <FormErrorMessage />
