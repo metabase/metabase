@@ -153,8 +153,8 @@
       (is (= (+ (field-value-bytes (prim-cell "aa")) (field-value-bytes (prim-cell "bbb")))
              (row-bytes (field-value-list [(prim-cell "aa") (prim-cell "bbb")])))))))
 
-(deftest ^:parallel next-sample-page-size-test
-  (let [next-size @#'bigquery/next-sample-page-size]
+(deftest ^:parallel next-page-size-test
+  (let [next-size @#'bigquery/next-page-size]
     (testing "page size = budget / measured-avg-bytes-per-row"
       ;; 50 rows totalling 500 bytes -> avg 10 -> 1000/10 = 100
       (is (= 100 (next-size 1000 500 50 1000000))))
@@ -175,7 +175,7 @@
 
 (deftest ^:parallel reducible-bigquery-results-nil-page-test
   (testing "a nil initial page reduces to an empty result instead of NPEing (#47339)"
-    (is (= [] (into [] (#'bigquery/reducible-bigquery-results nil nil (constantly nil)))))))
+    (is (= [] (into [] (#'bigquery/reducible-bigquery-results nil nil (constantly nil) (constantly nil)))))))
 
 (deftest ^:synchronized adaptive-sample-next-page-test
   (let [requested (atom [])
@@ -184,7 +184,7 @@
                      (with-redefs [bigquery/list-sample-page (fn [_bq size _token]
                                                                (swap! requested conj size)
                                                                (mock-page nil []))]
-                       (binding [bigquery/*sample-page-byte-budget* budget]
+                       (binding [bigquery/*page-byte-budget* budget]
                          ((#'bigquery/adaptive-sample-next-page :table max-rows) (mock-page "tok" rows))
                          (first @requested))))
         light      (vec (repeatedly 5 #(field-value-list [(prim-cell "x")])))
