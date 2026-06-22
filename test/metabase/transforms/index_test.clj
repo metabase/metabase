@@ -200,7 +200,7 @@
                    :model/TableIndex _ {:transform_id tid :index_name "a_idx"
                                         :structured {:kind :btree :name "a_idx" :columns [{:name "y"}]}}]
       (is (= ["a_idx" "b_idx"]
-             (map :name (metabase.transforms.execute/hydrate-transform-indexes {:id tid})))))))
+             (map :name (transforms.execute/hydrate-transform-indexes {:id tid})))))))
 
 (deftest ^:synchronized verify-managed-indexes!-test
   (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
@@ -211,11 +211,11 @@
                                                      :structured {:kind :btree :name "present_idx" :columns [{:name "x"}]}}
                  :model/TableIndex {missing-id :id} {:transform_id tid :index_name "missing_idx"
                                                      :structured {:kind :btree :name "missing_idx" :columns [{:name "y"}]}}]
-    (with-redefs [metabase.driver/fetch-table-indexes
+    (with-redefs [driver/fetch-table-indexes
                   (fn [& _] [{:name "present_idx" :kind :btree :access-method "btree" :is-unique false
                               :is-primary false :is-valid true :key-columns ["x"] :include-columns []
                               :partial-predicate nil :definition "..."}])]
-      (metabase.transforms-base.util/verify-managed-indexes! (t2/select-one :model/Transform tid))
+      (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid))
       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex present-id)))
       (is (= :failed (t2/select-one-fn :status :model/TableIndex missing-id)))
       (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex present-id))))))
@@ -229,12 +229,12 @@
                                                  :structured {:kind :btree :name "boom_idx" :columns [{:name "x"}]}}]
     (let [transform {:id tid :target {:database (mt/id) :schema "public" :name "t"
                                       :indexes [{:kind :btree :name "boom_idx" :columns [{:name "x"}]}]}}]
-      (with-redefs [metabase.driver/supported-index-methods (fn [& _] {:btree {:lifecycle :standalone}})
-                    metabase.driver/connection-spec        (fn [& _] {})
-                    metabase.driver/compile-create-index   (fn [& _] "CREATE INDEX boom_idx ...")
-                    metabase.driver/execute-raw-queries!   (fn [& _] (throw (ex-info "ddl boom" {})))]
+      (with-redefs [driver/supported-index-methods (fn [& _] {:btree {:lifecycle :standalone}})
+                    driver/connection-spec        (fn [& _] {})
+                    driver/compile-create-index   (fn [& _] "CREATE INDEX boom_idx ...")
+                    driver/execute-raw-queries!   (fn [& _] (throw (ex-info "ddl boom" {})))]
         (is (thrown? Throwable
-                     (#'metabase.transforms-base.util/apply-standalone-indexes!
+                     (#'transforms-base.u/apply-standalone-indexes!
                       {:engine :postgres :id (mt/id)} (assoc (:target transform) :transform-id tid))))
         (is (= :failed (t2/select-one-fn :status :model/TableIndex idx-id)))
         (is (re-find #"ddl boom" (t2/select-one-fn :error_message :model/TableIndex idx-id)))))))
