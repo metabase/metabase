@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { useCreateCollectionMutation } from "metabase/api";
-import { canPlaceEntityInCollection } from "metabase/collections/utils";
+import { canPlaceEntityInCollection } from "metabase/common/collections/utils";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,

@@ -182,16 +182,21 @@
                     (mt/with-model-cleanup [:model/MetabotMessage
                                             [:model/MetabotConversation :created_at]]
                       (let [conversation-id (str (random-uuid))
-                            body (mt/user-real-request :rasta :post 202 "metabot/agent-streaming"
-                                                       {:request-options {:as              :stream
-                                                                          :decompress-body false}}
-                                                       {:message         "Test closure"
-                                                        :context         {}
-                                                        :conversation_id conversation-id
-                                                        :history         []
-                                                        :state           {}})]
-                        (.read ^java.io.InputStream body) ;; start the handler
-                        (.close ^java.io.Closeable body)
+                            response (mt/user-real-request-full-response
+                                      :rasta :post 202 "metabot/agent-streaming"
+                                      {:request-options {:as              :stream
+                                                         :decompress-body false}}
+                                      {:message         "Test closure"
+                                       :context         {}
+                                       :conversation_id conversation-id
+                                       :history         []
+                                       :state           {}})]
+                        (.read ^java.io.InputStream (:body response)) ;; start the handler
+                        ;; Close the underlying client, not the body stream: closing the body would
+                        ;; make clj-http drain the (now chunked) response to completion, which looks
+                        ;; like a normal finish rather than a disconnect. Closing the client aborts
+                        ;; the connection, which is what the server's cancel loop detects.
+                        (.close ^java.io.Closeable (:http-client response))
                         (u/poll {:thunk       #(deref stored-parts)
                                  :done?       some?
                                  :interval-ms 10
@@ -229,25 +234,28 @@
                           (reset! stored-kwargs (apply hash-map kwargs)))]
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                    {:message         "go"
-                                     :context         {}
-                                     :conversation_id (str (random-uuid))
-                                     :history         []
-                                     :state           {}})
-              (u/poll {:thunk       #(deref stored-kwargs)
-                       :done?       some?
-                       :interval-ms 10
-                       :timeout-ms  3000})
-              (is (some? @stored-kwargs)
-                  "finalize-assistant-turn! is called from the finally even when setup threw")
-              (is (true? (:finished? @stored-kwargs))
-                  "a thrown turn is :finished? true — `finished=false` is reserved for client aborts")
-              (is (=? {:message #"(?i)agent setup exploded"
-                       :type    "clojure.lang.ExceptionInfo"
-                       :data    {:status 503 :provider :test}}
-                      (:error @stored-kwargs))
-                  "the throwable becomes a structured error payload"))))))))
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   {:message         "go"
+                                                    :context         {}
+                                                    :conversation_id (str (random-uuid))
+                                                    :history         []
+                                                    :state           {}})]
+                (u/poll {:thunk       #(deref stored-kwargs)
+                         :done?       some?
+                         :interval-ms 10
+                         :timeout-ms  3000})
+                (is (some? @stored-kwargs)
+                    "finalize-assistant-turn! is called from the finally even when setup threw")
+                (is (true? (:finished? @stored-kwargs))
+                    "a thrown turn is :finished? true — `finished=false` is reserved for client aborts")
+                (is (=? {:message #"(?i)agent setup exploded"
+                         :type    "clojure.lang.ExceptionInfo"
+                         :data    {:status 503 :provider :test}}
+                        (:error @stored-kwargs))
+                    "the throwable becomes a structured error payload")
+                (testing "the failure is streamed to the client as an AI SDK error part (3:...) rather than a silent close"
+                  (is (some #(str/starts-with? % "3:") (str/split-lines response)))
+                  (is (re-find #"(?i)agent setup exploded" response)))))))))))
 
 (deftest settings-get-returns-live-models-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"

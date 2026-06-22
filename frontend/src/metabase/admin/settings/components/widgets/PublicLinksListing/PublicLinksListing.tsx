@@ -39,7 +39,7 @@ export const PublicLinksListing = <
     return (
       <Box
         bg="background-secondary"
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         bdrs="xs"
         px="md"
         py="md"

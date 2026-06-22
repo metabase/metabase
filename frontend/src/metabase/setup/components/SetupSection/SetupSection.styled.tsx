@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 export const SectionRoot = styled.div`
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const SectionHeader = styled.div`

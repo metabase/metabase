@@ -139,6 +139,16 @@
        model
        ids))))
 
+(defenterprise diagnose
+  "Enterprise implementation of the semantic search engine-owned diagnostic stages."
+  :feature :semantic-search
+  [search-ctx expected-model expected-id]
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.env/get-index-metadata)]
+    (if-not (index-active? pgvector index-metadata)
+      {:type :missing-from-index :details {:reason :no-active-index}}
+      (semantic.pgvector-api/diagnose pgvector index-metadata search-ctx expected-model expected-id))))
+
 ;; NOTE:
 ;; we're currently not returning stats from `init!` as the async nature means
 ;; we'd report skewed values for the `metabase-search` metrics.

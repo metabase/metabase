@@ -22,7 +22,7 @@ import {
   isReadOnlyCollection,
   isRootPersonalCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type {
