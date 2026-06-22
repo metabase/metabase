@@ -122,3 +122,38 @@
                                       "stages"   [{"lib/type"     "mbql.stage/mbql"
                                                    "source-table" ["Sample" "PUBLIC" "ORDERS"]
                                                    "aggregation"  [["" {}]]}]})))))
+
+(defn- join-query-with-lib-type
+  "A minimal portable query with a single explicit join with `join-lib-type`.
+  `join-lib-type` is spliced into the join (or, when `nil`, the `lib/type` key is omitted)."
+  [join-lib-type]
+  (let [condition ["=" {}
+                   ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                   ["field" {"join-alias" "P"} ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]
+        join      (cond-> {"alias"      "P"
+                           "conditions" [condition]
+                           "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}]}
+                    join-lib-type (assoc "lib/type" join-lib-type))]
+    {"lib/type" "mbql/query"
+     "database" "Sample"
+     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                  "joins"        [join]}]}))
+
+(deftest ^:parallel validate-query-canonical-join-lib-type-test
+  (testing "a join with the canonical `mbql/join` lib/type validates"
+    (let [parsed (join-query-with-lib-type "mbql/join")]
+      (is (= parsed (repr/validate-query parsed))))))
+
+(deftest ^:parallel validate-query-misspelled-join-lib-type-test
+  (testing "BOT-1657: a join with the misspelled `mbql.join/join` lib/type is rejected"
+    (let [data (validate-query-error (join-query-with-lib-type "mbql.join/join"))]
+      (is (= :invalid-representations-query (:error data)))
+      (is (= 400 (:status-code data))))))
+
+(deftest ^:parallel validate-query-missing-join-lib-type-test
+  (testing "a join with no lib/type is rejected"
+    (let [data (validate-query-error (join-query-with-lib-type nil))]
+      (is (= :invalid-representations-query (:error data)))
+      (is (= 400 (:status-code data))))))
