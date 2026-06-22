@@ -54,7 +54,6 @@
     "@snowplow/browser-tracker": "3.2.0",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.2",
-    "@tippyjs/react": "^4.2.6",
     "@tiptap/core": "^3.2.0",
     "@tiptap/extension-blockquote": "^3.15.3",
     "@tiptap/extension-bold": "^3.15.3",

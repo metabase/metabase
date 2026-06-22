@@ -2,12 +2,12 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import type { CollectionTreeItem } from "metabase/collections/utils";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
   getCollectionIcon,
   isLibraryCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useUserSetting } from "metabase/common/hooks";

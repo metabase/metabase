@@ -23,7 +23,7 @@
   border-radius: 0.5rem;
   box-shadow: 0 3px 6px 0 #0000000d;
   min-height: 3rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 
   &:focus-within {
     border-color: var(--mb-color-core-brand);

@@ -10,7 +10,7 @@ import { Api, cardApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { deletePermanently } from "metabase/archive/actions";
-import { getEntityTypeFromCardType } from "metabase/collections/utils";
+import { getEntityTypeFromCardType } from "metabase/common/collections/utils";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Toaster } from "metabase/common/components/Toaster";

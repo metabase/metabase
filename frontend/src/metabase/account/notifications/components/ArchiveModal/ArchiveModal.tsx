@@ -3,13 +3,12 @@ import { t } from "ttag";
 
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
+import type { NotificationType } from "metabase/notifications/types";
 import { formatChannelRecipients } from "metabase/pulse";
 import { Box, Button, Stack } from "metabase/ui";
 import Settings from "metabase/utils/settings";
 import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
-
-import type { NotificationType } from "../../types";
 
 type ArchiveModalProps = {
   item: Alert | DashboardSubscription;

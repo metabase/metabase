@@ -66,7 +66,8 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
   const symbols = useMemo(() => getSymbolTypes(relationship), [relationship]);
   const stroke = selected
     ? (palette.brand ?? "var(--mb-color-core-brand)")
-    : (palette["border-strong"] ?? "var(--mb-color-border-strong)");
+    : (palette["border-neutral-strong"] ??
+      "var(--mb-color-border-neutral-strong)");
   const strokeWidth = selected ? 2 : 1;
 
   const style: CSSProperties = useMemo(

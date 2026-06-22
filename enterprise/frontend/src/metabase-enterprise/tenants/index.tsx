@@ -16,7 +16,7 @@ import {
   type CollectionTreeItem,
   buildCollectionTree,
   getCollectionIcon,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { useSetting } from "metabase/common/hooks/use-setting";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
