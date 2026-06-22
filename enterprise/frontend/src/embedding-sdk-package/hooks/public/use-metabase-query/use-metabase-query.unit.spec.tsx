@@ -1,17 +1,20 @@
-import { waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 
-import { screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { createMetabaseQuery as createMetabaseQueryInBundle } from "metabase/embedding-sdk/lib/create-metabase-query/create-metabase-query";
 
 import type { MetabaseQueryOptions } from "./use-metabase-query";
 import {
   avg,
   breakout,
+  count,
+  createMetabaseQuery,
   distinct,
   filter,
   max,
@@ -19,19 +22,186 @@ import {
   min,
   sum,
   useMetabaseQuery,
+  useMetabaseQueryObject,
 } from "./use-metabase-query";
-import type {
-  OrderCountMetric,
-  OrdersTable,
-  TestSchema,
-} from "./use-metabase-query.test-support";
-import { TEST_SCHEMA } from "./use-metabase-query.test-support";
 
 type Equals<TLeft, TRight> =
   (<T>() => T extends TLeft ? 1 : 2) extends <T>() => T extends TRight ? 1 : 2
     ? true
     : false;
 type Expect<TValue extends true> = TValue;
+
+const TEST_TABLES = {
+  orders: {
+    id: 1,
+    databaseId: 1,
+    fields: {
+      id: {
+        fieldId: 100,
+        tableId: 1,
+        name: "id",
+        displayName: "ID",
+        jsType: "number",
+      },
+      createdAt: {
+        fieldId: 103,
+        tableId: 1,
+        name: "created_at",
+        displayName: "Created At",
+        jsType: "Date",
+        baseType: "type/DateTime",
+      },
+      orderDate: {
+        fieldId: 105,
+        tableId: 1,
+        name: "order_date",
+        displayName: "Order Date",
+        jsType: "Date",
+        baseType: "type/Date",
+      },
+      amount: {
+        fieldId: 102,
+        tableId: 1,
+        name: "amount",
+        displayName: "Amount",
+        jsType: "number",
+      },
+      status: {
+        fieldId: 101,
+        tableId: 1,
+        name: "status",
+        displayName: "Status",
+        jsType: "string",
+      },
+      franchiseId: {
+        fieldId: 106,
+        tableId: 1,
+        name: "franchise_id",
+        displayName: "Franchise ID",
+        jsType: "number",
+      },
+      internalCode: {
+        fieldId: 104,
+        tableId: 1,
+        name: "internal_code",
+        displayName: "Internal Code",
+        jsType: "string",
+      },
+    },
+    segments: {
+      completed: { kind: "segment", id: 11, tableId: 1 },
+    },
+    measures: {
+      revenue: {
+        kind: "measure",
+        id: 21,
+        tableId: 1,
+        columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
+      },
+    },
+  },
+  products: {
+    id: 2,
+    databaseId: 1,
+    fields: {
+      price: {
+        fieldId: 201,
+        tableId: 2,
+        name: "price",
+        displayName: "Price",
+        jsType: "number",
+      },
+    },
+    segments: {
+      active: { kind: "segment", id: 12, tableId: 2 },
+    },
+    measures: {
+      price: {
+        kind: "measure",
+        id: 22,
+        tableId: 2,
+        columns: [{ name: "price", displayName: "Price", jsType: "number" }],
+      },
+    },
+  },
+  franchises: {
+    id: 3,
+    databaseId: 1,
+    fields: {
+      name: {
+        fieldId: 301,
+        tableId: 3,
+        name: "name",
+        displayName: "Name",
+        jsType: "string",
+      },
+    },
+  },
+} as const;
+
+const TEST_SCHEMA = {
+  tables: TEST_TABLES,
+  metrics: {
+    orderCount: {
+      id: 34,
+      databaseId: 1,
+      sourceTableId: 1,
+      columns: [{ name: "count", displayName: "Count", jsType: "number" }],
+      dimensions: {
+        orders: {
+          id: TEST_TABLES.orders.fields.id,
+          status: TEST_TABLES.orders.fields.status,
+          amount: TEST_TABLES.orders.fields.amount,
+          createdAt: TEST_TABLES.orders.fields.createdAt,
+          orderDate: TEST_TABLES.orders.fields.orderDate,
+        },
+        franchises: {
+          name: {
+            ...TEST_TABLES.franchises.fields.name,
+            sourceFieldId: TEST_TABLES.orders.fields.franchiseId.fieldId,
+          },
+        },
+      },
+      mappedTableIds: [1, 3],
+    },
+    orderValue: {
+      id: 35,
+      databaseId: 1,
+      sourceTableId: 1,
+      columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
+      dimensions: {
+        orders: {
+          id: TEST_TABLES.orders.fields.id,
+          status: TEST_TABLES.orders.fields.status,
+          amount: TEST_TABLES.orders.fields.amount,
+          createdAt: TEST_TABLES.orders.fields.createdAt,
+          orderDate: TEST_TABLES.orders.fields.orderDate,
+        },
+      },
+      mappedTableIds: [1],
+    },
+    orderCountFromModel: {
+      id: 36,
+      databaseId: 1,
+      sourceCardId: 98,
+      columns: [{ name: "count", displayName: "Count", jsType: "number" }],
+      dimensions: {
+        orders: {
+          id: TEST_TABLES.orders.fields.id,
+          status: TEST_TABLES.orders.fields.status,
+          amount: TEST_TABLES.orders.fields.amount,
+          createdAt: TEST_TABLES.orders.fields.createdAt,
+          orderDate: TEST_TABLES.orders.fields.orderDate,
+        },
+      },
+      mappedTableIds: [1],
+    },
+  },
+} as const;
+
+type TestSchema = typeof TEST_SCHEMA;
+type OrdersTable = TestSchema["tables"]["orders"];
+type OrderCountMetric = TestSchema["metrics"]["orderCount"];
 
 const _validTableCustomFilterQuery = {
   tableId: TEST_SCHEMA.tables.orders.id,
@@ -365,6 +535,395 @@ describe("useMetabaseQuery", () => {
     } as typeof window.METABASE_EMBEDDING_SDK_BUNDLE;
   });
 
+  describe("createMetabaseQuery", () => {
+    const expectedOrdersQuery = {
+      type: "query",
+      database: 1,
+      query: {
+        "source-table": 1,
+        filter: ["=", ["field", 101, {}], "paid"],
+        aggregation: [["count"]],
+        breakout: [["field", 103, {}]],
+      },
+      parameters: [],
+    };
+
+    it("builds a complete dataset query from a generated table schema", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
+          ],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
+        }),
+      ).toEqual(expectedOrdersQuery);
+    });
+
+    it("memoizes a complete dataset query from a generated table schema", () => {
+      render(<MetabaseQueryObjectComponent />);
+
+      expect(
+        JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+      ).toEqual(expectedOrdersQuery);
+    });
+
+    it("returns null from useMetabaseQueryObject before the SDK bundle loads", () => {
+      delete window.METABASE_EMBEDDING_SDK_BUNDLE;
+
+      render(<MetabaseQueryObjectComponent />);
+
+      expect(screen.getByTestId("query-object")).toHaveTextContent("null");
+    });
+
+    it("builds a query object after the SDK bundle loading state changes", () => {
+      delete window.METABASE_EMBEDDING_SDK_BUNDLE;
+
+      render(<MetabaseQueryObjectComponent />);
+
+      expect(screen.getByTestId("query-object")).toHaveTextContent("null");
+
+      window.METABASE_EMBEDDING_SDK_BUNDLE = {
+        createMetabaseQuery: createMetabaseQueryInBundle,
+      } as unknown as typeof window.METABASE_EMBEDDING_SDK_BUNDLE;
+
+      act(() => {
+        ensureMetabaseProviderPropsStore().updateInternalProps({
+          loadingState: SdkLoadingState.Loaded,
+        });
+      });
+
+      expect(
+        JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+      ).toEqual(expectedOrdersQuery);
+    });
+
+    it("builds explicit count aggregations", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [count()],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["count"]],
+          breakout: [["field", 101, {}]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("supports count aggregation object literals", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [{ type: "count" }],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        }),
+      ).toMatchObject({
+        query: {
+          aggregation: [["count"]],
+        },
+      });
+    });
+
+    it("builds field aggregation helpers", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [
+            sum(TEST_SCHEMA.tables.orders.fields.amount),
+            avg(TEST_SCHEMA.tables.orders.fields.amount),
+            distinct(TEST_SCHEMA.tables.orders.fields.status),
+          ],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        }),
+      ).toMatchObject({
+        query: {
+          aggregation: [
+            ["sum", ["field", 102, {}]],
+            ["avg", ["field", 102, {}]],
+            ["distinct", ["field", 101, {}]],
+          ],
+          breakout: [["field", 101, {}]],
+        },
+      });
+    });
+
+    it("does not force minute bucketing for date filters", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            filter(
+              TEST_SCHEMA.tables.orders.fields.orderDate,
+              "=",
+              "2026-06-18",
+            ),
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          filter: ["=", ["field", 105, {}], "2026-06-18"],
+        },
+      });
+    });
+
+    it("uses effective or base type to preserve time for datetime filters", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            filter(
+              TEST_SCHEMA.tables.orders.fields.createdAt,
+              "=",
+              new Date(2026, 5, 18, 12, 30),
+            ),
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          filter: ["=", ["field", 103, {}], "2026-06-18T12:30:00"],
+        },
+      });
+    });
+
+    it("builds time-interval filters through metabase-lib", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            {
+              dimension: TEST_SCHEMA.tables.orders.fields.createdAt,
+              operator: "time-interval",
+              values: [-30, "day", { "include-current": true }],
+            },
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          filter: [
+            "time-interval",
+            ["field", 103, {}],
+            -30,
+            "day",
+            { "include-current": true },
+          ],
+        },
+      });
+    });
+
+    it("supports field aggregation object literals", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [
+            { type: "max", dimension: TEST_SCHEMA.tables.orders.fields.amount },
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          aggregation: [["max", ["field", 102, {}]]],
+        },
+      });
+    });
+
+    it("preserves default binning when metabase-lib has no default strategy", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          breakouts: [
+            breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+              binning: { strategy: "default" },
+            }),
+          ],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["count"]],
+          breakout: [["field", 102, { binning: { strategy: "default" } }]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("builds binned table breakouts through metabase-lib", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          breakouts: [
+            breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+              binning: { strategy: "num-bins", "num-bins": 10 },
+            }),
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          breakout: [
+            [
+              "field",
+              102,
+              { binning: { strategy: "num-bins", "num-bins": 10 } },
+            ],
+          ],
+        },
+      });
+    });
+
+    it("builds a complete dataset query from a generated metric schema", () => {
+      expect(
+        createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          filters: [
+            filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
+          ],
+          measures: [TEST_SCHEMA.tables.orders.measures.revenue],
+          breakouts: [
+            breakout(
+              TEST_SCHEMA.metrics.orderCount.dimensions.orders.createdAt,
+              {
+                bucket: "month",
+              },
+            ),
+          ],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [
+            ["metric", 34],
+            [
+              "aggregation-options",
+              ["measure", 21],
+              { "display-name": "Measure 21" },
+            ],
+          ],
+          filter: ["=", ["field", 101, {}], "paid"],
+          breakout: [["field", 103, { "temporal-unit": "month" }]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("adds source-field when metric dimensions reference an implicitly joined table", () => {
+      expect(
+        createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          breakouts: [
+            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name),
+          ],
+          filters: [
+            filter(
+              TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name,
+              "=",
+              "West Coast Boba",
+            ),
+          ],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["metric", 34]],
+          filter: [
+            "=",
+            ["field", 301, { "source-field": 106 }],
+            "West Coast Boba",
+          ],
+          breakout: [["field", 301, { "source-field": 106 }]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("adds source-field through the metabase-lib metric builder", () => {
+      expect(
+        createMetabaseQueryInBundle({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          breakouts: [
+            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name),
+          ],
+          filters: [
+            filter(
+              TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name,
+              "=",
+              "West Coast Boba",
+            ),
+          ],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["metric", 34]],
+          filter: [
+            "=",
+            ["field", 301, { "source-field": 106 }],
+            "West Coast Boba",
+          ],
+          breakout: [["field", 301, { "source-field": 106 }]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("builds binned metric breakouts through metabase-lib", () => {
+      expect(
+        createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          breakouts: [
+            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.amount, {
+              binning: { strategy: "num-bins", "num-bins": 10 },
+            }),
+          ],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["metric", 34]],
+          breakout: [
+            [
+              "field",
+              102,
+              { binning: { strategy: "num-bins", "num-bins": 10 } },
+            ],
+          ],
+        },
+        parameters: [],
+      });
+    });
+
+    it("memoizes a complete dataset query from a generated metric schema", () => {
+      render(<MetricQueryObjectComponent />);
+
+      expect(
+        JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["metric", 34]],
+          breakout: [["field", 101, {}]],
+        },
+        parameters: [],
+      });
+    });
+  });
+
   it("raises a runtime error when metric segments are not from mapped tables", async () => {
     const queryDataset = jest.fn();
 
@@ -587,6 +1146,40 @@ describe("useMetabaseQuery", () => {
     });
   });
 
+  it("keeps generated metric query objects on the dataset query path", () => {
+    render(<MetricQueryObjectComponent />);
+
+    expect(
+      JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+    ).toEqual({
+      type: "query",
+      database: 1,
+      query: {
+        "source-table": 1,
+        aggregation: [["metric", 34]],
+        breakout: [["field", 101, {}]],
+      },
+      parameters: [],
+    });
+  });
+
+  it("builds generated source-card metric query objects on the dataset query path", () => {
+    render(<SourceCardMetricQueryObjectComponent />);
+
+    expect(
+      JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+    ).toEqual({
+      type: "query",
+      database: 1,
+      query: {
+        "source-table": "card__98",
+        aggregation: [["metric", 36]],
+        breakout: [["field", 103, { "temporal-unit": "month" }]],
+      },
+      parameters: [],
+    });
+  });
+
   it("raises a runtime error when metric table-field filters are not valid dimensions", async () => {
     const queryDataset = jest.fn();
 
@@ -633,6 +1226,41 @@ const InvalidTableMeasureComponent = () => {
       {result.error instanceof Error ? result.error.message : ""}
     </div>
   );
+};
+
+const MetabaseQueryObjectComponent = () => {
+  const query = useMetabaseQueryObject({
+    table: TEST_SCHEMA.tables.orders,
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+    breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
+  });
+
+  return <div data-testid="query-object">{JSON.stringify(query)}</div>;
+};
+
+const MetricQueryObjectComponent = () => {
+  const query = useMetabaseQueryObject({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    breakouts: [
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
+    ],
+  });
+
+  return <div data-testid="query-object">{JSON.stringify(query)}</div>;
+};
+
+const SourceCardMetricQueryObjectComponent = () => {
+  const query = useMetabaseQueryObject({
+    metric: TEST_SCHEMA.metrics.orderCountFromModel,
+    breakouts: [
+      breakout(
+        TEST_SCHEMA.metrics.orderCountFromModel.dimensions.orders.createdAt,
+        { bucket: "month" },
+      ),
+    ],
+  });
+
+  return <div data-testid="query-object">{JSON.stringify(query)}</div>;
 };
 
 const TableFieldIdComponent = () => {
