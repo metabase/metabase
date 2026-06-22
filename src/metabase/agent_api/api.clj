@@ -785,6 +785,7 @@
   The `query` parameter should be a base64-encoded string returned by construct_query.
   Optionally specify display type, description, collection, and visualization settings.
   If `collection_id` is omitted the question is saved to the caller's personal collection.
+  Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
   {:scope metabot/agent-question-create
    :tool  {:name "create_question"
@@ -792,15 +793,21 @@
                              "Pass the base64 query string from construct_query. "
                              "Optionally set display type (table, bar, line, pie, etc.), "
                              "description, and target collection. "
-                             "If you omit collection_id it's saved to the user's personal collection. "
+                             "If you omit collection_id it's saved to the user's personal collection; "
+                             "pass an explicit null to save it to the root collection. "
                              "Report the saved location from the response `collection_path`.")}}
   [_route-params
    _query-params
-   {:keys [query display description collection_id visualization_settings]
-    question-name :name}
+   {:keys [query display description visualization_settings]
+    question-name :name
+    :as body}
    :- ::create-question-request]
   (let [dataset-query (-> query u/decode-base64 json/decode+kw)
-        collection_id (or collection_id (personal-collection-id))]
+        ;; `nil` means the root collection, so only default to the personal collection when the
+        ;; key is absent. `(or ...)` would silently turn an explicit `null` into personal.
+        collection_id (if (contains? body :collection_id)
+                        (:collection_id body)
+                        (personal-collection-id))]
     ;; Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`.
     ;; `create-card!` itself does NOT run permissions checks; without these mirroring the
     ;; REST endpoint, an LLM caller could (a) save a card whose query references data the
@@ -848,20 +855,27 @@
   Pass `question_ids` to add existing saved questions as cards on the dashboard.
   Cards are automatically positioned on the grid based on their display type.
   If `collection_id` is omitted the dashboard is saved to the caller's personal collection.
+  Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
   {:scope metabot/agent-dashboard-create
    :tool  {:name "create_dashboard"
            :description (str "Create a dashboard in Metabase. "
                              "Optionally pass question_ids to add saved questions as cards. "
                              "Cards are auto-positioned on the dashboard grid. "
-                             "If you omit collection_id it's saved to the user's personal collection. "
+                             "If you omit collection_id it's saved to the user's personal collection; "
+                             "pass an explicit null to save it to the root collection. "
                              "Report the saved location from the response `collection_path`.")}}
   [_route-params
    _query-params
-   {:keys [description collection_id question_ids]
-    dashboard-name :name}
+   {:keys [description question_ids]
+    dashboard-name :name
+    :as body}
    :- ::create-dashboard-request]
-  (let [collection_id (or collection_id (personal-collection-id))]
+  ;; `nil` means the root collection, so only default to the personal collection when the
+  ;; key is absent. `(or ...)` would silently turn an explicit `null` into personal.
+  (let [collection_id (if (contains? body :collection_id)
+                        (:collection_id body)
+                        (personal-collection-id))]
     (api/create-check :model/Dashboard {:collection_id collection_id})
     (let [cards (when (seq question_ids)
                   (mapv #(api/read-check :model/Card %) question_ids))
