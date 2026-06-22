@@ -28,7 +28,6 @@ import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-ve
 import { createDashboard } from "embedding-sdk-bundle/lib/create-dashboard";
 import { executeAction } from "embedding-sdk-bundle/lib/execute-action";
 import { queryDataset } from "embedding-sdk-bundle/lib/query-dataset";
-import { queryMetric } from "embedding-sdk-bundle/lib/query-metric";
 import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
 import {
@@ -67,7 +66,6 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   validateFunctionSchema,
   MetabotSubscriber,
   queryDataset,
-  queryMetric,
   queryQuestion,
   dataAppRouting,
   executeAction,
