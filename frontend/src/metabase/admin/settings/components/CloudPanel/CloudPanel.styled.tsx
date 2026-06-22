@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { alpha } from "metabase/ui/colors";
 
 export const MigrationCard = styled.div`
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   padding: 2rem 3rem;
   background: var(--mb-color-background-primary);

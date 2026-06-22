@@ -67,7 +67,7 @@ export const ButtonBar = ({
       p="md"
       miw={0}
       style={{
-        borderTop: "1px solid var(--mb-color-border)",
+        borderTop: "1px solid var(--mb-color-border-neutral)",
         overflowX: "auto",
       }}
     >

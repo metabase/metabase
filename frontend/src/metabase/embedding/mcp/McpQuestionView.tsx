@@ -102,7 +102,7 @@ export function McpQuestionView({
           <Flex
             h={32}
             align="stretch"
-            bd="1px solid var(--mb-color-border)"
+            bd="1px solid var(--mb-color-border-neutral)"
             bdrs="md"
             style={{ overflow: "hidden" }}
             data-testid="query-explorer-bar"

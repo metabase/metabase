@@ -15,13 +15,13 @@ import type {
   OnToggleBookmark,
   OnTogglePreview,
   OnToggleSelected,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import {
   isFullyParameterized,
   isItemModel,
   isItemPinned,
   isPreviewShown,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";

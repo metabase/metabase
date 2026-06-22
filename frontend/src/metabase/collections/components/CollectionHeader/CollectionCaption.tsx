@@ -5,7 +5,7 @@ import {
   isEditableCollection,
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
