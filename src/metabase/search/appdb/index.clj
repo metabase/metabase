@@ -351,16 +351,23 @@
   (let [reindexing? (some? reindex-table)
         do-writes   (fn []
                       (let [entries (map document->entry documents)
-                            updated (if reindexing?
-                                      ;; Full reindex: write only to the table captured for the whole run, so a
-                                      ;; transiently-blanked tracking atom can't redirect writes into the live
-                                      ;; active table (which would silently drop documents from the new index).
-                                      (safe-batch-upsert! :pending (constantly reindex-table) entries)
-                                      ;; Incremental / in-place: dual-write so an in-progress rebuild stays
-                                      ;; current. Either table may legitimately be absent.
-                                      (let [active-updated  (safe-batch-upsert! :active active-table entries)
-                                            pending-updated (safe-batch-upsert! :pending pending-table entries)]
-                                        (or active-updated pending-updated)))]
+                            [active-updated pending-updated]
+                            (if reindexing?
+                              ;; Full reindex: write only to the table captured for the whole run, so a
+                              ;; transiently-blanked tracking atom can't redirect writes into the live
+                              ;; active table (which would silently drop documents from the new index).
+                              ;; Attribute the write to the active table only on an initial build (no pending
+                              ;; staged), where the captured table IS the live active one; otherwise the live
+                              ;; index is untouched and we skip its size measurement.
+                              (let [updated (safe-batch-upsert! :pending (constantly reindex-table) entries)]
+                                (if (pending-table)
+                                  [nil updated]
+                                  [updated nil]))
+                              ;; Incremental / in-place: dual-write so an in-progress rebuild stays
+                              ;; current. Either table may legitimately be absent.
+                              [(safe-batch-upsert! :active active-table entries)
+                               (safe-batch-upsert! :pending pending-table entries)])
+                            updated (or active-updated pending-updated)]
                         (when updated
                           (u/prog1 (->> entries (map :model) frequencies)
                             (when reindexing?
