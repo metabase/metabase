@@ -138,6 +138,9 @@ describe("impersonated permission", { tags: "@external" }, () => {
         cy.signOut();
         cy.signInAsImpersonatedUser();
         cy.reload();
+        // wait for the reloaded query to return before asserting the error UI,
+        // since under load the page can outlast the default assertion timeout
+        cy.wait("@query");
 
         cy.log("check that impersonation enforcement occurrs");
         cy.findByTestId("query-builder-main").within(() => {

@@ -7,6 +7,7 @@
    [metabase.transforms.crud]
    [metabase.transforms.execute]
    [metabase.transforms.jobs]
+   [metabase.transforms.models.job-run]
    [metabase.transforms.models.transform]
    [metabase.transforms.models.transform-job]
    [metabase.transforms.models.transform-run]
@@ -74,6 +75,9 @@
   timeout-run!
   paged-runs
   running-run-for-transform-id]
+ [metabase.transforms.models.job-run
+  paged-job-runs
+  transform-runs-for-job-run]
  [metabase.transforms.models.transform-run-cancelation
   mark-cancel-started-run!]
  [metabase.transforms.models.transform-job

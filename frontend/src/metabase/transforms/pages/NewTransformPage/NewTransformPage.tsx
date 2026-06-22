@@ -182,7 +182,7 @@ function NewTransformPageBody({
           w="100%"
           bg="background-primary"
           bdrs="md"
-          bd="1px solid var(--mb-color-border)"
+          bd="1px solid var(--mb-color-border-neutral)"
           flex={1}
           style={{
             overflow: "hidden",

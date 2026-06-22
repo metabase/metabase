@@ -24,7 +24,7 @@ export const PermissionPageSidebar = styled.aside`
   flex-direction: column;
   height: 100%;
   overflow: auto;
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
   max-width: 320px;
 `;
 

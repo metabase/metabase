@@ -54,6 +54,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import { HistoryProvider } from "./history";
 import { RouterProvider } from "./router";
 import { getStore } from "./store";
+import { OverlayStackProvider } from "./ui/components/overlays/overlay-stack";
 
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
@@ -97,15 +98,17 @@ function _init(reducers, getRoutes, callback) {
     <MetabaseReduxProvider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
-          <AppThemeProvider>
-            <GlobalStyles />
-            {createPortal(<PortalContainer />, document.body)}
-            <MetabotProvider>
-              <HistoryProvider history={syncedHistory}>
-                <RouterProvider>{routes}</RouterProvider>
-              </HistoryProvider>
-            </MetabotProvider>
-          </AppThemeProvider>
+          <OverlayStackProvider>
+            <AppThemeProvider>
+              <GlobalStyles />
+              {createPortal(<PortalContainer />, document.body)}
+              <MetabotProvider>
+                <HistoryProvider history={syncedHistory}>
+                  <RouterProvider>{routes}</RouterProvider>
+                </HistoryProvider>
+              </MetabotProvider>
+            </AppThemeProvider>
+          </OverlayStackProvider>
         </DragDropContextProvider>
       </EmotionCacheProvider>
     </MetabaseReduxProvider>,

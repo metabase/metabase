@@ -1,8 +1,8 @@
 import type { PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
-import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
-import ActionMenu from "metabase/collections/components/ActionMenu";
+import type { ActionMenuProps } from "metabase/common/collections/components/ActionMenu";
+import ActionMenu from "metabase/common/collections/components/ActionMenu";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { Markdown } from "metabase/common/components/Markdown";
@@ -20,8 +20,8 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-import type { SortableColumnHeaderProps } from "./BaseItemsTable";
-import { SortableColumnHeader } from "./BaseItemsTable";
+import type { SortableColumnHeaderProps } from "./BaseItemsTable/BaseItemsTable";
+import { SortableColumnHeader } from "./BaseItemsTable/BaseItemsTable";
 import {
   BulkSelectWrapper,
   ColumnHeader,

@@ -40,6 +40,15 @@
                         :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
+(deftest ^:parallel claude-error-event-uses-canonical-error-shape-test
+  (testing "an `error` SSE event becomes an :error part keyed by :error (read by the wire serializer + persistence)"
+    (let [raw   [{:type "message_start" :message {:id "msg_1" :model "claude-haiku-4-5"}}
+                 {:type "error" :error {:type "overloaded_error" :message "Overloaded"}}]
+          parts (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
+          err   (m/find-first #(= :error (:type %)) parts)]
+      (is (=? {:message "Overloaded"} (:error err)))
+      (is (= "3:\"Overloaded\"" (self.core/format-error-line err))))))
+
 (deftest ^:parallel claude-tool-input-conv-test
   (let [raw-chunks (fixture "claude-tool-input"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]

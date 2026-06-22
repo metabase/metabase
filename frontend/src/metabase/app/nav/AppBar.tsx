@@ -13,7 +13,7 @@ import {
   getIsQuestionLineageVisible,
   getIsSearchVisible,
 } from "metabase/app/selectors";
-import { useInitialCollectionId } from "metabase/collections/hooks";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import {
   getCommentSidebarOpen,
   getSidebarOpen,

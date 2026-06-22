@@ -198,6 +198,47 @@ export const TRANSFORM_RUN_SORT_COLUMNS = [
 export type TransformRunSortColumn =
   (typeof TRANSFORM_RUN_SORT_COLUMNS)[number];
 
+export type TransformJobRunId = number;
+
+export const TRANSFORM_JOB_RUN_STATUSES = [
+  "started",
+  "succeeded",
+  "failed",
+  "timeout",
+] as const;
+export type TransformJobRunStatus = (typeof TRANSFORM_JOB_RUN_STATUSES)[number];
+
+export type TransformJobRun = {
+  id: TransformJobRunId;
+  job_id: TransformJobId;
+  status: TransformJobRunStatus;
+  run_method: TransformRunMethod;
+  start_time: string;
+  end_time: string | null;
+  message: string | null;
+  is_active: boolean | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export const TRANSFORM_JOB_RUN_SORT_COLUMNS = [
+  "start_time",
+  "end_time",
+] as const;
+export type TransformJobRunSortColumn =
+  (typeof TRANSFORM_JOB_RUN_SORT_COLUMNS)[number];
+
+// A transform run that made up a given job run. Superset of TransformRun so it
+// can be passed to the existing run-rendering components.
+export type TransformRunForJobRun = TransformRun & {
+  transform_id: TransformId | null;
+  job_run_id: TransformJobRunId | null;
+  transform_name?: string | null;
+  transform_entity_id?: string | null;
+  metered_as?: string | null;
+  user_id?: UserId | null;
+};
+
 export type TransformTag = {
   id: TransformTagId;
   name: string;
@@ -353,6 +394,24 @@ export type ListTransformRunsRequest = {
 export type ListTransformRunsResponse = {
   data: TransformRun[];
 } & PaginationResponse;
+
+export type ListTransformJobRunsRequest = {
+  jobId: TransformJobId;
+  status?: TransformJobRunStatus;
+  "run-method"?: TransformRunMethod;
+  "start-time"?: string;
+  "sort-column"?: TransformJobRunSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListTransformJobRunsResponse = {
+  data: TransformJobRun[];
+} & PaginationResponse;
+
+export type ListJobRunTransformRunsRequest = {
+  jobId: TransformJobId;
+  runId: TransformJobRunId;
+};
 
 export type TestPythonTransformRequest = {
   code: string;
