@@ -5,11 +5,11 @@ import { type ReactNode, useMemo } from "react";
 import { SCOPED_CSS_RESET } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPortalContainer";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { getCspNonce } from "metabase/utils/csp";
 
 import { useHostSdkStore } from "../lib/use-host-sdk-store";
+import type { DataAppMetabaseProviderProps } from "../sandbox";
 
 // Note: Mantine + SDK CSS is loaded into the iframe via the `data-app-vendors`
 // Rspack entry (`<link rel="stylesheet">` in the iframe srcdoc). Don't side-
@@ -17,7 +17,7 @@ import { useHostSdkStore } from "../lib/use-host-sdk-store";
 // in the host document, not the iframe.
 
 interface DataAppProviderProps {
-  theme?: MetabaseTheme;
+  providerProps?: DataAppMetabaseProviderProps;
   children?: ReactNode;
 }
 
@@ -29,13 +29,13 @@ interface DataAppProviderProps {
  * `#metabase-sdk-portal-root`. Without `PortalContainer` rendered, those
  * overlays mount to `document.body` or silently fail.
  *
- * Takes only `{ theme, children }` — no `authConfig`. The data-app surface
- * inherits the host's session cookie; auth is already established.
+ * Takes the data app `providerProps`. The data-app surface inherits the host's
+ * session cookie; auth is already established.
  */
 export const DataAppProvider = (props: DataAppProviderProps) => {
-  const { children, ...restProps } = props;
-  const { theme } = restProps;
-  const sdkStore = useHostSdkStore(restProps);
+  const { children, providerProps } = props;
+  const { theme } = providerProps ?? {};
+  const sdkStore = useHostSdkStore(providerProps);
 
   // Iframe-side Emotion cache: keyed + CSP-nonced so SDK/Mantine styles inject
   // into this document's head (not the parent's).

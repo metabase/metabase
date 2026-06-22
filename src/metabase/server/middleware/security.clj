@@ -282,11 +282,13 @@
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
-                  :img-src      (if (server.settings/csp-img-enabled)
-                                  (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
-                                                (map-tile-server->hosts))
-                                    config/is-dev? (conj frontend-address))
-                                  (into ["*"] always-allowed-resource-hosts))
+                  :img-src      (cond-> (if (server.settings/csp-img-enabled)
+                                          (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                                        (map-tile-server->hosts))
+                                            config/is-dev? (conj frontend-address))
+                                          (into ["*"] always-allowed-resource-hosts))
+                                  ;; Data apps need blob: to load icons for custom viz
+                                  data-app-iframe? (conj "blob:"))
                   :connect-src  ["'self'"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
