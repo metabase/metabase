@@ -16,7 +16,7 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each rs.test/clean-remote-sync-state)
+(use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
 
 (defn- venues-query []
   {:database (mt/id) :type :query :query {:source-table (mt/id :venues)}})

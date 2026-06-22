@@ -33,6 +33,7 @@
     :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
     :model/ContentTranslation                metabase.content-translation.models
+    :model/CuratedSearchEntry                metabase.curated-search.models.curated-search-entry
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
@@ -114,6 +115,7 @@
     :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
+    :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping

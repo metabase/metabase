@@ -4,7 +4,7 @@
 }
 
 .AppBarRoot[data-with-border="true"] {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 @media print {

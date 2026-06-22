@@ -43,7 +43,6 @@
    [:profiles {:optional true} [:maybe [:vector :keyword]]]
    [:capabilities {:optional true} [:vector :keyword]]
    [:scope {:optional true} :keyword]
-   [:always-on {:optional true} :boolean]
    [:priority {:optional true} :int]
    [:dialect {:optional true} :string]])
 
@@ -68,8 +67,7 @@
     (:profiles skill)     (update :profiles #(mapv keyword %))
     (:capabilities skill) (update :capabilities #(mapv keyword %))
     (:scope skill)        (update :scope keyword)
-    true                  (update :priority (fnil int 50))
-    true                  (update :always-on boolean)))
+    true                  (update :priority (fnil int 50))))
 
 (defn- validate-skill!
   [skill]
@@ -244,20 +242,31 @@
 (defn build-skill-manifest
   "Build the skill manifest for a profile + active tools, gated by `capabilities` and the user's scope.
   Returns {:always-on [skill-map…] :catalog [{:id :title :description}…]} sorted by descending priority
-  then id."
+  then id.
+
+  Whether a skill is *always-on* (body inlined in the system prompt) vs *on-demand* (advertised in the
+  catalog, loaded via `load_skill`) is decided **per profile**, by the profile's `:always-on-skills`
+  set — not by the skill itself — so the same skill can be inlined for one profile and on-demand for
+  another (e.g. the SQL skills are always-on for `:sql` but on-demand for `:internal`)."
   [profile active-tool-names capabilities]
-  (let [cap-set (capabilities/capability-set capabilities)
-        visible (->> (skills-for-profile profile active-tool-names)
-                     (filter #(skill-visible? % cap-set))
-                     (sort-by (juxt (comp - :priority) (comp str :id))))]
-    (record-loadable-skill-ids! visible)
-    {:always-on (filter :always-on visible)
-     :catalog   (->> visible
-                     (remove :always-on)
-                     (mapv (fn [s]
-                             {:id          (name (:id s))
-                              :title       (:title s)
-                              :description (:description s)})))}))
+  (let [cap-set       (capabilities/capability-set capabilities)
+        always-on-ids (set (:always-on-skills profile))
+        always-on?    (comp always-on-ids :id)
+        visible       (->> (skills-for-profile profile active-tool-names)
+                           (filter #(skill-visible? % cap-set))
+                           (sort-by (juxt (comp - :priority) (comp str :id))))
+        ;; Always-on skill bodies are already inlined in the system prompt, so they are neither
+        ;; advertised in the catalog nor loadable on demand — only the on-demand skills are.
+        ;; Recording only the loadable ids also stops `load_skill` from re-fetching an always-on
+        ;; skill (a wasted iteration the model would otherwise spend).
+        loadable      (remove always-on? visible)]
+    (record-loadable-skill-ids! loadable)
+    {:always-on (filter always-on? visible)
+     :catalog   (mapv (fn [s]
+                        {:id          (name (:id s))
+                         :title       (:title s)
+                         :description (:description s)})
+                      loadable)}))
 
 ;;; Dialect preload
 
@@ -292,11 +301,11 @@
   Dialect context only arises in SQL-editor sessions, so its presence is itself the gate.
 
   Invariant: the emitted pair references the `load_skill` tool, which
-  [[metabase.metabot.agent.profiles/get-tools-for-profile]] registers whenever the skill catalog is
-  non-empty.
-  Any profile that can reach SQL-editor/dialect context also exposes query skills (the cross-cutting
-  `read-resource` skill alone keeps the catalog non-empty), so `load_skill` is always registered when
-  this returns a non-empty preload."
+  [[metabase.metabot.agent.profiles/get-tools-for-profile]] registers whenever the skill manifest is
+  non-empty — i.e. the profile has any catalog or always-on skill.
+  Any profile that can reach SQL-editor/dialect context also exposes query skills (e.g. the SQL
+  profile inlines the `read-resource` skill via its `:always-on-skills`), so the manifest is non-empty
+  and `load_skill` is always registered when this returns a non-empty preload."
   [engine]
   (or (when-let [skill (dialect-skill engine)]
         (let [skill-id (:id skill)

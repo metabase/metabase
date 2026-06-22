@@ -128,6 +128,7 @@
            analytics
            api
            collections
+           eid-translation
            lib
            permissions
            public-sharing
@@ -681,6 +682,18 @@
    :api  #{}
    :uses :any}
 
+  curated-search
+  {:team "Metabot"
+   :api  #{metabase.curated-search.api
+           metabase.curated-search.core}
+   :uses #{api
+           models
+           premium-features
+           request
+           util}
+   :model-exports #{:model/CuratedSearchEntry}
+   :model-imports #{:model/Card}}
+
   dashboards
   {:team "UX West"
    :api  #{metabase.dashboards.autoplace
@@ -955,7 +968,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -1262,6 +1275,7 @@
               channel
               collections
               config
+              curated-search
               documents
               driver
               interestingness
@@ -1446,6 +1460,7 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/TaskHistory
+                    :model/TaskRun
                     :model/User}}
 
   oauth-server
@@ -1827,6 +1842,7 @@
            premium-features
            queries
            query-permissions
+           request
            server
            settings
            system
@@ -1835,8 +1851,6 @@
            util
            workspaces}
    :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Database
                     :model/QueryCache
@@ -2245,7 +2259,7 @@
            task
            tracing
            util}
-   :model-exports #{:model/TaskHistory}
+   :model-exports #{:model/TaskHistory :model/TaskRun}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
   tenants
@@ -2291,7 +2305,8 @@
            parameters
            query-processor
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard}}
 
   timeline
   {:team "UX West"
@@ -2352,6 +2367,7 @@
               enterprise/transforms-python}
    :model-exports #{:model/Transform
                     :model/TransformJob
+                    :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}
@@ -2405,6 +2421,7 @@
            util}
    :model-imports #{:model/Transform
                     :model/TransformJob
+                    :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
@@ -2956,6 +2973,15 @@
    :api  #{metabase-enterprise.core.init}
    :uses :any}
 
+  enterprise/curated-search
+  {:team "Metabot"
+   :api  #{metabase-enterprise.curated-search.init}
+   :uses #{premium-features
+           task
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/CuratedSearchEntry}}
+
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
@@ -3261,6 +3287,7 @@
            events
            models
            premium-features
+           search
            settings
            startup
            task
@@ -3398,6 +3425,8 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.api
            metabase-enterprise.semantic-search.core
+           metabase-enterprise.semantic-search.db.datasource
+           metabase-enterprise.semantic-search.embedding
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
@@ -3472,6 +3501,7 @@
            settings
            sso
            system
+           task
            util
            enterprise/scim}
    :model-imports #{:model/PermissionsGroup :model/Session}}

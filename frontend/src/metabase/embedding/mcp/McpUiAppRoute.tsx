@@ -150,7 +150,7 @@ function McpUiAppRouteContent({
 
   const footerStyle: CSSProperties = {
     boxSizing: "border-box",
-    borderTop: "1px solid var(--mb-color-border)",
+    borderTop: "1px solid var(--mb-color-border-neutral)",
     paddingRight: Math.max(safeAreaPadding.right, FOOTER_HORIZONTAL_PADDING),
     paddingTop: safeAreaPadding.bottom,
     paddingBottom: safeAreaPadding.bottom,
@@ -189,7 +189,10 @@ function McpUiAppRouteContent({
 
     return (
       <>
-        <McpQuestionView safeAreaPaddingTop={safeAreaPadding.top} />
+        <McpQuestionView
+          queryKey={query}
+          safeAreaPaddingTop={safeAreaPadding.top}
+        />
 
         <McpCardFooter
           app={app}

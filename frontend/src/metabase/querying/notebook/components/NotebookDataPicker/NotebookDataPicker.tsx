@@ -113,6 +113,7 @@ export function NotebookDataPicker({
           query={query}
           stageIndex={stageIndex}
           table={table}
+          title={title}
           placeholder={placeholder}
           canChangeDatabase={canChangeDatabase}
           isDisabled={isDisabled}

@@ -151,6 +151,9 @@ jobs:
               git, gh, and the Linear MCP are pre-configured — no human is watching, so never
               ask for approval. The branch-existence dedup gate in Phase 0 is the only go/no-go.
             - The fix branch is `${{ steps.ref.outputs.branch }}`.
+            - Visibility: the dispatched ref may be a re-keyed `DEV-` issue — resolve it via
+              get_issue first, then post the per-phase heartbeat to the *resolved* issue (per the
+              command's Linear rules). It is the only progress signal in headless CI.
             - Polling: `ScheduleWakeup` is not available here. Instead, block on the stress runs
               with `gh run watch <run-id> --exit-status` (the job is long-lived by design).
             - NEVER merge: do not run `gh pr merge` or enable auto-merge. Stop at a green,

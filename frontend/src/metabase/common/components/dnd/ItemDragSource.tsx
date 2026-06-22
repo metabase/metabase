@@ -9,7 +9,7 @@ import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 
 import { getErrorMessage } from "metabase/api/utils";
-import { isRootTrashCollection } from "metabase/collections/utils";
+import { isRootTrashCollection } from "metabase/common/collections/utils";
 import {
   type MovableItem,
   type PinnableItem,

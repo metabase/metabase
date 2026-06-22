@@ -15,13 +15,15 @@ import {
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardId } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
   createMockDashboardTab,
+  createMockVirtualCard,
+  createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -269,6 +271,39 @@ describe("fetchDashboard", () => {
     expect(firstResult.payload).toMatchObject({ result: null });
     // Second fetch completes with the API response
     expect(secondResult.payload).toMatchObject({ result: { foo: true } });
+  });
+
+  it("loads an embedded dashboard with virtual cards without mutating the frozen RTK response", async () => {
+    // RTK Query freezes its cached responses, so the virtual-card merge must
+    // not mutate the returned dashcards in place (metabase public/embed/x-ray
+    // dashboards otherwise fail to load).
+    const token = "header.payload.signature";
+    const dashboard = createMockDashboard({
+      id: token as unknown as number,
+      dashcards: [
+        createMockVirtualDashCard({
+          id: 1,
+          visualization_settings: {
+            virtual_card: createMockVirtualCard({ display: "heading" }),
+            text: "A heading",
+          },
+        }),
+      ],
+    });
+
+    fetchMock.get(`path:/api/embed/dashboard/${token}`, dashboard);
+
+    const store = setup();
+
+    const result = await store.dispatch(
+      fetchDashboard({
+        dashId: token as unknown as DashboardId,
+        queryParams: {},
+        options: {},
+      }),
+    );
+
+    expect(result.type).toBe("metabase/dashboard/FETCH_DASHBOARD/fulfilled");
   });
 });
 

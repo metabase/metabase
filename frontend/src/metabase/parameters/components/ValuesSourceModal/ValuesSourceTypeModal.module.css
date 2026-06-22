@@ -54,7 +54,7 @@
   justify-content: center;
   align-items: center;
   padding: 2rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   background-color: var(--mb-color-background-secondary);
   color: var(--mb-color-text-secondary);

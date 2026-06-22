@@ -57,7 +57,7 @@ export function SchemaViewerMinimap() {
           ? "var(--mb-color-background-secondary)"
           : "var(--mb-color-background)"
       }
-      maskStrokeColor="var(--mb-color-border)"
+      maskStrokeColor="var(--mb-color-border-neutral)"
     />
   );
 }

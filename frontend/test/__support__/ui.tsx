@@ -35,6 +35,7 @@ import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-va
 import type { MantineThemeOverride } from "metabase/ui";
 import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
+import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import MetabaseSettings from "metabase/utils/settings";
 
@@ -280,24 +281,26 @@ export function TestWrapper({
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <AppColorSchemeProvider onUpdateColorScheme={handleUpdateColorScheme}>
-          <ThemeProviderContext.Provider value={{ withCssVariables }}>
-            <ThemeProvider
-              theme={theme}
-              resolvedColorScheme={displayTheme ?? "light"}
-              whitelabelColors={whitelabelColors}
-              onUpdateWhitelabelColors={handleUpdateWhitelabelColors}
-            >
-              <GlobalStylesForTest />
-              {createPortal(<PortalContainer />, document.body)}
+          <OverlayStackProvider>
+            <ThemeProviderContext.Provider value={{ withCssVariables }}>
+              <ThemeProvider
+                theme={theme}
+                resolvedColorScheme={displayTheme ?? "light"}
+                whitelabelColors={whitelabelColors}
+                onUpdateWhitelabelColors={handleUpdateWhitelabelColors}
+              >
+                <GlobalStylesForTest />
+                {createPortal(<PortalContainer />, document.body)}
 
-              <MaybeKBar hasKBar={withKBar}>
-                <MaybeRouter hasRouter={withRouter} history={history}>
-                  {children}
-                </MaybeRouter>
-              </MaybeKBar>
-              {withUndos && <UndoListing />}
-            </ThemeProvider>
-          </ThemeProviderContext.Provider>
+                <MaybeKBar hasKBar={withKBar}>
+                  <MaybeRouter hasRouter={withRouter} history={history}>
+                    {children}
+                  </MaybeRouter>
+                </MaybeKBar>
+                {withUndos && <UndoListing />}
+              </ThemeProvider>
+            </ThemeProviderContext.Provider>
+          </OverlayStackProvider>
         </AppColorSchemeProvider>
       </MaybeDNDProvider>
     </MetabaseReduxProvider>
@@ -477,12 +480,14 @@ const ThemeProviderWrapper = ({
   children,
   ...props
 }: React.PropsWithChildren) => (
-  <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
-    <ThemeProvider {...props}>
-      {createPortal(<PortalContainer />, document.body)}
-      {children}
-    </ThemeProvider>
-  </ThemeProviderContext.Provider>
+  <OverlayStackProvider>
+    <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
+      <ThemeProvider {...props}>
+        {createPortal(<PortalContainer />, document.body)}
+        {children}
+      </ThemeProvider>
+    </ThemeProviderContext.Provider>
+  </OverlayStackProvider>
 );
 
 export function renderWithTheme(children: React.ReactElement) {

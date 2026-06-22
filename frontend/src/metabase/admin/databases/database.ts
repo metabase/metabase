@@ -5,7 +5,7 @@ import { databaseApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { combineReducers } from "metabase/redux";
 import { createDatabase } from "metabase/redux/databases";
-import { updateMetadata } from "metabase/redux/metadata-typed";
+import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
 import { DatabaseSchema } from "metabase/schema";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";

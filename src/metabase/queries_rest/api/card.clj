@@ -484,7 +484,7 @@
   [dataset-query :- [:maybe ::queries.schema/query]
    card-type     :- [:maybe ::queries.schema/card-type]]
   (when (and (seq dataset-query) (= card-type :metric))
-    (when-not (lib/can-save dataset-query card-type)
+    (when-not (lib/can-save? dataset-query card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
                       {:type        card-type
                        :status-code 400})))))
@@ -861,7 +861,7 @@
                       {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))
         (doseq [card cards]
-          (collection/check-non-remote-synced-dependencies card)))))
+          (collection/check-for-remote-sync-update card)))))
 
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
@@ -904,7 +904,7 @@
   ;; endpoint instead. Or error in that situation? We're not even validating that you have access to this Dashboard.
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
     (qp.card/process-query-for-card
-     resolved-card-id :api
+     (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
      :parameters parameters
      :ignore-cache ignore_cache
      :dashboard-id dashboard_id
@@ -944,7 +944,7 @@
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
-   card-id export-format
+   (api/check-404 (t2/select-one :model/Card card-id)) export-format
    :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
@@ -1018,7 +1018,7 @@
    {:keys [parameters ignore_cache]
     :or   {ignore_cache false}} :- [:map
                                     [:ignore_cache {:optional true} [:maybe :boolean]]]]
-  (qp.card/process-query-for-card card-id :api
+  (qp.card/process-query-for-card (api/check-404 (t2/select-one :model/Card card-id)) :api
                                   :parameters   parameters
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
