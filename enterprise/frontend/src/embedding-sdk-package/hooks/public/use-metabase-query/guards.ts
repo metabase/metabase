@@ -1,8 +1,4 @@
-import type {
-  FieldSchema,
-  MetricDimensionSchema,
-  TableSchema,
-} from "../data-schema";
+import type { FieldSchema, TableSchema } from "../data-schema";
 
 import type {
   CountAggregationRuntime,
@@ -11,7 +7,6 @@ import type {
   ID,
   MeasureReferenceRuntime,
   MetabaseQueryRuntime,
-  MetricDimensionFilterRuntime,
   MetricQueryRuntime,
   MetricReferenceRuntime,
   QuestionQueryRuntime,
@@ -99,15 +94,15 @@ export const getMetricSourceTableId = (query: MetricQueryRuntime): ID | null =>
     ? query.metric.sourceTableId
     : null;
 
+export const getMetricSourceCardId = (query: MetricQueryRuntime): ID | null =>
+  isMetricReference(query.metric) && query.metric.sourceCardId != null
+    ? query.metric.sourceCardId
+    : null;
+
 export const isDimensionFilter = (
   value: unknown,
 ): value is DimensionFilterRuntime =>
   typeof value === "object" && value != null && "dimension" in value;
-
-export const isMetricDimensionFilter = (
-  value: unknown,
-): value is MetricDimensionFilterRuntime =>
-  isDimensionFilter(value) && isMetricDimensionSchema(value.dimension);
 
 export const isTableDimensionFilter = (
   value: unknown,
@@ -167,21 +162,20 @@ const isTableReference = (value: unknown): value is TableSchema =>
   "id" in value &&
   "databaseId" in value;
 
-export const isFieldSchema = (
-  value: unknown,
-): value is FieldSchema | MetricDimensionSchema =>
-  isTableFieldSchema(value) || isMetricDimensionSchema(value);
+export const isFieldSchema = (value: unknown): value is FieldSchema =>
+  isTableFieldSchema(value);
 
-export const isTableFieldSchema = (value: unknown): value is FieldSchema =>
-  typeof value === "object" &&
-  value != null &&
-  !("metricId" in value) &&
-  ("fieldId" in value || "id" in value);
+export const isTableFieldSchema = (value: unknown): value is FieldSchema => {
+  if (typeof value !== "object" || value == null || "metricId" in value) {
+    return false;
+  }
 
-export const isMetricDimensionSchema = (
-  value: unknown,
-): value is MetricDimensionSchema =>
-  typeof value === "object" &&
-  value != null &&
-  "metricId" in value &&
-  "id" in value;
+  const field = value as Record<string, unknown>;
+
+  return (
+    typeof field.name === "string" &&
+    (typeof field.fieldId === "number" ||
+      typeof field.id === "number" ||
+      typeof field.id === "string")
+  );
+};

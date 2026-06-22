@@ -9,9 +9,11 @@
  * schema directly.
  */
 
-import type { RowValue } from "metabase-types/api";
-
-import type { SchemaColumn, SchemaJavaScriptType } from "../data-schema";
+import type {
+  RowValue,
+  SchemaColumn,
+  SchemaJavaScriptType,
+} from "../data-schema";
 
 /**
  * Flat public kind union. Maps onto the backend's namespaced
@@ -28,7 +30,6 @@ export type ActionKind = "create" | "update" | "delete" | "bulk" | "sql";
  * Response from a single-row create — the inserted row.
  *
  * @category useAction
- * @notExported RowValue
  */
 export type ActionResultForCreate = {
   "created-row": Record<string, RowValue>;

@@ -123,10 +123,12 @@ const sourceTable = schema.tables.sourceTable;
 
 const { data, isLoading, error } = useMetabaseQuery({
   metric: primaryMetric,
-  filters: [filter(primaryMetric.dimensions.quantity, ">", 0)],
+  filters: [filter(primaryMetric.dimensions.sourceTable.quantity, ">", 0)],
   measures: [sourceTable.measures.totalAmount],
   breakouts: [
-    breakout(primaryMetric.dimensions.createdAt, { bucket: "month" }),
+    breakout(primaryMetric.dimensions.sourceTable.createdAt, {
+      bucket: "month",
+    }),
   ],
 });
 ```
@@ -135,9 +137,9 @@ Use keyed schema objects:
 
 - Saved questions: `questionId: schema.questions.someQuestion.id`
 - Tables: `tableId: table.id`, `table.fields.*`, `table.segments.*`, `table.measures.*`
-- Metrics: `metric: schema.metrics.someMetric`, `metric.dimensions.*`
+- Metrics: `metric: schema.metrics.someMetric`, `metric.dimensions.<table>.*`
 
-Do not pass raw dimension strings like `"created_at"` or `"segment"`. Metric dimensions need generated UUID metadata.
+Do not pass raw dimension strings like `"created_at"` or `"segment"`. Metric dimensions are compact table-namespaced aliases to valid mapped table fields; use `metric.dimensions.<table>.*` for the shortest safe path. Direct `schema.tables.*.fields.*`, segments, and measures are valid with metrics only when their table is included in the metric's `mappedTableIds`.
 
 `useMetabaseQuery` and `useMetabaseQueryObject`/`createMetabaseQuery` take different shapes for tables:
 
@@ -212,14 +214,16 @@ const primaryMetric = schema.metrics.primaryMetric;
 
 const { data } = useMetabaseQuery({
   metric: primaryMetric,
-  filters: [filter(primaryMetric.dimensions.status, "=", "active")],
+  filters: [filter(primaryMetric.dimensions.sourceTable.status, "=", "active")],
   breakouts: [
-    breakout(primaryMetric.dimensions.createdAt, { bucket: "month" }),
+    breakout(primaryMetric.dimensions.sourceTable.createdAt, {
+      bucket: "month",
+    }),
   ],
 });
 ```
 
-Metric filters and breakouts should use dimensions from the same metric object.
+Metric filters and breakouts should use `metric.dimensions.<table>.*` when possible. Those dimensions are generated from fields on the metric's mapped tables and preserve field operator/bucket type safety.
 
 ### Metrics With Measures
 
@@ -231,12 +235,14 @@ const { data } = useMetabaseQuery({
   metric: primaryMetric,
   measures: [sourceTable.measures.totalAmount],
   breakouts: [
-    breakout(primaryMetric.dimensions.createdAt, { bucket: "month" }),
+    breakout(primaryMetric.dimensions.sourceTable.createdAt, {
+      bucket: "month",
+    }),
   ],
 });
 ```
 
-Measures must come from tables in the metric's `mappedTableIds`.
+Measures must come from tables in the metric's `mappedTableIds`. Fields, segments, and measures from unmapped tables are rejected by TypeScript and at runtime.
 
 ## Interactive Metabase Views
 
@@ -337,7 +343,11 @@ const sourceTable = schema.tables.sourceTable;
 const metricTrendQuery = useMetabaseQueryObject({
   metric: primaryMetric,
   measures: [sourceTable.measures.totalAmount],
-  breakouts: [breakout(primaryMetric.dimensions.createdAt, { bucket: "month" })],
+  breakouts: [
+    breakout(primaryMetric.dimensions.sourceTable.createdAt, {
+      bucket: "month",
+    }),
+  ],
 });
 
 return (
@@ -354,16 +364,16 @@ Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or
 Use helpers because they give better autocomplete and shorter errors.
 
 ```ts
-filter(metric.dimensions.quantity, ">", 0);
-filter(metric.dimensions.segment, "contains", "standard");
-filter(metric.dimensions.quantity, "between", [10, 20]);
-filter(metric.dimensions.segment, "not-empty");
+filter(metric.dimensions.orders.quantity, ">", 0);
+filter(metric.dimensions.customers.segment, "contains", "standard");
+filter(metric.dimensions.orders.quantity, "between", [10, 20]);
+filter(metric.dimensions.customers.segment, "not-empty");
 
-breakout(metric.dimensions.createdAt, { bucket: "month" });
-breakout(metric.dimensions.amount, {
+breakout(metric.dimensions.orders.createdAt, { bucket: "month" });
+breakout(metric.dimensions.orders.amount, {
   binning: { strategy: "num-bins", "num-bins": 10 },
 });
-breakout(metric.dimensions.state);
+breakout(metric.dimensions.customers.state);
 ```
 
 Filter operator rules:
