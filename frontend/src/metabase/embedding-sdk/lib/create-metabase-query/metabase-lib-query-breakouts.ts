@@ -5,7 +5,6 @@ import type { TemporalUnit } from "metabase-types/api";
 import {
   STAGE_INDEX,
   findLibColumn,
-  getObjectNumber,
   normalizeBreakout,
 } from "./metabase-lib-query-utils";
 
@@ -33,6 +32,11 @@ function findLibColumnForBreakout(
   breakout: unknown,
 ): ColumnMetadata | null {
   const { dimension, options } = normalizeBreakout(breakout);
+
+  if (!dimension) {
+    return null;
+  }
+
   const column = findLibColumn(query, dimension);
 
   if (!column) {
@@ -117,12 +121,13 @@ function isBinningOptions(value: unknown): value is BinningOptions {
   }
 
   if (value.strategy === "num-bins") {
-    return getObjectNumber(value, "num-bins") != null;
+    return "num-bins" in value && typeof value["num-bins"] === "number";
   }
 
   return (
     value.strategy === "bin-width" &&
-    getObjectNumber(value, "bin-width") != null
+    "bin-width" in value &&
+    typeof value["bin-width"] === "number"
   );
 }
 

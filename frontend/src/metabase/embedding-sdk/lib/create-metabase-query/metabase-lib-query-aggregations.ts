@@ -16,9 +16,12 @@ import {
 import {
   STAGE_INDEX,
   findLibColumn,
-  getObjectNumber,
+  isColumnReference,
 } from "./metabase-lib-query-utils";
-import type { FieldAggregationRuntime } from "./runtime-types";
+import type {
+  FieldAggregationRuntime,
+  MeasureReferenceRuntime,
+} from "./runtime-types";
 
 export function applyAggregations(
   query: Query,
@@ -53,6 +56,10 @@ export function applyMetricMeasures(
   let nextQuery = query;
 
   for (const measure of measures ?? []) {
+    if (!isMeasureSchema(measure)) {
+      return null;
+    }
+
     const measureMetadata = findLibMeasure(nextQuery, measure);
 
     if (!measureMetadata) {
@@ -79,12 +86,7 @@ export function applyMetricAggregation(
 export const findLibMetric = (
   query: Query,
   metricId: number,
-): MetricMetadata | null =>
-  Lib.availableMetrics(query, STAGE_INDEX).find(
-    (metricMetadata) =>
-      Lib.displayInfo(query, STAGE_INDEX, metricMetadata).name ===
-      `metric_${metricId}`,
-  ) ?? null;
+): MetricMetadata | null => Lib.metricMetadata(query, metricId);
 
 function buildLibAggregation(
   query: Query,
@@ -109,6 +111,10 @@ function buildLibFieldAggregation(
   query: Query,
   aggregation: FieldAggregationRuntime,
 ): AggregationClause | null {
+  if (!isColumnReference(aggregation.dimension)) {
+    return null;
+  }
+
   const column = findLibColumn(query, aggregation.dimension);
 
   if (!column) {
@@ -133,10 +139,10 @@ function findLibAggregationClause(
 
 const findLibMeasure = (
   query: Query,
-  measure: unknown,
+  measure: MeasureReferenceRuntime,
 ): MeasureMetadata | null =>
   Lib.availableMeasures(query, STAGE_INDEX).find(
     (availableMeasure) =>
       Lib.displayInfo(query, STAGE_INDEX, availableMeasure).name ===
-      `measure_${getObjectNumber(measure, "id")}`,
+      `measure_${measure.id}`,
   ) ?? null;

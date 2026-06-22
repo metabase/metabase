@@ -18,7 +18,7 @@ import {
   STAGE_INDEX,
   fieldHasTime,
   findLibColumn,
-  getObjectString,
+  isColumnReference,
 } from "./metabase-lib-query-utils";
 import type { DimensionFilterRuntime } from "./runtime-types";
 
@@ -81,7 +81,13 @@ function buildLibFieldFilter(
   query: Query,
   filter: DimensionFilterRuntime,
 ): ExpressionClause | null {
-  const column = findLibColumn(query, filter.dimension);
+  const dimension = filter.dimension;
+
+  if (!isColumnReference(dimension)) {
+    return null;
+  }
+
+  const column = findLibColumn(query, dimension);
 
   if (!column) {
     return null;
@@ -100,7 +106,7 @@ function buildLibFieldFilter(
     return buildLibRelativeDateFilter(filter, column);
   }
 
-  const jsType = getObjectString(filter.dimension, "jsType");
+  const jsType = isTableFieldSchema(dimension) ? dimension.jsType : undefined;
 
   if (jsType === "number") {
     return Lib.numberFilterClause({
@@ -123,9 +129,7 @@ function buildLibFieldFilter(
       operator: filter.operator as never,
       column,
       values: values.map((value) => new Date(value as string | number | Date)),
-      hasTime: isTableFieldSchema(filter.dimension)
-        ? fieldHasTime(filter.dimension)
-        : false,
+      hasTime: isTableFieldSchema(dimension) ? fieldHasTime(dimension) : false,
     });
   }
 

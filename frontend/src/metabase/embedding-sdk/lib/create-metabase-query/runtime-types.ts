@@ -58,9 +58,9 @@ export type CountAggregationRuntime = {
   type: "count";
 };
 
-export type FieldAggregationRuntime = {
+export type FieldAggregationRuntime<TDimension = unknown> = {
   type: "sum" | "avg" | "median" | "distinct" | "min" | "max";
-  dimension: unknown;
+  dimension: TDimension;
 };
 
 export type MetricReferenceRuntime = {
@@ -71,8 +71,8 @@ export type MetricReferenceRuntime = {
   mappedTableIds: readonly number[];
 };
 
-export type DimensionFilterRuntime = {
-  dimension: unknown;
+export type DimensionFilterRuntime<TDimension = unknown> = {
+  dimension: TDimension;
   operator: FilterOperator;
   value?: unknown;
   values?: readonly unknown[];

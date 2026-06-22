@@ -2130,6 +2130,15 @@
   [a-query stage-number]
   (to-array (lib.core/available-metrics a-query stage-number)))
 
+(defn ^:export metric-metadata
+  "Given an integer `metric-id`, returns the Metric's metadata.
+
+  Returns `nil` (JS `null`) if no matching metric is found.
+
+  > **Code health:** Healthy."
+  [query-or-metadata-provider metric-id]
+  (lib.metadata/metric query-or-metadata-provider metric-id))
+
 ;; TODO: Move all the join logic into one block - it's scattered all through the lower half of this namespace.
 
 ;; TODO: (bshepherdson, 2026-03-25) The name of this function was changed in lib.core and this should probably change

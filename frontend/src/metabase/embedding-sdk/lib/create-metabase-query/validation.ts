@@ -1,4 +1,5 @@
 import { getMetricMappedTableIdsFromQuery } from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
+import type { FieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 
 import {
   isCountAggregation,
@@ -10,8 +11,6 @@ import {
 } from "./guards";
 import {
   getMetricDimensionValues,
-  getObjectNumber,
-  getObjectString,
   normalizeBreakout,
 } from "./metabase-lib-query-utils";
 import type { MetricQueryRuntime } from "./runtime-types";
@@ -127,7 +126,7 @@ function getTableFieldFromBreakout(breakout: unknown) {
 
 export function validateMetricDimensionForTableField(
   query: MetricQueryRuntime,
-  field: unknown,
+  field: FieldSchema,
 ) {
   const dimension = getMetricDimensionFields(query).find((dimension) => {
     return fieldsMatch(dimension, field);
@@ -143,18 +142,11 @@ export function validateMetricDimensionForTableField(
 export const getMetricDimensionFields = (query: MetricQueryRuntime) =>
   getMetricDimensionValues(query.metric, isTableFieldSchema);
 
-function fieldsMatch(left: unknown, right: unknown) {
-  const leftTableId = getObjectNumber(left, "tableId");
-  const rightTableId = getObjectNumber(right, "tableId");
-  const leftFieldId = getObjectNumber(left, "fieldId");
-  const rightFieldId = getObjectNumber(right, "fieldId");
-  const leftName = getObjectString(left, "name");
-  const rightName = getObjectString(right, "name");
-
+function fieldsMatch(left: FieldSchema, right: FieldSchema) {
   return (
-    leftTableId === rightTableId &&
-    ((leftFieldId != null && leftFieldId === rightFieldId) ||
-      (leftName != null && leftName === rightName))
+    left.tableId === right.tableId &&
+    ((left.fieldId != null && left.fieldId === right.fieldId) ||
+      left.name === right.name)
   );
 }
 

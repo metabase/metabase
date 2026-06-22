@@ -12,14 +12,20 @@ import { isTableFieldSchema } from "./guards";
 
 export const STAGE_INDEX = 0;
 
-const JAVASCRIPT_TYPE_BASE_TYPES = {
+export type ColumnReference = string | FieldSchema;
+
+const JAVASCRIPT_TYPE_BASE_TYPES: Partial<
+  Record<SchemaJavaScriptType, string>
+> = {
   number: TYPE.Float,
   boolean: TYPE.Boolean,
   Date: TYPE.DateTime,
-} satisfies Partial<Record<SchemaJavaScriptType, string>>;
+};
 
 export const getBaseType = (jsType: unknown): string =>
-  getObjectString(JAVASCRIPT_TYPE_BASE_TYPES, String(jsType)) ?? TYPE.Text;
+  typeof jsType === "string" && jsType in JAVASCRIPT_TYPE_BASE_TYPES
+    ? (JAVASCRIPT_TYPE_BASE_TYPES[jsType as SchemaJavaScriptType] ?? TYPE.Text)
+    : TYPE.Text;
 
 export const getFieldBaseType = (field: FieldSchema): string =>
   field.baseType ?? getBaseType(field.jsType);
@@ -55,6 +61,9 @@ export const isMetricDimensionWithFieldId = (
 ): value is FieldSchema & { fieldId: number } =>
   isTableFieldSchema(value) && hasFieldId(value);
 
+export const isColumnReference = (value: unknown): value is ColumnReference =>
+  typeof value === "string" || isTableFieldSchema(value);
+
 export function getMetricDimensionValues<TDimension>(
   metric: unknown,
   isDimension: (value: unknown) => value is TDimension,
@@ -85,40 +94,30 @@ export function getObject(
   return isObject(property) ? property : null;
 }
 
-export function getObjectNumber(
-  value: unknown,
-  key: string,
-): number | undefined {
-  const property = getObjectProperty(value, key);
-
-  return isNumber(property) ? property : undefined;
-}
-
-export function getObjectString(
-  value: unknown,
-  key: string,
-): string | undefined {
-  const property = getObjectProperty(value, key);
-
-  return typeof property === "string" ? property : undefined;
-}
-
 const getObjectProperty = (value: unknown, key: string): unknown =>
   isObject(value) && key in value ? value[key] : undefined;
 
-export const normalizeBreakout = (breakout: unknown) => ({
+export const normalizeBreakout = (
+  breakout: unknown,
+): { dimension: ColumnReference | null; options: Record<string, unknown> } => ({
   dimension: getBreakoutDimension(breakout),
   options: getBreakoutOptions(breakout),
 });
 
-function getBreakoutDimension(breakout: unknown) {
+function getBreakoutDimension(breakout: unknown): ColumnReference | null {
   if (typeof breakout === "string" || isTableFieldSchema(breakout)) {
     return breakout;
   }
 
-  return isObject(breakout) && "dimension" in breakout
-    ? breakout.dimension
-    : null;
+  if (
+    isObject(breakout) &&
+    "dimension" in breakout &&
+    isColumnReference(breakout.dimension)
+  ) {
+    return breakout.dimension;
+  }
+
+  return null;
 }
 
 function getBreakoutOptions(breakout: unknown): Record<string, unknown> {
@@ -141,13 +140,20 @@ function getBreakoutOptions(breakout: unknown): Record<string, unknown> {
 
 export function findLibColumn(
   query: Query,
-  field: unknown,
+  field: ColumnReference,
   options: Record<string, unknown> = {},
 ): ColumnMetadata | null {
-  const fieldId = getFieldId(field);
+  if (typeof field === "string") {
+    return (
+      Lib.filterableColumns(query, STAGE_INDEX).find(
+        (column) => Lib.displayInfo(query, STAGE_INDEX, column).name === field,
+      ) ?? null
+    );
+  }
 
+  const fieldId = getFieldId(field);
   if (fieldId != null) {
-    const sourceFieldId = getObjectNumber(field, "sourceFieldId");
+    const sourceFieldId = field.sourceFieldId;
     const fieldOptions =
       sourceFieldId == null
         ? options
@@ -156,19 +162,12 @@ export function findLibColumn(
     if (Object.keys(fieldOptions).length > 0) {
       return Lib.fromLegacyColumn(query, STAGE_INDEX, {
         id: fieldId,
-        name: getObjectString(field, "name") ?? String(fieldId),
-        display_name:
-          getObjectString(field, "displayName") ??
-          getObjectString(field, "name") ??
-          String(fieldId),
+        name: field.name,
+        display_name: field.displayName ?? field.name,
         source: "fields",
         fk_field_id: sourceFieldId,
-        base_type: isTableFieldSchema(field)
-          ? getFieldBaseType(field)
-          : undefined,
-        effective_type: isTableFieldSchema(field)
-          ? getFieldEffectiveType(field)
-          : undefined,
+        base_type: getFieldBaseType(field),
+        effective_type: getFieldEffectiveType(field),
         field_ref: ["field", fieldId, fieldOptions],
       });
     }
@@ -176,13 +175,5 @@ export function findLibColumn(
     return Lib.fieldMetadata(query, fieldId);
   }
 
-  if (typeof field !== "string") {
-    return null;
-  }
-
-  return (
-    Lib.filterableColumns(query, STAGE_INDEX).find(
-      (column) => Lib.displayInfo(query, STAGE_INDEX, column).name === field,
-    ) ?? null
-  );
+  return null;
 }
