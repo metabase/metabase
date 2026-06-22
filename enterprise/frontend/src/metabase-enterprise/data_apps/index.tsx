@@ -1,7 +1,7 @@
 import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { ManageDataAppsPage } from "./ManageDataAppsPage";
+import { ManageDataAppsPage } from "./admin/ManageDataAppsPage";
 import { getRoutes } from "./routes";
 
 /**
