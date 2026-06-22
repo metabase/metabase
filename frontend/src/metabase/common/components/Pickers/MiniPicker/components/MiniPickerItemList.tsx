@@ -501,6 +501,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
       q: query,
       models: models as SearchModel[],
       limit: 50,
+      context: "data-picker",
     };
     const extraParams =
       typeof searchParams === "function" ? searchParams(params) : searchParams;
