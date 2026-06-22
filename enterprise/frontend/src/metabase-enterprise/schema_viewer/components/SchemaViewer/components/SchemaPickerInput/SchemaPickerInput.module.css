@@ -16,5 +16,5 @@
 .divider {
   height: 1px;
   margin: 0.25rem 0;
-  background-color: var(--mb-color-border);
+  background-color: var(--mb-color-border-neutral);
 }

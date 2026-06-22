@@ -70,7 +70,7 @@ export function EditorPanel({
       direction="column"
       w="100%"
       maw={480}
-      style={{ borderRight: "1px solid var(--mb-color-border)" }}
+      style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
     >
       <Box flex={1} style={{ overflow: "auto" }} p="xl">
         <Flex align="center" justify="space-between" mb="xl">
@@ -268,7 +268,7 @@ export function EditorPanel({
         p="lg"
         gap="md"
         justify="space-between"
-        style={{ borderTop: "1px solid var(--mb-color-border)" }}
+        style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >
         <Button variant="subtle" onClick={onCancel}>
           {t`Cancel`}

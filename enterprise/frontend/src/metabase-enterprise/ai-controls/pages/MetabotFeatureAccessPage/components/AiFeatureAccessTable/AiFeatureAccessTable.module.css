@@ -25,6 +25,6 @@
 }
 
 .buttonRow {
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
   padding: 1rem 1rem 1rem 1.5rem;
 }
