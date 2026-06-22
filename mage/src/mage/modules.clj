@@ -104,6 +104,7 @@
      collections
      config
      content-verification
+     curated-search
      custom-viz-plugin
      dashboards
      documents
@@ -117,6 +118,7 @@
      enterprise/transforms-inspector
      events
      formatter
+     geojson
      initialization-status
      interestingness
      internal-stats
@@ -145,6 +147,7 @@
      system
      task
      task-history
+     tiles
      timeline
      tracing
      types

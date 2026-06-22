@@ -157,6 +157,8 @@
   - clean: whether a 3-way merge would apply with no conflicts
   - conflicts: human-readable labels of the entities that conflict (empty when clean)
   - summary: counts of remote changes a merge would fold in
+  - force_push_casualties: remote content a force push (rather than a merge) would discard, as
+    `{:deleted [labels] :overwritten [labels]}`
   - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists
 
   Requires superuser permissions."
@@ -165,12 +167,14 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [branch-name (check-branch-matches-setting! branch)
-        {:keys [diverged? clean? conflicts summary reason]} (impl/preview-export-merge branch-name)]
-    {:has_changes diverged?
-     :clean       clean?
-     :conflicts   conflicts
-     :summary     summary
-     :reason      (some-> reason name)}))
+        {:keys [diverged? clean? conflicts summary force-push-casualties reason]}
+        (impl/preview-export-merge branch-name)]
+    {:has_changes            diverged?
+     :clean                  clean?
+     :conflicts              conflicts
+     :summary                summary
+     :force_push_casualties  force-push-casualties
+     :reason                 (some-> reason name)}))
 
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"

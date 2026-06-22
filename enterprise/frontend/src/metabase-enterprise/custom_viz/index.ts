@@ -1,5 +1,8 @@
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import {
+  getPluginAssetUrl,
+  resolveCustomVizAssetUrl,
+} from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
@@ -25,6 +28,8 @@ export function initializePlugin() {
       useCustomVizPlugins,
       loadCustomVizPlugin,
       getPluginAssetUrl,
+      resolveCustomVizAssetUrl,
+      releaseCustomVizAsset: () => {},
       useCustomVizPluginsIcon,
       isCustomVizDisplay,
       isWidgetMount,

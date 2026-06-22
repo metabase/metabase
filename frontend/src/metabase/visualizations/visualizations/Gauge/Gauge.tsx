@@ -229,11 +229,11 @@ export function Gauge({
               ref={labelRef}
               x={0}
               y={0}
+              textAnchor="middle"
               style={{
                 fill: getCenterLabelColor(),
                 fontSize: "1em",
                 fontWeight: "bold",
-                textAnchor: "middle",
                 transform: "translate(0,0.2em)",
               }}
             >

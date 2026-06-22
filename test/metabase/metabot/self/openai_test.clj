@@ -116,6 +116,70 @@
                           :completionTokens pos-int?}}]
                 (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)))))))
 
+(deftest ^:parallel openai-response-failed-surfaces-error-test
+  (testing "a terminal response.failed event is surfaced as an :error chunk (not silently dropped)"
+    ;; The error detail lives nested under `response.error`, unlike a top-level `error` event. Without
+    ;; this branch a mid-stream failure ends silently after :start, with no error shown to the user.
+    (let [raw [{:type "response.created"     :response {:id "resp_1" :model "gpt-5.5"}}
+               {:type "response.in_progress" :response {:id "resp_1"}}
+               {:type "response.failed"
+                :response {:id    "resp_1"
+                           :error {:code    "server_error"
+                                   :message "The server had an error while processing your request. Sorry about that!"}}}]]
+      (is (=? [{:type :start}
+               {:type      :error
+                :errorText "The server had an error while processing your request. Sorry about that!"}]
+              (into [] (openai/openai->aisdk-chunks-xf) raw))))))
+
+(deftest ^:parallel openai-response-failed-without-message-test
+  (testing "response.failed with no message falls back to the error code, then a generic message"
+    (let [code-only [{:type "response.created" :response {:id "resp_1"}}
+                     {:type "response.failed"  :response {:id "resp_1" :error {:code "server_error"}}}]
+          bare      [{:type "response.created" :response {:id "resp_1"}}
+                     {:type "response.failed"  :response {:id "resp_1"}}]]
+      (is (=? [{:type :start} {:type :error :errorText "server_error"}]
+              (into [] (openai/openai->aisdk-chunks-xf) code-only)))
+      (is (=? [{:type :start} {:type :error :errorText "The model provider failed to complete the response"}]
+              (into [] (openai/openai->aisdk-chunks-xf) bare))))))
+
+(deftest ^:parallel openai-response-failed-reaches-wire-and-persistence-test
+  (testing "a response.failed error flows through to both the wire line and the persisted turn error"
+    ;; Regression guard: once collected into a part (via aisdk-chunks->part), the AI SDK v5 `:errorText`
+    ;; chunk must become an `{:error {:message ...}}` part, which is what self.core/format-error-line and
+    ;; metabot.api's finalize-turn `(:error part)` lookup both read.
+    (let [raw   [{:type "response.created" :response {:id "resp_1" :model "gpt-5.5"}}
+                 {:type "response.failed"  :response {:id "resp_1" :error {:code "server_error" :message "boom"}}}]
+          parts (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
+          err   (m/find-first #(= :error (:type %)) parts)]
+      (testing "persistence picks up a non-nil error payload"
+        (is (=? {:message "boom"} (:error err))))
+      (testing "wire serializer emits the message (not an empty string)"
+        (is (= "3:\"boom\"" (self.core/format-error-line err)))))))
+
+(deftest ^:parallel openai-response-incomplete-keeps-partial-text-and-usage-test
+  (testing "a terminal response.incomplete event keeps the partial text and still emits usage (not an error)"
+    ;; An incomplete response (e.g. truncated at max_output_tokens) has valid partial output, so we record
+    ;; its usage like a completed response rather than discarding it or surfacing an error.
+    (let [raw-chunks (fixture "openai-text"
+                              {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
+          ;; turn the terminal response.completed into a response.incomplete carrying the same usage
+          patched    (mapv (fn [chunk]
+                             (if (= (:type chunk) "response.completed")
+                               (-> chunk
+                                   (assoc :type "response.incomplete")
+                                   (assoc-in [:response :incomplete_details] {:reason "max_output_tokens"}))
+                               chunk))
+                           raw-chunks)
+          parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)]
+      (is (=? [{:type :start}
+               {:type :text :text string?}
+               {:type  :usage
+                :usage {:promptTokens     pos-int?
+                        :completionTokens pos-int?}}]
+              parts))
+      (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
+        (is (empty? (filter #(= :error (:type %)) parts)))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Usage normalization tests
 ;;; ──────────────────────────────────────────────────────────────────
