@@ -563,10 +563,10 @@
 ;;; wildly inaccurate -- a TEXT column may hold 5 bytes or 5 MB), we *measure* it: fetch a small probe page, then
 ;;; recompute the next page size from the average bytes/row actually seen, so each page targets a fixed byte budget.
 
-(def ^:private ^:dynamic *sample-page-byte-budget*
-  "Target measured bytes per `tabledata.list` sample page. The next page size is `budget / measured-bytes-per-row`,
-  clamped to [1, remaining]. Kept well under the server's ~10 MB page cap to leave headroom for JVM object expansion
-  when the page is parsed."
+(def ^:private ^:dynamic *page-byte-budget*
+  "Target measured bytes per result page, for both `tabledata.list` sampling and regular query execution. The next
+  page size is `budget / measured-bytes-per-row`, clamped to [1, remaining]. Kept well under the server's ~10 MB page
+  cap to leave headroom for JVM object expansion when the page is parsed."
   (* 4 1024 1024))
 
 (def ^:private sample-probe-rows
@@ -597,9 +597,10 @@
   ^long [^FieldValueList row]
   (reduce (fn [^long acc cell] (+ acc (field-value-bytes cell))) 0 row))
 
-(defn- next-sample-page-size
+(defn- next-page-size
   "Rows to request for the next page given the average measured bytes/row so far, targeting `budget` bytes/page.
-  Clamped to [1, `remaining`]."
+  Clamped to [1, `remaining`]. Shared by the sampler ([[adaptive-sample-next-page]]) and regular query execution
+  ([[adaptive-query-next-page]])."
   ^long [^long budget ^long measured-bytes ^long measured-rows ^long remaining]
   (let [avg-row-bytes (max 1 (quot measured-bytes (max 1 measured-rows)))]
     (-> (quot budget avg-row-bytes)
@@ -615,11 +616,11 @@
 
 (defn- adaptive-sample-next-page
   "A swappable page-advance for [[reducible-bigquery-results]], used when sampling. It measures the just-consumed
-  page's real bytes/row and re-issues `.list` from the page token with a size targeting `*sample-page-byte-budget*`
+  page's real bytes/row and re-issues `.list` from the page token with a size targeting `*page-byte-budget*`
   -- a sliding window that adapts per page to the table's actual data instead of guessing from column types. Returns
   nil once the `max-rows` budget is spent or there are no more pages."
   [^Table bq-table ^long max-rows]
-  (let [budget (long *sample-page-byte-budget*)
+  (let [budget (long *page-byte-budget*)
         seen   (atom {:bytes 0, :rows 0})]
     (fn [^TableResult page]
       (let [token (.getNextPageToken page)]
@@ -632,7 +633,7 @@
                 remaining              (- max-rows (long rows))]
             (when (pos? remaining)
               (*page-callback*)
-              (list-sample-page bq-table (next-sample-page-size budget bytes rows remaining) token))))))))
+              (list-sample-page bq-table (next-page-size budget bytes rows remaining) token))))))))
 
 (defn- sample-table
   "Process a sample of rows of fields corresponding to the Metabase fields
@@ -763,22 +764,36 @@
      ;; realizing more rows as per the maximum result size
      (.setMaxResults *page-size*))))
 
-(defn- next-page-same-size
-  "Default page-advance for [[reducible-bigquery-results]]: fetch the next page at the original request's page size
-  (BigQuery's `.getNextPage`). Returns nil once the result set is exhausted."
-  ^TableResult [^TableResult page]
-  (when (.hasNextPage page)
-    (log/trace "BigQuery: Fetching new page")
-    (*page-callback*)
-    (or (.getNextPage page)
-        (throw (ex-info "Cannot get next page from BigQuery" {})))))
+(defn- adaptive-query-next-page
+  "Adaptive page-advance for query-job results (the regular execution path), mirroring [[adaptive-sample-next-page]]
+  but paging via `getQueryResults` -- the query result's own `.getNextPage` re-uses the original page size and can't
+  be re-sized. Measures the just-consumed page's real bytes/row and re-issues the next page with a `pageSize`
+  targeting [[*page-byte-budget*]], so a wide or heavy result fetches fewer rows per page instead of holding a
+  large parsed page in memory. Returns nil once the result set is exhausted."
+  [^BigQuery client job-id]
+  (let [budget (long *page-byte-budget*)
+        seen   (atom {:bytes 0, :rows 0})]
+    (fn [^TableResult page]
+      (let [token (.getNextPageToken page)]
+        (when-not (str/blank? token)
+          (let [[page-bytes page-rows] (reduce (fn [[b n] row] [(+ (long b) (row-bytes row)) (inc (long n))])
+                                               [0 0]
+                                               (.getValues page))
+                {:keys [bytes rows]}   (swap! seen (fn [s] {:bytes (+ (long (:bytes s)) (long page-bytes))
+                                                            :rows  (+ (long (:rows s)) (long page-rows))}))]
+            (log/trace "BigQuery: Fetching new page")
+            (*page-callback*)
+            (.getQueryResults client job-id
+                              (u/varargs BigQuery$QueryResultsOption
+                                [(BigQuery$QueryResultsOption/pageSize
+                                  (next-page-size budget bytes rows Long/MAX_VALUE))
+                                 (BigQuery$QueryResultsOption/pageToken token)]))))))))
 
 (defn- reducible-bigquery-results
-  "Reducible over the rows of `page` and its successors. `next-page` is the swappable page-advance: given the
-  just-exhausted page it returns the next one (or nil when done). Defaults to [[next-page-same-size]] (fixed page
-  size); the sync sampler passes [[adaptive-sample-next-page]] to resize each page from measured bytes/row."
-  ([^TableResult page cancel-chan attempt-job-cancel-fn]
-   (reducible-bigquery-results page cancel-chan attempt-job-cancel-fn next-page-same-size))
+  "Reducible over the rows of `page` and its successors. `next-page` is the adaptive page-advance: given the
+  just-exhausted page it measures it and returns the next one (re-sized from the measured bytes/row to a byte budget),
+  or nil when done. Adaptive page sizing is the only mode -- callers pass [[adaptive-sample-next-page]] (sampling, via
+  `.list`) or [[adaptive-query-next-page]] (query execution, via `getQueryResults`)."
   ([^TableResult page cancel-chan attempt-job-cancel-fn next-page]
    (reify
      clojure.lang.IReduceInit
@@ -845,7 +860,8 @@
         cols {:cols columns}
         results (eduction (map (fn [^FieldValueList row]
                                  (mapv parse-field-value row parsers)))
-                          (reducible-bigquery-results page cancel-chan attempt-job-cancel-fn))]
+                          (reducible-bigquery-results page cancel-chan attempt-job-cancel-fn
+                                                      (adaptive-query-next-page client job-id)))]
     (respond cols results)))
 
 (defn- execute-bigquery
