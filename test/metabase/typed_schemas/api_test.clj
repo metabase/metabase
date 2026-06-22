@@ -458,6 +458,12 @@
       (is (= #{(:id parent) (:id child)}
              (#'typed-schemas.api/collection-scope ["question-entity-id-1"]))))))
 
+(deftest question-collection-scope-rejects-missing-collection-ref-test
+  (mt/with-test-user :crowberto
+    (let [e (is (thrown? clojure.lang.ExceptionInfo
+                         (#'typed-schemas.api/collection-scope ["missing-entity-id-1"])))]
+      (is (= 404 (:status-code (ex-data e)))))))
+
 (deftest library-schema-includes-metric-mapped-tables-test
   (let [selected-table-ids (atom nil)]
     (with-redefs [typed-schemas.api/library-collection-scope
