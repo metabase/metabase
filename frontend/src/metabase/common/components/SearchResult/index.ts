@@ -1,3 +1,8 @@
-export { SearchResult } from "./SearchResult";
+export {
+  LoadingSection,
+  ResultNameSection,
+  ResultTitle,
+  SearchResult,
+  SearchResultContainer,
+} from "./SearchResult";
 export * from "./components";
-export * from "./SearchResult.styled";
