@@ -2522,7 +2522,7 @@
 
 (deftest ^:synchronized reducible-query-streams-large-result-set-test
   (testing "reducible-query streams large result sets via a server-side cursor (autoCommit=false)"
-    (mt/test-driver *driver*
+    (mt/test-driver :postgres
       ;; A 2.1-billion-row generate_series in the SELECT list streams row-by-row (no server-side materialization).
       ;; Pulling just the first few is fast ONLY if reducible-query streams (a cursor) and stops early; without
       ;; streaming the JDBC driver buffers the whole ResultSet (~2.1B rows) and OOMs at any heap size.
