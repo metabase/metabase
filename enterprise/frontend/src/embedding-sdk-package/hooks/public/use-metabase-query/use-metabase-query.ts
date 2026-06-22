@@ -23,8 +23,8 @@ import type {
   QuestionSchema,
   SchemaJavaScriptType,
   TableSchema,
-} from "../../../lib/public/data-schema";
-import { mapRowsToObjects } from "../../../lib/public/data-schema";
+} from "../data-schema";
+import { mapRowsToObjects } from "../data-schema";
 
 import { mapDatasetQueryData } from "./map-dataset-query-data";
 import { stableStringifyQuery } from "./stable-query-key";

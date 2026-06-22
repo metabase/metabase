@@ -13,7 +13,7 @@ import type {
   RowValue,
   SchemaColumn,
   SchemaJavaScriptType,
-} from "../../../lib/public/data-schema";
+} from "../data-schema";
 
 /**
  * Flat public kind union. Maps onto the backend's namespaced

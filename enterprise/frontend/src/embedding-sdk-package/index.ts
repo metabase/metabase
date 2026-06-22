@@ -200,7 +200,7 @@ export type {
   SchemaJavaScriptType,
   SchemaParameter,
   SchemaRow,
-} from "./lib/public/data-schema";
+} from "./hooks/public/data-schema";
 export type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
 
 export type {
