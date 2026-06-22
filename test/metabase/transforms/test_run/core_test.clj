@@ -34,6 +34,7 @@
    [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [metabase.transforms.test-run.core :as test-run.core]
+   [metabase.transforms.test-run.execute :as test-run.execute]
    [metabase.transforms.test-run.inputs :as inputs]
    [metabase.transforms.test-run.resolve :as resolve]
    [toucan2.core :as t2])
@@ -422,7 +423,7 @@
         ;; Since run-test! calls cleanup! which also queries qp, we test read-back-output directly
         ;; by constructing its call signature via the #'var accessor.
         (mt/with-driver :postgres
-          (#'test-run.core/read-back-output 999 :postgres {:schema "pub'lic" :table "mb_transform_temp_table_test_abc_xyz_out"})))
+          (#'test-run.execute/read-back-output 999 :postgres {:schema "pub'lic" :table "mb_transform_temp_table_test_abc_xyz_out"})))
       (is (= 1 (count @captured-queries))
           "exactly one query submitted")
       (let [sql (get-in (first @captured-queries) [:native :query])]
