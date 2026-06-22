@@ -5,6 +5,7 @@ import type {
   TableSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { FilterOperator as LibFilterOperator } from "metabase-lib/common";
+import type { BinningOptions } from "metabase-lib/query";
 
 type ID = string | number;
 
@@ -22,17 +23,12 @@ export type SqlParameterValuesRuntime = Record<
 
 export type ColumnReferenceRuntime = string | FieldSchema;
 
-export type BreakoutBinningRuntime =
-  | { strategy: "default" }
-  | { strategy: "num-bins"; "num-bins": number }
-  | { strategy: "bin-width"; "bin-width": number };
-
 export type BreakoutRuntime<TDimension = ColumnReferenceRuntime> =
   | TDimension
   | {
       dimension: TDimension;
       bucket?: string;
-      binning?: BreakoutBinningRuntime;
+      binning?: BinningOptions;
     };
 
 export type QuestionQueryRuntime = {

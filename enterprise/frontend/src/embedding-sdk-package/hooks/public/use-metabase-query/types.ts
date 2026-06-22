@@ -12,6 +12,7 @@ import type {
   SpecificDateFilterOperator,
   TimeFilterOperator,
 } from "metabase-lib/common";
+import type { BinningOptions } from "metabase-lib/query";
 import type { TemporalUnit } from "metabase-types/api";
 
 import type {
@@ -273,12 +274,6 @@ export type MetabaseDimensionFilterForOperator<
   values?: readonly unknown[];
 };
 
-type BreakoutBinning = {
-  strategy: "default" | "bin-width" | "num-bins";
-  "bin-width"?: number;
-  "num-bins"?: number;
-};
-
 type DateBucketDimension<TDimension> = TDimension extends unknown
   ? TDimension extends { jsType?: infer TJavaScriptType }
     ? "Date" extends NonNullable<TJavaScriptType>
@@ -296,19 +291,14 @@ type NonDateBucketDimension<TDimension> = TDimension extends unknown
   : never;
 
 /**
- * @notExported BreakoutBinning
+ * @notExported BinningOptions
  * @notExported DateBucketDimension
  */
 export type BreakoutOptionsArgument<TDimension> = [
   DateBucketDimension<TDimension>,
 ] extends [never]
-  ? {
-      binning?: BreakoutBinning;
-    }
-  : {
-      bucket?: TemporalUnit;
-      binning?: BreakoutBinning;
-    };
+  ? { binning?: BinningOptions }
+  : { bucket?: TemporalUnit; binning?: BinningOptions };
 
 type MetabaseBreakoutForDimension<TDimension> =
   | TDimension
@@ -320,18 +310,19 @@ type MetabaseBreakoutObjectForDimension<TDimension> =
       : {
           dimension: DateBucketDimension<TDimension>;
           bucket?: TemporalUnit;
-          binning?: BreakoutBinning;
+          binning?: BinningOptions;
         })
   | ([NonDateBucketDimension<TDimension>] extends [never]
       ? never
       : {
           dimension: NonDateBucketDimension<TDimension>;
-          binning?: BreakoutBinning;
+          binning?: BinningOptions;
         });
 
 /**
  * @notExported DimensionInput
  * @notExported DimensionValues
+ * @notExported BinningOptions
  * @notExported MetabaseBreakoutForDimension
  */
 export type MetabaseBreakout<TEntity = unknown> = [
@@ -342,11 +333,7 @@ export type MetabaseBreakout<TEntity = unknown> = [
       | {
           dimension: DimensionInput<TEntity>;
           bucket?: TemporalUnit;
-          binning?: {
-            strategy: "default" | "bin-width" | "num-bins";
-            "bin-width"?: number;
-            "num-bins"?: number;
-          };
+          binning?: BinningOptions;
         }
   : MetabaseBreakoutForDimension<DimensionValues<TEntity>>;
 

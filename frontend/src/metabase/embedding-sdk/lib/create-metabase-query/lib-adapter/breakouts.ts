@@ -1,4 +1,4 @@
-import type { ColumnMetadata, Query } from "metabase-lib";
+import type { BinningOptions, ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
@@ -69,11 +69,6 @@ const findTemporalBucket = (
     (bucket) =>
       Lib.displayInfo(query, stageIndex, bucket).shortName === targetUnit,
   ) ?? null;
-
-type BinningOptions =
-  | { strategy: "default" }
-  | { strategy: "num-bins"; "num-bins": number }
-  | { strategy: "bin-width"; "bin-width": number };
 
 function buildBinnedColumn(
   query: Query,
