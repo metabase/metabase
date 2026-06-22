@@ -2,7 +2,7 @@ import { useRouter } from "metabase/router";
 import type { EntityId } from "metabase-types/api/comments";
 
 interface UseCommentUrlOptions {
-  childTargetId: EntityId | null;
+  childTargetId?: EntityId | null;
   searchParams?: Record<string, string>;
 }
 
@@ -24,5 +24,5 @@ export function useCommentUrl({
     ...query,
     ...searchParams,
   }).toString();
-  return `${nextPathname}/comments/${childTargetId}${nextSearch ? `?${nextSearch}` : ""}`;
+  return `${nextPathname}/comments/${childTargetId ?? ""}${nextSearch ? `?${nextSearch}` : ""}`;
 }

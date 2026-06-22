@@ -20,37 +20,43 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-;;; TODO (Cam 10/28/25) -- don't capitalize constants https://guide.clojure.style/#naming-constants
 (def ^:private type->model
-  {"document" :model/Document})
+  {"document"    :model/Document
+   "exploration" :model/Exploration})
+
+(def ^:private TargetType
+  "Malli enum of valid comment target types, derived from [[type->model]]."
+  (into [:enum] (keys type->model)))
 
 (defn- entity-archived?
   "Check if the target entity is archived"
   [entity]
   (case (t2/model entity)
-    :model/Document (:archived entity)))
+    :model/Document    (:archived entity)
+    :model/Exploration (:archived entity)))
 
 (defn- urlpath-for
-  "Generate an URL to an entity"
+  "Generate a URL to an entity"
   [entity]
   (case (t2/model entity)
-    :model/Document (str "/document/" (:id entity))))
+    :model/Document    (str "/document/" (:id entity))
+    :model/Exploration (str "/question/research/" (:id entity))))
 
 ;;; schemas
 
 (def CommentContent
   "Validation for comment content - expects JSON"
   (mu/with-api-error-message
-   [:and
-    {:error/message "Comment content must be valid JSON"
-     :json-schema   {:type "object"}}
-    [:map]]
-   (deferred-tru "Comment content must be valid JSON.")))
+    [:and
+     {:error/message "Comment content must be valid JSON"
+      :json-schema   {:type "object"}}
+     [:map]]
+    (deferred-tru "Comment content must be valid JSON.")))
 
 (def CreateComment
   "Schema for creating a new comment"
   [:map
-   [:target_type [:enum "document"]]
+   [:target_type TargetType]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
    [:child_target_id {:optional true} [:maybe :string]]
@@ -99,7 +105,7 @@
   "Get comments for an entity"
   [_route-params
    {:keys [target_type target_id]} :- [:map
-                                       [:target_type [:enum "document"]]
+                                       [:target_type TargetType]
                                        [:target_id ms/PositiveInt]]
    _body
    req]

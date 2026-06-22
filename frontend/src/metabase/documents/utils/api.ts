@@ -2,17 +2,14 @@ import type { SkipToken } from "@reduxjs/toolkit/query";
 
 import { skipToken } from "metabase/api";
 import { isWithinIframe } from "metabase/utils/iframe";
-import type { Document, ListCommentsRequest } from "metabase-types/api";
+import type { CommentTarget, ListCommentsRequest } from "metabase-types/api";
 
 export function getListCommentsQuery(
-  document: Document | null | undefined,
+  target: CommentTarget | null | undefined,
 ): ListCommentsRequest | SkipToken {
-  if (!document || isWithinIframe()) {
+  if (!target || isWithinIframe()) {
     return skipToken;
   }
 
-  return {
-    target_type: "document",
-    target_id: document.id,
-  };
+  return target;
 }

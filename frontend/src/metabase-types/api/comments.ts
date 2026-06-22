@@ -3,7 +3,7 @@ import type { BaseUser, User, UserId } from "./user";
 
 export type CommentId = number;
 
-export type CommentEntityType = "document";
+export type CommentEntityType = "document" | "exploration";
 
 export type EntityId = string | number;
 
@@ -39,6 +39,11 @@ export type MentionableUser = Pick<
   User,
   "id" | "common_name" | "first_name" | "last_name"
 >;
+
+export interface CommentTarget {
+  target_id: EntityId;
+  target_type: CommentEntityType;
+}
 
 /** request types below */
 
