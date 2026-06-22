@@ -2,7 +2,6 @@ import type {
   Aggregable,
   AggregationClause,
   ColumnMetadata,
-  MetricMetadata,
   Query,
 } from "metabase-lib";
 import * as Lib from "metabase-lib";
@@ -70,17 +69,12 @@ export function applyMetricAggregation(
   query: Query,
   metricId: number,
 ): Query | null {
-  const metricMetadata = findLibMetric(query, metricId);
+  const metricMetadata = Lib.metricMetadata(query, metricId);
 
   return metricMetadata
     ? Lib.aggregate(query, STAGE_INDEX, metricMetadata)
     : null;
 }
-
-export const findLibMetric = (
-  query: Query,
-  metricId: number,
-): MetricMetadata | null => Lib.metricMetadata(query, metricId);
 
 function buildLibAggregation(
   query: Query,
