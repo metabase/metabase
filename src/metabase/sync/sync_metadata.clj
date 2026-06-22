@@ -18,7 +18,6 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.table :as table]))
 
