@@ -53,7 +53,7 @@ export type MetricQueryInput = {
   questionId?: never;
   table?: never;
   tableId?: never;
-  metric?: MetricReferenceInput;
+  metric?: MetricReference;
   metricId?: number;
   filters?: readonly unknown[];
   measures?: readonly unknown[];
@@ -88,7 +88,7 @@ export type FieldAggregationInput<TDimension = unknown> = {
   dimension: TDimension;
 };
 
-export type MetricReferenceInput = Pick<MetricSchema, "dimensions"> & {
+export type MetricReference = Pick<MetricSchema, "dimensions"> & {
   id: number;
   databaseId?: number;
   sourceTableId?: number;

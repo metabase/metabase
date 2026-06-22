@@ -29,23 +29,23 @@ import {
 } from "./metadata";
 import { normalizeDatasetQuery } from "./normalization";
 
-export function buildTableDatasetQueryFromSchema(
-  query: TableQueryInput,
+export function buildTableDatasetQueryFromInput(
+  input: TableQueryInput,
   table: TableSchema,
 ): StructuredDatasetQuery | null {
-  const databaseId = getTableDatabaseIdFromQuery(query);
-  const tableId = getTableIdFromQuery(query);
+  const databaseId = getTableDatabaseIdFromQuery(input);
+  const tableId = getTableIdFromQuery(input);
 
   if (databaseId == null || tableId == null) {
     return null;
   }
 
-  const metadata = createTableMetadata(table, Number(databaseId), query);
+  const metadata = createTableMetadata(table, Number(databaseId), input);
   let libQuery = createLibQuery(metadata, Number(databaseId), Number(tableId));
 
   const queryWithFilters = applyFilters(
     libQuery,
-    query.filters,
+    input.filters,
     buildLibTableFilter,
   );
 
@@ -57,8 +57,8 @@ export function buildTableDatasetQueryFromSchema(
 
   const queryWithAggregations = applyAggregations(
     libQuery,
-    query.aggregations ?? query.measures,
-    { addDefaultCount: Boolean(query.breakouts?.length) },
+    input.aggregations ?? input.measures,
+    { addDefaultCount: Boolean(input.breakouts?.length) },
   );
 
   if (!queryWithAggregations) {
@@ -67,7 +67,7 @@ export function buildTableDatasetQueryFromSchema(
 
   libQuery = queryWithAggregations;
 
-  const queryWithBreakouts = applyBreakouts(libQuery, query.breakouts);
+  const queryWithBreakouts = applyBreakouts(libQuery, input.breakouts);
 
   if (!queryWithBreakouts) {
     return null;
@@ -75,22 +75,22 @@ export function buildTableDatasetQueryFromSchema(
 
   return normalizeDatasetQuery(
     Lib.toLegacyQuery(queryWithBreakouts) as StructuredDatasetQuery,
-    query.breakouts,
+    input.breakouts,
   );
 }
 
-export function buildMetricDatasetQueryFromSchema(
-  query: MetricQueryInput,
+export function buildMetricDatasetQueryFromInput(
+  input: MetricQueryInput,
 ): StructuredDatasetQuery | null {
-  const metricId = getMetricIdFromQuery(query);
-  const databaseId = getMetricDatabaseIdFromQuery(query);
-  const sourceId = getMetricSourceIdFromQuery(query);
+  const metricId = getMetricIdFromQuery(input);
+  const databaseId = getMetricDatabaseIdFromQuery(input);
+  const sourceId = getMetricSourceIdFromQuery(input);
 
   if (metricId == null || databaseId == null || sourceId == null) {
     return null;
   }
 
-  const metadata = createMetricMetadata(query, Number(databaseId));
+  const metadata = createMetricMetadata(input, Number(databaseId));
 
   let libQuery = createLibQuery(metadata, Number(databaseId), sourceId);
 
@@ -102,7 +102,7 @@ export function buildMetricDatasetQueryFromSchema(
 
   libQuery = queryWithMetric;
 
-  const queryWithMeasures = applyMetricMeasures(libQuery, query.measures);
+  const queryWithMeasures = applyMetricMeasures(libQuery, input.measures);
 
   if (!queryWithMeasures) {
     return null;
@@ -112,7 +112,7 @@ export function buildMetricDatasetQueryFromSchema(
 
   const queryWithFilters = applyFilters(
     libQuery,
-    query.filters,
+    input.filters,
     buildLibMetricDatasetFilter,
   );
 
@@ -122,7 +122,7 @@ export function buildMetricDatasetQueryFromSchema(
 
   libQuery = queryWithFilters;
 
-  const queryWithBreakouts = applyBreakouts(libQuery, query.breakouts);
+  const queryWithBreakouts = applyBreakouts(libQuery, input.breakouts);
 
   if (!queryWithBreakouts) {
     return null;
@@ -130,6 +130,6 @@ export function buildMetricDatasetQueryFromSchema(
 
   return normalizeDatasetQuery(
     Lib.toLegacyQuery(queryWithBreakouts) as StructuredDatasetQuery,
-    query.breakouts,
+    input.breakouts,
   );
 }
