@@ -17,3 +17,8 @@ import "./polyfill/use-sync-external-store";
  */
 import "html2canvas-pro";
 import "jspdf";
+
+// react-virtualized powers the pivot table grid and is lazily imported in the
+// main app. The SDK bundle can't fetch on-demand chunks at runtime, so force the
+// pivot table module to be included eagerly here.
+import "metabase/visualizations/visualizations/PivotTable/PivotTableInner";
