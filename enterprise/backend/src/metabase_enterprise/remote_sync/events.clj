@@ -61,10 +61,7 @@
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
 (defn- resolve-status
-  "Suppresses a no-op 'update': returns \"synced\" when `status` is \"update\" and the entity's current
-   serialized form is unchanged from the baseline `content_hash` recorded on `existing`. Otherwise returns
-   `status` unchanged. This keeps the dirty indicator tracking the serialized content, not the mere arrival
-   of an update event (e.g. editing a transform's schedule, or any no-op re-save, leaves it synced)."
+  "Suppresses a no-op 'update' based on status and content_hash, otherwise keep status unchanged."
   [model-type model-id status existing]
   (cond
     (not= "update" status)
