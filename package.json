@@ -54,7 +54,6 @@
     "@snowplow/browser-tracker": "3.2.0",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.2",
-    "@tippyjs/react": "^4.2.6",
     "@tiptap/core": "^3.2.0",
     "@tiptap/extension-blockquote": "^3.15.3",
     "@tiptap/extension-bold": "^3.15.3",
@@ -174,7 +173,6 @@
     "stream-browserify": "^3.0.0",
     "tether": "^1.2.0",
     "tinykeys": "^3.0.0",
-    "tippy.js": "^6.3.7",
     "ts-pattern": "^5.9.0",
     "ttag": "1.7.21",
     "typescript": "^6.0.3",
@@ -566,5 +564,5 @@
   "browserslist": [
     "defaults"
   ],
-  "packageManager": "bun@1.3.7"
+  "packageManager": "bun@1.3.14"
 }

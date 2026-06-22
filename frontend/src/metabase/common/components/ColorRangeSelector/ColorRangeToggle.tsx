@@ -32,7 +32,7 @@ export const ColorRangeToggle = ({
       <ActionIcon
         onClick={onToggleClick}
         variant="outline"
-        color="border"
+        color="border-neutral"
         p="sm"
         size="lg"
       >

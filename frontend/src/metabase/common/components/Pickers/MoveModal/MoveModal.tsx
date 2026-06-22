@@ -6,12 +6,12 @@ import type {
   MoveCollectionDestination,
   MoveDestination,
   OnMoveWithOneItem,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import {
   canPlaceEntityInCollection,
   canPlaceEntityInCollectionOrDescendants,
   isItemCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import {
   EntityPickerModal,
   isInDbTree,

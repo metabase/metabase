@@ -1,4 +1,4 @@
-import { coerceCollectionId } from "metabase/collections/utils";
+import { coerceCollectionId } from "metabase/common/collections/utils";
 import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";

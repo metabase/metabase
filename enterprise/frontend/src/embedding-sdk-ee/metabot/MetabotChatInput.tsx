@@ -28,7 +28,7 @@ export function MetabotChatInput() {
       px="md"
       align="center"
       justify="center"
-      style={{ borderTop: "1px solid var(--mb-color-border)" }}
+      style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
     >
       <Flex justify="center" align="center" style={{ flexShrink: 0 }}>
         {metabot.isDoingScience ? (

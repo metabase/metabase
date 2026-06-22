@@ -111,11 +111,7 @@ export const OptionPopover = ({
           <Icon name="list" size={20} tooltip={t`Change options`} />
         </UnstyledButton>
       </Popover.Target>
-      <Popover.Dropdown
-        // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={close}
-        maw={400}
-      >
+      <Popover.Dropdown maw={400}>
         <OptionEditorContainer>
           <TextArea
             value={text}

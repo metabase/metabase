@@ -133,7 +133,7 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get(".leaflet-marker-icon").eq(2).as("blastoiseMarker");
     cy.get("@blastoiseMarker").trigger("mousemove");
-    H.popover().findByText("Blastoise").should("be.visible");
+    H.tooltip().findByText("Blastoise").should("be.visible");
   });
 
   it("should preserve zoom and pan after resize (metabase#11211)", () => {
@@ -161,32 +161,19 @@ describe("scenarios > visualizations > maps", () => {
 
     zoomIn(4);
 
-    cy.get(".leaflet-marker-icon")
-      .first()
-      .then(($marker) => {
-        const posAfterZoom = $marker[0].getBoundingClientRect();
+    // Compare two settled marker positions instead of racing leaflet's zoom/resize
+    // animation with a fixed cy.wait() — mid-animation reads are the flake (metabase#11211).
+    getSettledMarkerPosition().then((posAfterZoom) => {
+      // 1px resize should not reset zoom
+      cy.viewport(801, 600);
 
-        // 1px resize should not reset zoom
-        cy.viewport(801, 600);
-        cy.wait(300);
-
-        cy.get(".leaflet-marker-icon")
-          .first()
-          .then(($markerAfterResize) => {
-            const posAfterResize =
-              $markerAfterResize[0].getBoundingClientRect();
-            // Position should be nearly identical (within 5px tolerance)
-            const tolerance = 5;
-            expect(posAfterResize.left).to.be.closeTo(
-              posAfterZoom.left,
-              tolerance,
-            );
-            expect(posAfterResize.top).to.be.closeTo(
-              posAfterZoom.top,
-              tolerance,
-            );
-          });
+      getSettledMarkerPosition().then((posAfterResize) => {
+        // Position should be nearly identical (within 5px tolerance)
+        const tolerance = 5;
+        expect(posAfterResize.left).to.be.closeTo(posAfterZoom.left, tolerance);
+        expect(posAfterResize.top).to.be.closeTo(posAfterZoom.top, tolerance);
       });
+    });
   });
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
@@ -523,4 +510,23 @@ function zoomIn(times) {
     cy.get(".leaflet-control-zoom-in").click();
     cy.wait(200);
   }
+}
+
+// Resolve the first marker's rect only once its position stops changing between polls,
+// so we read a settled position instead of racing leaflet's animation (metabase#11211).
+function getSettledMarkerPosition() {
+  let previous;
+  return cy
+    .get(".leaflet-marker-icon")
+    .first()
+    .should(($marker) => {
+      const rect = $marker[0].getBoundingClientRect();
+      const settled =
+        previous != null &&
+        Math.abs(rect.left - previous.left) < 0.5 &&
+        Math.abs(rect.top - previous.top) < 0.5;
+      previous = rect;
+      expect(settled, "leaflet marker position should be settled").to.be.true;
+    })
+    .then(() => previous);
 }

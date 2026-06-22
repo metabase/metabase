@@ -682,6 +682,18 @@
    :api  #{}
    :uses :any}
 
+  curated-search
+  {:team "Metabot"
+   :api  #{metabase.curated-search.api
+           metabase.curated-search.core}
+   :uses #{api
+           models
+           premium-features
+           request
+           util}
+   :model-exports #{:model/CuratedSearchEntry}
+   :model-imports #{:model/Card}}
+
   dashboards
   {:team "UX West"
    :api  #{metabase.dashboards.autoplace
@@ -1263,6 +1275,7 @@
               channel
               collections
               config
+              curated-search
               documents
               driver
               interestingness
@@ -1447,6 +1460,7 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/TaskHistory
+                    :model/TaskRun
                     :model/User}}
 
   oauth-server
@@ -1828,6 +1842,7 @@
            premium-features
            queries
            query-permissions
+           request
            server
            settings
            system
@@ -2237,7 +2252,7 @@
            task
            tracing
            util}
-   :model-exports #{:model/TaskHistory}
+   :model-exports #{:model/TaskHistory :model/TaskRun}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
   tenants
@@ -2951,6 +2966,15 @@
    :api  #{metabase-enterprise.core.init}
    :uses :any}
 
+  enterprise/curated-search
+  {:team "Metabot"
+   :api  #{metabase-enterprise.curated-search.init}
+   :uses #{premium-features
+           task
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/CuratedSearchEntry}}
+
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
@@ -3394,6 +3418,8 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.api
            metabase-enterprise.semantic-search.core
+           metabase-enterprise.semantic-search.db.datasource
+           metabase-enterprise.semantic-search.embedding
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics

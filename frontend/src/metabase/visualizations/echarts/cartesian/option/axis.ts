@@ -31,17 +31,6 @@ export const getAxisNameGap = (ticksWidth: number): number => {
   return ticksWidth + CHART_STYLE.axisNameMargin;
 };
 
-const getYAxisNameGap = (
-  ticksWidth: number,
-  { theme }: RenderingContext,
-  hasCurrencyTicks: boolean,
-): number => {
-  return (
-    getAxisNameGap(ticksWidth) +
-    (hasCurrencyTicks ? theme.cartesian.label.fontSize / 2 : 0)
-  );
-};
-
 const getCustomAxisRange = (
   customMin: number | null,
   customMax: number | null,
@@ -193,7 +182,9 @@ const getCommonDimensionAxisOptions = (
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
       lineStyle: {
-        color: getColor(isSplitPanels ? "border-strong" : "border"),
+        color: getColor(
+          isSplitPanels ? "border-neutral-strong" : "border-neutral",
+        ),
       },
     },
   };
@@ -370,13 +361,7 @@ export const buildMetricAxis = (
   renderingContext: RenderingContext,
 ): YAXisOption => {
   const shouldFlipAxisName = position === "right";
-  const hasCurrencyTicks =
-    settings.column?.(axisModel.column).number_style === "currency";
-  const nameGap = getYAxisNameGap(
-    ticksWidth,
-    renderingContext,
-    hasCurrencyTicks,
-  );
+  const nameGap = getAxisNameGap(ticksWidth);
 
   const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
 

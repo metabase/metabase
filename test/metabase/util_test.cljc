@@ -538,13 +538,15 @@
                  :b [:c :d]
                  :c nil
                  :d [:e]
-                 :e nil}]
+                 :e nil}
+          neighbors-fn #(zipmap (get graph %) (repeat #{%}))]
       (is (= {:a nil
               :b #{:a}
               :c #{:b}
               :d #{:a :b}
               :e #{:d}}
-             (u/traverse [:a] #(zipmap (get graph %) (repeat #{%}))))))))
+             (u/traverse [:a] neighbors-fn)))
+      (is (= {} (u/traverse [] neighbors-fn))))))
 
 (deftest ^:parallel round-to-decimals-test
   (are [decimal-place expected] (= expected

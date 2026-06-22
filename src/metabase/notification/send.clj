@@ -450,18 +450,20 @@
    - Dashboard notifications (subscriptions): run_type :subscription, entity_type :dashboard
    - Returns nil for other notification types or if entity_id would be nil.
    Handles both hydrated notifications (with :payload) and non-hydrated (with :payload_id)."
-  [{:keys [payload_type payload payload_id]}]
+  [{:keys [id payload_type payload payload_id]}]
   (case payload_type
     :notification/card      (when-let [card-id (or (:card_id payload)
                                                    (some->> payload_id
                                                             (t2/select-one-fn :card_id :model/NotificationCard :id)))]
-                              {:run_type    :alert
-                               :entity_type :card
-                               :entity_id   card-id})
+                              {:run_type        :alert
+                               :entity_type     :card
+                               :entity_id       card-id
+                               :notification_id id})
     :notification/dashboard (when-let [dashboard-id (:dashboard_id payload)]
-                              {:run_type    :subscription
-                               :entity_type :dashboard
-                               :entity_id   dashboard-id})
+                              {:run_type        :subscription
+                               :entity_type     :dashboard
+                               :entity_id       dashboard-id
+                               :notification_id id})
     nil))
 
 (mu/defn send-notification!
