@@ -2534,7 +2534,7 @@
     (mt/test-driver *driver*
       ;; A 2.1-billion-row generate_series in the SELECT list streams row-by-row (no server-side materialization).
       ;; Pulling just the first few is fast ONLY if reducible-query streams (a cursor) and stops early; without
-      ;; streaming the JDBC driver buffers the whole ResultSet (~2.1B rows) and OOMs at any heap size (#60733).
+      ;; streaming the JDBC driver buffers the whole ResultSet (~2.1B rows) and OOMs at any heap size.
       (let [n      Integer/MAX_VALUE
             result (sql-jdbc.execute/reducible-query
                     (mt/db) [(format "SELECT generate_series(1, %d) AS i" n)])]
