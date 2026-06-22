@@ -46,7 +46,7 @@ export function SummarizeSidebar({
     <SidebarContent
       className={cx(SummarizeSidebarS.SidebarView, className)}
       title={t`Summarize by`}
-      color={color("core-summarize")}
+      color={color("core-brand")}
       onDone={handleDoneClick}
     >
       <SummarizeAggregationItemList
