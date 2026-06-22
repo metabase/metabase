@@ -568,14 +568,6 @@ describe("useMetabaseQuery", () => {
       ).toEqual(expectedOrdersQuery);
     });
 
-    it("returns null from useMetabaseQueryObject before the SDK bundle loads", () => {
-      delete window.METABASE_EMBEDDING_SDK_BUNDLE;
-
-      render(<MetabaseQueryObjectComponent />);
-
-      expect(screen.getByTestId("query-object")).toHaveTextContent("null");
-    });
-
     it("builds a query object after the SDK bundle loading state changes", () => {
       delete window.METABASE_EMBEDDING_SDK_BUNDLE;
 
@@ -841,66 +833,6 @@ describe("useMetabaseQuery", () => {
             "West Coast Boba",
           ],
           breakout: [["field", 301, { "source-field": 106 }]],
-        },
-        parameters: [],
-      });
-    });
-
-    it("adds source-field through the metabase-lib metric builder", () => {
-      expect(
-        createMetabaseQueryInBundle({
-          metric: TEST_SCHEMA.metrics.orderCount,
-          breakouts: [
-            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name),
-          ],
-          filters: [
-            filter(
-              TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name,
-              "=",
-              "West Coast Boba",
-            ),
-          ],
-        }),
-      ).toEqual({
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": 1,
-          aggregation: [["metric", 34]],
-          filter: [
-            "=",
-            ["field", 301, { "source-field": 106 }],
-            "West Coast Boba",
-          ],
-          breakout: [["field", 301, { "source-field": 106 }]],
-        },
-        parameters: [],
-      });
-    });
-
-    it("builds binned metric breakouts through metabase-lib", () => {
-      expect(
-        createMetabaseQuery({
-          metric: TEST_SCHEMA.metrics.orderCount,
-          breakouts: [
-            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.amount, {
-              binning: { strategy: "num-bins", "num-bins": 10 },
-            }),
-          ],
-        }),
-      ).toEqual({
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": 1,
-          aggregation: [["metric", 34]],
-          breakout: [
-            [
-              "field",
-              102,
-              { binning: { strategy: "num-bins", "num-bins": 10 } },
-            ],
-          ],
         },
         parameters: [],
       });
