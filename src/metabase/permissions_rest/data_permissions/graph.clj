@@ -226,16 +226,26 @@
                                        [:not-in :db_id {:select [:id]
                                                         :from   [:metabase_database]
                                                         :where  [:not= :router_database_id nil]}]]})
+        ;; A given (group, db, perm-type) should have *either* a single DB-level row *or* table-level rows, never
+        ;; both. Instances upgraded from older versions can carry inconsistent state where both exist
+        ;; (see UXW-2868 / #68792), which previously crashed with a ClassCastException or silently dropped data
+        ;; depending on row order. To be robust, build the table-level (granular) entries first, and apply a DB-level
+        ;; row only when no granular map already exists. (i.e. specific and granular wins over broad)
+        {db-level-perms true, table-level-perms false} (group-by (comp nil? :table-id) data-perms)
+        granular-perms   (reduce
+                          (fn [graph {:keys [group-id value db-id schema table-id]
+                                      perm-type :type}]
+                            (assoc-in graph [group-id db-id perm-type (or schema "") table-id] value))
+                          {}
+                          table-level-perms)
         raw-graph  (reduce
-                    (fn [graph {:keys [group-id value db-id schema table-id]
+                    (fn [graph {:keys [group-id value db-id]
                                 perm-type :type}]
-                      (let [schema (or schema "")
-                            path   (if table-id
-                                     [group-id db-id perm-type schema table-id]
-                                     [group-id db-id perm-type])]
-                        (assoc-in graph path value)))
-                    {}
-                    data-perms)]
+                      (cond-> graph
+                        (not (map? (get-in graph [group-id db-id perm-type])))
+                        (assoc-in [group-id db-id perm-type] value)))
+                    granular-perms
+                    db-level-perms)]
     (update-vals raw-graph (fn [db-id->perms]
                              (update-vals db-id->perms collapse-uniform-view-data)))))
 

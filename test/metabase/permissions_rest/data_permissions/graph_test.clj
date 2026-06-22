@@ -554,6 +554,34 @@
                 (is (= nil
                        (perms)))))))))))
 
+(deftest data-permissions-graph-tolerates-mixed-db-and-table-rows-test
+  (testing "gracefully handle corrupt state from old versions (UXW-2868)"
+    (testing "a (group, db, perm-type) has both a DB-level row and table-level rows"
+      (mt/with-premium-features #{:advanced-permissions :sandboxes}
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/Database         {db-id :id}    {}
+                       :model/Table            {t1 :id}       {:db_id db-id :schema "public"}
+                       :model/Table            {t2 :id}       {:db_id db-id :schema "public"}]
+          ;; Start from a clean slate for this group, then craft the inconsistent state: a DB-level
+          ;; :perms/view-data row coexisting with table-level :perms/view-data rows.
+          (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id)
+          (t2/insert! :model/DataPermissions
+                      (for [[schema table value] [[nil nil :unrestricted]
+                                                  ["public" t1 :unrestricted]
+                                                  ["public" t2 :blocked]]]
+                        {:group_id    group-id
+                         :db_id       db-id
+                         :perm_type   :perms/view-data
+                         :perm_value  value
+                         :schema_name schema
+                         :table_id    table}))
+          ;; Table-level (granular) rows win over the stray DB-level row, and reading never throws.
+          (is (= {group-id
+                  {db-id
+                   {:perms/view-data {"public" {t1 :unrestricted
+                                                t2 :blocked}}}}}
+                 (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id))))))))
+
 (deftest no-op-partial-graph-updates
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
     (mt/with-additional-premium-features #{:advanced-permissions :sandboxes}
