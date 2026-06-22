@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type {
   Card,
   Dashboard,
@@ -7,9 +9,30 @@ import type {
 } from "metabase-types/api";
 
 export const isDbModifiable = (
-  database: { id?: DatabaseId; is_attached_dwh?: boolean } | undefined,
+  database:
+    | { id?: DatabaseId; is_attached_dwh?: boolean; is_sample?: boolean }
+    | undefined,
 ) => {
-  return !(database?.id != null && database.is_attached_dwh);
+  return !(
+    database?.id != null &&
+    (database.is_attached_dwh || database.is_sample)
+  );
+};
+
+/**
+ * Message explaining why a non-modifiable database cannot be edited. Only
+ * meaningful when [[isDbModifiable]] returns false for the same database.
+ * The cloud-managed message names Metabase Cloud literally (not the
+ * whitelabeled name) so admins can tell platform-managed databases apart from
+ * ones managed by their own whitelabeled instance.
+ */
+export const getDbNotModifiableMessage = (
+  database: { is_sample?: boolean } | undefined,
+) => {
+  return database?.is_sample
+    ? t`The sample database cannot be edited.`
+    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only: must name Metabase Cloud to distinguish it from a whitelabeled instance
+      t`This database is managed by Metabase Cloud and cannot be modified.`;
 };
 
 export const hasFeature = (

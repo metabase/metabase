@@ -1924,11 +1924,18 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{plugins
+   :uses #{config
+           models
+           plugins
            settings
            sync
            util}
-   :model-imports #{:model/Database}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   search
   {:team "UX West"

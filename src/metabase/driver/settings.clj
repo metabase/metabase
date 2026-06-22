@@ -145,6 +145,12 @@
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
 
+(def ^:dynamic *allow-testing-sqlite-connections*
+  "Whether to allow testing new SQLite connections. Normally disabled on hosted Metabase, which effectively prevents
+  users from creating new SQLite databases from the API. Internal flows that need to test connections to the bundled
+  Sample Database (sync, schema refresh, fingerprinting, etc.) bind this to `true`."
+  false)
+
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
       (long (/ *query-timeout-ms* 1000))))
