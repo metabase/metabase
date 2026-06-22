@@ -1159,24 +1159,23 @@
                 (u/traverse targets #(serdes/required (first %) (second %))))))
 
 (defn export-targets
-  "Resolves what a full export would serialize: returns a map of {model-name [id ...]} (the export root
-   targets plus their transitive `serdes/descendants`/`required` closure), or nil when there is no
-   remote-syncable content. Shared by `extract-entities-for-export` (which serializes the entities) and the
-   export path (which also needs the local primary keys to record file_path/content_hash)."
+  "Resolves what a full export would serialize: a map of {model-name [id ...]} (the export root targets plus
+   their transitive `serdes/descendants`/`required` closure), or `{}` when there is no remote-syncable
+   content. Shared by `extract-entities-for-export` (which serializes the entities) and the export path
+   (which also needs the local primary keys to record file_path/content_hash)."
   []
-  (let [specs (enabled-specs)
-        ;; Collect all root targets by iterating over enabled specs
+  (let [specs        (enabled-specs)
         root-targets (into []
                            (comp (map val)
                                  (mapcat query-export-roots))
-                           specs)]
-    (when-let [targets (resolve-targets
-                        root-targets
-                        {:include-field-values false
-                         :include-database-secrets false
-                         :continue-on-error false
-                         :skip-archived true})]
-      (u/group-by first second (keys targets)))))
+                           specs)
+        targets      (resolve-targets
+                      root-targets
+                      {:include-field-values false
+                       :include-database-secrets false
+                       :continue-on-error false
+                       :skip-archived true})]
+    (u/group-by first second (keys targets))))
 
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
@@ -1192,7 +1191,7 @@
    2. Are currently enabled (based on :enabled? field)
    3. Are in one of the provided collections (or descendants)"
   []
-  (when-let [targets (export-targets)]
+  (when-let [targets (not-empty (export-targets))]
     (eduction (map (fn [[model ids]]
                      (serdes/extract-all model {:where [:in :id ids]
                                                 :skip-archived true})))
