@@ -4,8 +4,6 @@ import type {
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
-export const STAGE_INDEX = 0;
-
 const JAVASCRIPT_TYPE_BASE_TYPES: Partial<
   Record<SchemaJavaScriptType, string>
 > = { number: TYPE.Float, boolean: TYPE.Boolean, Date: TYPE.DateTime };

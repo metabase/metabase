@@ -5,7 +5,8 @@ import type { TemporalUnit } from "metabase-types/api";
 import { normalizeBreakout } from "../query-utils";
 
 import { findLibColumn } from "./column";
-import { STAGE_INDEX } from "./query-utils";
+
+const STAGE_INDEX = 0;
 
 export function applyBreakouts(
   query: Query,

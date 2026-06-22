@@ -5,11 +5,9 @@ import * as Lib from "metabase-lib";
 import type { ColumnReferenceInput } from "../input-types";
 import { getFieldId } from "../query-utils";
 
-import {
-  STAGE_INDEX,
-  getFieldBaseType,
-  getFieldEffectiveType,
-} from "./query-utils";
+import { getFieldBaseType, getFieldEffectiveType } from "./query-utils";
+
+const STAGE_INDEX = 0;
 
 export function findLibColumn(
   query: Query,

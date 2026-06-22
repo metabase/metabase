@@ -18,7 +18,9 @@ import type { DimensionFilterInput } from "../input-types";
 import { isColumnReference } from "../query-utils";
 
 import { findLibColumn } from "./column";
-import { STAGE_INDEX, fieldHasTime } from "./query-utils";
+import { fieldHasTime } from "./query-utils";
+
+const STAGE_INDEX = 0;
 
 type FilterBuilder = (
   query: Query,
