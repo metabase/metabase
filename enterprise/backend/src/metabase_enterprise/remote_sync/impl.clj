@@ -731,22 +731,24 @@
   streams without realizing all entities (or their serialized content) at once. Rows whose entity no longer
   exists are skipped.
 
-  Built as a single comp'd eduction over a seqable source (the model groups) — not a nested eduction over the
-  reduce-only `extract-query` — so it can be consumed via either reduce or seq."
+  Two separate mapcats (model -> id-chunks -> entities) over a seqable source, rather than a nested eduction:
+  the second `cat` reduces the reduce-only `extract-query` instead of seq-ing it, so the result can be
+  consumed via either reduce or seq."
   [f rows]
-  (eduction
-   (comp
-    (mapcat (fn [[model-type model-rows]]
-              (let [id->row (into {} (map (juxt :model_id identity)) model-rows)]
-                (map (fn [id-chunk] [model-type id->row id-chunk])
-                     (partition-all content-hash-batch-size (mapv :model_id model-rows))))))
-    (mapcat (fn [[model-type id->row id-chunk]]
-              (let [opts {:where [:in :id (vec id-chunk)] :skip-archived true}]
-                (eduction (keep (fn [instance]
-                                  (when-let [row (id->row (:id instance))]
-                                    (f row (serdes/extract-one model-type opts instance)))))
-                          (serdes/extract-query model-type opts))))))
-   (group-by :model_type rows)))
+  (let [key->row (into {} (map (juxt (juxt :model_type :model_id) identity)) rows)]
+    (eduction
+     ;; expand each model into bounded id-chunks (keeps each extract-query IN within DB param limits)
+     (mapcat (fn [[model-type model-rows]]
+               (map (fn [id-chunk] [model-type id-chunk])
+                    (partition-all content-hash-batch-size (mapv :model_id model-rows)))))
+     ;; stream each chunk's query through f, extracting in-stream (ResultSet open)
+     (mapcat (fn [[model-type id-chunk]]
+               (let [opts {:where [:in :id (vec id-chunk)] :skip-archived true}]
+                 (eduction (keep (fn [instance]
+                                   (when-let [row (key->row [model-type (:id instance)])]
+                                     (f row (serdes/extract-one model-type opts instance)))))
+                           (serdes/extract-query model-type opts)))))
+     (group-by :model_type rows))))
 
 (defn- dep-writes
   "Pass-1 validation of the untracked dependency entities `dep-ids` (a set of `[model-type id]`): extracts
