@@ -43,15 +43,6 @@
   :default        []
   :encryption     :no)
 
-(defsetting sync-max-fields-per-table
-  "Maximum number of fields per table to sync as :model/Field rows. If a table's warehouse schema has more fields than
-  this, only the first (by name) are synced and the rest are skipped -- keeps document databases with very large or
-  dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields."
-  :visibility :internal
-  :export?    true
-  :type       :integer
-  :default    10000)
-
 (defsetting scan-max-fields-per-table
   "Maximum number of fields per table to scan for field values. If a table has more active fields than this, the rest
   are skipped when scanning field values -- scanning that many fields would load them all into memory and, on non-SQL
