@@ -14,7 +14,8 @@ import {
 import type { FieldAggregationInput } from "../input-types";
 import { isColumnReference } from "../query-utils";
 
-import { STAGE_INDEX, findLibColumn } from "./query-utils";
+import { findLibColumn } from "./column";
+import { STAGE_INDEX } from "./query-utils";
 
 export function applyAggregations(
   query: Query,

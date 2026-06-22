@@ -2,12 +2,7 @@ import type {
   FieldSchema,
   SchemaJavaScriptType,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
-import type { ColumnMetadata, Query } from "metabase-lib";
-import * as Lib from "metabase-lib";
 import { TYPE } from "metabase-lib/v1/types/constants";
-
-import type { ColumnReferenceInput } from "../input-types";
-import { getFieldId } from "../query-utils";
 
 export const STAGE_INDEX = 0;
 
@@ -34,44 +29,4 @@ export function fieldHasTime(field: FieldSchema): boolean {
   const schemaType = field.effectiveType ?? field.baseType;
 
   return typeof schemaType === "string" && schemaType.includes(TYPE.DateTime);
-}
-
-export function findLibColumn(
-  query: Query,
-  field: ColumnReferenceInput,
-  options: Record<string, unknown> = {},
-): ColumnMetadata | null {
-  if (typeof field === "string") {
-    return (
-      Lib.filterableColumns(query, STAGE_INDEX).find(
-        (column) => Lib.displayInfo(query, STAGE_INDEX, column).name === field,
-      ) ?? null
-    );
-  }
-
-  const fieldId = getFieldId(field);
-  if (fieldId != null) {
-    const sourceFieldId = field.sourceFieldId;
-    const fieldOptions =
-      sourceFieldId == null
-        ? options
-        : { ...options, "source-field": sourceFieldId };
-
-    if (Object.keys(fieldOptions).length > 0) {
-      return Lib.fromLegacyColumn(query, STAGE_INDEX, {
-        id: fieldId,
-        name: field.name,
-        display_name: field.displayName ?? field.name,
-        source: "fields",
-        fk_field_id: sourceFieldId,
-        base_type: getFieldBaseType(field),
-        effective_type: getFieldEffectiveType(field),
-        field_ref: ["field", fieldId, fieldOptions],
-      });
-    }
-
-    return Lib.fieldMetadata(query, fieldId);
-  }
-
-  return null;
 }
