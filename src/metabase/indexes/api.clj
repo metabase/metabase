@@ -18,6 +18,7 @@
 (def ^:private RequestIndex
   "A single index request -- one `metabase_table_indexes` row, the `/request/:id` resource."
   [:map
+   {:closed true}
    [:id ms/PositiveInt]
    [:transform_id ms/PositiveInt]
    [:index_name ms/NonBlankString]
@@ -34,6 +35,7 @@
   "An index on a transform's target: as observed in the warehouse, plus a `:request` when Metabase manages it. Built
   by [[metabase.indexes.reconcile/merge-indexes]]."
   [:map
+   {:closed true}
    [:metabase_managed     :boolean]
    [:present_in_warehouse :boolean]
    [:name                 [:maybe :string]]
@@ -62,8 +64,8 @@
   `:metabase_managed`; managed ones also carry `:request` (status + definition)."
   [_route-params
    {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
-  (api/read-check :model/Transform transform-id)
-  (let [{:keys [database schema] table-name :name} (:target (t2/select-one :model/Transform transform-id))
+  (let [transform (api/read-check :model/Transform transform-id)
+        {:keys [database schema] table-name :name} (:target transform)
         managed   (t2/select :model/TableIndex :transform_id transform-id {:order-by [[:id :asc]]})
         warehouse (reconcile/fetch-warehouse-indexes (t2/select-one :model/Database database) schema table-name)]
     {:data (reconcile/merge-indexes managed warehouse)}))
