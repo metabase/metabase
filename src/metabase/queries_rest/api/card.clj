@@ -860,9 +860,6 @@
           (t2/update! (t2/table-name :model/Card)
                       {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))
-        ;; `cards` still hold their pre-update collection_id, so this re-selects each card's post-update
-        ;; state and checks both directions: rejects landing in a synced collection with non-synced
-        ;; dependencies, and rejects moving a depended-on card out of the synced set.
         (doseq [card cards]
           (collection/check-for-remote-sync-update card)))))
 
