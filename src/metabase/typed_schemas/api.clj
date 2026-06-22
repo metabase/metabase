@@ -244,11 +244,6 @@
   (query-comma-separated-values query-params [:question-collections
                                               :questionCollections]))
 
-(defn- parse-collection-id
-  [collection-value]
-  (or (parse-id collection-value)
-      (api/check-400 false (format "Invalid collection id: %s" collection-value))))
-
 (defn- library-collection-for-value
   [library-value]
   (when library-value
@@ -277,17 +272,20 @@
        (filter mi/can-read?)
        first))
 
-(defn- collection-for-id
-  [collection-id]
-  (->> (t2/select :model/Collection :id collection-id)
-       (filter mi/can-read?)
-       first))
+(defn- collection-for-ref
+  [collection-value]
+  (let [collection-id (parse-id collection-value)]
+    (->> (if collection-id
+           (t2/select :model/Collection :id collection-id)
+           (t2/select :model/Collection :entity_id collection-value))
+         (filter mi/can-read?)
+         first)))
 
 (defn- collection-scope
   [collection-values]
   (when (seq collection-values)
     (let [collections (for [collection-value collection-values]
-                        (or (collection-for-id (parse-collection-id collection-value))
+                        (or (collection-for-ref collection-value)
                             (api/check-404 false)))]
       (->> collections
            (mapcat #(cons % (collection/descendants-flat %)))
