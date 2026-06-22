@@ -17,9 +17,11 @@ export default {
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(TreemapChart);
 
-const Template: StoryFn<{ rawSeries: Series }> = ({ rawSeries }) => {
+type TemplateArgs = { rawSeries: Series; displayTheme?: "light" | "dark" };
+
+const Template: StoryFn<TemplateArgs> = ({ rawSeries, displayTheme }) => {
   return (
-    <VisualizationWrapper>
+    <VisualizationWrapper displayTheme={displayTheme}>
       <Box w={1000} h={600}>
         <Visualization rawSeries={rawSeries} width={1000} />
       </Box>
@@ -41,10 +43,10 @@ export const OneLevel = {
   },
 };
 
-export const DarkTheme: StoryFn = () => (
-  <VisualizationWrapper displayTheme="dark">
-    <Box w={1000} h={600}>
-      <Visualization rawSeries={data.twoLeve} width={1000} />
-    </Box>
-  </VisualizationWrapper>
-);
+export const DarkTheme = {
+  render: Template,
+  args: {
+    rawSeries: data.twoLevel,
+    displayTheme: "dark",
+  },
+};
