@@ -1615,9 +1615,10 @@
    [:is-unique         :boolean]
    [:is-primary        :boolean]
    [:is-valid          :boolean]
-   ;; key columns in index order; an expression column carries its expression text (e.g. "lower(email)")
+   ;; key columns in index order; an expression column carries its expression text (e.g. "lower(email)"). never nil:
+   ;; drivers fall back to the catalog's expression text rather than emit a missing name.
    [:key-columns       [:sequential :string]]
-   ;; non-key INCLUDE / covering columns
+   ;; non-key INCLUDE / covering columns. nil-tolerant unlike :key-columns, since these aren't backfilled.
    [:include-columns   [:sequential [:maybe :string]]]
    ;; the WHERE clause of a partial index, else nil
    [:partial-predicate [:maybe :string]]
