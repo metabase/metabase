@@ -183,8 +183,8 @@ jobs:
         if: ${{ inputs.dry_run }}
         run: echo "dry_run=true → skipped 'git push origin ${{ needs.determine-release.outputs.git_tag }}'"
 
-      # Moving `custom-viz-<NN>-stable` tag only exists on stable release-branch
-      # publishes (empty on master and on release-branch betas).
+      # The moving `custom-viz-<NN>-stable` tag is only set on stable
+      # release-branch publishes (empty on master canaries).
       - name: Move stable git tag
         if: ${{ !inputs.dry_run && needs.determine-release.outputs.stable_tag != '' }}
         env:

@@ -51,23 +51,19 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-BASE="${VERSION%%-*}"
-if [ "$BASE" = "$VERSION" ]; then
-  SUFFIX=""
-else
-  SUFFIX="${VERSION#*-}"
-fi
-
-if ! [[ "$BASE" =~ ^0\.([0-9]+)\.([0-9]+)$ ]]; then
-  echo "version '$VERSION' in $PKG must match 0.NN.M[-canary.K] (got base '$BASE')" >&2
+# The optional `-canary.K` suffix is captured as part of the shape regex, so
+# anything else (e.g. `-rc.1`) is rejected here rather than per-branch below.
+if ! [[ "$VERSION" =~ ^0\.([0-9]+)\.([0-9]+)(-canary\.[0-9]+)?$ ]]; then
+  echo "version '$VERSION' in $PKG must match 0.NN.M[-canary.K]" >&2
   exit 1
 fi
 PKG_MAJOR="${BASH_REMATCH[1]}"
 PKG_PATCH="${BASH_REMATCH[2]}"
+SUFFIX="${BASH_REMATCH[3]}"   # "" or "-canary.K"
 
 if [ "$BRANCH" = "master" ]; then
-  if ! [[ "$SUFFIX" =~ ^canary\.[0-9]+$ ]]; then
-    echo "version '$VERSION' on master must end with -canary.K (got suffix '${SUFFIX:-<none>}')" >&2
+  if [ -z "$SUFFIX" ]; then
+    echo "version '$VERSION' on master must end with -canary.K" >&2
     exit 1
   fi
   if [ "$PKG_PATCH" != "0" ]; then
@@ -83,7 +79,7 @@ elif [[ "$BRANCH" =~ ^release-x\.([0-9]+)\.x$ ]]; then
     exit 1
   fi
   if [ -n "$SUFFIX" ]; then
-    echo "version '$VERSION' on release branch must be a clean 0.NN.M (got suffix '$SUFFIX')" >&2
+    echo "version '$VERSION' on release branch must be a clean 0.NN.M (got suffix '${SUFFIX#-}')" >&2
     exit 1
   fi
   NPM_TAG="${BRANCH_MAJOR}-stable"
