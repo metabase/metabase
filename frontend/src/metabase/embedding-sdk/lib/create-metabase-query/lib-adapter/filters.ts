@@ -1,6 +1,9 @@
+import { match } from "ts-pattern";
+
 import type {
   ColumnMetadata,
   ExpressionClause,
+  NumberFilterValue,
   Query,
   SegmentMetadata,
 } from "metabase-lib";
@@ -12,12 +15,18 @@ import {
   isSegmentSchema,
   isTableDimensionFilter,
   isTableFieldSchema,
-  isUnaryOperator,
 } from "../guards";
 import type { DimensionFilterInput } from "../input-types";
 import { isColumnReference } from "../query-utils";
 
 import { findLibColumn } from "./column";
+import {
+  isBooleanFilterOperator,
+  isDefaultFilterOperator,
+  isNumberFilterOperator,
+  isSpecificDateFilterOperator,
+  isStringFilterOperator,
+} from "./operators";
 import { fieldHasTime } from "./query-utils";
 
 const STAGE_INDEX = 0;
@@ -26,6 +35,32 @@ type FilterBuilder = (
   query: Query,
   filter: unknown,
 ) => ExpressionClause | SegmentMetadata | null;
+
+type RelativeDateFilterParts = {
+  value: number;
+  unit: Lib.RelativeDateFilterUnit;
+  offsetValue: number | null;
+  offsetUnit: Lib.RelativeDateFilterUnit | null;
+  options: Lib.RelativeDateFilterOptions;
+};
+
+type RelativeDateFilterInput = {
+  value: number;
+  unit: Lib.RelativeDateFilterUnit;
+  options: Record<string, unknown>;
+  offsetValue?: number;
+  offsetUnit?: Lib.RelativeDateFilterUnit;
+};
+
+const RELATIVE_DATE_FILTER_UNITS = new Set<string>([
+  "minute",
+  "hour",
+  "day",
+  "week",
+  "month",
+  "quarter",
+  "year",
+]);
 
 export function applyFilters(
   query: Query,
@@ -62,7 +97,7 @@ export function buildLibTableFilter(
   return buildLibFieldFilter(query, filter);
 }
 
-export function buildLibMetricDatasetFilter(
+export function buildLibMetricFilter(
   query: Query,
   filter: unknown,
 ): ExpressionClause | SegmentMetadata | null {
@@ -95,9 +130,9 @@ function buildLibFieldFilter(
 
   const values = filter.values ?? [filter.value];
 
-  if (isUnaryOperator(filter.operator)) {
+  if (isDefaultFilterOperator(filter.operator)) {
     return Lib.defaultFilterClause({
-      operator: filter.operator as never,
+      operator: filter.operator,
       column,
     });
   }
@@ -108,37 +143,78 @@ function buildLibFieldFilter(
 
   const jsType = isTableFieldSchema(dimension) ? dimension.jsType : undefined;
 
-  if (jsType === "number") {
-    return Lib.numberFilterClause({
-      operator: filter.operator as never,
-      column,
-      values: values as never,
-    });
-  }
+  return match(jsType)
+    .with("number", () => {
+      if (!isNumberFilterOperator(filter.operator)) {
+        return null;
+      }
 
-  if (jsType === "boolean") {
-    return Lib.booleanFilterClause({
-      operator: filter.operator as never,
-      column,
-      values: values as never,
-    });
-  }
+      if (!values.every(isNumberFilterValue)) {
+        return null;
+      }
 
-  if (jsType === "Date") {
-    return Lib.specificDateFilterClause({
-      operator: filter.operator as never,
-      column,
-      values: values.map((value) => new Date(value as string | number | Date)),
-      hasTime: isTableFieldSchema(dimension) ? fieldHasTime(dimension) : false,
-    });
-  }
+      return Lib.numberFilterClause({
+        operator: filter.operator,
+        column,
+        values: [...values],
+      });
+    })
+    .with("boolean", () => {
+      if (!isBooleanFilterOperator(filter.operator)) {
+        return null;
+      }
 
-  return Lib.stringFilterClause({
-    operator: filter.operator as never,
-    column,
-    values: values as string[],
-    options: {},
-  });
+      if (!values.every(isBooleanFilterValue)) {
+        return null;
+      }
+
+      return Lib.booleanFilterClause({
+        operator: filter.operator,
+        column,
+        values: [...values],
+      });
+    })
+    .with("Date", () => {
+      if (!isSpecificDateFilterOperator(filter.operator)) {
+        return null;
+      }
+
+      return Lib.specificDateFilterClause({
+        operator: filter.operator,
+        column,
+        values: values.map(
+          (value) => new Date(value as string | number | Date),
+        ),
+        hasTime: isTableFieldSchema(dimension)
+          ? fieldHasTime(dimension)
+          : false,
+      });
+    })
+    .otherwise(() => {
+      if (!isStringFilterOperator(filter.operator)) {
+        return null;
+      }
+
+      if (filter.operator === "is-empty" || filter.operator === "not-empty") {
+        return Lib.stringFilterClause({
+          operator: filter.operator,
+          column,
+          values: [],
+          options: {},
+        });
+      }
+
+      if (!values.every(isStringFilterValue)) {
+        return null;
+      }
+
+      return Lib.stringFilterClause({
+        operator: filter.operator,
+        column,
+        values: [...values],
+        options: {},
+      });
+    });
 }
 
 function buildLibRelativeDateFilter(
@@ -156,22 +232,6 @@ function buildLibRelativeDateFilter(
     ...parts,
   });
 }
-
-type RelativeDateFilterParts = {
-  value: number;
-  unit: Lib.RelativeDateFilterUnit;
-  offsetValue: number | null;
-  offsetUnit: Lib.RelativeDateFilterUnit | null;
-  options: Lib.RelativeDateFilterOptions;
-};
-
-type RelativeDateFilterInput = {
-  value: number;
-  unit: Lib.RelativeDateFilterUnit;
-  options: Record<string, unknown>;
-  offsetValue?: number;
-  offsetUnit?: Lib.RelativeDateFilterUnit;
-};
 
 function getRelativeDateFilterParts(
   filter: DimensionFilterInput,
@@ -220,13 +280,9 @@ function createRelativeDateFilterParts(
   const parsedOffsetValue =
     typeof offsetValue === "number"
       ? offsetValue
-      : (getNumberOption(options, "offsetValue") ??
-        getNumberOption(options, "offset-value") ??
-        null);
+      : (getNumberOption(options, "offsetValue") ?? null);
 
-  const optionsOffsetUnit =
-    getStringOption(options, "offsetUnit") ??
-    getStringOption(options, "offset-unit");
+  const optionsOffsetUnit = getStringOption(options, "offsetUnit");
 
   const parsedOffsetUnit = isRelativeDateFilterUnit(offsetUnit)
     ? offsetUnit
@@ -272,9 +328,7 @@ function parseRelativeDateFilterInput({
 function getRelativeDateFilterOptions(
   options: Record<string, unknown>,
 ): Lib.RelativeDateFilterOptions {
-  const includeCurrent =
-    getBooleanOption(options, "includeCurrent") ??
-    getBooleanOption(options, "include-current");
+  const includeCurrent = getBooleanOption(options, "includeCurrent");
 
   return includeCurrent === true ? { includeCurrent: true } : {};
 }
@@ -294,17 +348,16 @@ const getStringOption = (
   key: string,
 ): string | null => (typeof options[key] === "string" ? options[key] : null);
 
-const RELATIVE_DATE_FILTER_UNITS = new Set<string>([
-  "minute",
-  "hour",
-  "day",
-  "week",
-  "month",
-  "quarter",
-  "year",
-]);
-
 const isRelativeDateFilterUnit = (
   value: unknown,
 ): value is Lib.RelativeDateFilterUnit =>
   typeof value === "string" && RELATIVE_DATE_FILTER_UNITS.has(value);
+
+const isNumberFilterValue = (value: unknown): value is NumberFilterValue =>
+  typeof value === "number" || typeof value === "bigint";
+
+const isBooleanFilterValue = (value: unknown): value is boolean =>
+  typeof value === "boolean";
+
+const isStringFilterValue = (value: unknown): value is string =>
+  typeof value === "string";

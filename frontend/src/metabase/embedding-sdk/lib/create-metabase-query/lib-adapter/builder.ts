@@ -19,7 +19,7 @@ import {
 import { applyBreakouts } from "./breakouts";
 import {
   applyFilters,
-  buildLibMetricDatasetFilter,
+  buildLibMetricFilter,
   buildLibTableFilter,
 } from "./filters";
 import {
@@ -91,7 +91,6 @@ export function buildMetricDatasetQueryFromInput(
   }
 
   const metadata = createMetricMetadata(input, Number(databaseId));
-
   let libQuery = createLibQuery(metadata, Number(databaseId), sourceId);
 
   const queryWithMetric = applyMetricAggregation(libQuery, Number(metricId));
@@ -113,7 +112,7 @@ export function buildMetricDatasetQueryFromInput(
   const queryWithFilters = applyFilters(
     libQuery,
     input.filters,
-    buildLibMetricDatasetFilter,
+    buildLibMetricFilter,
   );
 
   if (!queryWithFilters) {

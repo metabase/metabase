@@ -707,7 +707,7 @@ describe("useMetabaseQuery", () => {
             {
               dimension: TEST_SCHEMA.tables.orders.fields.createdAt,
               operator: "time-interval",
-              values: [-30, "day", { "include-current": true }],
+              values: [-30, "day", { includeCurrent: true }],
             },
           ],
         }),
@@ -722,6 +722,38 @@ describe("useMetabaseQuery", () => {
           ],
         },
       });
+    });
+
+    it("does not build filters with operators unsupported by the field type", () => {
+      expect(() =>
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            {
+              dimension: TEST_SCHEMA.tables.orders.fields.amount,
+              operator: "contains",
+              value: "10",
+            },
+          ],
+        }),
+      ).toThrow(
+        "Table query object creation requires a table reference with id and databaseId.",
+      );
+
+      expect(() =>
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            {
+              dimension: TEST_SCHEMA.tables.orders.fields.status,
+              operator: ">",
+              value: "paid",
+            },
+          ],
+        }),
+      ).toThrow(
+        "Table query object creation requires a table reference with id and databaseId.",
+      );
     });
 
     it("supports field aggregation object literals", () => {
