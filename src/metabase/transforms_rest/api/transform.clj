@@ -461,10 +461,16 @@
 
 (defn- error->response
   "Convert a typed ex-info from the test-run pipeline to a run-record shaped
-  error response body."
+  error response body.
+
+  Carries the human-readable text at the TOP level as `:message` (in addition to
+  the structured `:error` map) so generic API clients — which look for a top-level
+  message and don't know our envelope shape — surface the real reason instead of a
+  bare status code."
   [e]
   (let [data (ex-data e)]
     {:status      "error"
+     :message     (ex-message e)
      :error       {:type    (pr-str (:error-type data))
                    :message (ex-message e)}
      :test_run_id nil}))
