@@ -603,20 +603,23 @@
   takes that metadata and turns it into a string for logging. `:essential?` marks a step whose failure leaves the
   database unusable (e.g. field sync), so initial sync should be reported as failed rather than complete."
   [:map
-   [:sync-fn                       [:=> [:cat StepRunMetadata] i/DatabaseInstance]]
-   [:step-name                     :string]
-   [:log-summary-fn                [:maybe LogSummaryFunction]]
-   [:essential?    {:optional true} :boolean]])
+   [:sync-fn        [:=> [:cat StepRunMetadata] i/DatabaseInstance]]
+   [:step-name      :string]
+   [:log-summary-fn [:maybe LogSummaryFunction]]
+   [:essential?     :boolean]])
 
 (defn create-sync-step
   "Creates and returns a step suitable for `run-step-with-metadata`. See `StepDefinition` for more info."
   ([step-name sync-fn]
-   (create-sync-step step-name sync-fn nil))
+   (create-sync-step step-name sync-fn nil false))
   ([step-name sync-fn log-summary-fn]
+   (create-sync-step step-name sync-fn log-summary-fn false))
+  ([step-name sync-fn log-summary-fn essential?]
    {:sync-fn        sync-fn
     :step-name      step-name
     :log-summary-fn (when log-summary-fn
-                      (comp str log-summary-fn))}))
+                      (comp str log-summary-fn))
+    :essential? (boolean essential?)}))
 
 (mu/defn- run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"

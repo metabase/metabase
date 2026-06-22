@@ -50,11 +50,9 @@
   [(sync-util/create-sync-step "sync-dbms-version" sync-dbms-ver/sync-dbms-version! sync-dbms-version-summary)
    (sync-util/create-sync-step "sync-timezone" sync-tz/sync-timezone! sync-timezone-summary)
    ;; Make sure the relevant table models are up-to-date
-   (assoc (sync-util/create-sync-step "sync-tables" #(sync-tables/sync-tables-and-database! % db-metadata) sync-tables-summary)
-          :essential? true)
+   (sync-util/create-sync-step "sync-tables" #(sync-tables/sync-tables-and-database! % db-metadata) sync-tables-summary true)
    ;; Now for each table, sync the fields
-   (assoc (sync-util/create-sync-step "sync-fields" sync-fields/sync-fields! sync-fields-summary)
-          :essential? true)
+   (sync-util/create-sync-step "sync-fields" sync-fields/sync-fields! sync-fields-summary true)
    ;; Now for each table, sync the FKS. This has to be done after syncing all the fields to make sure target fields exist
    (sync-util/create-sync-step "sync-fks" sync-fks/sync-fks! sync-fks-summary)
    ;; Sync index info if the database supports it
@@ -73,18 +71,21 @@
                             (sync-util/set-initial-database-sync-aborted! database)
                             (throw e)))
         steps           (make-sync-steps db-metadata)
-        essential-steps (into #{} (comp (filter :essential?) (map :step-name)) steps)]
-    (u/prog1 (sync-util/run-sync-operation "sync" database steps)
-      ;; Mark initial sync failed if a transient error aborted the run, or if an essential step (one whose failure
-      ;; leaves the database unusable, e.g. field sync) failed for any reason -- rather than falsely reporting
-      ;; "complete" (GHY-3943).
-      (if (some (fn [[step-name step-results]]
-                  (or (sync-util/abandon-sync? step-results)
-                      (and (contains? essential-steps step-name)
-                           (sync-util/step-failed? step-results))))
-                (:steps <>))
-        (sync-util/set-initial-database-sync-aborted! database)
-        (sync-util/set-initial-database-sync-complete! database)))))
+        essential-steps (into #{} (comp (filter :essential?) (map :step-name)) steps)
+        results         (sync-util/run-sync-operation "sync" database steps)]
+    (cond
+      (some sync-util/abandon-sync? (map second (:steps results)))
+      (sync-util/set-initial-database-sync-aborted! database)
+
+      (some (fn [[step-name step-results]]
+              (and (contains? essential-steps step-name)
+                   (sync-util/step-failed? step-results)))
+            (:steps results))
+      (sync-util/set-initial-database-sync-aborted! database)
+
+      :else
+      (sync-util/set-initial-database-sync-complete! database))
+    results))
 
 (mu/defn sync-db-metadata!
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized.
