@@ -108,7 +108,7 @@ const elements = [
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
-  createElement({ type: "shared", name: "home" }),
+  createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "i18n" }),
   createElement({
