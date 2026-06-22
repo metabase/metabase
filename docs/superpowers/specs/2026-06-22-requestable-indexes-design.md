@@ -121,6 +121,12 @@ same parsing:
 The FE sources the table's column list from existing table metadata it already has for the target
 table (out of scope to add here); the descriptor only says "this is a column picker."
 
+`:columns` is bespoke and mirrors the index `::column` shape (`schema.clj:13`) — deliberately **not** an
+MBQL/Lib field-ref (`[:field {} id-or-name]`, used by parameters/template-tags). Indexes operate on raw
+warehouse column names at DDL time, not Field IDs, so the field-ref machinery doesn't apply. The scalar
+field types (`:string`/`:boolean`/`:select`) are the parts reused verbatim from `connection-properties`,
+which has no column-picker concept of its own.
+
 **Note on `:columns` and FE work:** `:select`/`:boolean`/`:string` reuse the connection-form renderer,
 but `:columns` genuinely needs a new FE control (column multi-select + direction). The "reuse the
 renderer" benefit is real for the scalar fields, partial for `:columns`.
