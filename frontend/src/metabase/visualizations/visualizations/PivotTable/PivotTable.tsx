@@ -37,6 +37,7 @@ import {
   BREAKDOWN_DIMENSION_SETTING,
   COLLAPSED_ROWS_SETTING,
   COLUMN_SHOW_TOTALS,
+  HEATMAP_MODE_SETTING,
   computeNativePivotTotals,
   getBreakdownOptions,
   isNativePivotData,
@@ -364,6 +365,24 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       [applyCollapseSettings, settings],
     );
 
+    // Expands every row by clearing the collapsed-rows value.
+    const handleExpandAllRows = useCallback(() => {
+      const currentSplit = settings["pivot_table.column_split"];
+      applyCollapseSettings({
+        [COLLAPSED_ROWS_SETTING]: {
+          value: [],
+          rows: currentSplit?.rows ?? [],
+        } as VisualizationSettings[typeof COLLAPSED_ROWS_SETTING],
+      });
+    }, [applyCollapseSettings, settings]);
+
+    const handleToggleHeatmap = useCallback(() => {
+      const current = settings[HEATMAP_MODE_SETTING];
+      onUpdateVisualizationSettings({
+        [HEATMAP_MODE_SETTING]: current === "diverging" ? "brand" : "diverging",
+      });
+    }, [onUpdateVisualizationSettings, settings]);
+
     // Grand totals per measure column (weighted for percent columns), used by
     // the "View totals in chart" line-chart view.
     const totals = useMemo(() => {
@@ -630,10 +649,21 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       return false;
     })();
     const canCollapseAllRows = rowIndexes.length > 1 && hasExpandedRows;
-    // The toolbar row holds the breakdown picker, the collapse-all button,
-    // and/or the chart toggle.
+    // "Expand all rows" is the inverse: nested rows exist and something is
+    // currently collapsed (so there is something to expand).
+    const hasCollapsedRows = collapsedRowValues.length > 0;
+    const canExpandAllRows = rowIndexes.length > 1 && hasCollapsedRows;
+    // The heatmap toggle is relevant when there are percent columns to color.
+    const canToggleHeatmap = (totals ?? []).some((tot) => tot.isPercent);
+    const heatmapOn = settings[HEATMAP_MODE_SETTING] === "diverging";
+    // The toolbar row holds the breakdown picker, the collapse/expand buttons,
+    // the heatmap toggle, and/or the chart toggle.
     const showToolbar =
-      showBreakdownPicker || canShowTotalsChart || canCollapseAllRows;
+      showBreakdownPicker ||
+      canShowTotalsChart ||
+      canCollapseAllRows ||
+      canExpandAllRows ||
+      canToggleHeatmap;
     const breakdownBarHeight = showToolbar ? BREAKDOWN_BAR_HEIGHT : 0;
 
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
@@ -739,34 +769,50 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                     />
                   </>
                 )}
-                {!showTotalsChart && canCollapseAllRows && (
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    ml="auto"
-                    onClick={() => handleCollapseAllRows(rowIndexes.length)}
-                    data-testid="pivot-collapse-all-rows"
-                  >
-                    {t`Collapse all rows`}
-                  </Button>
-                )}
-                {canShowTotalsChart && (
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    ml={
-                      !showTotalsChart && canCollapseAllRows
-                        ? undefined
-                        : "auto"
-                    }
-                    onClick={() => setShowTotalsChart((v) => !v)}
-                    data-testid="pivot-totals-chart-toggle"
-                  >
-                    {showTotalsChart
-                      ? t`Back to pivot table`
-                      : t`View totals in chart`}
-                  </Button>
-                )}
+                <Flex align="center" gap="sm" ml="auto">
+                  {!showTotalsChart && canCollapseAllRows && (
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => handleCollapseAllRows(rowIndexes.length)}
+                      data-testid="pivot-collapse-all-rows"
+                    >
+                      {t`Collapse all rows`}
+                    </Button>
+                  )}
+                  {!showTotalsChart && canExpandAllRows && (
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      onClick={handleExpandAllRows}
+                      data-testid="pivot-expand-all-rows"
+                    >
+                      {t`Expand all rows`}
+                    </Button>
+                  )}
+                  {!showTotalsChart && canToggleHeatmap && (
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      onClick={handleToggleHeatmap}
+                      data-testid="pivot-heatmap-toggle"
+                    >
+                      {heatmapOn ? t`Hide heatmap` : t`Show heatmap`}
+                    </Button>
+                  )}
+                  {canShowTotalsChart && (
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => setShowTotalsChart((v) => !v)}
+                      data-testid="pivot-totals-chart-toggle"
+                    >
+                      {showTotalsChart
+                        ? t`Back to pivot table`
+                        : t`View totals in chart`}
+                    </Button>
+                  )}
+                </Flex>
               </Flex>
             )}
             {showTotalsChart && canShowTotalsChart && totals != null ? (

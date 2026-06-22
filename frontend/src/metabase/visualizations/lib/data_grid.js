@@ -118,6 +118,10 @@ export const COLUMN_SORT_ORDER_DESC = "descending";
 // For native SQL pivots with 3+ row dimensions, the user can pick which
 // dimension (after the first) acts as the inner breakdown. Stores a column name.
 export const BREAKDOWN_DIMENSION_SETTING = "pivot.breakdown_dimension";
+// Percent-column heatmap mode. Default (undefined/"brand") is the single-hue
+// brand ramp; "diverging" colors each cell green above / red below its column
+// average (the column's grand Total).
+export const HEATMAP_MODE_SETTING = "pivot.heatmap_mode";
 
 // For native SQL queries the backend never adds the pivot-grouping column.
 // We synthesize it here so the CLJS pivot engine can process the data.
@@ -379,6 +383,21 @@ export function multiLevelPivot(data, settings) {
       .map((col) => col.name),
   );
 
+  // Heatmap mode: "diverging" colors each percent cell green/red relative to its
+  // column average (taken from the grand Totals); anything else uses the default
+  // single-hue brand ramp. Per-column averages come from the same weighted
+  // totals shown in the Totals row.
+  const heatmapMode = settings[HEATMAP_MODE_SETTING];
+  const percentColAverages = {};
+  if (heatmapMode === "diverging" && isNativeQuery) {
+    const totals = computeNativePivotTotals(data, columnSplit, settings.column);
+    (totals ?? []).forEach((tot) => {
+      if (tot.isPercent && typeof tot.value === "number") {
+        percentColAverages[tot.name] = tot.value;
+      }
+    });
+  }
+
   // makeCellBackgroundGetter is wrapped in another callback because `rows` is
   // computed in CLJS by metabase.pivot.core/get-rows-from-pivot-data, and we
   // want to avoid an extra round trip to CLJS (this can probably be improved,
@@ -400,6 +419,24 @@ export function multiLevelPivot(data, settings) {
         typeof value === "number" &&
         isFinite(value)
       ) {
+        // Diverging mode: green above the column average, red below, intensity
+        // scaled by distance from the average.
+        const avg = percentColAverages[colName];
+        if (heatmapMode === "diverging" && typeof avg === "number") {
+          if (value === avg) {
+            return null;
+          }
+          const above = value > avg;
+          // Normalize the deviation against the room available on that side so
+          // the extremes (0% / 100%) map to full intensity.
+          const range = above ? 1 - avg : avg;
+          const intensity =
+            range > 0 ? Math.min(1, Math.abs(value - avg) / range) : 0;
+          const base = above ? mbColor("success") : mbColor("error");
+          return Color(base)
+            .mix(Color("white"), 1 - intensity)
+            .hex();
+        }
         const clamped = Math.max(0, Math.min(1, value));
         return Color(mbColor("brand"))
           .mix(Color("white"), 1 - clamped)

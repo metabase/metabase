@@ -190,4 +190,60 @@ describe("PivotTable totals chart toggle", () => {
       screen.queryByTestId("pivot-collapse-all-rows"),
     ).not.toBeInTheDocument();
   });
+
+  it("shows 'Expand all rows' only when something is collapsed", () => {
+    // Fully expanded: no expand button.
+    const { unmount } = setup({
+      "pivot_table.collapsed_rows": {
+        rows: ["cohort_date", "country", "os_family"],
+        value: [],
+      },
+    } as unknown as Partial<VisualizationSettings>);
+    expect(
+      screen.queryByTestId("pivot-expand-all-rows"),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    // Something collapsed: expand button appears.
+    setup({
+      "pivot_table.collapsed_rows": {
+        rows: ["cohort_date", "country", "os_family"],
+        value: ["1"],
+      },
+    } as unknown as Partial<VisualizationSettings>);
+    expect(screen.getByTestId("pivot-expand-all-rows")).toHaveTextContent(
+      "Expand all rows",
+    );
+  });
+
+  it("expands all rows when 'Expand all rows' is clicked", async () => {
+    setup({
+      "pivot_table.collapsed_rows": {
+        rows: ["cohort_date", "country", "os_family"],
+        value: ["1", "2"],
+      },
+    } as unknown as Partial<VisualizationSettings>);
+
+    // Collapsed: inner value hidden.
+    expect(screen.queryByText("ID")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("pivot-expand-all-rows"));
+
+    await waitFor(() => {
+      expect(screen.getByText("ID")).toBeInTheDocument();
+    });
+  });
+
+  it("toggles the heatmap mode via the 'Show heatmap' button", async () => {
+    setup();
+    const toggle = screen.getByTestId("pivot-heatmap-toggle");
+    expect(toggle).toHaveTextContent("Show heatmap");
+
+    await userEvent.click(toggle);
+    await waitFor(() => {
+      expect(screen.getByTestId("pivot-heatmap-toggle")).toHaveTextContent(
+        "Hide heatmap",
+      );
+    });
+  });
 });

@@ -14,6 +14,7 @@ import {
   COLUMN_SORT_ORDER_ASC,
   COLUMN_SORT_ORDER_DESC,
   COLUMN_SPLIT_SETTING,
+  HEATMAP_MODE_SETTING,
   getBreakdownOptions,
   isNativePivotData,
   isPivotGroupColumn,
@@ -293,6 +294,16 @@ export const settings = {
       const stored = settings[BREAKDOWN_DIMENSION_SETTING];
       return stored != null && options.includes(stored) ? stored : options[0];
     },
+  },
+  [HEATMAP_MODE_SETTING]: {
+    hidden: true,
+    getValue: (
+      _series: Series,
+      settings: Partial<VisualizationSettings> = {},
+    ) =>
+      // "brand" (default) single-hue ramp, or "diverging" green/red around the
+      // column average. Toggled by the "Show heatmap" button in the toolbar.
+      settings[HEATMAP_MODE_SETTING] ?? "brand",
   },
   "pivot.condense_duplicate_totals": {
     get section() {
