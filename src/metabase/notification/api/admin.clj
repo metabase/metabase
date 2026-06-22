@@ -605,7 +605,7 @@
                                           [:= :notification_id notification-id]
                                           [:in :status terminal-statuses]
                                           [:> :started_at (lookback-cutoff)]]
-                               :order-by [[:started_at :desc]]
+                               :order-by [[:started_at :desc] [:id :desc]]
                                :limit    result-limit})
         failed-ids (into #{} (keep (fn [{:keys [id status]}]
                                      (when (#{:failed :abandoned} status) id))
@@ -643,7 +643,9 @@
                                          [:= :tr.notification_id notification-id]
                                          [:= :th.task            task-channel-send]
                                          [:> :tr.started_at      (lookback-cutoff)]]
-                              :order-by [[:tr.started_at :desc]]
+                              ;; tr.id tie-breaks runs sharing a started_at so partition-by run_id
+                              ;; keeps each run's rows adjacent.
+                              :order-by [[:tr.started_at :desc] [:tr.id :desc]]
                               ;; safety cap; the (take result-limit) over partition-by run_id
                               ;; normally closes the cursor first.
                               :limit    500})))
