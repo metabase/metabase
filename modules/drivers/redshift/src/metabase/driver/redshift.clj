@@ -55,6 +55,7 @@
                               ;; Redshift has no secondary indexes; sortkeys are inlined into the table-creation
                               ;; statement, not created afterwards. Override the `:postgres`-inherited standalone
                               ;; support.
+                              :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          false
                               :metadata/table-existence-check   true
@@ -247,6 +248,34 @@
     (let [style-sql (if (= style :interleaved) "INTERLEAVED" "COMPOUND")
           cols      (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
       (format "%s SORTKEY (%s)" style-sql cols))))
+
+;; Redshift has no secondary indexes; the only physical "index" is the inline, unnamed sortkey, so we override the
+;; inherited Postgres `pg_index` query. `svv_redshift_columns.sortkey` is the 1-based position (negative marks the
+;; whole key INTERLEAVED). Blank `schema` falls back to `current_schema()`.
+(defmethod driver/fetch-table-indexes :redshift
+  [_driver database schema table]
+  (let [rows (jdbc/query
+              (sql-jdbc.conn/db->pooled-connection-spec database)
+              [(str "SELECT column_name, sortkey FROM svv_redshift_columns "
+                    "WHERE schema_name = COALESCE(?, current_schema()) AND table_name = ? AND sortkey <> 0 "
+                    "ORDER BY abs(sortkey)")
+               (perf/not-empty schema) table])]
+    (if (seq rows)
+      (let [interleaved? (perf/some (comp neg? :sortkey) rows)
+            columns      (perf/mapv :column_name rows)]
+        [{:name              nil
+          :kind              :sortkey
+          :access-method     nil
+          :is-unique         false
+          :is-primary        false
+          :is-valid          true
+          :key-columns       columns
+          :include-columns   []
+          :partial-predicate nil
+          :definition        (format "%s SORTKEY (%s)"
+                                     (if interleaved? "INTERLEAVED" "COMPOUND")
+                                     (str/join ", " columns))}])
+      [])))
 
 (defmethod driver/compile-transform :redshift
   [driver {:keys [query output-table indexes] :as transform-details}]

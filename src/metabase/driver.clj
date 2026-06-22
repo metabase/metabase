@@ -856,6 +856,10 @@
     ;; CREATE TABLE for a Python transform).
     :index/inline-create
     ;;
+    ;; Does this driver support reading the indexes that physically exist on a table? Drivers with this feature
+    ;; implement [[fetch-table-indexes]].
+    :index/fetch
+    ;;
     ;; Does this driver support calculating dependencies of native queries?
     :dependencies/native
     ;;
@@ -1596,6 +1600,48 @@
 (defmethod refresh-table-stats! :default
   [_driver _database _schema _table _transform-type]
   nil)
+
+(mr/def ::table-index
+  "One physical index from [[fetch-table-indexes]], normalized into a cross-driver shape."
+  [:map
+   {:closed true}
+   ;; the physical index name, or nil for an unnamed inline key
+   [:name              [:maybe :string]]
+   ;; cross-driver category: :btree / :skip-index / :order-by / :sortkey
+   [:kind              :keyword]
+   ;; warehouse-native type: btree/gin/... (PG), minmax/set/... (CH), nil for inline keys
+   [:access-method     [:maybe :string]]
+   [:is-unique         :boolean]
+   [:is-primary        :boolean]
+   [:is-valid          :boolean]
+   ;; key columns in index order; an expression column carries its expression text (e.g. "lower(email)"). never nil:
+   ;; drivers fall back to the catalog's expression text rather than emit a missing name.
+   [:key-columns       [:sequential :string]]
+   ;; non-key INCLUDE / covering columns. nil-tolerant unlike :key-columns, since these aren't backfilled.
+   [:include-columns   [:sequential [:maybe :string]]]
+   ;; the WHERE clause of a partial index, else nil
+   [:partial-predicate [:maybe :string]]
+   ;; the catalog's own DDL/clause, the most faithful representation
+   [:definition        [:maybe :string]]])
+
+(mr/def ::fetch-table-indexes.result
+  [:sequential [:ref ::table-index]])
+
+(defmulti fetch-table-indexes
+  "Fetch the physical indexes on `table` in `schema` of `database`, one normalized map per catalog index, matching
+  `::fetch-table-indexes.result`. Inline sort keys (ClickHouse `ORDER BY`, Redshift `SORTKEY`) have `:name nil`.
+
+  Distinct from the sync-side [[describe-table-indexes]]/[[describe-indexes]], which capture only single-column indexes
+  to flag fields as indexed; this returns full physical detail (uniqueness, partial predicate, INCLUDE columns, key
+  order, raw DDL)."
+  {:added "0.63.0", :arglists '([driver database schema table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod fetch-table-indexes :default
+  [driver _database _schema _table]
+  (throw (ex-info (format "fetch-table-indexes is not implemented for driver %s" driver)
+                  {:driver driver})))
 
 (defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped. `table-name` may be qualified

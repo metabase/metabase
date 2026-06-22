@@ -21,7 +21,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
@@ -57,6 +58,7 @@
                               :expressions/text                 true
                               ;; ClickHouse uses both index lifecycles: ORDER BY is inlined into the MergeTree engine
                               ;; clause at creation, while data-skipping indexes are added as separate statements after.
+                              :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          true
                               :left-join                        (not driver-api/is-test?)
@@ -310,6 +312,86 @@
               target (if if-not-exists "IF NOT EXISTS " "") idx expr
               (skip-index-type-sql type type-args) (or granularity 1))]
      [(format "ALTER TABLE %s MATERIALIZE INDEX %s" target idx)]]))
+
+(defn- strip-wrapping-parens
+  "Drop one `(...)` that wraps the whole expression (a skip-index `expr` has one, a sorting key doesn't)."
+  [^String s]
+  (cond-> s (and (str/starts-with? s "(") (str/ends-with? s ")")) (subs 1 (dec (count s)))))
+
+(defn- split-top-level-commas
+  "Split on commas that aren't nested in parens or inside a `backtick`/'string' span, so neither a function key like
+  `toStartOfInterval(d, INTERVAL 1 DAY)` nor a quoted name like `weird,name` is torn at an inner comma."
+  [^String s]
+  (loop [i 0, depth 0, q nil, start 0, acc []]
+    (if (< i (.length s))
+      (let [c (nth s i)]
+        (cond
+          q                            (recur (inc i) depth (when-not (= c q) q) start acc)
+          (or (= c \`) (= c \'))       (recur (inc i) depth c start acc)
+          (= c \()                     (recur (inc i) (inc depth) q start acc)
+          (= c \))                     (recur (inc i) (dec depth) q start acc)
+          (and (= c \,) (zero? depth)) (recur (inc i) depth q (inc i) (conj acc (subs s start i)))
+          :else                        (recur (inc i) depth q start acc)))
+      (conj acc (subs s start)))))
+
+(defn- unquote-ident
+  "Strip the backticks off a quoted identifier (doubled backticks unescaped), so it matches the bare column name the
+  managed side stores. Leaves bare names and expressions untouched."
+  [^String s]
+  (if (and (> (count s) 1) (str/starts-with? s "`") (str/ends-with? s "`"))
+    (str/replace (subs s 1 (dec (count s))) "``" "`")
+    s))
+
+(defn- expr->columns
+  "Best-effort split of a ClickHouse key expression into its top-level columns/expressions. A quoted name like
+  `weird,name` becomes a bare element; a real expression like `lower(email)` stays one element."
+  [expr]
+  (if-let [s (perf/not-empty expr)]
+    (perf/mapv (comp unquote-ident str/trim) (split-top-level-commas (strip-wrapping-parens s)))
+    []))
+
+;; Named skip-indexes come from `system.data_skipping_indices`; the inline MergeTree sorting key
+;; (`system.tables.sorting_key`) is emitted with `:name nil`. Blank `schema` falls back to `currentDatabase()`.
+(defmethod driver/fetch-table-indexes :clickhouse
+  [_driver database schema table]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+        db        (perf/not-empty schema)
+        skip-idxs (->> (jdbc/query
+                        conn-spec
+                        [(str "SELECT name, type, type_full, expr, granularity "
+                              "FROM system.data_skipping_indices "
+                              "WHERE database = coalesce(?, currentDatabase()) AND table = ? "
+                              "ORDER BY name")
+                         db table])
+                       (perf/mapv (fn [{:keys [name type type_full expr granularity]}]
+                                    {:name              name
+                                     :kind              :skip-index
+                                     :access-method     type
+                                     :is-unique         false
+                                     :is-primary        false
+                                     :is-valid          true
+                                     :key-columns       (expr->columns expr)
+                                     :include-columns   []
+                                     :partial-predicate nil
+                                     :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
+                                                                name expr type_full granularity)})))
+        sorting   (-> (jdbc/query
+                       conn-spec
+                       [(str "SELECT sorting_key FROM system.tables "
+                             "WHERE database = coalesce(?, currentDatabase()) AND name = ?")
+                        db table])
+                      first :sorting_key)]
+    (cond-> skip-idxs
+      (perf/not-empty sorting) (conj {:name              nil
+                                      :kind              :order-by
+                                      :access-method     nil
+                                      :is-unique         false
+                                      :is-primary        false
+                                      :is-valid          true
+                                      :key-columns       (expr->columns sorting)
+                                      :include-columns   []
+                                      :partial-predicate nil
+                                      :definition        (format "ORDER BY (%s)" sorting)}))))
 
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,

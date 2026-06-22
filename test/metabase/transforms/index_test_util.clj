@@ -79,3 +79,86 @@
   "`indexes` rewritten to reference a non-existent column, so applying them must fail."
   [indexes]
   (mapv #(assoc % :columns [{:name "definitely_not_a_real_column"}]) indexes))
+
+(defn- idx
+  "A normalized [[metabase.driver/fetch-table-indexes]] entry (sans `:definition`) with defaults, for terse `:expected`."
+  [nm kind access-method key-columns & {:keys [unique primary include partial]
+                                        :or   {unique false primary false include [] partial nil}}]
+  {:name nm :kind kind :access-method access-method :is-unique unique :is-primary primary :is-valid true
+   :key-columns key-columns :include-columns include :partial-predicate partial})
+
+(def fetch-cases
+  "Driver -> fetch-correctness cases. Each case creates `:table` via the literal `:create` statements (popular index
+  kinds, made directly so we cover catalog shapes the apply path never produces, e.g. Postgres gin/partial), and
+  `:expected` is the set of normalized [[metabase.driver/fetch-table-indexes]] maps (sans `:definition`) it must return.
+  Index models differ, so a case carries however many indexes that driver puts on one table."
+  {:postgres
+   [{:label  "btree, unique, composite, INCLUDE, partial, gin, brin, hash, expression, and the primary key"
+     :table  "mb_fetch_pg"
+     :create ["CREATE TABLE mb_fetch_pg (id INT PRIMARY KEY, user_id INT, email TEXT, a INT, b INT, data JSONB, created_at TIMESTAMP)"
+              "CREATE INDEX fc_btree ON mb_fetch_pg (user_id)"
+              "CREATE UNIQUE INDEX fc_unique ON mb_fetch_pg (email)"
+              "CREATE INDEX fc_ab ON mb_fetch_pg (a, b)"
+              "CREATE INDEX fc_include ON mb_fetch_pg (a) INCLUDE (b, email)"
+              "CREATE INDEX fc_partial ON mb_fetch_pg (user_id) WHERE user_id IS NOT NULL"
+              "CREATE INDEX fc_gin ON mb_fetch_pg USING gin (data)"
+              "CREATE INDEX fc_brin ON mb_fetch_pg USING brin (created_at)"
+              "CREATE INDEX fc_hash ON mb_fetch_pg USING hash (email)"
+              "CREATE INDEX fc_expr ON mb_fetch_pg (lower(email))"
+              "CREATE INDEX fc_mixed ON mb_fetch_pg (user_id, lower(email))"]
+     :expected #{(idx "mb_fetch_pg_pkey" :btree "btree" ["id"] :unique true :primary true)
+                 (idx "fc_btree" :btree "btree" ["user_id"])
+                 (idx "fc_unique" :btree "btree" ["email"] :unique true)
+                 (idx "fc_ab" :btree "btree" ["a" "b"])
+                 (idx "fc_include" :btree "btree" ["a"] :include ["b" "email"])
+                 (idx "fc_partial" :btree "btree" ["user_id"] :partial "(user_id IS NOT NULL)")
+                 (idx "fc_gin" :gin "gin" ["data"])
+                 (idx "fc_brin" :brin "brin" ["created_at"])
+                 (idx "fc_hash" :hash "hash" ["email"])
+                 (idx "fc_expr" :btree "btree" ["lower(email)"])
+                 ;; mixed column + expression: order preserved, the expression carries its text
+                 (idx "fc_mixed" :btree "btree" ["user_id" "lower(email)"])}}
+    {:label "a table with no indexes returns []"
+     :table "mb_fetch_pg_empty"
+     :create ["CREATE TABLE mb_fetch_pg_empty (a INT, b INT)"]
+     :expected #{}}]
+
+   :redshift
+   [{:label  "the inline compound sortkey, unnamed, reconciled by kind + columns"
+     :table  "mb_fetch_rs"
+     :create ["CREATE TABLE mb_fetch_rs (a INT, b INT) COMPOUND SORTKEY (a, b)"]
+     :expected #{(idx nil :sortkey nil ["a" "b"])}}
+    {:label  "an interleaved sortkey, whose sortkey positions are negative, still orders by abs() position"
+     :table  "mb_fetch_rs_interleaved"
+     :create ["CREATE TABLE mb_fetch_rs_interleaved (a INT, b INT) INTERLEAVED SORTKEY (a, b)"]
+     ;; same normalized shape as the compound case, so `:definition` is the only signal it's interleaved.
+     :definition-contains "INTERLEAVED"
+     :expected #{(idx nil :sortkey nil ["a" "b"])}}
+    {:label "a table with no sortkey returns []"
+     :table "mb_fetch_rs_empty"
+     :create ["CREATE TABLE mb_fetch_rs_empty (a INT, b INT)"]
+     :expected #{}}]
+
+   :clickhouse
+   [{:label  "the inline ORDER BY (unnamed) and named skip-indexes (minmax, set)"
+     :table  "mb_fetch_ch"
+     :create ["CREATE TABLE mb_fetch_ch (a Int64, b Int64) ENGINE = MergeTree ORDER BY (a, b)"
+              "ALTER TABLE mb_fetch_ch ADD INDEX by_minmax (a) TYPE minmax GRANULARITY 1"
+              "ALTER TABLE mb_fetch_ch MATERIALIZE INDEX by_minmax"
+              "ALTER TABLE mb_fetch_ch ADD INDEX by_set (b) TYPE set(100) GRANULARITY 1"
+              "ALTER TABLE mb_fetch_ch MATERIALIZE INDEX by_set"]
+     :expected #{(idx "by_minmax" :skip-index "minmax" ["a"])
+                 (idx "by_set" :skip-index "set" ["b"])
+                 (idx nil :order-by nil ["a" "b"])}}
+    {:label  "expression keys: a wrapped single-expr skip-index and an ORDER BY whose function key has an inner comma"
+     :table  "mb_fetch_ch_expr"
+     :create ["CREATE TABLE mb_fetch_ch_expr (a Int64, b Int64, s String) ENGINE = MergeTree ORDER BY (a, cityHash64(s, b))"
+              "ALTER TABLE mb_fetch_ch_expr ADD INDEX ix_lower (lower(s)) TYPE set(100) GRANULARITY 1"
+              "ALTER TABLE mb_fetch_ch_expr MATERIALIZE INDEX ix_lower"]
+     ;; ClickHouse stores these verbatim: skip-index `expr` = `(lower(s))`, `sorting_key` = `a, cityHash64(s, b)`.
+     :expected #{(idx "ix_lower" :skip-index "set" ["lower(s)"])
+                 (idx nil :order-by nil ["a" "cityHash64(s, b)"])}}
+    {:label "an unsorted table returns []"
+     :table "mb_fetch_ch_empty"
+     :create ["CREATE TABLE mb_fetch_ch_empty (a Int64) ENGINE = MergeTree ORDER BY ()"]
+     :expected #{}}]})

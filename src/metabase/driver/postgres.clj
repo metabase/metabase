@@ -41,7 +41,7 @@
    [taoensso.nippy :as nippy])
   (:import
    (java.io DataInput DataOutput StringReader)
-   (java.sql Connection ResultSet ResultSetMetaData Statement Types)
+   (java.sql Array Connection ResultSet ResultSetMetaData Statement Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
@@ -82,6 +82,7 @@
                               :expressions/integer            true
                               :expressions/text               true
                               :identifiers-with-spaces        true
+                              :index/fetch                    true
                               :index/standalone-create        true
                               :metadata/table-existence-check true
                               :now                            true
@@ -1425,6 +1426,57 @@
     (driver/execute-raw-queries! driver
                                  (driver/connection-spec driver database)
                                  [[(format "ANALYZE %s" qtable)]])))
+
+(defn- index-array->vec
+  [^Array a]
+  (when a (vec (.getArray a))))
+
+(defn- pg-index-row->index
+  [{:keys [index_name access_method is_unique is_primary is_valid
+           key_columns include_columns partial_predicate definition]}]
+  {:name              index_name
+   ;; On Postgres the access method is the kind: a btree index is kind :btree.
+   :kind              (keyword access_method)
+   :access-method     access_method
+   :is-unique         is_unique
+   :is-primary        is_primary
+   :is-valid          is_valid
+   :key-columns       (index-array->vec key_columns)
+   :include-columns   (index-array->vec include_columns)
+   :partial-predicate partial_predicate
+   :definition        definition})
+
+;; `indkey` is a 0-based `int2vector`; `indnkeyatts` (PG 11+) splits the key columns from the trailing INCLUDE
+;; columns. A blank schema falls back to the connection's `current_schema()`. The arrays are read into Clojure vectors
+;; via `:row-fn` while the result set is still open, so we never touch a `PgArray` after the connection closes.
+(defmethod driver/fetch-table-indexes :postgres
+  [_driver database schema table]
+  (jdbc/query
+   (sql-jdbc.conn/db->pooled-connection-spec database)
+   ["SELECT i.relname                              AS index_name,
+                 am.amname                              AS access_method,
+                 ix.indisunique                         AS is_unique,
+                 ix.indisprimary                        AS is_primary,
+                 ix.indisvalid                          AS is_valid,
+                 pg_get_expr(ix.indpred, ix.indrelid)   AS partial_predicate,
+                 pg_get_indexdef(ix.indexrelid)         AS definition,
+                 ARRAY(SELECT COALESCE(a.attname, pg_get_indexdef(ix.indexrelid, k.ord::int, true))
+                       FROM unnest(ix.indkey[0:ix.indnkeyatts - 1]) WITH ORDINALITY AS k(attnum, ord)
+                       LEFT JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = k.attnum
+                       ORDER BY k.ord)                  AS key_columns,
+                 ARRAY(SELECT a.attname
+                       FROM unnest(ix.indkey[ix.indnkeyatts : ix.indnatts - 1]) WITH ORDINALITY AS k(attnum, ord)
+                       LEFT JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = k.attnum
+                       ORDER BY k.ord)                  AS include_columns
+          FROM pg_index ix
+          JOIN pg_class     c  ON c.oid  = ix.indrelid
+          JOIN pg_class     i  ON i.oid  = ix.indexrelid
+          JOIN pg_namespace n  ON n.oid  = c.relnamespace
+          JOIN pg_am        am ON am.oid = i.relam
+          WHERE n.nspname = COALESCE(?, current_schema()) AND c.relname = ?
+          ORDER BY i.relname"
+    (not-empty schema) table]
+   {:row-fn pg-index-row->index}))
 
 (defmethod driver/extra-info :postgres
   [_driver]
