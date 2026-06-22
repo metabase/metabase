@@ -25,39 +25,38 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(defn sync-snippet-tracking!
-  "Called when the Library collection's remote sync status changes.
-   When enabled: mark all existing snippets and snippets-namespace collections
-   as 'create' for initial sync.
-   When disabled: remove all snippet-related tracking entries."
-  [enabled?]
+(defn enable-snippet-tracking!
+  "Mark all existing snippets and snippets-namespace collections as 'create' for initial sync."
+  []
   (let [timestamp (t/offset-date-time)]
-    (if enabled?
-      (do
-        ;; Mark all snippets-namespace collections for initial sync
-        (doseq [coll (t2/select [:model/Collection :id :name] :namespace "snippets")]
-          (t2/insert! :model/RemoteSyncObject
-                      {:model_type        "Collection"
-                       :model_id          (:id coll)
-                       :model_name        (:name coll)
-                       :status            "create"
-                       :status_changed_at timestamp}))
-        ;; Mark all existing snippets for initial sync
-        (doseq [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id])]
-          (t2/insert! :model/RemoteSyncObject
-                      {:model_type          "NativeQuerySnippet"
-                       :model_id            (:id snippet)
-                       :model_name          (:name snippet)
-                       :model_collection_id (:collection_id snippet)
-                       :status              "create"
-                       :status_changed_at   timestamp})))
-      (let [snippet-coll-ids (t2/select-pks-set :model/Collection :namespace "snippets")]
-        (t2/delete! :model/RemoteSyncObject
-                    :model_type "NativeQuerySnippet")
-        (when (seq snippet-coll-ids)
-          (t2/delete! :model/RemoteSyncObject
-                      :model_type "Collection"
-                      :model_id [:in snippet-coll-ids]))))))
+    ;; Mark all snippets-namespace collections for initial sync
+    (doseq [coll (t2/select [:model/Collection :id :name] :namespace "snippets")]
+      (t2/insert! :model/RemoteSyncObject
+                  {:model_type        "Collection"
+                   :model_id          (:id coll)
+                   :model_name        (:name coll)
+                   :status            "create"
+                   :status_changed_at timestamp}))
+    ;; Mark all existing snippets for initial sync
+    (doseq [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id])]
+      (t2/insert! :model/RemoteSyncObject
+                  {:model_type          "NativeQuerySnippet"
+                   :model_id            (:id snippet)
+                   :model_name          (:name snippet)
+                   :model_collection_id (:collection_id snippet)
+                   :status              "create"
+                   :status_changed_at   timestamp}))))
+
+(defn disable-snippet-tracking!
+  "Remove all snippet-related tracking entries."
+  []
+  (let [snippet-coll-ids (t2/select-pks-set :model/Collection :namespace "snippets")]
+    (t2/delete! :model/RemoteSyncObject
+                :model_type "NativeQuerySnippet")
+    (when (seq snippet-coll-ids)
+      (t2/delete! :model/RemoteSyncObject
+                  :model_type "Collection"
+                  :model_id [:in snippet-coll-ids]))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
@@ -67,12 +66,19 @@
    `status` unchanged. This keeps the dirty indicator tracking the serialized content, not the mere arrival
    of an update event (e.g. editing a transform's schedule, or any no-op re-save, leaves it synced)."
   [model-type model-id status existing]
-  (if (and (= "update" status)
-           (:content_hash existing)
-           (= (:content_hash existing)
-              (source/row->content-hash {:model_type model-type :model_id model-id})))
-    "synced"
-    status))
+  (cond
+    (not= "update" status)
+    status
+
+    (nil? (:content_hash existing))
+    status
+
+    (not= (:content_hash existing)
+          (source/row->content-hash {:model_type model-type :model_id model-id}))
+    status
+
+    :else ;; hash has not changed
+    "synched"))
 
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change.
@@ -241,11 +247,11 @@
       (and is-now-synced? (not snippets-already-tracked?))
       (do
         (log/info "Library collection became remote-synced, enabling snippet sync tracking")
-        (sync-snippet-tracking! true))
+        (enable-snippet-tracking!))
       (and (not is-now-synced?) snippets-already-tracked?)
       (do
         (log/info "Library collection is no longer remote-synced, disabling snippet sync tracking")
-        (sync-snippet-tracking! false)))))
+        (disable-snippet-tracking!)))))
 
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
