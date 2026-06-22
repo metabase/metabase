@@ -1,5 +1,5 @@
-import { getTableIdFromQuery } from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
-import type { StructuredDatasetQuery } from "metabase-types/api";
+import { getTableIdFromInput } from "embedding-sdk-shared/lib/create-metabase-query/input-accessors";
+import type { DatasetQuery } from "metabase-types/api";
 
 import type { MetricQueryInput, TableQueryInput } from "./input-types";
 import {
@@ -15,7 +15,7 @@ import {
 
 export type CreateMetabaseQuery = (
   input: TableQueryInput | MetricQueryInput,
-) => StructuredDatasetQuery;
+) => DatasetQuery;
 
 export const createMetabaseQuery: CreateMetabaseQuery = (
   input: TableQueryInput | MetricQueryInput,
@@ -41,14 +41,14 @@ export const createMetabaseQuery: CreateMetabaseQuery = (
 
 function buildValidatedTableQueryFromInput(
   input: TableQueryInput,
-): StructuredDatasetQuery | null {
+): DatasetQuery | null {
   const table = getTableFromInput(input);
 
   if (!table) {
     return null;
   }
 
-  const tableId = getTableIdFromQuery(input);
+  const tableId = getTableIdFromInput(input);
 
   if (tableId == null) {
     return null;
@@ -66,7 +66,7 @@ function buildValidatedTableQueryFromInput(
 
 function buildValidatedMetricQueryFromInput(
   input: MetricQueryInput,
-): StructuredDatasetQuery | null {
+): DatasetQuery | null {
   validateMetricTableScopedInputs(input);
   validateMetricGeneratedDimensions(input);
 

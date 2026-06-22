@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import { isTableFieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type {
   ColumnMetadata,
   ExpressionClause,
@@ -14,7 +15,6 @@ import {
   isDimensionFilter,
   isSegmentSchema,
   isTableDimensionFilter,
-  isTableFieldSchema,
 } from "../guards";
 import type { DimensionFilterInput } from "../input-types";
 import { isColumnReference } from "../query-utils";

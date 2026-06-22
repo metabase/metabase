@@ -30,7 +30,7 @@ export function isBinnable(
 
 export function withBinning(
   column: ColumnMetadata,
-  binningStrategy: Bucket | null,
+  binningStrategy: Bucket | BinningOptions | null,
 ): ColumnMetadata {
   return ML.with_binning(column, binningStrategy);
 }

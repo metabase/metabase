@@ -528,6 +528,38 @@ const _invalidMetricAdHocMeasureQuery = {
 } satisfies MetabaseQueryOptions;
 
 describe("useMetabaseQuery", () => {
+  const mbqlOptions = (options: Record<string, unknown> = {}) =>
+    expect.objectContaining({
+      "lib/uuid": expect.any(String),
+      ...options,
+    });
+
+  const fieldRef = (fieldId: number, options: Record<string, unknown> = {}) => [
+    "field",
+    mbqlOptions(options),
+    fieldId,
+  ];
+
+  const queryObject = (
+    stage: Record<string, unknown>,
+    source: { sourceTable?: number | string; sourceCard?: number } = {
+      sourceTable: 1,
+    },
+  ) =>
+    expect.objectContaining({
+      "lib/type": "mbql/query",
+      database: 1,
+      stages: [
+        expect.objectContaining({
+          "lib/type": "mbql.stage/mbql",
+          ...(source.sourceCard == null
+            ? { "source-table": source.sourceTable ?? 1 }
+            : { "source-card": source.sourceCard }),
+          ...stage,
+        }),
+      ],
+    });
+
   beforeEach(() => {
     ensureMetabaseProviderPropsStore().cleanup();
     window.METABASE_EMBEDDING_SDK_BUNDLE = {
@@ -536,17 +568,21 @@ describe("useMetabaseQuery", () => {
   });
 
   describe("createMetabaseQuery", () => {
-    const expectedOrdersQuery = {
-      type: "query",
-      database: 1,
-      query: {
-        "source-table": 1,
-        filter: ["=", ["field", 101, {}], "paid"],
-        aggregation: [["count"]],
-        breakout: [["field", 103, {}]],
-      },
-      parameters: [],
-    };
+    const expectedOrdersQuery = queryObject({
+      filters: [["=", mbqlOptions(), fieldRef(101), "paid"]],
+      aggregation: [["count", mbqlOptions()]],
+      breakout: [fieldRef(103)],
+    });
+
+    const expectedCountByStatusQuery = queryObject({
+      aggregation: [["count", mbqlOptions()]],
+      breakout: [fieldRef(101)],
+    });
+
+    const expectedMetricQuery = queryObject({
+      aggregation: [["metric", mbqlOptions(), 34]],
+      breakout: [fieldRef(101)],
+    });
 
     it("builds a complete dataset query from a generated table schema", () => {
       expect(
@@ -612,16 +648,7 @@ describe("useMetabaseQuery", () => {
           aggregations: [count()],
           breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
         }),
-      ).toEqual({
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": 1,
-          aggregation: [["count"]],
-          breakout: [["field", 101, {}]],
-        },
-        parameters: [],
-      });
+      ).toEqual(expectedCountByStatusQuery);
     });
 
     it("supports count aggregation object literals", () => {
@@ -631,11 +658,7 @@ describe("useMetabaseQuery", () => {
           aggregations: [{ type: "count" }],
           breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
         }),
-      ).toMatchObject({
-        query: {
-          aggregation: [["count"]],
-        },
-      });
+      ).toEqual(expectedCountByStatusQuery);
     });
 
     it("builds field aggregation helpers", () => {
@@ -649,16 +672,16 @@ describe("useMetabaseQuery", () => {
           ],
           breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
         }),
-      ).toMatchObject({
-        query: {
+      ).toEqual(
+        queryObject({
           aggregation: [
-            ["sum", ["field", 102, {}]],
-            ["avg", ["field", 102, {}]],
-            ["distinct", ["field", 101, {}]],
+            ["sum", mbqlOptions(), fieldRef(102)],
+            ["avg", mbqlOptions(), fieldRef(102)],
+            ["distinct", mbqlOptions(), fieldRef(101)],
           ],
-          breakout: [["field", 101, {}]],
-        },
-      });
+          breakout: [fieldRef(101)],
+        }),
+      );
     });
 
     it("does not force minute bucketing for date filters", () => {
@@ -673,11 +696,11 @@ describe("useMetabaseQuery", () => {
             ),
           ],
         }),
-      ).toMatchObject({
-        query: {
-          filter: ["=", ["field", 105, {}], "2026-06-18"],
-        },
-      });
+      ).toEqual(
+        queryObject({
+          filters: [["=", mbqlOptions(), fieldRef(105), "2026-06-18"]],
+        }),
+      );
     });
 
     it("uses effective or base type to preserve time for datetime filters", () => {
@@ -692,11 +715,11 @@ describe("useMetabaseQuery", () => {
             ),
           ],
         }),
-      ).toMatchObject({
-        query: {
-          filter: ["=", ["field", 103, {}], "2026-06-18T12:30:00"],
-        },
-      });
+      ).toEqual(
+        queryObject({
+          filters: [["=", mbqlOptions(), fieldRef(103), "2026-06-18T12:30:00"]],
+        }),
+      );
     });
 
     it("builds public date comparison operators", () => {
@@ -711,11 +734,11 @@ describe("useMetabaseQuery", () => {
             ),
           ],
         }),
-      ).toMatchObject({
-        query: {
-          filter: [">=", ["field", 105, {}], "2026-06-18"],
-        },
-      });
+      ).toEqual(
+        queryObject({
+          filters: [[">=", mbqlOptions(), fieldRef(105), "2026-06-18"]],
+        }),
+      );
     });
 
     it("builds time-interval filters through metabase-lib", () => {
@@ -730,17 +753,19 @@ describe("useMetabaseQuery", () => {
             },
           ],
         }),
-      ).toMatchObject({
-        query: {
-          filter: [
-            "time-interval",
-            ["field", 103, {}],
-            -30,
-            "day",
-            { "include-current": true },
+      ).toEqual(
+        queryObject({
+          filters: [
+            [
+              "time-interval",
+              mbqlOptions({ "include-current": true }),
+              fieldRef(103),
+              -30,
+              "day",
+            ],
           ],
-        },
-      });
+        }),
+      );
     });
 
     it("does not build filters with operators unsupported by the field type", () => {
@@ -783,11 +808,11 @@ describe("useMetabaseQuery", () => {
             { type: "max", dimension: TEST_SCHEMA.tables.orders.fields.amount },
           ],
         }),
-      ).toMatchObject({
-        query: {
-          aggregation: [["max", ["field", 102, {}]]],
-        },
-      });
+      ).toEqual(
+        queryObject({
+          aggregation: [["max", mbqlOptions(), fieldRef(102)]],
+        }),
+      );
     });
 
     it("preserves default binning when metabase-lib has no default strategy", () => {
@@ -800,16 +825,12 @@ describe("useMetabaseQuery", () => {
             }),
           ],
         }),
-      ).toEqual({
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": 1,
-          aggregation: [["count"]],
-          breakout: [["field", 102, { binning: { strategy: "default" } }]],
-        },
-        parameters: [],
-      });
+      ).toEqual(
+        queryObject({
+          aggregation: [["count", mbqlOptions()]],
+          breakout: [fieldRef(102, { binning: { strategy: "default" } })],
+        }),
+      );
     });
 
     it("builds binned table breakouts through metabase-lib", () => {
@@ -822,17 +843,16 @@ describe("useMetabaseQuery", () => {
             }),
           ],
         }),
-      ).toMatchObject({
-        query: {
+      ).toEqual(
+        queryObject({
+          aggregation: [["count", mbqlOptions()]],
           breakout: [
-            [
-              "field",
-              102,
-              { binning: { strategy: "num-bins", "num-bins": 10 } },
-            ],
+            fieldRef(102, {
+              binning: { strategy: "num-bins", "num-bins": 10 },
+            }),
           ],
-        },
-      });
+        }),
+      );
     });
 
     it("builds a complete dataset query from a generated metric schema", () => {
@@ -852,24 +872,16 @@ describe("useMetabaseQuery", () => {
             ),
           ],
         }),
-      ).toEqual({
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": 1,
+      ).toEqual(
+        queryObject({
           aggregation: [
-            ["metric", 34],
-            [
-              "aggregation-options",
-              ["measure", 21],
-              { "display-name": "Measure 21" },
-            ],
+            ["metric", mbqlOptions(), 34],
+            ["measure", mbqlOptions({ "display-name": "Measure 21" }), 21],
           ],
-          filter: ["=", ["field", 101, {}], "paid"],
-          breakout: [["field", 103, { "temporal-unit": "month" }]],
-        },
-        parameters: [],
-      });
+          filters: [["=", mbqlOptions(), fieldRef(101), "paid"]],
+          breakout: [fieldRef(103, { "temporal-unit": "month" })],
+        }),
+      );
     });
 
     it("builds generated metric segment filters", () => {
@@ -878,16 +890,12 @@ describe("useMetabaseQuery", () => {
           metric: TEST_SCHEMA.metrics.orderCount,
           filters: [TEST_SCHEMA.tables.orders.segments.completed],
         }),
-      ).toEqual({
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": 1,
-          aggregation: [["metric", 34]],
-          filter: ["segment", 11],
-        },
-        parameters: [],
-      });
+      ).toEqual(
+        queryObject({
+          aggregation: [["metric", mbqlOptions(), 34]],
+          filters: [["segment", mbqlOptions(), 11]],
+        }),
+      );
     });
 
     it("adds source-field when metric dimensions reference an implicitly joined table", () => {
@@ -905,21 +913,20 @@ describe("useMetabaseQuery", () => {
             ),
           ],
         }),
-      ).toEqual({
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": 1,
-          aggregation: [["metric", 34]],
-          filter: [
-            "=",
-            ["field", 301, { "source-field": 106 }],
-            "West Coast Boba",
+      ).toEqual(
+        queryObject({
+          aggregation: [["metric", mbqlOptions(), 34]],
+          filters: [
+            [
+              "=",
+              mbqlOptions(),
+              fieldRef(301, { "source-field": 106 }),
+              "West Coast Boba",
+            ],
           ],
-          breakout: [["field", 301, { "source-field": 106 }]],
-        },
-        parameters: [],
-      });
+          breakout: [fieldRef(301, { "source-field": 106 })],
+        }),
+      );
     });
 
     it("memoizes a complete dataset query from a generated metric schema", () => {
@@ -927,16 +934,7 @@ describe("useMetabaseQuery", () => {
 
       expect(
         JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
-      ).toEqual({
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": 1,
-          aggregation: [["metric", 34]],
-          breakout: [["field", 101, {}]],
-        },
-        parameters: [],
-      });
+      ).toEqual(expectedMetricQuery);
     });
   });
 
@@ -987,17 +985,11 @@ describe("useMetabaseQuery", () => {
 
     await waitFor(() => {
       expect(queryDatasetApi).toHaveBeenCalledWith({
-        datasetQuery: {
-          type: "query",
-          database: 1,
-          query: {
-            "source-table": 1,
-            filter: ["=", ["field", 101, {}], "paid"],
-            aggregation: [["count"]],
-            breakout: [["field", 101, {}]],
-          },
-          parameters: [],
-        },
+        datasetQuery: queryObject({
+          filters: [["=", mbqlOptions(), fieldRef(101), "paid"]],
+          aggregation: [["count", mbqlOptions()]],
+          breakout: [fieldRef(101)],
+        }),
       });
     });
   });
@@ -1018,15 +1010,9 @@ describe("useMetabaseQuery", () => {
 
     await waitFor(() => {
       expect(queryDatasetApi).toHaveBeenCalledWith({
-        datasetQuery: {
-          type: "query",
-          database: 1,
-          query: {
-            "source-table": 1,
-            filter: ["=", ["field", 101, {}], "paid"],
-          },
-          parameters: [],
-        },
+        datasetQuery: queryObject({
+          filters: [["=", mbqlOptions(), fieldRef(101), "paid"]],
+        }),
       });
     });
   });
@@ -1047,22 +1033,12 @@ describe("useMetabaseQuery", () => {
 
     await waitFor(() => {
       expect(queryDatasetApi).toHaveBeenCalledWith({
-        datasetQuery: {
-          type: "query",
-          database: 1,
-          query: {
-            "source-table": 1,
-            aggregation: [
-              ["metric", 34],
-              [
-                "aggregation-options",
-                ["measure", 21],
-                { "display-name": "Measure 21" },
-              ],
-            ],
-          },
-          parameters: [],
-        },
+        datasetQuery: queryObject({
+          aggregation: [
+            ["metric", mbqlOptions(), 34],
+            ["measure", mbqlOptions({ "display-name": "Measure 21" }), 21],
+          ],
+        }),
       });
     });
   });
@@ -1083,15 +1059,12 @@ describe("useMetabaseQuery", () => {
 
     await waitFor(() => {
       expect(queryDatasetApi).toHaveBeenCalledWith({
-        datasetQuery: {
-          type: "query",
-          database: 1,
-          query: {
-            "source-table": "card__98",
-            aggregation: [["metric", 36]],
+        datasetQuery: queryObject(
+          {
+            aggregation: [["metric", mbqlOptions(), 36]],
           },
-          parameters: [],
-        },
+          { sourceCard: 98 },
+        ),
       });
     });
   });
@@ -1112,16 +1085,10 @@ describe("useMetabaseQuery", () => {
 
     await waitFor(() => {
       expect(queryDatasetApi).toHaveBeenCalledWith({
-        datasetQuery: {
-          type: "query",
-          database: 1,
-          query: {
-            "source-table": 1,
-            aggregation: [["metric", 34]],
-            filter: ["=", ["field", 101, {}], "paid"],
-          },
-          parameters: [],
-        },
+        datasetQuery: queryObject({
+          aggregation: [["metric", mbqlOptions(), 34]],
+          filters: [["=", mbqlOptions(), fieldRef(101), "paid"]],
+        }),
       });
     });
   });
@@ -1142,23 +1109,13 @@ describe("useMetabaseQuery", () => {
 
     await waitFor(() => {
       expect(queryDatasetApi).toHaveBeenCalledWith({
-        datasetQuery: {
-          type: "query",
-          database: 1,
-          query: {
-            "source-table": 1,
-            aggregation: [
-              ["metric", 35],
-              [
-                "aggregation-options",
-                ["measure", 21],
-                { "display-name": "Measure 21" },
-              ],
-            ],
-            breakout: [["field", 103, { "temporal-unit": "month" }]],
-          },
-          parameters: [],
-        },
+        datasetQuery: queryObject({
+          aggregation: [
+            ["metric", mbqlOptions(), 35],
+            ["measure", mbqlOptions({ "display-name": "Measure 21" }), 21],
+          ],
+          breakout: [fieldRef(103, { "temporal-unit": "month" })],
+        }),
       });
     });
   });
@@ -1168,16 +1125,12 @@ describe("useMetabaseQuery", () => {
 
     expect(
       JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
-    ).toEqual({
-      type: "query",
-      database: 1,
-      query: {
-        "source-table": 1,
-        aggregation: [["metric", 34]],
-        breakout: [["field", 101, {}]],
-      },
-      parameters: [],
-    });
+    ).toEqual(
+      queryObject({
+        aggregation: [["metric", mbqlOptions(), 34]],
+        breakout: [fieldRef(101)],
+      }),
+    );
   });
 
   it("builds generated source-card metric query objects on the dataset query path", () => {
@@ -1185,16 +1138,15 @@ describe("useMetabaseQuery", () => {
 
     expect(
       JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
-    ).toEqual({
-      type: "query",
-      database: 1,
-      query: {
-        "source-table": "card__98",
-        aggregation: [["metric", 36]],
-        breakout: [["field", 103, { "temporal-unit": "month" }]],
-      },
-      parameters: [],
-    });
+    ).toEqual(
+      queryObject(
+        {
+          aggregation: [["metric", mbqlOptions(), 36]],
+          breakout: [fieldRef(103, { "temporal-unit": "month" })],
+        },
+        { sourceCard: 98 },
+      ),
+    );
   });
 
   it("raises a runtime error when metric table-field filters are not valid dimensions", async () => {

@@ -1,9 +1,10 @@
 import {
-  getMetricIdFromQuery,
-  getMetricSourceCardIdFromQuery,
-  getMetricSourceIdFromQuery,
-  getMetricSourceTableIdFromQuery,
-} from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
+  getMetricIdFromInput,
+  getMetricSourceCardIdFromInput,
+  getMetricSourceIdFromInput,
+  getMetricSourceTableIdFromInput,
+} from "embedding-sdk-shared/lib/create-metabase-query/input-accessors";
+import { isTableFieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type {
   FieldSchema,
   SegmentSchema,
@@ -11,6 +12,7 @@ import type {
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { Metadata as MetadataInput, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
 
 import {
@@ -18,7 +20,6 @@ import {
   isFieldAggregation,
   isMeasureSchema,
   isSegmentSchema,
-  isTableFieldSchema,
 } from "../guards";
 import type {
   MeasureReferenceInput,
@@ -86,17 +87,17 @@ export function createTableMetadata(
 }
 
 export function createMetricMetadata(
-  query: MetricQueryInput,
+  input: MetricQueryInput,
   databaseId: number,
 ): MetadataInput {
-  const metricId = Number(getMetricIdFromQuery(query));
-  const sourceId = getMetricSourceIdFromQuery(query);
+  const metricId = Number(getMetricIdFromInput(input));
+  const sourceId = getMetricSourceIdFromInput(input);
 
-  const sourceTableId = getMetricSourceTableIdFromQuery(query);
-  const sourceCardId = getMetricSourceCardIdFromQuery(query);
+  const sourceTableId = getMetricSourceTableIdFromInput(input);
+  const sourceCardId = getMetricSourceCardIdFromInput(input);
 
   const fields = getMetricDimensionValues(
-    query.metric,
+    input.metric,
     isMetricDimensionWithFieldId,
   );
 
@@ -115,7 +116,7 @@ export function createMetricMetadata(
   };
 
   const measures = Object.fromEntries(
-    query.measures
+    input.measures
       ?.filter(isMeasureSchema)
       .map((measure) => [
         measure.id,
@@ -134,7 +135,7 @@ export function createMetricMetadata(
         };
 
   return {
-    ...createTableMetadata(table, databaseId, query),
+    ...createTableMetadata(table, databaseId, input),
     questions: {
       [metricId]: createMetricCardMetadataRecord({
         metricId,
@@ -205,7 +206,7 @@ const createQuestionMetadataRecord = (cardId: number, databaseId: number) => ({
   dataset_query: {
     type: "query",
     database: databaseId,
-    query: { "source-table": `card__${cardId}` },
+    query: { "source-table": getQuestionVirtualTableId(cardId) },
   },
 });
 
@@ -232,7 +233,9 @@ const createMetricCardMetadataRecord = ({
     database: databaseId,
     query: {
       "source-table":
-        sourceTableId == null ? `card__${sourceCardId}` : sourceTableId,
+        sourceTableId == null
+          ? getQuestionVirtualTableId(sourceCardId)
+          : sourceTableId,
     },
   },
 });

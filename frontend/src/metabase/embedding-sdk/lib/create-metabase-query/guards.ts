@@ -1,7 +1,4 @@
-import {
-  isTableFieldSchema,
-  isUnaryOperator,
-} from "embedding-sdk-shared/lib/create-metabase-query/query-guards";
+import { isTableFieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type { FieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isObject } from "metabase-types/guards";
 
@@ -12,8 +9,6 @@ import type {
   MeasureReferenceInput,
   SegmentReferenceInput,
 } from "./input-types";
-
-export { isTableFieldSchema, isUnaryOperator };
 
 export const isDimensionFilter = (
   value: unknown,

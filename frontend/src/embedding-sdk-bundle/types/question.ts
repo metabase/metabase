@@ -7,8 +7,8 @@ import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/t
 import type InternalQuestion from "metabase-lib/v1/Question";
 import type {
   Card,
+  DatasetQuery,
   ParameterValuesMap,
-  StructuredDatasetQuery,
   UnsavedCard,
 } from "metabase-types/api";
 
@@ -47,13 +47,13 @@ export type SdkQuestionId =
 /**
  * A table-backed ad hoc question query.
  *
- * @notExported StructuredDatasetQuery
+ * @notExported DatasetQuery
  */
-export type SdkQuestionQuery = StructuredDatasetQuery;
+export type SdkQuestionQuery = DatasetQuery;
 
 /**
  * @notExported SdkQuestionQuery
- * @notExported StructuredDatasetQuery
+ * @notExported DatasetQuery
  */
 export type SdkQuestionEntityPublicProps =
   | {

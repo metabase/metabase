@@ -1,3 +1,4 @@
+import { isTableFieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type {
   FieldSchema,
   TableSchema,
@@ -5,7 +6,6 @@ import type {
 import { isNumber } from "metabase/utils/types";
 import { isObject } from "metabase-types/guards";
 
-import { isTableFieldSchema } from "./guards";
 import type {
   BreakoutInput,
   ColumnReferenceInput,

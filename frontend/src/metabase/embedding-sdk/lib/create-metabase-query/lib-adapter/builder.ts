@@ -1,13 +1,13 @@
 import {
-  getMetricDatabaseIdFromQuery,
-  getMetricIdFromQuery,
-  getMetricSourceIdFromQuery,
-  getTableDatabaseIdFromQuery,
-  getTableIdFromQuery,
-} from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
+  getMetricDatabaseIdFromInput,
+  getMetricIdFromInput,
+  getMetricSourceIdFromInput,
+  getTableDatabaseIdFromInput,
+  getTableIdFromInput,
+} from "embedding-sdk-shared/lib/create-metabase-query/input-accessors";
 import type { TableSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import * as Lib from "metabase-lib";
-import type { StructuredDatasetQuery } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
 
 import type { MetricQueryInput, TableQueryInput } from "../input-types";
 
@@ -27,14 +27,13 @@ import {
   createMetricMetadata,
   createTableMetadata,
 } from "./metadata";
-import { normalizeDatasetQuery } from "./normalization";
 
 export function buildTableDatasetQueryFromInput(
   input: TableQueryInput,
   table: TableSchema,
-): StructuredDatasetQuery | null {
-  const databaseId = getTableDatabaseIdFromQuery(input);
-  const tableId = getTableIdFromQuery(input);
+): DatasetQuery | null {
+  const databaseId = getTableDatabaseIdFromInput(input);
+  const tableId = getTableIdFromInput(input);
 
   if (databaseId == null || tableId == null) {
     return null;
@@ -73,18 +72,15 @@ export function buildTableDatasetQueryFromInput(
     return null;
   }
 
-  return normalizeDatasetQuery(
-    Lib.toLegacyQuery(queryWithBreakouts) as StructuredDatasetQuery,
-    input.breakouts,
-  );
+  return Lib.toJsQuery(queryWithBreakouts);
 }
 
 export function buildMetricDatasetQueryFromInput(
   input: MetricQueryInput,
-): StructuredDatasetQuery | null {
-  const metricId = getMetricIdFromQuery(input);
-  const databaseId = getMetricDatabaseIdFromQuery(input);
-  const sourceId = getMetricSourceIdFromQuery(input);
+): DatasetQuery | null {
+  const metricId = getMetricIdFromInput(input);
+  const databaseId = getMetricDatabaseIdFromInput(input);
+  const sourceId = getMetricSourceIdFromInput(input);
 
   if (metricId == null || databaseId == null || sourceId == null) {
     return null;
@@ -127,8 +123,5 @@ export function buildMetricDatasetQueryFromInput(
     return null;
   }
 
-  return normalizeDatasetQuery(
-    Lib.toLegacyQuery(queryWithBreakouts) as StructuredDatasetQuery,
-    input.breakouts,
-  );
+  return Lib.toJsQuery(queryWithBreakouts);
 }

@@ -5,13 +5,13 @@ import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import {
-  isMetricQuery,
-  isQuestionQuery,
-  isTableQuery,
+  isMetricInput,
+  isQuestionInput,
+  isTableInput,
   isUnaryOperator,
-} from "embedding-sdk-shared/lib/create-metabase-query/query-guards";
+} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
-import type { StructuredDatasetQuery } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
 
 import type {
   QuestionSchema,
@@ -272,7 +272,7 @@ const useMetabaseQueryImpl = <
     setError(null);
 
     try {
-      if (isQuestionQuery(currentQuery)) {
+      if (isQuestionInput(currentQuery)) {
         if (!queryQuestion) {
           return;
         }
@@ -286,7 +286,7 @@ const useMetabaseQueryImpl = <
         return;
       }
 
-      if (isTableQuery(currentQuery) || isMetricQuery(currentQuery)) {
+      if (isTableInput(currentQuery) || isMetricInput(currentQuery)) {
         if (!queryDataset) {
           return;
         }
@@ -325,7 +325,7 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 /** @notExported useMetabaseQueryObject */
 export function useMetabaseQueryObject(
   query: TableQuery<unknown> | MetricQuery<unknown>,
-): StructuredDatasetQuery | null {
+): DatasetQuery | null {
   const { loadingState } = useSdkLoadingState();
 
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
@@ -352,7 +352,7 @@ export function useMetabaseQueryObject(
 /** @notExported createMetabaseQuery */
 export function createMetabaseQuery(
   query: TableQuery<unknown> | MetricQuery<unknown>,
-): StructuredDatasetQuery {
+): DatasetQuery {
   const createQuery = getCreateMetabaseQueryFromBundle();
 
   if (!createQuery) {

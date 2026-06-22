@@ -1,4 +1,5 @@
-import { getMetricMappedTableIdsFromQuery } from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
+import { getMetricMappedTableIdsFromInput } from "embedding-sdk-shared/lib/create-metabase-query/input-accessors";
+import { isTableFieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type { FieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 
 import {
@@ -7,14 +8,13 @@ import {
   isMeasureSchema,
   isSegmentSchema,
   isTableDimensionFilter,
-  isTableFieldSchema,
 } from "./guards";
 import type { MetricQueryInput } from "./input-types";
 import { getMetricDimensionValues, normalizeBreakout } from "./query-utils";
 
 export const validateMetricTableScopedInputs = (input: MetricQueryInput) =>
   validateTableScopedInputs({
-    allowedTableIds: getMetricMappedTableIdsFromQuery(input),
+    allowedTableIds: getMetricMappedTableIdsFromInput(input),
     breakouts: input.breakouts,
     filters: input.filters,
     measures: input.measures,

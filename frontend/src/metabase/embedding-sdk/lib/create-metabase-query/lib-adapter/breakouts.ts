@@ -55,7 +55,7 @@ function findLibColumnForBreakout(
   }
 
   if (options.binning != null) {
-    return buildBinnedColumn(query, column, options.binning);
+    return buildBinnedColumn(column, options.binning);
   }
 
   return column;
@@ -73,7 +73,6 @@ const findTemporalBucket = (
   ) ?? null;
 
 function buildBinnedColumn(
-  query: Query,
   column: ColumnMetadata,
   binningOptions: unknown,
 ): ColumnMetadata | null {
@@ -81,25 +80,7 @@ function buildBinnedColumn(
     return null;
   }
 
-  if (binningOptions.strategy === "default") {
-    const columnWithDefaultBinning = Lib.withDefaultBinning(
-      query,
-      STAGE_INDEX,
-      column,
-    );
-
-    return Lib.binning(columnWithDefaultBinning)
-      ? columnWithDefaultBinning
-      : column;
-  }
-
-  const bucket = Lib.availableBinningStrategies(
-    query,
-    STAGE_INDEX,
-    column,
-  ).find((bucket) => Lib.isBinningStrategy(bucket, binningOptions));
-
-  return bucket ? Lib.withBinning(column, bucket) : column;
+  return Lib.withBinning(column, binningOptions);
 }
 
 function isBinningOptions(value: unknown): value is BinningOptions {

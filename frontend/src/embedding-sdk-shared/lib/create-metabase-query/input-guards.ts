@@ -13,30 +13,20 @@ export type MetricReferenceLike = Pick<MetricSchema, "dimensions"> & {
   columns?: MetricSchema["columns"];
 };
 
-export type QuestionQueryLike = {
-  questionId: ID;
-  parameters?: unknown;
-};
+export type QuestionInput = { questionId: ID; parameters?: unknown };
+export type TableInput = { table?: TableSchema };
+export type MetricInput = { metric?: MetricReferenceLike; metricId?: number };
 
-export type TableQueryLike = {
-  table?: TableSchema;
-};
+export const isQuestionInput = (input: unknown): input is QuestionInput =>
+  isObject(input) && "questionId" in input && isId(input.questionId);
 
-export type MetricQueryLike = {
-  metric?: MetricReferenceLike;
-  metricId?: number;
-};
+export const isTableInput = (input: unknown): input is TableInput =>
+  isObject(input) && "table" in input && isTableReference(input.table);
 
-export const isQuestionQuery = (query: unknown): query is QuestionQueryLike =>
-  isObject(query) && "questionId" in query && isId(query.questionId);
-
-export const isTableQuery = (query: unknown): query is TableQueryLike =>
-  isObject(query) && "table" in query && isTableReference(query.table);
-
-export const isMetricQuery = (query: unknown): query is MetricQueryLike =>
-  isObject(query) &&
-  (("metric" in query && isMetricReference(query.metric)) ||
-    ("metricId" in query && typeof query.metricId === "number"));
+export const isMetricInput = (input: unknown): input is MetricInput =>
+  isObject(input) &&
+  (("metric" in input && isMetricReference(input.metric)) ||
+    ("metricId" in input && typeof input.metricId === "number"));
 
 export const isMetricReference = (
   value: unknown,

@@ -38,26 +38,32 @@ export type QuestionQueryInput = {
 };
 
 export type TableQueryInput = {
-  questionId?: never;
   table: TableSchema;
+
+  questionId?: never;
   metric?: never;
   metricId?: never;
+
   filters?: readonly unknown[];
   aggregations?: readonly unknown[];
   measures?: readonly unknown[];
   breakouts?: readonly unknown[];
+
   enabled?: boolean;
 };
 
 export type MetricQueryInput = {
+  metric?: MetricReference;
+  metricId?: number;
+
   questionId?: never;
   table?: never;
   tableId?: never;
-  metric?: MetricReference;
-  metricId?: number;
+
   filters?: readonly unknown[];
   measures?: readonly unknown[];
   breakouts?: readonly unknown[];
+
   enabled?: boolean;
 };
 
