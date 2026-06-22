@@ -207,3 +207,12 @@
   :export? true
   :type :integer
   :default 1000)
+
+(defsetting sync-max-fields-per-table
+  "Maximum number of fields per table to sync as :model/Field rows. If a table's warehouse schema has more fields than
+  this, only the first (by name) are synced and the rest are skipped -- keeps document databases with very large or
+  dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    10000)
