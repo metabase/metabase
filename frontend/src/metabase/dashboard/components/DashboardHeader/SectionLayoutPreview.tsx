@@ -37,7 +37,7 @@ export function SectionLayoutPreview({ layout }: SectionLayoutPreviewProps) {
       <Box pos="relative" w={WIDTH} mih={height}>
         {layoutItems.map((item) => (
           <PreviewCard
-            key={item.id}
+            key={`${item.row}-${item.col}`}
             layout={item}
             cellWidth={CELL_WIDTH}
             cellHeight={CELL_HEIGHT}
