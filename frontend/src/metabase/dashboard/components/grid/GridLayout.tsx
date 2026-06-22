@@ -187,7 +187,7 @@ export function GridLayout<T extends { id: number | null }>(
         // lives a separate style tree from the rest of the app.
         cellStrokeColor:
           theme.other?.dashboard?.gridBorderColor ??
-          theme.fn.themeColor("border"),
+          theme.fn.themeColor("border-neutral"),
       }),
     [cellSize, gridWidth, margin, cols, theme],
   );

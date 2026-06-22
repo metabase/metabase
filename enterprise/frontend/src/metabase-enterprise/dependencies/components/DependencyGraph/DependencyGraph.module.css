@@ -20,7 +20,7 @@
     --xy-controls-button-background-color-default: transparent;
 
     .controls {
-      border: 1px solid var(--mb-color-border);
+      border: 1px solid var(--mb-color-border-neutral);
       background-color: var(--mb-color-background);
     }
   }

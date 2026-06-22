@@ -47,7 +47,7 @@ export function MetabotAppBarButton({
         variant="subtle"
         c={isAskPage ? "text-tertiary" : "text-primary"}
         opacity={isAskPage ? 0.5 : undefined}
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         p="sm"
         h="2.25rem"
         w="2.25rem"

@@ -21,7 +21,7 @@ import {
 describe("metabot > errors", () => {
   it("should handle non-successful responses", async () => {
     setup();
-    fetchMock.post(`path:/api/metabot/agent-streaming`, 400);
+    fetchMock.post(`path:/api/metabot/agent-streaming`, 500);
 
     await enterChatMessage("Who is your favorite?");
 
@@ -29,6 +29,19 @@ describe("metabot > errors", () => {
       ["user", "Who is your favorite?"],
       // When no body is provided, a generic error message is shown
       ["agent", METABOT_ERR_MSG.default],
+    ]);
+    expect(await input()).toHaveTextContent("Who is your favorite?");
+  });
+
+  it("should show a validation error message for bad requests", async () => {
+    setup();
+    fetchMock.post(`path:/api/metabot/agent-streaming`, 400);
+
+    await enterChatMessage("Who is your favorite?");
+
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", METABOT_ERR_MSG.format("Invalid request format")],
     ]);
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
