@@ -8,10 +8,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- run-rff
-  "Helper to run notification-rff with given max-rows and row data."
-  [max-rows row-data]
-  (let [metadata {:cols [{:name "id"} {:name "value"}]}
-        rff (temp-storage/notification-rff max-rows {})
+  "Helper to run notification-rff with given cell `:spill-threshold` (or a full options map) and row data."
+  [threshold-or-options row-data]
+  (let [options  (if (map? threshold-or-options) threshold-or-options {:spill-threshold threshold-or-options})
+        metadata {:cols [{:name "id"} {:name "value"}]}
+        rff (temp-storage/notification-rff options {})
         rf (rff metadata)]
     (transduce identity rf row-data)))
 
@@ -95,7 +96,7 @@
 (deftest streaming-data-integrity-test
   (testing "Repeated values preserve correctly"
     (let [metadata {:cols (for [c ["a" "b" "c" "d" "e"]] {:name c})}
-          rff (temp-storage/notification-rff 5 {})
+          rff (temp-storage/notification-rff {:spill-threshold 5} {})
           rf (rff metadata)
           data (for [i (range 6)] (vec (repeat 5 i)))
           result (transduce identity rf data)
@@ -141,7 +142,7 @@
       (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 10 1024 1024)]
         (let [qp-results (mt/process-query query)
               temp-file-results (mt/process-query query
-                                                  (temp-storage/notification-rff 20000))]
+                                                  (temp-storage/notification-rff {:spill-threshold 20000}))]
           (is (not (:notification/truncated? temp-file-results)))
           (is (temp-storage/streaming-temp-file? (-> temp-file-results :data :rows)))
           (is (= (-> qp-results :data :rows)

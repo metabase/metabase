@@ -194,7 +194,7 @@
                                                                      (qp/userland-query query info)
                                                                      ;; Pass streaming rff with 2000 row threshold
                                                                      (notification.temp-storage/notification-rff
-                                                                      cells-to-disk-threshold
+                                                                      {:spill-threshold cells-to-disk-threshold}
                                                                       {:dashboard_id dashboard_id
                                                                        :card_id card-id
                                                                        :dashcard_id (u/the-id dashcard)})))))
@@ -316,7 +316,7 @@
                                                                        (qp/userland-query query info)
                                                                        ;; Pass streaming rff with 2000 row threshold
                                                                        (notification.temp-storage/notification-rff
-                                                                        cells-to-disk-threshold
+                                                                        {:spill-threshold cells-to-disk-threshold}
                                                                         {:card-id card-id})))))
                      fixup-viz-settings
                      format-qp-result))]
