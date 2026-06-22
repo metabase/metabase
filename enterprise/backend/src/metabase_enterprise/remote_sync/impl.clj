@@ -215,9 +215,10 @@
   ({:model_type :model_id :path :content_hash}) name the exported rows. One select fetches every row; rows
   are then chunked (bounded statements) and each chunk is one update that sets `status`/`status_changed_at`
   for every row in it and `file_path`/`content_hash` for the exported ones (a CASE over that chunk's exported
-  rows with ELSE keep-existing). Rows with no entry — removed/delete leftovers — only get their status reset."
+  rows with ELSE keep-existing). A full export normally has no non-exported rows here (removed/delete rows are
+  dropped first); any that remain just get their status reset."
   [entries sync-timestamp]
-  (let [by-key   (into {} (map (juxt (juxt :model_type :model_id) identity)) entries)
+  (let [by-key   (u/index-by (juxt :model_type :model_id) entries)
         id+entry (mapv (fn [{:keys [id model_type model_id]}] [id (by-key [model_type model_id])])
                        (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
     (doseq [chunk (partition-all content-hash-batch-size id+entry)
@@ -227,7 +228,7 @@
                   {:id [:in (mapv first chunk)]}
                   (cond-> {:status "synced" :status_changed_at sync-timestamp}
                     (seq exported)
-                    (assoc :file_path    (into [:case] (concat (mapcat (fn [[id e]] [[:= :id id] (:path e)]) exported) [:else :file_path]))
+                    (assoc :file_path    (into [:case] (concat (mapcat (fn [[id e]] [[:= :id id] (:path e)])         exported) [:else :file_path]))
                            :content_hash (into [:case] (concat (mapcat (fn [[id e]] [[:= :id id] (:content_hash e)]) exported) [:else :content_hash]))))))))
 
 (defn- import-content-metadata
@@ -725,17 +726,11 @@
         (export-closure model-type model-id)))
 
 (defn- stream-extract
-  "Lazy eduction that calls `(f row entity)` for each of `rows` (maps with :model_type and :model_id, plus any
-  extra keys) paired with its freshly extracted serdes entity, yielding f's results. Extraction runs in-stream
-  (extract-one inside the extract-query reduction, ResultSet open) and the IN clauses are chunked, so it
-  streams without realizing all entities (or their serialized content) at once. Rows whose entity no longer
-  exists are skipped.
-
-  Two separate mapcats (model -> id-chunks -> entities) over a seqable source, rather than a nested eduction:
-  the second `cat` reduces the reduce-only `extract-query` instead of seq-ing it, so the result can be
-  consumed via either reduce or seq."
+  "Lazy eduction that calls `(f row entity)` for each of `rows` (maps with :model_type and :model_id, plus any extra
+  keys) paired with its freshly extracted serdes entity, yielding f's results. Extraction runs without realizing all
+  entities (or their serialized content) at once. Rows whose entity no longer exists are skipped."
   [f rows]
-  (let [key->row (into {} (map (juxt (juxt :model_type :model_id) identity)) rows)]
+  (let [key->row (u/index-by (juxt :model_type :model_id) rows)]
     (eduction
      ;; expand each model into bounded id-chunks (keeps each extract-query IN within DB param limits)
      (mapcat (fn [[model-type model-rows]]
@@ -930,24 +925,35 @@
     ;; serialize once: write the files and get back each entity's path + content_hash (keyed by primary key)
     (let [{:keys [version entries]} (source/store-and-record! targets snapshot task-id message)]
       (remote-sync.task/set-version! task-id version)
-      ;; one write per row: reconcile every row to synced and write file_path + content_hash for the
-      ;; exported entities (removed/delete rows just get their status reset).
+      ;; Drop the tracking rows for entity-id entities that genuinely left the synced set — removed/delete
+      ;; status AND not in this export — so full export agrees with the incremental path (which deletes them)
+      ;; instead of leaving synced rows pointing at files the re-serialize already dropped. (Path/hybrid
+      ;; removed rows, and removed rows whose entity is still exported, are kept and reconciled to synced.)
+      (let [exported (into #{} (map (juxt :model_type :model_id)) entries)
+            gone     (into []
+                           (comp (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
+                                 (remove #(exported [(:model_type %) (:model_id %)]))
+                                 (map :id))
+                           (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
+                                      :status [:in ["removed" "delete"]]))]
+        (when (seq gone)
+          (t2/delete! :model/RemoteSyncObject :id [:in gone])))
+      ;; reconcile every remaining row to synced and write file_path + content_hash for the exported entities.
       (record-exported-metadata! entries sync-timestamp)
       {:status :success
        :outcome {:kind "pushed"
                  :count (count entries)
                  :branch (settings/remote-sync-branch)}})))
 
-(defn- export-incremental! [plan disabled-files task-id snapshot message sync-timestamp]
+(defn- incremental-export! [plan disabled-files task-id snapshot message sync-timestamp]
   (let [{:keys [writes delete-paths removed-ids]} plan
         delete-paths (into (vec delete-paths) disabled-files)
         synced       (volatile! [])
-        ;; pass 2: lazily re-serialize each write's content (its path was validated in pass 1) and stream it
-        ;; to the commit; tee the per-tracked-row synced metadata. Only one entity's content is live at a time.
         upserts      (stream-extract
                       (fn [row entity]
                         (let [content (source/entity->content entity)]
                           (when (:id row)
+                            ;; save minimal map (no yaml)
                             (vswap! synced conj {:id           (:id row)
                                                  :file_path    (:file_path row)
                                                  :content_hash (source/content-hash content)}))
@@ -956,13 +962,12 @@
     (remote-sync.task/update-progress! task-id 0.3)
     (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
       (remote-sync.task/set-version! task-id written-version))
-    ;; one batched CASE update per chunk (status/timestamp constant, file_path/content_hash per row)
     (doseq [chunk (partition-all content-hash-batch-size @synced)]
       (t2/update! :model/RemoteSyncObject
                   {:id [:in (mapv :id chunk)]}
                   {:status            "synced"
                    :status_changed_at sync-timestamp
-                   :file_path         (into [:case] (mapcat (fn [{:keys [id file_path]}] [[:= :id id] file_path])) chunk)
+                   :file_path         (into [:case] (mapcat (fn [{:keys [id file_path]}]    [[:= :id id] file_path]))    chunk)
                    :content_hash      (into [:case] (mapcat (fn [{:keys [id content_hash]}] [[:= :id id] content_hash])) chunk)}))
     (when (seq removed-ids)
       (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
@@ -1060,7 +1065,7 @@
             ;; Incremental fast-path: write only the changed entities, deleting their old paths plus files left behind
             ;; in now-disabled content dirs, preserving every other.
             :else
-            (export-incremental! @plan @disabled-files task-id snapshot message sync-timestamp))))
+            (incremental-export! @plan @disabled-files task-id snapshot message sync-timestamp))))
       (catch Exception e
         ;; handle-task-result! records the failure on this result, and skips entirely when the task
         ;; was already cancelled (ended_at set) — so cancellation needs no special case here.

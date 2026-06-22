@@ -369,7 +369,7 @@
                          :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
                          :model/RemoteSyncObject _ {:model_type "Collection" :model_id (:id coll) :model_name "RS" :status "create" :status_changed_at (t/offset-date-time)}
                          :model/RemoteSyncObject _ {:model_type "Card" :model_id (:id card) :model_name "Card" :model_collection_id (:id coll) :status "create" :status_changed_at (t/offset-date-time)}
-                         ;; a leftover row whose entity isn't in the export — full export must reconcile its status
+                         ;; a removed/delete row whose entity left the synced set — full export must drop it
                          :model/RemoteSyncObject leftover {:model_type "Card" :model_id 999999 :model_name "Gone" :status "delete" :status_changed_at (t/offset-date-time)}]
             ;; force? routes through full-export! -> store-and-record! (no incremental fast-path)
             (let [mock-source (test-helpers/create-mock-source)
@@ -379,9 +379,8 @@
                 (is (= "synced" (:status row)))
                 (is (some? (:content_hash row)) "content_hash recorded from store-and-record!'s serialization")
                 (is (some? (:file_path row)) "file_path recorded from store-and-record!'s serialization"))
-              (let [row (t2/select-one :model/RemoteSyncObject :id (:id leftover))]
-                (is (= "synced" (:status row)) "leftover (non-exported) row reconciled to synced")
-                (is (nil? (:content_hash row)) "leftover row's content_hash left untouched")))
+              (is (nil? (t2/select-one :model/RemoteSyncObject :id (:id leftover)))
+                  "removed/delete row dropped by full export (as the incremental path does)"))
             (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
             (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
                 "a no-op update after a full export stays synced")))))))
