@@ -275,13 +275,12 @@
 ;; with something using the new system
 ;; Issue: https://github.com/metabase/metabase/issues/39386
 (defn- weekday
-  "Wrapper around (date-part :weekday ...) to account for potentially varying @@DATEFIRST"
+  "Wrapper around (date-part :weekday ...) to account for potentially varying @@DATEFIRST.
+  `((dow + @@DATEFIRST - 1) % 7) + 1` shifts the day-of-week into the range [1, 7] and propagates NULL."
   [expr]
-  [:coalesce
-   [:nullif
-    (h2x/mod (h2x/+ (date-part :weekday expr) [:raw "@@DATEFIRST"]) [:inline 7])
-    [:inline 0]]
-   [:inline 7]])
+  (h2x/+ (h2x/mod (h2x/- (h2x/+ (date-part :weekday expr) [:raw "@@DATEFIRST"]) [:inline 1])
+                  [:inline 7])
+         [:inline 1]))
 
 (defmethod sql.qp/date [:sqlserver :day]
   [_driver _unit expr]
