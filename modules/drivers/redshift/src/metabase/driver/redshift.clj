@@ -93,16 +93,13 @@
 
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
   [_driver _db & _args]
-  (fn [rf]
-    (let [fields (volatile! (transient []))]
-      (fn
-        ([] (rf))
-        ([result]
-         (let [filtered (remove-duplicate-fields (persistent! @fields))]
-           (rf (reduce rf result filtered))))
-        ([result field]
-         (vswap! fields conj! field)
-         result)))))
+  ;; `describe-fields-sql` orders by [table-schema table-name database-position], so each table's columns arrive
+  ;; contiguously. A duplicate-column key is (table-schema, table-name, name) -- by definition all its occurrences are
+  ;; within a single table -- so we can dedup per table with `partition-by` rather than buffering the entire result
+  ;; set. This bounds memory to one table's columns (the per-table streaming contract) and is otherwise identical to a
+  ;; global dedup.
+  (comp (partition-by (juxt :table-schema :table-name))
+        (mapcat remove-duplicate-fields)))
 
 ;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
 (defmethod driver/dynamic-database-types-lookup :redshift
