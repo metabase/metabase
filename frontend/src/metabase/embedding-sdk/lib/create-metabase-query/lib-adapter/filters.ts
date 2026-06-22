@@ -14,8 +14,8 @@ import {
   isTableFieldSchema,
   isUnaryOperator,
 } from "../guards";
+import type { DimensionFilterInput } from "../input-types";
 import { isColumnReference } from "../query-utils";
-import type { DimensionFilterRuntime } from "../runtime-types";
 
 import { STAGE_INDEX, fieldHasTime, findLibColumn } from "./query-utils";
 
@@ -76,7 +76,7 @@ export function buildLibMetricDatasetFilter(
 
 function buildLibFieldFilter(
   query: Query,
-  filter: DimensionFilterRuntime,
+  filter: DimensionFilterInput,
 ): ExpressionClause | null {
   const dimension = filter.dimension;
 
@@ -139,7 +139,7 @@ function buildLibFieldFilter(
 }
 
 function buildLibRelativeDateFilter(
-  filter: DimensionFilterRuntime,
+  filter: DimensionFilterInput,
   column: ColumnMetadata,
 ): ExpressionClause | null {
   const parts = getRelativeDateFilterParts(filter);
@@ -171,7 +171,7 @@ type RelativeDateFilterInput = {
 };
 
 function getRelativeDateFilterParts(
-  filter: DimensionFilterRuntime,
+  filter: DimensionFilterInput,
 ): RelativeDateFilterParts | null {
   const values =
     filter.values ?? (Array.isArray(filter.value) ? filter.value : null);

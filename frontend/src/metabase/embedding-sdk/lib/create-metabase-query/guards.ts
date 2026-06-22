@@ -6,42 +6,42 @@ import type { FieldSchema } from "embedding-sdk-shared/lib/create-metabase-query
 import { isObject } from "metabase-types/guards";
 
 import type {
-  CountAggregationRuntime,
-  DimensionFilterRuntime,
-  FieldAggregationRuntime,
-  MeasureReferenceRuntime,
-  SegmentReferenceRuntime,
-} from "./runtime-types";
+  CountAggregationInput,
+  DimensionFilterInput,
+  FieldAggregationInput,
+  MeasureReferenceInput,
+  SegmentReferenceInput,
+} from "./input-types";
 
 export { isTableFieldSchema, isUnaryOperator };
 
 export const isDimensionFilter = (
   value: unknown,
-): value is DimensionFilterRuntime => isObject(value) && "dimension" in value;
+): value is DimensionFilterInput => isObject(value) && "dimension" in value;
 
 export const isTableDimensionFilter = (
   value: unknown,
-): value is DimensionFilterRuntime & { dimension: FieldSchema } =>
+): value is DimensionFilterInput & { dimension: FieldSchema } =>
   isDimensionFilter(value) && isTableFieldSchema(value.dimension);
 
 export const isSegmentSchema = (
   value: unknown,
-): value is SegmentReferenceRuntime =>
+): value is SegmentReferenceInput =>
   isObject(value) && "kind" in value && value.kind === "segment";
 
 export const isMeasureSchema = (
   value: unknown,
-): value is MeasureReferenceRuntime =>
+): value is MeasureReferenceInput =>
   isObject(value) && "kind" in value && value.kind === "measure";
 
 export const isCountAggregation = (
   value: unknown,
-): value is CountAggregationRuntime =>
+): value is CountAggregationInput =>
   isObject(value) && "type" in value && value.type === "count";
 
 export const isFieldAggregation = (
   value: unknown,
-): value is FieldAggregationRuntime =>
+): value is FieldAggregationInput =>
   isObject(value) &&
   "type" in value &&
   "dimension" in value &&

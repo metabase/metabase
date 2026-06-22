@@ -15,15 +15,12 @@ import {
   isSegmentSchema,
   isUnaryOperator,
 } from "./guards";
+import type { DimensionFilterInput, TableQueryInput } from "./input-types";
 import { getFieldId, normalizeBreakout } from "./query-utils";
-import type {
-  DimensionFilterRuntime,
-  TableQueryRuntime,
-} from "./runtime-types";
 import { validateTableScopedInputs } from "./validation";
 
 export function buildTableDatasetQuery(
-  query: TableQueryRuntime,
+  query: TableQueryInput,
 ): Omit<StructuredDatasetQuery, "database"> {
   const tableId = getTableIdFromQuery(query);
 
@@ -81,7 +78,7 @@ function buildTableFilter(filter: unknown) {
   return null;
 }
 
-function buildTableAggregationClauses(query: TableQueryRuntime): Aggregation[] {
+function buildTableAggregationClauses(query: TableQueryInput): Aggregation[] {
   const aggregations = query.aggregations ?? query.measures;
   const clauses = aggregations?.flatMap((aggregation) => {
     const clause = buildAggregationClause(aggregation);
@@ -125,7 +122,7 @@ function buildTableBreakout(breakout: unknown): ConcreteFieldReference {
   return buildFieldReference(dimension, options) as ConcreteFieldReference;
 }
 
-function buildFieldFilterClause(filter: DimensionFilterRuntime) {
+function buildFieldFilterClause(filter: DimensionFilterInput) {
   const operator = filter.operator;
   const dimension = buildFieldReference(filter.dimension);
   const values = filter.values ?? [filter.value];

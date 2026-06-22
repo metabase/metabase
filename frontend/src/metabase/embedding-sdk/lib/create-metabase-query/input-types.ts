@@ -11,7 +11,7 @@ type ID = string | number;
 
 export type FilterOperator = LibFilterOperator | "time-interval";
 
-export type SqlParameterValuesRuntime = Record<
+export type SqlParameterValuesInput = Record<
   string,
   | string
   | number
@@ -21,9 +21,9 @@ export type SqlParameterValuesRuntime = Record<
   | undefined
 >;
 
-export type ColumnReferenceRuntime = string | FieldSchema;
+export type ColumnReferenceInput = string | FieldSchema;
 
-export type BreakoutRuntime<TDimension = ColumnReferenceRuntime> =
+export type BreakoutInput<TDimension = ColumnReferenceInput> =
   | TDimension
   | {
       dimension: TDimension;
@@ -31,13 +31,13 @@ export type BreakoutRuntime<TDimension = ColumnReferenceRuntime> =
       binning?: BinningOptions;
     };
 
-export type QuestionQueryRuntime = {
+export type QuestionQueryInput = {
   questionId: ID;
-  parameters?: SqlParameterValuesRuntime;
+  parameters?: SqlParameterValuesInput;
   enabled?: boolean;
 };
 
-export type TableQueryRuntime = {
+export type TableQueryInput = {
   questionId?: never;
   table?: TableSchema;
   tableId?: ID;
@@ -51,11 +51,11 @@ export type TableQueryRuntime = {
   enabled?: boolean;
 };
 
-export type MetricQueryRuntime = {
+export type MetricQueryInput = {
   questionId?: never;
   table?: never;
   tableId?: never;
-  metric?: MetricReferenceRuntime;
+  metric?: MetricReferenceInput;
   metricId?: number;
   filters?: readonly unknown[];
   measures?: readonly unknown[];
@@ -63,34 +63,34 @@ export type MetricQueryRuntime = {
   enabled?: boolean;
 };
 
-export type MetabaseQueryRuntime =
-  | QuestionQueryRuntime
-  | TableQueryRuntime
-  | MetricQueryRuntime;
+export type MetabaseQueryInput =
+  | QuestionQueryInput
+  | TableQueryInput
+  | MetricQueryInput;
 
-export type SegmentReferenceRuntime = {
+export type SegmentReferenceInput = {
   kind: "segment";
   id: number;
   tableId: number;
 };
 
-export type MeasureReferenceRuntime = {
+export type MeasureReferenceInput = {
   kind: "measure";
   id: number;
   tableId: number;
   columns?: readonly SchemaColumn[];
 };
 
-export type CountAggregationRuntime = {
+export type CountAggregationInput = {
   type: "count";
 };
 
-export type FieldAggregationRuntime<TDimension = unknown> = {
+export type FieldAggregationInput<TDimension = unknown> = {
   type: "sum" | "avg" | "median" | "distinct" | "min" | "max";
   dimension: TDimension;
 };
 
-export type MetricReferenceRuntime = Pick<MetricSchema, "dimensions"> & {
+export type MetricReferenceInput = Pick<MetricSchema, "dimensions"> & {
   id: number;
   databaseId?: number;
   sourceTableId?: number;
@@ -99,7 +99,7 @@ export type MetricReferenceRuntime = Pick<MetricSchema, "dimensions"> & {
   columns?: MetricSchema["columns"];
 };
 
-export type DimensionFilterRuntime<TDimension = ColumnReferenceRuntime> = {
+export type DimensionFilterInput<TDimension = ColumnReferenceInput> = {
   dimension: TDimension;
   operator: FilterOperator;
   value?: unknown;

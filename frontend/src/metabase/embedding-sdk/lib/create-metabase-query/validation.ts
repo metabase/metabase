@@ -9,10 +9,10 @@ import {
   isTableDimensionFilter,
   isTableFieldSchema,
 } from "./guards";
+import type { MetricQueryInput } from "./input-types";
 import { getMetricDimensionValues, normalizeBreakout } from "./query-utils";
-import type { MetricQueryRuntime } from "./runtime-types";
 
-export const validateMetricTableScopedInputs = (query: MetricQueryRuntime) =>
+export const validateMetricTableScopedInputs = (query: MetricQueryInput) =>
   validateTableScopedInputs({
     allowedTableIds: getMetricMappedTableIdsFromQuery(query),
     breakouts: query.breakouts,
@@ -21,7 +21,7 @@ export const validateMetricTableScopedInputs = (query: MetricQueryRuntime) =>
     context: "Metric query",
   });
 
-export function validateMetricGeneratedDimensions(query: MetricQueryRuntime) {
+export function validateMetricGeneratedDimensions(query: MetricQueryInput) {
   query.filters?.forEach((filter) => {
     if (isTableDimensionFilter(filter)) {
       validateMetricDimensionForTableField(query, filter.dimension);
@@ -122,7 +122,7 @@ function getTableFieldFromBreakout(breakout: unknown) {
 }
 
 export function validateMetricDimensionForTableField(
-  query: MetricQueryRuntime,
+  query: MetricQueryInput,
   field: FieldSchema,
 ) {
   const dimension = getMetricDimensionFields(query).find((dimension) => {
@@ -136,7 +136,7 @@ export function validateMetricDimensionForTableField(
   }
 }
 
-export const getMetricDimensionFields = (query: MetricQueryRuntime) =>
+export const getMetricDimensionFields = (query: MetricQueryInput) =>
   getMetricDimensionValues(query.metric, isTableFieldSchema);
 
 function fieldsMatch(left: FieldSchema, right: FieldSchema) {

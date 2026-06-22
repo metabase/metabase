@@ -4,6 +4,7 @@ import {
 } from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
+import type { MetricQueryInput, TableQueryInput } from "./input-types";
 import {
   buildMetricDatasetQueryFromSchema,
   buildTableDatasetQueryFromSchema,
@@ -12,9 +13,8 @@ import {
   getTableFromSchema,
   hasMetricFromSchema,
   hasTableFromSchema,
-  isMetricQueryRuntime,
+  isMetricQueryInput,
 } from "./query-utils";
-import type { MetricQueryRuntime, TableQueryRuntime } from "./runtime-types";
 import { buildTableDatasetQuery } from "./table-query-builder";
 import {
   validateMetricGeneratedDimensions,
@@ -23,13 +23,13 @@ import {
 } from "./validation";
 
 export type CreateMetabaseQuery = (
-  query: TableQueryRuntime | MetricQueryRuntime,
+  query: TableQueryInput | MetricQueryInput,
 ) => StructuredDatasetQuery;
 
 export const createMetabaseQuery: CreateMetabaseQuery = (
-  query: TableQueryRuntime | MetricQueryRuntime,
+  query: TableQueryInput | MetricQueryInput,
 ) => {
-  const datasetQuery = isMetricQueryRuntime(query)
+  const datasetQuery = isMetricQueryInput(query)
     ? buildValidatedMetricDatasetQueryFromSchema(query)
     : buildValidatedTableDatasetQueryFromSchema(query);
 
@@ -37,7 +37,7 @@ export const createMetabaseQuery: CreateMetabaseQuery = (
     return datasetQuery;
   }
 
-  if (isMetricQueryRuntime(query)) {
+  if (isMetricQueryInput(query)) {
     if (hasMetricFromSchema(query)) {
       throw new Error(
         "Generated metric query could not be converted to a dataset query.",
@@ -55,22 +55,22 @@ export const createMetabaseQuery: CreateMetabaseQuery = (
     );
   }
 
-  const databaseId = getTableDatabaseIdFromQuery(query as TableQueryRuntime);
+  const databaseId = getTableDatabaseIdFromQuery(query as TableQueryInput);
 
   if (databaseId == null) {
     return buildTableDatasetQuery(
-      query as TableQueryRuntime,
+      query as TableQueryInput,
     ) as StructuredDatasetQuery;
   }
 
   return {
-    ...buildTableDatasetQuery(query as TableQueryRuntime),
+    ...buildTableDatasetQuery(query as TableQueryInput),
     database: Number(databaseId),
   };
 };
 
 function buildValidatedTableDatasetQueryFromSchema(
-  query: TableQueryRuntime,
+  query: TableQueryInput,
 ): StructuredDatasetQuery | null {
   const table = getTableFromSchema(query);
 
@@ -95,7 +95,7 @@ function buildValidatedTableDatasetQueryFromSchema(
 }
 
 function buildValidatedMetricDatasetQueryFromSchema(
-  query: MetricQueryRuntime,
+  query: MetricQueryInput,
 ): StructuredDatasetQuery | null {
   validateMetricTableScopedInputs(query);
   validateMetricGeneratedDimensions(query);

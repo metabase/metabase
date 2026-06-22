@@ -6,8 +6,8 @@ import type { ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import { TYPE } from "metabase-lib/v1/types/constants";
 
+import type { ColumnReferenceInput } from "../input-types";
 import { getFieldId } from "../query-utils";
-import type { ColumnReferenceRuntime } from "../runtime-types";
 
 export const STAGE_INDEX = 0;
 
@@ -38,7 +38,7 @@ export function fieldHasTime(field: FieldSchema): boolean {
 
 export function findLibColumn(
   query: Query,
-  field: ColumnReferenceRuntime,
+  field: ColumnReferenceInput,
   options: Record<string, unknown> = {},
 ): ColumnMetadata | null {
   if (typeof field === "string") {

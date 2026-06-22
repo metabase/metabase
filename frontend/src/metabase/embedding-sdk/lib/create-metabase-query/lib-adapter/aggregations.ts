@@ -13,11 +13,11 @@ import {
   isFieldAggregation,
   isMeasureSchema,
 } from "../guards";
-import { isColumnReference } from "../query-utils";
 import type {
-  FieldAggregationRuntime,
-  MeasureReferenceRuntime,
-} from "../runtime-types";
+  FieldAggregationInput,
+  MeasureReferenceInput,
+} from "../input-types";
+import { isColumnReference } from "../query-utils";
 
 import { STAGE_INDEX, findLibColumn } from "./query-utils";
 
@@ -107,7 +107,7 @@ function buildLibAggregation(
 
 function buildLibFieldAggregation(
   query: Query,
-  aggregation: FieldAggregationRuntime,
+  aggregation: FieldAggregationInput,
 ): AggregationClause | null {
   if (!isColumnReference(aggregation.dimension)) {
     return null;
@@ -137,7 +137,7 @@ function findLibAggregationClause(
 
 const findLibMeasure = (
   query: Query,
-  measure: MeasureReferenceRuntime,
+  measure: MeasureReferenceInput,
 ): MeasureMetadata | null =>
   Lib.availableMeasures(query, STAGE_INDEX).find(
     (availableMeasure) =>

@@ -9,7 +9,7 @@ import type { TableSchema } from "embedding-sdk-shared/lib/create-metabase-query
 import * as Lib from "metabase-lib";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
-import type { MetricQueryRuntime, TableQueryRuntime } from "../runtime-types";
+import type { MetricQueryInput, TableQueryInput } from "../input-types";
 
 import {
   applyAggregations,
@@ -28,7 +28,7 @@ import {
 import { normalizeDatasetQuery } from "./normalization";
 
 export function buildTableDatasetQueryFromSchema(
-  query: TableQueryRuntime,
+  query: TableQueryInput,
   table: TableSchema,
 ): StructuredDatasetQuery | null {
   const databaseId = getTableDatabaseIdFromQuery(query);
@@ -78,7 +78,7 @@ export function buildTableDatasetQueryFromSchema(
 }
 
 export function buildMetricDatasetQueryFromSchema(
-  query: MetricQueryRuntime,
+  query: MetricQueryInput,
 ): StructuredDatasetQuery | null {
   const metricId = getMetricIdFromQuery(query);
   const databaseId = getMetricDatabaseIdFromQuery(query);

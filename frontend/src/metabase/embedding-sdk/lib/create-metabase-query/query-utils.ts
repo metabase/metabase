@@ -7,28 +7,28 @@ import { isObject } from "metabase-types/guards";
 
 import { isTableFieldSchema } from "./guards";
 import type {
-  BreakoutRuntime,
-  ColumnReferenceRuntime,
-  MetricQueryRuntime,
-  TableQueryRuntime,
-} from "./runtime-types";
+  BreakoutInput,
+  ColumnReferenceInput,
+  MetricQueryInput,
+  TableQueryInput,
+} from "./input-types";
 
 export const getTableFromSchema = (
-  query: TableQueryRuntime,
+  query: TableQueryInput,
 ): TableSchema | null =>
   isObject(query.table) ? (query.table as TableSchema) : null;
 
-export const isMetricQueryRuntime = (
-  query: TableQueryRuntime | MetricQueryRuntime,
-): query is MetricQueryRuntime => "metric" in query || "metricId" in query;
+export const isMetricQueryInput = (
+  query: TableQueryInput | MetricQueryInput,
+): query is MetricQueryInput => "metric" in query || "metricId" in query;
 
-export const hasMetricFromSchema = (query: MetricQueryRuntime): boolean =>
+export const hasMetricFromSchema = (query: MetricQueryInput): boolean =>
   isObject(query.metric);
 
 export const hasTableFromSchema = (
-  query: TableQueryRuntime | MetricQueryRuntime,
-): query is TableQueryRuntime =>
-  !isMetricQueryRuntime(query) && isObject(query.table);
+  query: TableQueryInput | MetricQueryInput,
+): query is TableQueryInput =>
+  !isMetricQueryInput(query) && isObject(query.table);
 
 export function getFieldId(field: unknown): number | null {
   if (hasFieldId(field)) {
@@ -54,7 +54,7 @@ export const isMetricDimensionWithFieldId = (
 
 export const isColumnReference = (
   value: unknown,
-): value is ColumnReferenceRuntime =>
+): value is ColumnReferenceInput =>
   typeof value === "string" || isTableFieldSchema(value);
 
 export function getMetricDimensionValues<TDimension>(
@@ -91,9 +91,9 @@ const getObjectProperty = (value: unknown, key: string): unknown =>
   isObject(value) && key in value ? value[key] : undefined;
 
 export const normalizeBreakout = (
-  breakout: BreakoutRuntime | unknown,
+  breakout: BreakoutInput | unknown,
 ): {
-  dimension: ColumnReferenceRuntime | null;
+  dimension: ColumnReferenceInput | null;
   options: Record<string, unknown>;
 } => ({
   dimension: getBreakoutDimension(breakout),
@@ -101,8 +101,8 @@ export const normalizeBreakout = (
 });
 
 function getBreakoutDimension(
-  breakout: BreakoutRuntime | unknown,
-): ColumnReferenceRuntime | null {
+  breakout: BreakoutInput | unknown,
+): ColumnReferenceInput | null {
   if (typeof breakout === "string" || isTableFieldSchema(breakout)) {
     return breakout;
   }

@@ -14,16 +14,13 @@ import * as Lib from "metabase-lib";
 import type { Field, TableId } from "metabase-types/api";
 
 import { isMeasureSchema } from "../guards";
+import type { MeasureReferenceInput, MetricQueryInput } from "../input-types";
 import {
   getFieldId,
   getMetricDimensionValues,
   hasFieldId,
   isMetricDimensionWithFieldId,
 } from "../query-utils";
-import type {
-  MeasureReferenceRuntime,
-  MetricQueryRuntime,
-} from "../runtime-types";
 
 import { getFieldBaseType, getFieldEffectiveType } from "./query-utils";
 
@@ -79,7 +76,7 @@ export function createTableMetadata(
 }
 
 export function createMetricMetadata(
-  query: MetricQueryRuntime,
+  query: MetricQueryInput,
   databaseId: number,
 ): MetadataInput {
   const metricId = Number(getMetricIdFromQuery(query));
@@ -260,7 +257,7 @@ const createSegmentMetadataRecord = (
 });
 
 const createMeasureMetadataRecord = (
-  measure: MeasureReferenceRuntime,
+  measure: MeasureReferenceInput,
   tableId: TableId,
 ) => ({
   ...MEASURE_METADATA_DEFAULTS,
