@@ -57,13 +57,25 @@
         basename (str (last resolved) ".yaml")]
     (str/join File/separator (concat dirnames [basename]))))
 
+(defn entity->path
+  "The repo-relative path an extracted `entity` serializes to, using storage context `opts` (from
+  `serdes/storage-base-context`). Cheaper than [[entity->file-spec]] when only the path is needed (e.g. a
+  validation pass that doesn't render the YAML)."
+  [opts entity]
+  (remote-sync-path opts entity))
+
+(defn entity->content
+  "The serialized YAML string for an extracted `entity`. Independent of the storage path/dedup context."
+  [entity]
+  (yaml/generate-string (serialization/serialization-deep-sort entity)
+                        {:dumper-options {:flow-style :block :split-lines false}}))
+
 (defn entity->file-spec
   "Serializes a single extracted entity into a `{:path :content}` file spec, using storage context
   `opts` (from `serdes/storage-base-context`)."
   [opts entity]
-  {:path    (remote-sync-path opts entity)
-   :content (yaml/generate-string (serialization/serialization-deep-sort entity)
-                                  {:dumper-options {:flow-style :block :split-lines false}})})
+  {:path    (entity->path opts entity)
+   :content (entity->content entity)})
 
 (defn content-hash
   "SHA-256 (hex) of a serialized YAML `content` string."

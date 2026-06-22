@@ -724,47 +724,77 @@
                        (not (t2/exists? :model/RemoteSyncObject :model_type mt :model_id id)))))
         (export-closure model-type model-id)))
 
-(defn- dep-upserts
-  "Serializes the untracked dependency entities `dep-ids` (a set of `[model-type id]`) into file-specs to upsert,
-  reusing the storage context `opts` so paths dedupe consistently with the changed entities.  Returns `[]` when there
-  are no deps, a vector of file-specs on success, or `:remote-sync/unsyncable-record` if any dependency's path is
-  already occupied by a different entity (a collision that requires a full export)."
+(defn- stream-extract
+  "Lazy eduction that calls `(f row entity)` for each of `rows` (maps with :model_type and :model_id, plus any
+  extra keys) paired with its freshly extracted serdes entity, yielding f's results. Extraction runs in-stream
+  (extract-one inside the extract-query reduction, ResultSet open) and the IN clauses are chunked, so it
+  streams without realizing all entities (or their serialized content) at once. Rows whose entity no longer
+  exists are skipped.
+
+  Built as a single comp'd eduction over a seqable source (the model groups) — not a nested eduction over the
+  reduce-only `extract-query` — so it can be consumed via either reduce or seq."
+  [f rows]
+  (eduction
+   (comp
+    (mapcat (fn [[model-type model-rows]]
+              (let [id->row (into {} (map (juxt :model_id identity)) model-rows)]
+                (map (fn [id-chunk] [model-type id->row id-chunk])
+                     (partition-all content-hash-batch-size (mapv :model_id model-rows))))))
+    (mapcat (fn [[model-type id->row id-chunk]]
+              (let [opts {:where [:in :id (vec id-chunk)] :skip-archived true}]
+                (eduction (keep (fn [instance]
+                                  (when-let [row (id->row (:id instance))]
+                                    (f row (serdes/extract-one model-type opts instance)))))
+                          (serdes/extract-query model-type opts))))))
+   (group-by :model_type rows)))
+
+(defn- dep-writes
+  "Pass-1 validation of the untracked dependency entities `dep-ids` (a set of `[model-type id]`): extracts
+  each, computes its target path (reusing the storage context `opts` so paths dedupe consistently with the
+  changed rows), and checks the path is free — absent, or already holding that same entity. Returns `[]`
+  when there are none, a vector of `{:model_type :model_id :file_path}` write-decisions on success, or
+  `:remote-sync/unsyncable-record` on a collision (which forces a full export)."
   [snapshot opts dep-ids]
   (if (empty? dep-ids)
     []
-    (let [specs (->> dep-ids
-                     (map (fn [[mt id]] {:model_type mt :model_id id}))
-                     spec/extract-entities-for-rows
-                     (map (fn [e] [(source/entity->file-spec opts e) (:entity_id e)])))]
-      ;; keep going only if every dependency's target path is free: absent, or already holding that
-      ;; same entity. A present file whose entity_id can't be read counts as occupied — don't clobber it.
-      (if (every? (fn [[spec eid]]
-                    (if-let [content (source.p/read-file snapshot (:path spec))]
+    (let [decisions (into []
+                          (stream-extract (fn [row entity]
+                                            (assoc row
+                                                   :file_path (source/entity->path opts entity)
+                                                   :eid       (:entity_id entity)))
+                                          (mapv (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)))]
+      ;; keep going only if every dependency's target path is free. A present file whose entity_id can't be
+      ;; read counts as occupied — don't clobber it.
+      (if (every? (fn [{:keys [file_path eid]}]
+                    (if-let [content (source.p/read-file snapshot file_path)]
                       (= eid (try (:entity_id (yaml/parse-string content))
                                   (catch Exception _ nil)))
                       true))
-                  specs)
-        (mapv first specs)
+                  decisions)
+        (mapv #(dissoc % :eid) decisions)
         :remote-sync/unsyncable-record))))
 
 (defn- incremental-updates-for-row
-  "The updates a single dirty `row` contributes to an incremental plan: a map of
-  {:upserts :delete-paths :synced :removed-ids :pull} (any subset), or `:remote-sync/unsyncable-record`
-  if the row can't be synced incrementally and the whole batch must fall back to a full export."
+  "The (content-free, pass-1) updates a single dirty `row` contributes to an incremental plan: a map of
+  {:writes :delete-paths :removed-ids :pull} (any subset), or `:remote-sync/unsyncable-record` if the row
+  can't be synced incrementally and the whole batch must fall back to a full export. A `:writes` entry is
+  `{:id :model_type :model_id :file_path}` naming a validated target path; pass 2 (export-incremental!)
+  re-serializes the content. This pass only computes paths and reads the (small) existing repo file — it
+  never renders the entity's YAML, so the dirty set's content is not held in memory."
   [opts snapshot {:keys [status file_path] :as row}]
   (try
-    (let [info   (delay (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-                          (let [spec (source/entity->file-spec opts entity)
-                                content (source.p/read-file snapshot (:path spec))
-                                yaml (when content
-                                       ;; errors parsing should throw an invalidate the row
-                                       (yaml/parse-string content))]
-                            {:entity entity
-                             :spec spec
-                             :eid (:entity_id entity)
-                             :new-path (:path spec)
-                             :file-exists? (boolean content)
-                             :file-eid (:entity_id yaml)})))]
+    (let [info  (delay (when-let [entity (first (spec/extract-entities-for-rows [row]))]
+                         (let [new-path (source/entity->path opts entity)
+                               content  (source.p/read-file snapshot new-path)]
+                           {:eid          (:entity_id entity)
+                            :new-path     new-path
+                            :file-exists? (boolean content)
+                            ;; errors parsing the existing repo file should throw and invalidate the row
+                            :file-eid     (when content (:entity_id (yaml/parse-string content)))})))
+          write (fn [] {:id         (:id row)
+                        :model_type (:model_type row)
+                        :model_id   (:model_id row)
+                        :file_path  (:new-path @info)})]
       (cond
         (not= :entity-id ;; only entity-id models can be synced incrementally
               (:identity (spec/spec-for-model-type (:model_type row))))
@@ -791,8 +821,7 @@
              (or (not (:file-exists? @info))
                  (= (:eid @info) (:file-eid @info))))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
-         :upserts [(:spec @info)]
-         :synced [{:id (:id row) :file_path (:new-path @info) :content_hash (source/content-hash (:content (:spec @info)))}]}
+         :writes [(write)]}
 
         ;; in-place update: at its stored path, or (no stored path) the repo file at
         ;; new-path is already this entity — overwrite.
@@ -801,8 +830,7 @@
                  (and (str/blank? file_path)
                       (= (:eid @info) (:file-eid @info)))))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
-         :upserts [(:spec @info)]
-         :synced [{:id (:id row) :file_path (:new-path @info) :content_hash (source/content-hash (:content (:spec @info)))}]}
+         :writes [(write)]}
 
         ;; rename: update whose stored path differs from new path. Write the
         ;; new file and delete the old one.
@@ -812,8 +840,7 @@
              (or (not (:file-exists? @info))
                  (= (:eid @info) (:file-eid @info))))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
-         :upserts [(:spec @info)]
-         :synced [{:id (:id row) :file_path (:new-path @info) :content_hash (source/content-hash (:content (:spec @info)))}]
+         :writes [(write)]
          :delete-paths [file_path]}
 
         ;; any other create/update case (e.g. the target path is occupied by a different entity) needs
@@ -827,18 +854,20 @@
   "Builds a plan for a safe incremental export of the current `dirty-rows`, or `:remote-sync/unsyncable-batch` if any
   row can't be handled incrementally.
 
-  Every row must be on an entity-id model and be one of:
-  - `create`/`update` — re-serialize the entity and upsert its file. A create, or an update whose path
-    is unchanged, is an overwrite-in-place; an update whose stored `file_path` differs is a rename, so
-    the old file is also deleted. The target path must be free or already hold this same entity, and
-    the change must not reference remote-sync content that isn't already in the repo (else a full
-    export, which pulls that dependency via `serdes/descendants`, is required).
+  This is pass 1: it validates that the batch is safely syncable and computes each write's target path, but
+  does not render any entity's YAML — pass 2 (`export-incremental!`) re-serializes the content while
+  streaming it to the commit. Every row must be on an entity-id model and be one of:
+  - `create`/`update` — write the entity's file. A create, or an update whose path is unchanged, is an
+    overwrite-in-place; an update whose stored `file_path` differs is a rename, so the old file is also
+    deleted. The target path must be free or already hold this same entity, and the change must not
+    reference remote-sync content that isn't already in the repo (else a full export, which pulls that
+    dependency via `serdes/descendants`, is required).
   - `delete`/`removed` — delete the entity's stored `file_path`. Requires a stored `file_path`
     (after a fresh import none is recorded yet, so we fall back to a full export, which self-heals).
 
   Returns one of:
-  - {:upserts [file-spec] :delete-paths [path] :synced [{:id :file_path}] :removed-ids [id]} — a safe
-    incremental plan;
+  - {:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]} — a safe
+    incremental plan (a `:writes` entry with no `:id` is an untracked dependency: written, but not tracked);
   - `:remote-sync/unsyncable-batch` — a row (or a dependency path collision) forces a full export."
   [snapshot dirty-rows]
   (let [opts (serdes/storage-base-context)
@@ -848,8 +877,8 @@
                             (if (= updates :remote-sync/unsyncable-record)
                               (reduced :remote-sync/unsyncable-batch)
                               (merge-with into plan updates)))
-                          {:upserts [] :delete-paths [] :synced [] :removed-ids [] :pull #{}}))
-        deps (delay (dep-upserts snapshot opts (:pull plan)))]
+                          {:writes [] :delete-paths [] :removed-ids [] :pull #{}}))
+        deps (delay (dep-writes snapshot opts (:pull plan)))]
     (cond
       (= plan :remote-sync/unsyncable-batch)
       :remote-sync/unsyncable-batch
@@ -858,7 +887,7 @@
       :remote-sync/unsyncable-batch
 
       :else
-      (-> plan (update :upserts into @deps) (dissoc :pull)))))
+      (-> plan (update :writes into @deps) (dissoc :pull)))))
 
 (defn- path-top-level-dir [^String path]
   (let [i (str/index-of path "/")]
@@ -893,13 +922,25 @@
                  :branch (settings/remote-sync-branch)}})))
 
 (defn- export-incremental! [plan disabled-files task-id snapshot message sync-timestamp]
-  (let [{:keys [upserts delete-paths synced removed-ids]} plan
-        delete-paths (into (vec delete-paths) disabled-files)]
+  (let [{:keys [writes delete-paths removed-ids]} plan
+        delete-paths (into (vec delete-paths) disabled-files)
+        synced       (volatile! [])
+        ;; pass 2: lazily re-serialize each write's content (its path was validated in pass 1) and stream it
+        ;; to the commit; tee the per-tracked-row synced metadata. Only one entity's content is live at a time.
+        upserts      (stream-extract
+                      (fn [row entity]
+                        (let [content (source/entity->content entity)]
+                          (when (:id row)
+                            (vswap! synced conj {:id           (:id row)
+                                                 :file_path    (:file_path row)
+                                                 :content_hash (source/content-hash content)}))
+                          {:path (:file_path row) :content content}))
+                      writes)]
     (remote-sync.task/update-progress! task-id 0.3)
     (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
       (remote-sync.task/set-version! task-id written-version))
     ;; one batched CASE update per chunk (status/timestamp constant, file_path/content_hash per row)
-    (doseq [chunk (partition-all content-hash-batch-size synced)]
+    (doseq [chunk (partition-all content-hash-batch-size @synced)]
       (t2/update! :model/RemoteSyncObject
                   {:id [:in (mapv :id chunk)]}
                   {:status            "synced"
@@ -909,10 +950,10 @@
     (when (seq removed-ids)
       (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
     (log/infof "Remote sync incremental export: wrote %d, deleted %d"
-               (count upserts) (count delete-paths))
+               (count writes) (count delete-paths))
     {:status :success
      :outcome {:kind "pushed"
-               :count (+ (count upserts) (count delete-paths))
+               :count (+ (count writes) (count delete-paths))
                :branch (settings/remote-sync-branch)}}))
 
 (defn export!
