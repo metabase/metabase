@@ -75,7 +75,7 @@
     status
 
     :else ;; hash has not changed
-    "synched"))
+    "synced"))
 
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change.

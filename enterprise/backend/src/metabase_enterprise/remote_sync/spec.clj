@@ -1195,10 +1195,7 @@
    `:model_type` (the serdes model name) and a `:model_id` (the local DB primary key). Returns a lazy
    sequence of serialized entities."
   [rows]
-  (let [by-model (reduce (fn [m {:keys [model_type model_id]}]
-                           (update m model_type (fnil conj #{}) model_id))
-                         {}
-                         rows)]
+  (let [by-model (u/group-by :model_type :model_id conj #{} rows)]
     (eduction (map (fn [[model ids]]
                      (serdes/extract-all model {:where [:in :id ids]
                                                 :skip-archived true})))

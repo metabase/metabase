@@ -129,42 +129,42 @@
   500)
 
 (defn store-and-record!
-  "Serializes the export `targets` (a map of {model-name [id ...]} from `spec/export-targets`) exactly once,
-  writes each file to `snapshot`, and returns {:version :entries} where each entry is
-  {:model_type :model_id :path :content_hash}. Unlike [[store!]], it drives serialization from
-  `extract-query` so it keeps each entity's primary key — letting callers record file_path and content_hash
-  on the RemoteSyncObject rows for every model type (including path models with no entity_id) without a
-  second serialization pass. Reports progress via `task-id`."
+  "Serializes the export `targets` ({model-name [id ...]} from `spec/export-targets`) exactly once and writes
+  the files to `snapshot` in one commit. Returns {:version :entries} where each entry is
+  {:model_type :model_id :path :content_hash}, so callers can record file_path + content_hash on the
+  RemoteSyncObject rows for every model type (including path models with no entity_id).
+
+  Streams: the file specs are produced lazily and consumed by `write-files!` one at a time (extract-one runs
+  while its ResultSet is open; the IN clauses are chunked to stay within DB param limits), so the full
+  serialized content is never held in memory at once — only the lightweight `:entries` accumulate. Relies on
+  `write-files!` reducing the spec stream exactly once."
   [targets snapshot task-id message]
   (let [storage-opts (serdes/storage-base-context)
         total        (reduce + 0 (map (comp count val) targets))
         done         (volatile! 0)
-        serialize    (fn [model-type opts instance]
-                       (let [spec (entity->file-spec storage-opts (serdes/extract-one model-type opts instance))]
-                         (remote-sync.task/update-progress!
-                          task-id (-> (vswap! done inc) (/ (max 1 total)) (* 0.6) (+ 0.3)))
-                         {:model_type model-type :model_id (:id instance) :spec spec}))
-        ;; Serialize once, retaining the primary key, in a single transduction: expand each model into
-        ;; bounded [model-type id-chunk] work items (so each extract-query IN stays within DB param limits),
-        ;; then stream each chunk's extract-query through `serialize` via an eduction — extract-one runs while
-        ;; the ResultSet is open, with no intermediate per-chunk sequence realized.
-        rows         (into []
-                           (comp
-                            (mapcat (fn [[model-type ids]]
-                                      (map #(vector model-type %) (partition-all extract-id-batch-size ids))))
-                            (mapcat (fn [[model-type id-chunk]]
-                                      (let [opts {:where [:in :id (vec id-chunk)] :skip-archived true}]
-                                        (eduction (map #(serialize model-type opts %))
-                                                  (serdes/extract-query model-type opts))))))
-                           targets)
-        version      (source.p/write-files! snapshot message (map :spec rows))]
+        entries      (volatile! (transient []))
+        record!      (fn [model-type instance spec]
+                       (vswap! done inc)
+                       (remote-sync.task/update-progress! task-id (-> @done (/ (max 1 total)) (* 0.6) (+ 0.3)))
+                       (vswap! entries conj! {:model_type   model-type
+                                              :model_id     (:id instance)
+                                              :path         (:path spec)
+                                              :content_hash (content-hash (:content spec))})
+                       spec)
+        specs        (eduction
+                      (comp
+                       (mapcat (fn [[model-type ids]]
+                                 (map #(vector model-type %) (partition-all extract-id-batch-size ids))))
+                       (mapcat (fn [[model-type id-chunk]]
+                                 (let [opts {:where [:in :id (vec id-chunk)] :skip-archived true}]
+                                   (eduction (map (fn [instance]
+                                                    (record! model-type instance
+                                                             (entity->file-spec storage-opts (serdes/extract-one model-type opts instance)))))
+                                             (serdes/extract-query model-type opts))))))
+                      targets)
+        version      (source.p/write-files! snapshot message specs)]
     {:version version
-     :entries  (mapv (fn [{:keys [model_type model_id spec]}]
-                       {:model_type   model_type
-                        :model_id     model_id
-                        :path         (:path spec)
-                        :content_hash (content-hash (:content spec))})
-                     rows)}))
+     :entries (persistent! @entries)}))
 
 (defn- snapshot->specs
   "Reads a snapshot's managed-directory files into a sequence of `{:path :content}` specs, matching the
