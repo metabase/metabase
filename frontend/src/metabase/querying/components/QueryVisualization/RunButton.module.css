@@ -14,10 +14,6 @@
     border-color 200ms linear,
     background-color 200ms linear;
 
-  @media screen and (--breakpoint-min-lg) {
-    padding: 0.75rem 1rem;
-  }
-
   &:hover {
     color: var(--mb-color-text-brand);
     background: var(--mb-color-background-secondary);
