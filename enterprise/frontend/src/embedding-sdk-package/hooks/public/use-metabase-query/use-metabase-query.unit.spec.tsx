@@ -28,71 +28,107 @@ type Equals<TLeft, TRight> =
     : false;
 type Expect<TValue extends true> = TValue;
 
-const TEST_SCHEMA = {
-  tables: {
-    orders: {
-      id: 1,
-      databaseId: 1,
-      fields: {
-        createdAt: {
-          fieldId: 103,
-          tableId: 1,
-          name: "created_at",
-          displayName: "Created At",
-          jsType: "Date",
-        },
-        amount: {
-          fieldId: 102,
-          tableId: 1,
-          name: "amount",
-          displayName: "Amount",
-          jsType: "number",
-        },
-        status: {
-          fieldId: 101,
-          tableId: 1,
-          name: "status",
-          displayName: "Status",
-          jsType: "string",
-        },
+const TEST_TABLES = {
+  orders: {
+    id: 1,
+    databaseId: 1,
+    fields: {
+      id: {
+        fieldId: 100,
+        tableId: 1,
+        name: "id",
+        displayName: "ID",
+        jsType: "number",
       },
-      segments: {
-        completed: { kind: "segment", id: 11, tableId: 1 },
+      createdAt: {
+        fieldId: 103,
+        tableId: 1,
+        name: "created_at",
+        displayName: "Created At",
+        jsType: "Date",
       },
-      measures: {
-        revenue: {
-          kind: "measure",
-          id: 21,
-          tableId: 1,
-          columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
-        },
+      amount: {
+        fieldId: 102,
+        tableId: 1,
+        name: "amount",
+        displayName: "Amount",
+        jsType: "number",
+      },
+      status: {
+        fieldId: 101,
+        tableId: 1,
+        name: "status",
+        displayName: "Status",
+        jsType: "string",
+      },
+      franchiseId: {
+        fieldId: 106,
+        tableId: 1,
+        name: "franchise_id",
+        displayName: "Franchise ID",
+        jsType: "number",
+      },
+      internalCode: {
+        fieldId: 104,
+        tableId: 1,
+        name: "internal_code",
+        displayName: "Internal Code",
+        jsType: "string",
       },
     },
-    products: {
-      id: 2,
-      databaseId: 1,
-      fields: {
-        price: {
-          fieldId: 201,
-          tableId: 2,
-          name: "price",
-          displayName: "Price",
-          jsType: "number",
-        },
-      },
-      segments: {
-        active: { kind: "segment", id: 12, tableId: 2 },
-      },
-      measures: {
-        price: {
-          kind: "measure",
-          id: 22,
-          tableId: 2,
-          columns: [{ name: "price", displayName: "Price", jsType: "number" }],
-        },
+    segments: {
+      completed: { kind: "segment", id: 11, tableId: 1 },
+    },
+    measures: {
+      revenue: {
+        kind: "measure",
+        id: 21,
+        tableId: 1,
+        columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
       },
     },
   },
+  products: {
+    id: 2,
+    databaseId: 1,
+    fields: {
+      price: {
+        fieldId: 201,
+        tableId: 2,
+        name: "price",
+        displayName: "Price",
+        jsType: "number",
+      },
+    },
+    segments: {
+      active: { kind: "segment", id: 12, tableId: 2 },
+    },
+    measures: {
+      price: {
+        kind: "measure",
+        id: 22,
+        tableId: 2,
+        columns: [{ name: "price", displayName: "Price", jsType: "number" }],
+      },
+    },
+  },
+  franchises: {
+    id: 3,
+    databaseId: 1,
+    fields: {
+      name: {
+        fieldId: 301,
+        tableId: 3,
+        name: "name",
+        displayName: "Name",
+        jsType: "string",
+      },
+    },
+  },
+} as const;
+
+const TEST_SCHEMA = {
+  tables: TEST_TABLES,
   metrics: {
     orderCount: {
       id: 34,
@@ -100,35 +136,20 @@ const TEST_SCHEMA = {
       sourceTableId: 1,
       columns: [{ name: "count", displayName: "Count", jsType: "number" }],
       dimensions: {
-        createdAt: {
-          id: "metric-created-at",
-          fieldId: 103,
-          metricId: 34,
-          tableId: 1,
-          name: "created_at",
-          displayName: "Created At",
-          jsType: "Date",
+        orders: {
+          id: TEST_TABLES.orders.fields.id,
+          status: TEST_TABLES.orders.fields.status,
+          amount: TEST_TABLES.orders.fields.amount,
+          createdAt: TEST_TABLES.orders.fields.createdAt,
         },
-        status: {
-          id: "metric-status",
-          fieldId: 101,
-          metricId: 34,
-          tableId: 1,
-          name: "status",
-          displayName: "Status",
-          jsType: "string",
-        },
-        amount: {
-          id: "metric-amount",
-          fieldId: 102,
-          metricId: 34,
-          tableId: 1,
-          name: "amount",
-          displayName: "Amount",
-          jsType: "number",
+        franchises: {
+          name: {
+            ...TEST_TABLES.franchises.fields.name,
+            sourceFieldId: TEST_TABLES.orders.fields.franchiseId.fieldId,
+          },
         },
       },
-      mappedTableIds: [1],
+      mappedTableIds: [1, 3],
     },
     orderValue: {
       id: 35,
@@ -136,14 +157,26 @@ const TEST_SCHEMA = {
       sourceTableId: 1,
       columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
       dimensions: {
-        amount: {
-          id: "metric-order-value-amount",
-          fieldId: 102,
-          metricId: 35,
-          tableId: 1,
-          name: "amount",
-          displayName: "Amount",
-          jsType: "number",
+        orders: {
+          id: TEST_TABLES.orders.fields.id,
+          status: TEST_TABLES.orders.fields.status,
+          amount: TEST_TABLES.orders.fields.amount,
+          createdAt: TEST_TABLES.orders.fields.createdAt,
+        },
+      },
+      mappedTableIds: [1],
+    },
+    orderCountFromModel: {
+      id: 36,
+      databaseId: 1,
+      sourceCardId: 98,
+      columns: [{ name: "count", displayName: "Count", jsType: "number" }],
+      dimensions: {
+        orders: {
+          id: TEST_TABLES.orders.fields.id,
+          status: TEST_TABLES.orders.fields.status,
+          amount: TEST_TABLES.orders.fields.amount,
+          createdAt: TEST_TABLES.orders.fields.createdAt,
         },
       },
       mappedTableIds: [1],
@@ -293,7 +326,7 @@ const _validMetricObjectQuery = {
   measures: [TEST_SCHEMA.tables.orders.measures.revenue],
   breakouts: [
     {
-      dimension: TEST_SCHEMA.metrics.orderCount.dimensions.createdAt,
+      dimension: TEST_SCHEMA.metrics.orderCount.dimensions.orders.createdAt,
       bucket: "month",
     },
   ],
@@ -303,7 +336,9 @@ const _validMetricMappedTableBreakoutQuery = {
   metric: TEST_SCHEMA.metrics.orderValue,
   measures: [TEST_SCHEMA.tables.orders.measures.revenue],
   breakouts: [
-    breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { bucket: "month" }),
+    breakout(TEST_SCHEMA.metrics.orderValue.dimensions.orders.createdAt, {
+      bucket: "month",
+    }),
   ],
 } satisfies MetabaseQueryOptions<
   TestSchema["metrics"]["orderValue"],
@@ -314,7 +349,7 @@ const _invalidMetricBreakoutUnknownBucketQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   breakouts: [
     {
-      dimension: TEST_SCHEMA.metrics.orderCount.dimensions.createdAt,
+      dimension: TEST_SCHEMA.metrics.orderCount.dimensions.orders.createdAt,
       // @ts-expect-error temporal buckets must be valid Metabase temporal units
       bucket: "aaaa",
     },
@@ -324,7 +359,7 @@ const _invalidMetricBreakoutUnknownBucketQuery = {
 const _invalidMetricBreakoutNonDateBucketQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   breakouts: [
-    breakout(TEST_SCHEMA.metrics.orderCount.dimensions.status, {
+    breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status, {
       // @ts-expect-error non-date dimensions do not support temporal buckets
       bucket: "month",
     }),
@@ -335,26 +370,26 @@ function useMetricBreakoutTypeFixtures() {
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
     breakouts: [
-      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.createdAt, {
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.createdAt, {
         bucket: "month",
       }),
-      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.amount, {
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.amount, {
         binning: { strategy: "num-bins", "num-bins": 10 },
       }),
-      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.status),
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
       {
-        dimension: TEST_SCHEMA.metrics.orderCount.dimensions.createdAt,
+        dimension: TEST_SCHEMA.metrics.orderCount.dimensions.orders.createdAt,
         bucket: "month",
       },
-      breakout(TEST_SCHEMA.tables.orders.fields.status),
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
     ],
   });
 
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
     breakouts: [
-      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.status, {
-        // @ts-expect-error non-date metric dimensions do not support temporal buckets
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status, {
+        // @ts-expect-error non-date table fields do not support temporal buckets
         bucket: "month",
       }),
     ],
@@ -362,13 +397,14 @@ function useMetricBreakoutTypeFixtures() {
 
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
-    breakouts: [breakout(TEST_SCHEMA.metrics.orderValue.dimensions.amount)],
+    // @ts-expect-error metric table field breakouts must come from mapped tables
+    breakouts: [breakout(TEST_SCHEMA.tables.products.fields.price)],
   });
 
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
-    // @ts-expect-error metric table field breakouts must come from mapped tables
-    breakouts: [breakout(TEST_SCHEMA.tables.products.fields.price)],
+    // @ts-expect-error metric table field breakouts must use generated metric dimensions
+    breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.internalCode)],
   });
 }
 
@@ -379,7 +415,7 @@ function useMetricFilterOperatorTypeFixtures() {
     metric: TEST_SCHEMA.metrics.orderCount,
     filters: [
       filter(
-        TEST_SCHEMA.metrics.orderCount.dimensions.status,
+        TEST_SCHEMA.metrics.orderCount.dimensions.orders.status,
         "contains",
         "paid",
       ),
@@ -389,7 +425,11 @@ function useMetricFilterOperatorTypeFixtures() {
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
     filters: [
-      filter(TEST_SCHEMA.tables.orders.fields.status, "contains", "paid"),
+      filter(
+        TEST_SCHEMA.metrics.orderCount.dimensions.orders.status,
+        "contains",
+        "paid",
+      ),
     ],
   });
 
@@ -397,7 +437,7 @@ function useMetricFilterOperatorTypeFixtures() {
     metric: TEST_SCHEMA.metrics.orderCount,
     filters: [
       {
-        dimension: TEST_SCHEMA.metrics.orderCount.dimensions.status,
+        dimension: TEST_SCHEMA.metrics.orderCount.dimensions.orders.status,
         operator: "contains",
         value: "paid",
       },
@@ -407,9 +447,25 @@ function useMetricFilterOperatorTypeFixtures() {
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
     filters: [
-      // @ts-expect-error string metric dimensions do not support numeric comparison operators
-      filter(TEST_SCHEMA.metrics.orderCount.dimensions.status, ">", "paid"),
+      filter(
+        TEST_SCHEMA.metrics.orderCount.dimensions.orders.status,
+        // @ts-expect-error string table fields do not support numeric comparison operators
+        ">",
+        "paid",
+      ),
     ],
+  });
+
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    // @ts-expect-error metric table field filters must come from mapped tables
+    filters: [filter(TEST_SCHEMA.tables.products.fields.price, ">", 10)],
+  });
+
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    // @ts-expect-error metric table field filters must use generated metric dimensions
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.internalCode, "=", "x")],
   });
 }
 
@@ -570,9 +626,12 @@ describe("useMetabaseQuery", () => {
           ],
           measures: [TEST_SCHEMA.tables.orders.measures.revenue],
           breakouts: [
-            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.createdAt, {
-              bucket: "month",
-            }),
+            breakout(
+              TEST_SCHEMA.metrics.orderCount.dimensions.orders.createdAt,
+              {
+                bucket: "month",
+              },
+            ),
           ],
         }),
       ).toEqual({
@@ -586,6 +645,38 @@ describe("useMetabaseQuery", () => {
           ],
           filter: ["=", ["field", 101, {}], "paid"],
           breakout: [["field", 103, { "temporal-unit": "month" }]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("adds source-field when metric dimensions reference an implicitly joined table", () => {
+      expect(
+        createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          breakouts: [
+            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name),
+          ],
+          filters: [
+            filter(
+              TEST_SCHEMA.metrics.orderCount.dimensions.franchises.name,
+              "=",
+              "West Coast Boba",
+            ),
+          ],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["metric", 34]],
+          filter: [
+            "=",
+            ["field", 301, { "source-field": 106 }],
+            "West Coast Boba",
+          ],
+          breakout: [["field", 301, { "source-field": 106 }]],
         },
         parameters: [],
       });
@@ -610,9 +701,9 @@ describe("useMetabaseQuery", () => {
   });
 
   it("raises a runtime error when metric segments are not from mapped tables", async () => {
-    const queryMetric = jest.fn();
+    const queryDataset = jest.fn();
 
-    setup({ queryMetric });
+    setup({ queryDataset });
 
     await waitFor(() => {
       expect(screen.getByTestId("error")).toHaveTextContent(
@@ -620,14 +711,13 @@ describe("useMetabaseQuery", () => {
       );
     });
 
-    expect(queryMetric).not.toHaveBeenCalled();
+    expect(queryDataset).not.toHaveBeenCalled();
   });
 
   it("raises a runtime error when table measures are not generated schema measures", async () => {
     const queryDataset = jest.fn();
 
     setup({
-      queryMetric: jest.fn(),
       queryDataset,
       component: <InvalidTableMeasureComponent />,
     });
@@ -651,7 +741,6 @@ describe("useMetabaseQuery", () => {
     const queryDataset = jest.fn(() => queryDatasetApi);
 
     setup({
-      queryMetric: jest.fn(),
       queryDataset,
       component: <TableFieldIdComponent />,
     });
@@ -682,7 +771,6 @@ describe("useMetabaseQuery", () => {
     const queryDataset = jest.fn(() => queryDatasetApi);
 
     setup({
-      queryMetric: jest.fn(),
       queryDataset,
       component: <TableObjectComponent />,
     });
@@ -702,88 +790,170 @@ describe("useMetabaseQuery", () => {
     });
   });
 
-  it("queries metrics with measures via the metric dataset endpoint", async () => {
-    const queryMetricApi = jest.fn().mockResolvedValue({
+  it("queries generated metrics with measures via the dataset endpoint", async () => {
+    const queryDatasetApi = jest.fn().mockResolvedValue({
       rowCount: null,
       runningTime: null,
       columns: [],
       rows: [],
     });
-    const queryMetric = jest.fn(() => queryMetricApi);
+    const queryDataset = jest.fn(() => queryDatasetApi);
 
-    setup({ queryMetric, component: <MetricMeasuresComponent /> });
+    setup({
+      queryDataset,
+      component: <MetricMeasuresComponent />,
+    });
 
     await waitFor(() => {
-      expect(queryMetricApi).toHaveBeenCalledWith({
-        definition: {
-          expression: ["metric", { "lib/uuid": "metric" }, 34],
-          measures: [21],
+      expect(queryDatasetApi).toHaveBeenCalledWith({
+        datasetQuery: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": 1,
+            aggregation: [
+              ["metric", 34],
+              ["measure", {}, 21],
+            ],
+          },
+          parameters: [],
         },
       });
     });
   });
 
-  it("maps metric table-field filters to generated metric dimensions", async () => {
-    const queryMetricApi = jest.fn().mockResolvedValue({
+  it("queries generated source-card metrics through the dataset endpoint", async () => {
+    const queryDatasetApi = jest.fn().mockResolvedValue({
       rowCount: null,
       runningTime: null,
       columns: [],
       rows: [],
     });
-    const queryMetric = jest.fn(() => queryMetricApi);
+    const queryDataset = jest.fn(() => queryDatasetApi);
 
-    setup({ queryMetric, component: <MetricTableFieldFilterComponent /> });
+    setup({
+      queryDataset,
+      component: <SourceCardMetricComponent />,
+    });
 
     await waitFor(() => {
-      expect(queryMetricApi).toHaveBeenCalledWith({
-        definition: {
-          expression: ["metric", { "lib/uuid": "metric" }, 34],
-          filters: [
-            {
-              "lib/uuid": "metric",
-              filter: ["=", {}, ["dimension", {}, "metric-status"], "paid"],
-            },
-          ],
+      expect(queryDatasetApi).toHaveBeenCalledWith({
+        datasetQuery: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": "card__98",
+            aggregation: [["metric", 36]],
+          },
+          parameters: [],
+        },
+      });
+    });
+  });
+
+  it("queries generated metric table-field filters through the dataset endpoint", async () => {
+    const queryDatasetApi = jest.fn().mockResolvedValue({
+      rowCount: null,
+      runningTime: null,
+      columns: [],
+      rows: [],
+    });
+    const queryDataset = jest.fn(() => queryDatasetApi);
+
+    setup({
+      queryDataset,
+      component: <MetricTableFieldFilterComponent />,
+    });
+
+    await waitFor(() => {
+      expect(queryDatasetApi).toHaveBeenCalledWith({
+        datasetQuery: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": 1,
+            aggregation: [["metric", 34]],
+            filter: ["=", ["field", 101, {}], "paid"],
+          },
+          parameters: [],
         },
       });
     });
   });
 
   it("queries metrics with measures grouped by mapped table-field breakouts", async () => {
-    const queryMetricApi = jest.fn().mockResolvedValue({
+    const queryDatasetApi = jest.fn().mockResolvedValue({
       rowCount: null,
       runningTime: null,
       columns: [],
       rows: [],
     });
-    const queryMetric = jest.fn(() => queryMetricApi);
+    const queryDataset = jest.fn(() => queryDatasetApi);
 
-    setup({ queryMetric, component: <MetricMappedTableBreakoutComponent /> });
+    setup({
+      queryDataset,
+      component: <MetricMappedTableBreakoutComponent />,
+    });
 
     await waitFor(() => {
-      expect(queryMetricApi).toHaveBeenCalledWith({
-        definition: {
-          expression: ["metric", { "lib/uuid": "metric" }, 35],
-          projections: [
-            {
-              type: "metric",
-              id: 35,
-              "lib/uuid": "metric",
-              projection: [["dimension", { "temporal-unit": "month" }, 103]],
-            },
-          ],
-          measures: [21],
+      expect(queryDatasetApi).toHaveBeenCalledWith({
+        datasetQuery: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": 1,
+            aggregation: [
+              ["metric", 35],
+              ["measure", {}, 21],
+            ],
+            breakout: [["field", 103, { "temporal-unit": "month" }]],
+          },
+          parameters: [],
         },
       });
     });
   });
 
-  it("raises a runtime error when metric table-field filters cannot be mapped", async () => {
-    const queryMetric = jest.fn();
+  it("keeps generated metric query objects on the dataset query path", () => {
+    render(<MetricQueryObjectComponent />);
+
+    expect(
+      JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+    ).toEqual({
+      type: "query",
+      database: 1,
+      query: {
+        "source-table": 1,
+        aggregation: [["metric", 34]],
+        breakout: [["field", 101, {}]],
+      },
+      parameters: [],
+    });
+  });
+
+  it("builds generated source-card metric query objects on the dataset query path", () => {
+    render(<SourceCardMetricQueryObjectComponent />);
+
+    expect(
+      JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+    ).toEqual({
+      type: "query",
+      database: 1,
+      query: {
+        "source-table": "card__98",
+        aggregation: [["metric", 36]],
+        breakout: [["field", 103, { "temporal-unit": "month" }]],
+      },
+      parameters: [],
+    });
+  });
+
+  it("raises a runtime error when metric table-field filters are not valid dimensions", async () => {
+    const queryDataset = jest.fn();
 
     setup({
-      queryMetric,
-      component: <MetricTableFieldFilterWithoutMetricObjectComponent />,
+      queryDataset,
+      component: <InvalidMetricDimensionFilterComponent />,
     });
 
     await waitFor(() => {
@@ -792,7 +962,7 @@ describe("useMetabaseQuery", () => {
       );
     });
 
-    expect(queryMetric).not.toHaveBeenCalled();
+    expect(queryDataset).not.toHaveBeenCalled();
   });
 });
 
@@ -839,7 +1009,23 @@ const MetabaseQueryObjectComponent = () => {
 const MetricQueryObjectComponent = () => {
   const query = useMetabaseQueryObject({
     metric: TEST_SCHEMA.metrics.orderCount,
-    breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+    breakouts: [
+      breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
+    ],
+  });
+
+  return <div data-testid="query-object">{JSON.stringify(query)}</div>;
+};
+
+const SourceCardMetricQueryObjectComponent = () => {
+  const query = useMetabaseQueryObject({
+    metric: TEST_SCHEMA.metrics.orderCountFromModel,
+    breakouts: [
+      breakout(
+        TEST_SCHEMA.metrics.orderCountFromModel.dimensions.orders.createdAt,
+        { bucket: "month" },
+      ),
+    ],
   });
 
   return <div data-testid="query-object">{JSON.stringify(query)}</div>;
@@ -873,10 +1059,24 @@ const MetricMeasuresComponent = () => {
   return null;
 };
 
+const SourceCardMetricComponent = () => {
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCountFromModel,
+  });
+
+  return null;
+};
+
 const MetricTableFieldFilterComponent = () => {
   useMetabaseQuery({
     metric: TEST_SCHEMA.metrics.orderCount,
-    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+    filters: [
+      filter(
+        TEST_SCHEMA.metrics.orderCount.dimensions.orders.status,
+        "=",
+        "paid",
+      ),
+    ],
   });
 
   return null;
@@ -887,17 +1087,21 @@ const MetricMappedTableBreakoutComponent = () => {
     metric: TEST_SCHEMA.metrics.orderValue,
     measures: [TEST_SCHEMA.tables.orders.measures.revenue],
     breakouts: [
-      breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { bucket: "month" }),
+      breakout(TEST_SCHEMA.metrics.orderValue.dimensions.orders.createdAt, {
+        bucket: "month",
+      }),
     ],
   });
 
   return null;
 };
 
-const MetricTableFieldFilterWithoutMetricObjectComponent = () => {
+const InvalidMetricDimensionFilterComponent = () => {
   const result = useMetabaseQuery({
-    metricId: TEST_SCHEMA.metrics.orderCount.id,
-    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+    metric: TEST_SCHEMA.metrics.orderCount,
+    filters: [
+      filter(TEST_SCHEMA.tables.orders.fields.internalCode, "=", "hidden"),
+    ],
   } as never);
 
   return (
@@ -908,11 +1112,9 @@ const MetricTableFieldFilterWithoutMetricObjectComponent = () => {
 };
 
 function setup({
-  queryMetric,
   queryDataset,
   component = <TestComponent />,
 }: {
-  queryMetric: jest.Mock;
   queryDataset?: jest.Mock;
   component?: JSX.Element;
 }) {
@@ -921,7 +1123,6 @@ function setup({
   renderWithSDKProviders(component, {
     metabaseEmbeddingSdkBundleExports: {
       getLoginStatus,
-      queryMetric,
       queryDataset,
     },
     storeInitialState: state,

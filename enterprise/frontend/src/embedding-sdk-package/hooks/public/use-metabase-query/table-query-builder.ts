@@ -12,7 +12,6 @@ import {
   isDimensionFilter,
   isFieldAggregation,
   isMeasureSchema,
-  isMetricDimensionSchema,
   isSegmentSchema,
   isTableFieldSchema,
   isUnaryOperator,
@@ -159,11 +158,7 @@ function buildFieldReference(
 }
 
 function normalizeBreakout(breakout: unknown) {
-  if (
-    typeof breakout === "string" ||
-    isTableFieldSchema(breakout) ||
-    isMetricDimensionSchema(breakout)
-  ) {
+  if (typeof breakout === "string" || isTableFieldSchema(breakout)) {
     return { dimension: breakout, options: {} };
   }
 

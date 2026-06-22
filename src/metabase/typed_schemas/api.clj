@@ -46,9 +46,11 @@
                       :comment [:key :entityId :description]}
    :measure          {:runtime [:kind :id :tableId :name :columns]
                       :comment [:key :entityId :description]}
-   :metric           {:runtime [:kind :id :name :databaseId :sourceTableId :mappedTableIds :columns :dimensions]
+   :metric           {:runtime [:kind :id :name :databaseId :sourceTableId :sourceCardId
+                                :mappedTableIds :columns :dimensions]
                       :comment [:key :entityId :description :verified :sourceTable]}
-   :metric-dimension {:runtime [:id :fieldId :metricId :tableId :name :jsType :defaultTemporalBucket]
+   :metric-dimension {:runtime [:id :fieldId :metricId :tableId :sourceFieldId
+                                :name :jsType :defaultTemporalBucket]
                       :comment [:key :displayName :description :baseType :effectiveType :semanticType :unit]}
    :column           {:runtime [:name :jsType]
                       :comment [:displayName :description :baseType :effectiveType :semanticType :unit]}})
@@ -583,6 +585,8 @@
              :id (str dimension-id))
       :fieldId (when (integer? field-id) field-id)
       :tableId (when (integer? table-id) table-id)
+      :sourceFieldId (when (integer? (:source-field-id dimension))
+                       (:source-field-id dimension))
       :metricId metric-id
       :keyDisambiguator (when (integer? table-id)
                           (get table-key-by-id table-id))))))
@@ -599,11 +603,29 @@
      :tableId (when (integer? table-id) table-id)
      :defaultTemporalBucket (:unit field))))
 
+(defn- mapping-source-field-id
+  [{:keys [target]}]
+  (when (and (vector? target)
+             (= :field (first target))
+             (map? (second target)))
+    (let [source-field-id (:source-field (second target))]
+      (when (integer? source-field-id)
+        source-field-id))))
+
+(defn- enrich-dimensions-with-mappings
+  [dimensions dimension-mappings]
+  (let [mapping-by-dimension-id (into {} (map (juxt :dimension-id identity)) dimension-mappings)]
+    (mapv (fn [{:keys [id] :as dimension}]
+            (assoc-some dimension
+                        :source-field-id (some-> (get mapping-by-dimension-id id)
+                                                 mapping-source-field-id)))
+          dimensions)))
+
 (defn- metric-dimensions
   [{:keys [id]}]
   (metrics/sync-dimensions! :metadata/metric id)
-  (-> (t2/select-one [:model/Card :dimensions] :id id)
-      :dimensions))
+  (let [{:keys [dimensions dimension_mappings]} (t2/select-one [:model/Card :dimensions :dimension_mappings] :id id)]
+    (enrich-dimensions-with-mappings dimensions dimension_mappings)))
 
 (defn- table-key-disambiguators
   [table-ids]
@@ -626,6 +648,18 @@
                          (get-in card [:dataset_query :stages 0 :source-table]))]
     (when (integer? source-table)
       source-table)))
+
+(defn- source-card-id
+  [card]
+  (or (when-let [source-card (get-in card [:dataset_query :stages 0 :source-card])]
+        (when (integer? source-card)
+          source-card))
+      (let [source-table (or (get-in card [:dataset_query :query :source-table])
+                             (get-in card [:dataset_query :stages 0 :source-table]))]
+        (when (string? source-table)
+          (some->> (re-matches #"card__(\d+)" source-table)
+                   second
+                   parse-long)))))
 
 (defn- fallback-metric-column
   [{:keys [name]}]
@@ -677,6 +711,7 @@
       :columns    [result-column]}
      :databaseId (:database_id card)
      :sourceTableId (source-table-id card)
+     :sourceCardId (source-card-id card)
      :entityId portable_entity_id
      :description description
      :verified (when verified true)
@@ -932,6 +967,27 @@
       (true? value)
       (false? value)))
 
+(defn- javascript-reference
+  [path]
+  {:javascriptReference path})
+
+(defn- javascript-reference?
+  [value]
+  (and (map? value)
+       (string? (map-key-value value :javascriptReference))))
+
+(defn- javascript-property-access
+  [k]
+  (let [s (name k)]
+    (if (re-matches js-identifier-pattern s)
+      (str "." s)
+      (str "[" (json/encode s) "]"))))
+
+(defn- javascript-reference-path
+  [& ks]
+  (str (name (first ks))
+       (apply str (map javascript-property-access (rest ks)))))
+
 (defn- comment-value
   [value]
   (cond
@@ -997,22 +1053,148 @@
 (defn- render-javascript-value
   [value indent path]
   (cond
+    (javascript-reference? value) (map-key-value value :javascriptReference)
     (map? value)    (render-javascript-map value indent path)
     (vector? value) (render-javascript-vector value indent path)
     (seq? value)    (render-javascript-vector (vec value) indent path)
     :else           (json/encode value)))
 
-(defn- render-javascript-schema
+(defn- table-fields-reference-lookup
   [schema]
-  (render-javascript-value schema 0 []))
+  (into {}
+        (for [[table-key {:keys [id]}] (:tables schema)
+              :when (integer? id)]
+          [id {:key       table-key
+               :reference (javascript-reference-path :tables table-key :fields)}])))
+
+(defn- table-field-key-lookup
+  [schema]
+  (into {}
+        (mapcat (fn [[table-key {:keys [id fields]}]]
+                  (when (integer? id)
+                    (mapcat (fn [[field-key {:keys [fieldId name]}]]
+                              (cond-> []
+                                (integer? fieldId) (conj [[id fieldId] {:table-key table-key
+                                                                        :field-key field-key}])
+                                (string? name)     (conj [[id name] {:table-key table-key
+                                                                     :field-key field-key}])))
+                            fields)))
+                (:tables schema))))
+
+(defn- javascript-string-vector
+  [values]
+  (str "[ " (str/join ", " (map json/encode values)) " ]"))
+
+(defn- pick-fields-call
+  ([fields-reference field-keys]
+   (pick-fields-call fields-reference field-keys nil))
+  ([fields-reference field-keys source-field-id]
+   (str "pickFields(" fields-reference ", " (javascript-string-vector field-keys)
+        (when (integer? source-field-id)
+          (str ", { sourceFieldId: " source-field-id " }"))
+        ")")))
+
+(defn- dimension-group-output-key
+  [table-key source-field-id table-key-count]
+  (if (= 1 (get table-key-count table-key))
+    table-key
+    (str table-key "Via" source-field-id)))
+
+(defn- compact-metric-dimension-fields
+  [fields-reference-by-table field-key-by-table-and-field dimensions]
+  (let [fields-by-group (reduce (fn [acc [_ {:keys [tableId fieldId name sourceFieldId]}]]
+                                  (if-let [{:keys [key reference]} (get fields-reference-by-table tableId)]
+                                    (if-let [{:keys [field-key]} (or (get field-key-by-table-and-field [tableId fieldId])
+                                                                     (get field-key-by-table-and-field [tableId name]))]
+                                      (let [group-key [key sourceFieldId]]
+                                        (update acc group-key
+                                                (fnil (fn [group]
+                                                        (update group :field-keys conj field-key))
+                                                      {:table-key       key
+                                                       :reference       reference
+                                                       :field-keys      []
+                                                       :source-field-id sourceFieldId})))
+                                      acc)
+                                    acc))
+                                (array-map)
+                                dimensions)
+        table-key-count (frequencies (map (comp :table-key val) fields-by-group))]
+    (not-empty
+     (reduce-kv (fn [acc _ {:keys [table-key reference field-keys source-field-id]}]
+                  (assoc acc
+                         (dimension-group-output-key table-key source-field-id table-key-count)
+                         (javascript-reference (pick-fields-call reference
+                                                                 (distinct field-keys)
+                                                                 source-field-id))))
+                (array-map)
+                fields-by-group))))
+
+(defn- compact-metric-dimensions
+  [schema]
+  (let [fields-reference-by-table      (table-fields-reference-lookup schema)
+        field-key-by-table-and-field  (table-field-key-lookup schema)]
+    (update schema :metrics
+            (fn [metrics]
+              (update-vals metrics
+                           (fn [metric]
+                             (let [dimensions     (:dimensions metric)
+                                   compact-fields (compact-metric-dimension-fields fields-reference-by-table
+                                                                                   field-key-by-table-and-field
+                                                                                   dimensions)]
+                               (cond-> (dissoc metric :dimensions)
+                                 compact-fields (assoc :dimensions compact-fields)))))))))
+
+(defn- render-top-level-const
+  [k value suffix]
+  (str "const " (name k) " = " (render-javascript-value value 0 [k]) suffix ";\n\n"))
+
+(defn- render-pick-fields-helper
+  [suffix]
+  (if (= suffix " as const")
+    (str "function pickFields<TFields extends object, TKey extends keyof TFields>(\n"
+         "  fields: TFields,\n"
+         "  keys: readonly TKey[],\n"
+         "  options?: { sourceFieldId?: number },\n"
+         "): Pick<TFields, TKey> {\n"
+         "  const sourceField = options?.sourceFieldId == null ? {} : { sourceFieldId: options.sourceFieldId };\n"
+         "  return Object.fromEntries(keys.map((key) => [key, { ...(fields[key] as object), ...sourceField }])) as Pick<TFields, TKey>;\n"
+         "}\n\n")
+    (str "function pickFields(fields, keys, options) {\n"
+         "  const sourceField = options?.sourceFieldId == null ? {} : { sourceFieldId: options.sourceFieldId };\n"
+         "  return Object.fromEntries(keys.map((key) => [key, { ...fields[key], ...sourceField }]));\n"
+         "}\n\n")))
+
+(defn- uses-pick-fields-helper?
+  [schema]
+  (boolean (some (comp seq :dimensions) (vals (:metrics schema)))))
+
+(defn- render-schema-module
+  [schema suffix]
+  (let [schema          (compact-metric-dimensions schema)
+        top-level-keys  [:questions :models :tables :metrics]
+        schema-metadata (apply dissoc schema top-level-keys)
+        schema-value    (reduce (fn [acc k]
+                                  (if (contains? schema k)
+                                    (assoc acc k (javascript-reference (name k)))
+                                    acc))
+                                schema-metadata
+                                top-level-keys)]
+    (str (when (uses-pick-fields-helper? schema)
+           (render-pick-fields-helper suffix))
+         (apply str
+                (for [k top-level-keys
+                      :when (contains? schema k)]
+                  (render-top-level-const k (get schema k) suffix)))
+         "const schema = " (render-javascript-value schema-value 0 []) suffix ";\n\n"
+         "export default schema;\n")))
 
 (defn- render-javascript
   [schema]
-  (str "export default " (render-javascript-schema schema) ";\n"))
+  (render-schema-module schema ""))
 
 (defn- render-typescript
   [schema]
-  (str "export default " (render-javascript-schema schema) " as const;\n"))
+  (render-schema-module schema " as const"))
 
 (api.macros/defendpoint :get "/v1/javascript" :- :any
   "Generate a JavaScript semantic schema module."

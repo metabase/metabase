@@ -1,5 +1,10 @@
 import type { QueryQuestionResult } from "embedding-sdk-bundle/lib/query-question";
-import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
+import type { DatasetColumn, RowValues } from "metabase-types/api";
+
+/**
+ * A single value returned by Metabase query results or action responses.
+ */
+export type RowValue = string | number | null | boolean | object;
 
 export type SchemaJavaScriptType =
   | "string"
@@ -26,17 +31,14 @@ export type QuestionSchema = {
   parameters?: readonly SchemaParameter[];
 };
 
-export type MetricDimensionSchema = SchemaColumn & {
-  id: string | number;
-  fieldId?: number;
-  metricId: string | number;
-  tableId?: number;
-};
-
+/**
+ * Metadata for a generated table field or metric dimension.
+ */
 export type FieldSchema = SchemaColumn & {
   id?: string | number;
   fieldId?: number;
   tableId?: number;
+  sourceFieldId?: number;
 };
 
 export type SegmentSchema<TTableId extends number = number> = {
@@ -65,9 +67,10 @@ export type MetricSchema = {
   id: number;
   databaseId?: number;
   sourceTableId?: number;
+  sourceCardId?: number;
   columns: readonly SchemaColumn[];
   mappedTableIds?: readonly number[];
-  dimensions?: Record<string, MetricDimensionSchema>;
+  dimensions?: Record<string, Record<string, FieldSchema>>;
 };
 
 export type SchemaValue<TColumn extends SchemaColumn> =
