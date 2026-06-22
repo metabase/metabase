@@ -2887,7 +2887,7 @@
                                      :most_recent         true
                                      :status              "verified"
                                      :text                "lookin' good"}]))
-         ~@body))
+         ~@body))]
     (letfn [(verified? [card]
               (-> card (t2/hydrate [:moderation_reviews :moderator_details])
                   :moderation_reviews first :status #{"verified"} boolean))
@@ -2955,7 +2955,7 @@
           (is (not (verified? card)))
           (is (= 2 (count (reviews card))))
           (update-card card {:description "a new description"})
-          (is (= 2 (count (reviews card)))))))]))
+          (is (= 2 (count (reviews card)))))))))
 
 (deftest test-that-we-can-bulk-move-some-cards-with-no-collection-into-a-collection
   (mt/with-temp [:model/Collection  collection {:name "Pog Collection"}
