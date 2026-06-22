@@ -11,7 +11,7 @@
 ;;; external-query->portable
 ;;; ============================================================
 
-(deftest external-query->portable-test
+(deftest ^:parallel external-query->portable-test
   (testing "stringifies map keys preserving namespace"
     (is (= {"lib/type"     "mbql/query"
             "database"     "Sample"
@@ -45,7 +45,7 @@
 ;;; validate-external-query
 ;;; ============================================================
 
-(deftest validate-external-query-happy-path-test
+(deftest ^:parallel validate-external-query-happy-path-test
   (testing "valid external-query with string-valued enums"
     (let [q {:lib/type "mbql/query"
              :database "Sample"
@@ -61,7 +61,7 @@
         (is (= ["Sample" "PUBLIC" "ORDERS"]
                (get-in decoded [:stages 0 :source-table])))))))
 
-(deftest validate-external-query-error-paths-test
+(deftest ^:parallel validate-external-query-error-paths-test
   (testing "missing :stages"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"invalid structure"
@@ -79,7 +79,7 @@
     (catch clojure.lang.ExceptionInfo e
       (ex-data e))))
 
-(deftest validate-query-happy-path-test
+(deftest ^:parallel validate-query-happy-path-test
   (testing "minimal valid portable form"
     (let [parsed {"lib/type" "mbql/query"
                   "database" "Sample"
@@ -94,7 +94,7 @@
                                "aggregation"  [["count" {}]]}]}]
       (is (= parsed (repr/validate-query parsed))))))
 
-(deftest validate-query-error-paths-test
+(deftest ^:parallel validate-query-error-paths-test
   (testing "missing lib/type on query"
     (let [parsed {"database" "Sample"
                   "stages"   [{"lib/type"     "mbql.stage/mbql"
