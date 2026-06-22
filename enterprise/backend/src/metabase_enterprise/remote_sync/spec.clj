@@ -1160,15 +1160,12 @@
 
 (defn export-targets
   "Resolves what a full export would serialize: a map of {model-name [id ...]} (the export root targets plus
-   their transitive `serdes/descendants`/`required` closure), or `{}` when there is no remote-syncable
-   content. Shared by `extract-entities-for-export` (which serializes the entities) and the export path
-   (which also needs the local primary keys to record file_path/content_hash)."
+  their transitive `serdes/descendants`/`required` closure), or `{}` when there is no remote-syncable
+  content."
   []
-  (let [specs        (enabled-specs)
-        root-targets (into []
-                           (comp (map val)
-                                 (mapcat query-export-roots))
-                           specs)
+  (let [root-targets (into []
+                           (mapcat query-export-roots)
+                           (vals (enabled-specs)))
         targets      (resolve-targets
                       root-targets
                       {:include-field-values false
@@ -1182,21 +1179,16 @@
 
    Returns a lazy sequence of serialized entities ready for storage.
 
-   Iterates over enabled specs and uses `query-export-roots` to find root targets
-   for each model type. Models with `:export-scope :derived` or no export-scope
-   are expanded from other targets via serdes/descendants.
-
    Only extracts models that:
    1. Have a spec in remote-sync-specs
    2. Are currently enabled (based on :enabled? field)
    3. Are in one of the provided collections (or descendants)"
   []
-  (when-let [targets (not-empty (export-targets))]
-    (eduction (map (fn [[model ids]]
-                     (serdes/extract-all model {:where [:in :id ids]
-                                                :skip-archived true})))
-              cat
-              targets)))
+  (eduction (map (fn [[model ids]]
+                   (serdes/extract-all model {:where [:in :id ids]
+                                              :skip-archived true})))
+            cat
+            (export-targets)))
 
 (defn extract-entities-for-rows
   "Serializes the entities named by `rows`, grouped by model type. Each row is a map with a

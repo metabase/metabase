@@ -1323,7 +1323,7 @@
       no-changes
       (if-let [base-snapshot (source.p/snapshot-at source base-version)]
         (serdes/with-cache
-          (if-let [models (spec/extract-entities-for-export)]
+          (if-some [models (seq (spec/extract-entities-for-export))]
             (assoc (source/preview-merge models snapshot base-snapshot nil) :diverged? true)
             (assoc no-changes :diverged? true)))
         ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is
@@ -1331,7 +1331,7 @@
         {:diverged? true :clean? false :reason :history-rewritten
          :conflicts [] :summary {:added 0 :updated 0 :removed 0}
          :force-push-casualties (serdes/with-cache
-                                  (if-let [models (spec/extract-entities-for-export)]
+                                  (if-some [models (seq (spec/extract-entities-for-export))]
                                     (source/force-push-casualties-no-base models snapshot)
                                     {:deleted [] :overwritten []}))}))))
 
