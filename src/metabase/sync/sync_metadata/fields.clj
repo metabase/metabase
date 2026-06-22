@@ -39,10 +39,10 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
-   [metabase.sync.settings :as sync.settings]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
@@ -69,21 +69,26 @@
              (sync-util/name-for-logging table) limit limit))
 
 (mu/defn- limit-fields-to-sync :- [:set i/TableMetadataField]
-  "Cap `db-metadata` to at most [[sync.settings/sync-max-fields-per-table]] fields, keeping the first by name so the
-  selection is stable across syncs, and warning when fields are dropped."
+  "Cap `db-metadata` to at most [[driver.settings/sync-max-fields-per-table]] fields, keeping the first by name so the
+  selection is stable across syncs, and warning when fields are dropped.
+
+  Drivers hard-cap their metadata at exactly `limit` fields per table (they read `sync-max-fields-per-table`), so a
+  table that comes back with `limit` fields is assumed to have hit the cap -- warn. We only need to truncate when a
+  driver returned strictly more than `limit` (i.e. one that doesn't honor the cap)."
   [table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
-  (let [limit (sync.settings/sync-max-fields-per-table)]
-    (if (> (count db-metadata) limit)
-      (do
-        (warn-too-many-fields! table limit)
-        (into #{} (take limit (sort-by :name db-metadata))))
+  (let [limit (driver.settings/sync-max-fields-per-table)
+        n     (count db-metadata)]
+    (when (>= n limit)
+      (warn-too-many-fields! table limit))
+    (if (> n limit)
+      (into #{} (take limit (sort-by :name db-metadata)))
       db-metadata)))
 
 (mu/defn- sync-and-update! :- ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced. Only the first
-  [[sync.settings/sync-max-fields-per-table]] fields are synced; any beyond that are skipped (see
+  [[driver.settings/sync-max-fields-per-table]] fields are synced; any beyond that are skipped (see
   [[limit-fields-to-sync]])."
   [database    :- i/DatabaseInstance
    table       :- i/TableInstance
