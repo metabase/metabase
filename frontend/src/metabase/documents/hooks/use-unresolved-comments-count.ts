@@ -11,7 +11,13 @@ export function useUnresolvedCommentsCount(
 ) {
   const document = useSelector(getCurrentDocument);
 
-  const query = skip ? skipToken : getListCommentsQuery(document);
+  const query =
+    skip || !document
+      ? skipToken
+      : getListCommentsQuery({
+          target_id: document.id,
+          target_type: "document",
+        });
 
   const { unresolvedCommentsCount } = useListCommentsQuery(query, {
     selectFromResult: ({ data: commentsData }) => {

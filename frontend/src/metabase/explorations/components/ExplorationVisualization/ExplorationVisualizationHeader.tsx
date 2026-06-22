@@ -1,44 +1,42 @@
-import { Group, Text } from "metabase/ui";
+import { t } from "ttag";
+
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
+import { ActionIcon, Box, Group, Icon, Text, Tooltip } from "metabase/ui";
 import type {
   ExplorationId,
-  ExplorationQuery,
-  ExplorationThread,
+  ExplorationQueryGroupId,
   Timeline,
   TimelineId,
 } from "metabase-types/api";
 
-import { GroupDocumentMenu } from "./GroupDocumentMenu";
 import { TimelineDropdown } from "./TimelineDropdown";
-import type { ExplorationChartForDocumentEmbed } from "./utils";
 
 interface ExplorationVisualizationHeaderProps {
   name: string;
   explorationId?: ExplorationId;
-  explorationQuery?: ExplorationQuery;
-  explorationThread?: ExplorationThread;
+  groupId?: ExplorationQueryGroupId;
   availableTimelines?: Timeline[];
   selectedTimelineId?: TimelineId | null;
   onSelectTimelineId?: (timelineId: TimelineId | null) => void;
   showTimelineDropdown?: boolean;
-  showDocumentMenu?: boolean;
-  chartsForEmbed?: ExplorationChartForDocumentEmbed[];
   interestingTimelineIds?: ReadonlySet<TimelineId>;
-  locationSearch?: string;
 }
 
 export function ExplorationVisualizationHeader({
   name,
   explorationId,
-  explorationThread,
+  groupId,
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
   showTimelineDropdown,
-  showDocumentMenu,
-  chartsForEmbed,
   interestingTimelineIds,
-  locationSearch,
 }: ExplorationVisualizationHeaderProps) {
+  const commentUrl = useCommentUrl({
+    childTargetId: groupId,
+  });
+
   return (
     <Group h="2rem" justify="space-between" style={{ flexShrink: 0 }}>
       <Text fw="bold" size="lg">
@@ -59,17 +57,18 @@ export function ExplorationVisualizationHeader({
               interestingTimelineIds={interestingTimelineIds}
             />
           )}
-        {showDocumentMenu &&
-          explorationThread &&
-          chartsForEmbed &&
-          chartsForEmbed.length > 0 &&
-          locationSearch != null && (
-            <GroupDocumentMenu
-              charts={chartsForEmbed}
-              explorationThread={explorationThread}
-              locationSearch={locationSearch}
-            />
-          )}
+        <Tooltip label={t`Show all comments`}>
+          <Box>
+            <ActionIcon
+              component={ForwardRefLink}
+              to={commentUrl}
+              size="md"
+              aria-label={t`Show all comments`}
+            >
+              <Icon name="comment" />
+            </ActionIcon>
+          </Box>
+        </Tooltip>
       </Group>
     </Group>
   );

@@ -170,13 +170,12 @@ function ExplorationGroupVisualizationBody(
 
 function ExplorationGroupVisualizationChart({
   explorationId,
+  group,
   queries,
-  explorationThread,
   availableTimelines,
   selectedTimelineId,
   onSelectTimelineId,
   interestingTimelineIds,
-  locationSearch,
   groupName,
 }: ExplorationGroupVisualizationProps & { groupName: string }) {
   const dispatch = useDispatch();
@@ -200,26 +199,25 @@ function ExplorationGroupVisualizationChart({
   const datasets = datasetQueries.map((q) => q.data);
   const datasetError = datasetQueries.find((q) => q.error)?.error;
 
-  const { seriesGroups, layoutStrategy, chartsForDocumentEmbed } =
-    useMemo(() => {
-      const filteredDatasets = datasets.filter((d) => d !== undefined);
-      if (filteredDatasets.length < datasets.length) {
-        return {
-          seriesGroups: undefined,
-          layoutStrategy: undefined,
-          chartsForDocumentEmbed: undefined,
-        };
-      }
-      return buildSeriesGroups({
-        queries,
-        datasets: filteredDatasets,
-        selectedTimelineId,
-      });
-      // datasets are reconstructed every render but its identity-stable
-      // entries make this safe; including the array directly would cause
-      // an unstable dep warning.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [queries, selectedTimelineId, ...datasets]);
+  const { seriesGroups, layoutStrategy } = useMemo(() => {
+    const filteredDatasets = datasets.filter((d) => d !== undefined);
+    if (filteredDatasets.length < datasets.length) {
+      return {
+        seriesGroups: undefined,
+        layoutStrategy: undefined,
+        chartsForDocumentEmbed: undefined,
+      };
+    }
+    return buildSeriesGroups({
+      queries,
+      datasets: filteredDatasets,
+      selectedTimelineId,
+    });
+    // datasets are reconstructed every render but its identity-stable
+    // entries make this safe; including the array directly would cause
+    // an unstable dep warning.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queries, selectedTimelineId, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
     return seriesGroups?.some((group) => group.isTimeseries);
@@ -268,15 +266,12 @@ function ExplorationGroupVisualizationChart({
       <ExplorationVisualizationHeader
         name={groupName}
         explorationId={explorationId}
-        explorationThread={explorationThread}
+        groupId={group.id}
         availableTimelines={availableTimelines}
         selectedTimelineId={selectedTimelineId}
         onSelectTimelineId={onSelectTimelineId}
         showTimelineDropdown={showTimelineDropdown}
-        showDocumentMenu
-        chartsForEmbed={chartsForDocumentEmbed}
         interestingTimelineIds={interestingTimelineIds}
-        locationSearch={locationSearch}
       />
       <Box
         className={S.chartGrid}

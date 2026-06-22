@@ -16,10 +16,10 @@ import {
 } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import Animation from "metabase/css/core/animation.module.css";
+import { useCommentTarget } from "metabase/documents/hooks/use-comment-target";
 import { useDocumentState } from "metabase/documents/hooks/use-document-state";
-import { getCurrentDocument } from "metabase/documents/selectors";
 import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -48,9 +48,9 @@ export const CommentsSidesheet = ({ params }: Props) => {
   const { openCommentSidebar, closeCommentSidebar } = useDocumentState();
   const [activeTab, setActiveTab] = useState<SidesheetTab | null>("open");
   const [, setNewComment] = useState<DocumentContent>();
-  const document = useSelector(getCurrentDocument);
+  const commentTarget = useCommentTarget();
   const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(document),
+    getListCommentsQuery(commentTarget),
   );
   const comments = commentsData?.comments;
   const dispatch = useDispatch();
@@ -171,14 +171,14 @@ export const CommentsSidesheet = ({ params }: Props) => {
   });
 
   const handleSubmit = async (doc: DocumentContent) => {
-    if (!childTargetId || !document) {
+    if (!childTargetId || !commentTarget) {
       return;
     }
 
     const { error } = await createComment({
       child_target_id: childTargetId,
-      target_id: document.id,
-      target_type: "document",
+      target_id: commentTarget.target_id,
+      target_type: commentTarget.target_type,
       content: doc,
       parent_comment_id: null,
     });
@@ -194,7 +194,7 @@ export const CommentsSidesheet = ({ params }: Props) => {
     }
   };
 
-  if (!childTargetId || !document) {
+  if (!childTargetId || !commentTarget) {
     return null;
   }
 
@@ -242,8 +242,8 @@ export const CommentsSidesheet = ({ params }: Props) => {
               childTargetId={childTargetId === "all" ? null : childTargetId}
               comments={activeComments}
               enableHoverHighlight={childTargetId === "all"}
-              targetId={document.id}
-              targetType="document"
+              targetId={commentTarget.target_id}
+              targetType={commentTarget.target_type}
             />
           )}
 
@@ -279,8 +279,8 @@ export const CommentsSidesheet = ({ params }: Props) => {
           <Discussions
             childTargetId={childTargetId === "all" ? null : childTargetId}
             comments={resolvedComments}
-            targetId={document.id}
-            targetType="document"
+            targetId={commentTarget.target_id}
+            targetType={commentTarget.target_type}
           />
         </Tabs.Panel>
       </Tabs>

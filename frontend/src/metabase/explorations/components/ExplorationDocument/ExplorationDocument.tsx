@@ -101,7 +101,7 @@ export function ExplorationDocument({
   });
 
   const { hasComments } = useListCommentsQuery(
-    getListCommentsQuery(documentData),
+    getListCommentsQuery({ target_id: document.id, target_type: "document" }),
     {
       selectFromResult: ({ data }) => ({
         hasComments: !!data?.comments?.length,

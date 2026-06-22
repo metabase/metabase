@@ -57,7 +57,16 @@
                       ;; feel the need to have this clause
                       (format "/document/%s#comment-%s"
                               (:id entity)
-                              (:id comment)))))
+                              (:id comment)))
+    :model/Exploration (if (:child_target_id comment)
+                         (format "/question/research/%s/comments/%s#comment-%s"
+                                 (:id entity)
+                                 (:child_target_id comment)
+                                 (:id comment))
+                         ;; NOTE: not used at the time of writing the code, but given that child_target_id is optional I
+                         ;; feel the need to have this clause
+                         (format "/question/research/%s"
+                                 (:id entity)))))
 
 (defn mentions
   "Find mentioned users inside of a comment content"
