@@ -38,7 +38,7 @@ export const getEntityDetails = ({
         .unwrap()
         .catch(nullOnCatch);
     case "dashboard":
-      return DashboardApi.get({ id }).catch(nullOnCatch);
+      return DashboardApi.get({ dashId: id }).catch(nullOnCatch);
     case "collection":
       return CollectionsApi.get({ id }).catch(nullOnCatch);
     default:
