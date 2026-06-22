@@ -27,7 +27,7 @@ import {
 } from "./metadata";
 import { normalizeDatasetQuery } from "./normalization";
 
-export function buildTableDatasetQueryWithMetabaseLib(
+export function buildTableDatasetQueryFromSchema(
   query: TableQueryRuntime,
   table: TableSchema,
 ): StructuredDatasetQuery | null {
@@ -77,7 +77,7 @@ export function buildTableDatasetQueryWithMetabaseLib(
   );
 }
 
-export function buildMetricDatasetQueryWithMetabaseLib(
+export function buildMetricDatasetQueryFromSchema(
   query: MetricQueryRuntime,
 ): StructuredDatasetQuery | null {
   const metricId = getMetricIdFromQuery(query);

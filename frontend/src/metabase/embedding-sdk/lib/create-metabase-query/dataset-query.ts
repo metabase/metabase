@@ -5,8 +5,8 @@ import {
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
 import {
-  buildMetricDatasetQueryWithMetabaseLib,
-  buildTableDatasetQueryWithMetabaseLib,
+  buildMetricDatasetQueryFromSchema,
+  buildTableDatasetQueryFromSchema,
 } from "./lib-adapter/builder";
 import {
   getTableFromSchema,
@@ -22,12 +22,16 @@ import {
   validateTableScopedInputs,
 } from "./validation";
 
-export function buildDatasetQueryWithMetabaseLib(
+export type CreateMetabaseQuery = (
   query: TableQueryRuntime | MetricQueryRuntime,
-): StructuredDatasetQuery {
+) => StructuredDatasetQuery;
+
+export const createMetabaseQuery: CreateMetabaseQuery = (
+  query: TableQueryRuntime | MetricQueryRuntime,
+) => {
   const datasetQuery = isMetricQueryRuntime(query)
-    ? buildMetricDatasetQueryFromSchema(query)
-    : buildTableDatasetQueryFromSchema(query);
+    ? buildValidatedMetricDatasetQueryFromSchema(query)
+    : buildValidatedTableDatasetQueryFromSchema(query);
 
   if (datasetQuery) {
     return datasetQuery;
@@ -36,7 +40,7 @@ export function buildDatasetQueryWithMetabaseLib(
   if (isMetricQueryRuntime(query)) {
     if (hasMetricFromSchema(query)) {
       throw new Error(
-        "Generated metric query could not be built with metabase-lib.",
+        "Generated metric query could not be converted to a dataset query.",
       );
     }
 
@@ -47,7 +51,7 @@ export function buildDatasetQueryWithMetabaseLib(
 
   if (hasTableFromSchema(query)) {
     throw new Error(
-      "Generated table query could not be built with metabase-lib.",
+      "Generated table query could not be converted to a dataset query.",
     );
   }
 
@@ -63,9 +67,9 @@ export function buildDatasetQueryWithMetabaseLib(
     ...buildTableDatasetQuery(query as TableQueryRuntime),
     database: Number(databaseId),
   };
-}
+};
 
-function buildTableDatasetQueryFromSchema(
+function buildValidatedTableDatasetQueryFromSchema(
   query: TableQueryRuntime,
 ): StructuredDatasetQuery | null {
   const table = getTableFromSchema(query);
@@ -87,14 +91,14 @@ function buildTableDatasetQueryFromSchema(
     context: "Table query",
   });
 
-  return buildTableDatasetQueryWithMetabaseLib(query, table);
+  return buildTableDatasetQueryFromSchema(query, table);
 }
 
-function buildMetricDatasetQueryFromSchema(
+function buildValidatedMetricDatasetQueryFromSchema(
   query: MetricQueryRuntime,
 ): StructuredDatasetQuery | null {
   validateMetricTableScopedInputs(query);
   validateMetricGeneratedDimensions(query);
 
-  return buildMetricDatasetQueryWithMetabaseLib(query);
+  return buildMetricDatasetQueryFromSchema(query);
 }
