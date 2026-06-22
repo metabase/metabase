@@ -1,9 +1,7 @@
 (ns metabase.util.json-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase.util.json :as json])
-  (:import
-   (java.io ByteArrayInputStream StringReader)))
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
