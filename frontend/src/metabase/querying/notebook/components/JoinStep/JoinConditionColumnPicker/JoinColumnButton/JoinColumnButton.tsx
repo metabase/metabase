@@ -49,7 +49,8 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
   );
   const columnTableName = useMemo(
     () =>
-      getColumnTableName(query, stageIndex, expression, isLhsPicker, tableName),
+      getLHSColumnTableName(query, stageIndex, expression, isLhsPicker) ??
+      tableName,
     [query, stageIndex, expression, isLhsPicker, tableName],
   );
   const isEmpty = expression == null;
@@ -135,12 +136,11 @@ function getButtonLabel(
   return t`Custom expression`;
 }
 
-function getColumnTableName(
+function getLHSColumnTableName(
   query: Lib.Query,
   stageIndex: number,
   expression: Lib.ExpressionClause | undefined,
   isLhsPicker: boolean,
-  tableName: string | undefined,
 ) {
   // The LHS of a join condition can reference a column from the source table
   // or a previous join, so the join condition table should be the columns
@@ -150,10 +150,6 @@ function getColumnTableName(
     expression != null &&
     Lib.isJoinConditionLHSorRHSColumn(expression)
   ) {
-    return (
-      Lib.displayInfo(query, stageIndex, expression).table?.displayName ??
-      tableName
-    );
+    return Lib.displayInfo(query, stageIndex, expression).table?.displayName;
   }
-  return tableName;
 }
