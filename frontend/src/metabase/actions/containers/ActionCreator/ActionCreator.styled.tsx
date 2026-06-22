@@ -6,7 +6,7 @@ import SidebarContentS from "metabase/common/components/SidebarContent/SidebarCo
 export const ActionCreatorBodyContainer = styled.div`
   display: grid;
   grid-template-columns: 4fr 3fr;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 
   .react-resizable-handle {
     display: none;
@@ -32,7 +32,7 @@ export const ModalActions = styled.div`
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const ModalRoot = styled.div`
@@ -45,7 +45,7 @@ export const ModalLeft = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const ModalRight = styled.div`

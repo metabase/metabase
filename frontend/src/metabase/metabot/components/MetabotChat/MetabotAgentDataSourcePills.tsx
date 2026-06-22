@@ -431,7 +431,7 @@ const SourceDataSection = ({ children }: { children: React.ReactNode }) => {
       style={{
         borderRadius: "0.5rem",
         overflow: "hidden",
-        border: "1px solid var(--mb-color-border)",
+        border: "1px solid var(--mb-color-border-neutral)",
       }}
     >
       <UnstyledButton

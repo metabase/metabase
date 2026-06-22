@@ -5,7 +5,7 @@
   width: 100%;
 
   &:not(:last-child) {
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
   }
 }
 
@@ -13,7 +13,7 @@
   position: relative;
   background-color: var(--mb-color-background_page-primary);
 
-  --border-style: 1px solid var(--mb-color-border);
+  --border-style: 1px solid var(--mb-color-border-neutral);
 
   &[data-position="top"]:not(:last-child),
   &[data-position="top"].hasCenterRows {

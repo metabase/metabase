@@ -1,6 +1,6 @@
 .container {
   position: relative;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   box-shadow: var(--mantine-shadow-xs);
   padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
   border-radius: var(--mantine-spacing-sm);
@@ -19,7 +19,7 @@
   }
 
   &:not(.active) {
-    border: 1px solid var(--mb-color-border);
+    border: 1px solid var(--mb-color-border-neutral);
     box-shadow: none;
     padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
 
@@ -90,7 +90,7 @@
   overflow-x: auto;
   margin: 0.25rem 0;
   font-size: 0.875rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 .content
@@ -112,14 +112,14 @@
   font-family: var(--mb-default-monospace-font-family, monospace);
   font-size: 0.875rem;
   color: var(--mb-color-text-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 /* Blockquote styling */
 .content
   :global(.ProseMirror)
   :global(blockquote):not(:global(.editor-style-boundary) *) {
-  border-left: 3px solid var(--mb-color-border-stronger);
+  border-left: 3px solid var(--mb-color-border-neutral-strongest);
   margin: 0 0 0.5rem 0;
   color: var(--mb-color-text-secondary);
   font-style: italic;

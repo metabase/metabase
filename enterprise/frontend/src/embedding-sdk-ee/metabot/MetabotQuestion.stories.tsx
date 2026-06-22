@@ -118,7 +118,7 @@ const CenteredLayoutPreview = ({ children }: { children: React.ReactNode }) => (
       m="40px"
       bg="background_page-primary"
       style={{
-        border: "1px solid var(--mb-color-border)",
+        border: "1px solid var(--mb-color-border-neutral)",
         borderRadius: "16px",
       }}
     >

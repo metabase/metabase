@@ -4,5 +4,5 @@
 }
 
 .root[data-with-border] {
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 }

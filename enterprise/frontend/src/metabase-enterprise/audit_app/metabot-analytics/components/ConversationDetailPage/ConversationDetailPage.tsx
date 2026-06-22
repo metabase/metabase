@@ -224,7 +224,7 @@ function FeedbackCard({
             bg="background_page-secondary"
             p="md"
             pb="0"
-            bd="1px solid var(--mb-color-border)"
+            bd="1px solid var(--mb-color-border-neutral)"
             bdrs="1rem"
           />
         )}

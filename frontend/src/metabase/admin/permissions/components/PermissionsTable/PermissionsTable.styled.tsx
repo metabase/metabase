@@ -8,14 +8,14 @@ import { Icon, type IconProps } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
 const getTableBorder = () =>
-  `1px solid color-mix(in srgb, var(--mb-color-border), transparent 50%)`;
+  `1px solid color-mix(in srgb, var(--mb-color-border-neutral), transparent 50%)`;
 
 // background with 1px of border color at the bottom
 // to work properly with sticky positioning
 const getHeaderBackground = () =>
   `linear-gradient(
     to top,
-    color-mix(in srgb, var(--mb-color-border) 50%, var(--mb-color-background_page-primary) 50%) 1px,
+    color-mix(in srgb, var(--mb-color-border-neutral) 50%, var(--mb-color-background_page-primary) 50%) 1px,
     var(--mb-color-background_page-primary) 1px,
     var(--mb-color-background_page-primary) 100%
   )`;

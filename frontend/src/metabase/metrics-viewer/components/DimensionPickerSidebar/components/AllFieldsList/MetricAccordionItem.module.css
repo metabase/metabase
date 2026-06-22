@@ -30,5 +30,5 @@
 }
 
 .occurrenceCountBadge {
-  box-shadow: 0 0 0 1px var(--mb-color-border);
+  box-shadow: 0 0 0 1px var(--mb-color-border-neutral);
 }

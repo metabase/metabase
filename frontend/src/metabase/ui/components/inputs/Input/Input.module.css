@@ -32,7 +32,7 @@
   }
 
   &[data-variant="default"] {
-    border-color: var(--mb-color-border);
+    border-color: var(--mb-color-border-neutral);
 
     &:hover:not(:disabled) {
       border-color: var(--mb-color-core-brand);

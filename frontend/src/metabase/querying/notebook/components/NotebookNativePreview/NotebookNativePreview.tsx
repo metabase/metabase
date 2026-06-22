@@ -72,7 +72,7 @@ export const NotebookNativePreview = ({
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
-  const borderStyle = "1px solid var(--mb-color-border)";
+  const borderStyle = "1px solid var(--mb-color-border-neutral)";
 
   const handleConvertClick = useCallback(() => {
     if (newQuestion) {

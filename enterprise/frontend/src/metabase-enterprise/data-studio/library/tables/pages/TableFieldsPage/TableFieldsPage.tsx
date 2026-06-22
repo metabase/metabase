@@ -70,7 +70,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
       <Flex
         className={S.body}
         flex={1}
-        style={{ borderTop: "1px solid var(--mb-color-border)" }}
+        style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >
         <Stack className={S.column} flex="8 1 0" miw={320} maw={640} mih={0}>
           <TableSection

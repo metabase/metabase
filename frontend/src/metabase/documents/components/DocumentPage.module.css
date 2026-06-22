@@ -83,7 +83,7 @@
   width: 360px;
   flex-shrink: 0;
   background-color: var(--mb-color-background_page-secondary);
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
   overflow-y: auto;
 }
 

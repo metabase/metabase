@@ -28,7 +28,7 @@
 }
 
 .ToggleItem {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   margin-bottom: 0.5em;
 
   .ItemTitle {

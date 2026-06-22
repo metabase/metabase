@@ -10,7 +10,7 @@ interface Props {
 
 export const StepRoot = styled.section<Props>`
   position: relative;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
@@ -36,7 +36,8 @@ export const StepLabel = styled.div<Props>`
   width: 2.625rem;
   height: 2.625rem;
   border: 1px solid
-    ${(props) => (props.isCompleted ? color("success") : color("border"))};
+    ${(props) =>
+      props.isCompleted ? color("success") : color("border-neutral")};
   border-radius: 50%;
   background-color: ${(props) =>
     props.isCompleted ? color("success") : color("background_page-primary")};

@@ -159,7 +159,7 @@
   position: relative;
   display: inline-block;
   border-radius: var(--default-border-radius);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   margin-top: var(--margin-2);
   padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
 }
@@ -195,7 +195,7 @@
   font-size: 0.9em;
   z-index: 2;
   background-color: var(--mb-color-background_page-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 /* for medium breakpoint only expand if data reference is not shown */
@@ -207,7 +207,7 @@
 
 /* un-expanded (default) */
 .GuiBuilderRow {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .GuiBuilderRow:last-child {
@@ -224,7 +224,7 @@
 }
 
 .GuiBuilderView {
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
 }
 
 /* expanded */
@@ -234,11 +234,11 @@
 
 .GuiBuilder.GuiBuilderExpand .GuiBuilderRow:last-child {
   border-right-color: transparent;
-  border-bottom-color: var(--mb-color-border);
+  border-bottom-color: var(--mb-color-border-neutral);
 }
 
 .GuiBuilder.GuiBuilderExpand .GuiBuilderFilteredBy {
-  border-right-color: var(--mb-color-border);
+  border-right-color: var(--mb-color-border-neutral);
 }
 
 .GuiBuilderSection {
@@ -263,7 +263,7 @@
   overflow: scroll;
   padding: 1em;
   background-color: var(--mb-color-background_page-secondary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 2px;
   white-space: pre-wrap;
 }

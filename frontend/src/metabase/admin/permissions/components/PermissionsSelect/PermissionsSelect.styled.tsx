@@ -39,7 +39,7 @@ export const OptionsListItem = styled.li`
 `;
 
 export const ActionsList = styled(OptionsList)`
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const ToggleContainer = styled.div`

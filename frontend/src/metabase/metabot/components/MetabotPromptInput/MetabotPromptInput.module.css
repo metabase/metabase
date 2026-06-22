@@ -16,7 +16,7 @@
   white-space: pre-wrap;
   word-break: break-word;
   scrollbar-width: thin;
-  scrollbar-color: var(--mb-color-border) transparent;
+  scrollbar-color: var(--mb-color-border-neutral) transparent;
 
   &:focus {
     outline: none;
@@ -36,7 +36,7 @@
 }
 
 .content :global(.ProseMirror)::-webkit-scrollbar-thumb {
-  background: var(--mb-color-border);
+  background: var(--mb-color-border-neutral);
   border-radius: 4px;
 }
 

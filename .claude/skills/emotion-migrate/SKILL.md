@@ -170,7 +170,7 @@ Create `ComponentName.module.css` alongside the component file:
 ```css
 /* Use design system tokens — NEVER raw color/spacing values */
 .root {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-md);
   background-color: var(--mb-color-background_page-primary);
 }
@@ -574,7 +574,7 @@ export const Spinner = styled.div`
 | -------------------------- | ----------------------------------------------------------------- | ------------------------------------- |
 | `color("core-brand")`      | `var(--mb-color-core-brand)`                                      | `c="core-brand"` or `bg="core-brand"` |
 | `color("text-primary")`    | `var(--mb-color-text-primary)`                                    | `c="text-primary"`                    |
-| `color("border")`          | `var(--mb-color-border)`                                          | N/A (use CSS module)                  |
+| `color("border-neutral")`          | `var(--mb-color-border-neutral)`                                          | N/A (use CSS module)                  |
 | `alpha("core-brand", 0.2)` | `color-mix(in srgb, var(--mb-color-core-brand), transparent 80%)` | N/A (use CSS module)                  |
 
 ### Pattern 7: Responsive Spacing/Sizing → Responsive Style Props (NOT CSS Media Queries)

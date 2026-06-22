@@ -21,7 +21,7 @@
 
 .visualizationPanel {
   background-color: var(--mb-color-background_page-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--default-border-radius);
   overflow: hidden;
   /* keeps the embedded visualization non-interactive (no tooltips/hover) */

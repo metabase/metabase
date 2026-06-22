@@ -26,7 +26,7 @@
 }
 
 .discussionRoot {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 8px;
   position: relative;
 }
@@ -36,7 +36,7 @@
   top: -8px;
   right: 0;
   z-index: 1;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   visibility: hidden;
 
   .commentRoot:hover & {

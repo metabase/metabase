@@ -15,7 +15,7 @@ export function CustomVizIcon({ plugin }: Props) {
   return (
     <Flex
       align="center"
-      bd="1px solid var(--mb-color-border)"
+      bd="1px solid var(--mb-color-border-neutral)"
       bdrs="xl"
       bg="background_page-secondary"
       justify="center"

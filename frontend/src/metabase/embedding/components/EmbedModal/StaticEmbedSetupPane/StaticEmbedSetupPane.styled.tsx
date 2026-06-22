@@ -15,7 +15,7 @@ const SettingsAsideBlock = styled.div`
   flex-shrink: 0;
   width: 21.6rem;
   padding: 2rem;
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background_page-primary);
   height: 45.125rem;
   overflow-y: auto;

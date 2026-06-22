@@ -1,6 +1,6 @@
 .toolCalls {
   padding-left: 0.75rem;
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
   color: var(--mb-color-text-primary);
 }
 

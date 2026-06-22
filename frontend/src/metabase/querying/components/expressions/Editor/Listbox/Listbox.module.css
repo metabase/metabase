@@ -5,7 +5,7 @@
   height: 100%;
 
   &:not(:first-child) {
-    border-top: 1px solid var(--mb-color-border);
+    border-top: 1px solid var(--mb-color-border-neutral);
   }
 }
 
@@ -48,7 +48,7 @@
   display: flex;
   align-items: center;
   color: var(--mb-color-text-secondary);
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
   font-size: 12px;
   margin-top: auto;
 }

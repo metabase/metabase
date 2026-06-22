@@ -13,7 +13,7 @@ export const LocaleGroup = styled.ol`
   padding: 0.5rem;
   max-height: 17.5rem;
   overflow-y: scroll;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.25rem;
 `;
 

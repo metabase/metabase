@@ -27,7 +27,7 @@
 }
 
 .tableHeaderCell {
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
   font-weight: 700;
   background-color: var(--cell-bg-color);
 
@@ -42,7 +42,7 @@
 
 .tableBodyCell {
   background-color: var(--mb-color-background_page-primary);
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
 }
 
 .headerCellContainer {

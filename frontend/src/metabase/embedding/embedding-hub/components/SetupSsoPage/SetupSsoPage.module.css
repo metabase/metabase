@@ -9,7 +9,7 @@
 .docsIframe {
   width: 100%;
   height: 50rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
 }
 

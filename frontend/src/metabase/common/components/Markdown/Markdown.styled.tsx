@@ -53,7 +53,7 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
       ${(props) =>
         props.dark
           ? "var(--mb-color-background_page-tertiary-inverse)"
-          : "var(--mb-color-border)"};
+          : "var(--mb-color-border-neutral)"};
   }
 `;
 

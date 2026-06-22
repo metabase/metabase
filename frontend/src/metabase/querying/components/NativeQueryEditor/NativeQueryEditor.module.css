@@ -17,7 +17,7 @@
 
 .resizableArea {
   display: flex;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
   flex: 1 1 auto;
   overflow: hidden;
   flex-direction: column;

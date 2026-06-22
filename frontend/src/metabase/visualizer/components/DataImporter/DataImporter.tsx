@@ -136,7 +136,7 @@ export const DataImporter = ({
         bg="background_page-primary"
         h="100%"
         display={showDatasets ? "none" : "flex"}
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         style={{
           borderRadius: "var(--default-border-radius)",
         }}
@@ -156,7 +156,7 @@ export const DataImporter = ({
             style={{
               borderRadius: "var(--default-border-radius)",
               height: "100%",
-              border: `1px solid var(--mb-color-border)`,
+              border: `1px solid var(--mb-color-border-neutral)`,
             }}
           >
             {dataSources.length > 0 ? (

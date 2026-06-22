@@ -9,7 +9,7 @@
 
 .sidebar {
   flex-shrink: 0;
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
 }
 
 .flexStart {
