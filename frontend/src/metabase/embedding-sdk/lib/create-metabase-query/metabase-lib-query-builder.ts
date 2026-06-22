@@ -1,14 +1,14 @@
-import type { TableSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
-import type { StructuredDatasetQuery } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
-
 import {
   getMetricDatabaseIdFromQuery,
   getMetricIdFromQuery,
   getMetricSourceIdFromQuery,
   getTableDatabaseIdFromQuery,
   getTableIdFromQuery,
-} from "./accessors";
+} from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
+import type { TableSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
+import type { StructuredDatasetQuery } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
+
 import {
   applyAggregations,
   applyBreakouts,

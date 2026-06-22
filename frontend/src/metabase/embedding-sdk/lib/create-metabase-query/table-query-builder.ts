@@ -1,3 +1,4 @@
+import { getTableIdFromQuery } from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Aggregation,
@@ -7,7 +8,6 @@ import type {
   StructuredDatasetQuery,
 } from "metabase-types/api";
 
-import { getTableIdFromQuery } from "./accessors";
 import {
   isCountAggregation,
   isDimensionFilter,

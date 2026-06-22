@@ -268,12 +268,9 @@ function getRelativeDateFilterParts(
     filter.values ?? (Array.isArray(filter.value) ? filter.value : null);
 
   if (values) {
-    return createRelativeDateFilterParts(
-      values[0],
-      values[1],
-      values[2],
-      values[3],
-    );
+    const [value, unit, options, offsetValue] = values;
+
+    return createRelativeDateFilterParts(value, unit, options, offsetValue);
   }
 
   if (!isObject(filter.value)) {
@@ -301,15 +298,18 @@ function createRelativeDateFilterParts(
   }
 
   const optionsObject = isObject(options) ? options : {};
+
   const parsedOffsetValue =
     typeof offsetValue === "number"
       ? offsetValue
       : (getNumberOption(optionsObject, "offsetValue") ??
         getNumberOption(optionsObject, "offset-value") ??
         null);
+
   const optionsOffsetUnit =
     getStringOption(optionsObject, "offsetUnit") ??
     getStringOption(optionsObject, "offset-unit");
+
   const parsedOffsetUnit = isRelativeDateFilterUnit(offsetUnit)
     ? offsetUnit
     : isRelativeDateFilterUnit(optionsOffsetUnit)

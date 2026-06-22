@@ -1,5 +1,7 @@
 import { isObject } from "metabase-types/guards";
 
+import type { FieldSchema, TableSchema } from "./schema";
+
 export type QuestionQueryLike = {
   questionId: unknown;
   parameters?: unknown;
@@ -8,6 +10,7 @@ export type QuestionQueryLike = {
 export type TableQueryLike = {
   table?: unknown;
   tableId?: unknown;
+  databaseId?: unknown;
 };
 
 export type MetricQueryLike = {
@@ -41,6 +44,22 @@ export const isMetricReference = (
   "id" in value &&
   "mappedTableIds" in value &&
   Array.isArray(value.mappedTableIds);
+
+export const isTableReference = (value: unknown): value is TableSchema =>
+  isObject(value) && "id" in value && "databaseId" in value;
+
+export function isTableFieldSchema(value: unknown): value is FieldSchema {
+  if (!isObject(value) || "metricId" in value) {
+    return false;
+  }
+
+  return (
+    typeof value.name === "string" &&
+    (typeof value.fieldId === "number" ||
+      typeof value.id === "number" ||
+      typeof value.id === "string")
+  );
+}
 
 export const isUnaryOperator = (operator: string) =>
   operator === "is-empty" ||

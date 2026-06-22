@@ -1,3 +1,9 @@
+import {
+  getMetricIdFromQuery,
+  getMetricSourceCardIdFromQuery,
+  getMetricSourceIdFromQuery,
+  getMetricSourceTableIdFromQuery,
+} from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
 import type {
   FieldSchema,
   SegmentSchema,
@@ -5,12 +11,6 @@ import type {
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { Field, TableId } from "metabase-types/api";
 
-import {
-  getMetricIdFromQuery,
-  getMetricSourceCardIdFromQuery,
-  getMetricSourceIdFromQuery,
-  getMetricSourceTableIdFromQuery,
-} from "./accessors";
 import { isMeasureSchema } from "./guards";
 import type { MetadataInput, Query } from "./metabase-lib-query-lib";
 import { Lib } from "./metabase-lib-query-lib";

@@ -1,3 +1,7 @@
+import {
+  isTableFieldSchema,
+  isUnaryOperator,
+} from "embedding-sdk-shared/lib/create-metabase-query/query-guards";
 import type { FieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isObject } from "metabase-types/guards";
 
@@ -9,7 +13,7 @@ import type {
   SegmentReferenceRuntime,
 } from "./runtime-types";
 
-export { isUnaryOperator } from "embedding-sdk-shared/lib/create-metabase-query/query-guards";
+export { isTableFieldSchema, isUnaryOperator };
 
 export const isDimensionFilter = (
   value: unknown,
@@ -47,16 +51,3 @@ export const isFieldAggregation = (
     value.type === "distinct" ||
     value.type === "min" ||
     value.type === "max");
-
-export function isTableFieldSchema(value: unknown): value is FieldSchema {
-  if (!isObject(value) || "metricId" in value) {
-    return false;
-  }
-
-  return (
-    typeof value.name === "string" &&
-    (typeof value.fieldId === "number" ||
-      typeof value.id === "number" ||
-      typeof value.id === "string")
-  );
-}

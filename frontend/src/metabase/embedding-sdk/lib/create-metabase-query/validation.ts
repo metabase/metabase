@@ -1,4 +1,5 @@
-import { getMetricMappedTableIdsFromQuery } from "./accessors";
+import { getMetricMappedTableIdsFromQuery } from "embedding-sdk-shared/lib/create-metabase-query/query-accessors";
+
 import {
   isCountAggregation,
   isFieldAggregation,
