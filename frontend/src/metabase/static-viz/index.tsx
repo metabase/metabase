@@ -53,6 +53,12 @@ export type RenderChartOptions = {
   applicationColors: ColorPalette;
   customFormatting: FormattingSettings;
   startOfWeek: DayOfWeekId | null | undefined;
+  // Explicit pixel dimensions for the chart. Use fitWithinBounds to have height include
+  // chart legends
+  width?: number;
+  height?: number;
+  // When true, width/height are treated as the exact output box
+  fitWithinBounds?: boolean;
 };
 
 type RenderChartDashcardSettings = DashCardVisualizationSettings & {
@@ -207,6 +213,9 @@ export function RenderChart(
       rawSeries={rawSeriesWithRemappings}
       renderingContext={renderingContext}
       hasDevWatermark={hasDevWatermark}
+      width={options.width}
+      height={options.height}
+      fitWithinBounds={options.fitWithinBounds}
     />,
   );
 }
