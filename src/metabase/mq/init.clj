@@ -6,6 +6,7 @@
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.memory :as q.memory]
+   [metabase.mq.queue.quartz :as q.quartz]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.settings :as mq.settings]
    [metabase.mq.task.outbox]
@@ -13,7 +14,8 @@
    [metabase.util.log :as log]))
 
 (def ^:private queue-backends
-  {q.memory/backend-id q.memory/backend})
+  {q.quartz/backend-id q.quartz/backend
+   q.memory/backend-id q.memory/backend})
 
 (def ^:private valid-queue-backends (set (keys queue-backends)))
 

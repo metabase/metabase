@@ -55,9 +55,12 @@
 (defn notify-on-publish!
   "Wakes the poll loop for `poll-context` so it picks up a freshly published message — unless
   `channel` is already being processed, in which case the loop re-checks when that finishes.
-  Called by the transport right after `publish!` (the caller reads the backend's `:poll-context`)."
+  Called by the transport right after `publish!` (the caller reads the backend's `:poll-context`).
+
+  No-ops when `poll-context` is nil: push backends (e.g. Quartz) have no poll loop to wake — their
+  `publish!` already arranges delivery — so they carry no poll context."
   [poll-context channel]
-  (when-not (mq.impl/channel-busy? channel)
+  (when (and poll-context (not (mq.impl/channel-busy? channel)))
     (mq.polling/notify! (:poll-state poll-context))))
 
 (defn make-poll-context

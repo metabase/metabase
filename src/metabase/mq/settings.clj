@@ -12,9 +12,9 @@
   :export?    false)
 
 (defsetting queue-backend
-  (deferred-tru "Which queue backend to use. Valid values: `memory`.")
+  (deferred-tru "Which queue backend to use. Valid values: `quartz`, `memory`.")
   :type       :string
-  :default    "memory"
+  :default    "quartz"
   :visibility :internal
   :encryption :no
   :export?    false)

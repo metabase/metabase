@@ -95,6 +95,28 @@
           (analytics/inc! :metabase-mq/queue-batch-retries labels)
           (q.backend/retry-batch! backend channel batch-id))))))
 
+(defn- sliced-invoke-fn
+  "Builds the `invoke-fn` that slices `messages` into `:max-batch-messages` chunks and feeds each to
+  the listener `h` with per-chunk error isolation — one failing chunk doesn't block the others, but
+  the whole batch is reported failed (the listener throws) so it can be nacked/redelivered. Shared
+  by the poll path ([[handle!]]) and the push path ([[deliver-reporting!]]) so both slice and
+  isolate identically."
+  [channel messages]
+  (let [batch-size (q.registry/max-batch-messages channel)
+        transport  (namespace channel)
+        labels     {:transport transport :channel (name channel)}]
+    (fn [h]
+      (let [error (atom nil)]
+        (doseq [batch (partition-all batch-size messages)]
+          (try (h (vec batch))
+               (catch Exception e
+                 (analytics/inc! :metabase-mq/handler-errors labels)
+                 (reset! error e)
+                 (log/errorf e "Error handling %s message for %s, continuing"
+                             transport (name channel)))))
+        (when-let [e @error]
+          (throw (ex-info "One or more messages failed" {} e)))))))
+
 (defn handle!
   "Handles accumulated messages for a channel by invoking the registered listener.
    Processes each message/batch with error isolation — one failure doesn't block others.
@@ -104,29 +126,37 @@
    The queue's :dedup-fn helps mitigate duplicate processing on retry."
   [channel message-batches messages]
   (swap! last-activity* assoc channel (System/nanoTime))
-  (let [batch-size (q.registry/max-batch-messages channel)
-        transport  (namespace channel)
-        labels     {:transport transport :channel (name channel)}]
+  (let [labels {:transport (namespace channel) :channel (name channel)}]
     (analytics/inc! :metabase-mq/messages-received labels (count messages))
     (invoke-listener!
      {:channel      channel
       :listener-fn  #(:listener (listener/get-listener channel))
-      :invoke-fn    (fn [h]
-                      (let [error (atom nil)]
-                        (doseq [batch (partition-all batch-size messages)]
-                          (try (h (vec batch))
-                               (catch Exception e
-                                 (analytics/inc! :metabase-mq/handler-errors labels)
-                                 (reset! error e)
-                                 (log/errorf e "Error handling %s message for %s, continuing"
-                                             transport (name channel)))))
-                        (when-let [e @error]
-                          (throw (ex-info "One or more messages failed" {} e)))))
+      :invoke-fn    (sliced-invoke-fn channel messages)
       :on-success   #(doseq [[bid backend] message-batches]
                        (q.backend/batch-successful! backend channel bid))
       :on-error     (fn [_e]
                       (doseq [[bid backend] message-batches]
                         (handle-batch-failure! backend channel bid)))})))
+
+(defn deliver-reporting!
+  "Push-backend delivery entry point. Decodes the opaque `payload` string and runs the registered
+  listener for `channel` with the same batch-slicing, error-isolation, and metrics as the poll path
+  ([[handle!]]), but instead of driving backend ACK/NACK it returns `true` on success and `false`
+  if the listener errored. Used by push backends (e.g. Quartz) that own their own
+  retry/redelivery — they decide what to do with the boolean. A channel with no registered
+  listener counts as success (the message is dropped), matching the poll path."
+  [channel payload]
+  (swap! last-activity* assoc channel (System/nanoTime))
+  (let [messages (payload/decode payload)
+        labels   {:transport (namespace channel) :channel (name channel)}
+        ok       (atom true)]
+    (analytics/inc! :metabase-mq/messages-received labels (count messages))
+    (invoke-listener!
+     {:channel     channel
+      :listener-fn #(:listener (listener/get-listener channel))
+      :invoke-fn   (sliced-invoke-fn channel messages)
+      :on-error    (fn [_e] (reset! ok false))})
+    @ok))
 
 (defn deliver!
   "Called by backends when a payload is ready for delivery. Decodes the opaque payload

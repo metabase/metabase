@@ -73,6 +73,7 @@ Transport Dispatch (mq.transport)   ← multimethod on channel namespace
         │
         ▼
 Backends
+  quartz — one-shot Quartz job per batch (push; clustered JDBC JobStore)
   memory — LinkedBlockingQueue per channel
         │
         ▼
