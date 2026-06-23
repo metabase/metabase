@@ -22,7 +22,7 @@ import type { SortDirection } from "metabase-types/api";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
-import type { FieldId } from "./types";
+import type { GlossaryField } from "./types";
 
 export type GlossaryTableProps = {
   className?: string;
@@ -49,14 +49,14 @@ export function GlossaryTable({
   const [isCreating, setIsCreating] = useState(false);
   const metabotName = useMetabotName();
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editingField, setEditingField] = useState<FieldId | null>(null);
+  const [editingField, setEditingField] = useState<GlossaryField | null>(null);
   const [deletingItem, setDeletingItem] = useState<GlossaryItem | null>(null);
   const [sortColumnName, setSortColumnName] = useState<
     keyof GlossaryItem | null
   >(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const startEditing = (id: number, fieldId: FieldId) => {
+  const startEditing = (id: number, field: GlossaryField) => {
     if (readOnly) {
       return;
     }
@@ -64,7 +64,7 @@ export function GlossaryTable({
       setIsCreating(false);
     }
     setEditingId(id);
-    setEditingField(fieldId);
+    setEditingField(field);
   };
 
   const sortedRows = useMemo(() => {

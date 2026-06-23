@@ -15,13 +15,13 @@ import {
 } from "metabase/ui";
 
 import S from "./Glossary.module.css";
-import type { FieldId } from "./types";
+import type { GlossaryField } from "./types";
 
 type GlossaryRowEditorProps = {
   item: Pick<GlossaryItem, "term" | "definition">;
   onSave: (term: string, definition: string) => void | Promise<void>;
   onCancel: () => void;
-  autoFocusField?: FieldId;
+  autoFocusField?: GlossaryField;
   existingTerms?: string[];
 };
 
@@ -143,7 +143,7 @@ export function GlossaryRowEditor({
   );
 }
 
-function useFocusOnMount(autoFocusField: FieldId) {
+function useFocusOnMount(autoFocusField: GlossaryField) {
   const termRef = useRef<HTMLInputElement>(null);
   const definitionRef = useRef<HTMLTextAreaElement>(null);
 

@@ -1,1 +1,1 @@
-export type FieldId = "term" | "definition";
+export type GlossaryField = "term" | "definition";
