@@ -12,7 +12,7 @@ import {
   isMeasureSchema,
 } from "../guards";
 import type { FieldAggregationInput } from "../input-types";
-import { isColumnReference } from "../query-utils";
+import { isColumnReference } from "../input-utils";
 
 import { findLibColumn } from "./column";
 

@@ -3,7 +3,7 @@ import type { ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
 import type { ColumnReferenceInput } from "../input-types";
-import { getFieldId } from "../query-utils";
+import { getFieldId } from "../input-utils";
 
 import { getFieldBaseType, getFieldEffectiveType } from "./query-utils";
 
@@ -27,17 +27,13 @@ export function findLibColumn(
   return findLibColumnByFieldId(query, field, fieldId, options);
 }
 
-function findLibColumnByName(
+const findLibColumnByName = (
   query: Query,
   fieldName: string,
-): ColumnMetadata | null {
-  return (
-    Lib.filterableColumns(query, STAGE_INDEX).find(
-      (column) =>
-        Lib.displayInfo(query, STAGE_INDEX, column).name === fieldName,
-    ) ?? null
-  );
-}
+): ColumnMetadata | null =>
+  Lib.filterableColumns(query, STAGE_INDEX).find(
+    (column) => Lib.displayInfo(query, STAGE_INDEX, column).name === fieldName,
+  ) ?? null;
 
 function findLibColumnByFieldId(
   query: Query,
@@ -47,7 +43,7 @@ function findLibColumnByFieldId(
 ): ColumnMetadata | null {
   const fieldOptions = getLibFieldOptions(field, options);
 
-  if (hasFieldOptions(fieldOptions)) {
+  if (Object.keys(options).length > 0) {
     return fromLibFieldReference(query, field, fieldId, fieldOptions);
   }
 
@@ -63,10 +59,6 @@ function getLibFieldOptions(
   return sourceFieldId == null
     ? options
     : { ...options, "source-field": sourceFieldId };
-}
-
-function hasFieldOptions(options: Record<string, unknown>) {
-  return Object.keys(options).length > 0;
 }
 
 function fromLibFieldReference(

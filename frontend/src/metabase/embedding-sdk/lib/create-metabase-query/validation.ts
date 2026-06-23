@@ -10,7 +10,7 @@ import {
   isTableDimensionFilter,
 } from "./guards";
 import type { MetricQueryInput } from "./input-types";
-import { getMetricDimensionValues, normalizeBreakout } from "./query-utils";
+import { getMetricDimensionValues, normalizeBreakout } from "./input-utils";
 
 export const validateMetricTableScopedInputs = (input: MetricQueryInput) =>
   validateTableScopedInputs({

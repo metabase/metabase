@@ -2,11 +2,11 @@ import { getTableIdFromInput } from "embedding-sdk-shared/lib/create-metabase-qu
 import type { DatasetQuery } from "metabase-types/api";
 
 import type { MetricQueryInput, TableQueryInput } from "./input-types";
+import { getTableFromInput, isMetricQueryInput } from "./input-utils";
 import {
   buildMetricDatasetQueryFromInput,
   buildTableDatasetQueryFromInput,
 } from "./lib-adapter/builder";
-import { getTableFromInput, isMetricQueryInput } from "./query-utils";
 import {
   validateMetricGeneratedDimensions,
   validateMetricTableScopedInputs,

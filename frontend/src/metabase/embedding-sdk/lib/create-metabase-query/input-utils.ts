@@ -13,7 +13,9 @@ import type {
   TableQueryInput,
 } from "./input-types";
 
-export const getTableFromInput = (input: TableQueryInput): TableSchema | null =>
+export const getTableFromInput = (
+  input: TableQueryInput,
+): TableSchema | null =>
   isObject(input.table) ? (input.table as TableSchema) : null;
 
 export const isMetricQueryInput = (

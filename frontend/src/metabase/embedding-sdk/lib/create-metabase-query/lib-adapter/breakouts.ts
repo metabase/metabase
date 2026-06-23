@@ -2,7 +2,7 @@ import type { BinningOptions, ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
-import { normalizeBreakout } from "../query-utils";
+import { normalizeBreakout } from "../input-utils";
 
 import { findLibColumn } from "./column";
 

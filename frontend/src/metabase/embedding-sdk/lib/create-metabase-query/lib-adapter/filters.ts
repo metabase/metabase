@@ -15,7 +15,7 @@ import {
   isTableDimensionFilter,
 } from "../guards";
 import type { DimensionFilterInput } from "../input-types";
-import { isColumnReference } from "../query-utils";
+import { isColumnReference } from "../input-utils";
 
 import { findLibColumn } from "./column";
 import { buildLibDateFilter } from "./date-filters";

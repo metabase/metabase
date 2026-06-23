@@ -31,7 +31,7 @@ import {
   getMetricDimensionValues,
   isMetricDimensionWithFieldId,
   normalizeBreakout,
-} from "../query-utils";
+} from "../input-utils";
 
 import { getFieldBaseType, getFieldEffectiveType } from "./query-utils";
 
