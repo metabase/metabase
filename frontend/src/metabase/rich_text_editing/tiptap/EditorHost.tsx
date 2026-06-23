@@ -4,7 +4,6 @@ import { createContext, useContext } from "react";
 import type { State } from "metabase/redux/store";
 import type { DocumentHost } from "metabase/redux/store/documents";
 import type Question from "metabase-lib/v1/Question";
-import type { EntityId } from "metabase-types/api/comments";
 import type {
   Card,
   Dataset,
@@ -13,6 +12,7 @@ import type {
   StoredResultSort,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { EntityId } from "metabase-types/api/comments";
 
 /**
  * Result returned by the card-data hooks the host provides to the CardEmbed
