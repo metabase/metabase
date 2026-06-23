@@ -14,6 +14,7 @@
   and diffs t2's output against the expected CSV."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.driver.connection :as driver.conn]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
@@ -307,8 +308,7 @@
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
-          (let [db-id         (mt/id)
-                schema        "public"
+          (let [schema        "public"
                 mp            (mt/metadata-provider)
                 orders-id     (mt/id :orders)
                 people-id     (mt/id :people)
@@ -316,18 +316,17 @@
                 ;; Collect *connection-type* for every cleanup! call.
                 ;; run-chain-test! issues N+1 calls: one per node output + one
                 ;; for the leaf mapping. All must be :transform.
-                captured      (atom [])
-                real-cleanup! scratch/cleanup!]
+                captured      (atom [])]
             (mt/with-temp [:model/Transform t1
                            {:source {:type :query :query (lib/native-query mp enrich-sql)}
                             :target {:schema schema :type "table" :name enriched-name}}
                            :model/Transform t2
                            {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
                             :target {:schema schema :type "table" :name (mt/random-name)}}]
-              (with-redefs [scratch/cleanup!
-                            (fn [& args]
-                              (swap! captured conj @#'metabase.driver.connection/*connection-type*)
-                              (apply real-cleanup! args))]
+              (mt/with-dynamic-fn-redefs [scratch/cleanup!
+                                          (fn [& args]
+                                            (swap! captured conj @#'driver.conn/*connection-type*)
+                                            (apply (mt/original-fn #'scratch/cleanup!) args))]
                 (with-temp-csv-files [orders-f   orders-rows
                                       people-f   people-rows
                                       expected-f correct-expected-csv]

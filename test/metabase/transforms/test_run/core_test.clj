@@ -29,6 +29,7 @@
   See Step 4 log entry."
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.connection :as driver.conn]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.core :as qp]
@@ -471,32 +472,31 @@
 ;;; Contract: cleanup! runs inside the transform connection context
 ;;; ===========================================================================
 
-(deftest cleanup-runs-inside-transform-connection-test
-  ;; CONTRACT (documented in scratch.clj:29-34): cleanup! is called by the
-  ;; orchestrator while *connection-type* is bound to :transform. On databases
-  ;; configured with separate write-data credentials the DROP TABLE issued by
-  ;; cleanup! must run on those credentials — if it runs after with-transform-
-  ;; connection unwinds, *connection-type* reverts to :default and the DROP
-  ;; runs with read credentials, leaking every scratch table.
-  ;;
-  ;; The test DB uses a single credential set, so the operational failure is
-  ;; invisible in CI. We make it visible by intercepting scratch/cleanup! and
-  ;; capturing the value of *connection-type* at call time, then asserting it
-  ;; equals :transform. A :default value proves the bug is present.
+;; CONTRACT (documented in scratch.clj:29-34): cleanup! is called by the
+;; orchestrator while *connection-type* is bound to :transform. On databases
+;; configured with separate write-data credentials the DROP TABLE issued by
+;; cleanup! must run on those credentials — if it runs after with-transform-
+;; connection unwinds, *connection-type* reverts to :default and the DROP
+;; runs with read credentials, leaking every scratch table.
+;;
+;; The test DB uses a single credential set, so the operational failure is
+;; invisible in CI. We make it visible by intercepting scratch/cleanup! and
+;; capturing the value of *connection-type* at call time, then asserting it
+;; equals :transform. A :default value proves the bug is present.
+
+(deftest cleanup-runs-inside-transform-connection-success-test
   (testing "cleanup! is invoked while *connection-type* is :transform (success path)"
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
-        (let [db-id     (mt/id)
-              schema    "public"
+        (let [schema    "public"
               mp        (mt/metadata-provider)
               orders-id (mt/id :orders)
-              captured  (atom nil)
-              real-cleanup! scratch/cleanup!]
-          (with-redefs [scratch/cleanup!
-                        (fn [& args]
-                          ;; Capture connection-type at the moment cleanup! is called.
-                          (reset! captured @#'metabase.driver.connection/*connection-type*)
-                          (apply real-cleanup! args))]
+              captured  (atom nil)]
+          (mt/with-dynamic-fn-redefs [scratch/cleanup!
+                                      (fn [& args]
+                                        ;; Capture connection-type at the moment cleanup! is called.
+                                        (reset! captured @#'driver.conn/*connection-type*)
+                                        (apply (mt/original-fn #'scratch/cleanup!) args))]
             (with-temp-csvs
               [orders-f   orders-3-rows
                expected-f "user_id,order_count\n1,2\n2,1\n"]
@@ -510,22 +510,22 @@
                {})))
           (is (= :transform @captured)
               (str "cleanup! must be called inside with-transform-connection "
-                   "(got *connection-type* = " (pr-str @captured) ")"))))))
+                   "(got *connection-type* = " (pr-str @captured) ")")))))))
+
+(deftest cleanup-runs-inside-transform-connection-error-test
   (testing "cleanup! is invoked while *connection-type* is :transform (error path)"
     ;; Verify the contract holds even when the run throws an error before
     ;; the transform executes (rewrite failure — seeding occurs, then throws).
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
-        (let [db-id     (mt/id)
-              schema    "public"
+        (let [schema    "public"
               mp        (mt/metadata-provider)
               orders-id (mt/id :orders)
-              captured  (atom nil)
-              real-cleanup! scratch/cleanup!]
-          (with-redefs [scratch/cleanup!
-                        (fn [& args]
-                          (reset! captured @#'metabase.driver.connection/*connection-type*)
-                          (apply real-cleanup! args))]
+              captured  (atom nil)]
+          (mt/with-dynamic-fn-redefs [scratch/cleanup!
+                                      (fn [& args]
+                                        (reset! captured @#'driver.conn/*connection-type*)
+                                        (apply (mt/original-fn #'scratch/cleanup!) args))]
             (with-temp-csvs
               [orders-f   orders-1-row
                expected-f "id\n1\n"]
