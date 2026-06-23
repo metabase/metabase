@@ -202,10 +202,9 @@ const getYAxisTicksWidth = (
   );
 
   const columnSettings = settings.column?.(axisModel.column);
+  const isPercent = columnSettings?.number_style === "percent";
 
   const measuredValues = valuesToMeasure.map((rawValue) => {
-    const isPercent = columnSettings?.number_style === "percent";
-
     let value = rawValue;
 
     if (!isPercent && !areDecimalTicksExpected) {
