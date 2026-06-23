@@ -160,36 +160,36 @@ describe("command palette", () => {
       .should("not.exist");
     H.commandPalette().findByText("No results for “New”").should("be.visible");
 
-    // The "Actions" section title is always the first row,
-    // so the first action is actually second `role=option`, and the
-    // documentation entry is always the last option.
-    const firstAction = () => H.commandPalette().findAllByRole("option").eq(1);
+    const newQuestion = () =>
+      H.commandPalette().findByRole("option", { name: "New question" });
     const docsOption = () =>
       H.commandPalette().findByRole("option", {
         name: 'Search documentation for "New"',
       });
 
-    cy.log("the first action is selected by default");
-    firstAction().should("have.attr", "aria-selected", "true");
+    // Every "New …" action matches "New" equally, so the default order applies
+    // and "New question" is first and selected by default.
+    cy.log("New question is the first action and selected by default");
+    newQuestion().should("have.attr", "aria-selected", "true");
 
     cy.wait(100); // pressing a navigation key too fast does nothing
 
-    cy.log("End selects the last item");
+    cy.log("End selects the last item, the documentation entry");
     H.pressEnd();
     docsOption().should("have.attr", "aria-selected", "true");
 
-    cy.log("Home selects the first action again");
+    cy.log("Home selects New question again");
     H.pressHome();
-    firstAction().should("have.attr", "aria-selected", "true");
+    newQuestion().should("have.attr", "aria-selected", "true");
 
     cy.log(
       "PageDown moves the selection down, PageUp brings it back to the top",
     );
     H.pressPageDown();
-    firstAction().should("not.have.attr", "aria-selected", "true");
+    newQuestion().should("have.attr", "aria-selected", "false");
 
     H.pressPageUp();
-    firstAction().should("have.attr", "aria-selected", "true");
+    newQuestion().should("have.attr", "aria-selected", "true");
   });
 
   it("should display search results in the order returned by the API", () => {

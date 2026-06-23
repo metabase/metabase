@@ -33,6 +33,44 @@ import {
   useRegisterShortcut,
 } from "./useRegisterShortcut";
 
+/**
+ * Default ordering for the basic actions. kbar ranks matches by search
+ * relevance; we use this order only to break ties between equally-relevant
+ * matches (e.g. typing "New" matches every "New …" action equally) to keep
+ * them in stable order.
+ */
+export const BASIC_ACTION_ORDER = [
+  "create-new-question",
+  "create-new-native-query",
+  "create-new-dashboard",
+  "create-new-document",
+  "create-new-collection",
+  "create-new-model",
+  "create-new-metric",
+  "download-diagnostics",
+  "navigate-admin-settings",
+  "navigate-embed-js",
+  "navigate-personal-collection",
+  "navigate-user-settings",
+  "navigate-trash",
+  "navigate-home",
+  "navigate-data-studio",
+  "navigate-browse-model",
+  "navigate-browse-database",
+  "navigate-browse-metric",
+];
+
+// Small enough that it only orders actions whose relevance scores are equal,
+// without ever overriding a meaningfully better match.
+const PRIORITY_EPSILON = 0.0001;
+
+const getActionPriority = (id: string) => {
+  const index = BASIC_ACTION_ORDER.indexOf(id);
+  return index === -1
+    ? 0
+    : (BASIC_ACTION_ORDER.length - index) * PRIORITY_EPSILON;
+};
+
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
   ...props
@@ -276,7 +314,10 @@ export const useCommandPaletteBasicActions = ({
       },
     ];
 
-    return [...actions, ...browseActions];
+    return [...actions, ...browseActions].map((action) => ({
+      ...action,
+      priority: getActionPriority(action.id),
+    }));
   }, [
     dispatch,
     hasDataAccess,
