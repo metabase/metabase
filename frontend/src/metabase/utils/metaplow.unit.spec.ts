@@ -50,7 +50,7 @@ describe("metaplow", () => {
           }),
         });
 
-        trackMetaplowEvent("button_clicked");
+        trackMetaplowEvent({ name: "button_clicked" });
 
         const { payload } = getSentPayload();
         expect(payload.data.user_id).toBe(123);
@@ -59,7 +59,7 @@ describe("metaplow", () => {
       it("suppresses the fetch call when a falsy value is returned", () => {
         initMetaplow({ beforeSend: () => undefined });
 
-        trackMetaplowEvent("button_clicked");
+        trackMetaplowEvent({ name: "button_clicked" });
 
         expect(fetchSpy).not.toHaveBeenCalled();
       });
@@ -69,12 +69,12 @@ describe("metaplow", () => {
   describe("trackMetaplowEvent", () => {
     it("does not call fetch when metaplow-url is not set", () => {
       Settings.set("metaplow-url", null);
-      trackMetaplowEvent("button_clicked");
+      trackMetaplowEvent({ name: "button_clicked" });
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
     it("sends an event with the given name and default empty data", () => {
-      trackMetaplowEvent("button_clicked");
+      trackMetaplowEvent({ name: "button_clicked" });
 
       const body = getSentPayload();
       expect(body.type).toBe("event");
@@ -92,14 +92,17 @@ describe("metaplow", () => {
     });
 
     it("forwards the data payload", () => {
-      trackMetaplowEvent("button_clicked", { foo: "bar", count: 3 });
+      trackMetaplowEvent({
+        name: "button_clicked",
+        data: { foo: "bar", count: 3 },
+      });
 
       const { payload } = getSentPayload();
       expect(payload.data).toEqual({ foo: "bar", count: 3 });
     });
 
     it("includes screen and language from the browser", () => {
-      trackMetaplowEvent("button_clicked");
+      trackMetaplowEvent({ name: "button_clicked" });
 
       const { payload } = getSentPayload();
       expect(payload.screen).toBe(
@@ -109,7 +112,7 @@ describe("metaplow", () => {
     });
 
     it("uses an anonymized hostname in the url", () => {
-      trackMetaplowEvent("button_clicked");
+      trackMetaplowEvent({ name: "button_clicked" });
 
       const { payload } = getSentPayload();
       expect(payload.url.startsWith(ANON_ORIGIN)).toBe(true);

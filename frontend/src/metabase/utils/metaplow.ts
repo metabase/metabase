@@ -27,11 +27,14 @@ const getSanitizedUrl = (url: string) => {
   return anonymizedOrigin + pathWithoutSlug;
 };
 
-function getBasePayload(url: string): Omit<MetaplowPayload, "name" | "data"> {
+function getBasePayload(
+  url: string,
+  analyticsUuid: string,
+): Omit<MetaplowPayload, "name" | "data"> {
   return {
     website: METAPLOW_WEBSITE_ID,
     url: getSanitizedUrl(url),
-    id: Settings.get("analytics-uuid") ?? "",
+    id: analyticsUuid,
     referrer: "",
     title: "",
     hostname: anonymizedHostname,
@@ -41,19 +44,17 @@ function getBasePayload(url: string): Omit<MetaplowPayload, "name" | "data"> {
   };
 }
 
-async function send(payload: MetaplowPayload): Promise<unknown> {
-  const metaplowUrl = Settings.get("metaplow-url");
+async function send(
+  payload: MetaplowPayload,
+  metaplowUrl: string | null | undefined,
+): Promise<unknown> {
   if (!metaplowUrl) {
     return;
   }
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
   return fetch(metaplowUrl, {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type: "event", payload }),
   });
 }
@@ -73,26 +74,33 @@ export function initMetaplow(config: Partial<MetaplowConfig>): void {
   _config = { ..._config, ...config };
 }
 
-export function trackMetaplowEvent(
-  name: MetaplowPayload["name"],
-  data: MetaplowPayload["data"] = {},
-): void {
+export function trackMetaplowEvent({
+  name,
+  data = {},
+  metaplowUrl = Settings.get("metaplow-url"),
+  analyticsUuid = Settings.get("analytics-uuid") ?? "",
+}: {
+  name: string;
+  data?: Record<string, unknown>;
+  metaplowUrl?: string | null;
+  analyticsUuid?: string;
+}): void {
   const payload = _config.beforeSend("event", {
-    ...getBasePayload(window.location.href),
+    ...getBasePayload(window.location.href, analyticsUuid),
     name,
     data,
   });
   if (payload) {
-    send(payload).catch(() => undefined);
+    send(payload, metaplowUrl).catch(() => undefined);
   }
 }
 
 export function trackMetaplowPageView(url: string) {
   const payload = _config.beforeSend("event", {
-    ...getBasePayload(url),
+    ...getBasePayload(url, Settings.get("analytics-uuid") ?? ""),
     name: "pageview",
   });
   if (payload) {
-    send(payload).catch(() => undefined);
+    send(payload, Settings.get("metaplow-url")).catch(() => undefined);
   }
 }

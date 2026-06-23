@@ -77,6 +77,6 @@ export function trackSchemaEvent<S extends SchemaType>(
 
   if (Settings.get("metaplow-tracking-enabled")) {
     const { event: name, ...data } = event;
-    trackMetaplowEvent(name, data);
+    trackMetaplowEvent({ name, data });
   }
 }
