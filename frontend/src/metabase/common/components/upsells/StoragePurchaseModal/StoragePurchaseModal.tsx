@@ -1,166 +1,85 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
-  Box,
   Button,
-  Flex,
-  Loader,
+  Group,
   Modal,
   type ModalProps,
   Stack,
   Text,
-  Title,
 } from "metabase/ui";
+import { formatNumber } from "metabase/utils/formatting";
+import type { ICloudAddOnProduct } from "metabase-types/api";
 
-import databaseAdd from "./database-add.svg?component";
-import { usePurchaseStorageAddOn } from "./use-purchase-storage-add-on";
+const ROWS_BLOCK = 1_000_000;
 
-type StoragePurchaseModalProps = Pick<ModalProps, "opened" | "onClose">;
+type StoragePurchaseModalProps = Pick<ModalProps, "opened" | "onClose"> & {
+  storageAddOn: ICloudAddOnProduct;
+  onConfirm: () => void;
+};
 
 export const StoragePurchaseModal = ({
   opened,
   onClose,
+  onConfirm,
+  storageAddOn,
 }: StoragePurchaseModalProps) => {
-  const { state, isSettingUp, isPurchasing, isReady, handlePurchase, reset } =
-    usePurchaseStorageAddOn();
+  const includedRows = formatNumber(storageAddOn.default_included_units, {
+    compact: true,
+    decimals: 0,
+  });
+  const additionalRows = formatNumber(ROWS_BLOCK, {
+    compact: true,
+    decimals: 0,
+  });
+  const pricePerBlock = formatNumber(
+    storageAddOn.default_price_per_unit * ROWS_BLOCK,
+    {
+      number_style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    },
+  );
 
-  const handleClose = () => {
-    reset();
-    onClose?.();
+  const handleConfirm = () => {
+    onClose();
+    onConfirm();
   };
-
-  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
-  const modalTitle = t`Add Metabase Storage`;
 
   return (
     <Modal
       opened={opened}
-      onClose={handleClose}
-      size="30rem"
+      onClose={onClose}
+      size="35rem"
       padding="2.5rem"
-      title={isSettingUp ? undefined : modalTitle}
-      withCloseButton={!isSettingUp}
-      closeOnClickOutside={!isSettingUp}
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
+      title={t`Add Metabase Storage`}
     >
-      {state === "initial" && (
-        <InitialStep
-          isPurchasing={isPurchasing}
-          onPurchase={handlePurchase}
-          onCancel={handleClose}
-        />
-      )}
-      {state === "settingUp" && (
-        <SettingUpStep isReady={isReady} onClose={handleClose} />
-      )}
-    </Modal>
-  );
-};
-
-const StorageIcon = ({ settingUp = false }: { settingUp?: boolean }) => (
-  <Box h={96} pos="relative" w={96}>
-    <Box component={databaseAdd} />
-
-    {settingUp && (
-      <Flex
-        bottom={0}
-        align="center"
-        direction="row"
-        gap={0}
-        justify="center"
-        pos="absolute"
-        right={0}
-        wrap="nowrap"
-        bg="white"
-        fz={0}
-        p="sm"
-        ta="center"
-        style={{
-          borderRadius: "100%",
-          boxShadow: `0 1px 6px 0 var(--mb-color-shadow)`,
-        }}
-      >
-        <Loader size="xs" ml={1} mt={1} />
-      </Flex>
-    )}
-  </Box>
-);
-
-type InitialStepProps = {
-  isPurchasing: boolean;
-  onPurchase: () => void;
-  onCancel: () => void;
-};
-
-const InitialStep = ({
-  isPurchasing,
-  onPurchase,
-  onCancel,
-}: InitialStepProps) => (
-  <Stack align="center" gap="lg" mt="md">
-    <StorageIcon />
-
-    <Text c="text-secondary" ta="center" lh={1.43}>
-      {t`Get a fully managed data warehouse. Upload CSV files and sync with Google Sheets.`}
-    </Text>
-
-    <Stack w="100%" gap="sm">
-      <Button variant="filled" loading={isPurchasing} onClick={onPurchase}>
-        {t`Add storage`}
-      </Button>
-      <Button variant="outline" onClick={onCancel}>
-        {t`Cancel`}
-      </Button>
-    </Stack>
-
-    <Text c="text-secondary" size="sm" lh={1.4} ta="center">
-      {t`By clicking Add storage, you agree to be charged in accordance with our terms of service. You will not be charged until you reach 1M stored rows.`}
-    </Text>
-  </Stack>
-);
-
-type SettingUpStepProps = {
-  isReady: boolean;
-  onClose: () => void;
-};
-
-const SettingUpStep = ({ isReady, onClose }: SettingUpStepProps) => {
-  if (isReady) {
-    return (
-      <Stack align="center" gap="lg" my="4.5rem">
-        <StorageIcon />
-
-        <Box ta="center">
-          <Title c="text-primary" fz="lg">
-            {t`Storage is ready`}
-          </Title>
-          <Text c="text-secondary" fz="md" lh={1.43}>
-            {t`You can now upload CSVs and sync Google Sheets.`}
-          </Text>
-        </Box>
-
-        <Button variant="filled" size="md" onClick={onClose}>
-          {t`Done`}
-        </Button>
-      </Stack>
-    );
-  }
-
-  return (
-    <Stack align="center" gap="lg" my="4.5rem">
-      <StorageIcon settingUp />
-
-      <Box ta="center">
-        <Title c="text-primary" fz="lg">
-          {t`Setting up storage`}
-        </Title>
-        <Text c="text-secondary" fz="md" lh={1.43}>
-          {t`This can take a few minutes.`}
+      <Stack gap="md" mt="md">
+        <Text>
+          {t`Get secure, fully managed data storage where you can upload your CSVs and sync data from Google Sheets.`}
         </Text>
-      </Box>
 
-      <Button variant="outline" size="md" onClick={onClose}>
-        {t`Close`}
-      </Button>
-    </Stack>
+        <Text c="text-secondary" size="sm" lh={1.4}>
+          {c(
+            "{0} and {2} are numbers of database rows, {1} is a monthly price, e.g. '$40'",
+          )
+            /* prettier-ignore */
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins
+            .t`By clicking "Add Metabase Storage," you agree to be charged in accordance with our terms of service. You will not be charged until you reach ${includedRows} stored rows, after which it's ${pricePerBlock}/mo. for each additional ${additionalRows} rows.`}
+        </Text>
+
+        <Group justify="flex-end" mt="sm">
+          <Button variant="subtle" onClick={onClose}>
+            {t`Cancel`}
+          </Button>
+          <Button variant="filled" onClick={handleConfirm}>
+            {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins */}
+            {t`Add Metabase Storage`}
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
   );
 };

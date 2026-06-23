@@ -5,6 +5,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupDatabaseListEndpoint,
+  setupPropertiesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -22,6 +23,7 @@ import {
   createMockDashboard,
   createMockRecentTableDatabaseInfo,
   createMockRecentTableItem,
+  createMockSettings,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -52,6 +54,7 @@ const setup = ({ isAdmin = true, checklist = {} } = {}) => {
 
   setupSearchEndpoints([]);
   setupDatabaseListEndpoint([]);
+  setupPropertiesEndpoints(createMockSettings({ "show-metabase-links": true }));
   setupCollectionByIdEndpoint({
     collections: [
       createMockCollection({ id: "root" }),

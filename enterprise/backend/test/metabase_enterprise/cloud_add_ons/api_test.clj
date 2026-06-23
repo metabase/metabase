@@ -97,6 +97,10 @@
       (mt/with-premium-features #{:hosting :attached-dwh}
         (is (=? "Can only purchase add-ons for eligible subscriptions."
                 (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/dwh-rent" {})))))
+    (testing "rejects an explicit quantity for the bundled product type"
+      (mt/with-premium-features #{:hosting}
+        (is (=? {:errors {:quantity "This add-on does not support a quantity."}}
+                (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/dwh-rent" {:quantity 2})))))
     (testing "succeeds, provisioning dwh-rent and etl-connections together"
       (mt/with-premium-features #{:hosting :audit-app}
         (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
@@ -119,6 +123,21 @@
                 (is (= {:add-on [{:product-type "dwh-rent" :prepaid-units 0}
                                  {:product-type "etl-connections" :prepaid-units 1}]}
                        details))))))))))
+
+(deftest ^:sequential post-etl-connections-test
+  (testing "POST /api/ee/cloud-add-ons/etl-connections"
+    (testing "requires superuser"
+      (mt/with-premium-features #{}
+        (is (=? "You don't have permissions to do that."
+                (mt/user-http-request :rasta :post 403 "ee/cloud-add-ons/etl-connections" {})))))
+    (testing "is rejected as a bundle-only product type without calling the Store"
+      (mt/with-premium-features #{:hosting}
+        (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))]
+          (with-redefs [hm.client/call store-api-proxy]
+            (is (=? "This add-on can only be purchased as part of a bundle."
+                    (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/etl-connections" {})))
+            (is (empty? @store-api-calls)
+                "Store API was not called")))))))
 
 (deftest ^:sequential delete-product-type-test
   (testing "DELETE /api/ee/cloud-add-ons/metabase-ai-managed"

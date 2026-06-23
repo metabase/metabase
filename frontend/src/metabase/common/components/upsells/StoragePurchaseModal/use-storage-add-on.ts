@@ -5,16 +5,12 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 export const STORAGE_PRODUCT_TYPE = "dwh-rent";
 
-export function useStorageAddOn() {
+export function useStorageAddOn({ skip = false }: { skip?: boolean } = {}) {
   const isHosted = useSetting("is-hosted?");
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const {
-    data: addOns,
-    isLoading,
-    error,
-  } = useListAddOnsQuery(undefined, {
-    skip: !isHosted || !isAdmin,
+  const { data: addOns, isLoading } = useListAddOnsQuery(undefined, {
+    skip: skip || !isHosted || !isAdmin,
   });
 
   const storageAddOn = addOns?.find(
@@ -22,5 +18,5 @@ export function useStorageAddOn() {
       active && self_service && product_type === STORAGE_PRODUCT_TYPE,
   );
 
-  return { storageAddOn, isLoading, error };
+  return { storageAddOn, isLoading };
 }

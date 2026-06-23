@@ -1,20 +1,22 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, within } from "__support__/ui";
+import { mockStorageCloudAddOn } from "metabase-types/api/mocks/add-ons";
 
 import { setupHostedInstance, setupProUpload } from "./setup";
 
 describe("Add data modal (Starter: hosted instance without the attached DWH)", () => {
   describe("Google Sheets", () => {
-    it("should render a storage upsell for an admin", async () => {
+    it("should render a storage upsell for an admin when the add-on is not purchasable in-app", async () => {
       setupHostedInstance({ isAdmin: true });
       await assertSheetsOpened({
+        hasStorage: false,
         subtitle:
           "To work with spreadsheets, you can add storage to your instance.",
       });
 
       expect(
-        screen.getByRole("heading", { name: "Add Metabase Storage" }),
+        await screen.findByRole("heading", { name: "Add Metabase Storage" }),
       ).toBeInTheDocument();
       expect(
         screen.getByText("Secure, fully managed by Metabase"),
@@ -23,6 +25,39 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
       expect(screen.getByText("Sync with Google Sheets")).toBeInTheDocument();
       const upsellLink = screen.getByRole("link", { name: "Add" });
       expect(upsellLink).toBeInTheDocument();
+    });
+
+    it("should offer the purchasable storage add-on to an admin through the upsell banner", async () => {
+      setupHostedInstance({
+        isAdmin: true,
+        addOns: [mockStorageCloudAddOn],
+      });
+      await assertSheetsOpened({
+        hasStorage: false,
+        subtitle:
+          "To work with spreadsheets, you can add storage to your instance.",
+      });
+
+      // The banner looks exactly like the store-link version...
+      expect(
+        await screen.findByRole("heading", { name: "Add Metabase Storage" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Secure, fully managed by Metabase"),
+      ).toBeInTheDocument();
+
+      // ...but its Add button opens the purchase confirmation instead.
+      const addButton = await screen.findByRole("button", { name: "Add" });
+      await userEvent.click(addButton);
+
+      const modal = await screen.findByRole("dialog", {
+        name: "Add Metabase Storage",
+      });
+      expect(
+        within(modal).getByText(
+          /You will not be charged until you reach 1M stored rows/,
+        ),
+      ).toBeInTheDocument();
     });
 
     it("should render a 'contact admin prompt' for non-admin", async () => {
@@ -187,16 +222,19 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
 
 async function assertSheetsOpened({
   isAdmin = true,
+  hasStorage = true,
   title = "Connect Google Sheets",
   subtitle = "Sync a spreadsheet or an entire Google Drive folder with your instance.",
 }: {
   isAdmin?: boolean;
+  hasStorage?: boolean;
   title?: string;
   subtitle?: string;
 } = {}) {
   await userEvent.click(screen.getByRole("tab", { name: /Google Sheets$/ }));
 
-  if (isAdmin) {
+  // The imports settings link only shows for admins once storage is enabled.
+  if (isAdmin && hasStorage) {
     expect(await screen.findByText("Manage imports")).toBeInTheDocument();
   } else {
     expect(screen.queryByText("Manage imports")).not.toBeInTheDocument();

@@ -1,3 +1,3 @@
-export { StoragePurchaseModal } from "./StoragePurchaseModal";
-export { useStorageAddOn } from "./use-storage-add-on";
-export { usePurchaseStorageAddOn } from "./use-purchase-storage-add-on";
+export { StorageSetupProvider, useStorageSetup } from "./storage-setup-context";
+export { StorageSetupView } from "./StorageSetupView";
+export { StoragePurchaseButton } from "./StoragePurchaseButton";

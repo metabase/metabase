@@ -1,81 +1,99 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useGetSettingsQuery, useListDatabasesQuery } from "metabase/api";
 import { usePurchaseCloudAddOnMutation } from "metabase/api/cloud-add-ons";
 import { useTokenRefreshUntil } from "metabase/api/utils";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
+import {
+  useHasTokenFeature,
+  useSetting,
+  useToast,
+} from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { STORAGE_PRODUCT_TYPE } from "./use-storage-add-on";
 
-const POLL_INTERVAL_MS = 1000;
+const POLL_INTERVAL_MS = 2000;
 
-type State = "initial" | "settingUp";
+const STORAGE_PURCHASE_CACHE_KEY = "purchase-storage-add-on";
 
 export function usePurchaseStorageAddOn() {
-  const [state, setState] = useState<State>("initial");
-  // Whether we're actively polling the data sources below. Kept in state because
-  // the stop condition (`isReady`) depends on the polled data itself, so we can't
-  // reference it when configuring the queries — we reconcile it during render.
-  const [isPolling, setIsPolling] = useState(false);
-  const { sendErrorToast } = useMetadataToasts();
-  const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
-    usePurchaseCloudAddOnMutation();
+  const isHosted = useSetting("is-hosted?");
+  const isAdmin = useSelector(getUserIsAdmin);
+  const hasStorageTokenFeature = useHasTokenFeature("attached_dwh");
+  const [sendToast] = useToast();
 
-  const hasStorage = useHasTokenFeature("attached_dwh");
-  const uploadDbId = useSetting("uploads-settings")?.db_id;
+  const [
+    purchaseCloudAddOn,
+    { isLoading: isPurchasing, isSuccess: isPurchased, reset: resetPurchase },
+  ] = usePurchaseCloudAddOnMutation({
+    fixedCacheKey: STORAGE_PURCHASE_CACHE_KEY,
+  });
+
+  const canSetUpStorage = isHosted && isAdmin;
+
+  const { data: databasesResponse } = useListDatabasesQuery(undefined, {
+    skip: !canSetUpStorage,
+  });
+  const attachedDwhDatabase = databasesResponse?.data?.find(
+    (db) => db.is_attached_dwh,
+  );
+  const hasAttachedDwh = !!attachedDwhDatabase?.can_upload;
+
+  // A purchase made in this session keeps us in setting-up from the POST until
+  // storage is ready. On error the mutation is no longer pending or successful,
+  // so this collapses on its own — no manual state juggling.
+  const isPurchaseSettingUp = isPurchasing || (isPurchased && !hasAttachedDwh);
+
+  // Derived purely from server state, so it survives a reload (including the
+  // redeploy that provisioning itself triggers): the token flips synchronously
+  // at purchase time while the DWH database only appears once the instance has
+  // redeployed.
+  const isProvisioning =
+    canSetUpStorage && hasStorageTokenFeature && !hasAttachedDwh;
+
+  const isSettingUp = isPurchaseSettingUp || isProvisioning;
 
   // Bust the server-side token cache so the `attached_dwh` feature shows up.
+  // Each refresh is a round-trip to the Store, so it runs at the hook's slower
+  // default interval and stops once the feature has flipped.
   useTokenRefreshUntil("attached-dwh", {
-    intervalMs: POLL_INTERVAL_MS,
-    skip: !isPolling,
+    skip: !isSettingUp || hasStorageTokenFeature,
   });
 
-  // Reload both data sources the surrounding UI depends on: `uploads-settings`
-  // (session properties) and the databases list.
-  const { isFetching: isFetchingSettings } = useGetSettingsQuery(undefined, {
-    pollingInterval: isPolling ? POLL_INTERVAL_MS : 0,
+  // While setting up, poll both data sources the surrounding UI depends on:
+  // session properties (`uploads-settings` etc.) and the databases list. These
+  // are extra subscriptions to the same cache entries used above, kept alive
+  // only for their polling; the data is read through the always-on reads.
+  useGetSettingsQuery(undefined, {
+    skip: !isSettingUp,
+    pollingInterval: POLL_INTERVAL_MS,
+    skipPollingIfUnfocused: true,
   });
-  const { isFetching: isFetchingDatabases, data: databasesResponse } =
-    useListDatabasesQuery(undefined, {
-      pollingInterval: isPolling ? POLL_INTERVAL_MS : 0,
-    });
-
-  // Storage is only ready once the upload database has actually surfaced in the
-  // databases list and accepts uploads — not merely when the token feature flips.
-  const uploadDB = databasesResponse?.data?.find((db) => db.id === uploadDbId);
-  const isReady = hasStorage && !!uploadDB?.can_upload;
-
-  const isSettingUp = state === "settingUp";
-  const shouldPoll = isSettingUp && !isReady;
-  if (isPolling !== shouldPoll) {
-    setIsPolling(shouldPoll);
-  }
-
-  const isReloading = shouldPoll || isFetchingSettings || isFetchingDatabases;
+  useListDatabasesQuery(undefined, {
+    skip: !isSettingUp,
+    pollingInterval: POLL_INTERVAL_MS,
+    skipPollingIfUnfocused: true,
+  });
 
   const handlePurchase = useCallback(async () => {
-    setState("settingUp");
     try {
       await purchaseCloudAddOn({ product_type: STORAGE_PRODUCT_TYPE }).unwrap();
     } catch {
-      setState("initial");
-      sendErrorToast(
-        t`It looks like something went wrong. Please refresh the page and try again.`,
-      );
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+        message: t`It looks like something went wrong. Please refresh the page and try again.`,
+      });
     }
-  }, [purchaseCloudAddOn, sendErrorToast]);
-
-  const reset = useCallback(() => setState("initial"), []);
+  }, [purchaseCloudAddOn, sendToast]);
 
   return {
-    state,
     isSettingUp,
-    isPurchasing,
-    isReady,
-    isReloading,
+    hasAttachedDwh,
     handlePurchase,
-    reset,
+    resetPurchase,
+    canSetUpStorage,
   };
 }

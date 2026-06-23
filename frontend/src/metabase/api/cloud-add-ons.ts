@@ -5,9 +5,6 @@ import type {
 
 import { Api } from "./api";
 
-// OSS-accessible client for the EE `/api/ee/cloud-add-ons` endpoints, mirroring `cloud-proxy.ts`.
-// These endpoints only exist on Metabase Cloud (hosted, always-EE) instances; the upsells that use
-// them are gated on `is-hosted?`, so the routes are always present at runtime.
 export const cloudAddOnApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listAddOns: builder.query<GetCloudAddOnsResponse, void>({

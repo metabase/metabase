@@ -31,6 +31,10 @@
   (deferred-tru "Need to accept terms of service."))
 (def ^:private error-no-quantity
   (deferred-tru "Purchase of add-on requires quantity."))
+(def ^:private error-quantity-not-supported
+  (deferred-tru "This add-on does not support a quantity."))
+(def ^:private error-bundle-only
+  (deferred-tru "This add-on can only be purchased as part of a bundle."))
 
 (def ^:private response-not-hosted
   {:status 400 :body error-not-hosted})
@@ -40,6 +44,10 @@
   {:status 400 :body {:errors {:terms_of_service error-terms-not-accepted}}})
 (def ^:private response-no-quantity
   {:status 400 :body {:errors {:quantity error-no-quantity}}})
+(def ^:private response-quantity-not-supported
+  {:status 400 :body {:errors {:quantity error-quantity-not-supported}}})
+(def ^:private response-bundle-only
+  {:status 400 :body error-bundle-only})
 (def ^:private response-success-empty
   {:status 200 :body {}})
 
@@ -62,6 +70,12 @@
   Storage (`dwh-rent`) also provisions `etl-connections`, mirroring the store's storage purchase flow."
   {"dwh-rent" [{:product-type "dwh-rent" :prepaid-units 0}
                {:product-type "etl-connections" :prepaid-units 1}]})
+
+(def ^:private bundle-only-product-types
+  "Product types that are only ever provisioned as part of a bundle (see `add-on-bundles`) and can
+  never be purchased directly. The Store rejects them anyway (`etl-connections` depends on a DWH
+  product), so fail fast with a clear error instead of a confusing Store 400."
+  #{"etl-connections"})
 
 (defn- add-ons-for-purchase
   "Add-ons to upsert for a given `product-type`. Bundled product types (see `add-on-bundles`) expand
@@ -145,6 +159,9 @@
     (not (premium-features/is-hosted?))
     response-not-hosted
 
+    (bundle-only-product-types product-type)
+    response-bundle-only
+
     (and (requires-terms-of-service? product-type)
          (not terms-of-service))
     response-terms-not-accepted
@@ -152,6 +169,10 @@
     (and (= product-type "metabase-ai-tiered")
          (not quantity))
     response-no-quantity
+
+    (and (contains? add-on-bundles product-type)
+         quantity)
+    response-quantity-not-supported
 
     (and (#{"transforms" "transforms-basic" "transforms-basic-metered"} product-type)
          (premium-features/enable-basic-transforms?))

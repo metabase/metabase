@@ -54,7 +54,7 @@ export function useTokenRefreshUntil(
   },
 ) {
   /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the pattern in many components */
-  const res = useGetSettingsQuery();
+  const res = useGetSettingsQuery(undefined, { skip });
   const dispatch = useDispatch();
   const [refreshTokenStatus] = useRefreshTokenStatusMutation();
   const hasCalledOnSatisfied = useRef(false);
