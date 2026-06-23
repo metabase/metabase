@@ -43,7 +43,7 @@ function findLibColumnByFieldId(
 ): ColumnMetadata | null {
   const fieldOptions = getLibFieldOptions(field, options);
 
-  if (Object.keys(options).length > 0) {
+  if (Object.keys(fieldOptions).length > 0) {
     return fromLibFieldReference(query, field, fieldId, fieldOptions);
   }
 

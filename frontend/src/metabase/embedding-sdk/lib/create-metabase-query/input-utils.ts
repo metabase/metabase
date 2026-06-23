@@ -10,12 +10,19 @@ import type {
   BreakoutInput,
   ColumnReferenceInput,
   MetricQueryInput,
+  MetricReference,
   TableQueryInput,
 } from "./input-types";
 
-export const getTableFromInput = (
-  input: TableQueryInput,
-): TableSchema | null =>
+type MetricDimensionGroup = NonNullable<MetricReference["dimensions"]>[string];
+
+type MetricDimensions = Record<string, FieldSchema | MetricDimensionGroup>;
+
+type MetricWithDimensions = {
+  dimensions: MetricDimensions;
+};
+
+export const getTableFromInput = (input: TableQueryInput): TableSchema | null =>
   isObject(input.table) ? (input.table as TableSchema) : null;
 
 export const isMetricQueryInput = (
@@ -53,13 +60,11 @@ export function getMetricDimensionValues<TDimension>(
   metric: unknown,
   isDimension: (value: unknown) => value is TDimension,
 ): TDimension[] {
-  const dimensions = getObject(metric, "dimensions");
-
-  if (!dimensions) {
+  if (!hasMetricDimensions(metric)) {
     return [];
   }
 
-  return Object.values(dimensions).flatMap((dimensionOrGroup) => {
+  return Object.values(metric.dimensions).flatMap((dimensionOrGroup) => {
     if (isDimension(dimensionOrGroup)) {
       return [dimensionOrGroup];
     }
@@ -70,17 +75,8 @@ export function getMetricDimensionValues<TDimension>(
   });
 }
 
-export function getObject(
-  value: unknown,
-  key: string,
-): Record<string, unknown> | null {
-  const property = getObjectProperty(value, key);
-
-  return isObject(property) ? property : null;
-}
-
-const getObjectProperty = (value: unknown, key: string): unknown =>
-  isObject(value) && key in value ? value[key] : undefined;
+const hasMetricDimensions = (value: unknown): value is MetricWithDimensions =>
+  isObject(value) && isObject(value.dimensions);
 
 export const normalizeBreakout = (
   breakout: BreakoutInput | unknown,
