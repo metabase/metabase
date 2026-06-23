@@ -68,16 +68,19 @@
     (is (contains? tools "ask_for_sql_clarification"))))
 
 (deftest get-tools-for-nlq-profile-test
-  (testing "the general search is always available; the curated search tool only with the semantic-search feature"
+  (testing "nlq discovers data through the curated library tool only; the general search is not offered"
     (mt/with-premium-features #{}
       (let [tools (tools-for-profile :nlq)]
         (is (map? tools))
-        (is (contains? tools "search"))
+        (is (not (contains? tools "search")))
         (is (contains? tools "construct_notebook_query"))
         (is (contains? tools "create_chart"))
-        (is (not (contains? tools "search_curated")))))
+        ;; the library tool needs the semantic-search feature
+        (is (not (contains? tools "retrieve_library_entities")))))
     (mt/with-premium-features #{:semantic-search}
-      (is (contains? (tools-for-profile :nlq) "search_curated")))))
+      (let [tools (tools-for-profile :nlq)]
+        (is (contains? tools "retrieve_library_entities"))
+        (is (not (contains? tools "search")))))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
   (let [tools (tools-for-profile :document-generate-content)]

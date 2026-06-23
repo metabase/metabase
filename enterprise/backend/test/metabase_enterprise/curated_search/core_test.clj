@@ -97,7 +97,7 @@
                              {:search_prompt search-prompt :entity entity :verified verified})))
 
 (deftest ^:sequential crud-api-to-tool-end-to-end-test
-  (testing "CRUD API write -> reconcile -> pgvector -> search_curated tool, end to end"
+  (testing "CRUD API write -> reconcile -> pgvector -> retrieve_library_entities tool, end to end"
     ;; Self-gated on MB_PGVECTOR_DB_URL — CI without semantic-search infra skips this; locally with the
     ;; dev pgvector running it exercises the whole pipeline. Uses the mock embedding model (4-dim,
     ;; deterministic, no network) against isolated temp tables, with the reconciler run directly in
@@ -116,7 +116,7 @@
             ;; bind a user: the tool's hydration permission-filters via mi/can-read?, which needs
             ;; *current-user-id* (a superuser can read the test tables).
             search!   #(mt/with-test-user :crowberto
-                         (get-in (tools.curated-search/curated-search-tool
+                         (get-in (tools.curated-search/retrieve-library-entities-tool
                                   {:user_search_prompt q})
                                  [:structured-output :data]))]
         (mt/with-premium-features #{:semantic-search}

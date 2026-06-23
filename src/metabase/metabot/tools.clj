@@ -43,7 +43,7 @@
   nlq-search-tool
   transform-search-tool]
  [tools.curated-search
-  curated-search-tool]
+  retrieve-library-entities-tool]
  [tools.construct
   construct-notebook-query-tool]
  [tools.document

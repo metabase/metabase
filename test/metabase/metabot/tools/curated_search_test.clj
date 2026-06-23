@@ -19,7 +19,7 @@
                                    :data        []
                                    :total_count 0
                                    :weak_match  false}}
-              (curated-search/curated-search-tool
+              (curated-search/retrieve-library-entities-tool
                {:user_search_prompt "revenue per region"}))))))
 
 (deftest similarity-helper-test

@@ -1,5 +1,5 @@
 (ns metabase.metabot.tools.curated-search
-  "Metabot `search_curated` tool, backed by the curated search index.
+  "Metabot `retrieve_library_entities` tool, backed by the curated search index.
 
   Instead of ranking the whole instance, it matches the user's request by vector similarity against a
   hand-curated library of saved search prompts, each mapped to the single entity that answers it.
@@ -7,13 +7,14 @@
 
   The index has several prompts per entity, so raw vector hits are deduped to distinct entities and a
   small number returned.
-  The matched entity refs are hydrated into the same enriched search-result shape the general `search`
-  tool returns (`portable_entity_id`, fully-qualified names, database names, metric base tables), so the
-  agent can build a query inline without an extra `read_resource` round-trip.
+  The matched entity refs are hydrated into the same enriched search-result shape the `search` tools
+  return (`portable_entity_id`, fully-qualified names, database names, metric base tables), so each match
+  already carries the identity and portable references the agent needs to pick the right entity and refer
+  to it — it should still `read_resource` the chosen entity to confirm its fields and sample values before
+  building a query.
 
-  Even where a general search is also offered, the tool surfaces the raw cosine `similarity` of each
-  match and flags low-confidence results, so a curated miss reads as a miss rather than a
-  confident-but-wrong curated hit.
+  The tool surfaces the raw cosine `similarity` of each match and flags low-confidence results, so a weak
+  match reads as a miss rather than a confident-but-wrong hit.
   The similarity search runs in the enterprise pgvector store via [[metabase.curated-search.core]]."
   (:require
    [clojure.string :as str]
@@ -63,7 +64,7 @@
        "use (already hydrated with the ids, names and portable references you need). similarity is the "
        "raw cosine match strength; a match flagged confidence=\"weak\" (or a leading note element) means "
        "nothing in the curated layer clearly matches — don't build on it blindly; prefer asking the user "
-       "to clarify or narrow the request, or use the general search tool for uncurated results."))
+       "to clarify or narrow the request."))
 
 (defn- similarity
   "Raw cosine similarity (1 - distance) for a match, from its score breakdown."
@@ -148,24 +149,22 @@
                  :confidence          (if weak? "weak" "strong")))
         matches))
 
-(mu/defn ^{:tool-name    "search_curated"
+(mu/defn ^{:tool-name    "retrieve_library_entities"
            :scope        scope/agent-search
            ;; only offered to users whose license includes semantic search (the mirror's backing store);
            ;; :feature-semantic-search is derived in profiles/feature-capabilities.
            :capabilities #{:feature-semantic-search}}
-  curated-search-tool
-  "Find the best data to answer the user's request from the curated search index — a vetted library of
-  saved prompts, each mapped to the entity that answers it. Phrase `user_search_prompt` as a full
-  natural-language description of the data wanted (it is matched on meaning, not keywords).
+  retrieve-library-entities-tool
+  "Find the best data to answer the user's request from a curated library of entities — metrics, models,
+  saved questions, and tables that have been vetted and mapped to the questions they answer. This is your
+  primary way to discover data. Phrase `user_search_prompt` as a full natural-language description of the
+  data wanted (it is matched on meaning, not keywords).
 
-  Prefer this over the general `search` tool: try it first, and fall back to `search` only when no
-  curated match is strong, or to complement a curated match with broader (uncurated) results.
-
-  Returns a handful of distinct curated matches, best-first. Each match has `saved_search_prompt`, curator
+  Returns a handful of distinct library matches, best-first. Each match has `saved_search_prompt`, curator
   `usage_instructions`, a raw `similarity`, and the `entity` — a full search record (name, type, database,
   `portable_entity_id`, fully-qualified name) you can use directly. If the top match is flagged
-  low-confidence (a leading <note> / confidence=\"weak\"), nothing in the curated layer clearly matches —
-  prefer asking the user to clarify, or fall back to the general `search` tool for uncurated results."
+  low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library clearly matches — prefer
+  asking the user to clarify or narrow the request rather than building on a weak guess."
   [{:keys [user_search_prompt limit]} :- curated-search-schema]
   (try
     (let [n       (min max-limit (or limit default-limit))
@@ -177,4 +176,4 @@
                            :weak_match  (boolean (:weak? (first matches)))}})
     (catch Exception e
       (log/error e "Error in curated search")
-      {:output (str "search_curated failed: " (or (ex-message e) "Unknown error"))})))
+      {:output (str "retrieve_library_entities failed: " (or (ex-message e) "Unknown error"))})))

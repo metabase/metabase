@@ -3,7 +3,7 @@
   that answers it, plus agent-facing `usage_instructions`.
 
   This table is authoritative.
-  An enterprise pgvector mirror carries one embedding per row and serves the `search_curated`
+  An enterprise pgvector mirror carries one embedding per row and serves the `retrieve_library_entities`
   Metabot tool's similarity search.
   Writes here only nudge the mirror's background sync ([[mirror/request-sync!]]); they never touch
   the embedding service or the pgvector store themselves."

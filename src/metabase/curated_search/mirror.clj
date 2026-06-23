@@ -2,7 +2,7 @@
   "OSS entry points for the enterprise pgvector mirror of the `curated_search_entries` table.
 
   The appdb table is authoritative; the mirror carries one embedding per row and serves the
-  `search_curated` Metabot tool's similarity search.
+  `retrieve_library_entities` Metabot tool's similarity search.
   These `defenterprise` shims route to [[metabase-enterprise.curated-search.core]] when an
   enterprise license with semantic search is present; otherwise they no-op or return empty."
   (:require
