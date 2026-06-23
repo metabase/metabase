@@ -49,8 +49,10 @@ import { getIconForField, getUniqueFieldId } from "./utils/fields";
 type FieldInput = Partial<ApiField> | Partial<NormalizedField>;
 
 // Merging this interface with the class gives instances the API field's
-// properties without re-declaring them; the interface only re-types the
-// hydrated relationships, while the class declares its own runtime-only state.
+// properties without re-declaring them. `table`/`target`/`name_field` are id
+// references in the plain object (see `_plainObject`/`NormalizedField`); the
+// metadata layer hydrates them into instances (`hydrateField`), so the typed
+// shape here describes a hydrated field, which is how consumers use it.
 interface Field extends Omit<
   ApiField,
   "table" | "target" | "name_field" | "fingerprint"
