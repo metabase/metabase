@@ -249,12 +249,17 @@ describe("issue 51926", () => {
       display: "pivot",
     });
 
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
+
     H.openVizTypeSidebar();
     H.leftSidebar().within(() => {
       cy.findByTestId("Table-button").click();
-      cy.wait(300); // wait for rerender
       cy.findByTestId("Pivot Table-button").click();
     });
+
+    // Wait for the pivot query triggered by switching back to the pivot viz
+    // type to finish before asserting on the rendered cells.
+    cy.wait("@pivotDataset");
 
     cy.findAllByTestId("pivot-table-cell").should("contain", "April 27, 2025"); // expect this to break when we shift years in the Sample Database
   });
