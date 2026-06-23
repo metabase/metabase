@@ -496,7 +496,7 @@
      (let [batches  (concat (partition-all table-sync-batch-size (:tables db-metadata))
                             [(ws.table-remapping/inject-workspace-canonical-tuples #{} (u/the-id database))])
            {:keys [created updated]}
-           (reduce (fn [counts batch]
+           (reduce (fn reconcile-batch [counts batch]
                      (let [result (sync-util/with-error-handling
                                    (format "Error creating/reactivating tables for %s" db-name)
                                     (sync-table-batch! database batch))]
