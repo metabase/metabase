@@ -1,0 +1,32 @@
+## Create the v_mcp_tool_calls view for MCP usage analytics.
+##
+## Filename intentionally sorts after 20260623_mcp_usage_analytics.yaml (the table-creation
+## migration) so Liquibase — which processes change-log files alphabetically — creates the
+## mcp_tool_call_log / mcp_session_log tables before this view references them.
+##
+## v_mcp_tool_calls LEFT JOINs each tool-call row to its mcp_session_log row (client + PII)
+## and to core_user / group membership, mirroring how v_ai_usage_log joins metabot_conversation.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/063_update_migrations.yaml
+
+  - changeSet:
+      id: v63.2026-06-23T00:00:10
+      author: sfragnaud
+      runOnChange: true
+      comment: Create v_mcp_tool_calls view for MCP usage analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/mcp_tool_calls/v1/postgres-mcp_tool_calls.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/mcp_tool_calls/v1/mysql-mcp_tool_calls.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/mcp_tool_calls/v1/h2-mcp_tool_calls.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql: DROP VIEW IF EXISTS v_mcp_tool_calls
