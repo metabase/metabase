@@ -241,6 +241,27 @@ const GlobalStylesForTest = () => {
   return <Global styles={[baseStyle, cssVariables]} />;
 };
 
+/**
+ * Wires `AppColorSchemeProvider` to the `updateSetting` RTK mutation. Kept as a
+ * child component so the hook runs inside the store provider rendered by
+ * `TestWrapper`.
+ */
+const TestColorSchemeProvider = ({ children }: React.PropsWithChildren) => {
+  const [updateSetting] = useUpdateSettingMutation();
+  const handleUpdateColorScheme = useCallback(
+    async (value: any) => {
+      await updateSetting({ key: "color-scheme", value }).unwrap();
+    },
+    [updateSetting],
+  );
+
+  return (
+    <AppColorSchemeProvider onUpdateColorScheme={handleUpdateColorScheme}>
+      {children}
+    </AppColorSchemeProvider>
+  );
+};
+
 export function TestWrapper({
   children,
   store,
@@ -264,14 +285,6 @@ export function TestWrapper({
   displayTheme?: "light" | "dark";
   withCssVariables?: boolean;
 }): JSX.Element {
-  const [updateSetting] = useUpdateSettingMutation();
-  const handleUpdateColorScheme = useCallback(
-    async (value: any) => {
-      await updateSetting({ key: "color-scheme", value }).unwrap();
-    },
-    [updateSetting],
-  );
-
   const [whitelabelColors, setWhitelabelColors] = useState(() =>
     MetabaseSettings.applicationColors(),
   );
@@ -284,7 +297,7 @@ export function TestWrapper({
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <AppColorSchemeProvider onUpdateColorScheme={handleUpdateColorScheme}>
+        <TestColorSchemeProvider>
           <OverlayStackProvider>
             <ThemeProviderContext.Provider value={{ withCssVariables }}>
               <ThemeProvider
@@ -305,7 +318,7 @@ export function TestWrapper({
               </ThemeProvider>
             </ThemeProviderContext.Provider>
           </OverlayStackProvider>
-        </AppColorSchemeProvider>
+        </TestColorSchemeProvider>
       </MaybeDNDProvider>
     </MetabaseReduxProvider>
   );
