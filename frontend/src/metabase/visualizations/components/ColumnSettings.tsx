@@ -8,9 +8,10 @@ import {
   getSettingsWidgets,
 } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
-import type {
-  FormattingColumn,
-  SettingsExtra,
+import {
+  type FormattingColumn,
+  type SettingsExtra,
+  getFormattingColumnUnit,
 } from "metabase/visualizations/types";
 import type {
   ColumnSettings as ApiColumnSettings,
@@ -59,7 +60,7 @@ function getWidgets({
 
   // add a "unit" to make certain settings work
   const columnWithUnit: FormattingColumn =
-    "unit" in column && column.unit != null
+    getFormattingColumnUnit(column) != null
       ? column
       : ({ ...column, unit: "default" } as FormattingColumn);
 
@@ -99,7 +100,7 @@ export function hasColumnSettingsWidgets({
   value,
   ...props
 }: HasColumnSettingsWidgetsProps) {
-  const storedSettings: ApiColumnSettings = { ...(value ?? {}) };
+  const storedSettings: ApiColumnSettings = value ?? {};
   return getWidgets({ storedSettings, ...props }).length > 0;
 }
 
@@ -109,7 +110,7 @@ export const ColumnSettings = ({
   variant = "default",
   ...props
 }: ColumnSettingsProps) => {
-  const storedSettings: ApiColumnSettings = { ...(value ?? {}) };
+  const storedSettings: ApiColumnSettings = value ?? {};
   const widgets = getWidgets({ storedSettings, ...props });
 
   return (

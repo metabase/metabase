@@ -364,13 +364,6 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => TValue;
-  getDisabled?: (
-    object: T,
-    settings: T extends FormattingColumn
-      ? ColumnSettings
-      : ComputedVisualizationSettings,
-    extra?: SettingsExtra,
-  ) => boolean;
   getSection?: (
     object: T,
     settings: T extends FormattingColumn
