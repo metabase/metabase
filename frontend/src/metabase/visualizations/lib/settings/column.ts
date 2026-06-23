@@ -29,9 +29,11 @@ import {
   getDefaultNumberSeparators,
   getDefaultNumberStyle,
 } from "metabase/visualizations/shared/settings/column";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationSettingsDefinitions,
+import {
+  type ComputedVisualizationSettings,
+  type FormattingColumn,
+  type VisualizationSettingsDefinitions,
+  getFormattingColumnUnit,
 } from "metabase/visualizations/types";
 import {
   getColumnKey,
@@ -151,21 +153,23 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Date style`;
     },
     widget: "select",
-    getDefault: ({ unit }) => {
+    getDefault: (column) => {
+      const unit = getFormattingColumnUnit(column);
       // Grab the first option's value. If there were no options (for
       // hour-of-day probably), use an empty format string instead.
       const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);
       return value;
     },
-    isValid: ({ unit }, settings) => {
+    isValid: (column, settings) => {
+      const unit = getFormattingColumnUnit(column);
       const options = getDateStyleOptionsForUnit(unit ?? "default");
       return !!_.findWhere(options, {
         value: settings.date_style ?? undefined,
       });
     },
-    getProps: ({ unit }, settings) => ({
+    getProps: (column, settings) => ({
       options: getDateStyleOptionsForUnit(
-        unit ?? "default",
+        getFormattingColumnUnit(column) ?? "default",
         settings.date_abbreviate != null
           ? Boolean(settings.date_abbreviate)
           : undefined,
@@ -174,9 +178,10 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
           : undefined,
       ),
     }),
-    getHidden: ({ unit }, settings) =>
+    getHidden: (column, settings) =>
       hasCoarseDateGranularity(settings) ||
-      getDateStyleOptionsForUnit(unit ?? "default").length < 2,
+      getDateStyleOptionsForUnit(getFormattingColumnUnit(column) ?? "default")
+        .length < 2,
     readDependencies: ["date_granularity"],
   },
   date_separator: {
@@ -209,10 +214,11 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "toggle",
     getDefault: () => false,
     inline: true,
-    getHidden: ({ unit }, settings) => {
+    getHidden: (column, settings) => {
       if (hasCoarseDateGranularity(settings)) {
         return true;
       }
+      const unit = getFormattingColumnUnit(column);
       const format = getDateFormatFromStyle(
         settings.date_style ?? undefined,
         unit ?? "default",
@@ -226,19 +232,24 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Show the time`;
     },
     widget: "radio",
-    isValid: ({ unit }, settings) => {
-      const options = getTimeEnabledOptionsForUnit(unit);
+    isValid: (column, settings) => {
+      const options = getTimeEnabledOptionsForUnit(
+        getFormattingColumnUnit(column),
+      );
       return !!_.findWhere(options, { value: settings.time_enabled });
     },
-    getProps: ({ unit }) => {
-      const options = getTimeEnabledOptionsForUnit(unit);
+    getProps: (column) => {
+      const options = getTimeEnabledOptionsForUnit(
+        getFormattingColumnUnit(column),
+      );
       return { options };
     },
     getHidden: (column, settings) =>
       hasCoarseDateGranularity(settings) ||
-      !hasHour(column.unit) ||
+      !hasHour(getFormattingColumnUnit(column)) ||
       isDateWithoutTime(column),
-    getDefault: ({ unit }) => (hasHour(unit) ? "minutes" : null),
+    getDefault: (column) =>
+      hasHour(getFormattingColumnUnit(column)) ? "minutes" : null,
     readDependencies: ["date_granularity"],
   },
   time_style: {
@@ -248,7 +259,9 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "radio",
     getDefault: () => "h:mm A",
     getProps: (column) => ({
-      options: getTimeStyleOptions(column.unit ?? "default"),
+      options: getTimeStyleOptions(
+        getFormattingColumnUnit(column) ?? "default",
+      ),
     }),
     getHidden: (column, settings) =>
       hasCoarseDateGranularity(settings) ||
@@ -350,7 +363,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       }
       return (
         settings.number_style !== "currency" ||
-        series[0].card.display !== "table"
+        series[0]?.card.display !== "table"
       );
     },
     readDependencies: ["number_style"],
@@ -474,7 +487,7 @@ const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
 
 export function getSettingDefinitionsForColumn(
   series: Series,
-  column: DatasetColumn,
+  column: FormattingColumn,
 ) {
   const visualization = getVisualizationRaw(series);
   const extraColumnSettings =
@@ -482,7 +495,8 @@ export function getSettingDefinitionsForColumn(
       ? visualization.columnSettings(column)
       : visualization?.columnSettings || {};
 
-  if (isDate(column) || (column.unit && column.unit !== "default")) {
+  const unit = getFormattingColumnUnit(column);
+  if (isDate(column) || (unit && unit !== "default")) {
     return {
       ...extraColumnSettings,
       ...DATE_COLUMN_SETTINGS,

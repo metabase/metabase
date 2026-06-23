@@ -22,6 +22,7 @@ import type {
   VisualizationProps,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
+import { getFormattingColumnUnit } from "metabase/visualizations/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, DatasetData, Series } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
@@ -251,7 +252,8 @@ const SmartScalarViz: VisualizationDefinition = {
   settings: SETTINGS_DEFINITIONS,
 
   columnSettings: (column) => {
-    const isDateColumn = isDate(column) || isAbsoluteDateTimeUnit(column.unit);
+    const isDateColumn =
+      isDate(column) || isAbsoluteDateTimeUnit(getFormattingColumnUnit(column));
     if (!isDateColumn) {
       return {};
     }
