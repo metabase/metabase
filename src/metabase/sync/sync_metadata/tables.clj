@@ -238,7 +238,7 @@
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
 
 (mu/defn- update-table-metadata-if-needed!
-  "Update the table metadata if it has changed."
+  "Update the table metadata if it has changed. Returns true if a row was updated."
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
    metabase-database :- (ms/InstanceOf :model/Database)]
@@ -272,29 +272,51 @@
                  (sync-util/name-for-logging metabase-table)
                  (get metabase-table k)
                  v))
-    (when (seq changes)
-      (t2/update! :model/Table (:id metabase-table) changes))))
+    (boolean
+     (when (seq changes)
+       (t2/update! :model/Table (:id metabase-table) changes)
+       true))))
 
-(mu/defn- update-tables-metadata-if-needed!
+(mu/defn- update-tables-metadata-if-needed! :- :int
+  "Update metadata for the tables present in both `table-metadatas` and `metabase-tables`. Returns
+  the number of tables actually updated."
   [table-metadatas :- [:set i/DatabaseMetadataTable]
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]
    metabase-database :- (ms/InstanceOf :model/Database)]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
         name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)]
-    (doseq [name+schema (set/intersection (set (keys name+schema->table-metadata)) (set (keys name+schema->metabase-table)))]
-      (update-table-metadata-if-needed! (name+schema->table-metadata name+schema)
-                                        (name+schema->metabase-table name+schema)
-                                        metabase-database))))
+    (reduce (fn [updated name+schema]
+              (cond-> updated
+                (update-table-metadata-if-needed! (name+schema->table-metadata name+schema)
+                                                  (name+schema->metabase-table name+schema)
+                                                  metabase-database)
+                inc))
+            0
+            (set/intersection (set (keys name+schema->table-metadata))
+                              (set (keys name+schema->metabase-table))))))
+
+(def ^:private table-sync-batch-size
+  "How many warehouse tables to reconcile against the app DB at a time. Bounds peak memory so a
+  database with tens of thousands of tables doesn't have to be diffed all at once."
+  1000)
+
+(defn- ignore-table?
+  "Tables we never create `:model/Table` rows for: the special `_metabase_metadata` table (its
+  contents are applied to other Tables/Fields instead) and temporary transform output tables."
+  [table]
+  (or (metabase-metadata/is-metabase-metadata-table? table)
+      (sync-util/is-temp-transform-table? table)))
+
+(defn- table-name+schema
+  "The `{:name :schema}` identity a Table is keyed on during sync."
+  [table]
+  {:name (:name table), :schema (:schema table)})
 
 (mu/defn- table-set :- [:set i/DatabaseMetadataTable]
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
   Get set of user tables only, excluding metabase metadata tables."
   [db-metadata :- i/DatabaseMetadata]
-  (into #{}
-        (remove (fn [table]
-                  (or (metabase-metadata/is-metabase-metadata-table? table)
-                      (sync-util/is-temp-transform-table? table))))
-        (:tables db-metadata)))
+  (into #{} (remove ignore-table?) (:tables db-metadata)))
 
 (mu/defn- select-tables :- [:set (ms/InstanceOf :model/Table)]
   "Selects the columns we need for `:model/Table`, with some optional filters"
@@ -306,15 +328,26 @@
         :db_id (u/the-id database)
         filters)))
 
-(mu/defn- db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
-  "Return information about what Tables we have for this DB in the Metabase application DB. Only includes active tables."
-  [database :- i/DatabaseInstance]
-  (select-tables database :active true))
-
 (mu/defn- db->our-tables :- [:set (ms/InstanceOf :model/Table)]
   "Return *all* tables we have for this DB in the Metabase appDB, including inactive ones."
   [database :- i/DatabaseInstance]
   (select-tables database))
+
+(mu/defn- existing-tables-by-name+schema :- :map
+  "The `:model/Table` rows (active *and* inactive) for `database` matching any name in `tables`,
+  indexed by `{:name :schema}`. Queries by name only -- not schema -- since `:schema` can be `nil`
+  and `IN (NULL, ...)` wouldn't match; the exact `(name, schema)` match falls out of the index key."
+  [database :- i/DatabaseInstance
+   tables]
+  (let [names (into [] (comp (map :name) (distinct)) tables)]
+    (if (empty? names)
+      {}
+      (m/index-by table-name+schema
+                  (apply t2/select
+                         (into [:model/Table :id :name :schema :data_authority :active] keys-to-update)
+                         :db_id (u/the-id database)
+                         :name [:in names]
+                         nil)))))
 
 (mu/defn- adjusted-schemas :- [:maybe [:map-of :string :string]]
   "Returns a map of schemas that should be adjusted to their new names."
@@ -390,67 +423,97 @@
             (swap! archived + did-update)))))
     @archived))
 
+(mu/defn- sync-table-batch! :- [:map [:created :int] [:updated :int]]
+  "Reconcile one batch of warehouse tables against the app DB and return `{:created <n> :updated <n>}`.
+  Creates or reactivates tables in `batch` that aren't active yet (counted as `:created`) and updates
+  metadata on the ones already active (counted as `:updated`).
+
+  First narrows the batch: drops tables we never sync, collapses duplicate `(name, schema)`, drops
+  names too long for the app DB, and drops workspace-isolated tables (they back canonical Tables via
+  remap, so they get no `:model/Table` of their own)."
+  [database :- i/DatabaseInstance
+   batch]
+  (let [tables   (as-> batch <>
+                   (into #{} (comp (remove ignore-table?) (m/distinct-by table-name+schema)) <>)
+                   (remove-tables-with-too-long-names database <>)
+                   (ws.table-remapping/filter-workspace-side-tables <> (u/the-id database)))
+        existing (existing-tables-by-name+schema database tables)
+        active?  (fn [table] (:active (get existing (table-name+schema table))))
+        new      (into #{} (remove active?) tables)
+        live     (into #{} (filter active?) tables)
+        reactivated (into #{} (filter #(get existing (table-name+schema %))) new)]
+    (when (seq new)
+      (create-or-reactivate-tables! database new))
+    (when (seq reactivated)
+      (let [rows (existing-tables-by-name+schema database reactivated)]
+        (update-tables-metadata-if-needed! reactivated
+                                           (into #{} (keep #(get rows (table-name+schema %))) reactivated)
+                                           database)))
+    {:created (count new)
+     :updated (if (seq live)
+                (update-tables-metadata-if-needed! live
+                                                   (into #{} (keep #(get existing (table-name+schema %))) live)
+                                                   database)
+                0)}))
+
+(mu/defn- retire-unseen-tables! :- :int
+  "Retire active app-DB tables that no longer exist on the warehouse. Builds the set of
+  `{:name :schema}` the warehouse reported this sync (plus synthetic canonical tuples for workspace
+  remaps), then retires the active app-DB tables that aren't in it, in batches. Returns the number
+  retired."
+  [database :- i/DatabaseInstance
+   db-metadata]
+  (let [seen      (into #{}
+                        (map table-name+schema)
+                        (concat (:tables db-metadata)
+                                (ws.table-remapping/inject-workspace-canonical-tuples #{} (u/the-id database))))
+        active    (t2/select-fn-set table-name+schema [:model/Table :name :schema]
+                                    :db_id (u/the-id database) :active true)
+        to-retire (set/difference active seen)]
+    (doseq [batch (partition-all table-sync-batch-size to-retire)]
+      (retire-tables! database (set batch)))
+    (count to-retire)))
+
 (mu/defn sync-tables-and-database!
-  "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
-  implementation of `describe-database`.
-  Also syncs the database metadata taken from describe-database if there is any"
+  "Sync the `:model/Table` rows for `database` against its driver's `describe-database`, and the DB
+  metadata (e.g. version) if present.
+
+  Reconciles the warehouse tables against the app DB one batch at a time (see [[table-sync-batch-size]]),
+  then retires the active app-DB tables the warehouse no longer reports -- so a database with tens of
+  thousands of tables never has to be held or `clojure.data/diff`ed all at once. Returns
+  `{:updated-tables <n> :total-tables <n>}`."
   ([database :- i/DatabaseInstance]
    (sync-tables-and-database! database (fetch-metadata/db-metadata database)))
 
   ([database :- i/DatabaseInstance db-metadata]
-   ;; determine what's changed between what info we have and what's in the DB
-   (let [driver                (driver.u/database->driver database)
-         db-table-metadatas    (table-set db-metadata)
-         ;; drop tables whose names can't be stored in the app DB before they reach an INSERT and abort creation of
-         ;; the remaining new tables for this database
-         db-table-metadatas    (remove-tables-with-too-long-names database db-table-metadatas)
-         ;; DEV-1898: workspace-isolated tables (`ws_*`) live on the warehouse but must not
-         ;; become :model/Table rows. They back canonical Tables via remap, not their own identity.
-         db-table-metadatas    (ws.table-remapping/filter-workspace-side-tables db-table-metadatas (:id database))
-         ;; Inject synthetic canonical-side tuples for any remap whose to-side is materialized.
-         ;; Without this, the diff retires canonical Table rows whose physical backing only
-         ;; exists at the workspace location (not at the canonical name on the warehouse).
-         db-table-metadatas    (ws.table-remapping/inject-workspace-canonical-tuples db-table-metadatas (:id database))
-         name+schema           #(select-keys % [:name :schema])
-         name+schema->db-table (m/index-by name+schema db-table-metadatas)
-         our-metadata          (db->our-metadata database)
-         multi-level-support?  (driver.u/supports? driver :multi-level-schema database)
-         schemas-to-update     (when multi-level-support?
-                                 ;; we want to adjust the schemas for all tables (not just active ones from `our-metadata`)
-                                 (adjusted-schemas driver database (db->our-tables database)))
-         our-metadata          (cond->> our-metadata
-                                 multi-level-support?
-                                 (into #{} (map (fn [table]
-                                                  (update table :schema #(get schemas-to-update %1 %1))))))
-         keep-name+schema-set  (fn [metadata]
-                                 (set (map name+schema metadata)))
-         [new-table-metadatas
-          old-table-metadatas] (data/diff
-                                (keep-name+schema-set (set (map name+schema db-table-metadatas)))
-                                (keep-name+schema-set (set (map name+schema our-metadata))))]
+   (let [driver               (driver.u/database->driver database)
+         multi-level-support? (driver.u/supports? driver :multi-level-schema database)
+         schemas-to-update    (when multi-level-support?
+                                (adjusted-schemas driver database (db->our-tables database)))]
      (sync-util/with-error-handling (format "Error updating table schemas for %s"
                                             (sync-util/name-for-logging database))
        (adjust-table-schemas! database schemas-to-update))
-     ;; update database metadata from database
      (when (some? (:version db-metadata))
-       (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+       (sync-util/with-error-handling (format "Error updating database metadata for %s"
                                               (sync-util/name-for-logging database))
          (update-database-metadata! database db-metadata)))
-     ;; create new tables as needed or mark them as active again
-     (when (seq new-table-metadatas)
-       (let [new-tables-info (set (map #(get name+schema->db-table (name+schema %)) new-table-metadatas))]
-         (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
-                                                (sync-util/name-for-logging database))
-           (create-or-reactivate-tables! database new-tables-info))))
-     ;; mark old tables as inactive
-     (when (seq old-table-metadatas)
-       (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
-         (retire-tables! database old-table-metadatas)))
-     (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
-       ;; we need to fetch the tables again because we might have retired tables in the previous steps
-       (update-tables-metadata-if-needed! db-table-metadatas (db->our-metadata database) database))
-     (let [archived-tables (sync-util/with-error-handling (format "Error archiving tables for %s"
-                                                                  (sync-util/name-for-logging database))
-                             (archive-tables! database))]
-       {:updated-tables (+ (count new-table-metadatas) (count old-table-metadatas) (or archived-tables 0))
-        :total-tables   (count our-metadata)}))))
+     (let [batches  (concat (partition-all table-sync-batch-size (:tables db-metadata))
+                            [(ws.table-remapping/inject-workspace-canonical-tuples #{} (u/the-id database))])
+           {:keys [created updated]}
+           (or (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
+                                                      (sync-util/name-for-logging database))
+                 (reduce (fn [counts batch]
+                           (merge-with + counts (sync-table-batch! database batch)))
+                         {:created 0, :updated 0}
+                         batches))
+               {:created 0, :updated 0})
+           retired  (or (sync-util/with-error-handling (format "Error retiring tables for %s"
+                                                               (sync-util/name-for-logging database))
+                          (retire-unseen-tables! database db-metadata))
+                        0)
+           archived (or (sync-util/with-error-handling (format "Error archiving tables for %s"
+                                                               (sync-util/name-for-logging database))
+                          (archive-tables! database))
+                        0)]
+       {:updated-tables (+ created updated retired archived)
+        :total-tables   (t2/count :model/Table :db_id (u/the-id database) :active true)}))))
