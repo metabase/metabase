@@ -241,3 +241,24 @@
           blocked-groups    (into (or blocked-group-ids #{})
                                   sandbox-group-ids)]
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
+
+(defenterprise new-table-sandboxed-groups
+  "Returns the subset of `group-ids` that must have new tables on `db-id` forced to `:blocked` view-data regardless of
+  the new table's schema, because they have a sandbox on a table in this DB. A sandbox is a stronger condition than
+  a few specific tables being blocked, so the presence of a sandbox on this DB for a group is sufficient to make any
+  new table `:blocked` for that group, even if the table came from a CSV upload.
+
+  OSS has no sandboxes, so in OSS and in EE without sandboxes enabled the set of sandboxed groups is empty."
+  :feature :advanced-permissions
+  [db-id group-ids]
+  (if (or (empty? group-ids)
+          (not (premium-features/enable-sandboxes?)))
+    #{}
+    (into #{}
+          (map :group_id)
+          (t2/query {:select-distinct [[:s.group_id :group_id]]
+                     :from   [[(t2/table-name :model/Sandbox) :s]]
+                     :join   [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
+                     :where  [:and
+                              [:in :s.group_id group-ids]
+                              [:= :t.db_id db-id]]}))))

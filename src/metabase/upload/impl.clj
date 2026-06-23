@@ -569,10 +569,15 @@
           table-name              (some->> table-name (ddl.i/format-name driver))
           schema+table-name       (table-identifier {:schema schema :name table-name})
           {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
-          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-          table                   (sync/create-table! db {:name         table-name
-                                                          :schema       (not-empty schema)
-                                                          :display_name display-name})
+          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async.
+          ;; The uploader has already been checked to have unrestricted access to this schema (see
+          ;; `can-create-upload-error`), so the new table inherits the schema's permissions rather than failing
+          ;; safe to `:blocked` the way a sync-discovered table would (UXW-3217).
+          table                   (perms/do-with-schema-consistent-new-table-perms
+                                   (fn []
+                                     (sync/create-table! db {:name         table-name
+                                                             :schema       (not-empty schema)
+                                                             :display_name display-name})))
           _set_is_upload          (t2/update! :model/Table (:id table) {:is_upload      true
                                                                         :data_authority :authoritative
                                                                         :data_source    :upload
