@@ -28,14 +28,14 @@ export const SAMPLE_DB_SCHEMA_ID = "1:PUBLIC";
 export const SAMPLE_DB_TABLES = {
   // old tables
   STATIC_PRODUCTS_ID: 7,
-  STATIC_ORDERS_ID: 1,
-  STATIC_PEOPLE_ID: 2,
-  STATIC_REVIEWS_ID: 5,
+  STATIC_ORDERS_ID: 5,
+  STATIC_PEOPLE_ID: 6,
+  STATIC_REVIEWS_ID: 8,
   // new tables
-  STATIC_ACCOUNTS_ID: 8,
-  STATIC_ANALYTIC_EVENTS_ID: 4,
+  STATIC_ACCOUNTS_ID: 1,
+  STATIC_ANALYTIC_EVENTS_ID: 2,
   STATIC_FEEDBACK_ID: 3,
-  STATIC_INVOICES_ID: 6,
+  STATIC_INVOICES_ID: 4,
 };
 
 // All users and admin groups are the defaults that come with Metabase.
