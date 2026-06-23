@@ -521,13 +521,14 @@
      (when (some? (:version db-metadata))
        (sync-util/with-error-handling (format "Error updating database metadata for %s" db-name)
          (update-database-metadata! database db-metadata)))
-     (let [batches  (concat (partition-all table-sync-batch-size (:tables db-metadata))
-                            [(ws.table-remapping/inject-workspace-canonical-tuples [] (u/the-id database))])
-           context  (reduce (fn reconcile-batch [context batch]
-                              (sync-table-batch! database db-name context batch))
-                            {:created 0, :updated 0, :complete? true
-                             :seen (transient #{}), :metabase-metadata (transient [])}
-                            batches)
+     (let [reconcile-batch (fn reconcile-batch [context batch]
+                             (sync-table-batch! database db-name context batch))
+           context  (transduce (partition-all table-sync-batch-size)
+                               (completing reconcile-batch)
+                               {:created 0, :updated 0, :complete? true
+                                :seen (transient #{}), :metabase-metadata (transient [])}
+                               (:tables db-metadata))
+           context  (reconcile-batch context (ws.table-remapping/inject-workspace-canonical-tuples [] (u/the-id database)))
            {:keys [created updated complete?]} context]
        (when-let [holder (:metabase-metadata-tables db-metadata)]
          (vreset! holder (persistent! (:metabase-metadata context))))

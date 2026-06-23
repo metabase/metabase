@@ -101,7 +101,7 @@
                      {:name "PEOPLE", :schema "PUBLIC", :description nil, :is_writable true}
                      {:name "PRODUCTS", :schema "PUBLIC", :description nil, :is_writable true}
                      {:name "REVIEWS", :schema "PUBLIC", :description nil, :is_writable true}}
-                   (:tables (sql-jdbc.describe-database/describe-database :h2 (mt/id))))))
+                   (into #{} (:tables (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))))
 
 (defn- describe-database-with-open-resultset-count!
   "Just like `describe-database`, but instead of returning the database description returns the number of ResultSet
@@ -123,7 +123,8 @@
        db
        nil
        (fn [_conn]
-         (sql-jdbc.describe-database/describe-database driver db)
+         ;; `:tables` is a reducible -- realize it so `active-tables` actually opens (and closes) its ResultSets
+         (into [] (:tables (sql-jdbc.describe-database/describe-database driver db)))
          (reduce + (for [^ResultSet rs @resultsets]
                      (if (.isClosed rs) 0 1))))))))
 
