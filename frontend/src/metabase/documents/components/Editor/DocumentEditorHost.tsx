@@ -23,7 +23,7 @@ import {
   updateVizSettings,
 } from "../../documents.slice";
 import { useCardData } from "../../hooks/use-card-data";
-import { useCommentUrl } from "../../hooks/use-comment-url";
+import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import { useDraftCardOperations } from "../../hooks/use-draft-card-operations";
 import { useExternalCardDataLoader } from "../../hooks/use-external-card-data";
 import {

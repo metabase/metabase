@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 
 import type { CommentThread } from "metabase/comments/types";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
+import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { Box, rem } from "metabase/ui";
 import type { EntityId } from "metabase-types/api/comments";
