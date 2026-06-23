@@ -1071,35 +1071,111 @@
       {:ctes ctes
        :query (dissoc query :with)})))
 
-(defn- hybrid-select
-  "For a given `col-name` return a :coalesce expression to reference it from the outer hybrid search query.
+(defn- hybrid-coalesce-select
+  "For a common-search column, coalesce its value across the present arm `aliases` (e.g. [\"v\" \"t\" \"g\"]).
+  A row can be matched by any single arm, so its display columns are pulled from whichever arm(s) matched.
+  With a single present arm the coalesce degenerates to a bare reference.
 
-   (hybrid-coalesce :model_id) -> [:coalesce :v.model_id :t.model_id]"
-  ([col-name-and-alias]
-   (hybrid-select col-name-and-alias "v." "t."))
-  ([[col-name col-alias] vector-prefix text-prefix]
-   (let [prefix #(keyword (str %1 (name %2)))]
-     [[:coalesce (prefix vector-prefix col-name) (prefix text-prefix col-name)] col-alias])))
+   (hybrid-coalesce-select [\"v\" \"t\"] [:model_id :model_id]) -> [[:coalesce :v.model_id :t.model_id] :model_id]"
+  [aliases [col-name col-alias]]
+  (let [refs (mapv (fn [a] (keyword (str a "." (name col-name)))) aliases)]
+    [(if (= 1 (count refs)) (first refs) (into [:coalesce] refs)) col-alias]))
+
+;; ----------------------------------------------------------------------------
+;; pg_trgm trigram arm (typo tolerance)
+;;
+;; A third retrieval arm alongside semantic + keyword. The keyword arm is pure full-text search, matching
+;; stemmed lexemes *exactly*, so a typo ("Conract") produces a lexeme absent from the index and contributes
+;; nothing. pg_trgm decomposes strings into overlapping 3-grams and scores by overlap, so a one-character
+;; typo perturbs only a few trigrams and "Conract" still scores high against "Contract". This arm filters
+;; `<column> % :q` (the pg_trgm match operator, GIN-accelerated) and ranks by `similarity(<column>, :q)`,
+;; producing a `trigram_rank` that fuses into the existing RRF (see [[scoring/rrf-rank-exp]]) with its own
+;; weight. One-row-per-entity output identical to the other arms, so the hybrid join / scoring / permission
+;; filter / rehydration are unchanged.
+;;
+;; The config arrives per request as `:trigram-config` (see [[metabase.search.config/TrigramConfig]]); absent
+;; -> the two-arm baseline. The target column needs the `pg_trgm` extension + a `GIN (<column> gin_trgm_ops)`
+;; index on the active table (search-eval scripts/manage_index.py set-trgm) or the `%` filter seq-scans.
+
+(defn- resolve-trigram-config
+  "Return the trigram-arm config when the request enables the pg_trgm typo-tolerance arm, else nil
+  (the two-arm semantic+keyword baseline)."
+  [search-context]
+  (:trigram-config search-context))
+
+(defn- trigram-search-query
+  "Build the pg_trgm trigram-similarity arm. Filters `<column> % :q` -- the pg_trgm similarity-threshold match
+  operator, which the `GIN (<column> gin_trgm_ops)` index accelerates -- tightened by an explicit
+  `similarity(<column>, :q) >= :threshold` predicate, and ranks by descending similarity via `row_number()`.
+  Mirrors [[keyword-search-query]]'s filter-then-rank shape over `common-search-columns` so it drops into
+  [[hybrid-search-query]]'s full-join unchanged. The query string is parameterized; `:column` is a
+  schema-validated lower-snake identifier interpolated raw. Requires the `pg_trgm` extension + the GIN index
+  on the active table (search-eval scripts/manage_index.py set-trgm)."
+  [index search-context trigram-config]
+  (let [filters   (search-filters search-context)
+        col       (or (:column trigram-config) "name")
+        threshold (or (:threshold trigram-config) 0.3)
+        limit     (or (:limit trigram-config) (semantic-settings/semantic-search-results-limit))
+        q         (:search-string search-context)
+        sim-expr  [:raw "similarity(" col ", " [:lift q] ")"]
+        match     [:raw col " % " [:lift q]]
+        thresh    [:>= sim-expr [:inline threshold]]
+        where     (cond-> [:and match thresh]
+                    filters (conj filters))]
+    {:select (into common-search-columns
+                   [[[:raw "row_number() OVER (ORDER BY similarity(" col ", " [:lift q] ") DESC)"]
+                     :trigram_rank]])
+     :from [(keyword (:table-name index))]
+     :where where
+     :order-by [[:trigram_rank :asc]]
+     :limit limit}))
 
 (defn- hybrid-search-query
-  "Build a hybrid search query using vector + keyword based searches and reranking with RRF"
+  "Build a hybrid search query fusing the present retrieval arms with RRF. The vector (semantic) arm `v` is the
+  always-present anchor; the keyword arm `t` is present unless the request sets `:disable-keyword?`; the pg_trgm
+  trigram arm `g` is present when the request carries a `:trigram-config`. Each subsequent arm is chained onto
+  the anchor with a FULL JOIN whose left side coalesces the ids of all prior arms, so a row matched by any
+  single arm survives; the display columns coalesce across the present arms and each arm projects its own rank
+  column(s) for the RRF fusion. `:semantic_distance`/`:semantic_view` are vector-only, so they reference `:v.`
+  directly (never coalesced). The two-arm semantic+keyword baseline (no flags) is byte-identical to before, as
+  are the three-arm (+trigram) and the new semantic+trigram / semantic-only combinations."
   [index embedding search-context]
-  (let [semantic-results (semantic-search-query index embedding search-context)
-        keyword-results (keyword-search-query index search-context)
-        full-query {:with [[:vector_results semantic-results]
-                           [:text_results keyword-results]]
-                    ;; `:semantic_view` is vector-only (the keyword arm has no such column), so reference
-                    ;; `:v.` directly rather than coalescing through `common-search-columns`.
-                    :select (into
-                             (mapv hybrid-select common-search-columns)
-                             [[:v.semantic_rank :semantic_rank]
-                              [:v.semantic_distance :semantic_distance]
-                              [:v.semantic_view :semantic_view]
-                              [:t.keyword_rank :keyword_rank]])
-                    :from [[:vector_results :v]]
-                    :full-join [[:text_results :t] [:= :v.id :t.id]]
-                    :limit (semantic-settings/semantic-search-results-limit)}]
-    full-query))
+  (let [disable-keyword? (boolean (:disable-keyword? search-context))
+        trigram-config   (resolve-trigram-config search-context)
+        ;; Present arms in join order. `:rank-cols` are this arm's vector-only rank projections (referenced via
+        ;; the arm alias directly, not coalesced); `mapcat`-ing them preserves the historical column order.
+        arms (cond-> [{:cte :vector_results :alias "v"
+                       :query (semantic-search-query index embedding search-context)
+                       :rank-cols [[:v.semantic_rank :semantic_rank]
+                                   [:v.semantic_distance :semantic_distance]
+                                   [:v.semantic_view :semantic_view]]}]
+               (not disable-keyword?)
+               (conj {:cte :text_results :alias "t"
+                      :query (keyword-search-query index search-context)
+                      :rank-cols [[:t.keyword_rank :keyword_rank]]})
+               trigram-config
+               (conj {:cte :trigram_results :alias "g"
+                      :query (trigram-search-query index search-context trigram-config)
+                      :rank-cols [[:g.trigram_rank :trigram_rank]]}))
+        aliases (mapv :alias arms)
+        anchor  (first arms)
+        ;; FULL JOIN each subsequent arm onto the chain, left side = coalesce of all prior arm ids (a single
+        ;; bare id when only the anchor precedes it). Reproduces the established 3-arm chain: t on v.id, g on
+        ;; coalesce(v.id, t.id).
+        joins (:clauses
+               (reduce (fn [{:keys [prior clauses]} {:keys [cte alias]}]
+                         (let [prior-ids (mapv #(keyword (str % ".id")) prior)
+                               lhs (if (= 1 (count prior-ids)) (first prior-ids) (into [:coalesce] prior-ids))]
+                           {:prior   (conj prior alias)
+                            :clauses (conj clauses [cte (keyword alias)] [:= lhs (keyword (str alias ".id"))])}))
+                       {:prior [(:alias anchor)] :clauses []}
+                       (rest arms)))]
+    (cond-> {:with   (mapv (juxt :cte :query) arms)
+             :select (into (mapv (partial hybrid-coalesce-select aliases) common-search-columns)
+                           (mapcat :rank-cols arms))
+             :from   [[(:cte anchor) (keyword (:alias anchor))]]
+             :limit  (semantic-settings/semantic-search-results-limit)}
+      (seq joins) (assoc :full-join joins))))
 
 (defn- scored-search-query
   "Build a hybrid search query with additional `scorers`"
@@ -1114,8 +1190,19 @@
   (let [hybrid-query (hybrid-search-query index embedding search-context)
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
+        ;; Each arm's rank column exists in `hybrid_results` only when its arm ran, so track the gates exactly:
+        ;; `:keyword_rank` absent when `:disable-keyword?`, `:trigram_rank` present only when the trigram arm
+        ;; ran. Selecting a column whose CTE wasn't built makes the query throw, so these must match the arm
+        ;; gates in `hybrid-search-query`.
+        disable-keyword? (boolean (:disable-keyword? search-context))
+        trigram? (some? (resolve-trigram-config search-context))
+        select-cols (-> (cond-> [:id :model_id :model :content :verified :legacy_input
+                                 :semantic_rank :semantic_distance]
+                          (not disable-keyword?) (conj :keyword_rank))
+                        (conj :semantic_view)
+                        (cond-> trigram? (conj :trigram_rank)))
         full-query {:with all-ctes
-                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :semantic_distance :keyword_rank :semantic_view]
+                    :select select-cols
                     :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
@@ -1138,9 +1225,11 @@
                                  :keyword_rank  (:keyword_rank row))
       debug? (assoc :cosine_distance (:semantic_distance row)
                     :semantic_view   (:semantic_view row)
+                    :trigram_rank    (:trigram_rank row)
                     :source          (cond-> []
                                        (:semantic_rank row) (conj "semantic")
-                                       (:keyword_rank row)  (conj "keyword"))))))
+                                       (:keyword_rank row)  (conj "keyword")
+                                       (:trigram_rank row)  (conj "trigram"))))))
 
 (defn- decode-legacy-input
   "Decode `row`s `:legacy_input` JSONB PGobject into a Clojure map."
@@ -1172,35 +1261,43 @@
   "Derive the ordered per-stage candidate lists from the full pre-permission `decoded` rows. Each candidate
   is the minimal {:model :id :rank [:distance|:score] [:view]} -- not the full row -- keyed like `data`.
   The arm ranks are the authoritative `row_number()`-assigned ranks; RRF/weighted ranks are positional over
-  the respective score column. Tolerates missing columns (blank-query/no-scoring path yields empty stages)."
-  [decoded]
+  the respective score column. Tolerates missing columns (blank-query/no-scoring path yields empty stages).
+  The `retrieval:keyword` stage is emitted only when `keyword?` (the keyword arm ran -- absent when the request
+  set `disable_keyword`) and the `retrieval:trigram` stage only when `trigram?` (the pg_trgm arm ran), so a
+  baseline debug run is byte-identical to before."
+  [decoded keyword? trigram?]
   (let [rows (mapv (fn [r] (assoc r ::ident (pipeline-ident r))) decoded)]
     {:horizon (semantic-settings/semantic-search-results-limit)
      :stages
-     [{:name "retrieval:semantic"
-       :candidates (->> rows
-                        (filter :semantic_rank)
-                        (sort-by :semantic_rank)
-                        (mapv (fn [r]
-                                (cond-> (assoc (::ident r)
-                                               :rank (:semantic_rank r)
-                                               :distance (:semantic_distance r))
-                                  (some? (:semantic_view r)) (assoc :view (:semantic_view r))))))}
-      {:name "retrieval:keyword"
-       :candidates (->> rows
-                        (filter :keyword_rank)
-                        (sort-by :keyword_rank)
-                        (mapv (fn [r] (assoc (::ident r) :rank (:keyword_rank r)))))}
-      {:name "fusion:rrf"
-       :candidates (->> rows
-                        (sort-by #(or (:rrf %) 0) >)
-                        (map-indexed (fn [i r] (assoc (::ident r) :rank (inc i) :score (:rrf r))))
-                        vec)}
-      {:name "score:weighted"
-       :candidates (->> rows
-                        (sort-by #(or (:total_score %) 0) >)
-                        (map-indexed (fn [i r] (assoc (::ident r) :rank (inc i) :score (:total_score r))))
-                        vec)}]}))
+     (into (cond-> [{:name "retrieval:semantic"
+                     :candidates (->> rows
+                                      (filter :semantic_rank)
+                                      (sort-by :semantic_rank)
+                                      (mapv (fn [r]
+                                              (cond-> (assoc (::ident r)
+                                                             :rank (:semantic_rank r)
+                                                             :distance (:semantic_distance r))
+                                                (some? (:semantic_view r)) (assoc :view (:semantic_view r))))))}]
+             keyword? (conj {:name "retrieval:keyword"
+                             :candidates (->> rows
+                                              (filter :keyword_rank)
+                                              (sort-by :keyword_rank)
+                                              (mapv (fn [r] (assoc (::ident r) :rank (:keyword_rank r)))))})
+             trigram? (conj {:name "retrieval:trigram"
+                             :candidates (->> rows
+                                              (filter :trigram_rank)
+                                              (sort-by :trigram_rank)
+                                              (mapv (fn [r] (assoc (::ident r) :rank (:trigram_rank r)))))}))
+           [{:name "fusion:rrf"
+             :candidates (->> rows
+                              (sort-by #(or (:rrf %) 0) >)
+                              (map-indexed (fn [i r] (assoc (::ident r) :rank (inc i) :score (:rrf r))))
+                              vec)}
+            {:name "score:weighted"
+             :candidates (->> rows
+                              (sort-by #(or (:total_score %) 0) >)
+                              (map-indexed (fn [i r] (assoc (::ident r) :rank (inc i) :score (:total_score r))))
+                              vec)}])}))
 
 (defn- pipeline-permission-dropped
   "Candidates present in the pre-permission `decoded` set but absent from the post-permission/collection
@@ -1421,6 +1518,12 @@
             ;; carry `:content` + arm ranks for the post-SQL rerank step.
             rerank? (boolean (and (:reranker-config search-context)
                                   (semantic-settings/ee-reranking-enabled)))
+            ;; Keyword arm runs unless the request set `:disable-keyword?` (remove the full-text arm entirely
+            ;; to A/B trigram-instead-of-keyword); trigram arm runs iff the request carries a `:trigram-config`
+            ;; (per-request opt-in, like partition/multi-view). Both drive their conditional debug stages; the
+            ;; arms themselves are built inside the SQL (scored-search-query -> hybrid-search-query).
+            keyword? (not (boolean (:disable-keyword? search-context)))
+            trigram? (boolean (resolve-trigram-config search-context))
             query (scored-search-query index embedding search-context scorers)
             reducible (reducible-search-query db query)
             ;; Realize the full candidate rows with their arm ranks / scorer columns intact (the DB hit),
@@ -1432,7 +1535,7 @@
             raw-results (mapv (partial legacy-input-with-score weights (keys scorers) debug? rerank?) decoded)
             db-query-time-ms (u/since-ms db-timer)
 
-            pipeline (when debug? (build-pipeline-stages decoded))
+            pipeline (when debug? (build-pipeline-stages decoded keyword? trigram?))
 
             filter-timer (u/start-timer)
             filtered-results (tracing/with-span :search "search.semantic.permission-filter"

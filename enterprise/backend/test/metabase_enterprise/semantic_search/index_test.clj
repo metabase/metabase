@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.spec-trace-test-util :as spec-trace]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
@@ -196,6 +197,70 @@
       ;; view index deterministically (the base view wins when a synthetic view's vector equals base's)
       (is (str/includes? sql "\"distance\" ASC, \"view_idx\" ASC")))))
 
+(defn- hybrid-search-sql
+  "Format the private hybrid query for `ctx` against a stub index, returning the SQL string."
+  [ctx]
+  (let [index {:table-name "idx_tbl"}]
+    (first (sql/format (#'semantic.index/hybrid-search-query index [0.1 0.2 0.3]
+                                                             (merge {:search-string "pasta" :archived? false} ctx))
+                       {:quoted true}))))
+
+(deftest hybrid-search-query-arm-combos-test
+  (testing "the present retrieval arms are gated independently; semantic (vector) is always the anchor"
+    (let [trgm {:trigram-config {:column "name" :threshold 0.3 :weight 0.2}}]
+      (testing "baseline semantic+keyword: keyword arm present, trigram arm absent"
+        (let [sql (hybrid-search-sql {})]
+          (is (str/includes? sql "\"text_results\""))
+          (is (str/includes? sql "\"keyword_rank\""))
+          (is (not (str/includes? sql "\"trigram_results\"")))
+          (is (not (str/includes? sql "\"trigram_rank\"")))
+          (is (str/includes? sql "FULL JOIN \"text_results\" AS \"t\" ON \"v\".\"id\" = \"t\".\"id\""))))
+      (testing "semantic+keyword+trigram: all three arms, trigram chained on coalesce(v.id, t.id)"
+        (let [sql (hybrid-search-sql trgm)]
+          (is (str/includes? sql "\"text_results\""))
+          (is (str/includes? sql "\"trigram_results\""))
+          (is (str/includes? sql "\"keyword_rank\""))
+          (is (str/includes? sql "\"trigram_rank\""))
+          (is (str/includes? sql "FULL JOIN \"trigram_results\" AS \"g\" ON COALESCE(\"v\".\"id\", \"t\".\"id\") = \"g\".\"id\""))))
+      (testing "disable_keyword + trigram (replace keyword with trigram): no keyword arm, trigram joins on v.id"
+        (let [sql (hybrid-search-sql (assoc trgm :disable-keyword? true))]
+          (is (not (str/includes? sql "\"text_results\"")))
+          (is (not (str/includes? sql "\"keyword_rank\"")))
+          (is (str/includes? sql "\"trigram_results\""))
+          (is (str/includes? sql "\"trigram_rank\""))
+          (is (str/includes? sql "FULL JOIN \"trigram_results\" AS \"g\" ON \"v\".\"id\" = \"g\".\"id\""))))
+      (testing "disable_keyword only (semantic-only): single vector arm, no FULL JOIN, no coalesced columns"
+        (let [sql (hybrid-search-sql {:disable-keyword? true})]
+          (is (not (str/includes? sql "\"text_results\"")))
+          (is (not (str/includes? sql "\"keyword_rank\"")))
+          (is (not (str/includes? sql "\"trigram_results\"")))
+          (is (not (str/includes? sql "FULL JOIN")))
+          ;; the coalesce degenerates to a bare reference when only the anchor is present
+          (is (not (str/includes? sql "COALESCE(\"v\"")))
+          (is (str/includes? sql "\"v\".\"semantic_rank\" AS \"semantic_rank\"")))))))
+
+(deftest rrf-rank-exp-arm-terms-test
+  (let [rrf      @#'semantic.scoring/rrf-rank-exp
+        refs-col (fn [exp col] (str/includes? (pr-str exp) col))]
+    (testing "baseline blends the semantic + keyword terms"
+      (let [exp (rrf {})]
+        (is (refs-col exp ":semantic_rank"))
+        (is (refs-col exp ":keyword_rank"))
+        (is (not (refs-col exp ":trigram_rank")))))
+    (testing "disable_keyword drops the keyword term (the column is absent and would throw)"
+      (let [exp (rrf {:disable-keyword? true})]
+        (is (refs-col exp ":semantic_rank"))
+        (is (not (refs-col exp ":keyword_rank")))))
+    (testing "disable_keyword + trigram fuses semantic + trigram only -- the replace-keyword-with-trigram blend"
+      (let [exp (rrf {:disable-keyword? true :trigram-config {:weight 0.2}})]
+        (is (refs-col exp ":semantic_rank"))
+        (is (not (refs-col exp ":keyword_rank")))
+        (is (refs-col exp ":trigram_rank"))))
+    (testing "the two-arm baseline expression is unchanged from the hardcoded 0.49/0.51 blend"
+      (is (= [:+ [:* [:cast 0.49 :float] [:coalesce [:/ 1.0 [:+ 60 :semantic_rank]] 0]]
+              [:* [:cast 0.51 :float] [:coalesce [:/ 1.0 [:+ 60 :keyword_rank]] 0]]]
+             (rrf {}))))))
+
 (deftest build-pipeline-stages-test
   (let [rows [{:model "card"      :legacy_input {:id 1 :model "card"}
                :semantic_rank 2 :semantic_distance 0.30 :semantic_view "attributes"
@@ -206,9 +271,9 @@
               {:model "card"      :legacy_input {:id 9 :model "card"}
                :semantic_rank nil :semantic_distance nil :semantic_view nil
                :keyword_rank 1 :rrf 0.009 :total_score 50.0}]
-        {:keys [horizon stages]} (#'semantic.index/build-pipeline-stages rows)
+        {:keys [horizon stages]} (#'semantic.index/build-pipeline-stages rows true false)
         by-name (into {} (map (juxt :name :candidates)) stages)]
-    (testing "emits the four base stages in order with the configured horizon"
+    (testing "emits the four base stages in order with the configured horizon (keyword on, trigram off)"
       (is (= ["retrieval:semantic" "retrieval:keyword" "fusion:rrf" "score:weighted"]
              (mapv :name stages)))
       (is (= (semantic.settings/semantic-search-results-limit) horizon)))
@@ -226,7 +291,25 @@
               {:model "card"      :id 9 :rank 3 :score 50.0}]
              (by-name "score:weighted"))))
     (testing "the blank-query/no-rows path yields empty stages, not an error"
-      (is (= [] (-> (#'semantic.index/build-pipeline-stages []) :stages first :candidates))))))
+      (is (= [] (-> (#'semantic.index/build-pipeline-stages [] true false) :stages first :candidates))))
+    (testing "keyword off (disable_keyword): the retrieval:keyword stage is omitted"
+      (is (= ["retrieval:semantic" "fusion:rrf" "score:weighted"]
+             (mapv :name (:stages (#'semantic.index/build-pipeline-stages rows false false))))))
+    (testing "trigram on: a retrieval:trigram stage is inserted before fusion, rank-ordered over :trigram_rank"
+      (let [trgm-rows (conj rows {:model "card" :legacy_input {:id 11 :model "card"}
+                                  :semantic_rank nil :keyword_rank nil :trigram_rank 1
+                                  :rrf 0.007 :total_score 40.0})
+            stages (:stages (#'semantic.index/build-pipeline-stages trgm-rows true true))
+            by-name (into {} (map (juxt :name :candidates)) stages)]
+        (is (= ["retrieval:semantic" "retrieval:keyword" "retrieval:trigram" "fusion:rrf" "score:weighted"]
+               (mapv :name stages)))
+        (is (= [{:model "card" :id 11 :rank 1}] (by-name "retrieval:trigram")))))
+    (testing "keyword off + trigram on (replace keyword with trigram): semantic + trigram arms, no keyword"
+      (let [trgm-rows (conj rows {:model "card" :legacy_input {:id 11 :model "card"}
+                                  :semantic_rank nil :keyword_rank nil :trigram_rank 1
+                                  :rrf 0.007 :total_score 40.0})]
+        (is (= ["retrieval:semantic" "retrieval:trigram" "fusion:rrf" "score:weighted"]
+               (mapv :name (:stages (#'semantic.index/build-pipeline-stages trgm-rows false true)))))))))
 
 (deftest legacy-input-with-score-debug-fields-test
   (let [row {:legacy_input {:id 1 :model "card"} :total_score 5.0 :content "[card]\nname: Q"

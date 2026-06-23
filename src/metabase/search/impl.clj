@@ -270,6 +270,7 @@
    [:multi-view-config                   {:optional true} [:maybe search.config/MultiViewConfig]]
    [:federated-multi-view-config         {:optional true} [:maybe search.config/FederatedMultiViewConfig]]
    [:reranker-config                     {:optional true} [:maybe search.config/RerankerConfig]]
+   [:trigram-config                      {:optional true} [:maybe search.config/TrigramConfig]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
@@ -282,6 +283,7 @@
    [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
    [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]
    [:disable-fallback?                   {:optional true} [:maybe :boolean]]
+   [:disable-keyword?                    {:optional true} [:maybe :boolean]]
    [:debug-pipeline?                     {:optional true} [:maybe :boolean]]])
 
 (mu/defn search-context :- SearchContext
@@ -316,6 +318,7 @@
            multi-view-config
            federated-multi-view-config
            reranker-config
+           trigram-config
            search-native-query
            search-string
            table-db-id
@@ -324,6 +327,7 @@
            has-temporal-dim
            weights
            disable-fallback?
+           disable-keyword?
            debug-pipeline?]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
@@ -353,6 +357,7 @@
                         :search-string                       search-string
                         :weights                             weights
                         :disable-fallback?                   (boolean disable-fallback?)
+                        :disable-keyword?                    (boolean disable-keyword?)
                         :debug-pipeline?                     (boolean debug-pipeline?)}
                  (some? collection)                          (assoc :collection collection)
                  (some? created-at)                          (assoc :created-at created-at)
@@ -369,6 +374,7 @@
                  (some? multi-view-config)                   (assoc :multi-view-config multi-view-config)
                  (some? federated-multi-view-config)         (assoc :federated-multi-view-config federated-multi-view-config)
                  (some? reranker-config)                     (assoc :reranker-config reranker-config)
+                 (some? trigram-config)                      (assoc :trigram-config trigram-config)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)

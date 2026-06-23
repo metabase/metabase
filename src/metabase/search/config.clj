@@ -439,6 +439,33 @@
    [:weight {:optional true} [:double {:min 0.0}]]            ; rerank-score weight in D1/D2/D3 (default 500.0)
    [:blend  {:optional true} (into [:enum] rerank-blend-modes)]]) ; default :rerank_then_boost
 
+(def TrigramConfig
+  "Schema for the semantic-engine pg_trgm typo-tolerance config (the `trigram_config` API param, sent as a
+  JSON object). It adds a *third* retrieval arm to the hybrid query: a trigram-similarity scan over the
+  `:column` text (default `name`), fused into the existing semantic+keyword RRF with its own `:weight`. A
+  single-character typo perturbs only a few of a string's overlapping 3-grams, so a misspelled query
+  ('Conract') still scores high against the canonical name ('Contract') -- which pure full-text search, which
+  matches stemmed lexemes *exactly*, misses entirely. An absent param is today's two-arm hybrid, so
+  absent-param = baseline.
+
+  The `:column` MUST be backed by the `pg_trgm` extension and a `GIN (<column> gin_trgm_ops)` index on the
+  active index table (search-eval scripts/manage_index.py set-trgm): the arm filters `<column> % :q` (the
+  pg_trgm similarity-threshold match operator, which the GIN index accelerates) and orders by
+  `similarity(<column>, :q)`, both of which require the extension; without the index the `%` filter
+  seq-scans. `:column` is interpolated as a raw SQL identifier, so it is constrained to a plain
+  lower-snake identifier shape. `:threshold` tightens the per-request similarity floor via an explicit
+  `similarity(<column>, :q) >= :threshold` predicate (the precision/recall trade) -- note it can only tighten
+  *above* the session `pg_trgm.similarity_threshold` GUC (default 0.3) that governs the `%` pre-filter; to
+  sweep below 0.3, lower that GUC at the DB level. `:weight` is the trigram arm's RRF weight -- start small
+  (default 0.2) so the surface-form arm tips, rather than dominates, the semantic+keyword fusion. `:limit`
+  caps the arm's candidate ceiling. Mastered here (rather than in the EE module) so the OSS search API param
+  and the EE query builder share one definition."
+  [:map {:closed true}
+   [:column    {:optional true} [:re #"^[a-z_][a-z0-9_]*$"]]    ; default "name"
+   [:threshold {:optional true} [:double {:min 0.0 :max 1.0}]]  ; explicit similarity floor (default 0.3)
+   [:weight    {:optional true} [:double {:min 0.0}]]           ; trigram arm RRF weight (default 0.2)
+   [:limit     {:optional true} pos-int?]])                     ; per-arm candidate ceiling (default results-limit)
+
 (def ^:private ui-contexts
   "Search `context` values issued by the frontend, one per UI surface.
   Selects ranking weights ([[static-context-weights]]) and filter defaults ([[filter-defaults-by-context]]).
@@ -543,11 +570,18 @@
    [:federated-multi-view-config {:optional true} [:maybe FederatedMultiViewConfig]]
    ;; Semantic-engine Voyage cross-encoder rerank config. When absent, no rerank step runs (baseline).
    [:reranker-config    {:optional true} [:maybe RerankerConfig]]
+   ;; Semantic-engine pg_trgm trigram (typo-tolerance) arm config. When absent, the hybrid query is the
+   ;; two-arm semantic+keyword baseline.
+   [:trigram-config     {:optional true} [:maybe TrigramConfig]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;; Semantic-engine: when true, disable the appdb fallback entirely -- return semantic results
    ;; unsupplemented below the min-results threshold, and re-throw (not fall back) on a vector-query error.
    [:disable-fallback?  {:optional true} [:maybe :boolean]]
+   ;; Semantic-engine: when true, remove the full-text keyword retrieval arm entirely -- no keyword candidates
+   ;; enter the pool and the keyword term is dropped from the RRF fusion (vector arm, plus the pg_trgm trigram
+   ;; arm when `:trigram-config` is set). Pair with `:disable-fallback?` for a clean measurement.
+   [:disable-keyword?   {:optional true} [:maybe :boolean]]
    ;; Semantic-engine: when true, emit per-stage retrieval-attribution diagnostics (the top-level
    ;; `pipeline` block + per-row arm/view fields). Eval-only; absent/false => response is unchanged.
    [:debug-pipeline?    {:optional true} [:maybe :boolean]]

@@ -59,15 +59,33 @@
                                        (into [:case] cat cases)
                                        1))))
 
-(def ^:private rrf-rank-exp
+(defn- rrf-rank-exp
+  "Reciprocal-rank-fusion expression blending the semantic and keyword arm ranks -- and, when the request
+  carries a `:trigram-config`, the pg_trgm trigram arm rank (the typo-tolerance arm). The per-arm weights
+  default to 0.49 (semantic) / 0.51 (keyword) -- full-text gets a slight edge -- but are overridable
+  per-request via the `:rrf/semantic` / `:rrf/keyword` nested scorer-params (the `weights` API param),
+  so the arm split can be swept without code changes. Both the keyword and trigram terms are conditional and
+  `conj`-ed onto the always-present semantic term: the keyword term is dropped when the request sets
+  `:disable-keyword?` (the arm is absent, so `:keyword_rank` is not a hybrid-query column and referencing it
+  would throw), and the trigram term is added only when the trigram arm is present; its weight comes from the
+  trigram-config `:weight` and defaults small (0.2) so the surface-form arm tips rather than dominates the
+  fusion. With keyword disabled + trigram on the fusion is `0.49*semantic + w*trigram` -- the
+  replace-keyword-with-trigram semantics. Only the ratio matters when an item is in multiple arms; the
+  absolute weights govern how single-arm hits compete."
+  [search-ctx]
   (let [k 60
-        keyword-weight 0.51
-        semantic-weight 0.49]
-    [:+
-     [:* [:cast semantic-weight :float]
-      [:coalesce [:/ 1.0 [:+ k :semantic_rank]] 0]]
-     [:* [:cast keyword-weight :float]
-      [:coalesce [:/ 1.0 [:+ k :keyword_rank]] 0]]]))
+        semantic-weight  (or (search.config/scorer-param search-ctx :rrf :semantic) 0.49)
+        keyword-weight   (or (search.config/scorer-param search-ctx :rrf :keyword) 0.51)
+        disable-keyword? (boolean (:disable-keyword? search-ctx))
+        trigram-cfg      (:trigram-config search-ctx)
+        trigram-weight   (or (:weight trigram-cfg) 0.2)]
+    (cond-> [:+
+             [:* [:cast semantic-weight :float]
+              [:coalesce [:/ 1.0 [:+ k :semantic_rank]] 0]]]
+      (not disable-keyword?) (conj [:* [:cast keyword-weight :float]
+                                    [:coalesce [:/ 1.0 [:+ k :keyword_rank]] 0]])
+      trigram-cfg            (conj [:* [:cast trigram-weight :float]
+                                    [:coalesce [:/ 1.0 [:+ k :trigram_rank]] 0]]))))
 
 (def ^:private cosine-distance-ceiling
   "Largest possible pgvector cosine distance (`<=>`): `1 - cos(theta)` tops out at 2 for opposed vectors."
@@ -89,7 +107,7 @@
     {:model [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:rrf        rrf-rank-exp
+    {:rrf        (rrf-rank-exp search-ctx)
      ;; Keyword-only hits have no vector distance, so treat them as maximally distant (score 0).
      :semantic-distance (semantic-distance-score-expr [:coalesce :semantic_distance [:inline cosine-distance-ceiling]])
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)

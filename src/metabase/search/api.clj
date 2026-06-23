@@ -170,6 +170,25 @@
         (log/warn "Failed to parse reranker_config:" (ex-message e))
         nil))))
 
+(defn- process-trigram-config
+  "Parse the `trigram_config` JSON query param into the map consumed by the semantic engine
+  (see [[metabase.search.config/TrigramConfig]]). Returns nil when absent/blank or unparseable. Coerces
+  `:threshold`/`:weight` to doubles, dropping any other keys so the closed schema accepts it.
+
+  Shape: `{\"column\": \"name\", \"threshold\": 0.3, \"weight\": 0.2, \"limit\": N}`."
+  [trigram-config]
+  (when-not (str/blank? trigram-config)
+    (try
+      (let [{:keys [column threshold weight limit]} (json/decode+kw trigram-config)]
+        (cond-> {}
+          column            (assoc :column column)
+          (some? threshold) (assoc :threshold (double threshold))
+          (some? weight)    (assoc :weight (double weight))
+          (some? limit)     (assoc :limit limit)))
+      (catch Exception e
+        (log/warn "Failed to parse trigram_config:" (ex-message e))
+        nil))))
+
 (defn- process-weights
   "Parse the `weights` JSON query param into the per-request scorer-weight overrides consumed by the
   scoring layer (the `:weights` key on the search context; see [[metabase.search.config/weights]]).
@@ -315,8 +334,10 @@
   - `multi_view_config`: for the semantic engine, a JSON object enabling multi-view-embedding retrieval (per-view embedding column + candidate quota `k`, pooled by min cosine distance, with a single cosine cutoff); omit for a single global KNN. Ignored by other engines
   - `federated_multi_view_config`: for the semantic engine, a JSON object composing federated/partitioned retrieval with multi-view embeddings (per-partition model set + quota + cosine cutoff + strategy, each partition pooling its own per-view embedding columns by min cosine distance); omit for a single global KNN. Ignored by other engines
   - `reranker_config`: for the semantic engine, a JSON object enabling a Voyage cross-encoder rerank step over the top-`pool` of the (permission-filtered, boost-scored) candidate list (`model`, `pool`, `top_k`, `weight`, `blend`); requires the `ee-reranking-enabled` setting + key. A precision-only reorder; omit for no rerank. Ignored by other engines
+  - `trigram_config`: for the semantic engine, a JSON object enabling a third, pg_trgm trigram-similarity retrieval arm for typo tolerance (`column` [default `name`], `threshold`, `weight`, `limit`), fused into the semantic+keyword RRF; requires a `GIN (<column> gin_trgm_ops)` index + the `pg_trgm` extension on the active index table; omit for the two-arm baseline. Ignored by other engines
   - `weights`: a JSON object of per-request scorer-weight overrides (e.g. `{\"rrf\": 1, \"exact\": 0}`); the highest-precedence weight layer, overriding static defaults and the `experimental-search-weight-overrides` setting for this request only. Unknown scorer keys are inert
   - `disable_fallback`: for the semantic engine, set to true to disable the appdb fallback entirely -- the engine returns its own results unsupplemented even when below the min-results threshold, and re-throws (rather than silently falling back) if the vector query errors. Ignored by other engines
+  - `disable_keyword`: for the semantic engine, set to true to remove the full-text keyword retrieval arm entirely -- no keyword candidates enter the pool and the keyword term is dropped from the RRF fusion (the engine searches on the vector arm, plus the pg_trgm trigram arm when `trigram_config` is set). Pair with `disable_fallback` for a clean measurement (the appdb fallback is itself keyword-based). Ignored by other engines
   - `debug_pipeline`: for the semantic engine, set to true to emit per-stage retrieval-attribution diagnostics -- a top-level `pipeline` block (per-stage candidate lists for the semantic arm, keyword arm, RRF fusion, and weighted score, plus `permission_dropped` and `fallback` provenance) and per-row arm/view fields (`source`, `semantic_rank`, `keyword_rank`, `cosine_distance`, `semantic_view`). Eval-only; absent/false leaves the response unchanged. Ignored by other engines
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
@@ -350,8 +371,10 @@
     multi-view-config                   :multi_view_config
     federated-multi-view-config         :federated_multi_view_config
     reranker-config                     :reranker_config
+    trigram-config                      :trigram_config
     weights                             :weights
     disable-fallback                    :disable_fallback
+    disable-keyword                     :disable_keyword
     debug-pipeline                      :debug_pipeline
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
@@ -381,8 +404,10 @@
        [:multi_view_config                   {:optional true} [:maybe :string]]
        [:federated_multi_view_config         {:optional true} [:maybe :string]]
        [:reranker_config                     {:optional true} [:maybe :string]]
+       [:trigram_config                      {:optional true} [:maybe :string]]
        [:weights                             {:optional true} [:maybe :string]]
        [:disable_fallback                    {:optional true} [:maybe :boolean]]
+       [:disable_keyword                     {:optional true} [:maybe :boolean]]
        [:debug_pipeline                      {:optional true} [:maybe :boolean]]
        [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]
@@ -420,8 +445,10 @@
                 :multi-view-config                   (process-multi-view-config multi-view-config)
                 :federated-multi-view-config         (process-federated-multi-view-config federated-multi-view-config)
                 :reranker-config                     (process-reranker-config reranker-config)
+                :trigram-config                      (process-trigram-config trigram-config)
                 :weights                             (process-weights weights)
                 :disable-fallback?                   disable-fallback
+                :disable-keyword?                    disable-keyword
                 :debug-pipeline?                     debug-pipeline
                 :search-native-query                 search-native-query
                 :search-string                       (some-> q str/trim not-empty)
