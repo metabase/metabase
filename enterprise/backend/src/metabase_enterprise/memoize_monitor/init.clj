@@ -24,7 +24,6 @@
   (see [[estimate-cache-bytes]]) rather than a full-cache walk, keeping the cost roughly constant regardless of cache
   size; we still export the measurement duration so its cost stays observable."
   (:require
-   [clj-memory-meter.core :as mm]
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
@@ -62,27 +61,6 @@
     (when (instance? PluggableMemoization pm)
       (.cache ^PluggableMemoization pm))))
 
-(def ^:private memory-measurement-available?
-  (contains? #{"" "true"} (System/getProperty "jdk.attach.allowAttachSelf")))
-
-(def ^:private sample-size
-  "Number of cache entries to actually measure before extrapolating to the full entry count."
-  10)
-
-(defn- estimate-cache-bytes
-  "Approximate retained size in bytes of `cache` (a `clojure.core.cache` cache holding `entries` entries).
-
-  Rather than walk the whole cache (potentially millions of entries) on every scrape, measure a small sample of
-  entries and scale by the total count. This keeps the cost roughly constant regardless of cache size; the result is
-  an estimate, not an exact figure (a uniform per-entry size is assumed, and structure shared across entries is
-  effectively counted once per sample then scaled up)."
-  [cache entries]
-  (let [sample (into [] (take sample-size) cache)]
-    (if (empty? sample)
-      0
-      (long (* (mm/measure sample :bytes true)
-               (/ entries (double (count sample))))))))
-
 (defn- memoization-cache-stats
   "Map of `{:cache name, :entries n, :bytes b, :measure-ms ms}` given a var holding a memoized function with a
   reachable backing cache, or `nil` otherwise.
@@ -93,15 +71,9 @@
   [cache-var]
   (try
     (when-let [cache (cache-object @cache-var)]
-      (let [entries (count cache)
-            [bytes measure-ms] (when memory-measurement-available?
-                                 (let [start-ns (System/nanoTime)
-                                       bytes (estimate-cache-bytes cache entries)]
-                                   [bytes (/ (- (System/nanoTime) start-ns) 1e6)]))]
+      (let [entries (count cache)]
         {:cache      (str (symbol cache-var))
-         :entries    entries
-         :bytes      bytes
-         :measure-ms measure-ms}))
+         :entries    entries}))
     (catch Exception e
       (log/warn e "Error measuring memoization cache size" {:cache (str (symbol cache-var))}))))
 
@@ -115,9 +87,5 @@
 (defmethod analytics/pull-collector ::memoize-cache-sizes [_]
   {:min-interval-s (* 10 60)
    :f              (fn []
-                     (doseq [{:keys [cache entries bytes measure-ms]} (all-cache-stats)]
-                       (analytics.interface/set-gauge! :metabase-memoize/cache-size {:cache cache} entries)
-                       (when measure-ms
-                         (analytics.interface/set-gauge! :metabase-memoize/cache-measure-duration-ms {:cache cache} measure-ms))
-                       (when bytes
-                         (analytics.interface/set-gauge! :metabase-memoize/cache-bytes {:cache cache} bytes))))})
+                     (doseq [{:keys [cache entries]} (all-cache-stats)]
+                       (analytics.interface/set-gauge! :metabase-memoize/cache-size {:cache cache} entries)))})
