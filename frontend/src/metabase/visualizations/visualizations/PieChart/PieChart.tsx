@@ -193,6 +193,7 @@ export function PieChart(props: VisualizationProps) {
     >
       <ResponsiveEChartsRenderer
         ref={containerRef}
+        display="pie"
         option={option}
         onInit={handleInit}
         onResize={handleResize}

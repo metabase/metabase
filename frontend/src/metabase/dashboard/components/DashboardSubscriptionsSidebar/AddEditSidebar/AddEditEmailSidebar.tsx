@@ -9,7 +9,6 @@ import {
 } from "metabase/common/components/SchedulePicker";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
@@ -19,7 +18,7 @@ import { dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
-import { Icon, Title } from "metabase/ui";
+import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,
@@ -31,6 +30,7 @@ import {
   type User,
 } from "metabase-types/api";
 
+import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
@@ -85,9 +85,25 @@ export const AddEditEmailSidebar = ({
   const currentUser = useSelector(getUser);
 
   // Return true if the results of all cards can be downloaded
-  const allowDownload = pulse.cards?.every(
+  const allowDownload = pulse.cards.every(
     (card) => card.download_perms !== DataPermissionValue.NONE,
   );
+
+  // Whether to attach a server-rendered PDF of the whole dashboard. Stored per-channel in
+  // `details.include_pdf` (the same place as `attachment_only`); the BE reads it on the email path.
+  const includePdf =
+    allowDownload &&
+    pulse.channels.some((channel) => !!channel.details?.include_pdf);
+
+  const handleToggleIncludePdf = (checked: boolean) => {
+    setPulse({
+      ...pulse,
+      channels: pulse.channels.map((channel) => ({
+        ...channel,
+        details: { ...channel.details, include_pdf: checked },
+      })),
+    });
+  };
 
   useEffect(() => {
     if (isEmbeddingSdk()) {
@@ -171,37 +187,43 @@ export const AddEditEmailSidebar = ({
             parameters={parameters}
           />
         )}
-        <div
-          className={cx(
-            CS.textBold,
-            CS.py3,
-            CS.flex,
-            CS.justifyBetween,
-            CS.alignCenter,
-            CS.borderTop,
-          )}
-        >
-          <Title order={4}>{t`Don't send if there aren't results`}</Title>
-          <Toggle
-            value={pulse.skip_if_empty || false}
+        <Stack gap="md" py="lg" className={CS.borderTop}>
+          <Switch
+            checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}
+            label={
+              <Text fw="bold">{t`Don't send if there aren't results`}</Text>
+            }
+            labelPosition="left"
+            classNames={{
+              body: S.SwitchBody,
+            }}
           />
-        </div>
-        <EmailAttachmentPicker
-          cards={pulse.cards}
-          pulse={pulse}
-          setPulse={setPulse}
-          allowDownload={allowDownload}
-        />
+          <Switch
+            checked={includePdf}
+            onChange={(e) => handleToggleIncludePdf(e.target.checked)}
+            disabled={!allowDownload}
+            classNames={{
+              body: S.SwitchBody,
+              input: S.SwitchInput,
+            }}
+            label={<Text fw="bold">{t`Attach a PDF of the dashboard`}</Text>}
+            labelPosition="left"
+          />
+          <EmailAttachmentPicker
+            cards={pulse.cards}
+            pulse={pulse}
+            setPulse={setPulse}
+            allowDownload={allowDownload}
+          />
+        </Stack>
+
         {pulse.id != null && (
           <DeleteSubscriptionAction
             pulse={pulse}
             handleArchive={handleArchive}
           />
         )}
-        <div className={cx(CS.p2, CS.mtAuto, CS.textSmall, CS.textMedium)}>
-          {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
-        </div>
       </div>
     </Sidebar>
   );
