@@ -102,7 +102,7 @@ export type SdkQuestionEntityPublicProps =
       /**
        * A table-backed ad hoc query created with `createMetabaseQuery`.
        */
-      query: SdkQuestionQuery;
+      query: SdkQuestionQuery | null;
     };
 
 /**

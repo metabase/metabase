@@ -263,6 +263,7 @@ Measures must come from tables in the metric's `mappedTableIds`. Fields, segment
 Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass the returned query to the SDK question component with the `query` prop.
 
 `useMetabaseQueryObject` supports generated table objects and generated metric objects. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization.
+Do not pass generics to `useMetabaseQueryObject`; it returns a typed `DatasetQuery | null`, not query result rows.
 
 The prop contract is:
 

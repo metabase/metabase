@@ -584,6 +584,18 @@ describe("useMetabaseQuery", () => {
       breakout: [fieldRef(101)],
     });
 
+    it("throws when called before the SDK bundle is loaded", () => {
+      delete window.METABASE_EMBEDDING_SDK_BUNDLE;
+
+      expect(() =>
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+        }),
+      ).toThrow(
+        "createMetabaseQuery requires the Metabase Embedding SDK bundle to be loaded.",
+      );
+    });
+
     it("builds a complete dataset query from a generated table schema", () => {
       expect(
         createMetabaseQuery({

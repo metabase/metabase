@@ -163,7 +163,7 @@ function mapQueryData<TRow>(result: QueryQuestionResult) {
 const getCreateMetabaseQueryFromBundle = () =>
   getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.createMetabaseQuery;
 
-/** @internal */
+/** @notExported filter */
 export function filter<
   TDimension,
   TOperator extends ValueFilterOperatorForDimension<TDimension>,
@@ -203,7 +203,7 @@ export function filter(
   return { dimension, operator, value };
 }
 
-/** @internal */
+/** @notExported breakout */
 export function breakout<TDimension>(dimension: TDimension): {
   dimension: TDimension;
 };
@@ -337,7 +337,6 @@ export function useMetabaseQueryObject(
     () => {
       const createQuery = getCreateMetabaseQueryFromBundle();
 
-      // If SDK bundle is not yet loaded, createQuery would be `null`
       if (!createQuery) {
         return null;
       }

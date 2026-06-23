@@ -27,3 +27,4 @@ export type {
   MetabaseQueryOptions,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
+export type { DatasetQuery } from "metabase-types/api";
