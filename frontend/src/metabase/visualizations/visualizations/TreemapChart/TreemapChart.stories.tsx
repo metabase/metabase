@@ -23,7 +23,11 @@ const Template: StoryFn<TemplateArgs> = ({ rawSeries, displayTheme }) => {
   return (
     <VisualizationWrapper displayTheme={displayTheme}>
       <Box w={1000} h={600}>
-        <Visualization rawSeries={rawSeries} width={1000} />
+        <Visualization
+          rawSeries={rawSeries}
+          width={1000}
+          handleVisualizationClick={() => {}}
+        />
       </Box>
     </VisualizationWrapper>
   );
