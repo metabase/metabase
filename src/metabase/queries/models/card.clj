@@ -1363,8 +1363,6 @@
                (some #(nil? (:id %)) result_metadata)
                (map? dataset_query)
                (seq dataset_query))
-      ;; native models can't be re-derived without running their SQL; `infer-metadata` returns nil for them, so
-      ;; their (already complete) serialized metadata is left untouched.
       (when-let [fresh (card.metadata/infer-metadata dataset_query)]
         (let [native?       (lib/native? dataset_query)
               preserve      (into #{} (map u/->snake_case_en) (lib/model-preserved-keys native?))
