@@ -1,5 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 
 import { Box, Stack } from "metabase/ui";
@@ -165,8 +165,10 @@ export const TreemapChart = ({
     getPointer,
   ]);
 
+  const [chartInstance, setChartInstance] = useState<EChartsType>();
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
+    setChartInstance(chart);
   }, []);
 
   const handleResize = useCallback(
@@ -213,7 +215,6 @@ export const TreemapChart = ({
   }, [option, viewRootId]);
 
   const prevViewRootIdRef = useRef(viewRootId);
-  // re-measure labels when the view root changes
   useEffect(() => {
     const isDrillTransition = prevViewRootIdRef.current !== viewRootId;
     prevViewRootIdRef.current = viewRootId;
@@ -222,7 +223,7 @@ export const TreemapChart = ({
     } else {
       handleLabelMeasure();
     }
-  }, [option, viewRootId, handleLabelMeasure]);
+  }, [chartInstance, option, viewRootId, handleLabelMeasure]);
 
   const breadcrumb = chartData
     ? getTreemapBreadcrumbModel(chartData.tree, viewRootId)
