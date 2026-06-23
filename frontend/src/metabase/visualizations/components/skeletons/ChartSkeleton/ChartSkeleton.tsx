@@ -16,7 +16,7 @@ import SkeletonCaption from "metabase/visualizations/components/skeletons/Skelet
 import TableSkeleton from "metabase/visualizations/components/skeletons/TableSkeleton";
 import { VisualizationSkeleton } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import WaterfallSkeleton from "metabase/visualizations/components/skeletons/WaterfallSkeleton";
-import type { CardDisplayType } from "metabase-types/api";
+import type { CardDisplayType, VisualizationDisplay } from "metabase-types/api";
 
 export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   display?: CardDisplayType;
@@ -25,9 +25,12 @@ export type ChartSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   actionMenu?: JSX.Element | null;
 };
 
-const skeletonComponent: (display?: CardDisplayType) => JSX.Element | null = (
-  display?: CardDisplayType,
-) => {
+// Returns just the chart-shaped skeleton image for a display type (no caption
+// or surrounding chrome), suitable for embedding inside a chart's own render
+// area — e.g. as the Suspense fallback while the echarts chunk loads.
+export const getChartSkeletonImage: (
+  display?: VisualizationDisplay,
+) => JSX.Element | null = (display?: VisualizationDisplay) => {
   if (!display) {
     return null;
   }
@@ -92,7 +95,7 @@ const ChartSkeleton = ({
       description={description}
       actionMenu={actionMenu}
     >
-      {skeletonComponent(display)}
+      {getChartSkeletonImage(display)}
     </VisualizationSkeleton>
   );
 };
