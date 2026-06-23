@@ -66,6 +66,11 @@ export const useBrush = (
   // ECharts option object — used as a signal dep to re-enable brush after
   // chart model changes (ECharts resets the cursor state on re-render).
   option?: unknown,
+  // ECharts instance — used as a signal dep so the brush is (re-)enabled once
+  // the (lazily loaded) renderer has initialized the chart. `onInit` fires
+  // after this hook's effects first run, so without this the brush would never
+  // be enabled on desktop.
+  chartInstance?: unknown,
 ) => {
   const isTouch = useRef(isTouchDevice()).current;
 
@@ -81,7 +86,14 @@ export const useBrush = (
     chartRef.current?.dispatchAction({ type: "takeGlobalCursor" });
   }, [chartRef]);
 
-  useDesktopBrush({ isTouch, isBrushable, enableBrush, disableBrush, option });
+  useDesktopBrush({
+    isTouch,
+    isBrushable,
+    enableBrush,
+    disableBrush,
+    option,
+    chartInstance,
+  });
   useTouchBrush({
     chartRef,
     containerRef,
@@ -99,12 +111,14 @@ function useDesktopBrush({
   enableBrush,
   disableBrush,
   option,
+  chartInstance,
 }: {
   isTouch: boolean;
   isBrushable: boolean;
   enableBrush: () => void;
   disableBrush: () => void;
   option?: unknown;
+  chartInstance?: unknown;
 }) {
   useEffect(() => {
     if (isTouch) {
@@ -120,7 +134,7 @@ function useDesktopBrush({
     }, 0);
 
     return () => clearTimeout(timeout);
-  }, [isBrushable, isTouch, enableBrush, disableBrush, option]);
+  }, [isBrushable, isTouch, enableBrush, disableBrush, option, chartInstance]);
 }
 
 /**

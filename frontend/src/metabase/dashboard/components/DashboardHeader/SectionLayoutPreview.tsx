@@ -35,9 +35,9 @@ export function SectionLayoutPreview({ layout }: SectionLayoutPreviewProps) {
   return (
     <Flex align="center" justify="center">
       <Box pos="relative" w={WIDTH} mih={height}>
-        {layoutItems.map((item) => (
+        {layoutItems.map((item, index) => (
           <PreviewCard
-            key={item.id}
+            key={index}
             layout={item}
             cellWidth={CELL_WIDTH}
             cellHeight={CELL_HEIGHT}
