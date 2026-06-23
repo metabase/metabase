@@ -321,6 +321,58 @@
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 
+(deftest model-result-metadata-id-roundtrips-test
+  ;; GHY-3946: a model column's :id (its link to the underlying Field) must survive serialization as a
+  ;; portable field reference. Otherwise a dashboard/model filter mapped to the model column can't resolve
+  ;; the field's values and falls back to a text search instead of a value dropdown.
+  (testing "an MBQL model's result_metadata :id survives a round-trip (remapped to the dest Field id), with overrides preserved"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "serialize a model whose CATEGORY column carries a user override"
+          (ts/with-db source-db
+            (let [coll  (ts/create! :model/Collection :name "models")
+                  db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "products" :db_id (:id db))
+                  field (ts/create! :model/Field :name "category" :table_id (:id table)
+                                    :base_type :type/Text :semantic_type :type/Category
+                                    :has_field_values :list)]
+              (ts/create! :model/Card
+                          :type            :model
+                          :name            "Products Model"
+                          :collection_id   (:id coll)
+                          :database_id     (:id db)
+                          :table_id        (:id table)
+                          :query_type      :query
+                          :dataset_query   {:type     :query
+                                            :query    {:source-table (:id table)}
+                                            :database (:id db)}
+                          :result_metadata [{:name "category" :display_name "Custom Category"
+                                             :base_type :type/Text :semantic_type :type/Category
+                                             :id (:id field) :field_ref [:field (:id field) nil]
+                                             :table_id (:id table)}])
+              (reset! serialized (into [] (serdes.extract/extract {}))))))
+        (testing "the serialized model column keeps its user override"
+          (let [card (first (filter #(= "Products Model" (:name %)) (by-model @serialized "Card")))
+                cat  (first (filter #(= "category" (:name %)) (:result_metadata card)))]
+            (is (some? cat))
+            (is (= "Custom Category" (:display_name cat)))))
+        (testing "after loading, the model column links to the dest Field id (so a filter keeps its dropdown)"
+          (ts/with-db dest-db
+            ;; pre-create a different db/table/field so the dest IDs don't match the source IDs
+            (let [db2    (ts/create! :model/Database :name "other-db")
+                  table2 (ts/create! :model/Table :name "orders" :db_id (:id db2))]
+              (ts/create! :model/Field :name "subtotal" :table_id (:id table2))
+              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+              (let [dest-field (t2/select-one :model/Field :name "category")
+                    dest-card  (t2/select-one :model/Card :name "Products Model")
+                    cat        (first (filter #(= "category" (:name %)) (:result_metadata dest-card)))]
+                (is (number? (:id cat))
+                    "model column kept a numeric :id link after the round-trip")
+                (is (= (:id dest-field) (:id cat))
+                    "model column :id points at the dest Field id")
+                (is (= "Custom Category" (:display_name cat))
+                    "user override on the column survived the round-trip")))))))))
+
 (deftest card-with-unexported-table-and-field-test
   (testing "a Card referencing a Table/Field absent from the bundle still loads by synthesizing inactive rows"
     (let [serialized (atom nil)]

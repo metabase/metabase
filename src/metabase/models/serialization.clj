@@ -904,6 +904,20 @@
 (defmethod load-one! :default [ingested maybe-local]
   (default-load-one! ingested maybe-local))
 
+(defmulti load-finalize!
+  "Called once per loaded entity after EVERY entity in a deserialization has been loaded. Use this for
+  reconciliation that needs other entities to already be present in the appdb — e.g. recomputing a model's
+  `result_metadata` field links from its query, which requires the referenced Tables and Fields to be loaded
+  first (load order between an entity and the things its query references is not otherwise guaranteed).
+
+  Receives the entity's abstract `:serdes/meta` path. Runs in its own transaction. Defaults to a no-op.
+
+  Keyed on the model name."
+  {:arglists '([path])}
+  (fn [path] (-> path last :model)))
+
+(defmethod load-finalize! :default [_path] nil)
+
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
   [id-str]

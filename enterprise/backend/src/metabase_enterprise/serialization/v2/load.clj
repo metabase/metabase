@@ -278,17 +278,32 @@
                                :files         file-names}
                               (first ingest-errors)))))
           (log/infof "Starting deserialization, total %s documents" (count contents))
-          (reduce (fn [ctx item]
-                    (try
-                      (load-one! ctx item)
-                      (catch Exception e
-                        (when-not continue-on-error
-                          (throw e))
-                        ;; eschew big and scary stacktrace
-                        (log/warnf (u/strip-error e "Skipping deserialization error"))
-                        (update ctx :errors conj e))))
-                  ctx
-                  contents)))
+          (let [ctx (reduce (fn [ctx item]
+                              (try
+                                (load-one! ctx item)
+                                (catch Exception e
+                                  (when-not continue-on-error
+                                    (throw e))
+                                  ;; eschew big and scary stacktrace
+                                  (log/warnf (u/strip-error e "Skipping deserialization error"))
+                                  (update ctx :errors conj e))))
+                            ctx
+                            contents)]
+            ;; Finalization pass: now that every entity is loaded, give each a chance to reconcile against
+            ;; entities it couldn't see during its own load (e.g. a model recomputing its result_metadata field
+            ;; links from its query). See `serdes/load-finalize!`.
+            (reduce (fn [ctx path]
+                      (try
+                        (t2/with-transaction [_tx]
+                          (serdes/load-finalize! path))
+                        ctx
+                        (catch Exception e
+                          (when-not continue-on-error
+                            (throw e))
+                          (log/warnf (u/strip-error e "Skipping finalization error"))
+                          (update ctx :errors conj e))))
+                    ctx
+                    (:seen ctx)))))
       (when reindex?
         ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
         ;; search index entries; this ensures the index reflects the final state.

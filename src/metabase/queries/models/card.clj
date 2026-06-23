@@ -1346,6 +1346,26 @@
                            (serdes/mbql-deps (:field_ref m))))
         (disj nil))))
 
+(defmethod serdes/load-finalize! "Card"
+  [path]
+  ;; A model's result_metadata is serialized with overrides only (display_name, semantic_type, …); the structural
+  ;; :id that links each column to its underlying Field is dropped, because it isn't portable as-is and is
+  ;; derivable from the query. Re-derive it here — after the full load, when the referenced Tables/Fields are
+  ;; present — so a dashboard/model filter mapped to the model column can resolve the field's values (its value
+  ;; dropdown) instead of falling back to a text search. See GHY-3946.
+  (when-let [{:keys [dataset_query result_metadata] :as card}
+             (some->> (serdes/load-find-local path)
+                      :id
+                      (t2/select-one [:model/Card :id :type :dataset_query :result_metadata :card_schema]))]
+    (when (and (model? card)
+               (seq result_metadata)
+               (some #(nil? (:id %)) result_metadata)
+               (map? dataset_query)
+               (seq dataset_query)
+               (not (lib/native? dataset_query)))
+      (when-let [reinferred (card.metadata/infer-metadata-with-model-overrides dataset_query card)]
+        (t2/update! :model/Card (:id card) {:result_metadata reinferred})))))
+
 (defmethod serdes/storage-path "Card" [card ctx]
   (let [base (serdes/storage-default-collection-path card ctx)]
     (cond
