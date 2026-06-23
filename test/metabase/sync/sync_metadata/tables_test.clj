@@ -48,18 +48,18 @@
         normal-table {:name   "orders"
                       :schema "public"}
         db-metadata  {:tables #{temp-table normal-table}}]
-    (testing "with no premium features, table-set excludes transform temporary tables"
+    (testing "with no premium features, sync excludes transform temporary tables"
       (mt/with-premium-features #{}
         (is (= #{normal-table}
-               (#'sync-tables/table-set db-metadata)))))
+               (into #{} (remove #'sync-tables/ignore-table?) (:tables db-metadata))))))
     (testing "when hosted, includes transform temporary tables"
       (mt/with-premium-features #{:hosting}
         (is (= #{normal-table temp-table}
-               (#'sync-tables/table-set db-metadata)))))
+               (into #{} (remove #'sync-tables/ignore-table?) (:tables db-metadata))))))
     (testing "when hosted with `transforms` enabled, excludes the temp tables"
       (mt/with-premium-features #{:hosting :transforms-basic}
         (is (= #{normal-table}
-               (#'sync-tables/table-set db-metadata)))))))
+               (into #{} (remove #'sync-tables/ignore-table?) (:tables db-metadata))))))))
 
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
