@@ -1064,12 +1064,15 @@
 
   indexes
   {:team "Gadget"
-   :api  #{metabase.indexes.api}
+   :api  #{metabase.indexes.api
+           metabase.indexes.reconcile}
    :uses #{api
+           driver
            models
            util}
    :model-exports #{:model/TableIndex}
-   :model-imports #{:model/Transform}}
+   :model-imports #{:model/Database
+                    :model/Transform}}
 
   initialization-status
   {:team "UX West"
@@ -2390,11 +2393,13 @@
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table
+                    :model/TableIndex
                     :model/Transform
                     :model/TransformRun}
    :uses #{database-routing
            driver
            events
+           indexes
            lib
            lib-be
            premium-features

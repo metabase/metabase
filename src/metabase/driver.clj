@@ -1609,7 +1609,8 @@
    [:name              [:maybe :string]]
    ;; cross-driver category: :btree / :skip-index / :order-by / :sortkey
    [:kind              :keyword]
-   ;; warehouse-native type: btree/gin/... (PG), minmax/set/... (CH), nil for inline keys
+   ;; warehouse-native type/method: btree/gin/... (PG), minmax/set/... (CH skip-index), compound/interleaved
+   ;; (Redshift sortkey); nil for a ClickHouse ORDER BY
    [:access-method     [:maybe :string]]
    [:is-unique         :boolean]
    [:is-primary        :boolean]

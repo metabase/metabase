@@ -2,14 +2,15 @@
   (:require
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.query-impl :as transforms.query-impl]))
+   [metabase.transforms.query-impl :as transforms.query-impl]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (defn hydrate-transform-indexes
-  "Declared indexes for `transform`. Stub until the index-request model lands; tests `with-redefs` it."
-  [_transform]
-  [])
+  "Structured index defs for `transform`, read from its managed `TableIndex` rows (ordered by name)."
+  [transform]
+  (t2/select-fn-vec :structured :model/TableIndex :transform_id (:id transform) {:order-by [[:index_name :asc]]}))
 
 (defn- resolve-target
   "Apply the workspace target-rewrite hook before dispatch. On a workspaced child

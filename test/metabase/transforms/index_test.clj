@@ -75,6 +75,32 @@
           (when test-case
             (test-declared-indexes! test-case python-source)))))))
 
+(deftest ^:synchronized managed-indexes-verified-against-warehouse-after-run-test
+  (testing "real managed index rows are created by the run and then verified :succeeded against the warehouse"
+    ;; Reuses the driver create-index cases, but instead of stubbing hydrate-transform-indexes it persists real
+    ;; :model/TableIndex rows. The run reads them (real hydrate), applies them, and verify-managed-indexes! confirms
+    ;; each landed via fetch-table-indexes -- the whole create-then-verify loop on a live warehouse.
+    (mt/test-drivers (index-util/index-test-drivers)
+      (mt/dataset transforms-dataset/transforms-test
+        (let [{:keys [indexes]} (index-util/driver-cases driver/*driver*)
+              schema            (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (with-transform-cleanup! [{table-name :name :as target}
+                                    {:type "table" :schema schema :name "idx_verify_products" :database (mt/id)}]
+            (mt/with-temp [:model/Transform {tid :id :as transform} {:name   "index-verify-transform"
+                                                                     :source (query-source)
+                                                                     :target target}]
+              (doseq [idx indexes]
+                (t2/insert! :model/TableIndex {:transform_id tid
+                                               :index_name   (or (:name idx) (name (:kind idx)))
+                                               :structured   idx}))
+              (transforms.execute/execute! transform {:run-method :manual})
+              (transforms.tu/wait-for-table table-name 10000)
+              (testing "every managed row is verified succeeded"
+                (is (= #{:succeeded} (t2/select-fn-set :status :model/TableIndex :transform_id tid))))
+              (testing "GET /indexes lists them, flagged metabase_managed"
+                (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "indexes?transform-id=" tid))]
+                  (is (= (count indexes) (count (filter :metabase_managed data)))))))))))))
+
 (deftest ^:synchronized declared-index-failure-fails-the-run-test
   (testing "a bad index declaration fails the whole run instead of being silently skipped"
     ;; The index points at a missing column, so creation fails (inline: the CTAS; standalone: the CREATE INDEX).
@@ -168,3 +194,53 @@
   (testing "fetch-table-indexes has no safe default: its method throws for such a driver"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"fetch-table-indexes is not implemented for driver :h2"
                           (driver/fetch-table-indexes :h2 nil "public" "t")))))
+
+(deftest ^:parallel hydrate-transform-indexes-test
+  (testing "returns the structured defs of a transform's managed indexes, ordered by name"
+    (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                               :source             {:type "query"}
+                                               :source_database_id (mt/id)
+                                               :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                   :model/TableIndex _ {:transform_id tid :index_name "b_idx"
+                                        :structured {:kind :btree :name "b_idx" :columns [{:name "x"}]}}
+                   :model/TableIndex _ {:transform_id tid :index_name "a_idx"
+                                        :structured {:kind :btree :name "a_idx" :columns [{:name "y"}]}}]
+      (is (= ["a_idx" "b_idx"]
+             (map :name (transforms.execute/hydrate-transform-indexes {:id tid})))))))
+
+(deftest ^:synchronized verify-managed-indexes!-test
+  (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                             :source             {:type "query"}
+                                             :source_database_id (mt/id)
+                                             :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                 :model/TableIndex {present-id :id} {:transform_id tid :index_name "present_idx"
+                                                     :structured {:kind :btree :name "present_idx" :columns [{:name "x"}]}}
+                 :model/TableIndex {missing-id :id} {:transform_id tid :index_name "missing_idx"
+                                                     :structured {:kind :btree :name "missing_idx" :columns [{:name "y"}]}}]
+    (with-redefs [driver/fetch-table-indexes
+                  (fn [& _] [{:name "present_idx" :kind :btree :access-method "btree" :is-unique false
+                              :is-primary false :is-valid true :key-columns ["x"] :include-columns []
+                              :partial-predicate nil :definition "..."}])]
+      (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid))
+      (is (= :succeeded (t2/select-one-fn :status :model/TableIndex present-id)))
+      (is (= :failed (t2/select-one-fn :status :model/TableIndex missing-id)))
+      (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex present-id))))))
+
+(deftest ^:synchronized ddl-failure-marks-row-failed-test
+  (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
+                                             :source {:type "query"}
+                                             :source_database_id (mt/id)
+                                             :target {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                 :model/TableIndex {idx-id :id} {:transform_id tid :index_name "boom_idx"
+                                                 :structured {:kind :btree :name "boom_idx" :columns [{:name "x"}]}}]
+    (let [transform {:id tid :target {:database (mt/id) :schema "public" :name "t"
+                                      :indexes [{:kind :btree :name "boom_idx" :columns [{:name "x"}]}]}}]
+      (with-redefs [driver/supported-index-methods (fn [& _] {:btree {:lifecycle :standalone}})
+                    driver/connection-spec        (fn [& _] {})
+                    driver/compile-create-index   (fn [& _] "CREATE INDEX boom_idx ...")
+                    driver/execute-raw-queries!   (fn [& _] (throw (ex-info "ddl boom" {})))]
+        (is (thrown? Throwable
+                     (#'transforms-base.u/apply-standalone-indexes!
+                      {:engine :postgres :id (mt/id)} (assoc (:target transform) :transform-id tid))))
+        (is (= :failed (t2/select-one-fn :status :model/TableIndex idx-id)))
+        (is (re-find #"ddl boom" (t2/select-one-fn :error_message :model/TableIndex idx-id)))))))
