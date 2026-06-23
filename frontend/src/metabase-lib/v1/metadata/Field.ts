@@ -39,11 +39,6 @@ import { getIconForField, getUniqueFieldId } from "./utils/fields";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 
-// A field is instantiated from either a normalized field (the entity store) or
-// a plain API field (e.g. an RTK query result); they differ only in how the
-// hydrated relationships are represented.
-type FieldInput = Partial<ApiField> | Partial<NormalizedField>;
-
 // This interface is intentionally empty: a class cannot `extends` a type alias,
 // so merging an interface with the class is how instances inherit the API
 // field's properties without re-declaring them. The class declares the rest.
@@ -59,8 +54,8 @@ interface Field extends Omit<
 class Field {
   // `table`/`target`/`name_field` are id references in the plain object and are
   // hydrated into instances by the metadata layer (`hydrateField`), so these
-  // types describe a hydrated field. Properties are populated by the
-  // constructor's copy loop or by hydration.
+  // types describe a hydrated field. Properties are copied from the plain object
+  // by the constructor, or set by hydration.
   table?: Table;
   target?: Field;
   name_field?: Field;
@@ -71,13 +66,9 @@ class Field {
   source?: string;
   uniqueId?: string | number;
 
-  constructor(object: FieldInput = {}) {
-    const plainObject = object as Record<string, unknown>;
-    this._plainObject = plainObject as unknown as NormalizedField;
-
-    for (const property in plainObject) {
-      (this as Record<string, unknown>)[property] = plainObject[property];
-    }
+  constructor(object: NormalizedField) {
+    this._plainObject = object;
+    Object.assign(this, object);
   }
 
   getPlainObject(): NormalizedField {
@@ -328,9 +319,9 @@ class Field {
       throw new Error("`fieldMetadata` arg must be a plain object");
     }
 
-    const plainObject = this.getPlainObject();
-    const newField = new Field({ ...this, ...fieldMetadata } as FieldInput);
-    newField._plainObject = { ...plainObject, ...fieldMetadata };
+    const newField = new Field(this.getPlainObject());
+    Object.assign(newField, this, fieldMetadata);
+    newField._plainObject = { ...this.getPlainObject(), ...fieldMetadata };
 
     return newField;
   }
