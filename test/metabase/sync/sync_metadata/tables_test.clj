@@ -362,7 +362,7 @@
                       {:schema "public" :name "apple"}
                       {:schema "public" :name "mango"}}]
       (mt/with-temp [:model/Database db {}]
-        (#'sync-tables/create-or-reactivate-tables! db metadatas)
+        (#'sync-tables/create-tables! db metadatas)
         (is (= ["beta" "apple" "mango" "zebra"]
                (map :name (t2/select [:model/Table :name]
                                      :db_id (u/the-id db)

@@ -144,29 +144,27 @@
             {:data_authority :ingested
              :data_source    :ingested}))))
 
+(defn- reactivate-table!
+  "Mark an existing inactive Table active again, refreshing its cruft-dependent columns. `existing`
+  is the app-DB Table instance we already hold, so we don't re-select it."
+  [database existing]
+  (t2/update! :model/Table (:id existing)
+              (cond-> (cruft-dependent-cols existing database ::reactivate)
+                ;; do not unhide tables w/ cruft settings
+                (some? (:visibility_type existing)) (dissoc :visibility_type)
+                true                                (assoc :active true)
+                (:is_sample database)               (assoc :data_authority :ingested
+                                                           :data_source    :ingested))))
+
 (defn create-or-reactivate-table!
-  "Create a single new table in the database, or mark it as active if it already exists."
+  "Create a single new table in the database, or mark it as active if a matching inactive one exists."
   [database {schema :schema table-name :name :as table}]
-  (if-let [existing-id (t2/select-one-pk :model/Table
-                                         :db_id (u/the-id database)
-                                         :schema schema
-                                         :name table-name
-                                         :active false)]
-    (let [table (t2/select-one :model/Table existing-id)]
-      ;; if the table already exists but is marked *inactive*, mark it as *active*
-      (t2/update! :model/Table existing-id (cond-> (cruft-dependent-cols table database ::reactivate)
-
-                                             ;; do not unhide tables w/ cruft settings
-                                             (some? (:visibility_type table))
-                                             (dissoc :visibility_type)
-
-                                             true
-                                             (assoc :active true)
-
-                                             (:is_sample database)
-                                             (assoc :data_authority :ingested
-                                                    :data_source    :ingested))))
-    ;; otherwise create a new Table
+  (if-let [existing (t2/select-one :model/Table
+                                   :db_id (u/the-id database)
+                                   :schema schema
+                                   :name table-name
+                                   :active false)]
+    (reactivate-table! database existing)
     (create-table! database table)))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
@@ -208,15 +206,16 @@
                  (pr-str (sort (map (fn [{:keys [schema name]}] (str schema "." name)) too-long)))))
     (set ok)))
 
-(mu/defn- create-or-reactivate-tables!
-  "Create `new-tables` for database, or if they already exist, mark them as active."
+(mu/defn- create-tables!
+  "Insert brand-new tables for `database`. Sorted by `[schema name]` so auto-increment ids are
+  assigned deterministically."
   [database :- i/DatabaseInstance
    new-table-metadatas :- [:set i/DatabaseMetadataTable]]
   (doseq [table-metadata new-table-metadatas]
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
   (doseq [table-metadata (sort-by (juxt :schema :name) new-table-metadatas)]
-    (create-or-reactivate-table! database table-metadata)))
+    (create-table! database table-metadata)))
 
 (mu/defn- retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
@@ -425,26 +424,28 @@
   remap, so they get no `:model/Table` of their own)."
   [database :- i/DatabaseInstance
    batch]
-  (let [tables   (as-> batch <>
-                   (into #{} (comp (remove ignore-table?) (m/distinct-by table-name+schema)) <>)
-                   (remove-tables-with-too-long-names database <>)
-                   (ws.table-remapping/filter-workspace-side-tables <> (u/the-id database)))
-        existing (existing-tables-by-name+schema database tables)
-        active?  (fn [table] (:active (get existing (table-name+schema table))))
-        new      (into #{} (remove active?) tables)
-        live     (into #{} (filter active?) tables)
-        reactivated (into #{} (filter #(get existing (table-name+schema %))) new)]
-    (when (seq new)
-      (create-or-reactivate-tables! database new))
-    (when (seq reactivated)
-      (let [rows (existing-tables-by-name+schema database reactivated)]
-        (update-tables-metadata-if-needed! reactivated
-                                           (into #{} (keep #(get rows (table-name+schema %))) reactivated)
+  (let [tables         (as-> batch <>
+                         (into #{} (comp (remove ignore-table?) (m/distinct-by table-name+schema)) <>)
+                         (remove-tables-with-too-long-names database <>)
+                         (ws.table-remapping/filter-workspace-side-tables <> (u/the-id database)))
+        existing       (existing-tables-by-name+schema database tables)
+        existing-row   #(get existing (table-name+schema %))
+        already-active (into #{} (filter #(:active (existing-row %))) tables)
+        to-create      (into #{} (remove existing-row) tables)
+        to-reactivate  (into #{} (filter #(and (existing-row %) (not (:active (existing-row %))))) tables)]
+    (when (seq to-create)
+      (create-tables! database to-create))
+    (doseq [table-metadata to-reactivate]
+      (reactivate-table! database (existing-row table-metadata)))
+    (when (seq to-reactivate)
+      (let [rows (existing-tables-by-name+schema database to-reactivate)]
+        (update-tables-metadata-if-needed! to-reactivate
+                                           (into #{} (keep #(get rows (table-name+schema %))) to-reactivate)
                                            database)))
-    {:created (count new)
-     :updated (if (seq live)
-                (update-tables-metadata-if-needed! live
-                                                   (into #{} (keep #(get existing (table-name+schema %))) live)
+    {:created (+ (count to-create) (count to-reactivate))
+     :updated (if (seq already-active)
+                (update-tables-metadata-if-needed! already-active
+                                                   (into #{} (keep existing-row) already-active)
                                                    database)
                 0)}))
 
