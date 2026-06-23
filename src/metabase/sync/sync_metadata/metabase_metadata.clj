@@ -93,7 +93,12 @@
    This table contains information about type information, descriptions, and other properties that
    should be set for Metabase objects like Tables and Fields."
   ([database :- i/DatabaseInstance]
-   (sync-metabase-metadata! database (fetch-metadata/db-metadata database)))
+   ;; Standalone entry point: no `sync-tables` step ran to capture the `_metabase_metadata` table(s),
+   ;; so scan the freshly fetched metadata here and hand the 2-arity the same `:metabase-metadata-tables`
+   ;; holder it gets during a full sync. (`:tables` may be a reduce-only reducible, so reduce, don't `seq`.)
+   (let [db-metadata (fetch-metadata/db-metadata database)
+         captured    (into [] (filter is-metabase-metadata-table?) (:tables db-metadata))]
+     (sync-metabase-metadata! database (assoc db-metadata :metabase-metadata-tables (volatile! captured)))))
 
   ([database    :- i/DatabaseInstance
     db-metadata :- i/DatabaseMetadata]
@@ -102,14 +107,9 @@
      (let [driver (driver.u/database->driver database)]
        ;; `sync-metabase-metadata-table!` relies on `driver/table-rows-seq` being defined
        (when (get-method driver/table-rows-seq driver)
-         ;; If there's more than one metabase metadata table (in different schemas) we'll sync each one in turn.
-         ;; Hopefully this is never the case.
-         ;;
-         ;; Prefer the table(s) captured by the streaming `sync-tables` step (see
-         ;; [[metabase.sync.sync-metadata.tables/sync-tables-and-database!]]) so we don't re-scan the
-         ;; (possibly reducible) `:tables`. Fall back to scanning for the standalone 1-arg entry point.
-         (doseq [table (if-let [captured (:metabase-metadata-tables db-metadata)]
-                         @captured
-                         (filter is-metabase-metadata-table? (:tables db-metadata)))]
+         ;; The `sync-tables` step captured any `_metabase_metadata` table(s) while streaming `:tables`,
+         ;; so we don't re-scan them here. If there's more than one (in different schemas) we sync each in
+         ;; turn.
+         (doseq [table @(:metabase-metadata-tables db-metadata)]
            (sync-metabase-metadata-table! driver database table)))
        {}))))
