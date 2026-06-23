@@ -296,7 +296,7 @@
 
 (deftest resolve-native-table-qualified-column-fails-closed-test
   (testing "native SQL with table-qualified columns (SELECT orders.id FROM orders) fails
-            closed via guard 3 — the accepted PoC limitation, DOCUMENTED here"
+            closed via guard 3 — the accepted, documented limitation"
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)

@@ -19,6 +19,7 @@
    [metabase.test :as mt]
    [metabase.transforms-rest.api.transform]
    [metabase.transforms.test-run.chain :as chain]
+   [metabase.transforms.test-run.scratch :as scratch]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
   (:import
@@ -287,3 +288,55 @@
                   (testing "error envelope is returned"
                     (is (= "error" (:status resp)))
                     (is (string? (get-in resp [:error :message])))))))))))))
+
+;;; ===========================================================================
+;;; Contract: cleanup! runs inside the transform connection context
+;;; ===========================================================================
+
+(deftest chain-cleanup-runs-inside-transform-connection-test
+  ;; CONTRACT (documented in scratch.clj:29-34): every call to scratch/cleanup!
+  ;; issued by run-chain-test! must occur while *connection-type* is bound to
+  ;; :transform. On databases with separate write-data credentials the DROP TABLE
+  ;; issued by cleanup! would run on read credentials if cleanup! fires after
+  ;; with-transform-connection unwinds, leaking all scratch tables.
+  ;;
+  ;; The single-credential test DB makes this invisible at the table level; we
+  ;; observe it by intercepting scratch/cleanup! and capturing *connection-type*
+  ;; at each call, then asserting every capture equals :transform.
+  (testing "all cleanup! calls occur inside with-transform-connection (success path)"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id         (mt/id)
+                schema        "public"
+                mp            (mt/metadata-provider)
+                orders-id     (mt/id :orders)
+                people-id     (mt/id :people)
+                enriched-name (mt/random-name)
+                ;; Collect *connection-type* for every cleanup! call.
+                ;; run-chain-test! issues N+1 calls: one per node output + one
+                ;; for the leaf mapping. All must be :transform.
+                captured      (atom [])
+                real-cleanup! scratch/cleanup!]
+            (mt/with-temp [:model/Transform t1
+                           {:source {:type :query :query (lib/native-query mp enrich-sql)}
+                            :target {:schema schema :type "table" :name enriched-name}}
+                           :model/Transform t2
+                           {:source {:type :query :query (lib/native-query mp (aggregate-sql enriched-name))}
+                            :target {:schema schema :type "table" :name (mt/random-name)}}]
+              (with-redefs [scratch/cleanup!
+                            (fn [& args]
+                              (swap! captured conj @#'metabase.driver.connection/*connection-type*)
+                              (apply real-cleanup! args))]
+                (with-temp-csv-files [orders-f   orders-rows
+                                      people-f   people-rows
+                                      expected-f correct-expected-csv]
+                  (chain/run-chain-test!
+                   (:id t2) #{(:id t1)}
+                   {orders-id orders-f people-id people-f}
+                   expected-f {}))))
+            (is (pos? (count @captured))
+                "cleanup! should have been called at least once")
+            (is (every? #{:transform} @captured)
+                (str "every cleanup! call must see *connection-type* = :transform; "
+                     "got: " (pr-str @captured)))))))))

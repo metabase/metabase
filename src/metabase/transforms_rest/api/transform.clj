@@ -429,8 +429,8 @@
 (defn- parse-source-ids
   "Parse the `sources` multipart part — a JSON array of selected source transform
   ids — into a set of positive integers. Missing part → `#{}` (a target-only
-  selection, the Phase-1-equivalent degenerate case). Throws 400 on malformed
-  JSON or a non-positive-int element."
+  selection — the degenerate case equivalent to a single-transform test run).
+  Throws 400 on malformed JSON or a non-positive-int element."
   [sources-part]
   (if (nil? sources-part)
     #{}

@@ -1,5 +1,5 @@
 (ns metabase.transforms.test-run.subgraph-test
-  "Pure unit tests for sub-graph resolution (Phase 2 chained test runs).
+  "Pure unit tests for sub-graph resolution (chained test runs).
 
   The slice/order/leaf logic is exercised here over synthetic dependency maps;
   end-to-end resolution against real transforms is covered by the chained
@@ -28,8 +28,8 @@
       (is (= #{3 4} slice))
       (is (= [3 4] order)))))
 
-(deftest compute-slice-target-only-is-phase-1-test
-  (testing "selecting only the target reduces to a single-node slice (Phase 1 semantics)"
+(deftest compute-slice-target-only-test
+  (testing "selecting only the target reduces to a single-node slice (single-transform semantics)"
     (let [{:keys [slice order]} (subgraph/compute-slice deps #{4} 4)]
       (is (= #{4} slice))
       (is (= [4] order)))))

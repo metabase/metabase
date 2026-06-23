@@ -501,11 +501,11 @@
       (is (= :passed (:status report))))))
 
 ;; ---------------------------------------------------------------------------
-;; 14. Regression — Major-2: cell-mismatch entries must NOT have :actual-raw/:expected-raw
+;; 14. Regression: cell-mismatch entries must NOT have :actual-raw/:expected-raw
 ;; ---------------------------------------------------------------------------
 
 (deftest cell-mismatch-keys-no-raw-fields-test
-  ;; Major-2 regression: attempt-cell-mismatches was passing canonical rows as both
+  ;; Regression: attempt-cell-mismatches was passing canonical rows as both
   ;; the canonical AND raw arguments to cell-mismatch-detail, so :actual-raw and
   ;; :expected-raw were always equal to their canonical counterparts.  The fix drops
   ;; those fields entirely from the cell-mismatch entry.
@@ -524,11 +524,11 @@
         (is (contains? m :column))
         (is (contains? m :actual-canonical))
         (is (contains? m :expected-canonical))
-        ;; Removed keys — Major-2 fix
+        ;; Removed keys
         (is (not (contains? m :actual-raw))
-            ":actual-raw must be absent from cell-mismatch (Major-2 fix)")
+            ":actual-raw must be absent from cell-mismatch")
         (is (not (contains? m :expected-raw))
-            ":expected-raw must be absent from cell-mismatch (Major-2 fix)")
+            ":expected-raw must be absent from cell-mismatch")
         ;; Canonical values are the UTC strings
         (is (= "2024-01-15T10:30:00Z" (:actual-canonical m)))
         (is (= "2024-01-15T10:31:00Z" (:expected-canonical m)))))))

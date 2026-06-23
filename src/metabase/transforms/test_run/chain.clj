@@ -1,5 +1,5 @@
 (ns metabase.transforms.test-run.chain
-  "Synchronous orchestrator for *chained* (sub-graph) transform test runs — Phase 2.
+  "Synchronous orchestrator for *chained* (sub-graph) transform test runs.
 
   Entry point: [[run-chain-test!]].
 
@@ -201,9 +201,9 @@
         mapping*       (atom {})
         outputs*       (atom {})
         backend*       (atom nil)]
-    (try
-      (driver.conn/with-transform-connection
-        ;; Step 4: seed scratch leaf tables once.
+    (driver.conn/with-transform-connection
+      ;; Step 4: seed scratch leaf tables once.
+      (try
         (reset! mapping* (scratch/seed! db-id db schema seed-inputs nonce))
         ;; Step 5: run each node in topological order, accumulating the mapping.
         (doseq [node-id order]
@@ -234,9 +234,12 @@
            :diff           report
            :parser-backend @backend*
            :order          order
-           :output-table   (:table target-out)}))
-      (finally
-        ;; Cleanup runs on ALL paths. Drop every node's output + all leaf scratch tables.
-        (doseq [out-spec (vals @outputs*)]
-          (scratch/cleanup! db-id db {} out-spec))
-        (scratch/cleanup! db-id db @mapping* nil)))))
+           :output-table   (:table target-out)})
+        (finally
+          ;; Cleanup runs on ALL paths. Must be inside with-transform-connection so
+          ;; DROP TABLE runs under write-data credentials (scratch.clj contract: callers
+          ;; wrap the full run — seed! through cleanup! — in the canonical connection context).
+          ;; Drop every node's output + all leaf scratch tables.
+          (doseq [out-spec (vals @outputs*)]
+            (scratch/cleanup! db-id db {} out-spec))
+          (scratch/cleanup! db-id db @mapping* nil))))))

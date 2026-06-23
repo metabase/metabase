@@ -37,6 +37,7 @@
    [metabase.transforms.test-run.execute :as test-run.execute]
    [metabase.transforms.test-run.inputs :as inputs]
    [metabase.transforms.test-run.resolve :as resolve]
+   [metabase.transforms.test-run.scratch :as scratch]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -399,11 +400,11 @@
                   "No TransformRun row after timeout"))))))))
 
 ;;; ===========================================================================
-;;; Regression — Major-3 site 2: read-back-output must use quoted identifiers
+;;; Regression: read-back-output must use quoted identifiers
 ;;; ===========================================================================
 
 (deftest read-back-output-uses-quoted-identifiers-test
-  ;; Major-3 regression: read-back-output was building SELECT * FROM <schema>.<table>
+  ;; Regression: read-back-output was building SELECT * FROM <schema>.<table>
   ;; by string interpolation: (str "SELECT * FROM " schema "." table).
   ;; A schema with a single quote (e.g. "pub'lic") produces malformed SQL.
   ;; Since schema and table are IDENTIFIERS (not values), the fix must use driver-level
@@ -465,3 +466,77 @@
                                         (is (= :passed (:status result))
                                             (str "Expected :passed with ts ignored; got: "
                                                  (pr-str result)))))))))))
+
+;;; ===========================================================================
+;;; Contract: cleanup! runs inside the transform connection context
+;;; ===========================================================================
+
+(deftest cleanup-runs-inside-transform-connection-test
+  ;; CONTRACT (documented in scratch.clj:29-34): cleanup! is called by the
+  ;; orchestrator while *connection-type* is bound to :transform. On databases
+  ;; configured with separate write-data credentials the DROP TABLE issued by
+  ;; cleanup! must run on those credentials — if it runs after with-transform-
+  ;; connection unwinds, *connection-type* reverts to :default and the DROP
+  ;; runs with read credentials, leaking every scratch table.
+  ;;
+  ;; The test DB uses a single credential set, so the operational failure is
+  ;; invisible in CI. We make it visible by intercepting scratch/cleanup! and
+  ;; capturing the value of *connection-type* at call time, then asserting it
+  ;; equals :transform. A :default value proves the bug is present.
+  (testing "cleanup! is invoked while *connection-type* is :transform (success path)"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id     (mt/id)
+              schema    "public"
+              mp        (mt/metadata-provider)
+              orders-id (mt/id :orders)
+              captured  (atom nil)
+              real-cleanup! scratch/cleanup!]
+          (with-redefs [scratch/cleanup!
+                        (fn [& args]
+                          ;; Capture connection-type at the moment cleanup! is called.
+                          (reset! captured @#'metabase.driver.connection/*connection-type*)
+                          (apply real-cleanup! args))]
+            (with-temp-csvs
+              [orders-f   orders-3-rows
+               expected-f "user_id,order_count\n1,2\n2,1\n"]
+              (test-run.core/run-test!
+               (native-transform
+                mp
+                "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id ORDER BY user_id"
+                schema)
+               {orders-id orders-f}
+               expected-f
+               {})))
+          (is (= :transform @captured)
+              (str "cleanup! must be called inside with-transform-connection "
+                   "(got *connection-type* = " (pr-str @captured) ")"))))))
+  (testing "cleanup! is invoked while *connection-type* is :transform (error path)"
+    ;; Verify the contract holds even when the run throws an error before
+    ;; the transform executes (rewrite failure — seeding occurs, then throws).
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id     (mt/id)
+              schema    "public"
+              mp        (mt/metadata-provider)
+              orders-id (mt/id :orders)
+              captured  (atom nil)
+              real-cleanup! scratch/cleanup!]
+          (with-redefs [scratch/cleanup!
+                        (fn [& args]
+                          (reset! captured @#'metabase.driver.connection/*connection-type*)
+                          (apply real-cleanup! args))]
+            (with-temp-csvs
+              [orders-f   orders-1-row
+               expected-f "id\n1\n"]
+              (try
+                (test-run.core/run-test!
+                 ;; table-qualified column → ::cannot-test-run after seeding
+                 (native-transform mp "SELECT orders.id FROM orders" schema)
+                 {orders-id orders-f}
+                 expected-f
+                 {})
+                (catch clojure.lang.ExceptionInfo _))))
+          (is (= :transform @captured)
+              (str "cleanup! must be called inside with-transform-connection on error path "
+                   "(got *connection-type* = " (pr-str @captured) ")")))))))

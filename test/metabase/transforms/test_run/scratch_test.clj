@@ -487,11 +487,11 @@
             (scratch/cleanup! db-id db mapping nil)))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Regression — Major-3 site 1: list-tables-in-schema must NOT interpolate schema
+;;; Regression: list-tables-in-schema must NOT interpolate schema
 ;;; ---------------------------------------------------------------------------
 
 (deftest list-tables-in-schema-uses-parameterized-query-test
-  ;; Major-3 regression: list-tables-in-schema was building SQL by string-interpolating
+  ;; Regression: list-tables-in-schema was building SQL by string-interpolating
   ;; the schema name directly into the WHERE clause: `WHERE table_schema = '<schema>'`.
   ;; A schema value like "pub'lic" would produce malformed SQL (`... = 'pub'lic'`),
   ;; causing a syntax error that crashes the janitor without cleaning up old test tables.

@@ -297,7 +297,7 @@
   (testing "E2E: table-qualified column (orders.user_id) → 422 ::cannot-test-run with message"
     ;; SELECT o.user_id works (alias-qualified); SELECT orders.user_id fails closed
     ;; via guard 3 (the orders. qualifier survives the FROM-only rewrite).
-    ;; This exercises the documented PoC limitation and the user-facing error message.
+    ;; This exercises the documented limitation and the user-facing error message.
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data

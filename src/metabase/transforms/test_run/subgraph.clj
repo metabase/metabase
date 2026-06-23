@@ -1,5 +1,5 @@
 (ns metabase.transforms.test-run.subgraph
-  "Sub-graph resolution for chained (Phase 2) transform test runs.
+  "Sub-graph resolution for chained transform test runs.
 
   Given a *target* transform, a set of selected *source* transforms, and the full
   set of transforms, compute the executable slice: the transform nodes to run, the

@@ -139,11 +139,11 @@
         ;; Accumulate scratch state so finally can clean up.
         mapping*     (atom nil)
         output-spec* (atom nil)]
-    (try
-      (driver.conn/with-transform-connection
-        ;; The canonical write-data credentials + :transform JDBC pool.
-        ;; conn-spec construction (inside build-transform-details) reads
-        ;; *connection-type* = :transform via effective-details.
+    (driver.conn/with-transform-connection
+      ;; The canonical write-data credentials + :transform JDBC pool.
+      ;; conn-spec construction (inside build-transform-details) reads
+      ;; *connection-type* = :transform via effective-details.
+      (try
         (let [;; Step 4: seed scratch input tables.
               output-spec  (scratch/scratch-output-target output-schema nonce)
               _            (reset! output-spec* output-spec)
@@ -177,10 +177,13 @@
           {:status         (:status report)
            :diff           report
            :parser-backend (:parser-backend artifact)
-           :output-table   (:table output-spec)}))
-      (finally
-        ;; Cleanup runs on ALL paths: success, error, timeout.
-        ;; drop-table! is idempotent (DROP TABLE IF EXISTS), so double-drops are safe.
-        (scratch/cleanup! db-id db
-                          (or @mapping* {})
-                          @output-spec*)))))
+           :output-table   (:table output-spec)})
+        (finally
+          ;; Cleanup runs on ALL paths: success, error, timeout.
+          ;; Must be inside with-transform-connection so DROP TABLE executes under
+          ;; write-data credentials (scratch.clj contract: callers wrap the full
+          ;; run — seed! through cleanup! — in the canonical connection context).
+          ;; drop-table! is idempotent (DROP TABLE IF EXISTS), so double-drops are safe.
+          (scratch/cleanup! db-id db
+                            (or @mapping* {})
+                            @output-spec*))))))

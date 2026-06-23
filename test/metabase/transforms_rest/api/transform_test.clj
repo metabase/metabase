@@ -2276,11 +2276,11 @@
                            (pr-str (:diff resp)))))))))))))
 
 ;; ---------------------------------------------------------------------------
-;; Regression — Major-1: error-type→HTTP gaps (missing entries in dispatch table)
+;; Regression: error-type→HTTP gaps (missing entries in dispatch table)
 ;; ---------------------------------------------------------------------------
 
 (deftest test-run-header-mismatch-400-test
-  ;; Major-1 regression: ::fixtures/header-mismatch was missing from test-run-error-http-status,
+  ;; Regression: ::fixtures/header-mismatch was missing from test-run-error-http-status,
   ;; so a CSV with wrong column headers caused a raw 500 instead of a 400 with the typed envelope.
   ;; The fix adds it to the dispatch table.
   (testing "POST /:id/test-run — CSV with wrong headers → 400 + error envelope (::fixtures/header-mismatch)"
@@ -2316,7 +2316,7 @@
                            (get-in resp [:error :type])))))))))))))
 
 (deftest test-run-unknown-ignore-columns-400-test
-  ;; Major-1 regression: ::diff/unknown-ignore-columns was missing from test-run-error-http-status,
+  ;; Regression: ::diff/unknown-ignore-columns was missing from test-run-error-http-status,
   ;; so specifying a nonexistent column in ignore_columns caused a raw 500 instead of a 400 with envelope.
   (testing "POST /:id/test-run — ignore_columns with nonexistent column → 400 + error envelope"
     (mt/with-premium-features #{}
