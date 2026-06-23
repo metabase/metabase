@@ -95,7 +95,8 @@
   ([database :- i/DatabaseInstance]
    (sync-metabase-metadata! database (fetch-metadata/db-metadata database)))
 
-  ([database :- i/DatabaseInstance db-metadata]
+  ([database    :- i/DatabaseInstance
+    db-metadata :- i/DatabaseMetadata]
    (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s"
                                           (sync-util/name-for-logging database))
      (let [driver (driver.u/database->driver database)]
@@ -103,7 +104,12 @@
        (when (get-method driver/table-rows-seq driver)
          ;; If there's more than one metabase metadata table (in different schemas) we'll sync each one in turn.
          ;; Hopefully this is never the case.
-         (doseq [table (:tables db-metadata)]
-           (when (is-metabase-metadata-table? table)
-             (sync-metabase-metadata-table! driver database table))))
+         ;;
+         ;; Prefer the table(s) captured by the streaming `sync-tables` step (see
+         ;; [[metabase.sync.sync-metadata.tables/sync-tables-and-database!]]) so we don't re-scan the
+         ;; (possibly reducible) `:tables`. Fall back to scanning for the standalone 1-arg entry point.
+         (doseq [table (if-let [captured (:metabase-metadata-tables db-metadata)]
+                         @captured
+                         (filter is-metabase-metadata-table? (:tables db-metadata)))]
+           (sync-metabase-metadata-table! driver database table)))
        {}))))
