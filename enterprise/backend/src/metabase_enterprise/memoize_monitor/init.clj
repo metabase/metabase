@@ -7,10 +7,6 @@
   reads each cache's size on a periodic basis via a Prometheus `pull-collector`. For each monitored cache we emit:
 
   - `:metabase-memoize/cache-size`             -- number of entries
-  - `:metabase-memoize/cache-bytes`            -- approximate retained size in bytes, estimated by measuring a sample
-                                                  of entries and extrapolating ([[clj-memory-meter.core]])
-  - `:metabase-memoize/cache-measure-duration-ms` -- wall-clock time spent producing that estimate, so the cost of
-                                                     running this monitor is itself observable
 
   This lives in enterprise because the monitored caches span both OSS and enterprise modules
   ([[metabase-enterprise.serialization.dump]]); an OSS namespace cannot depend on enterprise code. OSS-only builds get
@@ -18,11 +14,7 @@
 
   Only caches built with [[clojure.core.memoize]] (`memo`, `ttl`, and
   [[metabase.app-db.core/memoize-for-application-db]], which is built on `memo`) can be measured, because their
-  backing cache is reachable through the memoized function's metadata.
-
-  NOTE: counting entries is O(1) and copies nothing. The byte figure is an estimate from a small sample of entries
-  (see [[estimate-cache-bytes]]) rather than a full-cache walk, keeping the cost roughly constant regardless of cache
-  size; we still export the measurement duration so its cost stays observable."
+  backing cache is reachable through the memoized function's metadata."
   (:require
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.analytics-interface.core :as analytics.interface]
@@ -62,12 +54,8 @@
       (.cache ^PluggableMemoization pm))))
 
 (defn- memoization-cache-stats
-  "Map of `{:cache name, :entries n, :bytes b, :measure-ms ms}` given a var holding a memoized function with a
-  reachable backing cache, or `nil` otherwise.
-
-  Entry counts are always reported. The byte estimate (see [[estimate-cache-bytes]]) self-attaches a memory-
-  measurement Java agent, so it only runs when [[memory-measurement-available?]]; otherwise `:bytes` and `:measure-ms`
-  are nil. `:bytes` is also nil if measurement throws. `:measure-ms` is the time spent producing the estimate."
+  "Map of `{:cache name, :entries n}` given a var holding a memoized function with a reachable backing cache, or `nil`
+  otherwise."
   [cache-var]
   (try
     (when-let [cache (cache-object @cache-var)]
@@ -81,9 +69,6 @@
   []
   (keep memoization-cache-stats monitored-cache-vars))
 
-;; Export the size of every monitored memoization cache, one sample per cache per metric. The byte measurement is
-;; potentially expensive, so we also export how long each measurement took and refresh no more than once every 10
-;; minutes.
 (defmethod analytics/pull-collector ::memoize-cache-sizes [_]
   {:min-interval-s (* 10 60)
    :f              (fn []
