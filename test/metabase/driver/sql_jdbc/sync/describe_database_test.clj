@@ -298,7 +298,7 @@
                                           (vreset! closed-first true)
                                           (.close conn))
                                         (execute-select-probe-query driver conn query))]
-            (let [table-names #(->> % :tables (map :name) set)
+            (let [table-names #(into #{} (map :name) (:tables %))
                   all-tables-sans-one (table-names (driver/describe-database driver/*driver* (mt/id)))]
               ;; there is at maximum one missing table
               (is (>= 1 (count (set/difference all-tables all-tables-sans-one)))))))))))
