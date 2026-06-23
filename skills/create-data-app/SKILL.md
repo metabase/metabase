@@ -236,7 +236,11 @@ import { StaticQuestion } from "@metabase/embedding-sdk-react";
 import {
   DataAppRouter,
   DataAppLink,
+  type DatasetQuery,
+  breakout,
+  filter,
   useMetabaseQuery,
+  useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
 
 // ❌ wrong — no globalThis pattern; you'd be reading nothing
@@ -280,7 +284,7 @@ import type { ComponentType, ReactNode } from "react";
 
 ## Available SDK surface
 
-The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externalizes the package at build time, so production references the host's copies at runtime (`globalThis.__metabase_sdk__`); the Vite dev server resolves to the real npm package directly.
+The bundle imports SDK components from `@metabase/embedding-sdk-react` and data-app-specific routing/query APIs from `@metabase/embedding-sdk-react/data-app`. Vite externalizes both packages at build time, so production references the host's copies at runtime (`globalThis.__metabase_sdk__` / `globalThis.__metabase_data_app__`); the Vite dev server resolves to the real npm package directly.
 
 `<MetabaseProvider>` is **not** rendered by the bundle's `App.tsx` — `dev.tsx` and the host wrap it for their respective modes. Bundle author only renders the **content** below.
 
@@ -293,8 +297,9 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 | `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
 | `CreateDashboardModal` | Modal for new-dashboard flow. |
 | `CollectionBrowser` | Collection picker. |
-| `useMetabaseQuery` | Schema-backed data-fetching hook for questions / tables / metrics. Import from `@metabase/embedding-sdk-react/data-app`, not the main SDK entrypoint. **The `metabase-data-app-semantic-layer` skill owns the full hook contract** — signature, generics, table-vs-metric variants, segments / measures / breakouts, debugging. Don't reinvent its rules here. |
 | `useAction` | Hook that triggers a pre-existing Metabase **action** (basic CRUD or custom SQL) and returns `{ execute, isExecuting, result, error, reset }`. Use for any write/mutation interaction — form submit, "Save" / "Update" / "Delete" buttons. **Signature:** `useAction<TParameters, TKind>(actionId)` — the runtime arg is the action's numeric **id** (read from `schema.models.<m>.actions.<a>.id`), or its `entity_id` string, or `null`. Typing comes from the two generics: `ActionParametersFromDataAppSchema<typeof schema.models.<m>.actions.<a>>` types `execute`'s parameters object, and `ActionKindFromDataAppSchema<typeof schema.models.<m>.actions.<a>>` types the discriminated `result`. `execute(parameters)` is called from an event handler. Must be called inside a component rendered under `MetabaseProvider`. For full usage patterns and the critical post-action refresh rule, invoke the `metabase-data-app-actions` skill. |
+| `DataAppRouter`, `DataAppLink`, `useDataAppLocation` | Data-app routing primitives. Import from `@metabase/embedding-sdk-react/data-app`, not the main SDK entrypoint. |
+| `useMetabaseQuery`, `useMetabaseQueryObject`, `filter`, `breakout`, `DatasetQuery` | Schema-backed query APIs for questions / tables / metrics. Import from `@metabase/embedding-sdk-react/data-app`, not the main SDK entrypoint. **The `metabase-data-app-semantic-layer` skill owns the full hook contract** — signature, generics, table-vs-metric variants, segments / measures / breakouts, debugging. Don't reinvent its rules here. |
 
 ### Blocked APIs
 

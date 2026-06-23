@@ -11,7 +11,8 @@ Keep the semantic layer and presentation layer separate.
 
 - All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
 - Do not discover data through MCP tools, create questions, create metrics, create tables, or edit the semantic layer while building the React UI.
-- Use `useMetabaseQuery`, `useMetabaseQueryObject`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react/data-app`.
+- Use semantic query APIs such as `useMetabaseQuery`, `useMetabaseQueryObject`, `filter(...)`, `breakout(...)`, and `DatasetQuery` from `@metabase/embedding-sdk-react/data-app`.
+- Import SDK components such as `InteractiveQuestion`, `StaticQuestion`, and `MetabaseProvider` from `@metabase/embedding-sdk-react`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
 - Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it in the query instead of manually recreating the concept from raw rows.
@@ -209,6 +210,8 @@ Chart only, without the toolbar:
 import {
   InteractiveQuestion,
   StaticQuestion,
+} from "@metabase/embedding-sdk-react";
+import {
   breakout,
   count,
   useMetabaseQueryObject,
