@@ -94,7 +94,9 @@ export const UpsellBigCardInner: React.FC<UpsellBigCardProps> = ({
       {...props}
     >
       <Flex px="xl" py="md">
-        <UpsellGem size={24} />
+        <Flex align="center" flex="0 0 auto" h="var(--mantine-h2-line-height)">
+          <UpsellGem size="var(--mantine-h2-font-size)" />
+        </Flex>
         <Stack align="flex-start" gap={0} ml="0.75rem" maw="18.75rem">
           <Title order={2} mb="sm" pr="1rem">
             {title}
