@@ -399,6 +399,46 @@
    [:pool {:optional true} [:enum :least]]
    [:fusion {:optional true} [:enum :v1]]])
 
+(def rerank-blend-modes
+  "Valid `:blend` selectors for [[RerankerConfig]], as keywords. Each names how the cross-encoder's
+  per-doc relevance score recombines with the existing scorers in the final sort:
+   - `:rerank_only`       -- final score = the rerank score alone (boosts dropped).
+   - `:rerank_then_boost` -- final score = `weight*rerank + Σ metadata boosts`, dropping the relevance-core
+                             scorers (`:rrf`, `:semantic-distance`) the cross-encoder supersedes. The default
+                             and the smallest faithful change (the boosts tip the learned relevance ordering,
+                             mirroring how `:rrf` dominates today with boosts tipping it).
+   - `:rerank_as_scorer`  -- final score = `existing total_score + weight*rerank` (keeps `:rrf`; double-counts
+                             relevance -- kept for completeness).
+   - `:rerank_fusion`     -- like `:rerank_then_boost`, but the reranked pool is selected rank-fusion-free
+                             (best arm rank) rather than from the RRF-ordered `total_score` list.
+  Mastered here so the OSS API param and the EE rerank step share one definition."
+  [:rerank_only :rerank_then_boost :rerank_as_scorer :rerank_fusion])
+
+(def RerankerConfig
+  "Schema for the semantic-engine Voyage cross-encoder rerank config (the `reranker_config` API param, sent as
+  a JSON object). After the SQL hybrid query, RRF/boost scoring, and the permission filter have produced the
+  candidate list, the top-`:pool` candidates are reranked by the Voyage cross-encoder over their `content`
+  (the `embeddable_text` block), then recombined per `:blend` (see [[rerank-blend-modes]]) and re-sorted. An
+  absent param means no rerank, so absent-param = baseline.
+
+  Rerank is a precision tool, not a recall tool: it only reorders candidates the SQL already returned, so it
+  helps `retrieved-but-buried` targets and cannot surface a target absent from the pool. The global
+  `ee-reranking-enabled` setting is an additional kill switch; this per-request config is the opt-in.
+
+  Provider + API key live in backend settings ([[metabase-enterprise.semantic-search.settings]]), not here --
+  this config carries only the per-request experiment knobs. `:pool` is the candidate count reranked (the
+  cross-encoder cost driver); `:top-k` truncates the final list (keep it >= the min-results threshold, or run
+  the eval with `disable_fallback`, so truncation never spuriously trips the appdb fallback); `:weight` is the
+  rerank-score weight in the `:rerank_then_boost`/`:rerank_as_scorer`/`:rerank_fusion` blends (default mirrors
+  the dominant `:rrf` static weight). Mastered here so the OSS API param and the EE query builder share one
+  definition."
+  [:map {:closed true}
+   [:model  {:optional true} :string]                         ; default = ee-reranking-model setting
+   [:pool   {:optional true} pos-int?]                        ; N candidates reranked (default 50)
+   [:top-k  {:optional true} pos-int?]                        ; results kept after rerank (default = pool)
+   [:weight {:optional true} [:double {:min 0.0}]]            ; rerank-score weight in D1/D2/D3 (default 500.0)
+   [:blend  {:optional true} (into [:enum] rerank-blend-modes)]]) ; default :rerank_then_boost
+
 (def ^:private ui-contexts
   "Search `context` values issued by the frontend, one per UI surface.
   Selects ranking weights ([[static-context-weights]]) and filter defaults ([[filter-defaults-by-context]]).
@@ -501,11 +541,16 @@
    [:multi-view-config  {:optional true} [:maybe MultiViewConfig]]
    ;; Semantic-engine composed federated + multi-view config. When absent, the engine uses a single global KNN.
    [:federated-multi-view-config {:optional true} [:maybe FederatedMultiViewConfig]]
+   ;; Semantic-engine Voyage cross-encoder rerank config. When absent, no rerank step runs (baseline).
+   [:reranker-config    {:optional true} [:maybe RerankerConfig]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;; Semantic-engine: when true, disable the appdb fallback entirely -- return semantic results
    ;; unsupplemented below the min-results threshold, and re-throw (not fall back) on a vector-query error.
    [:disable-fallback?  {:optional true} [:maybe :boolean]]
+   ;; Semantic-engine: when true, emit per-stage retrieval-attribution diagnostics (the top-level
+   ;; `pipeline` block + per-row arm/view fields). Eval-only; absent/false => response is unchanged.
+   [:debug-pipeline?    {:optional true} [:maybe :boolean]]
    ;;
    ;; optional
    ;;

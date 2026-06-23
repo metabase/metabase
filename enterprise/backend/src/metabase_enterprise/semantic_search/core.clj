@@ -46,10 +46,13 @@
    (semantic.settings/semantic-search-enabled)))
 
 (defn- with-zero-semantic-distance
-  "Record `:semantic-distance` 0 on `results` that lack it, for a consistent merged-result score breakdown."
+  "Record `:semantic-distance` 0 on `results` that lack it, for a consistent merged-result score breakdown.
+  When `:debug-pipeline?`, also tag each row `:source [\"appdb-fallback\"]` so the eval runner can tell
+  fallback-supplemented rows from pgvector-arm rows (they never entered the hybrid query)."
   [search-ctx results]
   ;; Fallback (appdb/in-place) results never went through vector search, so they carry no semantic distance.
-  (let [entry {:name         :semantic-distance
+  (let [debug? (:debug-pipeline? search-ctx)
+        entry {:name         :semantic-distance
                :score        0
                :weight       (search.config/weight search-ctx :semantic-distance)
                :contribution 0}]
@@ -57,7 +60,8 @@
            (cond-> result
              (and (contains? result :all-scores)
                   (not-any? (comp #{:semantic-distance} :name) (:all-scores result)))
-             (update :all-scores conj entry)))
+             (update :all-scores conj entry)
+             debug? (assoc :source ["appdb-fallback"])))
          results)))
 
 (defenterprise results
@@ -67,12 +71,16 @@
   [search-ctx]
   (tracing/with-span :search "search.semantic.execute" {:search/query-length (count (:search-string search-ctx))}
     (try
-      (let [{:keys [results raw-count]}
+      (let [{:keys [results raw-count pipeline]}
             (semantic.pgvector-api/query (semantic.env/get-pgvector-datasource!)
                                          (semantic.env/get-index-metadata)
                                          search-ctx)
             final-count (count results)
-            threshold (semantic.settings/semantic-search-min-results-threshold)]
+            threshold (semantic.settings/semantic-search-min-results-threshold)
+            ;; The `debug_pipeline` per-stage block rides up as metadata on the results seq (it's read off in
+            ;; metabase.search.impl/search before the transducer consumes the seq). nil pipeline => no-op, so
+            ;; non-debug responses are byte-identical.
+            attach-pipeline (fn [rs pl] (cond-> rs pl (vary-meta assoc :pipeline pl)))]
         (if (or ;; Per-request opt-out: return semantic results unsupplemented regardless of count. Used by
              ;; the eval runner to measure the semantic engine in isolation (the additive appdb fallback
              ;; otherwise contaminates a semantic-only run with keyword hits).
@@ -82,7 +90,7 @@
                   ;; :search-string is nil when using search to populate the list of tables for a given database in
                   ;; the native query editor. Semantic search doesn't support this, so fallback in this case.
                   (not (str/blank? (:search-string search-ctx)))))
-          results
+          (attach-pipeline results pipeline)
           ;; Fallback: semantic search found results but some were filtered out (e.g. due to permission checks), so try to
           ;; supplement with appdb search.
           (let [fallback (fallback-engine)]
@@ -106,8 +114,13 @@
                   fallback-results (take total-limit fallback-results)
                   _                (analytics/observe! :metabase-search/semantic-fallback-results-usage (count fallback-results))
                   combined-results (concat results (with-zero-semantic-distance search-ctx fallback-results))
-                  deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
-              (take total-limit deduped-results)))))
+                  deduped-results  (m/distinct-by (juxt :model :id) combined-results)
+                  ;; Record the fallback provenance in the pipeline block (the appdb rows are not a pgvector
+                  ;; arm/fusion stage -- they only appear in `data`, tagged `appdb-fallback`).
+                  pipeline'        (when pipeline
+                                     (assoc pipeline :fallback {:engine  (str (symbol fallback))
+                                                                :n_added (count fallback-results)}))]
+              (attach-pipeline (take total-limit deduped-results) pipeline')))))
       (catch Exception e
         ;; Per-request opt-out: surface the error instead of masking it with appdb results. A broken vector
         ;; query (e.g. wrong pgvector DB, missing view column) otherwise silently degrades to keyword-only,

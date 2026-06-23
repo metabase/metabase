@@ -402,6 +402,11 @@
                         :labels [:embedding-model]})
    (prometheus/counter :metabase-search/semantic-appdb-scores-ms
                        {:description "Total number of ms spent adding appdb-based scores"})
+   (prometheus/counter :metabase-search/semantic-rerank-ms
+                       {:description "Total number of ms spent in the Voyage cross-encoder rerank step"})
+   (prometheus/counter :metabase-search/semantic-rerank-tokens
+                       {:description "Number of tokens consumed by the Voyage rerank model (reported usage)."
+                        :labels [:model]})
    (prometheus/counter :metabase-search/semantic-fallback-triggered
                        {:description "Number of times semantic search triggered fallback to appdb search due to insufficient results"
                         :labels [:fallback-engine]})

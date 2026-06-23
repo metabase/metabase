@@ -10,6 +10,7 @@
    [java-time.api :as t]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase-enterprise.semantic-search.reranking :as reranking]
    [metabase-enterprise.semantic-search.scoring :as scoring]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
@@ -640,9 +641,13 @@
                     :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
                     :limit  (semantic-settings/semantic-search-results-limit)}
         base-query {:with [[:vector_candidates hnsw-query]]
+                    ;; `:semantic_view` (the winning-view attribution tag, see [[multi-view-candidate-cte]])
+                    ;; is NULL here -- the single-KNN path pools no views -- but the column is emitted
+                    ;; unconditionally so [[hybrid-search-query]] can reference it for every strategy.
                     :select (into common-search-columns
                                   [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                                   [:distance :semantic_distance]])
+                                   [:distance :semantic_distance]
+                                   [[:inline nil] :semantic_view]])
                     :from [:vector_candidates]
                     :where [:<= :distance max-cosine-distance]
                     :order-by [[:semantic_rank :asc]]}]
@@ -666,9 +671,11 @@
                                 :from   [(keyword (:table-name index))]}
                          filters (assoc :where filters))]
     {:with     [[:vector_candidates filtered-query :materialized]]
+     ;; `:semantic_view` is NULL on the single-KNN path; emitted unconditionally for [[hybrid-search-query]].
      :select   (into common-search-columns
                      [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                      [:distance :semantic_distance]])
+                      [:distance :semantic_distance]
+                      [[:inline nil] :semantic_view]])
      :from     [:vector_candidates]
      :where    [:<= :distance max-cosine-distance]
      :order-by [[:semantic_rank :asc]]
@@ -792,9 +799,12 @@
                                             :from   [filt-name]})
                                          parts)}]
         {:with     (conj all-ctes [:union_candidates union-q])
+         ;; `:semantic_view` is NULL on the federation-only path (no view pooling); emitted unconditionally
+         ;; for [[hybrid-search-query]].
          :select   (into common-search-columns
                          [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                          [:distance :semantic_distance]])
+                          [:distance :semantic_distance]
+                          [[:inline nil] :semantic_view]])
          :from     [:union_candidates]
          :order-by [[:semantic_rank :asc]]
          :limit    (semantic-settings/semantic-search-results-limit)}))))
@@ -833,9 +843,16 @@
   (let [col       (:column v)
         base?     (= col "embedding")
         k         (or (:k v) (semantic-settings/semantic-search-results-limit))
+        view-label (or (:name v) col)
         dist-expr [:raw (str col " <=> " embedding-literal)]
         cand-name (keyword (str "v" i "_candidates"))
-        cand-cols (into common-search-columns [[dist-expr :distance]])]
+        ;; `:semantic_view` tags each candidate with the view it came from; `:view_idx` (the view's position
+        ;; in the config) breaks pooling ties deterministically so attribution is stable when two views share
+        ;; an identical vector (e.g. a null description ⇒ same distance as base). Lowest index wins the tie.
+        cand-cols (into common-search-columns
+                        [[dist-expr :distance]
+                         [[:inline view-label] :semantic_view]
+                         [[:inline i] :view_idx]])]
     {:cand-name cand-name
      :cte [cand-name
            (cond-> {:select   cand-cols
@@ -859,17 +876,20 @@
         parsed          (map-indexed (partial multi-view-candidate-cte index embedding-literal)
                                      (:views mv-config))
         cand-ctes       (mapv :cte parsed)
-        union-col-names (conj (mapv second common-search-columns) :distance)
+        union-col-names (conj (mapv second common-search-columns) :distance :semantic_view :view_idx)
         union-q         {:union-all (mapv (fn [{:keys [cand-name]}]
                                             {:select union-col-names :from [cand-name]})
                                           parsed)}
+        ;; Pool to one row per entity keeping the minimum distance; the `:view_idx` tiebreaker makes the
+        ;; surviving `:semantic_view` deterministic when views tie on distance (lowest view index wins).
         pooled-q        {:select-distinct-on (into [[:model :model_id]] union-col-names)
                          :from               [:union_candidates]
-                         :order-by           [[:model :asc] [:model_id :asc] [:distance :asc]]}]
+                         :order-by           [[:model :asc] [:model_id :asc] [:distance :asc] [:view_idx :asc]]}]
     {:with     (conj cand-ctes [:union_candidates union-q] [:pooled pooled-q])
      :select   (into common-search-columns
                      [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                      [:distance :semantic_distance]])
+                      [:distance :semantic_distance]
+                      [:semantic_view :semantic_view]])
      :from     [:pooled]
      :where    (let [c [:<= :distance cutoff]]
                  (if filters (into [:and] [c filters]) c))
@@ -920,16 +940,22 @@
                             config-cutoff
                             (:max-cosine-distance search-context)
                             default-max-cosine-distance)
-            union-cols  (conj (mapv second common-search-columns) :distance)
+            union-cols  (conj (mapv second common-search-columns) :distance :semantic_view :view_idx)
             cand-entries
             (map-indexed
              (fn [j v]
                (let [col        (:column v)
                      base?      (= col "embedding")
                      view-k     (or (:k v) part-k)
+                     view-label (or (:name v) col)
                      dist-expr  [:raw (str col " <=> " embedding-literal)]
                      cand-name  (keyword (str "p" i "_v" j "_candidates"))
-                     cand-cols  (into common-search-columns [[dist-expr :distance]])
+                     ;; See [[multi-view-candidate-cte]]: `:semantic_view` tags the view, `:view_idx` breaks
+                     ;; pooling ties deterministically (lowest view index wins).
+                     cand-cols  (into common-search-columns
+                                      [[dist-expr :distance]
+                                       [[:inline view-label] :semantic_view]
+                                       [[:inline j] :view_idx]])
                      where-pred (if base?
                                   model-pred
                                   [:and model-pred [:raw (str col " IS NOT NULL")]])]
@@ -957,8 +983,8 @@
                                           cand-entries)}
             pooled-q    {:select-distinct-on (into [[:model :model_id]] union-cols)
                          :from               [union-name]
-                         :order-by           [[:model :asc] [:model_id :asc] [:distance :asc]]}
-            filt-q      {:select   (into common-search-columns [[:distance :distance]])
+                         :order-by           [[:model :asc] [:model_id :asc] [:distance :asc] [:view_idx :asc]]}
+            filt-q      {:select   (into common-search-columns [[:distance :distance] [:semantic_view :semantic_view]])
                          :from     [pooled-name]
                          :where    (let [c [:<= :distance cutoff]]
                                      (if non-model-filters (into [:and] [c non-model-filters]) c))
@@ -986,13 +1012,14 @@
     (when (seq parts)
       (let [all-ctes (into [] (mapcat :ctes) parts)
             union-q  {:union-all (mapv (fn [{:keys [filt-name]}]
-                                         {:select (into common-search-columns [[:distance :distance]])
+                                         {:select (into common-search-columns [[:distance :distance] [:semantic_view :semantic_view]])
                                           :from   [filt-name]})
                                        parts)}]
         {:with     (conj all-ctes [:union_candidates union-q])
          :select   (into common-search-columns
                          [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
-                          [:distance :semantic_distance]])
+                          [:distance :semantic_distance]
+                          [:semantic_view :semantic_view]])
          :from     [:union_candidates]
          :order-by [[:semantic_rank :asc]]
          :limit    (semantic-settings/semantic-search-results-limit)}))))
@@ -1061,10 +1088,13 @@
         keyword-results (keyword-search-query index search-context)
         full-query {:with [[:vector_results semantic-results]
                            [:text_results keyword-results]]
+                    ;; `:semantic_view` is vector-only (the keyword arm has no such column), so reference
+                    ;; `:v.` directly rather than coalescing through `common-search-columns`.
                     :select (into
                              (mapv hybrid-select common-search-columns)
                              [[:v.semantic_rank :semantic_rank]
                               [:v.semantic_distance :semantic_distance]
+                              [:v.semantic_view :semantic_view]
                               [:t.keyword_rank :keyword_rank]])
                     :from [[:vector_results :v]]
                     :full-join [[:text_results :t] [:= :v.id :t.id]]
@@ -1085,18 +1115,32 @@
         {:keys [ctes query]} (flatten-ctes hybrid-query)
         all-ctes (conj ctes [:hybrid_results query])
         full-query {:with all-ctes
-                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :semantic_distance :keyword_rank]
+                    :select [:id :model_id :model :content :verified :legacy_input :semantic_rank :semantic_distance :keyword_rank :semantic_view]
                     :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
 
 (defn- legacy-input-with-score
   "Extracts the (already-decoded) `:legacy_input` map from `row` and attaches the total score
-  plus per-scorer breakdown."
-  [weights scorers row]
-  (assoc (:legacy_input row)
-         :score (:total_score row 1.0)
-         :all-scores (scoring/all-scores weights scorers row)))
+  plus per-scorer breakdown. When `debug?` (the `debug_pipeline` request flag), also carries the per-row
+  retrieval-attribution fields -- arm ranks, cosine distance, winning view, and a derived `:source` -- onto
+  the result map. When `rerank?`, additionally carries `:content` (the `embeddable_text` block -- the
+  cross-encoder's input) and the arm ranks (the D3 rank-fusion-free pool ordering); the rerank step dissocs
+  them before the return so they never reach the wire. `serialize` (impl.clj) is a blacklist, so any carried
+  key rides straight to the wire unless dropped; with both flags off => result is unchanged from baseline."
+  [weights scorers debug? rerank? row]
+  (let [result (assoc (:legacy_input row)
+                      :score (:total_score row 1.0)
+                      :all-scores (scoring/all-scores weights scorers row))]
+    (cond-> result
+      rerank?            (assoc :content (:content row))
+      (or debug? rerank?) (assoc :semantic_rank (:semantic_rank row)
+                                 :keyword_rank  (:keyword_rank row))
+      debug? (assoc :cosine_distance (:semantic_distance row)
+                    :semantic_view   (:semantic_view row)
+                    :source          (cond-> []
+                                       (:semantic_rank row) (conj "semantic")
+                                       (:keyword_rank row)  (conj "keyword"))))))
 
 (defn- decode-legacy-input
   "Decode `row`s `:legacy_input` JSONB PGobject into a Clojure map."
@@ -1107,6 +1151,66 @@
           (fn [pgo]
             (let [decoded (decode-pgobject pgo)]
               (cond-> decoded (string? decoded) json/decode+kw)))))
+
+;; ----------------------------------------------------------------------------
+;; Per-stage retrieval attribution (the `debug_pipeline` diagnostics)
+;;
+;; The whole hybrid query materializes in one SQL pass; each `decoded` row still carries its arm ranks
+;; (`:semantic_rank`, `:keyword_rank`), `:semantic_distance`, winning `:semantic_view`, the per-scorer columns
+;; (incl. `:rrf`), and `:total_score` -- before `legacy-input-with-score` collapses them. So the four base
+;; stages (semantic arm / keyword arm / RRF fusion / weighted score) are derivable from `decoded` in Clojure
+;; with no extra SQL. Gated behind `:debug-pipeline?`; eval-only.
+
+(defn- pipeline-ident
+  "Stage-candidate identity matching the `data` rows: the collapsed-id (`indexed-entity`-aware) legacy_input
+  model+id. Keyed identically to `data`/qrels so the runner scores stages against the same judgments."
+  [row]
+  (let [li (search/collapse-id (:legacy_input row))]
+    {:model (:model li) :id (:id li)}))
+
+(defn- build-pipeline-stages
+  "Derive the ordered per-stage candidate lists from the full pre-permission `decoded` rows. Each candidate
+  is the minimal {:model :id :rank [:distance|:score] [:view]} -- not the full row -- keyed like `data`.
+  The arm ranks are the authoritative `row_number()`-assigned ranks; RRF/weighted ranks are positional over
+  the respective score column. Tolerates missing columns (blank-query/no-scoring path yields empty stages)."
+  [decoded]
+  (let [rows (mapv (fn [r] (assoc r ::ident (pipeline-ident r))) decoded)]
+    {:horizon (semantic-settings/semantic-search-results-limit)
+     :stages
+     [{:name "retrieval:semantic"
+       :candidates (->> rows
+                        (filter :semantic_rank)
+                        (sort-by :semantic_rank)
+                        (mapv (fn [r]
+                                (cond-> (assoc (::ident r)
+                                               :rank (:semantic_rank r)
+                                               :distance (:semantic_distance r))
+                                  (some? (:semantic_view r)) (assoc :view (:semantic_view r))))))}
+      {:name "retrieval:keyword"
+       :candidates (->> rows
+                        (filter :keyword_rank)
+                        (sort-by :keyword_rank)
+                        (mapv (fn [r] (assoc (::ident r) :rank (:keyword_rank r)))))}
+      {:name "fusion:rrf"
+       :candidates (->> rows
+                        (sort-by #(or (:rrf %) 0) >)
+                        (map-indexed (fn [i r] (assoc (::ident r) :rank (inc i) :score (:rrf r))))
+                        vec)}
+      {:name "score:weighted"
+       :candidates (->> rows
+                        (sort-by #(or (:total_score %) 0) >)
+                        (map-indexed (fn [i r] (assoc (::ident r) :rank (inc i) :score (:total_score r))))
+                        vec)}]}))
+
+(defn- pipeline-permission-dropped
+  "Candidates present in the pre-permission `decoded` set but absent from the post-permission/collection
+  `kept` results, tagged with their `score_rank` (1-based position in `total_score` order)."
+  [decoded kept-results]
+  (let [kept (into #{} (map (juxt :model :id)) kept-results)]
+    (into []
+          (comp (map-indexed (fn [i r] (assoc (pipeline-ident r) :score_rank (inc i))))
+                (remove (fn [c] (contains? kept [(:model c) (:id c)]))))
+          decoded)))
 
 (defn- compute-collection-id-only-search-models
   "Compute search-models whose read perms are determined fully by their collection id."
@@ -1205,6 +1309,91 @@
   [db query]
   (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
+;; ----------------------------------------------------------------------------
+;; Voyage cross-encoder rerank step (the `reranker_config` request knob)
+;;
+;; A precision-only reorder of the top-N of the (permission-filtered, appdb-boosted) candidate list. RRF +
+;; the SQL pool ordering decide *which* N candidates get reranked (recall); the cross-encoder produces the
+;; relevance ordering over those N. Runs entirely post-SQL in Clojure over rows that already carry
+;; `:all-scores` (each `{:name :score :weight :contribution}`) and `:content`, so the re-blend is pure
+;; arithmetic -- no new SQL, no weight refit. See [[metabase.search.config/RerankerConfig]] /
+;; [[metabase.search.config/rerank-blend-modes]].
+
+(def ^:private rerank-relevance-scorers
+  "Scorers the cross-encoder supersedes as the relevance signal; dropped from the re-blend in the
+  `:rerank_then_boost`/`:rerank_fusion` modes (the rerank score owns the relevance axis instead)."
+  #{:rrf :semantic-distance})
+
+(defn- metadata-boost-contribution
+  "Sum of `:contribution` over a row's `:all-scores`, excluding `drop-set` (the relevance-core scorers). Each
+  `:contribution` is the already-computed `weight*score` for one scorer, so this is the metadata-boost mass
+  that tips the cross-encoder's relevance ordering."
+  [row drop-set]
+  (transduce (comp (remove (comp drop-set :name))
+                   (map #(or (:contribution %) 0.0)))
+             + 0.0 (:all-scores row)))
+
+(defn- reblend
+  "Recompute `:score` for a reranked `row` per `blend`. `rr` is the cross-encoder relevance score in [0,1];
+  `w` is the configured rerank weight. Attaches `:rerank_score` for attribution."
+  [blend w row rr]
+  (assoc row
+         :rerank_score rr
+         :score (case blend
+                  :rerank_only       rr
+                  :rerank_then_boost (+ (* w rr) (metadata-boost-contribution row rerank-relevance-scorers))
+                  ;; D2 keeps the full weighted sum (incl. :rrf) and adds the rerank term -- double-counts
+                  ;; relevance; kept for completeness.
+                  :rerank_as_scorer  (+ (:score row 0.0) (* w rr))
+                  :rerank_fusion     (+ (* w rr) (metadata-boost-contribution row rerank-relevance-scorers)))))
+
+(defn- rerank-results
+  "Rerank the top-`pool` of `results` with the Voyage cross-encoder and reblend per the request's
+  `:reranker-config` `:blend`. Returns `{:results :tokens :pool :model :stage}` where `:results` is the
+  re-sorted result list (one row per entity, `:content`/carried ranks dissoc'd so nothing leaks) and `:stage`
+  is the `rerank:voyage` debug-pipeline stage (built unconditionally; only attached under `debug?`).
+
+  Pool selection: D1/D2 rerank the head of the existing `total_score` order; D3 (`:rerank_fusion`) reranks the
+  head of a rank-fusion-free order (best arm rank), ignoring RRF for *which* N are reranked. The reranked
+  block always sorts above the un-reranked tail (the pool is the precision-ordered head). `:top-k` truncates
+  the final list; left unset it returns the full list, so the min-results fallback stays predictable."
+  [search-context debug? results]
+  (if (empty? results)
+    ;; Nothing to rerank (e.g. everything filtered out). Skip the provider round-trip; Voyage rejects an
+    ;; empty `documents` list anyway.
+    {:results results :tokens 0 :pool 0
+     :model (or (:model (:reranker-config search-context)) (semantic-settings/ee-reranking-model))
+     :stage {:name "rerank:voyage" :candidates []}}
+    (let [{:keys [model pool top-k weight blend]
+           :or   {pool 50 weight 500.0 blend :rerank_then_boost}} (:reranker-config search-context)
+          ordered          (if (= blend :rerank_fusion)
+                             (sort-by (fn [r] (min (or (:semantic_rank r) ##Inf)
+                                                   (or (:keyword_rank r) ##Inf)))
+                                      results)
+                             results)
+          [pool-rows tail] (split-at pool ordered)
+          docs             (mapv #(or (:content %) (:name %) "") pool-rows)
+          {:keys [order scores tokens]} (reranking/rerank (:search-string search-context) docs {:model model})
+          reranked         (mapv (fn [i] (reblend blend weight (nth pool-rows i) (get scores i 0.0))) order)
+          merged           (concat (sort-by :score > reranked) tail)
+          kept             (cond->> merged top-k (take top-k))
+          stage            {:name "rerank:voyage"
+                            :candidates (vec (map-indexed (fn [i r]
+                                                            {:model (:model r) :id (:id r)
+                                                             :rank  (inc i) :score (:rerank_score r)})
+                                                          kept))}
+          ;; Strip the carried internal keys before return. `serialize` is a blacklist, so :content / the arm
+          ;; ranks would otherwise leak; keep them (plus :rerank_score) only under debug? for attribution.
+          cleaned          (mapv (fn [r]
+                                   (cond-> (dissoc r :content)
+                                     (not debug?) (dissoc :semantic_rank :keyword_rank :rerank_score)))
+                                 kept)]
+      {:results cleaned
+       :tokens  (or tokens 0)
+       :pool    (count pool-rows)
+       :model   (or model (semantic-settings/ee-reranking-model))
+       :stage   stage})))
+
 (defn query-index
   "Query the index for documents similar to the search string.
   Returns a map with :results and :raw-count."
@@ -1226,14 +1415,24 @@
             db-timer (u/start-timer)
             weights (search.config/weights search-context)
             scorers (scoring/semantic-scorers (:table-name index) search-context)
+            debug? (boolean (:debug-pipeline? search-context))
+            ;; Rerank runs iff the request carries a `:reranker-config` (the per-request opt-in) AND the global
+            ;; `ee-reranking-enabled` kill switch is on. Computed up front so `legacy-input-with-score` knows to
+            ;; carry `:content` + arm ranks for the post-SQL rerank step.
+            rerank? (boolean (and (:reranker-config search-context)
+                                  (semantic-settings/ee-reranking-enabled)))
             query (scored-search-query index embedding search-context scorers)
-            xform (comp (map decode-legacy-input)
-                        (map (partial legacy-input-with-score weights (keys scorers))))
             reducible (reducible-search-query db query)
-            raw-results (tracing/with-span :search "search.semantic.db-query"
-                          {:search/query-length (count search-string)}
-                          (into [] xform reducible))
+            ;; Realize the full candidate rows with their arm ranks / scorer columns intact (the DB hit),
+            ;; then project to result maps. Splitting the xform keeps `decoded` available for the
+            ;; debug-pipeline stage derivation, which reads columns `legacy-input-with-score` discards.
+            decoded (tracing/with-span :search "search.semantic.db-query"
+                      {:search/query-length (count search-string)}
+                      (into [] (map decode-legacy-input) reducible))
+            raw-results (mapv (partial legacy-input-with-score weights (keys scorers) debug? rerank?) decoded)
             db-query-time-ms (u/since-ms db-timer)
+
+            pipeline (when debug? (build-pipeline-stages decoded))
 
             filter-timer (u/start-timer)
             filtered-results (tracing/with-span :search "search.semantic.permission-filter"
@@ -1243,21 +1442,32 @@
                                     (apply-collection-id-filter search-context)
                                     (mapv search/collapse-id)))
             filter-time-ms (u/since-ms filter-timer)
+            permission-dropped (when debug? (pipeline-permission-dropped decoded filtered-results))
 
             appdb-scorers (scoring/appdb-scorers search-context)
             appdb-scores-timer (u/start-timer)
             final-results (->> filtered-results
                                (scoring/with-appdb-scores search-context appdb-scorers weights))
             appdb-scores-time-ms (u/since-ms appdb-scores-timer)
+            ;; Rerank after `with-appdb-scores` so the appdb boosts (:bookmarked / :user-recency) are already
+            ;; in :all-scores and the D1/D3 re-blend can include every metadata boost.
+            rerank-timer (when rerank? (u/start-timer))
+            reranked (when rerank?
+                       (tracing/with-span :search "search.semantic.rerank"
+                         {:search/query-length (count search-string)}
+                         (rerank-results search-context debug? final-results)))
+            rerank-time-ms (when rerank? (u/since-ms rerank-timer))
+            out-results (if rerank? (:results reranked) final-results)
             total-time-ms (u/since-ms timer)]
         (log/debug "Semantic search"
                    {:search-string-length (count search-string)
                     :raw-results-count (count raw-results)
-                    :final-results-count (count final-results)
+                    :final-results-count (count out-results)
                     :embedding-time-ms embedding-time-ms
                     :db-query-time-ms db-query-time-ms
                     :filter-time-ms filter-time-ms
                     :appdb-scores-time-ms appdb-scores-time-ms
+                    :rerank-time-ms rerank-time-ms
                     :total-time-ms total-time-ms})
         (analytics/inc! :metabase-search/semantic-embedding-ms
                         {:embedding-model (:name embedding-model)}
@@ -1270,10 +1480,19 @@
         (analytics/inc! :metabase-search/semantic-search-ms
                         {:embedding-model (:name embedding-model)}
                         total-time-ms)
+        (when rerank?
+          ;; Reported usage (Voyage `usage.total_tokens`), not a local estimate, per the billable-cost policy.
+          (analytics/inc! :metabase-search/semantic-rerank-tokens
+                          {:model (:model reranked)}
+                          (:tokens reranked))
+          (analytics/inc! :metabase-search/semantic-rerank-ms rerank-time-ms))
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
-        {:results final-results
-         :raw-count (count raw-results)}))))
+        (cond-> {:results out-results
+                 :raw-count (count raw-results)}
+          pipeline (assoc :pipeline (cond-> (assoc pipeline :permission_dropped permission-dropped)
+                                      reranked (-> (update :stages conj (:stage reranked))
+                                                   (assoc :rerank (select-keys reranked [:tokens :pool :model]))))))))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))

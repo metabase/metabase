@@ -147,6 +147,29 @@
         (log/warn "Failed to parse federated_multi_view_config:" (ex-message e))
         nil))))
 
+(defn- process-reranker-config
+  "Parse the `reranker_config` JSON query param into the map consumed by the semantic engine
+  (see [[metabase.search.config/RerankerConfig]]). Returns nil when absent/blank or unparseable.
+  Keywordizes the `:blend` selector and normalizes `top_k` -> `:top-k`, dropping any other keys so the
+  closed schema accepts it.
+
+  Shape: `{\"model\": .., \"pool\": N, \"top_k\": N, \"weight\": W,
+  \"blend\": \"rerank_only\"|\"rerank_then_boost\"|\"rerank_as_scorer\"|\"rerank_fusion\"}`."
+  [reranker-config]
+  (when-not (str/blank? reranker-config)
+    (try
+      (let [{:keys [model pool weight blend] :as cfg} (json/decode+kw reranker-config)
+            top-k (or (:top-k cfg) (:top_k cfg))]
+        (cond-> {}
+          model         (assoc :model model)
+          pool          (assoc :pool pool)
+          (some? top-k) (assoc :top-k top-k)
+          (some? weight) (assoc :weight (double weight))
+          blend         (assoc :blend (keyword blend))))
+      (catch Exception e
+        (log/warn "Failed to parse reranker_config:" (ex-message e))
+        nil))))
+
 (defn- process-weights
   "Parse the `weights` JSON query param into the per-request scorer-weight overrides consumed by the
   scoring layer (the `:weights` key on the search context; see [[metabase.search.config/weights]]).
@@ -291,8 +314,10 @@
   - `partition_config`: for the semantic engine, a JSON object enabling federated/partitioned retrieval (per-partition model set, candidate quota `k`, cosine cutoff, and vector strategy); omit for a single global KNN. Ignored by other engines
   - `multi_view_config`: for the semantic engine, a JSON object enabling multi-view-embedding retrieval (per-view embedding column + candidate quota `k`, pooled by min cosine distance, with a single cosine cutoff); omit for a single global KNN. Ignored by other engines
   - `federated_multi_view_config`: for the semantic engine, a JSON object composing federated/partitioned retrieval with multi-view embeddings (per-partition model set + quota + cosine cutoff + strategy, each partition pooling its own per-view embedding columns by min cosine distance); omit for a single global KNN. Ignored by other engines
+  - `reranker_config`: for the semantic engine, a JSON object enabling a Voyage cross-encoder rerank step over the top-`pool` of the (permission-filtered, boost-scored) candidate list (`model`, `pool`, `top_k`, `weight`, `blend`); requires the `ee-reranking-enabled` setting + key. A precision-only reorder; omit for no rerank. Ignored by other engines
   - `weights`: a JSON object of per-request scorer-weight overrides (e.g. `{\"rrf\": 1, \"exact\": 0}`); the highest-precedence weight layer, overriding static defaults and the `experimental-search-weight-overrides` setting for this request only. Unknown scorer keys are inert
   - `disable_fallback`: for the semantic engine, set to true to disable the appdb fallback entirely -- the engine returns its own results unsupplemented even when below the min-results threshold, and re-throws (rather than silently falling back) if the vector query errors. Ignored by other engines
+  - `debug_pipeline`: for the semantic engine, set to true to emit per-stage retrieval-attribution diagnostics -- a top-level `pipeline` block (per-stage candidate lists for the semantic arm, keyword arm, RRF fusion, and weighted score, plus `permission_dropped` and `fallback` provenance) and per-row arm/view fields (`source`, `semantic_rank`, `keyword_rank`, `cosine_distance`, `semantic_view`). Eval-only; absent/false leaves the response unchanged. Ignored by other engines
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
@@ -324,8 +349,10 @@
     partition-config                    :partition_config
     multi-view-config                   :multi_view_config
     federated-multi-view-config         :federated_multi_view_config
+    reranker-config                     :reranker_config
     weights                             :weights
     disable-fallback                    :disable_fallback
+    debug-pipeline                      :debug_pipeline
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
     include-metadata                    :include_metadata
@@ -353,8 +380,10 @@
        [:partition_config                    {:optional true} [:maybe :string]]
        [:multi_view_config                   {:optional true} [:maybe :string]]
        [:federated_multi_view_config         {:optional true} [:maybe :string]]
+       [:reranker_config                     {:optional true} [:maybe :string]]
        [:weights                             {:optional true} [:maybe :string]]
        [:disable_fallback                    {:optional true} [:maybe :boolean]]
+       [:debug_pipeline                      {:optional true} [:maybe :boolean]]
        [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -390,8 +419,10 @@
                 :partition-config                    (process-partition-config partition-config)
                 :multi-view-config                   (process-multi-view-config multi-view-config)
                 :federated-multi-view-config         (process-federated-multi-view-config federated-multi-view-config)
+                :reranker-config                     (process-reranker-config reranker-config)
                 :weights                             (process-weights weights)
                 :disable-fallback?                   disable-fallback
+                :debug-pipeline?                     debug-pipeline
                 :search-native-query                 search-native-query
                 :search-string                       (some-> q str/trim not-empty)
                 :table-db-id                         table-db-id

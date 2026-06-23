@@ -180,6 +180,78 @@
     (testing "the composed path takes precedence over the single-KNN path (no global vector_candidates CTE)"
       (is (not (str/includes? sql "\"vector_candidates\""))))))
 
+(deftest semantic-view-attribution-column-test
+  (testing "single-KNN paths emit a NULL semantic_view so the hybrid select can reference it for every strategy"
+    (doseq [strategy [:hnsw :brute-force]]
+      (is (str/includes? (vector-search-sql strategy) "NULL AS \"semantic_view\"")
+          (str strategy " path tags semantic_view NULL"))))
+  (testing "multi-view path tags each candidate with its view label and a deterministic view_idx tiebreaker"
+    (let [mv  {:views [{:column "embedding"       :name "base"       :k 500}
+                       {:column "embedding_attrs" :name "attributes" :k 300}]
+               :max-cosine-distance 0.6 :pool :least}
+          [sql] (multi-view-search-sql+params mv)]
+      (is (str/includes? sql "'base' AS \"semantic_view\""))
+      (is (str/includes? sql "'attributes' AS \"semantic_view\""))
+      ;; the view-index tiebreaker follows distance in the pooled ORDER BY, so ties resolve to the lowest
+      ;; view index deterministically (the base view wins when a synthetic view's vector equals base's)
+      (is (str/includes? sql "\"distance\" ASC, \"view_idx\" ASC")))))
+
+(deftest build-pipeline-stages-test
+  (let [rows [{:model "card"      :legacy_input {:id 1 :model "card"}
+               :semantic_rank 2 :semantic_distance 0.30 :semantic_view "attributes"
+               :keyword_rank 5 :rrf 0.011 :total_score 90.0}
+              {:model "dashboard" :legacy_input {:id 7 :model "dashboard"}
+               :semantic_rank 1 :semantic_distance 0.10 :semantic_view "base"
+               :keyword_rank nil :rrf 0.008 :total_score 120.0}
+              {:model "card"      :legacy_input {:id 9 :model "card"}
+               :semantic_rank nil :semantic_distance nil :semantic_view nil
+               :keyword_rank 1 :rrf 0.009 :total_score 50.0}]
+        {:keys [horizon stages]} (#'semantic.index/build-pipeline-stages rows)
+        by-name (into {} (map (juxt :name :candidates)) stages)]
+    (testing "emits the four base stages in order with the configured horizon"
+      (is (= ["retrieval:semantic" "retrieval:keyword" "fusion:rrf" "score:weighted"]
+             (mapv :name stages)))
+      (is (= (semantic.settings/semantic-search-results-limit) horizon)))
+    (testing "semantic arm: rank-ordered, keyword-only row excluded, carries distance + winning view"
+      (is (= [{:model "dashboard" :id 7 :rank 1 :distance 0.10 :view "base"}
+              {:model "card"      :id 1 :rank 2 :distance 0.30 :view "attributes"}]
+             (by-name "retrieval:semantic"))))
+    (testing "keyword arm: rank-ordered, semantic-only row excluded, no view/distance"
+      (is (= [{:model "card" :id 9 :rank 1}
+              {:model "card" :id 1 :rank 5}]
+             (by-name "retrieval:keyword"))))
+    (testing "weighted stage: positional rank in total_score order, keyed like the data rows"
+      (is (= [{:model "dashboard" :id 7 :rank 1 :score 120.0}
+              {:model "card"      :id 1 :rank 2 :score 90.0}
+              {:model "card"      :id 9 :rank 3 :score 50.0}]
+             (by-name "score:weighted"))))
+    (testing "the blank-query/no-rows path yields empty stages, not an error"
+      (is (= [] (-> (#'semantic.index/build-pipeline-stages []) :stages first :candidates))))))
+
+(deftest legacy-input-with-score-debug-fields-test
+  (let [row {:legacy_input {:id 1 :model "card"} :total_score 5.0 :content "[card]\nname: Q"
+             :semantic_rank 3 :keyword_rank nil :semantic_distance 0.42 :semantic_view "base"}]
+    (testing "debug off, rerank off: no attribution/rerank fields leak onto the wire row (prod payload unchanged)"
+      (let [r (#'semantic.index/legacy-input-with-score {} [] false false row)]
+        (is (not (contains? r :semantic_rank)))
+        (is (not (contains? r :cosine_distance)))
+        (is (not (contains? r :source)))
+        (is (not (contains? r :content)))))
+    (testing "debug on: carries arm ranks, cosine distance, winning view, and derived source"
+      (let [r (#'semantic.index/legacy-input-with-score {} [] true false row)]
+        (is (= 3 (:semantic_rank r)))
+        (is (= 0.42 (:cosine_distance r)))
+        (is (= "base" (:semantic_view r)))
+        (is (= ["semantic"] (:source r)))
+        (is (not (contains? r :content)) "debug alone does not carry :content")))
+    (testing "rerank on: carries :content + arm ranks (the rerank step's inputs) but not debug-only fields"
+      (let [r (#'semantic.index/legacy-input-with-score {} [] false true row)]
+        (is (= "[card]\nname: Q" (:content r)))
+        (is (= 3 (:semantic_rank r)))
+        (is (contains? r :keyword_rank))
+        (is (not (contains? r :cosine_distance)))
+        (is (not (contains? r :source)))))))
+
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [index-ref (semantic.tu/open-temp-index!)]

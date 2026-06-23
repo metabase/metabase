@@ -269,6 +269,7 @@
    [:partition-config                    {:optional true} [:maybe search.config/PartitionConfig]]
    [:multi-view-config                   {:optional true} [:maybe search.config/MultiViewConfig]]
    [:federated-multi-view-config         {:optional true} [:maybe search.config/FederatedMultiViewConfig]]
+   [:reranker-config                     {:optional true} [:maybe search.config/RerankerConfig]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
@@ -280,7 +281,8 @@
    [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
    [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
    [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]
-   [:disable-fallback?                   {:optional true} [:maybe :boolean]]])
+   [:disable-fallback?                   {:optional true} [:maybe :boolean]]
+   [:debug-pipeline?                     {:optional true} [:maybe :boolean]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -313,6 +315,7 @@
            partition-config
            multi-view-config
            federated-multi-view-config
+           reranker-config
            search-native-query
            search-string
            table-db-id
@@ -320,7 +323,8 @@
            non-temporal-dim-ids
            has-temporal-dim
            weights
-           disable-fallback?]} :- ::search-context.input]
+           disable-fallback?
+           debug-pipeline?]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -348,7 +352,8 @@
                         :search-engine                       engine
                         :search-string                       search-string
                         :weights                             weights
-                        :disable-fallback?                   (boolean disable-fallback?)}
+                        :disable-fallback?                   (boolean disable-fallback?)
+                        :debug-pipeline?                     (boolean debug-pipeline?)}
                  (some? collection)                          (assoc :collection collection)
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
@@ -363,6 +368,7 @@
                  (some? partition-config)                    (assoc :partition-config partition-config)
                  (some? multi-view-config)                   (assoc :multi-view-config multi-view-config)
                  (some? federated-multi-view-config)         (assoc :federated-multi-view-config federated-multi-view-config)
+                 (some? reranker-config)                     (assoc :reranker-config reranker-config)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
@@ -473,6 +479,9 @@
                                                :search/query-length (count (:search-string search-ctx))
                                                :search/model-count  (count (:models search-ctx))}
     (let [reducible-results (search.engine/results search-ctx)
+          ;; Per-stage retrieval-attribution diagnostics (semantic engine, `debug_pipeline=true`) ride up as
+          ;; metadata on the realized results seq -- read it here before the transducer consumes the seq.
+          pipeline          (:pipeline (meta reducible-results))
           scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
           xf                (comp
                              (take search.config/*db-max-results*)
@@ -481,4 +490,5 @@
                              (map (partial normalize-result-more search-ctx))
                              (keep #(search.engine/score scoring-ctx %)))
           ranked-results    (scoring/top-results reducible-results search.config/max-filtered-results xf)]
-      (search-results search-ctx search.engine/model-set ranked-results))))
+      (cond-> (search-results search-ctx search.engine/model-set ranked-results)
+        pipeline (assoc :pipeline pipeline)))))

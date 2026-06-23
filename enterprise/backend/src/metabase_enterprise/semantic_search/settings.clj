@@ -81,6 +81,39 @@
   :export?    false
   :doc        false)
 
+;; ---------------------------------------------------------------------------
+;; Voyage cross-encoder reranking. A precision-only rerank step over the top-N of the
+;; (permission-filtered, boost-scored) candidate list, gated by both the per-request `reranker_config`
+;; param (the opt-in, see [[metabase.search.config/RerankerConfig]]) and `ee-reranking-enabled` (the global
+;; kill switch). Provider/model/key live here; pool/top_k/weight/blend ride the per-request config.
+
+(defsetting ee-reranking-enabled
+  (deferred-tru
+   (str "Enable the Voyage cross-encoder rerank step in semantic search. Global default-off kill switch; the "
+        "per-request `reranker_config` param also gates it (both must be present for a rerank to run)."))
+  :visibility :internal
+  :encryption :no
+  :default    false
+  :type       :boolean
+  :export?    false
+  :doc        false)
+
+(defsetting ee-reranking-model
+  (deferred-tru "Default Voyage rerank model (e.g. rerank-2.5, rerank-2.5-lite). The per-request `reranker_config` may override it.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "rerank-2.5"
+  :type       :string
+  :export?    false
+  :doc        false)
+
+(defsetting ee-reranking-api-key
+  (deferred-tru "Voyage API key for the rerank endpoint (direct api.voyageai.com/v1/rerank).")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :doc        false)
+
 (defsetting semantic-search-enabled
   (deferred-tru "Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.")
   :visibility :internal
