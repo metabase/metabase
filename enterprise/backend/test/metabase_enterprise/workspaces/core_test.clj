@@ -122,8 +122,58 @@
   (testing "delete workspace with no databases"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Empty WS" :creator_id (mt/user->id :crowberto)})]
-        (ws/delete-workspace! (:id ws))
+        (is (= {:deleted true} (ws/delete-workspace! (:id ws))))
         (is (nil? (ws/get-workspace (:id ws))))))))
+
+(deftest delete-workspace-with-stuck-status-test
+  (testing "GHY-3954: a workspace whose WorkspaceDatabase is stuck in an intermediate"
+    (testing "state (e.g. after a crash mid-provision) is still deletable"
+      (doseq [stuck-status [:provisioning :deprovisioning]]
+        (testing (str "status " stuck-status)
+          (mt/with-model-cleanup [:model/Workspace]
+            (let [ws     (ws/create-workspace! {:name       (str "Stuck " (name stuck-status))
+                                                :creator_id (mt/user->id :crowberto)})
+                  _      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                           (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+                  wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))]
+              ;; force the row into the stuck state. :provisioning rows that crashed
+              ;; never stored their iso details, so clear them too to exercise the
+              ;; deterministic-name reconstruction path.
+              (t2/update! :model/WorkspaceDatabase {:id wsd-id}
+                          (cond-> {:status stuck-status}
+                            (= stuck-status :provisioning)
+                            (assoc :output_namespace "" :database_details {})))
+              (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                (is (= {:deleted true} (ws/delete-workspace! (:id ws)))))
+              (is (nil? (ws/get-workspace (:id ws))))
+              (is (not (t2/exists? :model/WorkspaceDatabase :id wsd-id))))))))))
+
+(deftest delete-workspace-warehouse-unreachable-test
+  (testing "GHY-3954: delete still succeeds when warehouse teardown fails; the result"
+    (testing "names the orphaned schema/user and why they were left behind"
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [ws     (ws/create-workspace! {:name "Unreachable WS" :creator_id (mt/user->id :crowberto)})
+              _      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                       (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+              wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))
+              boom   (reify provisioning/Provisioner
+                       (init!    [_ _ _ _]   nil)
+                       (grant!   [_ _ _ _ _] nil)
+                       (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))
+              result (with-redefs [provisioning/dispatching-provisioner boom]
+                       (ws/delete-workspace! (:id ws)))]
+          (is (true? (:deleted result)))
+          (is (nil? (ws/get-workspace (:id ws)))
+              "the workspace is deleted even though warehouse cleanup failed")
+          (is (=? [{:status                :failure
+                    :workspace_database_id wsd-id
+                    :database_id           (mt/id)
+                    :schema                "mb_iso_stub"
+                    :user                  "stub_user"
+                    :reason                "Connection refused"}]
+                  (:orphaned_resources result)))
+          (is (re-find #"was deleted, but warehouse cleanup failed" (:message result)))
+          (is (re-find #"Connection refused" (:message result))))))))
 
 ;;; -------------------------------------------- Remappings ----------------------------------------------------
 

@@ -31,6 +31,7 @@
          │                                                ▼
          └──────────────────────────────────────── provisioned"
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -222,10 +223,33 @@
           (provisioning/provision-single! wsd-id))
         (workspace/get-workspace (:id ws))))))
 
+(defn- orphaned-resources-message
+  [workspace-id failures]
+  (str (format "Workspace %d was deleted, but warehouse cleanup failed for %d database(s). "
+               workspace-id (count failures))
+       "These resources were left in place and may need to be removed manually:\n"
+       (str/join "\n"
+                 (for [{:keys [database_id driver schema user reason]} failures]
+                   (format "  - database %d (%s): schema \"%s\", user \"%s\" — not removed because: %s"
+                           database_id (name driver) schema user reason)))))
+
 (defn delete-workspace!
-  "Deprovision all databases (blocking), then delete the workspace."
+  "Tear down every database's warehouse isolation (best-effort, blocking), then
+  delete the workspace. Drives rows out of ANY state (`:provisioned`,
+  `:provisioning`, `:deprovisioning`) so a workspace is never undeletable.
+
+  Returns `{:deleted true}` on clean teardown, or
+  `{:deleted true :orphaned_resources [...] :message ..}` when the warehouse was
+  unreachable for some rows and inert schema/user objects were left behind. App-DB
+  `TableRemapping` rows are always cleared, so query routing is never left dangling."
   [id]
-  (let [ws (assert-workspace-exists id)]
-    (when (some #(= :provisioned (:status %)) (:databases ws))
-      (provisioning/deprovision-workspace! id))
-    (workspace/delete-workspace! id)))
+  (let [ws       (assert-workspace-exists id)
+        active   (remove #(= :unprovisioned (:status %)) (:databases ws))
+        results  (mapv #(provisioning/force-teardown-for-delete!
+                         % provisioning/dispatching-provisioner)
+                       active)
+        failures (filterv #(= :failure (:status %)) results)]
+    (workspace/delete-workspace! id)
+    (cond-> {:deleted true}
+      (seq failures) (assoc :orphaned_resources failures
+                            :message (orphaned-resources-message id failures)))))
