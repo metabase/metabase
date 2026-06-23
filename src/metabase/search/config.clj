@@ -69,6 +69,12 @@
   "Set of all valid models to search for. "
   (set (keys model-to-db-model)))
 
+(def curated-search-models
+  "Search models that can carry a curation signal, so the `:curated?` filter restricts to these (and
+  keeps them consistent across the appdb and in-place engines). Includes `table`, which is exactly why
+  curated content stays visible where the older verified-only filter dropped it (BOT-1536)."
+  #{"card" "dataset" "metric" "dashboard" "table"})
+
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
@@ -213,6 +219,11 @@
     :last-editor-id          {:type :list, :context-key :last-edited-by}
     :native-query            {:type :native-query, :context-key :search-native-query}
     :verified                {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
+    ;; "Verified or curated content" (Metabot). Backed by the precomputed `curated` index column
+    ;; (an OR over verified + official + library/published + authoritative, computed at ingestion),
+    ;; so the filter is a single indexed boolean. No :required-feature: a signal can only be set while
+    ;; its feature is present, so the precomputed flag is already feature-correct.
+    :curated                 {:type :single-value, :context-key :curated?, :supported-value? #{true}}
     :non-temporal-dim-ids    {:type :single-value :engine :appdb}
     :has-temporal-dim        {:type :single-value :engine :appdb}
     :display-type            {:type :list, :field "display_type"}}))
@@ -421,6 +432,8 @@
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
+   ;; true to restrict to verified-or-curated content (precomputed `curated` index column)
+   [:curated?                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]

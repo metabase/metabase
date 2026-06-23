@@ -275,6 +275,7 @@
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
+   [:curated                             {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
@@ -315,6 +316,7 @@
            search-string
            table-db-id
            verified
+           curated
            non-temporal-dim-ids
            has-temporal-dim
            weights]} :- ::search-context.input]
@@ -357,6 +359,7 @@
                  (not (str/blank? vector-search-strategy))    (assoc :vector-search-strategy (keyword vector-search-strategy))
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
+                 (some? curated)                             (assoc :curated? curated)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (seq ids)                                   (assoc :ids ids)

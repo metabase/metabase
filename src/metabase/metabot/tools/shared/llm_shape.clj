@@ -652,6 +652,10 @@
                   (if (keyword? database_engine)
                     (clojure.core/name database_engine)
                     database_engine)))]
+    ;; TODO (Chris 2026-06-09) -- surface the other curation signals to the LLM (is_curated / official /
+    ;; in_library / data_layer), not just is_verified, so it can reason about why content is curated.
+    ;; The signals are on the search-index row; thread them through postprocess-search-result and add
+    ;; attributes here + in llm_shape.selmer. Run ai-benchmarks before landing — it changes model input.
     (render-llm-template
      :search_result
      {:search_tag_name (search-result-tag-name type)

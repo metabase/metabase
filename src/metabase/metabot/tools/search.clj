@@ -269,7 +269,7 @@
                                                   search-native-query
                                                   (assoc :search-native-query (boolean search-native-query))
                                                   use-verified?
-                                                  (assoc :verified true)
+                                                  (assoc :curated true)
                                                   weights
                                                   (assoc :weights weights)
                                                   search-engine

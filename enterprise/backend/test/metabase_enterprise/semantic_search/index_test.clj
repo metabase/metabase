@@ -742,3 +742,15 @@
                      (-> (semantic.tu/query-index {:search-string "Antarctic wildlife"})
                          first
                          (select-keys [:id :name :model])))))))))))
+
+(deftest search-filters-models-test
+  (testing "the models predicate distinguishes an empty applicable-model set from an absent one"
+    (let [conds (fn [ctx] (tree-seq coll? seq (#'semantic.index/search-filters ctx)))]
+      (testing "a non-empty set filters to those models"
+        (is (some #{[:in :model #{"card"}]} (conds {:models #{"card"}}))))
+      (testing "an empty (but present) set matches nothing, rather than omitting the predicate (all models)"
+        (is (some #{[:= [:inline 1] [:inline 0]]} (conds {:models #{} :curated? true}))))
+      (testing "an absent :models adds no model predicate"
+        (let [flat (conds {:archived? false})]
+          (is (not-any? #(and (vector? %) (= [:in :model] (subvec % 0 (min 2 (count %))))) flat))
+          (is (not-any? #{[:= [:inline 1] [:inline 0]]} flat)))))))
