@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks/use-toast";
 import {
   Form,
   FormErrorMessage,
@@ -52,9 +53,20 @@ function DeleteWorkspaceForm({
   onClose,
 }: DeleteWorkspaceFormProps) {
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
+  const [sendToast] = useToast();
 
   const handleSubmit = async () => {
-    await deleteWorkspace(workspace.id).unwrap();
+    const result = await deleteWorkspace(workspace.id).unwrap();
+    // The workspace is deleted even when warehouse teardown partly fails; warn the
+    // admin so the leftover schema/user objects can be removed manually.
+    if (result.orphaned_resources?.length) {
+      sendToast({
+        message: result.message,
+        icon: "warning",
+        toastColor: "error",
+        timeout: null,
+      });
+    }
     onDelete();
   };
 

@@ -1,5 +1,6 @@
 import type {
   CreateWorkspaceRequest,
+  DeleteWorkspaceResponse,
   UpdateWorkspaceRequest,
   Workspace,
   WorkspaceId,
@@ -40,7 +41,7 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
-    deleteWorkspace: builder.mutation<void, WorkspaceId>({
+    deleteWorkspace: builder.mutation<DeleteWorkspaceResponse, WorkspaceId>({
       query: (id) => ({
         method: "DELETE",
         url: `/api/ee/workspace-manager/${id}`,

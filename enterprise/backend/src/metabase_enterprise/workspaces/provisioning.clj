@@ -242,6 +242,9 @@
                       (destroy! provisioner driver db workspace)
                       {:status :success}
                       (catch Throwable t
+                        (log/warnf t (str "Workspace database %d: warehouse cleanup failed; leaving schema \"%s\" "
+                                          "and user \"%s\" on database %d for manual removal")
+                                   (:id wsd) schema user (:database_id wsd))
                         {:status                :failure
                          :workspace_database_id (:id wsd)
                          :database_id           (:database_id wsd)

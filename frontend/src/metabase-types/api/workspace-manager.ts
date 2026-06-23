@@ -36,3 +36,21 @@ export type UpdateWorkspaceRequest = {
   id: WorkspaceId;
   name?: string;
 };
+
+export type OrphanedWorkspaceResource = {
+  workspace_database_id: number;
+  database_id: DatabaseId;
+  driver: string;
+  schema: string;
+  user: string;
+  reason?: string | null;
+};
+
+export type DeleteWorkspaceResponse = {
+  id: WorkspaceId;
+  deleted: boolean;
+  // Present only when the warehouse was unreachable during teardown: the workspace
+  // is still deleted, but these inert schema/user objects were left behind.
+  message?: string;
+  orphaned_resources?: OrphanedWorkspaceResource[];
+};

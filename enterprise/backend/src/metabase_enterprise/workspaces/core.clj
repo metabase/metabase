@@ -39,6 +39,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
@@ -250,6 +251,8 @@
                        active)
         failures (filterv #(= :failure (:status %)) results)]
     (workspace/delete-workspace! id)
-    (cond-> {:deleted true}
-      (seq failures) (assoc :orphaned_resources failures
-                            :message (orphaned-resources-message id failures)))))
+    (if (seq failures)
+      (let [message (orphaned-resources-message id failures)]
+        (log/warn message)
+        {:deleted true :orphaned_resources failures :message message})
+      {:deleted true})))
