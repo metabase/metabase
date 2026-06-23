@@ -88,6 +88,11 @@
              (-> (migrate/migrate-v1-native->v2
                   [tool-input {:type "tool-output" :id "tc1" :result nil :error {:code 500}}])
                  first :errorText))))
+    (testing "map-shaped :error with a non-string :message falls back to pr-str"
+      (is (= "{:message {:code 500}}"
+             (-> (migrate/migrate-v1-native->v2
+                  [tool-input {:type "tool-output" :id "tc1" :result nil :error {:message {:code 500}}}])
+                 first :errorText))))
     (testing "tool-input without a matching output stays input-available"
       (let [[part] (migrate/migrate-v1-native->v2 [tool-input])]
         (is (= "input-available" (:state part)))
@@ -103,7 +108,11 @@
             [{:type "data" :data-type "navigate_to" :version 1 :data "/question/1"}]))))
   (testing "error entries are dropped"
     (is (= [] (migrate/migrate-v1-native->v2
-               [{:type "error" :error {:message "boom"}}])))))
+               [{:type "error" :error {:message "boom"}}]))))
+  (testing "unknown :type throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 native entry type"
+                          (migrate/migrate-v1-native->v2
+                           [{:type "reasoning" :text "hmm"}])))))
 
 (deftest ^:parallel migrate-v1-user-message->v2-test
   (testing "user messages convert to text parts"
@@ -120,12 +129,10 @@
     (testing "native text entry missing :text"
       (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"
                                     (migrate/migrate-v1->v2 [{:type "text"}])))
-            {:keys [explanations]} (ex-data e)]
-        (testing "ex-data should carry humanized explanations for every v1 branch"
-          (is (= #{:ai-service :native :user-message}
-                 (set (keys explanations))))
+            {:keys [explanation]} (ex-data e)]
+        (testing "ex-data explains against the one format the row resembles (native, by its :type tag)"
           (is (= [{:text ["missing required key"]}]
-                 (:native explanations))))))))
+                 explanation)))))))
 
 (deftest ^:parallel migrated-rows-validate-test
   (testing "migrating every v1 row shape should produce valid v2 message data"

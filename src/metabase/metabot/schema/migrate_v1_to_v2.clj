@@ -4,6 +4,7 @@
   (:require
    [malli.error :as me]
    [metabase.metabot.schema.v1 :as schema.v1]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
@@ -18,9 +19,11 @@
   "Extract a v1 tool-output `:error` text."
   [error]
   (cond
-    (string? error) error
-    (map? error)    (or (:message error) (pr-str error))
-    :else           (str error)))
+    (string? error)                   error
+    (and (map? error)
+         (string? (:message error)))  (:message error)
+    (map? error)                      (pr-str error)
+    :else                             (str error)))
 
 (defn- tool-call-entry->parts [{:keys [tool_calls]} outputs]
   (mapv (fn [{:keys [id name arguments]}]
@@ -47,7 +50,7 @@
   [data]
   (let [outputs (into {}
                       (comp (filter #(= "TOOL_RESULT" (:_type %)))
-                            (map (juxt :tool_call_id identity)))
+                            (u/index-by :tool_call_id))
                       data)]
     (->> data
          (remove #(= "TOOL_RESULT" (:_type %)))
@@ -66,14 +69,17 @@
   "Convert a v1 native data array (`:type`-keyed message parts) to v2 parts.
 
   - each `tool-input` becomes a `tool-<function>` part, merged with its matching
-    `tool-output` into an `output-available` or `output-error` state
+    `tool-output` into an `output-available` or `output-error` state (orphan
+    `tool-output`s with no matching `tool-input` are dropped)
   - `text` passes through without its `:id`
   - `data` becomes a `data-<data-type>` part
-  - `error` entries signal turn failure, not conversation content, and are dropped"
+  - `error` entries signal turn failure, not conversation content, and are dropped
+
+  Throws on unrecognized entry types."
   [data]
   (let [outputs (into {}
                       (comp (filter #(= "tool-output" (:type %)))
-                            (map (juxt :id identity)))
+                            (u/index-by :id))
                       data)]
     (->> data
          (mapcat (fn [entry]
@@ -88,7 +94,14 @@
                                                              (some? output) "output-available"
                                                              :else          "input-available")
                                                :input      (:arguments entry)}
+                                        ;; errored tool-outputs do co-occur with `:result`, but only because
+                                        ;; `persistence/strip-tool-output-bloat` rewrites the absent result of an
+                                        ;; errored call to `{}` — there is never a real result to preserve
                                         (and (some? output) (nil? error))
+                                        ;; the result map passes through verbatim: its keys (`:output`,
+                                        ;; `:structured-output`/`:structured_output`) keep their v1 spelling
+                                        ;; inside the opaque v2 `:output`, matching what consumers like
+                                        ;; `metabot-analytics.queries` already read
                                         (assoc :output (:result output))
 
                                         (some? error)
@@ -96,7 +109,8 @@
                      "tool-output" []
                      "data"        [{:type (str "data-" (:data-type entry))
                                      :data (:data entry)}]
-                     "error"       [])))
+                     "error"       []
+                     (throw (ex-info "Unrecognized v1 native entry type" {:entry entry})))))
          vec)))
 
 (defn migrate-v1-user-message->v2
@@ -115,11 +129,16 @@
     (mr/validate ::schema.v1/native-data data)       (migrate-v1-native->v2 data)
     (mr/validate ::schema.v1/user-message-data data) (migrate-v1-user-message->v2 data)
     :else
-    (throw (ex-info "Unrecognized v1 storage format"
-                    {:data         data
-                     :explanations {:ai-service   (me/humanize (mr/explain ::schema.v1/ai-service-data data))
-                                    :native       (me/humanize (mr/explain ::schema.v1/native-data data))
-                                    :user-message (me/humanize (mr/explain ::schema.v1/user-message-data data))}}))))
+    ;; explain only against the format the row resembles (by its entries' dispatch tag),
+    ;; rather than dumping a humanized mismatch for all three v1 schemas
+    (let [entry  (when (sequential? data) (first data))
+          schema (cond
+                   (:_type entry)           ::schema.v1/ai-service-data
+                   (:type entry)            ::schema.v1/native-data
+                   (= "user" (:role entry)) ::schema.v1/user-message-data)]
+      (throw (ex-info "Unrecognized v1 storage format"
+                      (cond-> {:data data}
+                        schema (assoc :explanation (me/humanize (mr/explain schema data)))))))))
 
 (comment
   ;; validate the v1->v2 conversion against a CSV dump of metabot_message table
