@@ -7,21 +7,21 @@ import { hasChildren } from "metabase/visualizations/echarts/graph/treemap/model
 import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
 import { getTreemapTotal } from "metabase/visualizations/echarts/graph/treemap/model/value";
 
-export const TREEMAP_LEGEND_WIDTH = 363;
-export const TREEMAP_LEGEND_ROW_HEIGHT = 16;
-export const TREEMAP_LEGEND_ROW_CENTER_Y = TREEMAP_LEGEND_ROW_HEIGHT / 2;
-export const TREEMAP_LEGEND_GROUP_GAP = 24;
-export const TREEMAP_LEGEND_ROW_GAP = TREEMAP_LEGEND_GROUP_GAP / 2;
-export const TREEMAP_LEGEND_TOTAL_PADDING_TOP = 16;
-export const TREEMAP_LEGEND_INDENT = 18;
-export const TREEMAP_LEGEND_DOT_SIZE = 12;
-export const TREEMAP_LEGEND_DOT_RADIUS = TREEMAP_LEGEND_DOT_SIZE / 2;
-export const TREEMAP_LEGEND_DOT_GAP = 6;
-export const TREEMAP_LEGEND_VALUE_WIDTH = 112;
-export const TREEMAP_LEGEND_PERCENT_WIDTH = 52;
-export const TREEMAP_LEGEND_VALUE_PERCENT_GAP = 8;
-export const TREEMAP_LEGEND_NAME_CLUSTER_GAP = 16;
-export const TREEMAP_LEGEND_FONT_SIZE = 14;
+export const LEGEND_WIDTH = 363;
+export const ROW_HEIGHT = 16;
+export const ROW_CENTER_Y = ROW_HEIGHT / 2;
+export const GROUP_GAP = 24;
+export const ROW_GAP = GROUP_GAP / 2;
+export const PADDING_TOP = 16;
+export const INDENT = 18;
+export const DOT_SIZE = 12;
+export const DOT_RADIUS = DOT_SIZE / 2;
+export const DOT_GAP = 6;
+export const VALUE_WIDTH = 112;
+export const PERCENT_WIDTH = 52;
+export const VALUE_PERCENT_GAP = 8;
+export const NAME_CLUSTER_GAP = 16;
+export const FONT_SIZE = 14;
 
 export interface TreemapLegendRow {
   type: "parent" | "leaf" | "total";
@@ -48,7 +48,7 @@ export function getTreemapLegendModel(
   const formatShare = getTreemapPercentOfTotalFormatter(tree, formatPercent);
   const treeHasChildren = tree.some(hasChildren);
 
-  const stride = TREEMAP_LEGEND_ROW_HEIGHT + TREEMAP_LEGEND_GROUP_GAP;
+  const stride = ROW_HEIGHT + GROUP_GAP;
 
   const rows: TreemapLegendRow[] = [...tree]
     .sort((a, b) => b.value - a.value)
@@ -68,11 +68,11 @@ export function getTreemapLegendModel(
     valueLabel: formatValue(total),
     percentLabel: formatPercent(1),
     indent: treeHasChildren,
-    top: stride * rows.length + TREEMAP_LEGEND_TOTAL_PADDING_TOP,
+    top: stride * rows.length + PADDING_TOP,
   };
 
   return {
     rows: [...rows, totalRow],
-    height: totalRow.top + TREEMAP_LEGEND_ROW_HEIGHT,
+    height: totalRow.top + ROW_HEIGHT,
   };
 }

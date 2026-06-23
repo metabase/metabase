@@ -6,20 +6,20 @@ import { truncateText } from "metabase/visualizations/lib/text";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import {
-  TREEMAP_LEGEND_DOT_GAP,
-  TREEMAP_LEGEND_DOT_RADIUS,
-  TREEMAP_LEGEND_DOT_SIZE,
-  TREEMAP_LEGEND_FONT_SIZE,
-  TREEMAP_LEGEND_INDENT,
-  TREEMAP_LEGEND_NAME_CLUSTER_GAP,
-  TREEMAP_LEGEND_PERCENT_WIDTH,
-  TREEMAP_LEGEND_ROW_CENTER_Y,
-  TREEMAP_LEGEND_TOTAL_PADDING_TOP,
-  TREEMAP_LEGEND_VALUE_PERCENT_GAP,
-  TREEMAP_LEGEND_VALUE_WIDTH,
-  TREEMAP_LEGEND_WIDTH,
+  DOT_GAP,
+  DOT_RADIUS,
+  DOT_SIZE,
+  FONT_SIZE,
+  INDENT,
+  LEGEND_WIDTH,
+  NAME_CLUSTER_GAP,
+  PADDING_TOP,
+  PERCENT_WIDTH,
+  ROW_CENTER_Y,
   type TreemapLegendModel,
   type TreemapLegendRow,
+  VALUE_PERCENT_GAP,
+  VALUE_WIDTH,
 } from "./legend";
 
 const FONT_WEIGHT_REGULAR = 400;
@@ -37,23 +37,19 @@ export function TreemapLegend({
   model,
   left,
   top,
-  width = TREEMAP_LEGEND_WIDTH,
+  width = LEGEND_WIDTH,
   renderingContext,
 }: TreemapLegendProps) {
   const { getColor } = renderingContext;
-  const valueRight =
-    width - TREEMAP_LEGEND_PERCENT_WIDTH - TREEMAP_LEGEND_VALUE_PERCENT_GAP;
+  const valueRight = width - PERCENT_WIDTH - VALUE_PERCENT_GAP;
 
   return (
     <Group left={left} top={top}>
       {model.rows.map((row, index) => {
         const fontWeight = getRowFontWeight(row);
-        const indent = row.indent ? TREEMAP_LEGEND_INDENT : 0;
+        const indent = row.indent ? INDENT : 0;
         const nameX =
-          indent +
-          (row.color !== undefined
-            ? TREEMAP_LEGEND_DOT_SIZE + TREEMAP_LEGEND_DOT_GAP
-            : 0);
+          indent + (row.color !== undefined ? DOT_SIZE + DOT_GAP : 0);
         const name = truncateName(row, width - nameX);
 
         return (
@@ -63,26 +59,26 @@ export function TreemapLegend({
                 data-testid="legend-separator"
                 x1={0}
                 x2={width}
-                y1={-TREEMAP_LEGEND_TOTAL_PADDING_TOP}
-                y2={-TREEMAP_LEGEND_TOTAL_PADDING_TOP}
+                y1={-PADDING_TOP}
+                y2={-PADDING_TOP}
                 stroke={getColor("border")}
               />
             )}
             {row.color !== undefined && (
               <circle
                 data-testid="legend-dot"
-                cx={indent + TREEMAP_LEGEND_DOT_RADIUS}
-                cy={TREEMAP_LEGEND_ROW_CENTER_Y}
-                r={TREEMAP_LEGEND_DOT_RADIUS}
+                cx={indent + DOT_RADIUS}
+                cy={ROW_CENTER_Y}
+                r={DOT_RADIUS}
                 fill={row.color}
               />
             )}
             <Text
               data-testid="legend-name"
               x={nameX}
-              y={TREEMAP_LEGEND_ROW_CENTER_Y}
+              y={ROW_CENTER_Y}
               verticalAnchor="middle"
-              fontSize={TREEMAP_LEGEND_FONT_SIZE}
+              fontSize={FONT_SIZE}
               fontWeight={fontWeight}
               fill={getColor("text-primary")}
             >
@@ -90,10 +86,10 @@ export function TreemapLegend({
             </Text>
             <Text
               x={valueRight}
-              y={TREEMAP_LEGEND_ROW_CENTER_Y}
+              y={ROW_CENTER_Y}
               textAnchor="end"
               verticalAnchor="middle"
-              fontSize={TREEMAP_LEGEND_FONT_SIZE}
+              fontSize={FONT_SIZE}
               fontWeight={fontWeight}
               fill={getColor("text-primary")}
             >
@@ -101,10 +97,10 @@ export function TreemapLegend({
             </Text>
             <Text
               x={width}
-              y={TREEMAP_LEGEND_ROW_CENTER_Y}
+              y={ROW_CENTER_Y}
               textAnchor="end"
               verticalAnchor="middle"
-              fontSize={TREEMAP_LEGEND_FONT_SIZE}
+              fontSize={FONT_SIZE}
               fontWeight={fontWeight}
               fill={getColor("text-secondary")}
             >
@@ -125,10 +121,10 @@ function truncateName(row: TreemapLegendRow, availableFromNameX: number) {
   const fontWeight = getRowFontWeight(row);
   const nameMaxWidth =
     availableFromNameX -
-    TREEMAP_LEGEND_NAME_CLUSTER_GAP -
-    TREEMAP_LEGEND_VALUE_WIDTH -
-    TREEMAP_LEGEND_VALUE_PERCENT_GAP -
-    TREEMAP_LEGEND_PERCENT_WIDTH;
+    NAME_CLUSTER_GAP -
+    VALUE_WIDTH -
+    VALUE_PERCENT_GAP -
+    PERCENT_WIDTH;
 
   return truncateText(
     row.name,
@@ -136,7 +132,7 @@ function truncateName(row: TreemapLegendRow, availableFromNameX: number) {
     (text, style) =>
       measureTextWidth(text, Number(style.size), Number(style.weight)),
     {
-      size: TREEMAP_LEGEND_FONT_SIZE,
+      size: FONT_SIZE,
       weight: fontWeight,
       family: "Lato",
     },

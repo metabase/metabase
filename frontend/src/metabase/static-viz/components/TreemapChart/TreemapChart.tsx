@@ -22,7 +22,7 @@ import {
 import Watermark from "../../watermark.svg?component";
 
 import { TreemapLegend } from "./TreemapLegend";
-import { TREEMAP_LEGEND_WIDTH, getTreemapLegendModel } from "./legend";
+import { LEGEND_WIDTH, getTreemapLegendModel } from "./legend";
 
 const CHART_WIDTH = 965;
 const CHART_HEIGHT = 764;
@@ -93,7 +93,7 @@ export function TreemapChart({
     formatters.value,
     formatters.percent,
   );
-  const width = CHART_WIDTH + LEGEND_GAP + TREEMAP_LEGEND_WIDTH;
+  const width = CHART_WIDTH + LEGEND_GAP + LEGEND_WIDTH;
   const height = Math.max(CHART_HEIGHT, legendModel.height);
 
   return (
