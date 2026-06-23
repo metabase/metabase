@@ -43,33 +43,40 @@ import { getIconForField, getUniqueFieldId } from "./utils/fields";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 
+// A field is instantiated from either a normalized field (the entity store) or
+// a plain API field (e.g. an RTK query result); they differ only in how the
+// hydrated relationships are represented.
+type FieldInput = Partial<ApiField> | Partial<NormalizedField>;
+
 // Merging this interface with the class gives instances the API field's
-// properties without re-declaring them; only the hydrated relationships and the
-// metadata-specific extras differ from the plain API field.
+// properties without re-declaring them; the interface only re-types the
+// hydrated relationships, while the class declares its own runtime-only state.
 interface Field extends Omit<
   ApiField,
   "table" | "target" | "name_field" | "fingerprint"
 > {
-  _plainObject: NormalizedField;
   table?: Table;
   target?: Field;
   name_field?: Field;
   fingerprint?: FieldFingerprint;
-  metadata?: Metadata;
-  remapping?: Map<unknown, unknown>;
-  source?: string;
-  uniqueId?: string | number;
 }
 
 /**
  * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
  */
 class Field {
-  constructor(object: Record<string, unknown> = {}) {
-    this._plainObject = object as unknown as NormalizedField;
+  declare _plainObject: NormalizedField;
+  declare metadata?: Metadata;
+  declare remapping?: Map<unknown, unknown>;
+  declare source?: string;
+  declare uniqueId?: string | number;
 
-    for (const property in object) {
-      (this as Record<string, unknown>)[property] = object[property];
+  constructor(object: FieldInput = {}) {
+    const plainObject = object as Record<string, unknown>;
+    this._plainObject = plainObject as unknown as NormalizedField;
+
+    for (const property in plainObject) {
+      (this as Record<string, unknown>)[property] = plainObject[property];
     }
   }
 
@@ -340,10 +347,7 @@ class Field {
     }
 
     const plainObject = this.getPlainObject();
-    const newField = new Field({ ...this, ...fieldMetadata } as Record<
-      string,
-      unknown
-    >);
+    const newField = new Field({ ...this, ...fieldMetadata } as FieldInput);
     newField._plainObject = { ...plainObject, ...fieldMetadata };
 
     return newField;
