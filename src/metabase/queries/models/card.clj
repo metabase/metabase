@@ -1301,7 +1301,11 @@
 
     (model? card)
     (let [native?   (lib/native? (:dataset_query card))
-          keep-keys (into #{:name}
+          ;; `:id` is the link from each model column to its underlying Field. It isn't in `model-preserved-keys`
+          ;; for MBQL models, but serdes must still carry it (as a portable field ref, via `*export-field-fk*`
+          ;; below) so a filter mapped to the model column can resolve the field's values after import. See
+          ;; GHY-3946.
+          keep-keys (into #{:name :id}
                           (map u/->snake_case_en)
                           (lib/model-preserved-keys native?))]
       (mapv (fn [m]
@@ -1345,35 +1349,6 @@
     (-> (reduce into #{} (for [m metadata]
                            (serdes/mbql-deps (:field_ref m))))
         (disj nil))))
-
-(defmethod serdes/load-finalize! "Card"
-  [path]
-  ;; A model's result_metadata is serialized with the authoritative keys only — exactly the set
-  ;; `lib/model-preserved-keys` marks as non-recomputable. The structural columns (notably `:id`, the link to
-  ;; each underlying Field) are dropped because they're derivable from the query. Re-derive the fresh columns from
-  ;; the query — now that the referenced Tables/Fields are loaded — then overlay the serialized overrides using
-  ;; the same `model-preserved-keys` set (with this model's native flag) that the export used. This mirrors the
-  ;; export so a filter mapped to the model column can resolve the field's values (its dropdown). See GHY-3946.
-  (when-let [{:keys [dataset_query result_metadata] :as card}
-             (some->> (serdes/load-find-local path)
-                      :id
-                      (t2/select-one [:model/Card :id :type :dataset_query :result_metadata :card_schema]))]
-    (when (and (model? card)
-               (seq result_metadata)
-               (some #(nil? (:id %)) result_metadata)
-               (map? dataset_query)
-               (seq dataset_query))
-      ;; native models can't be re-derived without running their SQL; `infer-metadata` returns nil for them, so
-      ;; their (already complete) serialized metadata is left untouched.
-      (when-let [fresh (card.metadata/infer-metadata dataset_query)]
-        (let [native?       (lib/native? dataset_query)
-              preserve      (into #{} (map u/->snake_case_en) (lib/model-preserved-keys native?))
-              saved-by-name (m/index-by :name result_metadata)
-              merged        (mapv (fn [fresh-col]
-                                    (merge fresh-col
-                                           (select-keys (saved-by-name (:name fresh-col)) preserve)))
-                                  fresh)]
-          (t2/update! :model/Card (:id card) {:result_metadata merged}))))))
 
 (defmethod serdes/storage-path "Card" [card ctx]
   (let [base (serdes/storage-default-collection-path card ctx)]
