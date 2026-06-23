@@ -87,6 +87,12 @@
   (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
     (semantic.index/query-index pgvector index search-context)))
 
+(defn diagnose
+  "Engine-owned diagnostic stages for the active semantic index. See [[semantic.index/diagnose-row]]."
+  [pgvector index-metadata search-context model id]
+  (let [{:keys [index]} (ensure-active-index-state pgvector index-metadata)]
+    (semantic.index/diagnose-row pgvector index search-context model id)))
+
 (defn index-documents!
   "Indexes documents into the active semantic search index.
   Documents are upserted - existing documents with same id are replaced.

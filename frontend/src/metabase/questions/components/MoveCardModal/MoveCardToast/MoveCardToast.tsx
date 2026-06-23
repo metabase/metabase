@@ -6,8 +6,8 @@ import {
   useGetCollectionQuery,
   useGetDashboardQuery,
 } from "metabase/api";
-import type { MoveDestination } from "metabase/collections/types";
-import { coerceCollectionId } from "metabase/collections/utils";
+import type { MoveDestination } from "metabase/common/collections/types";
+import { coerceCollectionId } from "metabase/common/collections/utils";
 import { Link } from "metabase/common/components/Link";
 import { Flex, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";

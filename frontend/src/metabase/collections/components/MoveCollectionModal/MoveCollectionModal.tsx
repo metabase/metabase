@@ -5,7 +5,7 @@ import { skipToken, useGetCollectionQuery } from "metabase/api";
 import type {
   MoveDestination,
   OnMoveWithSourceAndDestination,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { useSetCollection } from "metabase/common/hooks";

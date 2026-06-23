@@ -19,6 +19,7 @@
                           (me/humanize (mr/explain sql-jdbc.execute/ConnectionOptions options)))
     nil                              nil
     {}                               nil
+    {:stream? true}                  nil
     {:session-timezone nil}          nil
     {:session-timezone "US/Pacific"} nil
     {:session-timezone "X"}          {:session-timezone ["invalid timezone ID: \"X\"" "timezone offset string literal"]}))

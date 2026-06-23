@@ -140,7 +140,19 @@
             (log/error t "Native agent stream failed"
                        {:conversation-id conversation-id
                         :assistant-msg-id assistant-msg-id
-                        :external-id     external-id}))
+                        :external-id     external-id})
+            ;; Stream a well-formed AI SDK error part so the client surfaces the failure
+            ;; instead of treating the truncated stream as a silent success. Unlike binary
+            ;; downloads (which abort the connection), an event stream carries its own error
+            ;; framing, so we emit the error event and then let the body fn return to close
+            ;; the socket cleanly — aborting here would deny the client this very event.
+            (try
+              (let [error-line (self.core/format-error-line
+                                {:error (metabot.persistence/throwable->error-payload t)})]
+                (.write os (.getBytes (str error-line "\n") "UTF-8"))
+                (.flush os))
+              (catch org.eclipse.jetty.io.EofException _
+                (vreset! canceled? true))))
           (finally
             (try
               (let [combined-parts (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)

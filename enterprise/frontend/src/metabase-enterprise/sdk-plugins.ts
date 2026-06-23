@@ -1,6 +1,7 @@
 /* eslint-disable import/order */
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
+import { initializeSdkCustomVizPlugin } from "../embedding-sdk-ee/custom-viz/initialize";
 import { initializeHandleLinkPlugin } from "../embedding-sdk-ee/handle-link/handle-link";
 
 // SETTINGS OVERRIDES:
@@ -33,6 +34,7 @@ export function initializePlugins() {
   initializeNotifications();
   initializeSharing();
   initializeHandleLinkPlugin();
+  initializeSdkCustomVizPlugin();
 }
 
 // "SDK EE-plugins", that are specific to the embedding sdk.

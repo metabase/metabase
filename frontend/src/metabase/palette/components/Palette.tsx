@@ -85,7 +85,7 @@ export const PaletteContainer = withRouter(
         w="640px"
         p="0"
         data-testid="command-palette"
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
       >
         <Stack gap={rem(4)} pb="lg">
           <Box pos="relative">

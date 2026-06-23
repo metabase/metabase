@@ -6,8 +6,14 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
   questionName: string;
   entityName: string;
   collectionPickerPath?: string[];
+  getModal?: () => Cypress.Chainable;
 }) {
-  const { questionName, entityName, collectionPickerPath } = options;
+  const {
+    questionName,
+    entityName,
+    collectionPickerPath,
+    getModal = modal,
+  } = options;
 
   cy.intercept("POST", "/api/card").as("createCard");
 
@@ -16,7 +22,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
   popover().findByText(`See these ${entityName}`).click();
   cy.findByRole("button", { name: "Save" }).click();
 
-  modal().within(() => {
+  getModal().within(() => {
     cy.findByText("Save as new question").click();
 
     cy.findByPlaceholderText("What is the name of your question?")
@@ -30,7 +36,7 @@ export function saveInteractiveQuestionAsNewQuestion(options: {
     pickEntity({ path: collectionPickerPath, select: true });
   }
 
-  modal().within(() => {
+  getModal().within(() => {
     cy.findByRole("button", { name: "Save" }).click();
   });
 }

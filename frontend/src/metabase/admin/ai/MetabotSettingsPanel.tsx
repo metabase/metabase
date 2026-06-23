@@ -10,7 +10,7 @@ import {
   useUpdateMetabotMutation,
 } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils/settings";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";

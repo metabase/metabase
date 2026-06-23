@@ -138,7 +138,8 @@
     :model/MetabotFeedback
     :model/MetabotSourceFeedback
     :model/MetabotUsedTable
-    :model/MetabotPrompt]
+    :model/MetabotPrompt
+    :model/CuratedSearchEntry]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit

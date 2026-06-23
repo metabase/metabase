@@ -1,6 +1,7 @@
 import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { P, isMatching, match } from "ts-pattern";
+import { t } from "ttag";
 import _ from "underscore";
 
 import {
@@ -83,6 +84,13 @@ const handleResponseError = (
   // HTTP failures arrive as the legacy client's `{ status, data }` shape, with
   // the parsed response body under `data`.
   return match(error)
+    .with({ status: 400 }, () => ({
+      error: { type: "http_error", message: t`Invalid request format` },
+      display: {
+        type: "message" as const,
+        message: METABOT_ERR_MSG.format(t`Invalid request format`),
+      },
+    }))
     .with({ status: 401 }, () => ({
       error: { type: "unauthenticated" },
       display: {

@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { type ArchivableItem, useSetArchive } from "metabase/archive/hooks";
-import { canArchiveItem } from "metabase/collections/utils";
+import { canArchiveItem } from "metabase/common/collections/utils";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 

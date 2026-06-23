@@ -89,7 +89,7 @@
    {:model    :model/TransformJobRun
     :active   [:= :is_active true]
     :stale    [:< :last_heartbeat (rt/cutoff stale-minutes :minute)]
-    :terminal {:status "timeout" :end_time :%now :is_active nil :message "Timed out: no heartbeat"}
+    :terminal {:status "timeout" :end_time :%now :is_active nil :message "Timed out: crashed"}
     :metrics  {:total-metric   :metabase-transforms/timeouts-total
                :latency-metric :metabase-transforms/timeout-detection-latency-ms
                :tags           {:type "job"}

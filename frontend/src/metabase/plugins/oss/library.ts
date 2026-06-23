@@ -48,6 +48,7 @@ export type UnpublishTablesModalProps = {
 };
 
 export type CollectionPermissionsModalProps = {
+  opened: boolean;
   collectionId: CollectionId;
   namespace?: CollectionNamespace | null;
   onClose: () => void;

@@ -42,3 +42,21 @@
   :export?        true
   :default        []
   :encryption     :no)
+
+(defsetting scan-max-fields-per-table
+  "Maximum number of fields per table to scan for field values. If a table has more active fields than this, the rest
+  are skipped when scanning field values -- scanning that many fields would load them all into memory and, on non-SQL
+  drivers like MongoDB, issue a warehouse request per field."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    10000)
+
+(defsetting fingerprint-max-fields-per-table
+  "Maximum number of fields per table to fingerprint. If a table has more eligible fields than this, the rest are
+  skipped during fingerprinting analysis -- loading that many fields into memory at once can exhaust the heap (this has
+  OOM'd instances syncing document databases like MongoDB with very large or dynamic schemas)."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    10000)
