@@ -486,8 +486,20 @@
     (testing "includes sqlite in non-hosted environment"
       (is (contains? (driver.u/available-drivers) :sqlite)))
     (mt/with-premium-features #{:hosting}
-      (testing "does not include sqlite in hosted environment"
-        (is (not (contains? (driver.u/available-drivers) :sqlite)))))))
+      (testing "include sqlite in hosted environment"
+        (is (contains? (driver.u/available-drivers) :sqlite))))))
+
+(deftest sqlite-creatable-engine-test
+  (testing "sqlite is always present in the engines info (the FE needs its metadata for the bundled Sample Database)"
+    (testing "and is creatable off hosted Metabase"
+      (mt/with-premium-features #{}
+        (is (true? (get-in (driver.u/available-drivers-info) [:sqlite :creatable?])))))
+    (testing "but is marked not creatable on hosted Metabase, while staying in the map"
+      (mt/with-premium-features #{:hosting}
+        (is (contains? (driver.u/available-drivers-info) :sqlite))
+        (is (false? (get-in (driver.u/available-drivers-info) [:sqlite :creatable?])))
+        (testing "other warehouse engines stay creatable"
+          (is (true? (get-in (driver.u/available-drivers-info) [:postgres :creatable?]))))))))
 
 (deftest ^:parallel process-connection-prop-test
   (testing "process-connection-prop handles different property types"

@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
+import { getChartHeight } from "metabase/static-viz/lib/utils";
 import { registerEChartsModules } from "metabase/visualizations/echarts";
 import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
@@ -34,14 +35,8 @@ export const ComboChart = ({
   height = HEIGHT,
   isStorybook = false,
   hasDevWatermark = false,
+  fitWithinBounds = false,
 }: StaticChartProps) => {
-  const chart = init(null, null, {
-    renderer: "svg",
-    ssr: true,
-    width,
-    height,
-  });
-
   const chartModel = getCartesianChartModel(
     rawSeries,
     settings,
@@ -60,12 +55,21 @@ export const ComboChart = ({
       isReversed,
     });
 
+  const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
+
+  const chart = init(null, null, {
+    renderer: "svg",
+    ssr: true,
+    width,
+    height: chartHeight,
+  });
+
   const chartLayout = getChartLayout(
     chartModel,
     settings,
     false,
     width,
-    height,
+    chartHeight,
     renderingContext,
   );
 
@@ -88,7 +92,7 @@ export const ComboChart = ({
     settings,
   );
 
-  const totalHeight = height + legendHeight;
+  const totalHeight = fitWithinBounds ? height : height + legendHeight;
 
   return (
     <>

@@ -84,10 +84,12 @@
                   (format "\n%s" description)))
      :type :text}))
 
-(defn- dashcard-link-card->part
-  "Convert a dashcard that is a link card to pulse part.
+(defn dashcard-link-card->part
+  "Convert a dashcard that is a link card into a `:text` part (markdown `### [name](url)`), or nil
+  if it links to an entity the current user can't read. Used by both the email/notification
+  pipeline and the backend PDF renderer.
 
-  This function should be executed under pulse's creator permissions."
+  This function should be executed under pulse's creator permissions (`with-current-user`)."
   [dashcard]
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (let [link-card (get-in dashcard [:visualization_settings :link])]

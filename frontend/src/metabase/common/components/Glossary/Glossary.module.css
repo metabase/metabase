@@ -23,9 +23,15 @@
 }
 
 .row {
-  cursor: pointer;
+  &:not(.readOnly) {
+    cursor: pointer;
+  }
 
   &:hover {
+    &.readOnly {
+      background-color: transparent;
+    }
+
     .action {
       visibility: visible;
     }

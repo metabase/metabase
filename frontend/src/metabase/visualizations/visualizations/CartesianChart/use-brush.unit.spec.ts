@@ -224,6 +224,48 @@ describe("use-brush", () => {
 
         expectBrushDisabled(dispatchAction);
       });
+
+      it("enables brush once the chart instance becomes available (lazy renderer)", () => {
+        // Simulates the lazily loaded EChartsRenderer: the chart instance is
+        // only set (via onInit) after this hook's effects have already run, so
+        // the first attempt to enable the brush is a no-op. Surfacing the chart
+        // instance as a signal must re-run the effect and enable the brush.
+        const dispatchAction = jest.fn();
+        const chartRef = {
+          current: undefined,
+        } as MutableRefObject<EChartsType | undefined>;
+        const { containerRef } = createMockContainerRef();
+
+        const { rerender } = renderHook(
+          ({ chartInstance }) =>
+            useBrush(
+              chartRef,
+              containerRef,
+              true,
+              true,
+              undefined,
+              chartInstance,
+            ),
+          {
+            initialProps: {
+              chartInstance: undefined as EChartsType | undefined,
+            },
+          },
+        );
+        act(() => jest.runAllTimers());
+
+        // Chart not initialized yet → brush cannot be enabled.
+        expectBrushNotEnabled(dispatchAction);
+
+        // Chart initializes: ref is populated and the instance is surfaced as a
+        // signal, mirroring CartesianChart's handleInit.
+        const chart = { dispatchAction } as unknown as EChartsType;
+        chartRef.current = chart;
+        rerender({ chartInstance: chart });
+        act(() => jest.runAllTimers());
+
+        expectBrushEnabled(dispatchAction);
+      });
     });
 
     describe("touch", () => {
