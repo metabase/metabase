@@ -64,6 +64,9 @@ function setup({
 }
 
 describe("useTrackSdkComponentMount", () => {
+  const parseLastCallDetail = () =>
+    JSON.parse(mockTrackSdkSimpleEvent.mock.lastCall?.[0].event_detail ?? "{}");
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -80,13 +83,11 @@ describe("useTrackSdkComponentMount", () => {
     expect(mockTrackSdkSimpleEvent).toHaveBeenCalledWith(
       expect.objectContaining({ event: "embedding_sdk_component_rendered" }),
     );
-    const call = mockTrackSdkSimpleEvent.mock.calls[0][0];
-    const detail = JSON.parse(call.event_detail ?? "{}");
-    expect(detail.component).toBe("StaticDashboard");
-    expect(detail.properties.with_title).toBe("true");
-    expect(detail.global.auth_method).toBe("sso");
-    expect(detail.global.sdk_version).toBe("1.2.3");
-    expect(detail.global.locale_used).toBe(false);
+    expect(parseLastCallDetail()).toMatchObject({
+      component: "StaticDashboard",
+      properties: { with_title: "true" },
+      global: { auth_method: "sso", sdk_version: "1.2.3", locale_used: false },
+    });
   });
 
   it("does not fire when tracking is disabled", () => {
@@ -178,9 +179,9 @@ describe("useTrackSdkComponentMount", () => {
   it("uses the correct component name in the emitted event", () => {
     setup({ componentName: "MetabotQuestion", properties: { layout: "auto" } });
 
-    const call = mockTrackSdkSimpleEvent.mock.calls[0][0];
-    const detail = JSON.parse(call.event_detail ?? "{}");
-    expect(detail.component).toBe("MetabotQuestion");
+    expect(parseLastCallDetail()).toMatchObject({
+      component: "MetabotQuestion",
+    });
   });
 
   it("fires a presence event for CreateDashboardModal", () => {
@@ -191,9 +192,9 @@ describe("useTrackSdkComponentMount", () => {
         event: "embedding_sdk_component_rendered",
       }),
     );
-    const call = mockTrackSdkSimpleEvent.mock.calls[0][0];
-    const detail = JSON.parse(call.event_detail ?? "{}");
-    expect(detail.component).toBe("CreateDashboardModal");
-    expect(Object.keys(detail.properties)).toHaveLength(0);
+    expect(parseLastCallDetail()).toMatchObject({
+      component: "CreateDashboardModal",
+      properties: {},
+    });
   });
 });
