@@ -119,7 +119,7 @@
                       (catch Throwable e
                         (log/warn e "Failed to fetch supported index methods for transform" (:id transform))
                         nil))]
-        (when (seq methods) methods)))))
+        (not-empty methods)))))
 
 (defn get-transform
   "Get a specific transform."
