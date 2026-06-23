@@ -6,5 +6,5 @@ export function displayNameForColumn(column: DatasetColumn | Field): string {
     "remapped_to_column" in column
       ? column.remapped_to_column?.display_name
       : undefined;
-  return remappedName ?? column?.display_name ?? NULL_DISPLAY_VALUE;
+  return remappedName ?? column.display_name ?? NULL_DISPLAY_VALUE;
 }

@@ -11,7 +11,7 @@ import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/sett
 import {
   type FormattingColumn,
   type SettingsExtra,
-  getFormattingColumnUnit,
+  getFormattingColumnUnitOrDefault,
 } from "metabase/visualizations/types";
 import type {
   ColumnSettings as ApiColumnSettings,
@@ -59,10 +59,10 @@ function getWidgets({
   const series: Series = [];
 
   // add a "unit" to make certain settings work
-  const columnWithUnit: FormattingColumn =
-    getFormattingColumnUnit(column) != null
-      ? column
-      : ({ ...column, unit: "default" } as FormattingColumn);
+  const columnWithUnit: FormattingColumn = {
+    ...column,
+    unit: getFormattingColumnUnitOrDefault(column),
+  };
 
   const settingsDefs = getSettingDefinitionsForColumn(series, columnWithUnit);
 

@@ -134,6 +134,12 @@ export function getFormattingColumnUnit(
   return "unit" in column ? column.unit : undefined;
 }
 
+export function getFormattingColumnUnitOrDefault(
+  column: FormattingColumn,
+): NonNullable<DatasetColumn["unit"]> {
+  return getFormattingColumnUnit(column) ?? "default";
+}
+
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
   series?: (key: LegacySeriesSettingsObjectKey) => SeriesSettings;

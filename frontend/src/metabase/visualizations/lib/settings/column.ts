@@ -34,6 +34,7 @@ import {
   type FormattingColumn,
   type VisualizationSettingsDefinitions,
   getFormattingColumnUnit,
+  getFormattingColumnUnitOrDefault,
 } from "metabase/visualizations/types";
 import {
   getColumnKey,
@@ -161,15 +162,16 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return value;
     },
     isValid: (column, settings) => {
-      const unit = getFormattingColumnUnit(column);
-      const options = getDateStyleOptionsForUnit(unit ?? "default");
+      const options = getDateStyleOptionsForUnit(
+        getFormattingColumnUnitOrDefault(column),
+      );
       return !!_.findWhere(options, {
         value: settings.date_style ?? undefined,
       });
     },
     getProps: (column, settings) => ({
       options: getDateStyleOptionsForUnit(
-        getFormattingColumnUnit(column) ?? "default",
+        getFormattingColumnUnitOrDefault(column),
         settings.date_abbreviate != null
           ? Boolean(settings.date_abbreviate)
           : undefined,
@@ -180,7 +182,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     }),
     getHidden: (column, settings) =>
       hasCoarseDateGranularity(settings) ||
-      getDateStyleOptionsForUnit(getFormattingColumnUnit(column) ?? "default")
+      getDateStyleOptionsForUnit(getFormattingColumnUnitOrDefault(column))
         .length < 2,
     readDependencies: ["date_granularity"],
   },
@@ -218,10 +220,9 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       if (hasCoarseDateGranularity(settings)) {
         return true;
       }
-      const unit = getFormattingColumnUnit(column);
       const format = getDateFormatFromStyle(
         settings.date_style ?? undefined,
-        unit ?? "default",
+        getFormattingColumnUnitOrDefault(column),
       );
       return !format || !format.match(/MMMM|dddd/);
     },
@@ -259,9 +260,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "radio",
     getDefault: () => "h:mm A",
     getProps: (column) => ({
-      options: getTimeStyleOptions(
-        getFormattingColumnUnit(column) ?? "default",
-      ),
+      options: getTimeStyleOptions(getFormattingColumnUnitOrDefault(column)),
     }),
     getHidden: (column, settings) =>
       hasCoarseDateGranularity(settings) ||
