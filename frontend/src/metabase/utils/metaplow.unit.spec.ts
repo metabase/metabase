@@ -122,12 +122,12 @@ describe("metaplow", () => {
   describe("trackMetaplowPageView", () => {
     it("does not call fetch when metaplow-url is not set", async () => {
       Settings.set("metaplow-url", null);
-      await trackMetaplowPageView("/question/42-my-question");
+      await trackMetaplowPageView({ url: "/question/42-my-question" });
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
     it('sends an event with name "pageview"', async () => {
-      await trackMetaplowPageView("/dashboard/1");
+      await trackMetaplowPageView({ url: "/dashboard/1" });
 
       const { payload } = getSentPayload();
       expect(payload.name).toBe("pageview");
@@ -135,23 +135,23 @@ describe("metaplow", () => {
     });
 
     it("strips slugs from /:id-slug paths", async () => {
-      await trackMetaplowPageView("/question/42-my-favorite-question");
+      await trackMetaplowPageView({ url: "/question/42-my-favorite-question" });
 
       const { payload } = getSentPayload();
       expect(payload.url).toBe(`${ANON_ORIGIN}/question/42`);
     });
 
     it("anonymizes absolute URLs by replacing the origin", async () => {
-      await trackMetaplowPageView(
-        "https://my-company.metabaseapp.com/collection/5-secrets",
-      );
+      await trackMetaplowPageView({
+        url: "https://my-company.metabaseapp.com/collection/5-secrets",
+      });
 
       const { payload } = getSentPayload();
       expect(payload.url).toBe(`${ANON_ORIGIN}/collection/5`);
     });
 
     it("preserves paths without a numeric slug prefix", async () => {
-      await trackMetaplowPageView("/admin/settings/general");
+      await trackMetaplowPageView({ url: "/admin/settings/general" });
 
       const { payload } = getSentPayload();
       expect(payload.url).toBe(`${ANON_ORIGIN}/admin/settings/general`);

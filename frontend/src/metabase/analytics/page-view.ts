@@ -15,7 +15,7 @@ export const trackPageView = (url: string): void => {
   }
 
   if (Settings.get("metaplow-tracking-enabled")) {
-    trackMetaplowPageView(url);
+    trackMetaplowPageView({ url });
   }
 };
 
