@@ -5,7 +5,7 @@
 .title {
   font-size: var(--mantine-h2-font-size);
   font-weight: var(--mantine-heading-font-weight);
-  line-height: var(--mantine-line-height-md);
+  line-height: var(--mantine-h2-line-height);
   flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: break-word;
