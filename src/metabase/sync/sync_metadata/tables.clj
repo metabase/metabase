@@ -136,6 +136,10 @@
                                         (humanization/name->human-readable-name (:name table)))
            :name                    (:name table)
            :is_writable             (:is_writable table)}
+          ;; pass field order computed from the in-hand engine so the before-insert hook doesn't
+          ;; re-query the DB engine once per table during bulk sync
+          (when-let [engine (:engine database)]
+            {:field_order (driver/default-field-order engine)})
           (when (:data_source table)
             {:data_source (:data_source table)})
           (when (:data_authority table)
