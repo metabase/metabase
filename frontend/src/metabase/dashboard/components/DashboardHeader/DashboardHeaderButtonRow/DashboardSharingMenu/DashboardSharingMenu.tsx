@@ -71,6 +71,7 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
     useDisclosure();
   const isDashCardsRunning = useSelector(getIsDashCardsRunning);
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  const siteUrl = useSetting("site-url");
   const isAnalytics =
     dashboard.collection && isInstanceAnalyticsCollection(dashboard.collection);
   const canShare = !isAnalytics;
@@ -104,6 +105,7 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
       {isInviteOpen && (
         <InviteToViewModal
           title={t`Invite someone to view this dashboard`}
+          shareUrl={`${siteUrl}${getDashboardUrl(dashboard)}`}
           onClose={closeInvite}
         />
       )}

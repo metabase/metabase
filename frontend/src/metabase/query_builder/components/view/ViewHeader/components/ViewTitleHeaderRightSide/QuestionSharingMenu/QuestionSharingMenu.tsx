@@ -93,6 +93,7 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
   const [isInviteOpen, { open: openInvite, close: closeInvite }] =
     useDisclosure();
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
+  const shareUrl = useQuestionAppUrl(question);
 
   return (
     <Flex>
@@ -120,6 +121,7 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
       {isInviteOpen && (
         <InviteToViewModal
           title={t`Invite someone to view this question`}
+          shareUrl={shareUrl}
           onClose={closeInvite}
         />
       )}

@@ -4,6 +4,7 @@ import { jt, t } from "ttag";
 
 import { UserForm } from "metabase/admin/people/forms/UserForm";
 import { useCreateUserMutation } from "metabase/api";
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
@@ -14,28 +15,27 @@ import type { User } from "metabase-types/api";
 
 interface InviteToViewModalProps {
   title: string;
+  shareUrl: string;
   onClose: () => void;
 }
 
 export const InviteToViewModal = ({
   title,
+  shareUrl,
   onClose,
 }: InviteToViewModalProps) => {
   const [createUser] = useCreateUserMutation();
   const [sendToast] = useToast();
 
   const isEmailConfigured = useSetting("email-configured?");
-  const hasSso = useSelector(isSsoEnabled);
   const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, "enable-password-login"),
   );
-  // Password login can only be turned off once SSO is configured,
-  // so this is the "recipient can't use a temporary password" case.
-  const isSsoOnly = hasSso && !isPasswordLoginEnabled;
+  const ssoEnabled = useSelector(isSsoEnabled);
 
-  const [tempPassword, setTempPassword] = useState<{
+  const [credentials, setCredentials] = useState<{
     email: string;
-    password: string;
+    tmpPassword: string;
   } | null>(null);
 
   const createInvitedUser = (values: Partial<User>, password?: string) =>
@@ -55,21 +55,23 @@ export const InviteToViewModal = ({
   };
 
   const inviteWithTemporaryPassword = async (values: Partial<User>) => {
-    const password = generatePassword();
-    const user = await createInvitedUser(values, password);
-    setTempPassword({ email: user.email, password });
+    const tmpPassword = generatePassword();
+    const user = await createInvitedUser(values, tmpPassword);
+    setCredentials({ email: user.email, tmpPassword });
   };
 
-  const needsEmailSetup = !isEmailConfigured && isSsoOnly;
+  // Password login can only be off when SSO is configured, so this already implies SSO.
+  const needsEmailSetup = !isEmailConfigured && !isPasswordLoginEnabled;
 
   let body: ReactNode;
   if (needsEmailSetup) {
-    body = <EmailSetupPrompt onClose={onClose} />;
-  } else if (tempPassword) {
+    body = <EmailSetupPrompt shareUrl={shareUrl} onClose={onClose} />;
+  } else if (credentials) {
     body = (
       <TemporaryPasswordSuccess
-        email={tempPassword.email}
-        password={tempPassword.password}
+        email={credentials.email}
+        password={credentials.tmpPassword}
+        shareUrl={shareUrl}
         onClose={onClose}
       />
     );
@@ -83,7 +85,7 @@ export const InviteToViewModal = ({
           isEmailConfigured ? inviteByEmail : inviteWithTemporaryPassword
         }
         hideAttributes
-        hideNameFields={hasSso}
+        hideNameFields={ssoEnabled}
       />
     );
   }
@@ -95,9 +97,16 @@ export const InviteToViewModal = ({
   );
 };
 
-const EmailSetupPrompt = ({ onClose }: { onClose: () => void }) => (
+const EmailSetupPrompt = ({
+  shareUrl,
+  onClose,
+}: {
+  shareUrl: string;
+  onClose: () => void;
+}) => (
   <Stack gap="lg">
-    <Text>{t`To invite people by email, set up email first.`}</Text>
+    <Text>{t`To invite people by email, set up email first. Or share this link, they'll land on it after signing in:`}</Text>
+    <CopyTextInput label={t`Link to share`} value={shareUrl} />
     <Group justify="flex-end">
       <Button onClick={onClose}>{t`Cancel`}</Button>
       <Button
@@ -115,10 +124,12 @@ const EmailSetupPrompt = ({ onClose }: { onClose: () => void }) => (
 const TemporaryPasswordSuccess = ({
   email,
   password,
+  shareUrl,
   onClose,
 }: {
   email: string;
   password: string;
+  shareUrl: string;
   onClose: () => void;
 }) => (
   <Stack gap="lg">
@@ -128,6 +139,7 @@ const TemporaryPasswordSuccess = ({
       )} so they can sign in:`}
     </Text>
     <PasswordReveal password={password} />
+    <CopyTextInput label={t`Link to share`} value={shareUrl} />
     <Group justify="flex-end">
       <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
     </Group>

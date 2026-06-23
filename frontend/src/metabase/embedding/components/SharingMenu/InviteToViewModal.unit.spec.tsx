@@ -16,6 +16,8 @@ const GROUPS = [
 
 const TITLE = "Invite someone to view this dashboard";
 
+const SHARE_URL = "http://localhost/dashboard/1";
+
 const CREATED_USER = createMockUser({ id: 99, email: "newbie@metabase.com" });
 
 interface SetupOpts {
@@ -55,7 +57,7 @@ const setup = ({
   });
 
   const { store } = renderWithProviders(
-    <InviteToViewModal title={title} onClose={onClose} />,
+    <InviteToViewModal title={title} shareUrl={SHARE_URL} onClose={onClose} />,
     { storeInitialState: state },
   );
 
@@ -106,6 +108,7 @@ describe("InviteToViewModal", () => {
     await submitInvite("newbie@metabase.com");
 
     expect(await screen.findByText("Temporary password")).toBeInTheDocument();
+    expect(screen.getByDisplayValue(SHARE_URL)).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -130,6 +133,7 @@ describe("InviteToViewModal", () => {
     });
 
     expect(await screen.findByText("Set up email")).toBeInTheDocument();
+    expect(screen.getByDisplayValue(SHARE_URL)).toBeInTheDocument();
     expect(screen.queryByLabelText(/Email/)).not.toBeInTheDocument();
   });
 
