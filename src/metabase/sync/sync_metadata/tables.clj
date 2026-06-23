@@ -497,20 +497,23 @@
      (let [batches  (concat (partition-all table-sync-batch-size (:tables db-metadata))
                             [(ws.table-remapping/inject-workspace-canonical-tuples #{} (u/the-id database))])
            {:keys [created updated]}
-           (or (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
-                                                      (sync-util/name-for-logging database))
-                 (reduce (fn [counts batch]
-                           (merge-with + counts (sync-table-batch! database batch)))
-                         {:created 0, :updated 0}
-                         batches))
-               {:created 0, :updated 0})
-           retired  (or (sync-util/with-error-handling (format "Error retiring tables for %s"
-                                                               (sync-util/name-for-logging database))
-                          (retire-unseen-tables! database db-metadata))
-                        0)
-           archived (or (sync-util/with-error-handling (format "Error archiving tables for %s"
-                                                               (sync-util/name-for-logging database))
-                          (archive-tables! database))
-                        0)]
-       {:updated-tables (+ created updated retired archived)
+           (reduce (fn [counts batch]
+                     (let [result (sync-util/with-error-handling
+                                   (format "Error creating/reactivating tables for %s"
+                                           (sync-util/name-for-logging database))
+                                    (sync-table-batch! database batch))]
+                       (if (map? result)
+                         (merge-with + counts result)
+                         counts)))
+                   {:created 0, :updated 0}
+                   batches)
+           retired  (sync-util/with-error-handling (format "Error retiring tables for %s"
+                                                           (sync-util/name-for-logging database))
+                      (retire-unseen-tables! database db-metadata))
+           archived (sync-util/with-error-handling (format "Error archiving tables for %s"
+                                                           (sync-util/name-for-logging database))
+                      (archive-tables! database))]
+       {:updated-tables (+ created updated
+                           (if (int? retired) retired 0)
+                           (if (int? archived) archived 0))
         :total-tables   (t2/count :model/Table :db_id (u/the-id database) :active true)}))))
