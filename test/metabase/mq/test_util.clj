@@ -113,13 +113,13 @@
   [[metabase.mq.core/def-listener!]] instead; this is for ad-hoc test registration where
   declaring at namespace-load time isn't convenient.
 
-  As a convenience, auto-declares the queue (with default config) if it hasn't been declared
-  yet. Tests that need queue-level config (e.g. `:exclusive`) should call
-  [[q.registry/register-queue!]] explicitly before calling this."
+  As a convenience, auto-declares the queue (with `{:transactional :try}`) if it hasn't been
+  declared yet. Tests that need other queue-level config (e.g. `:exclusive`) or a different
+  `:transactional` mode should call [[q.registry/register-queue!]] explicitly before calling this."
   [channel listener-fn]
   (when (and (= "queue" (namespace channel))
              (nil? (q.registry/get-queue channel)))
-    (q.registry/register-queue! channel {}))
+    (q.registry/register-queue! channel {:transactional :try}))
   (listener/batch-listen! channel
                           (fn [messages]
                             (let [error (volatile! nil)]
@@ -142,7 +142,7 @@
     (doseq [k (keys listeners)
             :when (and (= "queue" (namespace k))
                        (nil? (q.registry/get-queue k)))]
-      (q.registry/register-queue! k {}))
+      (q.registry/register-queue! k {:transactional :try}))
     (swap! listener/*listeners*
            (fn [current]
              (reduce-kv (fn [m k v]

@@ -23,7 +23,7 @@
   (mq.tu/with-test-mq [ctx]
     (let [queue-name :queue/exclusive-test
           received   (atom [])]
-      (q.registry/register-queue! queue-name {:exclusive true})
+      (q.registry/register-queue! queue-name {:transactional :try :exclusive true})
       (mq.tu/listen! queue-name (fn [msg] (swap! received conj msg)))
       (testing "Exclusive queue processes all messages"
         (mq/with-queue queue-name [q]

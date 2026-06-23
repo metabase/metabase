@@ -9,6 +9,7 @@
    [metabase.mq.queue.memory :as q.memory]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.settings :as mq.settings]
+   [metabase.mq.task.outbox]
    [metabase.startup.core :as startup]
    [metabase.util.log :as log]))
 

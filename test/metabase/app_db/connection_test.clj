@@ -216,6 +216,72 @@
       (is (= {:outer-key "outer-val"} @mdb.connection/*transaction-state*)
           "State from rolled-back nested transaction should be discarded"))))
 
+(deftest before-commit-returns-false-outside-transaction-test
+  (testing "before-commit! returns false when not in a transaction"
+    (is (false? (mdb.connection/before-commit! (fn []))))))
+
+(deftest before-commit-returns-true-inside-transaction-test
+  (testing "before-commit! returns true when inside a transaction"
+    (t2/with-transaction []
+      (is (true? (mdb.connection/before-commit! (fn [])))))))
+
+(deftest before-commit-callbacks-execute-before-commit-test
+  (testing "Callbacks registered via before-commit! run after the body, and their writes commit"
+    (let [email (mt/random-email)
+          order (atom [])]
+      (try
+        (t2/with-transaction []
+          (mdb.connection/before-commit!
+           (fn []
+             (swap! order conj :before-commit)
+             (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))))
+          (swap! order conj :body)
+          (is (= [:body] @order) "before-commit callback should not have run during the body"))
+        (is (= [:body :before-commit] @order)
+            "before-commit runs after the body returns, as part of the commit sequence")
+        (is (t2/exists? :model/User :email email)
+            "a row inserted from a before-commit callback is committed")
+        (finally
+          (t2/delete! :model/User :email email))))))
+
+(deftest before-commit-not-executed-on-rollback-test
+  (testing "before-commit! callbacks are not executed when the transaction rolls back"
+    (let [result (atom [])]
+      (try
+        (t2/with-transaction []
+          (mdb.connection/before-commit! (fn [] (swap! result conj :should-not-run)))
+          (throw (ex-info "force rollback" {})))
+        (catch Exception _))
+      (is (= [] @result) "before-commit callbacks should not execute on rollback"))))
+
+(deftest before-commit-throwing-rolls-back-transaction-test
+  (testing "A throwing before-commit! callback aborts the whole transaction (business writes roll back)"
+    (let [email (mt/random-email)]
+      (try
+        (is (thrown-with-msg?
+             Exception #"boom"
+             (t2/with-transaction []
+               (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+               (is (t2/exists? :model/User :email email) "row visible inside the txn")
+               (mdb.connection/before-commit! (fn [] (throw (ex-info "boom" {})))))))
+        (is (not (t2/exists? :model/User :email email))
+            "the business write is rolled back when a before-commit callback throws")
+        (finally
+          (t2/delete! :model/User :email email))))))
+
+(deftest before-commit-discarded-on-nested-rollback-test
+  (testing "before-commit! callbacks from a rolled-back nested transaction are discarded"
+    (let [result (atom [])]
+      (t2/with-transaction []
+        (mdb.connection/before-commit! (fn [] (swap! result conj :outer)))
+        (try
+          (t2/with-transaction []
+            (mdb.connection/before-commit! (fn [] (swap! result conj :inner-should-not-run)))
+            (throw (Exception. "force savepoint rollback")))
+          (catch Exception _)))
+      (is (= [:outer] @result)
+          "Only the outer before-commit callback should run"))))
+
 (deftest ^:parallel transaction-isolation-level-test
   (testing "We should always use READ_COMMITTED for the app DB (#44505)"
     (with-open [conn (.getConnection mdb.connection/*application-db*)]

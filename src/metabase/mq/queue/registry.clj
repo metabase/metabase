@@ -16,8 +16,27 @@
   consumer-side slice size (how many messages the handler receives per invocation)."
   100)
 
+(def transactional-modes
+  "Valid values for a queue's required `:transactional` setting.
+
+    `:require` — publishes must happen inside a DB transaction (throws otherwise). Messages are
+                 written to the `queue_message_outbox` table as part of that transaction and only
+                 handed to the backend after it commits — so a message is published iff the
+                 business write that produced it commits.
+    `:try`     — same outbox behavior when a transaction is active; publishes immediately when not.
+    `:never`   — never use the outbox table; publish immediately (deferred to after-commit when in
+                 a transaction, but kept only in memory)."
+  #{:require :try :never})
+
+(mr/def :metabase.mq.queue/queue-name
+  [:and :qualified-keyword
+   [:fn {:error/message "queue name must be namespaced to 'queue' (e.g. :queue/my-task)"}
+    #(= "queue" (namespace %))]])
+
 (mr/def :metabase.mq.queue/queue-config
-  [:map
+  [:map {:closed true}
+   [:transactional      (into [:enum {:error/message (str "must be one of " transactional-modes)}]
+                              transactional-modes)]
    [:exclusive          {:optional true} :boolean]
    [:max-batch-messages {:optional true} pos-int?]
    [:dedup-fn           {:optional true} fn?]])
@@ -43,20 +62,24 @@
   "Atomically registers `config` for `queue-name`. Re-registering with identical config is
   a no-op (handy for repeated `register-queues!` calls in tests); mismatched config throws.
 
-  `config` keys (all optional):
-    `:exclusive`  — when true, at most one batch is in-flight cluster-wide for this queue."
+  `config` must include `:transactional` (one of [[transactional-modes]]). Other keys (e.g.
+  `:exclusive`) are optional."
   [queue-name config]
-  (let [config (or config {})
-        [old _] (swap-vals! *queues*
-                            (fn [m] (if (contains? m queue-name)
-                                      m
-                                      (assoc m queue-name config))))]
-    (when-let [existing (get old queue-name)]
-      (when (not= existing config)
-        (throw (ex-info (str "Queue " queue-name " is already registered with different config.")
-                        {:queue    queue-name
-                         :existing existing
-                         :new      config}))))))
+  (let [config (or config {})]
+    (when-not (contains? transactional-modes (:transactional config))
+      (throw (ex-info (str "Queue " queue-name " must declare a valid `:transactional` mode "
+                           "(one of " transactional-modes "); got " (pr-str (:transactional config)) ".")
+                      {:queue queue-name :config config :valid transactional-modes})))
+    (let [[old _] (swap-vals! *queues*
+                              (fn [m] (if (contains? m queue-name)
+                                        m
+                                        (assoc m queue-name config))))]
+      (when-let [existing (get old queue-name)]
+        (when (not= existing config)
+          (throw (ex-info (str "Queue " queue-name " is already registered with different config.")
+                          {:queue    queue-name
+                           :existing existing
+                           :new      config})))))))
 
 (defn exclusive?
   "Returns true if `queue-name` is declared with `:exclusive true`."
@@ -72,6 +95,12 @@
   "Returns the `:dedup-fn` declared for `queue-name`, or nil if none."
   [queue-name]
   (:dedup-fn (get @*queues* queue-name)))
+
+(defn transactional
+  "Returns the `:transactional` mode (`:require`/`:try`/`:never`) declared for `queue-name`, or nil
+  if no such queue has been declared."
+  [queue-name]
+  (:transactional (get @*queues* queue-name)))
 
 (defn exclusive-queue-names
   "Returns the set of queue names (as strings) declared with `:exclusive true`."
@@ -92,6 +121,14 @@
   listener — a publisher can route to a queue declared anywhere in the codebase, and a
   listener for that queue can live on a different node.
 
+  Config is required and must include `:transactional`.
+
+  Required config key:
+    `:transactional`      — `:require` / `:try` / `:never`; see [[transactional-modes]]. Controls
+                            whether publishes are routed through the transactional
+                            `queue_message_outbox` so a message is published iff the business
+                            transaction that produced it commits.
+
   Optional config keys:
     `:exclusive`          — when true, at most one batch for this queue is in-flight cluster-wide.
     `:max-batch-messages` — batch size for this queue (defaults to [[default-max-batch-messages]]).
@@ -104,10 +141,10 @@
 
   Examples:
 
-      (mq/def-queue! :queue/simple-task)
+      (mq/def-queue! :queue/simple-task {:transactional :try})
 
-      (mq/def-queue! :queue/search-reindex {:exclusive true :max-batch-messages 50})"
-  {:arglists '([queue-name] [queue-name config])}
+      (mq/def-queue! :queue/search-reindex {:transactional :require :exclusive true :max-batch-messages 50})"
+  {:arglists '([queue-name config])}
   [queue-name & [config]]
   `(defmethod def-queue* ~queue-name [~'_]
      (register-queue! ~queue-name ~config)))

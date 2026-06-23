@@ -96,7 +96,7 @@
 (deftest exclusive-listen-test
   (let [heard-messages (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      (q.registry/register-queue! :queue/exclusive-test {:exclusive true :max-batch-messages 1})
+      (q.registry/register-queue! :queue/exclusive-test {:transactional :try :exclusive true :max-batch-messages 1})
       (mq.tu/listen! :queue/exclusive-test #(swap! heard-messages conj %))
       (testing "Exclusive queue processes messages via the async memory backend"
         (mq/with-queue :queue/exclusive-test [q]
@@ -108,7 +108,7 @@
 (deftest batch-listen-exclusive-test
   (let [heard-batches (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      (q.registry/register-queue! :queue/batch-exclusive {:exclusive true :max-batch-messages 10})
+      (q.registry/register-queue! :queue/batch-exclusive {:transactional :try :exclusive true :max-batch-messages 10})
       (listener/batch-listen! :queue/batch-exclusive
                               (fn [batch] (swap! heard-batches conj batch)))
       (testing "Exclusive batch-listen! registers and processes"
@@ -121,7 +121,10 @@
 (deftest transaction-defers-publish-test
   (let [heard (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      {:queue/test (fn [msg] (swap! heard conj msg))}
+      ;; `:never` keeps the in-memory after-commit defer path under test (a `:transactional` queue
+      ;; would route through the outbox table instead — see metabase.mq.queue.outbox-test).
+      (q.registry/register-queue! :queue/test {:transactional :never})
+      (mq.tu/listen! :queue/test (fn [msg] (swap! heard conj msg)))
       (binding [app-db.conn/*after-commit*  (atom [])
                 app-db.conn/*transaction-state* (atom {})]
         (testing "Inside a transaction, messages are accumulated, not published immediately"
@@ -143,7 +146,8 @@
 
 (deftest transaction-rollback-discards-messages-test
   (mq.tu/with-test-mq [test-mq]
-    {:queue/test (fn [_] nil)}
+    (q.registry/register-queue! :queue/test {:transactional :never})
+    (mq.tu/listen! :queue/test (fn [_] nil))
     (binding [app-db.conn/*after-commit*  (atom [])
               app-db.conn/*transaction-state* (atom {})]
       (testing "Messages accumulated during a failed transaction are discarded"
@@ -171,8 +175,10 @@
   (let [heard-a (atom [])
         heard-b (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      {:queue/test-a (fn [msg] (swap! heard-a conj msg))
-       :queue/test-b (fn [msg] (swap! heard-b conj msg))}
+      (q.registry/register-queue! :queue/test-a {:transactional :never})
+      (q.registry/register-queue! :queue/test-b {:transactional :never})
+      (mq.tu/listen! :queue/test-a (fn [msg] (swap! heard-a conj msg)))
+      (mq.tu/listen! :queue/test-b (fn [msg] (swap! heard-b conj msg)))
       (binding [app-db.conn/*after-commit*  (atom [])
                 app-db.conn/*transaction-state* (atom {})]
         (mq/with-queue :queue/test-a [q]
@@ -196,7 +202,7 @@
 (deftest buffering-combines-messages-test
   (let [heard (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      (q.registry/register-queue! :queue/test {:max-batch-messages 50})
+      (q.registry/register-queue! :queue/test {:transactional :try :max-batch-messages 50})
       (listener/batch-listen! :queue/test
                               (fn [batch] (swap! heard into batch)))
       (binding [publish-buffer/*publish-buffer-ms* 100
@@ -236,7 +242,7 @@
 (deftest buffering-flush-delivers-test
   (let [heard (atom [])]
     (mq.tu/with-test-mq [test-mq]
-      (q.registry/register-queue! :queue/test {:max-batch-messages 3})
+      (q.registry/register-queue! :queue/test {:transactional :try :max-batch-messages 3})
       (listener/batch-listen! :queue/test
                               (fn [batch] (swap! heard into batch)))
       (binding [publish-buffer/*publish-buffer-ms*  1

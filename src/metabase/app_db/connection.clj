@@ -139,6 +139,13 @@
   Bound to a fresh atom at the outermost transaction boundary."
   nil)
 
+(def ^:dynamic *before-commit*
+  "When non-nil, an atom containing a vector of 0-arity fns to call just before the outermost
+  transaction commits — while the transaction is still open, so their DB writes commit atomically
+  with it. A throwing before-commit callback aborts the commit and rolls the transaction back.
+  Bound to a fresh atom at the outermost transaction boundary."
+  nil)
+
 (def ^:dynamic *transaction-state*
   "When non-nil, an atom containing a map for arbitrary per-transaction data.
   Any subsystem can store namespaced keys here. Bound to a fresh atom at the outermost transaction boundary."
@@ -157,6 +164,15 @@
     (do (swap! *after-commit* conj f) true)
     false))
 
+(defn before-commit!
+  "Register `f` (a 0-arity fn) to run just before the current outermost transaction commits, while
+  the transaction is still open. Its DB writes commit atomically with the transaction; if it throws,
+  the transaction is rolled back. Returns true if registered, false if not currently in a transaction."
+  [f]
+  (if *before-commit*
+    (do (swap! *before-commit* conj f) true)
+    false))
+
 (defn transaction-state
   "Returns the current transaction state atom, or nil if not in a transaction."
   []
@@ -165,6 +181,8 @@
 (defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []
             (let [savepoint          (.setSavepoint connection)
+                  before-snapshot    (when (and *before-commit* (> *transaction-depth* 1))
+                                       @*before-commit*)
                   commit-snapshot    (when (and *after-commit* (> *transaction-depth* 1))
                                        @*after-commit*)
                   state-snapshot     (when (and *transaction-state* (> *transaction-depth* 1))
@@ -172,7 +190,17 @@
               (try
                 (let [result (f connection)]
                   (when (= *transaction-depth* 1)
-                    ;; top-level transaction, commit
+                    ;; top-level transaction. Run before-commit callbacks first, while the
+                    ;; transaction is still open, so their writes commit atomically with it.
+                    ;; They are NOT wrapped in try/catch — a throwing callback must propagate to
+                    ;; the catch below and roll the whole transaction back.
+                    (loop []
+                      (when-let [callbacks (seq (first (reset-vals! *before-commit* [])))]
+                        (doseq [cb callbacks]
+                          (cb))
+                        ;; If callbacks registered new callbacks, run those too
+                        (recur)))
+                    ;; commit
                     (.commit connection)
                     ;; drain and execute after-commit callbacks
                     (loop []
@@ -188,8 +216,10 @@
                 (catch Throwable txn-e
                   (try
                     (.rollback connection savepoint)
-                    ;; Restore after-commit and transaction-state to pre-savepoint values
-                    ;; so callbacks/state from the rolled-back savepoint are discarded
+                    ;; Restore before-commit, after-commit and transaction-state to pre-savepoint
+                    ;; values so callbacks/state from the rolled-back savepoint are discarded
+                    (when before-snapshot
+                      (reset! *before-commit* before-snapshot))
                     (when commit-snapshot
                       (reset! *after-commit* commit-snapshot))
                     (when state-snapshot
@@ -246,6 +276,7 @@
     :else
     (let [outermost? (zero? *transaction-depth*)]
       (binding [*transaction-depth* (inc *transaction-depth*)
+                *before-commit*     (if outermost? (atom []) *before-commit*)
                 *after-commit*      (if outermost? (atom []) *after-commit*)
                 *transaction-state* (if outermost? (atom {}) *transaction-state*)]
         (do-transaction connection f)))))

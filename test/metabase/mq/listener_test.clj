@@ -18,14 +18,14 @@
 
 (def ^:private macro-received (atom []))
 
-(mq/def-queue! :queue/listener-macro-test)
+(mq/def-queue! :queue/listener-macro-test {:transactional :try})
 (mq/def-listener! :queue/listener-macro-test [messages]
   (swap! macro-received into messages))
 
 (def ^:private multi-count (atom 0))
 (def ^:private multi-received (atom []))
 
-(mq/def-queue! :queue/listener-multi-test)
+(mq/def-queue! :queue/listener-multi-test {:transactional :try})
 (mq/def-listener! :queue/listener-multi-test [messages]
   (swap! multi-count inc)
   (swap! multi-received into messages))
@@ -60,14 +60,14 @@
       (is (thrown-with-msg? ExceptionInfo #"No queue declared"
                             (listener/batch-listen! :queue/never-declared (fn [_])))))
     (testing "succeeds once the queue is declared"
-      (q.registry/register-queue! :queue/now-declared {})
+      (q.registry/register-queue! :queue/now-declared {:transactional :try})
       (listener/batch-listen! :queue/now-declared (fn [_]))
       (is (fn? (:listener (listener/get-listener :queue/now-declared)))))))
 
 (deftest duplicate-listener-throws-test
   (binding [listener/*listeners* (atom {})
             q.registry/*queues*  (atom {})]
-    (q.registry/register-queue! :queue/dup {})
+    (q.registry/register-queue! :queue/dup {:transactional :try})
     (listener/batch-listen! :queue/dup (fn [_]))
     (testing "a second listener on the same queue throws"
       (is (thrown-with-msg? ExceptionInfo #"Listener already registered"
@@ -84,7 +84,7 @@
         ;; Declare every OTHER macro-registered queue so the only failure is ours.
         (doseq [qn (keys (methods listener/def-listener*))
                 :when (not= qn channel)]
-          (q.registry/register-queue! qn {}))
+          (q.registry/register-queue! qn {:transactional :try}))
         (testing "register-listeners! rethrows a registration failure with context"
           (is (thrown-with-msg? ExceptionInfo #"Failed to register listener"
                                 (listener/register-listeners!)))))

@@ -1413,6 +1413,7 @@
            models
            settings
            startup
+           task
            util}}
 
   native-query-snippets

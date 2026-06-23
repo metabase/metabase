@@ -2,7 +2,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v62.asdgew
+      id: v63.asdgew
       author: nvoxland
       comment: Create the table backing the message queue
       changes:
@@ -63,7 +63,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.gdasfg2e
+      id: v63.gdasfg2e
       author: nvoxland
       comment: Index queue_message_batch for efficient fetch
       changes:
@@ -77,3 +77,55 @@ databaseChangeLog:
                   name: status
               - column:
                   name: id
+
+  - changeSet:
+      id: v63.qmoutbox1
+      author: nvoxland
+      comment: Create the transactional outbox table backing persistent queue publishes
+      changes:
+        - createTable:
+            tableName: queue_message_outbox
+            remarks: >-
+              Transactional outbox for queue publishes. Rows are inserted inside the business
+              transaction (before-commit) and handed to the queue backend after it commits, so a
+              message is published iff the transaction that produced it commits. A recovery job
+              republishes any rows a crash left behind.
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: queue_name
+                  type: varchar(254)
+                  remarks: The name of the queue this batch will be published to
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the row was written to the outbox
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON-encoded payload (one stored batch)
+                  name: payload
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v63.qmoutbox2
+      author: nvoxland
+      comment: Index queue_message_outbox.created_at for the recovery sweep
+      changes:
+        - createIndex:
+            tableName: queue_message_outbox
+            indexName: idx_queue_message_outbox_created_at
+            columns:
+              - column:
+                  name: created_at

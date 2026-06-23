@@ -38,6 +38,7 @@
   in-transaction?
   quoting-style
   unique-identifier
+  before-commit!
   after-commit!
   transaction-state]
  [mdb.connection-pool-setup

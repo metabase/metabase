@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.publish-buffer :as publish-buffer]
+   [metabase.mq.queue.outbox :as q.outbox]
    [metabase.mq.queue.registry :as q.registry]
    [metabase.util.log :as log]))
 
@@ -58,10 +59,31 @@
     (when-not (::flush-registered? old-state)
       (mdb/after-commit! flush-deferred-messages!))))
 
+(defn- publish-collected!
+  "Routes the messages collected by [[run-with-buffer]] for `channel` according to the queue's
+   `:transactional` mode and whether a transaction is currently active:
+
+   | mode               | in a txn? | behavior                                                   |
+   |--------------------|-----------|------------------------------------------------------------|
+   | `:require`/`:try`  | yes       | transactional outbox (before-commit insert, after-commit publish) |
+   | `:require`         | no        | throw — a transaction is mandatory                         |
+   | `:try`/`:never`    | no        | publish immediately                                        |
+   | `:never`           | yes       | defer to after-commit (in-memory; no outbox table)         |"
+  [channel msgs]
+  (let [mode    (q.registry/transactional channel)
+        in-txn? (some? (mdb/transaction-state))]
+    (cond
+      (and in-txn? (#{:require :try} mode)) (q.outbox/defer-transactional! channel msgs)
+      (and (= mode :require) (not in-txn?)) (throw (ex-info (str "Queue " channel " is :transactional :require "
+                                                                 "and must be published inside a transaction.")
+                                                            {:channel channel}))
+      in-txn?                               (defer-in-transaction! channel msgs)
+      :else                                 (publish! channel msgs))))
+
 (defn run-with-buffer
-  "Runs `body-fn` with a MessageBuffer. On success, publishes collected messages —
-   deferred if inside a transaction, immediate via publish! otherwise.
-   On exception, discards buffered messages and rethrows."
+  "Runs `body-fn` with a MessageBuffer. On success, routes the collected messages via
+   [[publish-collected!]] (transactional outbox, deferred, or immediate depending on the queue's
+   `:transactional` mode). On exception, discards buffered messages and rethrows."
   [channel error-label body-fn]
   (let [buffer     (atom [])
         msg-buffer (reify MessageBuffer
@@ -70,9 +92,7 @@
       (let [result (body-fn msg-buffer)
             msgs   @buffer]
         (when (seq msgs)
-          (if (mdb/transaction-state)
-            (defer-in-transaction! channel msgs)
-            (publish! channel msgs)))
+          (publish-collected! channel msgs))
         result)
       (catch Exception e
         (log/error e error-label)
