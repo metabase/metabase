@@ -32,7 +32,6 @@
    [metabase.mq.init :as mq.init]
    [metabase.mq.listener :as mq.listener]
    [metabase.mq.publish :as mq.publish]
-   [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.memory :as q.memory]
    [metabase.mq.queue.registry :as q.registry]
@@ -45,7 +44,6 @@
   mq.init/keep-me
   mq.listener/keep-me
   mq.publish/keep-me
-  q.appdb/keep-me
   q.impl/keep-me
   q.memory/keep-me
   q.registry/keep-me)
@@ -55,19 +53,14 @@
   def-listener!
   register-listeners!
   unlisten!]
-
  [mq.publish
   put]
-
  [mq.impl
   last-activity]
-
  [mq.init
   start!
   stop!]
-
  [q.impl
   with-queue]
-
  [q.registry
   def-queue!])

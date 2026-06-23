@@ -4,8 +4,7 @@
   the backend instances, and convenience fns (`flush!`, `wait-for-idle!`,
   `eventually!`) for driving delivery and waiting for quiescence.
 
-  `do-with-test-mq!` also accepts `:backend :appdb` for running the real database-
-  backed backend in parity tests, and `:duplicate-delivery? true` to wrap the
+  `do-with-test-mq!` also accepts `:duplicate-delivery? true` to wrap the
   backends with a decorator that publishes every message twice. The duplicate-
   delivery mode exists to force listeners under test to prove they handle the
   MQ's at-least-once contract — any scenario that silently relies on exactly-
@@ -19,7 +18,6 @@
    [metabase.mq.memory :as memory]
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.publish-buffer :as publish-buffer]
-   [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.memory :as q.memory]
    [metabase.mq.queue.registry :as q.registry]))
@@ -156,17 +154,13 @@
 
 (defn- make-fixture-backends
   "Constructs backend instances for the given fixture kind. Memory gets a fresh
-  isolated layer; appdb shares the DB table but gets its own per-instance state
-  (poll-state, owner-id, offsets, periodic-task rate-limit atoms) so that
-  test teardown doesn't tear down the production singleton's polling thread."
+  isolated layer."
   [kind]
   (case kind
     :memory (let [layer (memory/make-layer)]
               {:backend  :memory
                :layer    layer
-               :queue-be (q.memory/make-backend layer)})
-    :appdb  {:backend  :appdb
-             :queue-be (q.appdb/make-backend)}))
+               :queue-be (q.memory/make-backend layer)})))
 
 ;; A defrecord (not reify) so it exposes a `:poll-context` field — the transport reads
 ;; `(:poll-context backend)` to wake the poll loop, and that must resolve to the inner backend's
@@ -204,7 +198,7 @@
 (defn do-with-test-mq!
   "Function form of [[with-test-mq]]. `opts` may include:
 
-  - `:backend`                 `:memory` (default) or `:appdb`
+  - `:backend`                 `:memory` (default)
   - `:listeners`            listener map, same shape as `with-sync-mq` had
   - `:duplicate-delivery?`  when true, wraps both backends with a decorator
                             that publishes every message twice — used to
@@ -257,7 +251,7 @@
         {:queue/foo (fn [msg] ...)}
         body)
 
-      (with-test-mq [ctx {:backend :appdb :duplicate-delivery? true}]
+      (with-test-mq [ctx {:duplicate-delivery? true}]
         body)"
   {:style/indent 1}
   [[ctx-sym & [opts-expr]] & body]

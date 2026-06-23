@@ -2,8 +2,8 @@
   "Contract-level parity between the queue backends.
 
   Each scenario is written once and run against every backend kind so that
-  semantic drift between the memory and appdb implementations is caught at
-  the source rather than discovered later in production.
+  semantic drift between backend implementations is caught at the source
+  rather than discovered later in production.
 
   Every scenario is ALSO run with `:duplicate-delivery? true` so that
   listeners in the parity suite are forced to tolerate the MQ's at-least-
@@ -12,21 +12,20 @@
   be delivered more than once.
 
   Scenarios use `mq.tu/eventually!` rather than `mq.tu/flush!` for their
-  assertions, because `wait-for-idle!` cannot see pending rows inside the
-  appdb tables — it only checks the publish buffer, the worker-pool busy
-  set, and memory channels."
+  assertions, because `wait-for-idle!` cannot see pending rows inside a
+  durable backend's storage — it only checks the publish buffer, the
+  worker-pool busy set, and memory channels."
   (:require
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
-   [metabase.mq.test-util :as mq.tu]
-   [toucan2.core :as t2]))
+   [metabase.mq.test-util :as mq.tu]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private backend-kinds
   "Backend kinds exercised by the parity scenarios. `:memory` covers the
-  fast async in-process backend; `:appdb` covers the durable DB-backed one."
-  [:memory :appdb])
+  fast async in-process backend."
+  [:memory])
 
 (def ^:private delivery-modes
   "Delivery modes exercised by the parity scenarios. `:normal` is the
@@ -36,18 +35,11 @@
   [:normal :duplicate])
 
 (def ^:private scenario-timeout-ms
-  "Budget for waiting on eventual delivery in parity scenarios. appdb runs
-  through the publish buffer → DB insert → 5s-default poll loop, but the
-  fixture's `wait-for-idle!` calls `notify-all!` each tick so the effective
+  "Budget for waiting on eventual delivery in parity scenarios. A poll-based
+  backend runs through the publish buffer → storage → 5s-default poll loop, but
+  the fixture's `wait-for-idle!` calls `notify-all!` each tick so the effective
   poll latency is much lower."
   10000)
-
-(defn- cleanup-appdb-channel!
-  "Removes any rows left in the message tables for the given channel so a
-  parity scenario does not pollute later tests."
-  [channel]
-  (case (namespace channel)
-    "queue" (t2/delete! :queue_message_batch :queue_name (name channel))))
 
 (defn- unique-channel [transport-ns suffix]
   (keyword transport-ns (str suffix "-" (random-uuid))))
@@ -55,8 +47,7 @@
 (defn- run-parity!
   "Runs `scenario-fn` once per (kind × delivery-mode) combination. Each
   invocation gets a freshly-minted unique channel keyword so scenarios do
-  not interfere with each other. On completion the scenario's channel is
-  unlistened (if still present) and any appdb rows for it are cleaned up."
+  not interfere with each other."
   ([channel-prefix scenario-fn]
    (run-parity! backend-kinds delivery-modes channel-prefix scenario-fn))
   ([kinds modes channel-prefix scenario-fn]
@@ -64,13 +55,9 @@
            mode  modes]
      (testing (str kind " backend / " mode " delivery")
        (let [channel (unique-channel (namespace channel-prefix) (name channel-prefix))]
-         (try
-           (mq.tu/with-test-mq [ctx {:backend                kind
-                                     :duplicate-delivery? (= mode :duplicate)}]
-             (scenario-fn ctx channel))
-           (finally
-             (when (= :appdb kind)
-               (cleanup-appdb-channel! channel)))))))))
+         (mq.tu/with-test-mq [ctx {:backend                kind
+                                   :duplicate-delivery? (= mode :duplicate)}]
+           (scenario-fn ctx channel)))))))
 
 (deftest queue-delivers-published-messages-test
   (run-parity!

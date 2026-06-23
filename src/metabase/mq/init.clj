@@ -4,7 +4,6 @@
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.publish-buffer :as publish-buffer]
-   [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.memory :as q.memory]
    [metabase.mq.queue.registry :as q.registry]
@@ -14,8 +13,7 @@
    [metabase.util.log :as log]))
 
 (def ^:private queue-backends
-  {q.appdb/backend-id  q.appdb/backend
-   q.memory/backend-id q.memory/backend})
+  {q.memory/backend-id q.memory/backend})
 
 (def ^:private valid-queue-backends (set (keys queue-backends)))
 
@@ -30,7 +28,7 @@
   "Initializes the MQ subsystem with the given backend. Returns a handle that must be
    passed to [[stop!]] to shut down and restore the previous backend state.
 
-   `queue-be` may be either a keyword identifier (e.g. `:queue.backend/appdb`)
+   `queue-be` may be either a keyword identifier (e.g. `:queue.backend/memory`)
    or a concrete backend instance.
 
    Called by [[startup/def-startup-logic!]] with production backends (handle discarded;

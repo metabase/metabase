@@ -12,9 +12,9 @@
   :export?    false)
 
 (defsetting queue-backend
-  (deferred-tru "Which queue backend to use. Valid values: `appdb`, `memory`.")
+  (deferred-tru "Which queue backend to use. Valid values: `memory`.")
   :type       :string
-  :default    "appdb"
+  :default    "memory"
   :visibility :internal
   :encryption :no
   :export?    false)

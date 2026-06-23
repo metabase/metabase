@@ -37,7 +37,7 @@
   (t2/count :queue_message_outbox :queue_name qname))
 
 (deftest require-mode-no-transaction-throws-test
-  (mq.tu/with-test-mq [_ctx {:backend :appdb}]
+  (mq.tu/with-test-mq [_ctx {:backend :memory}]
     (testing ":require published outside a transaction throws"
       (is (thrown-with-msg?
            ExceptionInfo #":transactional :require"
@@ -48,7 +48,7 @@
 (deftest require-mode-atomic-with-business-write-test
   (let [heard (atom [])
         email (mt/random-email)]
-    (mq.tu/with-test-mq [ctx {:backend :appdb}]
+    (mq.tu/with-test-mq [ctx {:backend :memory}]
       {:queue/outbox-require (fn [m] (swap! heard conj m))}
       (testing "rollback: neither the business write nor the message survive"
         (is (thrown? Exception
@@ -76,7 +76,7 @@
 
 (deftest try-mode-no-transaction-publishes-immediately-test
   (let [heard (atom [])]
-    (mq.tu/with-test-mq [ctx {:backend :appdb}]
+    (mq.tu/with-test-mq [ctx {:backend :memory}]
       {:queue/outbox-try (fn [m] (swap! heard conj m))}
       (mq/with-queue :queue/outbox-try [q]
         (mq/put q "x"))
@@ -86,7 +86,7 @@
 
 (deftest try-mode-in-transaction-uses-outbox-test
   (let [heard (atom [])]
-    (mq.tu/with-test-mq [ctx {:backend :appdb}]
+    (mq.tu/with-test-mq [ctx {:backend :memory}]
       {:queue/outbox-try (fn [m] (swap! heard conj m))}
       (t2/with-transaction [_conn]
         (mq/with-queue :queue/outbox-try [q]
@@ -96,7 +96,7 @@
 
 (deftest never-mode-in-transaction-defers-in-memory-test
   (let [heard (atom [])]
-    (mq.tu/with-test-mq [ctx {:backend :appdb}]
+    (mq.tu/with-test-mq [ctx {:backend :memory}]
       {:queue/outbox-never (fn [m] (swap! heard conj m))}
       (t2/with-transaction [_conn]
         (mq/with-queue :queue/outbox-never [q]
@@ -106,7 +106,7 @@
       (is (zero? (outbox-count "outbox-never")) ":never never touches the outbox table"))))
 
 (deftest chunking-respects-max-batch-messages-test
-  (mq.tu/with-test-mq [_ctx {:backend :appdb}]
+  (mq.tu/with-test-mq [_ctx {:backend :memory}]
     (testing "messages are chunked by :max-batch-messages into one outbox row per chunk"
       (binding [app-db.conn/*transaction-state*
                 (atom {:metabase.mq.queue.outbox/messages
@@ -121,7 +121,7 @@
         (is (= [["a" "b"] ["c" "d"] ["e"]] payloads))))))
 
 (deftest dedup-applied-in-outbox-test
-  (mq.tu/with-test-mq [_ctx {:backend :appdb}]
+  (mq.tu/with-test-mq [_ctx {:backend :memory}]
     (testing "the queue's dedup-fn is applied before messages are written to the outbox"
       (binding [app-db.conn/*transaction-state*
                 (atom {:metabase.mq.queue.outbox/messages
@@ -136,7 +136,7 @@
 
 (deftest multiple-publishes-one-transaction-register-callbacks-once-test
   (let [heard (atom [])]
-    (mq.tu/with-test-mq [ctx {:backend :appdb}]
+    (mq.tu/with-test-mq [ctx {:backend :memory}]
       {:queue/outbox-require (fn [m] (swap! heard conj m))}
       (testing "several with-queue publishes in one txn register the before/after callbacks once — no duplicate delivery"
         (t2/with-transaction [_conn]
@@ -151,7 +151,7 @@
 
 (deftest nested-transaction-commit-delivers-all-test
   (let [heard (atom [])]
-    (mq.tu/with-test-mq [ctx {:backend :appdb}]
+    (mq.tu/with-test-mq [ctx {:backend :memory}]
       {:queue/outbox-require (fn [m] (swap! heard conj m))}
       (testing "publishes from outer and committed nested savepoints are all delivered once"
         (t2/with-transaction [_outer]
@@ -164,7 +164,7 @@
 
 (deftest nested-transaction-inner-rollback-discards-inner-test
   (let [heard (atom [])]
-    (mq.tu/with-test-mq [ctx {:backend :appdb}]
+    (mq.tu/with-test-mq [ctx {:backend :memory}]
       {:queue/outbox-require (fn [m] (swap! heard conj m))}
       (testing "a message published in a rolled-back nested savepoint is discarded; the outer one survives"
         (t2/with-transaction [_outer]
@@ -180,7 +180,7 @@
 
 (deftest recover-outbox-republishes-stale-rows-test
   (let [heard (atom [])]
-    (mq.tu/with-test-mq [ctx {:backend :appdb}]
+    (mq.tu/with-test-mq [ctx {:backend :memory}]
       {:queue/outbox-recover (fn [m] (swap! heard conj m))}
       (testing "a row a crash left behind is republished and deleted by the recovery sweep"
         (t2/insert! :queue_message_outbox
@@ -194,7 +194,7 @@
         (is (zero? (outbox-count "outbox-recover")) "row deleted after republish")))))
 
 (deftest recover-outbox-skips-fresh-rows-test
-  (mq.tu/with-test-mq [_ctx {:backend :appdb}]
+  (mq.tu/with-test-mq [_ctx {:backend :memory}]
     (testing "rows younger than the recovery age are left for the normal after-commit path"
       (t2/insert! :queue_message_outbox
                   {:queue_name "outbox-recover"
