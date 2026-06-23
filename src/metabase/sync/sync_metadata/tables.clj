@@ -463,9 +463,10 @@
                         (map table-name+schema)
                         (concat (:tables db-metadata)
                                 (ws.table-remapping/inject-workspace-canonical-tuples #{} (u/the-id database))))
-        active    (t2/select-fn-set table-name+schema [:model/Table :name :schema]
-                                    :db_id (u/the-id database) :active true)
-        to-retire (set/difference active seen)]
+        to-retire (into #{}
+                        (comp (map table-name+schema) (remove seen))
+                        (t2/reducible-select [:model/Table :name :schema]
+                                             :db_id (u/the-id database) :active true))]
     (doseq [batch (partition-all table-sync-batch-size to-retire)]
       (retire-tables! database (set batch)))
     (count to-retire)))
