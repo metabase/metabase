@@ -97,6 +97,7 @@
         start-time (u/start-timer)]
     (try
       (let [url      (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")
+            _        (llm.settings/assert-llm-host-allowed! url)
             response (http/post url
                                 {:headers            (build-request-headers (get-api-key-or-throw))
                                  :body               (json/encode (build-request-body request))

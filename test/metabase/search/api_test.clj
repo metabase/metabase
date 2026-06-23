@@ -927,6 +927,7 @@
      :table_id            true
      :archived            nil
      :model               "table"
+     :is_published        false
      :database_id         true
      :database_name       "test-data (h2)"
      :pk_ref              nil

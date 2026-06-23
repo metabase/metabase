@@ -4,15 +4,17 @@ import { createPortal } from "react-dom";
 
 import type { CommentThread } from "metabase/comments/types";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { Box, rem } from "metabase/ui";
+import type { EntityId } from "metabase-types/api/comments";
 
 import S from "./CommentsMenu.module.css";
 
 interface Props {
   active: boolean;
   disabled?: boolean;
-  href: string;
+  childTargetId: EntityId;
   show: boolean;
   style: CSSProperties;
   unresolvedCommentsCount: number;
@@ -30,10 +32,14 @@ export const getUnresolvedComments = (
 
 export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
   function CommentsMenu(
-    { active, href, show, style, unresolvedCommentsCount }: Props,
+    { active, childTargetId, show, style, unresolvedCommentsCount }: Props,
     ref,
   ) {
     const hasUnresolvedComments = unresolvedCommentsCount > 0;
+    const commentUrl = useCommentUrl({
+      childTargetId,
+      searchParams: hasUnresolvedComments ? undefined : { new: "true" },
+    });
 
     return createPortal(
       <Box
@@ -52,7 +58,7 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
           variant={active ? "filled" : "default"}
           unresolvedCommentsCount={unresolvedCommentsCount}
           component={ForwardRefLink}
-          to={unresolvedCommentsCount > 0 ? href : `${href}?new=true`}
+          to={commentUrl}
         />
       </Box>,
       document.body,

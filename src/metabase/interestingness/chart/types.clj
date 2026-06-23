@@ -64,7 +64,7 @@
 
 (mr/def ::trend-direction
   "Direction of a trend."
-  [:enum :strongly-increasing :increasing :flat :decreasing :strongly-decreasing])
+  [:enum :strongly-increasing :increasing :flat :decreasing :strongly-decreasing :no-clear-trend])
 
 (mr/def ::trend-summary
   "Summary of trend in time series data."
@@ -151,6 +151,12 @@
 
 ;;; ---------------------------------------------- Chart Type Stats --------------------------------------------------
 
+(mr/def ::extremum
+  "An extreme point (peak or trough) in a series, paired with its x-coordinate."
+  [:map
+   [:x :any]
+   [:y number?]])
+
 (mr/def ::time-series-series-stats
   "Statistics for a single time series."
   [:map
@@ -163,7 +169,10 @@
    [:volatility {:optional true} [:maybe ::volatility]]
    [:patterns {:optional true} [:maybe [:sequential ::pattern-insight]]]
    [:significant-changes {:optional true} [:maybe [:sequential ::significant-change]]]
-   [:most-recent-change {:optional true} [:maybe ::significant-change]]])
+   [:most-recent-change {:optional true} [:maybe ::significant-change]]
+   [:peak {:optional true} [:maybe ::extremum]]
+   [:trough {:optional true} [:maybe ::extremum]]
+   [:above-mean {:optional true} [:maybe :int]]])
 
 (mr/def ::time-series-stats
   "Statistics for time series charts."
@@ -296,4 +305,5 @@
    [:stats ::chart-stats]
    [:title {:optional true} [:maybe :string]]
    [:display-type {:optional true} [:maybe :string]]
-   [:timeline-events {:optional true} [:maybe [:sequential ::timeline-event]]]])
+   [:timeline-events {:optional true} [:maybe [:sequential ::timeline-event]]]
+   [:omit-temporal-context? {:optional true} [:maybe :boolean]]])

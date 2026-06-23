@@ -255,6 +255,7 @@ export type IconName =
   | "tab"
   | "table"
   | "table2"
+  | "telescope"
   | "text_bold"
   | "text_italic"
   | "text_strike"

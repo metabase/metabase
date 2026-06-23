@@ -14,7 +14,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.instance :as t2.instance]))
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
@@ -30,6 +31,45 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+(defonce ^{:private true
+           :doc "Predicate gating a document's *content* (not merely its existence) below
+                 collection-read, for documents whose rendered body embeds data the viewer may not
+                 be entitled to see. Installed at init.
+
+                 The only user today is `explorations`: an AI-Summary document belongs to an
+                 exploration thread (the `:exploration_thread_id` FK on this table) and embeds
+                 verbatim — possibly sandboxed/impersonated/routed — result values, so a
+                 collaborator whose data-access lens differs from the creator's must not read it.
+
+                 `documents` can't call the consumer directly — the module graph runs one way
+                 (`explorations -> documents`) — so the consumer registers a callback here."}
+  doc-content-visibility-fn
+  (atom (fn [_doc] true)))
+
+(defn register-doc-content-visibility-fn!
+  "Install the content-visibility gate (see [[doc-content-visibility-fn]]). Called once at the
+  consuming module's init. `f` takes a document and returns whether the current user may see its
+  rendered content."
+  [f]
+  (reset! doc-content-visibility-fn f))
+
+;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
+;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
+;; narrower than collection access.
+(defmethod mi/can-read? :model/Document
+  ([instance]
+   (and (mi/current-user-has-full-permissions? :read instance)
+        (boolean (@doc-content-visibility-fn instance))))
+  ([model pk]
+   (mi/can-read? (t2/select-one model pk))))
+
+(defmethod mi/can-write? :model/Document
+  ([instance]
+   (and (mi/current-user-has-full-permissions? :write instance)
+        (boolean (@doc-content-visibility-fn instance))))
+  ([model pk]
+   (mi/can-write? (t2/select-one model pk))))
 
 (def DocumentName
   "Validations for the name of a document"
@@ -99,7 +139,16 @@
                                    :archived archived
                                    :archived-directly archived_directly)
   (when-not mi/*deserializing?*
-    (events/publish-event! :event/document-update {:object instance}))
+    ;; Toucan2 hands `define-after-update` a `TransientRow` for each updated row,
+    ;; which is *not* a `mi/instance-of? :model/Document`. The revisions handler
+    ;; rejects non-instances with "object must be a model instance" — caught and
+    ;; logged at `revisions/events.clj:30`, but as a result no revision row is
+    ;; recorded for content updates. Promote it to a real instance here so the
+    ;; revisions push can complete cleanly.
+    (events/publish-event! :event/document-update
+                           {:object (if (t2/instance-of? :model/Document instance)
+                                      instance
+                                      (t2.instance/instance :model/Document instance))}))
   instance)
 
 (t2/define-after-select :model/Document
@@ -119,6 +168,7 @@
    :attrs {:archived true
            :collection-id :collection_id
            :creator-id :creator_id
+           :exploration-thread-id :exploration_thread_id
            :view-count :view_count
            :created-at :created_at
            :updated-at :updated_at
@@ -168,32 +218,41 @@
       (u/prog1 node
         (log/warn "Model not found at path" (id-key attrs))))))
 
+(defn- live-card-embed?
+  "True for a `cardEmbed` node carrying a live-Card reference. Static-mode embeds (with
+  `:stored_result_id` and a nil `:id`) are skipped during serdes — `stored_result` rows
+  are not first-class serdes entities."
+  [node]
+  (and (= prose-mirror/card-embed-type (:type node))
+       (pos-int? (-> node :attrs :id))))
+
+(defn- serdes-portable-node?
+  "True for the AST nodes whose ids serdes rewrites between database ids and entity ids:
+  smartLinks and live (non-static) cardEmbeds."
+  [node]
+  (or (= prose-mirror/smart-link-type (:type node))
+      (live-card-embed? node)))
+
 (defn- export-document-content
-  "Transform cardEmbed/smartLink nodes to use entity IDs instead of database IDs"
+  "Transform live cardEmbed / smartLink nodes to use entity IDs instead of database IDs"
   [document serdes-key _]
   (serdes-key
    (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast
-      document
-      #(contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type %))
-      id->entity-id)
+     (prose-mirror/update-ast document serdes-portable-node? id->entity-id)
      document)))
 
 (defn- import-document-content
-  "Transform cardEmbed/smartLink nodes to use database IDs instead of entity IDs"
+  "Transform live cardEmbed / smartLink nodes to use database IDs instead of entity IDs"
   [document serdes-key _]
   (serdes-key
    (if (= (:content_type document) prose-mirror/prose-mirror-content-type)
-     (prose-mirror/update-ast
-      document
-      #(contains? #{prose-mirror/smart-link-type prose-mirror/card-embed-type} (:type %))
-      entity-id->id)
+     (prose-mirror/update-ast document serdes-portable-node? entity-id->id)
      document)))
 
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id :exploration_thread_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content

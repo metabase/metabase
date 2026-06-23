@@ -20,12 +20,12 @@
 (defn- dimension-names
   "Extract the set of display-name (or name) values from a seq of dimensions."
   [dims]
-  (into #{} (map #(or (:display-name %) (:name %))) dims))
+  (into #{} (map #(or (:display_name %) (:name %))) dims))
 
 (defn- dimension-group-names
   "Extract the set of group display-names from a seq of dimensions."
   [dims]
-  (into #{} (map #(get-in % [:group :display-name])) dims))
+  (into #{} (map #(get-in % [:group :display_name])) dims))
 
 ;;; ------------------------------------------------- Sandbox Column Filtering Tests -------------------------------------------------
 

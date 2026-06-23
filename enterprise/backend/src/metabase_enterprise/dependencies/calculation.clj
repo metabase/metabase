@@ -63,7 +63,8 @@
                                                 (#{"card" "dashboard" "table" "document"} (:model attrs)))
                                            [(keyword (:model attrs)) (:entityId attrs)]
 
-                                           (= prose-mirror/card-embed-type type)
+                                           (and (= prose-mirror/card-embed-type type)
+                                                (pos-int? (:id attrs)))
                                            [:card (:id attrs)]
 
                                            :else

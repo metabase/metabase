@@ -34,7 +34,7 @@ export const CustomOrderedList = OrderedList.extend<
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin(OrderedList.name)];
+    return [createProseMirrorPlugin("orderedList")];
   },
 });
 
@@ -47,13 +47,31 @@ export const OrderedListNodeView = ({
   const BlockShell = extension.options.blockShell ?? DefaultBlockShell;
 
   return (
-    <BlockShell
-      node={node}
-      editor={editor}
-      getPos={getPos}
-      hideMenus={extension.options.editorContext === "comments"}
-    >
-      <NodeViewContent<"ol"> as="ol" />
-    </BlockShell>
+    <>
+      <NodeViewWrapper
+        aria-expanded={isOpen}
+        className={cx(S.root, {
+          [S.open]: isOpen || isHovered,
+        })}
+        data-node-id={_id}
+        ref={setReferenceElement}
+        // onMouseEnter/onMouseLeave do not work on list elements living in contentEditable
+        onMouseOver={() => setHovered(true)}
+        onMouseOut={() => setHovered(false)}
+      >
+        <NodeViewContent<"ol"> as="ol" />
+      </NodeViewWrapper>
+
+      {shouldShowMenus && document && (
+        <CommentsMenu
+          active={isOpen}
+          childTargetId={_id}
+          ref={commentsRefs.setFloating}
+          show={isOpen || hovered}
+          style={commentsFloatingStyles}
+          unresolvedCommentsCount={unresolvedCommentsCount}
+        />
+      )}
+    </>
   );
 };

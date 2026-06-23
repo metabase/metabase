@@ -517,7 +517,10 @@
                                                  [:= nil :coll.namespace]
                                                  ;; exclude instance analytics for selects
                                                  (when (contains? (set context) :selections)
-                                                   [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]]
+                                                   [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]
+                                               ;; exploration documents are accessible only through their owning Exploration;
+                                               ;; hide them from recents to match search and collection-listing behavior.
+                                               [:or [:!= :rv.model "document"] [:= :doc.exploration_thread_id nil]]]
                                    :left-join [[:report_card :rc]
                                                [:and
                                                 ;; only want to join on card_type if it's a card
@@ -526,7 +529,11 @@
                                                [:collection :coll]
                                                [:and
                                                 [:= :rv.model "collection"]
-                                                [:= :coll.id :rv.model_id]]]
+                                                [:= :coll.id :rv.model_id]]
+                                               [:document :doc]
+                                               [:and
+                                                [:= :rv.model "document"]
+                                                [:= :doc.id :rv.model_id]]]
                                    :order-by  [[:rv.timestamp :desc]]})))
 
 (mu/defn- model->return-model [model :- :keyword]

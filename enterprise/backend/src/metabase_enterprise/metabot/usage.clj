@@ -21,18 +21,22 @@
 ;; When adding a value here, add it to those six SQL files too so users see a nicer name in ai analytics.
 (def ^:private known-sources
   #{"metabot_agent"
+    "contextual_interestingness"
     "document_generate_content"
     "example_question_generation_batch"
+    "exploration"
     "slack"
     "slackbot"
     "oss-sql-gen"
     "sql-gen"
+    "timeline_interestingness"
     "unknown"
     "user-intent-classification"})
 
 (def ^:private known-profile-ids
   #{"internal"
     "embedding_next"
+    "explorations"
     "nlq"
     "sql"
     "slackbot"

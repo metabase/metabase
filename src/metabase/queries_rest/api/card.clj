@@ -886,30 +886,48 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
+(defn- serve-cached-stored-result
+  "Cached branch of the card-query endpoint. Loads the stored_result, runs the cached-read
+  perm gate, and returns the cached Dataset shape — same shape as a live query response, so
+  the FE doesn't care which path served the data."
+  [stored-result-id sort]
+  (let [sr (api/check-404 (t2/select-one :model/StoredResult :id stored-result-id))]
+    (when-not (= api/*current-user-id* (:creator_id sr))
+      (queries/assert-can-view-cached-result! sr))
+    (api/check-404 (queries/cached-dataset sr sort))))
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:card-id/query"
-  "Run the query associated with a Card."
+  "Run the query associated with a Card. When `stored_result_id` is supplied, serve the cached snapshot instead of re-running the query
+  and optionally re-sorts the rows via the `sort` body param."
   [{:keys [card-id]} :- [:map
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
-   {:keys [parameters ignore_cache dashboard_id collection_preview]}
+   {:keys [parameters ignore_cache dashboard_id collection_preview stored_result_id sort]}
    :- [:map
        [:ignore_cache       {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
-       [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
+       [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]
+       [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
+       [:sort               {:optional true}
+        [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]]
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
   ;;    POST /api/dashboard/:dashboard-id/queries/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situation? We're not even validating that you have access to this Dashboard.
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
-    (qp.card/process-query-for-card
-     (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
-     :parameters parameters
-     :ignore-cache ignore_cache
-     :dashboard-id dashboard_id
-     :context (if collection_preview :collection :question)
-     :middleware   {:process-viz-settings? false})))
+    (if stored_result_id
+      (do
+        (api/read-check (api/check-404 (t2/select-one :model/Card :id resolved-card-id)))
+        (serve-cached-stored-result stored_result_id sort))
+      (qp.card/process-query-for-card
+       (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
+       :parameters parameters
+       :ignore-cache ignore_cache
+       :dashboard-id dashboard_id
+       :context (if collection_preview :collection :question)
+       :middleware   {:process-viz-settings? false}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

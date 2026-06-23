@@ -19,13 +19,13 @@ function buildSeries(card: Card, dataset: Dataset): RawSeries {
 }
 
 export function useExternalCardDataLoader(
-  cardId: CardId,
+  cardId: CardId | null | undefined,
   { skip = false }: { skip?: boolean } = {},
 ): UseCardDataResult {
   const context = useExternalCardData();
   const metadata = useSelector(getMetadata);
 
-  const card = context?.cards?.[cardId];
+  const card = cardId != null ? context?.cards?.[cardId] : undefined;
   const documentUuid = context?.documentUuid;
 
   const shouldSkip = skip || !cardId || !card || !documentUuid;

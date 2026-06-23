@@ -115,7 +115,7 @@
   ([y-values]
    (compute-series-stats (range (count y-values)) y-values))
   ([x-values y-values]
-   (let [valid-pairs (filter (fn [[_ y]] (some? y)) (map vector x-values y-values))
+   (let [valid-pairs (filter (fn [[x y]] (and (some? x) (some? y))) (map vector x-values y-values))
          valid-xs    (mapv (comp double first) valid-pairs)
          valid-ys    (mapv (comp double second) valid-pairs)
          n           (count valid-pairs)

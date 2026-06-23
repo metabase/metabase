@@ -26,7 +26,7 @@ export const CustomBlockquote = Blockquote.extend<
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin(Blockquote.name)];
+    return [createProseMirrorPlugin("blockquote")];
   },
 });
 
@@ -39,13 +39,30 @@ export const BlockquoteNodeView = ({
   const BlockShell = extension.options.blockShell ?? DefaultBlockShell;
 
   return (
-    <BlockShell
-      node={node}
-      editor={editor}
-      getPos={getPos}
-      hideMenus={extension.options.editorContext === "comments"}
-    >
-      <NodeViewContent<"blockquote"> as="blockquote" />
-    </BlockShell>
+    <>
+      <NodeViewWrapper
+        aria-expanded={isOpen}
+        className={cx(S.root, {
+          [S.open]: isOpen || isHovered,
+        })}
+        data-node-id={_id}
+        ref={setReferenceElement}
+        onMouseOver={() => setHovered(true)}
+        onMouseOut={() => setHovered(false)}
+      >
+        <NodeViewContent<"blockquote"> as="blockquote" />
+      </NodeViewWrapper>
+
+      {shouldShowMenus && document && (
+        <CommentsMenu
+          active={isOpen}
+          childTargetId={_id}
+          ref={commentsRefs.setFloating}
+          show={isOpen || hovered}
+          style={commentsFloatingStyles}
+          unresolvedCommentsCount={unresolvedCommentsCount}
+        />
+      )}
+    </>
   );
 };

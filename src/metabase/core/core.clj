@@ -21,6 +21,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.metrics.core :as metrics]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
@@ -214,14 +215,15 @@
       (setup/clear-token!))
     (init-status/set-progress! 0.7)
     ;; deal with our sample database as needed
-    (if new-install?
-      ;; add the sample database DB for fresh installs (only when sample content is enabled)
-      (when (config/load-sample-content?)
-        (sample-data/extract-and-sync-sample-database!))
-      ;; On existing installs always reconcile: if the bundled engine changed (H2 <-> SQLite) the old
-      ;; sample database must be cleaned up and replaced regardless of whether sample content is
-      ;; currently enabled. Otherwise just refresh its connection details.
-      (sample-data/update-sample-database-if-needed!))
+    (when (config/load-sample-content?)
+      (if new-install?
+        ;; add the sample database DB for fresh installs
+        (sample-data/extract-and-sync-sample-database!)
+        ;; otherwise update if appropriate
+        (sample-data/update-sample-database-if-needed!))
+      ;; Sample-content metrics are inserted via raw SQL and so never Card after-insert hooks.
+      (when-let [sample-db-id (sample-data/sample-database-id)]
+        (metrics/sync-metric-dimensions-for-database! sample-db-id)))
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)

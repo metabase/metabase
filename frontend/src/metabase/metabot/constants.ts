@@ -28,6 +28,11 @@ export const METABOT_PROFILES = {
       return t`Embedding`;
     },
   },
+  explorations: {
+    get label() {
+      return t`Research`;
+    },
+  },
   nlq: {
     get label() {
       return t`NLQ`;

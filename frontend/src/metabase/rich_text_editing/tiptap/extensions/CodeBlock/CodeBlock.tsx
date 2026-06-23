@@ -42,7 +42,7 @@ export const CustomCodeBlock = CodeBlock.extend<
 
   addProseMirrorPlugins() {
     return [
-      createProseMirrorPlugin(CodeBlock.name),
+      createProseMirrorPlugin("codeBlock"),
       // this plugin creates a code block for pasted content from VS Code
       // we can also detect the copied code language
       //
@@ -113,20 +113,37 @@ export const CodeBlockNodeView = ({
   const BlockShell = extension.options.blockShell ?? DefaultBlockShell;
 
   return (
-    <BlockShell
-      node={node}
-      editor={editor}
-      getPos={getPos}
-      hideMenus={extension.options.editorContext === "comments"}
-    >
-      <pre>
-        <NodeViewContent<"code">
-          as="code"
-          className={
-            node.attrs.language
-              ? languageClassPrefix + node.attrs.language
-              : undefined
-          }
+    <>
+      <NodeViewWrapper
+        aria-expanded={isOpen}
+        className={cx(S.root, {
+          [S.open]: isOpen || isHovered,
+        })}
+        data-node-id={_id}
+        ref={setReferenceElement}
+        onMouseOver={() => setHovered(true)}
+        onMouseOut={() => setHovered(false)}
+      >
+        <pre>
+          <NodeViewContent<"code">
+            as="code"
+            className={
+              node.attrs.language
+                ? languageClassPrefix + node.attrs.language
+                : undefined
+            }
+          />
+        </pre>
+      </NodeViewWrapper>
+
+      {shouldShowMenus && document && (
+        <CommentsMenu
+          active={isOpen}
+          childTargetId={_id}
+          ref={commentsRefs.setFloating}
+          show={isOpen || hovered}
+          style={commentsFloatingStyles}
+          unresolvedCommentsCount={unresolvedCommentsCount}
         />
       </pre>
     </BlockShell>

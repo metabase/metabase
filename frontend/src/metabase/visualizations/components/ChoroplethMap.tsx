@@ -161,13 +161,34 @@ function getDetails(
 }
 
 function useGeoJson(geoJsonPath: string | null): ChoroplethMapState {
-  const [state, setState] = useState<ChoroplethMapState>({
-    geoJson: null,
-    geoJsonPath: null,
+  const [state, setState] = useState<ChoroplethMapState>(() => {
+    if (geoJsonPath) {
+      const cached = geoJsonCache.get(geoJsonPath);
+      if (cached) {
+        return {
+          geoJson: cached,
+          geoJsonPath,
+          minimalBounds: computeMinimalBounds(getFeatures(cached)),
+        };
+      }
+    }
+    return { geoJson: null, geoJsonPath: null };
   });
 
   useEffect(() => {
     if (!geoJsonPath) {
+      return;
+    }
+    // Set a cache hit synchronously so a remount (e.g. switching back to a
+    // chart group) never flashes the spinner. Only null-out for a genuine
+    // fetch.
+    const cached = geoJsonCache.get(geoJsonPath);
+    if (cached) {
+      setState({
+        geoJson: cached,
+        geoJsonPath,
+        minimalBounds: computeMinimalBounds(getFeatures(cached)),
+      });
       return;
     }
     let cancelled = false;

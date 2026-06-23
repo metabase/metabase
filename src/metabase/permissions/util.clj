@@ -351,6 +351,16 @@
   ;; ee version becomes available
   false)
 
+(defenterprise sandboxed-user-for-db?
+  "Returns a boolean if the current user has any enforced sandbox for the given database. In OSS this is always false.
+  Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.sandbox.api.util
+  [_db-or-id]
+  (when-not api/*current-user-id*
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  false)
+
 (defn sandboxed-or-impersonated-user?
   "Returns a boolean if the current user uses sandboxing or connection impersonation for any database. In OSS is always
   false. Will throw an error if [[api/*current-user-id*]] is not bound."

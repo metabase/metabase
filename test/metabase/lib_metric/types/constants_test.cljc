@@ -19,28 +19,28 @@
 
 (deftest ^:lib-metric-types type-hierarchies-effective-types-test
   (testing "effective-type definitions have correct structure"
-    (is (= {:effective-type [:type/Temporal]}
+    (is (= {:effective_type [:type/Temporal]}
            (::constants/temporal constants/type-hierarchies)))
-    (is (= {:effective-type [:type/Number]}
+    (is (= {:effective_type [:type/Number]}
            (::constants/number constants/type-hierarchies)))
-    (is (= {:effective-type [:type/Boolean]}
+    (is (= {:effective_type [:type/Boolean]}
            (::constants/boolean constants/type-hierarchies)))
-    (is (= {:effective-type [:type/Text]}
+    (is (= {:effective_type [:type/Text]}
            (::constants/string constants/type-hierarchies)))
-    (is (= {:effective-type [:type/TextLike]}
+    (is (= {:effective_type [:type/TextLike]}
            (::constants/string-like constants/type-hierarchies)))
-    (is (= {:effective-type [:type/Time]}
+    (is (= {:effective_type [:type/Time]}
            (::constants/time constants/type-hierarchies)))
-    (is (= {:effective-type [:type/HasDate]}
+    (is (= {:effective_type [:type/HasDate]}
            (::constants/date constants/type-hierarchies)))))
 
 (deftest ^:lib-metric-types type-hierarchies-semantic-types-test
   (testing "semantic-type definitions have correct structure"
-    (is (= {:semantic-type [:type/Coordinate]}
+    (is (= {:semantic_type [:type/Coordinate]}
            (::constants/coordinate constants/type-hierarchies)))
-    (is (= {:semantic-type [:type/Address]}
+    (is (= {:semantic_type [:type/Address]}
            (::constants/location constants/type-hierarchies)))
-    (is (= {:semantic-type [:type/FK]}
+    (is (= {:semantic_type [:type/FK]}
            (::constants/foreign-key constants/type-hierarchies)))
-    (is (= {:semantic-type [:type/PK]}
+    (is (= {:semantic_type [:type/PK]}
            (::constants/primary-key constants/type-hierarchies)))))

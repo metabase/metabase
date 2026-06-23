@@ -83,8 +83,9 @@
           last-usage   (volatile! nil)
           close!       (fn [result]
                          (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text     :text-end
-                                                             :tool_use :tool-input-available)}
+                                                             :text      :text-end
+                                                             :thinking  :reasoning-end
+                                                             :tool_use  :tool-input-available)}
                                                     @payload))
                            (vreset! current-type nil)
                            (vreset! current-id nil)
@@ -118,22 +119,32 @@
                                                (vreset! payload
                                                         (case block-type
                                                           :text     {:id chunk-id}
+                                                          :thinking {:id chunk-id}
                                                           :tool_use {:toolCallId chunk-id
                                                                      :toolName   (:name content_block)}
                                                           nil)))
                                              (rf (merge (case block-type
                                                           :text     {:type :text-start}
+                                                          :thinking {:type :reasoning-start}
                                                           :tool_use {:type :tool-input-start})
                                                         @payload)))
 
              ;; content block delta
-             (= t "content_block_delta") (rf (case (:type delta)
-                                               "text_delta"       {:type  :text-delta
-                                                                   :id    (:id @payload)
-                                                                   :delta (:text delta)}
-                                               "input_json_delta" {:type           :tool-input-delta
-                                                                   :toolCallId     (:toolCallId @payload)
-                                                                   :inputTextDelta (:partial_json delta)}))
+             (= t "content_block_delta") (as-> $r$ (if-let [emit (case (:type delta)
+                                                                   "text_delta"       {:type  :text-delta
+                                                                                       :id    (:id @payload)
+                                                                                       :delta (:text delta)}
+                                                                   "thinking_delta"   {:type  :reasoning-delta
+                                                                                       :id    (:id @payload)
+                                                                                       :delta (:thinking delta)}
+                                                                   ;; signature_delta is a cryptographic seal on
+                                                                   ;; the thinking block we don't round-trip; skip.
+                                                                   "signature_delta"  nil
+                                                                   "input_json_delta" {:type           :tool-input-delta
+                                                                                       :toolCallId     (:toolCallId @payload)
+                                                                                       :inputTextDelta (:partial_json delta)})]
+                                                     (rf $r$ emit)
+                                                     $r$))
 
              ;; end of content block
              (= t "content_block_stop") (close!)
@@ -300,8 +311,8 @@
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
 
-  Sampling parameters (`temperature`, `top_p`, `top_k`) were removed starting with Claude Opus 4.7.  Strips an
-  optional vendor prefix (e.g. Bedrock's `anthropic.`) before checking."
+   Sampling parameters (`temperature`, `top_p`, `top_k`) were removed starting with Claude Opus 4.7.  Strips an
+   optional vendor prefix (e.g. Bedrock's `anthropic.`) before checking."
   [model]
   (let [model (str/replace-first (str model) #"^anthropic\." "")]
     (not (or (str/starts-with? model "claude-fable")
@@ -313,25 +324,37 @@
 
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens]
-    :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
+  [{:keys [model system input tools schema tool_choice temperature max-tokens thinking cache?]
+    :or   {model "claude-haiku-4-5" cache? true}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
-        all-tools (if (and all-tools (not schema))
+        all-tools (if (and all-tools (not schema) cache?)
                     (add-tools-cache-breakpoint all-tools)
-                    all-tools)]
+                    all-tools)
+        ;; Anthropic forbids `tool_choice` forced tool use when extended thinking
+        ;; is enabled. When both are requested we fall back to `auto` and rely
+        ;; on the caller's prompt + retry logic to ensure the structured-output
+        ;; tool is actually invoked.
+        schema-tool-choice (if thinking
+                             {:type "auto"}
+                             {:type "tool" :name "structured_output"})
+        effort        (some-> thinking :effort)
+        thinking-body (some-> thinking (dissoc :effort))]
     (cond-> {:model         model
              :max_tokens    (or max-tokens 4096)
              :stream        true
-             :cache_control {:type "ephemeral"}
              :messages      messages}
-      system            (assoc :system (system->cached-content-blocks system))
+      cache?            (assoc :cache_control {:type "ephemeral"})
+      system            (assoc :system (if cache?
+                                         (system->cached-content-blocks system)
+                                         [{:type "text" :text system}]))
       all-tools         (assoc :tools all-tools)
-      schema            (assoc :tool_choice {:type "tool"
-                                             :name "structured_output"}
+      schema            (assoc :tool_choice schema-tool-choice
                                :tools [{:name         "structured_output"
                                         :description  "Output structured data"
                                         :input_schema schema}])
+      thinking-body     (assoc :thinking thinking-body)
+      effort            (assoc :output_config {:effort effort})
 
       (and all-tools tool_choice)
       (assoc :tool_choice (case (name tool_choice)
@@ -342,9 +365,19 @@
       (assoc :temperature temperature))))
 
 (mu/defn claude-raw
-  "Perform a streaming request to Claude API."
-  [{:keys [model input tools ai-proxy?] :as opts
-    :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
+  "Perform a streaming request to Claude API.
+
+  `:thinking` accepts either of Anthropic's two extended-thinking shapes:
+   - Legacy / explicit budget (Sonnet 4.6 and earlier):
+       `{:type \"enabled\" :budget_tokens <int>}`
+   - Adaptive (required by Opus 4.7+):
+       `{:type \"adaptive\" :effort \"high\"|\"medium\"|\"low\"}`
+  When `:effort` is present it is split out into the top-level `output_config`
+  field that the adaptive API expects — callers can keep passing one map and
+  not care about the wire format split."
+  [{:keys [model input tools ai-proxy?]
+    :or   {model "claude-haiku-4-5"}
+    :as   opts} :- core/LLMRequestOpts]
   (let [req (claude-request-body opts)]
     (with-span :info {:name       :metabot.claude/request
                       :model      model

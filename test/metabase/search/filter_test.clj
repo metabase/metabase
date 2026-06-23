@@ -67,7 +67,7 @@
     (is (= (disj search.config/all-models "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
   (testing "We only search for certain models in the trash"
-    (is (= #{"dashboard" "dataset" "document" "segment" "measure" "collection" "action" "metric" "card"}
+    (is (= #{"dashboard" "dataset" "document" "exploration" "segment" "measure" "collection" "action" "metric" "card"}
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
     (is (= (disj search.config/all-models "indexed-entity" "transform")
@@ -109,14 +109,16 @@
               :where
               [:and
                [:= 1 2]
-               [:or [:= nil :search_index.dashboard_id] nil]]}
+               [:or [:= nil :search_index.dashboard_id] nil]
+               [:= nil :search_index.exploration_thread_id]]}
              (search.filter/with-filters {:models []} {:select [:some :stuff], :from :somewhere})))
       (is (= {:select [:some :stuff],
               :from :somewhere,
               :where
               [:and
                [:in :search_index.model ["a"]]
-               [:or [:= nil :search_index.dashboard_id] nil]]}
+               [:or [:= nil :search_index.dashboard_id] nil]
+               [:= nil :search_index.exploration_thread_id]]}
              (search.filter/with-filters {:models ["a"]} {:select [:some :stuff], :from :somewhere}))))
     (testing "We can insert appropriate constraints for all the filters"
       (is (= {:select [:some :stuff],
@@ -131,6 +133,7 @@
                 [:or
                  [:= nil :search_index.dashboard_id]
                  [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]]]
+                [:= nil :search_index.exploration_thread_id]
                 [:in
                  :search_index.model
                  #{"dashboard"
@@ -140,6 +143,7 @@
                    "measure"
                    "transform"
                    "document"
+                   "exploration"
                    "database"
                    "action"
                    "indexed-entity"

@@ -50,6 +50,10 @@
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
   (deferred-tru "View SQL snippets"))
 
+;; Timelines
+(api-scope/defscope agent-timelines-read "agent:timelines:read"
+  (deferred-tru "View timelines and timeline events"))
+
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
   (deferred-tru "Create dashboards"))
@@ -167,9 +171,9 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*"}
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
-                                        "agent:collection:*"}})
+                                        "agent:timelines:*" "agent:collection:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
@@ -204,6 +208,16 @@
   metabase-enterprise.metabot.permissions
   [_user-id]
   all-yes-permissions)
+
+(defn missing-permission
+  "Validate a resolved metabot `perms` map against required permissions. Always
+  checks the base `:permission/metabot`. When `required-perm` is non-nil, also
+  checks that permission. Returns the first permission keyword that's not `:yes`,
+  or nil when all required perms are granted."
+  [perms required-perm]
+  (cond
+    (not= :yes (:permission/metabot perms))                   :permission/metabot
+    (and required-perm (not= :yes (get perms required-perm))) required-perm))
 
 (defn user-metabot-perms->scopes
   "Convert a resolved metabot permissions map into a set of scope strings.

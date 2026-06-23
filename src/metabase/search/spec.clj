@@ -24,6 +24,7 @@
    "database"
    "action"
    "document"
+   "exploration"
    "transform"
    ;; The following come last as they can be slow to index due to:
    ;; - cardinality (table, indexed-entity),
@@ -92,7 +93,7 @@
   ;; - `metabase.search.impl/add-dataset-collection-hierarchy` reads `:collection_location` to hydrate
   ;;   `:collection_effective_ancestors`, and the collection-result hydration path reads `:location` from
   ;;   the toucan instance (which the render-term keeps populated).
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer})
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer :exploration_thread_id})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -103,6 +104,7 @@
    :dashboard-id            :int
    :dashboardcard-count     :int
    :database-id             :pk
+   :exploration-thread-id   :int
    :id                      :text
    :last-edited-at          :timestamp
    :last-editor-id          :pk
@@ -140,6 +142,7 @@
          :official-collection
          :dashboard-id
          :dashboardcard-count
+         :exploration-thread-id
          :last-viewed-at
          :pinned
          :verified                                          ;;  in addition to being a filter, this is also a ranker

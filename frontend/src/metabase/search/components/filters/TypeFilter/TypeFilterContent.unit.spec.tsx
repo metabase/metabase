@@ -28,6 +28,7 @@ const MODEL_NAME: Record<EnabledSearchModel, string> = {
   table: "Table",
   "indexed-entity": "Indexed record",
   document: "Document",
+  exploration: "Research",
   transform: "Transform",
 };
 

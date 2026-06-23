@@ -124,6 +124,7 @@
     :tracking       {:select-fields  [:name :collection_id]
                      :field-mappings {:model_name          :name
                                       :model_collection_id :collection_id}}
+    :conditions     {:exploration_thread_id nil}  ; exclude exploration scratch docs from sync
     :removal        {:statuses  #{"removed"}
                      :scope-key :collection_id}
     :enabled?       true}
@@ -683,19 +684,35 @@
          (when (rs-settings/library-is-remote-synced?)
            (t2/select-pks-vec :model/Collection :namespace "snippets"))]))
 
-(defmulti check-eligibility
-  "Determines if a model instance should be tracked for remote sync.
-   Dispatches on the eligibility type defined in the spec."
+(defn- object-matches-conditions?
+  "True if `object` satisfies every column-value pair in `conditions` (or if no conditions are set).
+   NOTE: only handles scalar values — non-scalar `:conditions` (e.g. `[:not= ...]`) are not supported here.
+   Such forms belong in `:export-conditions`/`:removal-conditions`, which feed query-builders, not this helper."
+  [conditions object]
+  (or (empty? conditions)
+      (every? (fn [[k v]] (= v (get object k))) conditions)))
+
+(defmulti ^:private check-eligibility-by-type
+  "Type-specific eligibility check, dispatched on `(get-in spec [:eligibility :type])`.
+   Callers should use `check-eligibility` instead — it also enforces the spec's `:conditions`."
   {:arglists '([spec object])}
   (fn [spec _object] (get-in spec [:eligibility :type])))
 
-(defmethod check-eligibility :collection
+(defn check-eligibility
+  "Determines if a model instance should be tracked for remote sync.
+   Applies the spec's `:conditions` filter and then delegates to the eligibility-type method."
+  [spec object]
+  (boolean
+   (and (object-matches-conditions? (:conditions spec) object)
+        (check-eligibility-by-type spec object))))
+
+(defmethod check-eligibility-by-type :collection
   [{:keys [eligibility]} object]
   (let [collection-type (:collection eligibility)
         collection-id   (:collection_id object)]
     (case collection-type
       :remote-synced
-      (boolean (collections/remote-synced-collection? collection-id))
+      (collections/remote-synced-collection? collection-id)
 
       :transforms-namespace
       (and (rs-settings/remote-sync-transforms)
@@ -714,28 +731,26 @@
 
       false)))
 
-(defmethod check-eligibility :published-table
+(defmethod check-eligibility-by-type :published-table
   [_ {:keys [is_published collection_id]}]
-  (boolean
-   (and is_published
-        (collections/remote-synced-collection? collection_id))))
+  (and is_published
+       (collections/remote-synced-collection? collection_id)))
 
-(defmethod check-eligibility :parent-table
+(defmethod check-eligibility-by-type :parent-table
   [{:keys [parent-model]} {:keys [table_id]}]
-  (boolean
-   (when table_id
-     (when-let [table (t2/select-one parent-model :id table_id)]
-       (check-eligibility (spec-for-model-key parent-model) table)))))
+  (when table_id
+    (when-let [table (t2/select-one parent-model :id table_id)]
+      (check-eligibility (spec-for-model-key parent-model) table))))
 
-(defmethod check-eligibility :setting
+(defmethod check-eligibility-by-type :setting
   [{:keys [eligibility]} _object]
-  (boolean (setting/get-value-of-type :boolean (:setting eligibility))))
+  (setting/get-value-of-type :boolean (:setting eligibility)))
 
-(defmethod check-eligibility :library-synced
+(defmethod check-eligibility-by-type :library-synced
   [_spec _object]
   (rs-settings/library-is-remote-synced?))
 
-(defmethod check-eligibility :default
+(defmethod check-eligibility-by-type :default
   [_ _]
   false)
 
@@ -745,9 +760,12 @@
   (fn [spec _instances] (get-in spec [:eligibility :type])))
 
 (defmethod batch-check-eligibility :library-synced
-  [_spec instances]
-  (let [eligible? (rs-settings/library-is-remote-synced?)]
-    (into {} (map (fn [inst] [(:id inst) eligible?])) instances)))
+  [{:keys [conditions]} instances]
+  (let [library-on? (rs-settings/library-is-remote-synced?)]
+    (into {} (map (fn [inst]
+                    [(:id inst) (boolean (and library-on?
+                                              (object-matches-conditions? conditions inst)))]))
+          instances)))
 
 (defmethod batch-check-eligibility :default
   [spec instances]

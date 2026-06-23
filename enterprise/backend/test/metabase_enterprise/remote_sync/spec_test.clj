@@ -471,6 +471,21 @@
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
              (spec/removal-conditions spec))))))
 
+(deftest document-spec-excludes-explorations-test
+  (testing "Document spec filters out exploration scratch documents via :conditions (UXW-4091)"
+    (let [spec (spec/spec-for-model-key :model/Document)]
+      (is (= {:exploration_thread_id nil} (:conditions spec))
+          "Document :conditions should require exploration_thread_id IS NULL")
+      (is (= {:exploration_thread_id nil} (spec/export-conditions spec)))
+      (is (= {:exploration_thread_id nil} (spec/removal-conditions spec)))))
+  (testing "check-eligibility returns false for an exploration document, even in a remote-synced collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/" :is_remote_synced true}]
+      (let [spec       (spec/spec-for-model-key :model/Document)
+            plain-doc  {:id 1 :collection_id coll-id :exploration_thread_id nil}
+            explo-doc  {:id 2 :collection_id coll-id :exploration_thread_id 42}]
+        (is (true? (spec/check-eligibility spec plain-doc)))
+        (is (false? (spec/check-eligibility spec explo-doc)))))))
+
 (deftest transform-tag-spec-uses-conditions-test
   (testing "TransformTag spec still uses :conditions (not split)"
     (let [spec (spec/spec-for-model-key :model/TransformTag)]
@@ -481,3 +496,19 @@
           "export-conditions falls back to :conditions for TransformTag")
       (is (= {:built_in_type nil} (spec/removal-conditions spec))
           "removal-conditions falls back to :conditions for TransformTag"))))
+
+(deftest check-eligibility-applies-conditions-uniformly-test
+  (testing ":conditions are enforced for non-:collection eligibility types"
+    (testing "TransformTag (:setting): built-in tags fail eligibility even when the setting is on"
+      (mt/with-temporary-setting-values [remote-sync-transforms true]
+        (let [spec (spec/spec-for-model-key :model/TransformTag)]
+          (is (true?  (spec/check-eligibility spec {:id 1 :name "user-tag"   :built_in_type nil})))
+          (is (false? (spec/check-eligibility spec {:id 2 :name "system-tag" :built_in_type "system"}))
+              "built-in TransformTag must NOT be eligible — was previously creating wasteful RSO churn")
+          (is (= {1 true 2 false}
+                 (spec/batch-check-eligibility spec [{:id 1 :built_in_type nil}
+                                                     {:id 2 :built_in_type "system"}]))))))
+    (testing "TransformTag (:setting): setting off short-circuits regardless of conditions"
+      (mt/with-temporary-setting-values [remote-sync-transforms false]
+        (let [spec (spec/spec-for-model-key :model/TransformTag)]
+          (is (false? (spec/check-eligibility spec {:id 1 :built_in_type nil}))))))))

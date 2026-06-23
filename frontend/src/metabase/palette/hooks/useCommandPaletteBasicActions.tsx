@@ -36,6 +36,7 @@ import {
 export const BASIC_ACTION_ORDER = [
   "create-new-question",
   "create-new-native-query",
+  "create-new-research",
   "create-new-dashboard",
   "create-new-document",
   "create-new-collection",
@@ -137,6 +138,19 @@ export const useCommandPaletteBasicActions = ({
               }),
             ),
           );
+        },
+      });
+    }
+
+    if (hasDataAccess) {
+      actions.push({
+        id: "create-new-research",
+        name: t`New research`,
+        section: "basic",
+        icon: "telescope",
+        perform: () => {
+          dispatch(closeModal());
+          dispatch(push(Urls.newExploration()));
         },
       });
     }

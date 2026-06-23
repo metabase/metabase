@@ -9,17 +9,21 @@
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.metrics.transforms :as metrics.transforms]
-   [metabase.util.namespaces :as shared.ns]))
+   [metabase.util.log :as log]
+   [metabase.util.namespaces :as shared.ns]
+   [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- Re-exports --------------------------------
 
 (shared.ns/import-fns
  [metrics.dimension
+  annotate-dimensions-with-field-data
   dimension-values
   dimension-search-values
   dimension-remapped-value]
  [metrics.perms
-  filter-dimensions-for-user]
+  filter-dimensions-for-user
+  filter-dimensions-for-user-batch]
  [metrics.transforms
   normalize-dimension
   normalize-target-ref
@@ -37,7 +41,7 @@
     (let [mp    (lib-be/application-database-metadata-provider database-id)
           query (lib/query mp query-map)
           agg   (->> (lib/returned-columns query)
-                     (filter #(= (:lib/source %) :source/aggregations))
+                     (filter lib/aggregation-sourced?)
                      first)]
       (:name agg))
     (catch Exception _ nil)))
@@ -83,3 +87,15 @@
         (when (or (lib-metric/dimensions-changed? old-persisted new-persisted)
                   (lib-metric/mappings-changed? persisted-mappings dimension-mappings))
           (save-dimensions! entity new-persisted dimension-mappings))))))
+
+(defn sync-metric-dimensions-for-database!
+  "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."
+  [database-id]
+  (doseq [{:keys [id dimensions]} (t2/select [:model/Card :id :dimensions]
+                                             :type "metric"
+                                             :database_id database-id)
+          :when (empty? dimensions)]
+    (try
+      (sync-dimensions! :metadata/metric id)
+      (catch Throwable e
+        (log/warnf e "Failed to sync dimensions for metric card %d" id)))))

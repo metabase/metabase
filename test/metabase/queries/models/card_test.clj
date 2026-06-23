@@ -1634,3 +1634,51 @@
         (let [updated-card (t2/select-one :model/Card :id (:id question))]
           (is (= db2-id (get-in updated-card [:dataset_query :database])))
           (is (= db2-id (:database_id updated-card))))))))
+
+(deftest metric-card-syncs-dimensions-on-insert-test
+  (testing "Inserting a metric Card auto-populates :dimensions via sync-dimensions!"
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                    (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card metric {:name          "Auto-sync metric"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :table_id      (mt/id :venues)
+                                         :dataset_query query}]
+        (let [reloaded (t2/select-one :model/Card :id (:id metric))]
+          (is (seq (:dimensions reloaded))
+              "Metric Card should have dimensions populated immediately after insert"))))))
+
+(deftest metric-card-resyncs-dimensions-on-dataset-query-update-test
+  (testing "Updating a metric Card's :dataset_query re-syncs dimensions"
+    (let [mp           (mt/metadata-provider)
+          venues-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                           (lib/aggregate (lib/count)))
+          checkins-query (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                             (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card metric {:name          "Re-sync metric"
+                                         :type          :metric
+                                         :database_id   (mt/id)
+                                         :table_id      (mt/id :venues)
+                                         :dataset_query venues-query}]
+        (let [before (t2/select-one :model/Card :id (:id metric))
+              venues-dim-names (set (map :name (:dimensions before)))]
+          (is (seq venues-dim-names) "Should have venues dimensions before update")
+          (t2/update! :model/Card (:id metric) {:dataset_query checkins-query
+                                                :table_id      (mt/id :checkins)})
+          (let [after (t2/select-one :model/Card :id (:id metric))
+                checkins-dim-names (set (map :name (:dimensions after)))]
+            (is (seq checkins-dim-names) "Should have dimensions after update")
+            (is (not= venues-dim-names checkins-dim-names)
+                "Dimensions should reflect new dataset_query (different table)")))))))
+
+(deftest non-metric-card-skips-dimension-sync-test
+  (testing "Inserting a regular question Card does NOT populate :dimensions"
+    (mt/with-temp [:model/Card card {:name          "Regular question"
+                                     :type          :question
+                                     :dataset_query (mt/mbql-query venues
+                                                      {:aggregation [[:count]]})}]
+      (let [reloaded (t2/select-one :model/Card :id (:id card))]
+        (is (or (nil? (:dimensions reloaded))
+                (empty? (:dimensions reloaded)))
+            "Non-metric Cards should not auto-sync dimensions")))))

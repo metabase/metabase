@@ -4,6 +4,7 @@ import type {
   FieldValue,
   GetMetricDimensionValuesRequest,
   GetMetricDimensionValuesResponse,
+  GetMetricListResponse,
   GetRemappedMetricDimensionValueRequest,
   Metric,
   MetricBreakoutValuesRequest,
@@ -23,13 +24,16 @@ import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 export const metricApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    listMetrics: builder.query<Metric[], void>({
+    listMetrics: builder.query<GetMetricListResponse, void>({
       query: () => ({
         method: "GET",
         url: "/api/metric",
       }),
-      providesTags: (metrics = []) => provideMetricListTags(metrics),
-      onQueryStarted: hydrateMetadataStore([MetricSchema]),
+      providesTags: (response) => provideMetricListTags(response?.data ?? []),
+      onQueryStarted: hydrateMetadataStore<GetMetricListResponse>(
+        [MetricSchema],
+        (response) => response.data,
+      ),
     }),
     getMetric: builder.query<Metric, MetricId>({
       query: (id) => ({

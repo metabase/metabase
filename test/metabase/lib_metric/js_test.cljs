@@ -334,17 +334,17 @@
   {:lib/type       :metadata/dimension
    :id             "dim-string"
    :name           "category"
-   :display-name   "Category"
-   :effective-type :type/Text
-   :semantic-type  nil})
+   :display_name   "Category"
+   :effective_type :type/Text
+   :semantic_type  nil})
 
 (def ^:private number-dimension
   {:lib/type       :metadata/dimension
    :id             "dim-number"
    :name           "amount"
-   :display-name   "Amount"
-   :effective-type :type/Float
-   :semantic-type  nil})
+   :display_name   "Amount"
+   :effective_type :type/Float
+   :semantic_type  nil})
 
 (deftest ^:parallel filterableDimensionOperators-string-test
   (testing "filterableDimensionOperators returns string operators for string dimension"
@@ -366,9 +366,9 @@
   {:lib/type       :metadata/dimension
    :id             "dim-datetime"
    :name           "created_at"
-   :display-name   "Created At"
-   :effective-type :type/DateTime
-   :semantic-type  :type/CreationTimestamp
+   :display_name   "Created At"
+   :effective_type :type/DateTime
+   :semantic_type  :type/CreationTimestamp
    :source-type    :metric
    :source-id      1})
 

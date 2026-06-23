@@ -1,10 +1,9 @@
 import dayjs from "dayjs";
 import { replace } from "react-router-redux";
 import type { LocationSensorState } from "react-use/lib/useLocation";
-import { match } from "ts-pattern";
 
 import type { DispatchFn } from "metabase/redux";
-import type { Comment, CommentEntityType, EntityId } from "metabase-types/api";
+import type { Comment } from "metabase-types/api";
 
 import type { CommentThread } from "./types";
 
@@ -75,30 +74,6 @@ export function getCommentNodeId(comment: Comment) {
   return `comment-${comment.id}`;
 }
 
-export function getCommentsUrl({
-  childTargetId,
-  targetId,
-  targetType,
-  comment,
-}: {
-  childTargetId: EntityId | null;
-  targetId: EntityId;
-  targetType: CommentEntityType;
-  comment: Comment | undefined;
-}) {
-  return match(targetType)
-    .with("document", () => {
-      const childTargetUrl = `/document/${targetId}/comments/${childTargetId}`;
-
-      if (comment) {
-        return `${childTargetUrl}#${getCommentNodeId(comment)}`;
-      }
-
-      return childTargetUrl;
-    })
-    .exhaustive();
-}
-
 export function formatCommentDate(dateOrString: string | Date) {
   const date =
     dateOrString instanceof Date ? dateOrString : new Date(dateOrString);
@@ -123,17 +98,20 @@ export function formatCommentDate(dateOrString: string | Date) {
   }).format(date);
 }
 
+export function deleteNewFromSearch(search: string | undefined) {
+  const searchParams = new URLSearchParams(search);
+  searchParams.delete("new");
+  return searchParams.toString();
+}
+
 export function deleteNewParamFromURLIfNeeded(
   location: LocationSensorState,
   dispatch: DispatchFn,
 ) {
-  const search = new URLSearchParams(location.search);
-
-  if (search.get("new") == null) {
-    return;
-  }
-
-  search.delete("new");
-  const newSearch = search.toString();
-  dispatch(replace({ pathname: location.pathname, search: newSearch }));
+  dispatch(
+    replace({
+      pathname: location.pathname,
+      search: deleteNewFromSearch(location.search),
+    }),
+  );
 }

@@ -1,6 +1,7 @@
 import type { Store } from "@reduxjs/toolkit";
 import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
+import type { WithRouterProps } from "react-router";
 
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
@@ -12,6 +13,7 @@ import {
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
+import { RouterContext } from "metabase/router";
 import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { PieChart } from "metabase/visualizations/visualizations/PieChart";
@@ -39,10 +41,16 @@ const storeInitialState = createMockState({
 });
 const store = getCommonStore(storeInitialState) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const mockRouterContext = {
+  location: { pathname: "/document/1", query: {} },
+} as WithRouterProps;
+
+const StoryDecorator = (Story: StoryFn) => {
   return (
     <MetabaseReduxProvider store={store}>
-      <Story />
+      <RouterContext.Provider value={mockRouterContext}>
+        <Story />
+      </RouterContext.Provider>
     </MetabaseReduxProvider>
   );
 };
@@ -52,7 +60,7 @@ const DefaultTemplate = (args: EditorProps) => <Editor {...args} />;
 export default {
   title: "Components/Documents",
   component: Editor,
-  decorators: [ReduxDecorator],
+  decorators: [StoryDecorator],
   layout: "fullscreen",
   parameters: {
     msw: {

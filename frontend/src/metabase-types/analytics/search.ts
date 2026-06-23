@@ -42,6 +42,7 @@ type SearchContentType =
   | "action"
   | "indexed-entity"
   | "document"
+  | "exploration"
   | "transform";
 
 type SearchContext =

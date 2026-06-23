@@ -5,6 +5,7 @@ import {
   setupBookmarksEndpoints,
   setupCommentEndpoints,
   setupDocumentEndpoints,
+  setupTimelinesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockDocument } from "metabase-types/api/mocks";
@@ -13,6 +14,7 @@ import { DocumentPage } from "./DocumentPage";
 
 const setup = () => {
   setupBookmarksEndpoints([]);
+  setupTimelinesEndpoints([]);
   setupDocumentEndpoints(
     createMockDocument({
       name: "Ends with whitespace ",

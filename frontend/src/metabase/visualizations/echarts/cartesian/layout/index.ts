@@ -495,6 +495,9 @@ const getTicksDimensions = (
       }
       return width;
     };
+  } else if (isTimeSeries && hasTimelineEvents) {
+    // reserve vertical space at the bottom of the canvas so timeline-event marker icons
+    ticksDimensions.xTicksHeight = CHART_STYLE.timelineEvents.height;
   }
 
   return { ticksDimensions, axisEnabledSetting };

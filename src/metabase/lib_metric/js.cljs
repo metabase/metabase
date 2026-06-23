@@ -849,7 +849,7 @@
    dimension (computed during sync). Falls back to resolving the underlying field
    for backward compatibility with older dimensions that lack the key."
   [definition dimension]
-  (let [raw-hfv (:has-field-values dimension)
+  (let [raw-hfv (:has_field_values dimension)
         dim-hfv (when raw-hfv (keyword raw-hfv))]
     (if dim-hfv
       (display-info->js
@@ -874,11 +874,46 @@
   "Check if two dimensions share at least one common source.
    Returns false if either dimension has no sources."
   [dimension1 dimension2]
-  (let [sources1 (:sources dimension1)
-        sources2 (:sources dimension2)]
-    (boolean
-     (when (and (seq sources1) (seq sources2))
-       (some (set sources1) sources2)))))
+  (lib-metric.dimension/same-source? dimension1 dimension2))
+
+(defn ^:export fromMetricDimension
+  "Convert a plain JS MetricDimension object to a CLJS DimensionMetadata map."
+  [js-dimension]
+  (lib-metric.metadata.js/parse-dimension js-dimension))
+
+(defn- dimension-source->js [source]
+  (clj->js (-> source
+               (update :type name)
+               (update-keys (comp u/->kebab-case-en name)))))
+
+(defn- dimension-group->js [group]
+  (clj->js group))
+
+(defn ^:export toMetricDimension
+  "Convert a CLJS DimensionMetadata map to a plain JS MetricDimension object."
+  [dimension]
+  (let [obj #js {}]
+    (doseq [[k v] dimension
+            :when (not (qualified-keyword? k))]
+      (let [js-key (u/->snake_case_en (name k))
+            js-val (case k
+                     (:effective_type :semantic_type :has_field_values)
+                     (u/qualified-name v)
+
+                     :sources
+                     (some-> v (as-> srcs (to-array (map dimension-source->js srcs))))
+
+                     :group
+                     (some-> v dimension-group->js)
+
+                     v)]
+        (gobject/set obj js-key js-val)))
+    obj))
+
+(defn ^:export groupDimensionsBySource
+  "Group DimensionMetadata values that transitively share sources."
+  [dimensions]
+  (to-array (map to-array (lib-metric.dimension/group-by-source dimensions))))
 
 (defn ^:export isCompatibleType
   "Check if two dimensions have compatible effective types for cross-database matching.

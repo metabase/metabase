@@ -2,10 +2,13 @@
   "Settings for LLM integration (provider credentials, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]])
   (:import
+   (java.net URL)
    (software.amazon.awssdk.regions Region)))
 
 (set! *warn-on-reflection* true)
@@ -24,6 +27,25 @@
   "Set a string setting to the trimmed `new-value`; blank values are stored as nil."
   [setting-key new-value]
   (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
+
+(def ^:private loopback-hosts
+  "Hostnames that resolve to the local machine. `URL.getHost` returns IPv6 hosts
+  wrapped in brackets, e.g. `[::1]`."
+  #{"localhost" "127.0.0.1" "[::1]" "::1"})
+
+(defn assert-llm-host-allowed!
+  "Safeguard for Cypress e2e tests: refuse to send an LLM request to any host
+  other than localhost. e2e tests are expected to point the LLM URL at a local
+  mock server (see `startMockLlmServer`), so throwing here keeps a misconfigured
+  test run from sending traffic to a real provider. No-op outside of e2e mode and
+  for blank URLs (so the normal not-configured handling still runs)."
+  [url]
+  (when (and config/is-e2e? (not (str/blank? url)))
+    (let [host (u/lower-case-en (.getHost (URL. ^String url)))]
+      (when-not (contains? loopback-hosts host)
+        (throw (ex-info (tru "Refusing to send an LLM request to non-localhost host ''{0}'' during e2e tests. Point the LLM base URL at a local mock server." host)
+                        {:status-code 400
+                         :llm-url     url}))))))
 
 (defn- set-prefixed-api-key!
   [setting-key prefix deferred-message new-value]

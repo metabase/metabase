@@ -2,6 +2,7 @@ import type { StoryFn } from "@storybook/react";
 import type { JSONContent } from "@tiptap/react";
 import { HttpResponse, http } from "msw";
 import { type ReactNode, useMemo } from "react";
+import type { WithRouterProps } from "react-router";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
@@ -19,6 +20,7 @@ import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
+import { RouterContext } from "metabase/router";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -86,9 +88,18 @@ function DocumentProviders({
     return getStore(commonReducers, initialState, [Api.middleware]);
   }, []);
 
+  const mockRouterContext = {
+    location: { pathname: "/document/1", query: {} },
+  } as WithRouterProps;
+
   return (
     <AppColorSchemeProvider forceColorScheme={theme}>
-      <MetabaseReduxProvider store={store}>{children}</MetabaseReduxProvider>
+      <MetabaseReduxProvider store={store}>
+        {" "}
+        <RouterContext.Provider value={mockRouterContext}>
+          {children}
+        </RouterContext.Provider>
+      </MetabaseReduxProvider>
     </AppColorSchemeProvider>
   );
 }

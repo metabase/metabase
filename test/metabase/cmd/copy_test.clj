@@ -38,6 +38,8 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
+    :model/ExplorationQueryResult
+    :model/ExplorationQueryTimelineInterestingness
     :model/McpQueryHandle
     :model/MetabotConversation
     :model/MetabotGroupLimit
@@ -63,6 +65,8 @@
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
     :model/SsoRelayState
+    :model/StoredResult
+    :model/StoredResultUse
     :model/SupportAccessGrantLog
     :model/TaskHistory
     :model/TaskRun

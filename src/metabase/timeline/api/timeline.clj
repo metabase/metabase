@@ -10,6 +10,7 @@
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -47,6 +48,22 @@
     (u/prog1 (first (t2/insert-returning-instances! :model/Timeline tl))
       (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
 
+(mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
+  "List timelines visible to the current user with no hydration."
+  ([]
+   (list-timelines false))
+  ([archived :- ms/BooleanValue]
+   (t2/select :model/Timeline
+              {:where    [:and
+                          [:= :archived archived]
+                          (collection/visible-collection-filter-clause)]
+               :order-by [[:%lower.name :asc]]})))
+
+(mu/defn get-timeline :- [:maybe (ms/InstanceOf :model/Timeline)]
+  "Fetch a single timeline by ID. Checks read permissions but does not hydrate."
+  [id :- ms/PositiveInt]
+  (api/read-check (t2/select-one :model/Timeline :id id)))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -57,11 +74,7 @@
    {:keys [include], archived? :archived} :- [:map
                                               [:include  {:optional true} ::include]
                                               [:archived {:default false} ms/BooleanValue]]]
-  (let [timelines (->> (t2/select :model/Timeline
-                                  {:where    [:and
-                                              [:= :archived archived?]
-                                              (collection/visible-collection-filter-clause)]
-                                   :order-by [[:%lower.name :asc]]})
+  (let [timelines (->> (list-timelines archived?)
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
       (= include :events)
@@ -82,7 +95,7 @@
                                             [:start    {:optional true}  ms/TemporalString]
                                             [:end      {:optional true}  ms/TemporalString]]]
   (let [archived? archived
-        timeline  (api/read-check (t2/select-one :model/Timeline :id id))]
+        timeline (get-timeline id)]
     (cond-> (t2/hydrate timeline :creator [:collection :can_write] :is_remote_synced)
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.

@@ -59,21 +59,21 @@
          has-field-values (lib/infer-has-field-values column)]
      {:dimension (cond-> {:id             nil
                           :name           (:name column)
-                          :effective-type (or (:effective-type column)
+                          :effective_type (or (:effective-type column)
                                               (:base-type column))}
-                   (:display-name column)    (assoc :display-name (:display-name column))
-                   (:semantic-type column)   (assoc :semantic-type (:semantic-type column))
+                   (:display-name column)    (assoc :display_name (:display-name column))
+                   (:semantic-type column)   (assoc :semantic_type (:semantic-type column))
                    (:lib/source column)      (assoc :lib/source (:lib/source column))
                    (pos-int? (:id column))   (assoc :sources [(cond-> {:type :field, :field-id (:id column)}
                                                                 (let [fp (:fingerprint column)]
                                                                   (and (perf/get-in fp [:type :type/Number :min])
                                                                        (perf/get-in fp [:type :type/Number :max])))
                                                                 (assoc :binning true))])
-                   has-field-values          (assoc :has-field-values has-field-values)
+                   has-field-values          (assoc :has_field_values has-field-values)
                    group                     (assoc :group group))
       :mapping   (cond-> {:type   :table
                           :target target}
-                   (:table-id column) (assoc :table-id (:table-id column)))})))
+                   (:table-id column) (assoc :table_id (:table-id column)))})))
 
 (defn- db-provider-for-query
   "When the metadata provider is a MetricContextMetadataProvider, return the
@@ -132,7 +132,7 @@
                                  :else                                :group-type/main)
                    group-desc  {:id           (str (random-uuid))
                                 :type         (group-type->type group-type)
-                                :display-name (or (:display-name group-info) "Unknown")}
+                                :display_name (or (:display-name group-info) "Unknown")}
                    group-cols  (lib/columns-group-columns col-group)]
                (->> group-cols
                     (remove #(= :source/expressions (:lib/source %)))

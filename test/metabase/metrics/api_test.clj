@@ -151,6 +151,14 @@
         (is (contains? response :dimensions))
         (is (contains? response :dimension_mappings))))))
 
+(deftest fetch-metric-normalizes-nil-dimensions-test
+  (testing "GET /api/metric/:id returns empty lists when dimensions cannot be hydrated"
+    (mt/with-temp [:model/Card metric {:name "Metric without a query"
+                                       :type :metric}]
+      (let [response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))]
+        (is (= [] (:dimensions response)))
+        (is (= [] (:dimension_mappings response)))))))
+
 (deftest fetch-metric-permissions-test
   (testing "GET /api/metric/:id respects collection permissions"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -171,15 +179,15 @@
       (is (= "Not found."
              (mt/user-http-request :rasta :get 404 (str "metric/" (:id card))))))))
 
-(deftest fetch-metric-saves-dimensions-on-read-test
-  (testing "GET /api/metric/:id saves dimensions and dimension_mappings to the database"
+(deftest fetch-metric-saves-dimensions-on-create-test
+  (testing "creating a metric Card computes and persists dimensions and dimension_mappings"
     (mt/with-temp [:model/Card metric {:name          "Metric with Dimensions"
                                        :type          :metric
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-      (testing "no dimensions saved initially"
+      (testing "dimensions computed and saved on insert"
         (let [initial-card (t2/select-one :model/Card :id (:id metric))]
-          (is (nil? (:dimensions initial-card)))
-          (is (nil? (:dimension_mappings initial-card)))))
+          (is (seq (:dimensions initial-card)))
+          (is (seq (:dimension_mappings initial-card)))))
       (testing "response contains dimensions with active status"
         (let [response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))]
           (is (seq (:dimensions response)))
@@ -198,13 +206,13 @@
       (let [response   (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
             dimensions (:dimensions response)]
         (is (seq dimensions) "should have dimensions")
-        (testing "at least some dimensions have has-field-values"
-          (let [dims-with-hfv (filter :has-field-values dimensions)]
+        (testing "at least some dimensions have has_field_values"
+          (let [dims-with-hfv (filter :has_field_values dimensions)]
             (is (seq dims-with-hfv)
-                "at least some dimensions should have has-field-values")
+                "at least some dimensions should have has_field_values")
             (doseq [dim dims-with-hfv]
-              (is (#{"list" "search" "none"} (:has-field-values dim))
-                  (str "dimension " (:name dim) " has-field-values should be list, search, or none")))))))))
+              (is (#{"list" "search" "none"} (:has_field_values dim))
+                  (str "dimension " (:name dim) " has_field_values should be list, search, or none")))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/metric/dataset                                              |

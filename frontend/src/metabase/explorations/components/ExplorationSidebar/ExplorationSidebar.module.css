@@ -1,0 +1,74 @@
+.errorTooltip {
+  overflow-wrap: break-word;
+}
+
+.tree {
+  overflow-y: auto;
+  /*
+  as we poll for query results, the tree items can get resorted
+  some browsers by default try to keep the scroll position of an anchor item stable
+  but that seems to work poorly for our use case, so disable it
+  */
+  overflow-anchor: none;
+  padding: 0 1rem 1rem 0;
+}
+
+.tree :global(ul) {
+  display: flex;
+  flex-direction: column;
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border-radius: var(--default-border-radius);
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+
+.treeRow:hover {
+  background: var(--mb-color-background-hover);
+}
+
+.treeRowSelected {
+  background: var(--mb-color-background-brand);
+  color: var(--mb-color-brand);
+}
+
+/* Animated gradient swept across the glyphs to signal a still-generating item. */
+.shimmerText {
+  --shimmer-spread: 48px;
+
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  background-size:
+    250% 100%,
+    auto;
+  background-image:
+    linear-gradient(
+      90deg,
+      #0000 calc(50% - var(--shimmer-spread)),
+      var(--mb-color-background-primary),
+      #0000 calc(50% + var(--shimmer-spread))
+    ),
+    linear-gradient(
+      var(--mb-color-text-secondary),
+      var(--mb-color-text-secondary)
+    );
+  background-position: 50%;
+  animation: exploration-shimmer 1500ms ease infinite;
+}
+
+@keyframes exploration-shimmer {
+  0% {
+    background-position: 120%;
+  }
+
+  100% {
+    background-position: -20%;
+  }
+}

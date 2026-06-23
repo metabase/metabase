@@ -47,9 +47,13 @@ export const NewItemMenuView = ({
   const menuItems = useMemo(() => {
     const items = [];
 
-    if (hasDataAccess && hasNlqAccess) {
+    if (hasDataAccess) {
       items.push(
-        <NewMenuItemAIExploration key="nlq" collectionId={collectionId} />,
+        <NewMenuItemAIExploration
+          key="nlq"
+          collectionId={collectionId}
+          hasNlqAccess={hasNlqAccess}
+        />,
       );
     }
 

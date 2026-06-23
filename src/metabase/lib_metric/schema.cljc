@@ -59,7 +59,7 @@
   [:map
    [:id :string]
    [:type [:enum "main" "connection"]]
-   [:display-name :string]])
+   [:display_name :string]])
 
 (mr/def ::dimension-source.type
   [:enum :field])
@@ -74,9 +74,9 @@
   "Schema for a dimension definition."
   [:map
    [:id             ::dimension-id]
-   [:display-name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:display_name   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:effective_type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic_type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:sources        {:optional true} [:maybe [:sequential ::dimension-source]]]])
 
 (mr/def ::dimension-mapping.type
@@ -91,8 +91,8 @@
   "Schema for a dimension mapping."
   [:map
    [:type         ::dimension-mapping.type]
-   [:table-id     {:optional true} [:maybe ::lib.schema.id/table]]
-   [:dimension-id ::dimension-id]
+   [:table_id     {:optional true} [:maybe ::lib.schema.id/table]]
+   [:dimension_id ::dimension-id]
    [:target       ::dimension-mapping.target]])
 
 (mr/def ::dimension-reference.options
@@ -317,16 +317,16 @@
    and any issues that prevent them from being used.
    Note: target field references are stored in dimension-mappings, not here."
   [:map
-   [:id              ::dimension-id]
-   [:name            {:optional true} [:maybe :string]]
-   [:display-name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:effective-type  {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-   [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
-   [:status          {:optional true} [:maybe ::dimension-status]]
-   [:status-message  {:optional true} [:maybe :string]]
-   [:sources         {:optional true} [:maybe [:sequential ::dimension-source]]]
-   [:group           {:optional true} [:maybe ::dimension-group]]])
+   [:id               ::dimension-id]
+   [:name             {:optional true} [:maybe :string]]
+   [:display_name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:effective_type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic_type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:has_field_values {:optional true} [:maybe [:enum :list :search :none]]]
+   [:status           {:optional true} [:maybe ::dimension-status]]
+   [:status_message   {:optional true} [:maybe :string]]
+   [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:group            {:optional true} [:maybe ::dimension-group]]])
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."
@@ -366,12 +366,12 @@
    [:lib/type         [:= :metadata/dimension]]
    [:id               ::dimension-id]  ; UUID string
    [:name             {:optional true} [:maybe :string]]
-   [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
-   [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
+   [:display_name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:effective_type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic_type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:has_field_values {:optional true} [:maybe [:enum :list :search :none]]]
    [:status           {:optional true} [:maybe ::dimension-status]]
-   [:status-message   {:optional true} [:maybe :string]]
+   [:status_message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group            {:optional true} [:maybe ::dimension-group]]
    ;; Source tracking
@@ -399,10 +399,10 @@
   [:map
    [:id [:maybe ::dimension-id]]
    [:name :string]
-   [:display-name {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe :keyword]]
-   [:semantic-type {:optional true} [:maybe :keyword]]
-   [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
+   [:display_name {:optional true} [:maybe :string]]
+   [:effective_type {:optional true} [:maybe :keyword]]
+   [:semantic_type {:optional true} [:maybe :keyword]]
+   [:has_field_values {:optional true} [:maybe [:enum :list :search :none]]]
    [:lib/source {:optional true} [:maybe :keyword]]
    [:group {:optional true} [:maybe ::dimension-group]]])
 
@@ -412,7 +412,7 @@
    [:dimension ::computed-dimension]
    [:mapping [:map
               [:type ::dimension-mapping.type]
-              [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
+              [:table_id {:optional true} [:maybe ::lib.schema.id/table]]
               [:target ::dimension-mapping.target]]]])
 
 ;;; ------------------------------------------------- Display Info -------------------------------------------------

@@ -45,7 +45,72 @@
   (cond-> dim
     (seq (:sources dim)) (update :sources #(perf/mapv normalize-dimension-source %))
     (string? (:status dim)) (update :status keyword)
-    (string? (:has-field-values dim)) (update :has-field-values keyword)))
+    (string? (:has_field_values dim)) (update :has_field_values keyword)))
+
+(defn same-source?
+  "True when two dimensions share at least one common source. Returns false if either dimension has
+   no sources. Mirrors `metabase.lib-metric.js/isSameSource` (which delegates here)."
+  [dim-a dim-b]
+  (let [sources-a (:sources dim-a)
+        sources-b (:sources dim-b)]
+    (boolean
+     (when (and (seq sources-a) (seq sources-b))
+       (perf/some (set sources-a) sources-b)))))
+
+;;; ------------------------------------------------- Source-Based Grouping -------------------------------------------------
+
+(defn- uf-find [parent i]
+  (loop [i i]
+    (let [p (get parent i)]
+      (if (= p i) i (recur p)))))
+
+(defn- uf-union [parent a b]
+  (let [ra (uf-find parent a)
+        rb (uf-find parent b)]
+    (if (= ra rb) parent (assoc parent ra rb))))
+
+(defn group-by-source
+  "Groups dimensions that transitively share sources into equivalence classes via union-find.
+   Returns a vector of vectors, where each inner vector contains dimensions that share at least
+   one source (matching the semantics of [[same-source?]]). Dimensions with no sources are each
+   placed in their own singleton group. Dimensions with duplicate `:id` values within a group
+   are deduplicated."
+  [dimensions]
+  (let [dims (vec dimensions)
+        n    (count dims)]
+    (if (< n 2)
+      (if (= n 1) [dims] [])
+      (let [init         (vec (range n))
+            ;; For every distinct source entry, collect which dim indices mention it.
+            source->idxs (reduce (fn [acc i]
+                                   (reduce (fn [acc src]
+                                             (update acc src (fnil conj []) i))
+                                           acc
+                                           (:sources (dims i))))
+                                 {}
+                                 (range n))
+            ;; Union all indices that share any source entry.
+            parent       (reduce (fn [parent idxs]
+                                   (if (< (count idxs) 2)
+                                     parent
+                                     (let [a (first idxs)]
+                                       (reduce (fn [p b] (uf-union p a b))
+                                               parent (rest idxs)))))
+                                 init
+                                 (vals source->idxs))
+            ;; Bucket dimensions by resolved root, deduplicating by :id.
+            buckets      (reduce (fn [acc i]
+                                   (let [r    (uf-find parent i)
+                                         d    (dims i)
+                                         seen (perf/get-in acc [r :seen] #{})]
+                                     (if (contains? seen (:id d))
+                                       acc
+                                       (-> acc
+                                           (update-in [r :seen] (fnil conj #{}) (:id d))
+                                           (update-in [r :dims] (fnil conj []) d)))))
+                                 {}
+                                 (range n))]
+        (perf/mapv :dims (vals buckets))))))
 
 ;;; ------------------------------------------------- Dimension Reconciliation -------------------------------------------------
 
@@ -58,7 +123,7 @@
   "Find a persisted dimension by matching its mapping's target to the given target."
   [target persisted-mappings persisted-dims-by-id]
   (when-let [mapping (m/find-first #(targets-equal? target (:target %)) persisted-mappings)]
-    (get persisted-dims-by-id (:dimension-id mapping))))
+    (get persisted-dims-by-id (:dimension_id mapping))))
 
 (defn- merge-persisted-modifications
   "Merge user modifications from a persisted dimension into a computed dimension.
@@ -67,8 +132,8 @@
   [computed-dim persisted-dim]
   (if persisted-dim
     (-> computed-dim
-        (merge (into {} (remove (comp nil? val)) (perf/select-keys persisted-dim [:display-name :semantic-type :effective-type])))
-        (dissoc :status-message))
+        (merge (into {} (remove (comp nil? val)) (perf/select-keys persisted-dim [:display_name :semantic_type :effective_type])))
+        (dissoc :status_message))
     computed-dim))
 
 (defn- assign-ids-and-reconcile
@@ -87,7 +152,7 @@
                                          (assoc :status :status/active)
                                          (merge-persisted-modifications persisted-dim))]
                    {:dimension merged-dim
-                    :mapping   (assoc mapping :dimension-id dim-id)}))
+                    :mapping   (assoc mapping :dimension_id dim-id)}))
                computed-pairs)))
 
 (defn- find-orphaned-dimensions
@@ -98,10 +163,10 @@
     (->> persisted-mappings
          (remove #(contains? computed-targets (normalize-target (:target %))))
          (keep (fn [orphan-mapping]
-                 (when-let [dim (get persisted-dims-by-id (:dimension-id orphan-mapping))]
+                 (when-let [dim (get persisted-dims-by-id (:dimension_id orphan-mapping))]
                    (-> dim
                        (assoc :status :status/orphaned)
-                       (assoc :status-message (orphaned-status-message dim)))))))))
+                       (assoc :status_message (orphaned-status-message dim)))))))))
 
 (mu/defn reconcile-dimensions-and-mappings :- [:map
                                                [:dimensions [:sequential ::lib-metric.schema/persisted-dimension]]
@@ -132,7 +197,7 @@
   "Check if the persisted dimensions have changed between old and new sets."
   [old-persisted :- [:maybe [:sequential ::lib-metric.schema/persisted-dimension]]
    new-persisted :- [:sequential ::lib-metric.schema/persisted-dimension]]
-  (let [persist-keys [:id :name :display-name :semantic-type :effective-type :has-field-values :status :status-message :sources :group]
+  (let [persist-keys [:id :name :display_name :semantic_type :effective_type :has_field_values :status :status_message :sources :group]
         normalize    (fn [dims] (set (map #(perf/select-keys % persist-keys) dims)))]
     (not= (normalize old-persisted) (normalize new-persisted))))
 
@@ -233,7 +298,7 @@
    Throws 400 if not found."
   [dimension-mappings :- [:maybe [:sequential :map]]
    dimension-id       :- :string]
-  (or (m/find-first #(= (:dimension-id %) dimension-id) dimension-mappings)
+  (or (m/find-first #(= (:dimension_id %) dimension-id) dimension-mappings)
       (throw (ex-info (i18n/tru "Dimension mapping not found for dimension: {0}" dimension-id)
                       {:status-code 400
                        :dimension-id dimension-id}))))

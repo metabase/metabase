@@ -74,7 +74,7 @@
 (defn- build-dim->field-id
   "Build a map of {dimension-id -> field-id} from dimensions and their mappings."
   [dimensions dimension-mappings]
-  (let [mappings-by-dim-id (into {} (map (juxt :dimension-id identity)) dimension-mappings)]
+  (let [mappings-by-dim-id (into {} (map (juxt :dimension_id identity)) dimension-mappings)]
     (into {}
           (keep (fn [dim]
                   (let [field-id (or (some-> dim :sources first :field-id)
@@ -85,26 +85,28 @@
                       [(:id dim) field-id]))))
           dimensions)))
 
-(defn filter-dimensions-for-user
-  "Filter dimensions and dimension_mappings on a metric, removing those the
-   current user shouldn't see due to:
-   1. Field visibility_type (:hidden or :sensitive)
-   2. Table-level view-data permissions
-   3. Sandbox column restrictions (EE)
+(defn filter-dimensions-for-user-batch
+  "Batched [[filter-dimensions-for-user]] across many `metrics`.
 
-   Superusers bypass all checks. Dimensions without resolvable field IDs are
-   kept (conservative fallback)."
-  [{:keys [dimensions dimension_mappings] :as metric}]
-  (if (or api/*is-superuser?*
-          (empty? dimensions))
-    metric
-    (let [dim->field-id  (build-dim->field-id dimensions dimension_mappings)
-          all-field-ids  (set (vals dim->field-id))
+   Does the permission lookups ONCE for the whole seq — one Field SELECT, one Table SELECT, one
+   sandbox lookup, and a `user-can-access-table?` check memoized per `(db,table)` — instead of
+   repeating them per metric. Returns the metrics in the
+   same order with `:dimensions`/`:dimension_mappings` filtered.
+
+   Same semantics as [[filter-dimensions-for-user]]: superusers bypass all checks; dimensions
+   without a resolvable field ID are conservatively kept."
+  [metrics]
+  (if api/*is-superuser?*
+    (vec metrics)
+    (let [dim->fids      (mapv #(build-dim->field-id (:dimensions %) (:dimension_mappings %)) metrics)
+          all-field-ids  (into #{} (mapcat vals) dim->fids)
           field-info     (batch-field-info all-field-ids)
           table-ids      (into #{} (keep :table_id) (vals field-info))
           table->db      (batch-table-db-ids table-ids)
           sandbox-map    (sandbox-restricted-fields table-ids)
-          allowed?       (fn [dim]
+          can-access?    (memoize (fn [db-id table-id]
+                                    (user-can-access-table? api/*current-user-id* db-id table-id)))
+          allowed?       (fn [dim->field-id dim]
                            (let [fid (get dim->field-id (:id dim))]
                              (if-not fid
                                true ;; can't resolve field -> keep (conservative)
@@ -115,12 +117,32 @@
                                   (not (hidden-field? visibility_type))
                                   ;; user has table access
                                   (or (nil? db-id)
-                                      (user-can-access-table? api/*current-user-id* db-id table_id))
+                                      (can-access? db-id table_id))
                                   ;; sandbox allows this field
                                   (or (nil? sandbox-map)
                                       (nil? (get sandbox-map table_id))
-                                      (contains? (get sandbox-map table_id) fid)))))))
-          kept-ids       (into #{} (comp (filter allowed?) (map :id)) dimensions)]
-      (assoc metric
-             :dimensions         (filterv #(contains? kept-ids (:id %)) dimensions)
-             :dimension_mappings (filterv #(contains? kept-ids (:dimension-id %)) dimension_mappings)))))
+                                      (contains? (get sandbox-map table_id) fid)))))))]
+      (mapv (fn [{:keys [dimensions dimension_mappings] :as metric} dim->field-id]
+              (if (empty? dimensions)
+                metric
+                (let [kept-ids (into #{} (comp (filter #(allowed? dim->field-id %)) (map :id)) dimensions)]
+                  (assoc metric
+                         :dimensions         (filterv #(contains? kept-ids (:id %)) dimensions)
+                         :dimension_mappings (filterv #(contains? kept-ids (:dimension_id %)) dimension_mappings)))))
+            metrics
+            dim->fids))))
+
+(defn filter-dimensions-for-user
+  "Filter dimensions and dimension_mappings on a metric, removing those the
+   current user shouldn't see due to:
+   1. Field visibility_type (:hidden or :sensitive)
+   2. Table-level view-data permissions
+   3. Sandbox column restrictions (EE)
+
+   Superusers bypass all checks. Dimensions without resolvable field IDs are
+   kept (conservative fallback).
+
+   When filtering many metrics at once, prefer [[filter-dimensions-for-user-batch]] to avoid
+   per-metric queries."
+  [metric]
+  (first (filter-dimensions-for-user-batch [metric])))

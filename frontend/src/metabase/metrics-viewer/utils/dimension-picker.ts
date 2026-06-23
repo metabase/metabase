@@ -2,6 +2,7 @@ import {
   type GeoSubtype,
   getGeoSubtype,
 } from "metabase/common/metrics/utils/dimension-types";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import type {
   DimensionGroup,
   DimensionMetadata,
@@ -26,7 +27,7 @@ export type {
   SourceDisplayInfo,
 } from "../types";
 
-import { getDimensionIcon, getDimensionsByType } from "./dimension-breakouts";
+import { getDimensionsByType } from "./dimension-breakouts";
 import type { MetricSlot } from "./metric-slots";
 
 // ── Dimension picker ──

@@ -1,6 +1,7 @@
 (ns metabase.llm.settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.test :as mt]))
 
@@ -211,6 +212,31 @@
            clojure.lang.ExceptionInfo
            #"Setting ai-service-base-url is not enabled"
            (llm.settings/ai-service-base-url! "https://ai-service.example"))))))
+
+;;; ------------------------------------------- assert-llm-host-allowed! Tests -------------------------------------------
+
+(deftest assert-llm-host-allowed!-test
+  (testing "is a no-op outside of e2e mode, even for a real provider URL"
+    (with-redefs [config/is-e2e? false]
+      (is (nil? (llm.settings/assert-llm-host-allowed! "https://api.anthropic.com")))))
+  (testing "in e2e mode"
+    (with-redefs [config/is-e2e? true]
+      (testing "allows localhost / loopback URLs (the e2e mock LLM server)"
+        (is (nil? (llm.settings/assert-llm-host-allowed! "http://localhost:6123")))
+        (is (nil? (llm.settings/assert-llm-host-allowed! "http://127.0.0.1:6123")))
+        (is (nil? (llm.settings/assert-llm-host-allowed! "http://LOCALHOST:6123/v1/messages"))))
+      (testing "throws for any non-localhost URL so we never hit a real provider"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"non-localhost"
+             (llm.settings/assert-llm-host-allowed! "https://api.anthropic.com")))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"non-localhost"
+             (llm.settings/assert-llm-host-allowed! "http://host.docker.internal:6123"))))
+      (testing "is a no-op for blank / nil URLs (lets normal not-configured handling run)"
+        (is (nil? (llm.settings/assert-llm-host-allowed! nil)))
+        (is (nil? (llm.settings/assert-llm-host-allowed! "")))))))
 
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 

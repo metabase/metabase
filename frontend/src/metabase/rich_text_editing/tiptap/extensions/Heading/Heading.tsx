@@ -21,7 +21,7 @@ export const CustomHeading = Heading.extend<HeadingOptions & BlockNodeOptions>({
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin(Heading.name)];
+    return [createProseMirrorPlugin("heading")];
   },
 });
 
@@ -48,13 +48,40 @@ export const HeadingNodeView = ({
   const BlockShell = extension.options.blockShell ?? DefaultBlockShell;
 
   return (
-    <BlockShell
-      node={node}
-      editor={editor}
-      getPos={getPos}
-      hideMenus={extension.options.editorContext === "comments"}
-    >
-      <NodeViewContent<ElementType> as={levelNodeMap[level as Level] ?? "h1"} />
-    </BlockShell>
+    <>
+      <NodeViewWrapper
+        aria-expanded={isOpen}
+        className={cx(S.root, {
+          [S.open]: isOpen || isHovered,
+        })}
+        data-node-id={_id}
+        ref={setReferenceElement}
+        onMouseOver={() => setHovered(true)}
+        onMouseOut={() => setHovered(false)}
+      >
+        <NodeViewContent<ElementType>
+          as={levelNodeMap[level as Level] ?? "h1"}
+        />
+      </NodeViewWrapper>
+
+      {shouldShowMenus && document && (
+        <>
+          <AnchorLinkMenu
+            ref={anchorRefs.setFloating}
+            show={hovered}
+            style={anchorFloatingStyles}
+            url={anchorUrl}
+          />
+          <CommentsMenu
+            active={isOpen}
+            childTargetId={_id}
+            ref={commentsRefs.setFloating}
+            show={isOpen || hovered}
+            style={commentsFloatingStyles}
+            unresolvedCommentsCount={unresolvedCommentsCount}
+          />
+        </>
+      )}
+    </>
   );
 };

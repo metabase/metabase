@@ -146,3 +146,13 @@
       (is (some? content))
       (is (not (str/includes? content "Here is some information about the user:")))
       (is (not (str/includes? content "<user><name>Jane Doe</name></user>"))))))
+
+(deftest ^:parallel build-system-message-content-test-7
+  (testing "builds exploration system message"
+    (let [profile {:prompt-template "explorations.selmer"}
+          context {}
+          tools {}
+          content (prompts/build-system-message-content profile context tools [])]
+      (is (string? content))
+      (is (not (str/includes? content "{% include"))
+          "unresolved {% include %} tags mean rendering failed and the raw template was returned"))))

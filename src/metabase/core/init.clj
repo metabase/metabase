@@ -32,6 +32,7 @@
    [metabase.eid-translation.init]
    [metabase.embedding.init]
    [metabase.events.init]
+   [metabase.explorations.init]
    [metabase.geojson.init]
    [metabase.health-inspector.init]
    [metabase.indexed-entities.init]

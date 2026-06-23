@@ -1,0 +1,85 @@
+.chart {
+  & :global(.CardVisualization) {
+    padding: 0;
+  }
+}
+
+/*
+ * Chart layout grid. The active layout is selected by the `data-chart-layout`
+ * attribute set in `ExplorationGroupVisualizationChart` — new layouts are added
+ * here as additional `[data-chart-layout="…"]` rules.
+ */
+.chartGrid {
+  display: grid;
+  flex: 1;
+  gap: 1.5rem;
+  /* default: single column — charts stack, the area scrolls when tall */
+  grid-template-columns: 1fr;
+  grid-auto-rows: minmax(10rem, auto);
+  /* never let the grid itself be widened past its container */
+  min-width: 0;
+}
+
+/*
+ * Grid items default to `min-width: auto`, which lets wide chart content
+ * (e.g. an x-axis with many labels) stretch its column past the `1fr`
+ * track and scroll the whole section sideways. Pin every chart cell to
+ * `min-width: 0` so charts always shrink to their allocated column.
+ */
+.chartGrid > * {
+  min-width: 0;
+}
+
+/*
+ * "two small charts down": one big chart on top spanning both columns,
+ * two smaller charts side-by-side below.
+ *
+ * `two-small-charts-down` — the bottom charts are cartesian (e.g. bar)
+ * charts, which fill their cell via `h="100%"`. Both rows grow to use the
+ * available height; the top row gets the larger share (`2fr` vs `1fr`) so
+ * it stays the primary chart.
+ *
+ * `two-small-tables-down` — the bottom charts are heat-map tables, which
+ * size to their row count rather than filling. The bottom row is `auto`
+ * so a short table isn't stretched and left with empty space below it,
+ * and the top row takes all the free space.
+ */
+.chartGrid[data-chart-layout="two-small-charts-down"] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(22rem, 2fr) minmax(15rem, 1fr);
+}
+
+.chartGrid[data-chart-layout="two-small-tables-down"] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(22rem, 1fr) auto;
+}
+
+.chartGrid[data-chart-layout="two-small-charts-down"] > :first-child,
+.chartGrid[data-chart-layout="two-small-tables-down"] > :first-child {
+  grid-column: 1 / -1;
+}
+
+/*
+ * "two same-size charts vertically" — two charts stacked in a single column
+ * with equal heights. Used when a page pairs a main chart with a labeled
+ * secondary chart (e.g. an "over time" facet); the bottom chart shows its
+ * `chartLabel` as a title rendered by the chart component itself.
+ */
+.chartGrid[data-chart-layout="two-same-size-charts-vertically"] {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(15rem, 1fr) minmax(15rem, 1fr);
+}
+
+.chartGrid[data-chart-layout="chart-and-table-vertically"] {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(22rem, 1fr) auto;
+}
+
+.warnings {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  margin-top: var(--mantine-spacing-md);
+  margin-right: var(--mantine-spacing-md);
+}
