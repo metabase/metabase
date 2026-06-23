@@ -39,7 +39,7 @@ export function WaterfallChart({
   );
   const option = getWaterfallChartOption(
     chartModel,
-    WIDTH,
+    width,
     chartLayout,
     null,
     [],

@@ -385,9 +385,9 @@ describe("scenarios > table-editing", () => {
             });
           });
 
-        const day = Math.floor(Math.random() * 10) + 10; // 10-20
-        const hour = Math.floor(Math.random() * 12);
-        const minute = Math.floor(Math.random() * 60);
+        const day = 15;
+        const hour = 11;
+        const minute = 35;
 
         H.popover().within(() => {
           cy.findByRole("button", { name: `${day} February 2020` }).click();
@@ -401,9 +401,7 @@ describe("scenarios > table-editing", () => {
         });
 
         cy.wait("@updateTableData").then(({ response, request }) => {
-          const targetDate = dayjs(
-            new Date(2020, 1, day, hour, minute, 0),
-          ).format("YYYY-MM-DDTHH:mm:ss");
+          const targetDate = "2020-02-15T11:35:00";
 
           const requestDate = request.body.params.datetime;
           const responseDate = response?.body.outputs[0].row.datetime;

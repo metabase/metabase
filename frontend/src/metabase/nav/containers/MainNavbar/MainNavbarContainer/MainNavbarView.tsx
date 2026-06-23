@@ -5,12 +5,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import type { CollectionTreeItem } from "metabase/collections/utils";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   isExamplesCollection,
   isLibraryCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
