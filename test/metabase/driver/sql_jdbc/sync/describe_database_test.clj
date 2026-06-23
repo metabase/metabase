@@ -124,9 +124,9 @@
        nil
        (fn [_conn]
          ;; `:tables` is a reducible -- realize it so `active-tables` actually opens (and closes) its ResultSets
-         (into [] (:tables (sql-jdbc.describe-database/describe-database driver db)))
-         (reduce + (for [^ResultSet rs @resultsets]
-                     (if (.isClosed rs) 0 1))))))))
+         (let [_ (into [] (:tables (sql-jdbc.describe-database/describe-database driver db)))]
+           (reduce + (for [^ResultSet rs @resultsets]
+                       (if (.isClosed rs) 0 1)))))))))
 
 (defn- count-active-tables-in-db
   [db-id]

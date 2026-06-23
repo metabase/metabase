@@ -259,7 +259,7 @@
 
 (defmethod driver/describe-database* :bigquery-cloud-sdk
   [driver database]
-  :tables (describe-database-tables driver database))
+  {:tables (describe-database-tables driver database)})
 
 (defn- database-type->base-type
   [database-type]
