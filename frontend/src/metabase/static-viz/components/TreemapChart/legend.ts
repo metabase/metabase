@@ -46,40 +46,31 @@ export function getTreemapLegendModel(
   const formatShare = getTreemapPercentOfTotalFormatter(tree, formatPercent);
   const treeHasChildren = tree.some(hasChildren);
 
-  const rows: TreemapLegendRow[] = [];
-  let top = 0;
+  const stride = TREEMAP_LEGEND_ROW_HEIGHT + TREEMAP_LEGEND_GROUP_GAP;
 
-  const sortedTree = [...tree].sort((a, b) => b.value - a.value);
-
-  sortedTree.forEach((node, index) => {
-    if (index > 0) {
-      top += TREEMAP_LEGEND_GROUP_GAP - TREEMAP_LEGEND_ROW_GAP;
-    }
-    rows.push({
+  const rows: TreemapLegendRow[] = [...tree]
+    .sort((a, b) => b.value - a.value)
+    .map((node, index) => ({
       type: treeHasChildren ? "parent" : "leaf",
       name: node.displayName,
       valueLabel: formatValue(node.value),
       percentLabel: formatShare(node.value),
       ...(treeHasChildren ? { color: colors[getTreemapNodeKey(node)] } : {}),
       indent: false,
-      top,
-    });
-    top += TREEMAP_LEGEND_ROW_HEIGHT + TREEMAP_LEGEND_ROW_GAP;
-  });
+      top: stride * index,
+    }));
 
-  if (rows.length > 0) {
-    top += TREEMAP_LEGEND_GROUP_GAP - TREEMAP_LEGEND_ROW_GAP;
-  }
-
-  rows.push({
+  const totalRow: TreemapLegendRow = {
     type: "total",
     name: t`Total`,
     valueLabel: formatValue(total),
     percentLabel: formatPercent(1),
     indent: treeHasChildren,
-    top: top + TREEMAP_LEGEND_TOTAL_PADDING_TOP,
-  });
-  top += TREEMAP_LEGEND_TOTAL_PADDING_TOP + TREEMAP_LEGEND_ROW_HEIGHT;
+    top: stride * rows.length + TREEMAP_LEGEND_TOTAL_PADDING_TOP,
+  };
 
-  return { rows, height: top };
+  return {
+    rows: [...rows, totalRow],
+    height: totalRow.top + TREEMAP_LEGEND_ROW_HEIGHT,
+  };
 }
