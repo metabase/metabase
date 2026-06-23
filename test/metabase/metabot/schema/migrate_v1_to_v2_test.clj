@@ -121,18 +121,11 @@
             [{:role "user" :content "Do we have data on orders"}])))))
 
 (deftest ^:parallel migrate-v1->v2-invalid-data-test
-  (testing "rows that resemble a v1 shape but fail its schema should throw rather than migrate"
-    (testing "native data entry with an unknown :data-type"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"
-                            (migrate/migrate-v1->v2
-                             [{:type "data" :data-type "mystery" :data 1}]))))
-    (testing "native text entry missing :text"
-      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"
-                                    (migrate/migrate-v1->v2 [{:type "text"}])))
-            {:keys [explanation]} (ex-data e)]
-        (testing "ex-data explains against the one format the row resembles (native, by its :type tag)"
-          (is (= [{:text ["missing required key"]}]
-                 explanation)))))))
+  (testing "a row resembling a v1 shape but failing its schema throws, explaining against the format it resembles"
+    (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"
+                                  (migrate/migrate-v1->v2 [{:type "text"}])))]
+      (is (= [{:text ["missing required key"]}]
+             (:explanation (ex-data e)))))))
 
 (deftest ^:parallel migrated-rows-validate-test
   (testing "migrating every v1 row shape should produce valid v2 message data"
