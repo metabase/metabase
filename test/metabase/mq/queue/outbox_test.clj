@@ -1,4 +1,4 @@
-(ns metabase.mq.queue.outbox-test
+(ns ^:synchronous metabase.mq.queue.outbox-test
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as app-db.conn]

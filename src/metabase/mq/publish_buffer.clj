@@ -95,16 +95,16 @@
                     (do
                       (log/error e "Error flushing publish buffer, re-buffering"
                                  {:channel channel :retries retries})
-                     ;; Put messages back into the buffer for retry on next flush cycle
+                      ;; Put messages back into the buffer for retry on next flush cycle
                       (swap! *publish-buffer*
                              (fn [buf]
                                (update buf channel
                                        (fn [existing]
                                          (if existing
                                            (-> existing
-                                              ;; Prepend the failed batch so retried (older) messages
-                                              ;; are published before messages that arrived during the
-                                              ;; flush — preserves publish order across retries.
+                                               ;; Prepend the failed batch so retried (older) messages
+                                               ;; are published before messages that arrived during the
+                                               ;; flush — preserves publish order across retries.
                                                (update :messages #(into (vec messages) %))
                                                (update :retries (fnil max 0) retries))
                                            (assoc entry

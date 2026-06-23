@@ -29,7 +29,6 @@
             (is (contains? @publish-buffer/*publish-buffer* :queue/test))
             (is (= ["msg1" "msg2"]
                    (get-in @publish-buffer/*publish-buffer* [:queue/test :messages]))))
-
           ;; Second flush — publish succeeds
           (publish-buffer/flush-publish-buffer!)
           (testing "Messages are delivered on retry"
@@ -54,12 +53,10 @@
         (publish-buffer/flush-publish-buffer!)
         (is (contains? @publish-buffer/*publish-buffer* :queue/test)
             "Messages should be re-buffered after first failure")
-
         ;; Flush 2: retries=2, re-buffered
         (publish-buffer/flush-publish-buffer!)
         (is (contains? @publish-buffer/*publish-buffer* :queue/test)
             "Messages should be re-buffered after second failure")
-
         ;; Flush 3: retries=3 >= max-retries=3, dropped
         (publish-buffer/flush-publish-buffer!)
         (is (empty? @publish-buffer/*publish-buffer*)

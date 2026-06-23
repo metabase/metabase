@@ -1410,7 +1410,6 @@
    :api  #{metabase.mq.init}
    :uses #{analytics-interface
            app-db
-           models
            settings
            startup
            task
