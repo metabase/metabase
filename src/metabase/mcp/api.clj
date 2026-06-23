@@ -12,6 +12,7 @@
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.tools :as mcp.tools]
+   [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
@@ -240,7 +241,16 @@
             supports-mcp-ui? (mcp-app-ui-capability? params)
             session-id       (mcp.session/create! user-id {:supports-mcp-ui?
                                                            supports-mcp-ui?})
-            init-response (handle-initialize (:id body) (:params body))]
+            init-response (handle-initialize (:id body) params)]
+        ;; Record the session row (EE-only, best-effort). Identity + PII are captured once
+        ;; here, from the on-thread request, and never overwritten.
+        (mcp.usage/record-mcp-session!
+         {:session-id     session-id
+          :user-id        user-id
+          :tenant-id      (some-> api/*current-user* deref :tenant_id)
+          :client-info    (:clientInfo params)
+          :user-agent     (get-in request [:headers "user-agent"])
+          :ip-address     (request/ip-address request)})
         (if (accepts-sse? request)
           (sse-response [init-response] {"Mcp-Session-Id" session-id})
           (json-response 200 init-response {"Mcp-Session-Id" session-id})))
@@ -308,6 +318,8 @@
         {:keys [session-id error]} (require-valid-session user-id session-id-header)]
     (or error
         (do (mcp.session/delete! session-id user-id)
+            ;; Stamp ended_at on the session row (EE-only, best-effort).
+            (mcp.usage/record-mcp-session-end! session-id)
             {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------

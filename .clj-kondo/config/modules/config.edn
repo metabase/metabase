@@ -1227,13 +1227,17 @@
    :api  #{metabase.mcp.api
            metabase.mcp.callback-api
            metabase.mcp.core
-           metabase.mcp.init}
+           metabase.mcp.init
+           metabase.mcp.usage}
+   :model-exports #{:model/McpSessionLog
+                    :model/McpToolCallLog}
    :uses #{agent-api
            api
            app-db
            config
            llm
            oauth-server
+           premium-features
            request
            server
            session
@@ -3253,6 +3257,16 @@
            collections
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
+
+  enterprise/mcp
+  {:team    "Metabot"
+   :friends #{mcp}
+   :uses    #{analytics
+              mcp
+              premium-features
+              util}
+   :model-imports #{:model/McpSessionLog
+                    :model/McpToolCallLog}}
 
   enterprise/memoize-monitor
   {:team "Graphy"
