@@ -536,7 +536,8 @@
 
                                      (not force-deletion?)
                                      (into (:deletion-conflicts @conflicts)))))
-            incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))]
+            incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))
+            dirty?             (delay (remote-sync.object/dirty?))]
         (cond
           merge?
           (import-merged! snapshot base-snapshot task-id sync-timestamp)
@@ -552,7 +553,7 @@
           ;; Incremental fast-path: not forced, no local drift, and the change is incrementally loadable.
           ;; Touches only changed files, so it can't wholesale-delete unsynced transforms — no conflict scan,
           ;; and only the cheap O(changes) diff is computed (never the full-tree get-conflicts read).
-          (and (not force?) (not (remote-sync.object/dirty?)) (not= incremental-not-possible @incremental-plan))
+          (and (not force?) (not @dirty?) (not= incremental-not-possible @incremental-plan))
           (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
 
           (seq @blocking-conflicts)
@@ -566,7 +567,13 @@
 
           ;; No blocking conflicts: do the full reload.
           :else
-          (let [imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
+          (let [reason        (cond
+                                force?        "forced"
+                                @dirty?       "local changes pending"
+                                first-import? "first import"
+                                :else         "changes not incrementally loadable")
+                _             (log/infof "Remote sync full import: %s" reason)
+                imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
             (log/info "Successfully reloaded entities from git repository")
             {:status :success
              :version snapshot-version
@@ -886,7 +893,9 @@
           (cond
             ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
             force?
-            (full-export! snapshot task-id message sync-timestamp)
+            (do
+              (log/info "Remote sync full export: forced overwrite")
+              (full-export! snapshot task-id message sync-timestamp))
 
             ;; Remote hasn't advanced and there's nothing to export: no dirty rows and no stale files in
             ;; now-disabled content dirs.
@@ -898,7 +907,9 @@
 
             ;; Remote hasn't advanced but a dirty row can't be applied incrementally → full re-serialize.
             (and (not diverged?) (= plan :remote-sync/unsyncable-batch))
-            (full-export! snapshot task-id message sync-timestamp)
+            (do
+              (log/info "Remote sync full export: a pending change can't be applied incrementally")
+              (full-export! snapshot task-id message sync-timestamp))
 
             ;; Remote hasn't advanced — incremental fast-path: write only the changed entities, deleting
             ;; their old paths plus files left behind in now-disabled content dirs, preserving every other.
