@@ -218,7 +218,7 @@ export const CardEmbedComponent = memo(
     const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
       skip: !isInViewport,
     });
-    const capabilities = useSelector(host.selectors.getEditorCapabilities);
+    const { capabilities } = host;
 
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;

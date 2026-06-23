@@ -36,7 +36,6 @@ import type {
   RegularCollectionId,
 } from "metabase-types/api";
 
-import { trackDocumentCreated, trackDocumentUpdated } from "../analytics";
 import {
   clearDraftCards,
   setCurrentDocument,
@@ -44,7 +43,6 @@ import {
   updateSelectedEmbedIndex,
 } from "../documents.slice";
 import {
-  getDocumentHost,
   getDraftCards,
   getHasUnsavedChanges,
   getSelectedEmbedIndex,
@@ -56,6 +54,13 @@ import { useScrollToAnchor } from "./use-scroll-to-anchor";
 
 interface UseDocumentEditorParams {
   documentId: DocumentId | "new" | undefined;
+  /**
+   * Called after a successful create / save with the persisted document id. The
+   * surface uses these to emit its own analytics, so the hook stays agnostic of
+   * which surface (standalone, exploration, …) it is running in.
+   */
+  onDocumentCreated?: (documentId: DocumentId) => void;
+  onDocumentSaved?: (documentId: DocumentId) => void;
 }
 
 interface UseDocumentEditorResult {
@@ -95,6 +100,8 @@ interface UseDocumentEditorResult {
 
 export function useDocumentEditor({
   documentId,
+  onDocumentCreated,
+  onDocumentSaved,
 }: UseDocumentEditorParams): UseDocumentEditorResult {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
@@ -102,7 +109,6 @@ export function useDocumentEditor({
   const draftCards = useSelector(getDraftCards);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const documentHost = useSelector(getDocumentHost);
 
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
@@ -323,7 +329,7 @@ export function useDocumentEditor({
           ? updateDocument({ ...newDocumentData, id: documentData.id }).then(
               (response) => {
                 if (response.data) {
-                  trackDocumentUpdated(response.data.id, documentHost);
+                  onDocumentSaved?.(response.data.id);
                 }
                 return response;
               },
@@ -334,7 +340,7 @@ export function useDocumentEditor({
             }).then((response) => {
               if (response.data) {
                 const _document = response.data;
-                trackDocumentCreated(_document.id, documentHost);
+                onDocumentCreated?.(_document.id);
                 scheduleNavigation(() => {
                   dispatch(replace(Urls.document(_document)));
                 });
@@ -369,7 +375,8 @@ export function useDocumentEditor({
       documentTitle,
       draftCards,
       documentData?.id,
-      documentHost,
+      onDocumentCreated,
+      onDocumentSaved,
       updateDocument,
       createDocument,
       scheduleNavigation,

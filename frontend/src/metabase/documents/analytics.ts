@@ -1,10 +1,12 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type { DocumentHost } from "metabase/redux/store/documents";
 import type { Document, DocumentId } from "metabase-types/api";
+
+/** Which surface a document create/save was triggered from (telemetry only). */
+export type DocumentTriggerSource = "standalone" | "exploration";
 
 export const trackDocumentCreated = (
   documentId: DocumentId,
-  triggeredFrom: DocumentHost,
+  triggeredFrom: DocumentTriggerSource,
 ) => {
   trackSimpleEvent({
     event: "document_created",
@@ -15,7 +17,7 @@ export const trackDocumentCreated = (
 
 export const trackDocumentUpdated = (
   documentId: DocumentId,
-  triggeredFrom: DocumentHost,
+  triggeredFrom: DocumentTriggerSource,
 ) => {
   trackSimpleEvent({
     event: "document_saved",

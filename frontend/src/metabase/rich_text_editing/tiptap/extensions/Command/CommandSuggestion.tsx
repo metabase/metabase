@@ -109,7 +109,7 @@ export const CommandSuggestion = forwardRef<
   // The surface declares what the slash-command menu may offer (an exploration
   // host disables Metabot/chart embeds); the editor gates on capabilities rather
   // than knowing which surface it is.
-  const capabilities = useSelector(host.selectors.getEditorCapabilities);
+  const { capabilities } = host;
   const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
   const metabotName = useMetabotName();
   const [selectedIndex, setSelectedIndex] = useState(0);

@@ -60,6 +60,13 @@ export interface EditorCapabilities {
   canOpenCardInQueryBuilder: boolean;
 }
 
+/** Capabilities for an unrestricted surface (standalone documents, comments, …). */
+export const DEFAULT_EDITOR_CAPABILITIES: EditorCapabilities = {
+  canEmbedCharts: true,
+  canUseMetabot: true,
+  canOpenCardInQueryBuilder: true,
+};
+
 type Selector<T> = (state: State) => T;
 
 /**
@@ -80,11 +87,11 @@ export interface EditorHost {
     getChildTargetId: Selector<string | undefined>;
     getHoveredChildTargetId: Selector<string | undefined>;
     getHasUnsavedChanges: Selector<boolean>;
-    // What the surface allows. Extensions gate behaviour on these flags rather
-    // than reading a surface enum; the documents host derives them from its
-    // own (exploration vs standalone) state.
-    getEditorCapabilities: Selector<EditorCapabilities>;
   };
+  // What the surface allows. Static config provided by whichever host is mounted
+  // (a restricted surface like exploration flips flags to false). Extensions gate
+  // on these instead of branching on a surface enum.
+  capabilities: EditorCapabilities;
   // Action/thunk creators return the redux action or thunk to be dispatched.
   // Typed as `any` so they satisfy the app's overloaded `dispatch` (which
   // accepts both plain actions and thunks) without coupling this primitive to
@@ -175,12 +182,8 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
     getChildTargetId: () => undefined,
     getHoveredChildTargetId: () => undefined,
     getHasUnsavedChanges: () => false,
-    getEditorCapabilities: () => ({
-      canEmbedCharts: true,
-      canUseMetabot: true,
-      canOpenCardInQueryBuilder: true,
-    }),
   },
+  capabilities: DEFAULT_EDITOR_CAPABILITIES,
   actions: {
     createDraftCard: () => ({ type: "@@editor-host/noop" }),
     generateDraftCardId: () => -1,

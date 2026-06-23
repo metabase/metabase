@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import {
+  DEFAULT_EDITOR_CAPABILITIES,
+  type EditorCapabilities,
   type EditorHost,
   EditorHostProvider,
 } from "metabase/rich_text_editing/tiptap/EditorHost";
@@ -34,7 +36,6 @@ import { useUnresolvedCommentsCount } from "../../hooks/use-unresolved-comments-
 import {
   getChildTargetId,
   getCurrentDocument,
-  getEditorCapabilities,
   getHasUnsavedChanges,
   getHoveredChildTargetId,
 } from "../../selectors";
@@ -50,8 +51,8 @@ export const documentEditorHost: EditorHost = {
     getChildTargetId,
     getHoveredChildTargetId,
     getHasUnsavedChanges,
-    getEditorCapabilities,
   },
+  capabilities: DEFAULT_EDITOR_CAPABILITIES,
   actions: {
     createDraftCard,
     generateDraftCardId,
@@ -79,9 +80,16 @@ export const documentEditorHost: EditorHost = {
 };
 
 export const DocumentEditorHostProvider = ({
+  capabilities = DEFAULT_EDITOR_CAPABILITIES,
   children,
 }: {
+  /** Restrict what the editor may do on this surface (e.g. exploration). */
+  capabilities?: EditorCapabilities;
   children: ReactNode;
-}) => (
-  <EditorHostProvider value={documentEditorHost}>{children}</EditorHostProvider>
-);
+}) => {
+  const host = useMemo(
+    () => ({ ...documentEditorHost, capabilities }),
+    [capabilities],
+  );
+  return <EditorHostProvider value={host}>{children}</EditorHostProvider>;
+};
