@@ -67,8 +67,7 @@ export function ScatterPlot({
   const option = getScatterPlotOption(
     chartModel,
     chartLayout,
-    null,
-    [],
+    false,
     settings,
     width,
     false,

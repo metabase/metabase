@@ -31,9 +31,7 @@ export function useModelsAndOption(
     height,
     hiddenSeries = new Set(),
     timelineEvents,
-    selectedTimelineEventIds,
     onRender,
-    hovered,
     isFullscreen,
     gridSize,
   }: VisualizationProps,
@@ -127,19 +125,6 @@ export function useModelsAndOption(
     [chartModel, chartLayout, timelineEvents, renderingContext],
   );
 
-  const selectedOrHoveredTimelineEventIds = useMemo(() => {
-    const ids = [];
-
-    if (selectedTimelineEventIds != null) {
-      ids.push(...selectedTimelineEventIds);
-    }
-    if (hovered?.timelineEvents != null) {
-      ids.push(...hovered.timelineEvents.map((e) => e.id));
-    }
-
-    return ids;
-  }, [selectedTimelineEventIds, hovered?.timelineEvents]);
-
   const tooltipOption = useMemo(() => {
     return getTooltipOption(
       chartModel,
@@ -164,8 +149,7 @@ export function useModelsAndOption(
           chartModel as WaterfallChartModel,
           width,
           chartLayout,
-          timelineEventsModel,
-          selectedOrHoveredTimelineEventIds,
+          hasTimelineEvents,
           settings,
           shouldAnimate,
           renderingContext,
@@ -175,8 +159,7 @@ export function useModelsAndOption(
         baseOption = getScatterPlotOption(
           chartModel as ScatterPlotModel,
           chartLayout,
-          timelineEventsModel,
-          selectedOrHoveredTimelineEventIds,
+          hasTimelineEvents,
           settings,
           width,
           shouldAnimate,
@@ -187,8 +170,7 @@ export function useModelsAndOption(
         baseOption = getCartesianChartOption(
           chartModel as CartesianChartModel,
           chartLayout,
-          timelineEventsModel,
-          selectedOrHoveredTimelineEventIds,
+          hasTimelineEvents,
           settings,
           width,
           shouldAnimate,
@@ -207,11 +189,16 @@ export function useModelsAndOption(
     tooltipOption,
     chartModel,
     chartLayout,
-    timelineEventsModel,
-    selectedOrHoveredTimelineEventIds,
+    hasTimelineEvents,
     settings,
     renderingContext,
   ]);
 
-  return { chartModel, timelineEventsModel, option, renderingContext };
+  return {
+    chartModel,
+    chartLayout,
+    timelineEventsModel,
+    option,
+    renderingContext,
+  };
 }

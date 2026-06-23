@@ -8,8 +8,6 @@ export const LINE_SIZE: Record<LineSize, number> = {
 
 export const Z_INDEXES = {
   brushMirror: 100,
-  // Note: timeline events use echarts' markline option, which has a fixed z
-  // value of 5.
   dataLabels: 8,
   goalLine: 7,
   trendLine: 7,
@@ -43,7 +41,7 @@ export const CHART_STYLE = {
   },
   symbolSize: 6,
   timelineEvents: {
-    height: 14,
+    height: 48,
     minDistance: 16,
     countLabelMargin: 4,
   },

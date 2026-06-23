@@ -6,7 +6,6 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { TimelineEventId } from "metabase-types/api";
 
 import { X_AXIS_DATA_KEY } from "../../constants/dataset";
 import type { ChartLayout } from "../../layout/types";
@@ -20,21 +19,18 @@ import {
 import { buildAxes, buildDimensionAxis } from "../../option/axis";
 import type { EChartsSeriesOption } from "../../option/types";
 import { getSeriesYAxisIndex } from "../../option/utils";
-import type { TimelineEventsModel } from "../../timeline-events/types";
 
 import { buildEChartsScatterSeries } from "./series";
 
 export function getScatterPlotOption(
   chartModel: ScatterPlotModel,
   chartLayout: ChartLayout,
-  timelineEventsModel: TimelineEventsModel | null,
-  selectedTimelineEventsIds: TimelineEventId[],
+  hasTimelineEvents: boolean,
   settings: ComputedVisualizationSettings,
   chartWidth: number,
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption {
-  const hasTimelineEvents = timelineEventsModel != null;
   const isSplitPanels = chartLayout.panelHeight != null;
 
   const visibleSeries = chartModel.seriesModels.filter(
@@ -58,8 +54,6 @@ export function getScatterPlotOption(
   const { grid, seriesOption, splitPanelOverrides } = buildGridAndSeriesOption(
     chartModel,
     chartLayout,
-    timelineEventsModel,
-    selectedTimelineEventsIds,
     settings,
     renderingContext,
     dataSeriesOptions,

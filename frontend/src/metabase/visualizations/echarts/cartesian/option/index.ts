@@ -24,16 +24,10 @@ import {
   buildMetricAxis,
 } from "metabase/visualizations/echarts/cartesian/option/axis";
 import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
-import {
-  type SplitPanelYExtent,
-  getTimelineEventsSeries,
-} from "metabase/visualizations/echarts/cartesian/timeline-events/option";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { TimelineEventId } from "metabase-types/api";
 
 import { CHART_STYLE, Z_INDEXES } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
@@ -159,8 +153,6 @@ export const ensureRoomForLabels = (
 export function buildGridAndSeriesOption(
   chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
-  timelineEventsModel: TimelineEventsModel | null,
-  selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
   dataSeriesOptions: EChartsSeriesOption[],
@@ -185,31 +177,10 @@ export function buildGridAndSeriesOption(
     ? remapTrendLinesToPanels(chartModel, visibleSeries)
     : getTrendLinesOption(chartModel);
 
-  const splitPanelYExtent = isSplitPanels
-    ? getSplitPanelTimelineEventsYExtent(chartLayout, panelCount)
-    : undefined;
-
-  const timelineEventsSeries =
-    timelineEventsModel != null
-      ? getTimelineEventsSeries(
-          timelineEventsModel,
-          selectedTimelineEventsIds,
-          renderingContext,
-          splitPanelYExtent,
-        )
-      : null;
-
   const seriesOption = [
     dataSeriesOptions,
     goalSeriesOption,
     trendSeriesOption,
-    isSplitPanels && timelineEventsSeries
-      ? {
-          ...timelineEventsSeries,
-          xAxisIndex: panelCount - 1,
-          yAxisIndex: panelCount - 1,
-        }
-      : timelineEventsSeries,
   ].flatMap((option) => option ?? []);
 
   const grid: GridOption | GridOption[] = isSplitPanels
@@ -235,14 +206,12 @@ export function buildGridAndSeriesOption(
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
   chartLayout: ChartLayout,
-  timelineEventsModel: TimelineEventsModel | null,
-  selectedTimelineEventsIds: TimelineEventId[],
+  hasTimelineEvents: boolean,
   settings: ComputedVisualizationSettings,
   chartWidth: number,
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
-  const hasTimelineEvents = timelineEventsModel != null;
   const isSplitPanels = chartLayout.panelHeight != null;
 
   const dataSeriesOptions = buildEChartsSeries(
@@ -256,8 +225,6 @@ export const getCartesianChartOption = (
   const { grid, seriesOption, splitPanelOverrides } = buildGridAndSeriesOption(
     chartModel,
     chartLayout,
-    timelineEventsModel,
-    selectedTimelineEventsIds,
     settings,
     renderingContext,
     dataSeriesOptions,
@@ -442,20 +409,6 @@ export function buildSplitPanelGoalSeries(
     xAxisIndex: index,
     yAxisIndex: index,
   }));
-}
-
-export function getSplitPanelTimelineEventsYExtent(
-  chartLayout: ChartLayout,
-  panelCount: number,
-): SplitPanelYExtent {
-  const panelHeight = chartLayout.panelHeight ?? 0;
-  return {
-    topY: chartLayout.padding.top,
-    bottomY:
-      chartLayout.padding.top +
-      (panelCount - 1) * (panelHeight + chartLayout.panelGap) +
-      panelHeight,
-  };
 }
 
 export function buildSplitPanelYAxisLabel(

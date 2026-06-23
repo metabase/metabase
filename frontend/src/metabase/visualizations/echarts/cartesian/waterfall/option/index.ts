@@ -29,7 +29,6 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { TimelineEventId } from "metabase-types/api";
 
 import type { ChartLayout } from "../../layout/types";
 import { isCategoryAxis } from "../../model/guards";
@@ -39,8 +38,6 @@ import {
   getGoalLineParams,
   getGoalLineSeriesOption,
 } from "../../option/goal-line";
-import { getTimelineEventsSeries } from "../../timeline-events/option";
-import type { TimelineEventsModel } from "../../timeline-events/types";
 
 const getLabelLayoutFn = (
   dataset: ChartDataset,
@@ -215,21 +212,11 @@ export const getWaterfallChartOption = (
   chartModel: WaterfallChartModel,
   chartWidth: number,
   chartLayout: ChartLayout,
-  timelineEventsModel: TimelineEventsModel | null,
-  selectedTimelineEventsIds: TimelineEventId[],
+  hasTimelineEvents: boolean,
   settings: ComputedVisualizationSettings,
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
-  const hasTimelineEvents = timelineEventsModel != null;
-  const timelineEventsSeries = hasTimelineEvents
-    ? getTimelineEventsSeries(
-        timelineEventsModel,
-        selectedTimelineEventsIds,
-        renderingContext,
-      )
-    : null;
-
   const dataSeriesOptions = buildEChartsWaterfallSeries(
     chartModel,
     settings,
@@ -247,7 +234,6 @@ export const getWaterfallChartOption = (
   const seriesOption: WaterfallSeriesOption[] = [
     dataSeriesOptions,
     goalSeriesOption,
-    timelineEventsSeries,
   ].flatMap((option) => option ?? []);
 
   const echartsDataset = [{ source: chartModel.transformedDataset }];
