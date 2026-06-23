@@ -145,6 +145,7 @@
    "SsoRelayState"
    "SupportAccessGrantLog"
    "TableRemapping"
+   "TableSyncStatus"
    "TaskHistory"
    "TaskRun"
    "Tenant"

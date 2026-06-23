@@ -1,0 +1,31 @@
+## Track which metabase_table rows were seen during the current metadata sync, so the sync can
+## retire the ones that disappeared from the warehouse without holding the full "seen" set in memory.
+## A separate table (rather than a column on metabase_table) avoids locking.
+
+databaseChangeLog:
+  - changeSet:
+      id: v60.2026-06-23T00:00:00
+      author: ranquild
+      comment: Add metabase_table_sync_status table.
+      changes:
+        - createTable:
+            tableName: metabase_table_sync_status
+            remarks: >-
+              Transient per-sync marker of which metabase_table rows the latest metadata sync saw.
+              Cleared at the start of each database sync, populated as tables are reconciled, and used
+              to retire active tables the sync didn't see -- without holding the seen set in memory.
+            columns:
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: 'PK + FK to metabase_table.id (cascades on table delete)'
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_table_sync_status_ref_table_id
+                    deleteCascade: true
+      rollback:
+        - dropTable:
+            tableName: metabase_table_sync_status

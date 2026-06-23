@@ -110,6 +110,8 @@
     ;; tables to workspace-isolated copies. They aren't portable across instances and
     ;; aren't included in serdes export/import.
     :model/TableRemapping
+    ;; Transient per-sync marker of which tables a metadata sync saw; not portable content.
+    :model/TableSyncStatus
     :model/Secret
     :model/Session
     :model/SourceDimensionDaily
