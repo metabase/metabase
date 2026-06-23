@@ -10,6 +10,7 @@ import { getTreemapColors, getTreemapLeafColor } from "../model/colors";
 import { getTreemapNodeKey } from "../model/data";
 import { getTreemapPercentOfTotalFormatter } from "../model/formatters";
 import type { ParentLabelLayout, TreemapLabelLayout } from "../model/labels";
+import type { TreemapMeasuredLabelLayouts } from "../model/measure";
 import { getTreemapNodeId, hasChildren } from "../model/tree";
 import type {
   TreemapNode,
@@ -474,4 +475,23 @@ function getUpperLabelOverride({
   }
 
   return basicLabel;
+}
+
+export function getStaticTreemapOption(
+  config: TreemapChartOptionConfig,
+  layouts?: Partial<TreemapMeasuredLabelLayouts>,
+): {
+  series: TreemapChartSeriesOption;
+  animation: boolean;
+} {
+  const option = getTreemapChartOption({
+    ...config,
+    labelLayout: layouts?.leafLabelLayout,
+    parentLabelLayout: layouts?.parentLabelLayout,
+  });
+
+  return {
+    ...option,
+    animation: false,
+  };
 }
