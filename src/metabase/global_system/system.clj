@@ -1,7 +1,7 @@
 (ns metabase.global-system.system
   (:require
    [metabase.global-system.mutable-component :as mc])
-  (:import (clojure.lang Var)))
+  (:import (clojure.lang IDeref Var)))
 
 (set! *warn-on-reflection* true)
 
@@ -9,8 +9,10 @@
   (atom {}))
 
 (defrecord ComponentHandle [k]
+  IDeref
+  (deref [_] (get @*system* k))
+
   mc/MutableComponentHandle
-  (current [_] (get @*system* k))
   (root [_] (get @(.getRawRoot ^Var #'*system*) k))
   (binding [_ new-value thunk]
     (clojure.core/binding [*system* (atom (assoc @*system* k new-value))]

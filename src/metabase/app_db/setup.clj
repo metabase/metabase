@@ -213,7 +213,7 @@
         (if (encryption/default-encryption-enabled?)
           (do
             (log/info "New MB_ENCRYPTION_SECRET_KEY environment variable set. Encrypting database...")
-            (let [app-db (mc/current (mdb.connection/application-db-handle))]
+            (let [app-db @(mdb.connection/application-db-handle)]
               (mdb.encryption/encrypt-db (:db-type app-db) (:data-source app-db) nil))
             (log/info "Database encrypted..." (u/emoji "✅")))
           (log/debug "Database not encrypted and MB_ENCRYPTION_SECRET_KEY env variable not set."))))))

@@ -4,8 +4,6 @@
 
 (defprotocol MutableComponentHandle
   "Handle for reading and mutating a single component's stored value."
-  (current [handle]
-    "Returns the current value (respecting any thread-local rebinding).")
   (root [handle]
     "Returns the root value, ignoring thread-local rebinding.")
   (binding [handle new-value thunk]

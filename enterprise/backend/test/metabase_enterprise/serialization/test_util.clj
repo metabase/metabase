@@ -68,7 +68,7 @@
      (mc/binding handle#
        (mdb.connection/application-db :h2 ~data-source)
        (fn []
-         (with-open [conn# (.getConnection ^javax.sql.DataSource (mc/current handle#))]
+         (with-open [conn# (.getConnection ^javax.sql.DataSource @handle#)]
            (binding [t2.conn/*current-connectable* conn#]
              ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
              ;;   redefs not great for parallelism

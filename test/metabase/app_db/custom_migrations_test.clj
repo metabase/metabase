@@ -1830,7 +1830,7 @@
             ;; promote the currently-bound app DB to the var's root so quartz triggers running on different threads
             ;; see the same app DB as this test, then restore the prior root on exit
             (let [handle (mdb.connection/application-db-handle)]
-              (with-redef handle (mc/current handle)
+              (with-redef handle @handle
                 (fn []
                   ;; simulate starting MB after migrate up, which will trigger this function
                   (task/init! ::task.send-pulses/SendPulses)
