@@ -42,7 +42,7 @@
   "Construct the `transform-details` map consumed by `driver/run-transform!`.
 
   `compiled`      — the `::compiled` map from `resolve-test-transform` (verbatim).
-  `output-target` — `{:schema :table}` spec from a scratch output-target builder.
+  `output-target` — `{:schema :table :db}` spec from a scratch output-target builder.
   `db-id`         — integer database id.
   `db`            — `:model/Database` row.
   `drv`           — driver keyword.
@@ -60,7 +60,7 @@
    :conn-spec      (driver/connection-spec drv db)
    :query          compiled
    :output-schema  (:schema output-target)
-   :output-db      nil
+   :output-db      (:db output-target)
    :output-table   (transforms-base.u/qualified-table-name
                     drv
                     ;; qualified-table-name expects {:schema ... :name ...}
@@ -73,18 +73,29 @@
   Throws on QP error.
 
   `drv` is the driver keyword, used to produce properly quoted identifier names.
+  `output-target` must be a `{:schema :table :db}` spec as returned by
+  `scratch-output-target`. When `:db` is non-nil the SELECT uses a 3-segment
+  `catalog.schema.table` reference; otherwise it falls back to `schema.table` or
+  bare `table`. This is required for drivers where the catalog must appear in
+  emitted SQL (BigQuery, SQL Server).
+
   Schema and table are IDENTIFIERS, not values — they must be driver-quoted, not
   passed as JDBC parameters.  `sql.u/quote-name` produces the driver-appropriate
   quoting (double quotes for Postgres/ANSI, backticks for MySQL, etc.)."
   [db-id drv output-target]
-  (let [schema (:schema output-target)
-        table  (:table output-target)
-        sql    (if schema
-                 (str "SELECT * FROM " (sql.u/quote-name drv :table schema table))
-                 (str "SELECT * FROM " (sql.u/quote-name drv :table table)))
-        result (qp/process-query {:database db-id
-                                  :type     :native
-                                  :native   {:query sql}})]
+  (let [catalog (:db output-target)
+        schema  (:schema output-target)
+        table   (:table output-target)
+        sql     (cond
+                  (and catalog schema)
+                  (str "SELECT * FROM " (sql.u/quote-name drv :table catalog schema table))
+                  schema
+                  (str "SELECT * FROM " (sql.u/quote-name drv :table schema table))
+                  :else
+                  (str "SELECT * FROM " (sql.u/quote-name drv :table table)))
+        result  (qp/process-query {:database db-id
+                                   :type     :native
+                                   :native   {:query sql}})]
     (when (not= :completed (:status result))
       (throw (ex-info
               (str "Failed to read back scratch output table " (pr-str table) ": QP returned "

@@ -51,6 +51,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.transforms.test-run.core :as core]
    [metabase.transforms.test-run.diff :as diff]
    [metabase.transforms.test-run.execute :as execute]
@@ -118,8 +119,10 @@
   scratch output spec and `:parser-backend`). Appends nothing to shared state —
   the caller threads the mapping and tracks scratch tables."
   [{:keys [transform mapping db db-id drv schema nonce input-tables timeout-ms]}]
-  (let [out-spec  (scratch/scratch-output-target schema nonce
-                                                 (str "out_" (:id transform)))
+  (let [catalog   (driver.sql/db-slot-value drv db)
+        out-spec  (scratch/scratch-output-target schema nonce
+                                                 (str "out_" (:id transform))
+                                                 catalog)
         artifact  (resolve/resolve-test-transform transform mapping out-spec
                                                   {:db db :input-tables input-tables})
         all-names (conj (mapv :table (vals mapping)) (:table out-spec))]

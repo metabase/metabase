@@ -48,6 +48,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.query-processor.core :as qp]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log])
@@ -154,19 +155,25 @@
 (defn scratch-output-target
   "Build the output target spec for a test run's output scratch table.
 
-  `schema` — the target schema string (from the transform target's schema).
-  `nonce`  — 8-char nonce for this run (from [[new-nonce]]).
-  `suffix` — name suffix for the output table (default `\"out\"`). A chained run
-             passes a per-node suffix (e.g. `\"out_<transform-id>\"`) so each
-             node's output gets a distinct scratch table.
+  `schema`  — the target schema string (from the transform target's schema).
+  `nonce`   — 8-char nonce for this run (from [[new-nonce]]).
+  `suffix`  — name suffix for the output table (default `\"out\"`). A chained run
+              passes a per-node suffix (e.g. `\"out_<transform-id>\"`) so each
+              node's output gets a distinct scratch table.
+  `catalog` — the driver's db-slot value (from `driver.sql/db-slot-value`), or nil
+              for drivers that do not use a catalog segment (postgres, h2, redshift,
+              oracle). When non-nil, callers are responsible for incorporating it
+              into DDL, read-back SQL, and `build-transform-details :output-db`.
 
-  Returns `{:schema <string> :table <string>}`, the output table spec that
-  `cleanup!` and the orchestrator's read-back query consume."
+  Returns `{:schema <string> :table <string> :db <string-or-nil>}`."
   ([^String schema ^String nonce]
-   (scratch-output-target schema nonce "out"))
+   (scratch-output-target schema nonce "out" nil))
   ([^String schema ^String nonce ^String suffix]
+   (scratch-output-target schema nonce suffix nil))
+  ([^String schema ^String nonce ^String suffix catalog]
    {:schema schema
-    :table  (scratch-table-name nonce suffix)}))
+    :table  (scratch-table-name nonce suffix)
+    :db     catalog}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Seeding
@@ -196,7 +203,9 @@
   - `nonce`       — 8-char string from [[new-nonce]]; unique per run.
 
   Returns a mapping `{real-spec → scratch-spec}` where each spec is
-  `{:schema <string> :table <string>}`.
+  `{:schema <string> :table <string> :db <string-or-nil>}`. The `:db` value is the
+  driver's catalog/project string (`driver.sql/db-slot-value`), or nil for drivers
+  without a catalog segment.
 
   The real-spec keys are `{:schema (:schema table-info) :table (:name table-info)}`.
   `resolve`'s verify normalization compares against exactly this shape
@@ -206,6 +215,7 @@
   scratch tables (best-effort, logs failures) then rethrows a typed ex-info."
   [db-id db ^String schema seed-inputs nonce]
   (let [drv     (keyword (:engine db))
+        catalog (driver.sql/db-slot-value drv db)
         created (atom [])
         mapping (atom {})]
     (try
@@ -222,7 +232,7 @@
                                       {:type :rows
                                        :data (:rows fixture)})
           ;; Record the mapping
-          (swap! mapping assoc real-spec {:schema schema :table scratch-name})))
+          (swap! mapping assoc real-spec {:schema schema :table scratch-name :db catalog})))
       @mapping
       (catch Throwable e
         ;; Best-effort drop of already-created tables

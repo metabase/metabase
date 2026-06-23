@@ -57,6 +57,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.transforms.test-run.diff :as diff]
    [metabase.transforms.test-run.execute :as execute]
    [metabase.transforms.test-run.fixtures :as fixtures]
@@ -144,8 +145,11 @@
       ;; conn-spec construction (inside build-transform-details) reads
       ;; *connection-type* = :transform via effective-details.
       (try
-        (let [;; Step 4: seed scratch input tables.
-              output-spec  (scratch/scratch-output-target output-schema nonce)
+        (let [;; Derive the driver early so we can thread the catalog through scratch specs.
+              drv-early    (keyword (:engine db))
+              catalog      (driver.sql/db-slot-value drv-early db)
+              ;; Step 4: seed scratch input tables.
+              output-spec  (scratch/scratch-output-target output-schema nonce "out" catalog)
               _            (reset! output-spec* output-spec)
               mapping      (scratch/seed! db-id db output-schema seed-inputs nonce)
               _            (reset! mapping* mapping)
