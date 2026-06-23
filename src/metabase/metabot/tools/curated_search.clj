@@ -1,24 +1,19 @@
 (ns metabase.metabot.tools.curated-search
   "Metabot `retrieve_library_entities` tool, backed by the library entity index.
 
-  Instead of ranking the whole instance, it matches the user's request by vector similarity against the
-  per-value documents of every library entity — each entity's name, its description, and any OSI
-  `ai_context` synonyms/examples. The index has many documents per entity, so raw vector hits are deduped
-  to distinct entities and a small number returned, best-first.
+  Matches the user's request by vector similarity against the per-value documents of every library entity
+  — each entity's name, description, and any OSI `ai_context` synonyms/examples — then dedupes the
+  many-per-entity hits to distinct entities and returns a handful, best-first.
 
-  Each match carries the `matched_on` document (so the agent sees why it matched) and the entity's
-  `usage_instructions` (the OSI `ai_context` instructions: guidance on how to use that entity).
-  The matched entity refs are hydrated into the same enriched search-result shape the general `search`
-  tool returns (`portable_entity_id`, fully-qualified names, database names, base tables), so the agent
-  can build a query inline without an extra `read_resource` round-trip.
-
-  Even where a general search is also offered, the tool surfaces the raw cosine `similarity` of each
-  match and flags low-confidence results, so a library miss reads as a miss rather than a
-  confident-but-wrong hit.
-  The similarity search runs in the enterprise pgvector store via [[metabase.curated-search.core]].
+  Each match carries the `matched_on` document and the entity's `usage_instructions`, and is hydrated into
+  the same enriched shape the general `search` tool returns (`portable_entity_id`, fully-qualified names,
+  base tables), so the agent can build a query inline without a `read_resource` round-trip.
+  Each match's raw cosine `similarity` is surfaced and low-confidence ones flagged, so a library miss
+  reads as a miss rather than a confident-but-wrong hit.
 
   The var/namespace name (`curated-search`) is retained deliberately — the module is a home for
-  information-retrieval generally, not 1:1 with this index or tool."
+  information retrieval generally, not 1:1 with this index or tool.
+  Runs in the enterprise pgvector store via [[metabase.curated-search.core]]."
   (:require
    [clojure.string :as str]
    [metabase.curated-search.core :as curated-search]

@@ -5,6 +5,7 @@
   OSS shims live in [[metabase.curated-search.mirror]]; the background sync they nudge is the
   [[metabase-enterprise.curated-search.task.sync]] Quartz job."
   (:require
+   [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
@@ -49,27 +50,41 @@
   (when (available?)
     (task/trigger-now! sync-job-key)))
 
-;; Scoring shaped like regular search (metabase.search.scoring): each factor contributes weight * score.
-;; Similarity (1 - cosine distance) is the only factor for now.
-;; TODO (Chris 2026-06-23) -- consider a doc_type weight (boost name/synonym over example) once tuned.
-(def ^:private similarity-weight 1.0)
 (def ^:private default-limit 10)
+
+(def ^:private weights
+  "Blended-score weights, keyed like regular search's scorer weights (a namespaced keyword per variant).
+  Similarity is the base; the slight per-doc_type bump lets a name match edge out a synonym on a tie."
+  {:similarity       1.0
+   :doc-type/name    0.02
+   :doc-type/synonym 0.01})
+
+(defn- doc-type-boost ^double [doc-type]
+  (double (get weights (keyword "doc-type" doc-type) 0.0)))
 
 (defn- scorer [nm score weight]
   (let [score (double score) weight (double weight)]
     {:name nm :score score :weight weight :contribution (* score weight)}))
 
 (defn- score
-  "Build a weighted-scorer breakdown for one row, shaped like regular search's scoring.
-  Returns a `:scores` vector of `{:name :score :weight :contribution}` plus the weighted-sum
-  `:total_score`."
-  [{:keys [distance]}]
-  (let [scores [(scorer :similarity (- 1.0 (double distance)) similarity-weight)]]
+  "Weighted-scorer breakdown for one row: a `:scores` vector of `{:name :score :weight :contribution}`
+  plus the weighted-sum `:total_score`."
+  [{:keys [distance doc_type]}]
+  (let [scores [(scorer :similarity (- 1.0 (double distance)) (:similarity weights))
+                (scorer :doc-type 1.0 (doc-type-boost doc_type))]]
     {:scores      scores
      :total_score (reduce + (map :contribution scores))}))
 
+(defn- ranking-sql
+  "`distance - doc_type_boost`: a boosted doc_type sorts earlier even when slightly farther."
+  [distance-expr]
+  (let [cases (str/join " " (for [[k w] weights :when (= "doc-type" (namespace k))]
+                              (format "WHEN doc_type = '%s' THEN %s" (name k) w)))]
+    (format "(%s) - (CASE %s ELSE 0.0 END)" distance-expr cases)))
+
 (defenterprise search
-  "Find the library-entity documents nearest to `user-search-prompt` by cosine distance, up to `limit`.
+  "Find the library-entity documents best matching `user-search-prompt`, up to `limit`, ranked by a
+  blended score (cosine similarity plus a slight doc_type bump).
   Each result is shaped `{:entity {:model :id} :doc_type :doc_text :instructions :score}`, best score
   first; the caller dedupes the (many-per-entity) docs down to distinct entities.
   Returns [] when the pgvector store is unconfigured."
@@ -90,7 +105,7 @@
                        (-> (sql.helpers/select :entity_type :entity_local_id :doc_type :doc_text
                                                :instructions [[:raw distance] :distance])
                            (sql.helpers/from (keyword index-table/*vectors-table*))
-                           (sql.helpers/order-by [[:raw distance] :asc])
+                           (sql.helpers/order-by [[:raw (ranking-sql distance)] :asc])
                            (sql.helpers/limit limit)
                            (sql/format {:quoted true}))
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})

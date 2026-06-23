@@ -12,8 +12,8 @@
   - a single-row meta table recording the embedding model identity and schema version the vectors table
     was built for.
 
-  There is deliberately no HNSW index: search orders by similarity over a small curated set, an exact
-  scan is microseconds, and the per-entity dedup happens in app code rather than SQL.
+  There is deliberately no HNSW index: search orders by a blended score (similarity plus a doc_type bump),
+  which HNSW can't accelerate, and an exact scan over this small curated set is microseconds.
 
   [[ensure-tables!]] is the only entry point: it idempotently creates both tables and, when the
   configured embedding model or the schema version no longer matches the meta row, drops and recreates

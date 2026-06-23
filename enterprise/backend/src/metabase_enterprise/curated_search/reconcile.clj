@@ -1,50 +1,41 @@
 (ns metabase-enterprise.curated-search.reconcile
   "Reconciles the pgvector `library_entity_index` with the authoritative appdb.
 
-  The index holds many rows per library entity — one *embedded* document per value: the entity's name,
-  its description, and each synonym/example from its OSI `ai_context`. Each row's primary key `doc_id` is
-  content-addressed over `entity_type|entity_local_id|doc_type|doc_text`, so a text edit mints a new row.
-  The entity's `ai_context` instructions ride along on every one of its rows (carried, not embedded).
+  The index holds one embedded document per library-entity value — the entity's name, its description, and
+  each `ai_context` synonym/example.
+  The primary key `doc_id` is content-addressed over `entity_type|entity_local_id|doc_type|doc_text`, so
+  editing text mints a new row; the entity's `ai_context` instructions are carried on every row but not
+  embedded.
 
-  Each run derives the full *desired* doc set from two appdb sources — library membership (the curated
-  Collection tree: published library Tables, library metric/model Cards, and the Measures/Segments on
-  those Tables) and `osi_ai_context` — and reconciles the index to it:
+  Each run derives the full desired doc set from library membership (published Tables, library
+  metric/model Cards, and the Measures/Segments on those Tables) plus `osi_ai_context`, then inserts docs
+  whose `doc_id` is absent (embedding them), UPDATEs `instructions` in place on docs that already exist,
+  and deletes docs with no desired counterpart.
+  That delete is the GC: an entity leaving the library, a removed synonym/example, and the stale half of
+  an edited value all converge there.
+  Re-deriving from the appdb every run self-heals any missed write (pgvector downtime, a crashed node, an
+  import that bypassed the model hooks).
 
-  - rows whose `doc_id` is absent are embedded and inserted;
-  - rows already present whose `instructions` drifted are UPDATEd in place (no re-embedding — the
-    embedded `doc_text` is unchanged, which is the whole reason `instructions` is excluded from `doc_id`);
-  - rows with no desired counterpart are deleted. This set-difference IS the GC: an entity leaving the
-    library, a deleted synonym/example, and the stale half of any edited value (a `doc_text` edit makes a
-    new `doc_id`, orphaning the old) all converge here.
-
-  Because each run re-derives the index from the appdb, any missed write — pgvector downtime, a crashed
-  node, an import that bypassed the model hooks — is repaired on the next run with no operator action.
-  Runs from the [[metabase-enterprise.curated-search.task.sync]] Quartz job; callers supply the
-  datasource and embedding model so this namespace reads no settings itself.
+  Runs from the [[metabase-enterprise.curated-search.task.sync]] Quartz job; callers pass the datasource
+  and embedding model, so this namespace reads no settings.
 
   ## Scalability — full-diff now, incremental later
 
-  This is a *full diff* every run: O(total index size), not O(changes). That is a deliberate choice, and
-  it is fine here:
+  The diff is O(total index size) per run, not O(changes), and that is deliberate.
+  Embeddings — the only expensive resource — are already change-scoped: only a new `doc_text` is embedded,
+  so an idle run embeds nothing.
+  The O(total) work is cheap metadata bookkeeping over the *library* (the bounded curated tier), never the
+  whole instance, so it stays comfortable into the tens of thousands of docs.
 
-  - The expensive resource — embeddings (latency + $) — is ALREADY change-scoped in this design: only a
-    genuinely new `doc_text` (a new `doc_id`) is embedded; an idle reconcile embeds nothing.
-  - The only O(total) work is cheap metadata bookkeeping: the library enumeration queries plus pulling
-    the stored `doc_id`/`instructions` set to diff. And it runs over the LIBRARY — the bounded, curated
-    tier (published tables + metric cards + their measures/segments) — never the whole instance. The
-    library scoping is itself the scalability guard. This is comfortable into the tens of thousands of docs.
+  Mark-and-sweep (stamp a generation, `DELETE WHERE gen < current`) would be a net loss: it trades the
+  cheap full read for a full write every run — WAL, dead tuples, vacuum pressure on pgvector — while the
+  real cost is already incremental.
 
-  A mark-and-sweep (stamp every desired row with a generation, then `DELETE WHERE gen < current`) is NOT
-  an improvement here: it trades the cheap full *read* for a full *write* to every desired row every run,
-  i.e. write amplification, dead tuples and vacuum pressure on pgvector — a net loss on a 30s loop while
-  the real cost (embeddings) is already incremental.
-
-  The real lever, IF a library ever outgrows full-diff, is event/watermark incrementality: drive
-  reconcile off the appdb change that already nudges this job — carry the changed entity through and
-  reconcile only that entity's doc slice — plus an `updated_at` watermark for membership changes, keeping
-  a periodic full reconcile as the self-healing backstop. That makes per-tick cost O(changes). It needs a
-  `(entity_type, entity_local_id)` index re-added (for the per-entity slice) and reliable change capture.
-  Build it behind this same `reconcile!` interface only when real data demands it — not preemptively."
+  If a library ever outgrows full-diff, the lever is event/watermark incrementality: reconcile only the
+  changed entity's doc slice (the appdb write already nudges this job), with an `updated_at` watermark for
+  membership changes and a periodic full reconcile as the backstop.
+  That needs a `(entity_type, entity_local_id)` index and reliable change capture — build it behind this
+  same `reconcile!` interface only when data demands it."
   (:require
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
@@ -102,9 +93,9 @@
      (for [e (:examples ai_context) :when (not (str/blank? e))] (doc "example" e)))))
 
 (defn- library-entities
-  "Uniform `{:entity_type :entity_local_id :name :description}` maps for every entity in the library.
-  Library-scoped and headless — runs with no current user, so it must NOT permission-filter."
+  "Uniform `{:entity_type :entity_local_id :name :description}` maps for every entity in the library."
   []
+  ;; Headless: the reconcile job runs with no current user, so these selects must NOT permission-filter.
   (when-let [lib (collections/library-collection)]
     (when-let [lib-ids (not-empty (collections/descendant-ids lib))]
       (let [;; :card_schema is mandatory in any column-scoped Card SELECT (toucan guard).
@@ -129,20 +120,20 @@
          (map (fn [s] {:entity_type "segment" :entity_local_id (:id s) :name (:name s) :description (:description s)}) segments))))))
 
 (defn- ai-context-by-entity
-  "Map of `[entity_type entity_local_id] -> ai_context` for every `osi_ai_context` row.
-  Rows whose entity is not in the library are simply never looked up."
+  "Map of `[entity_type entity_local_id] -> ai_context` for every `osi_ai_context` row."
   []
   (into {}
         (map (fn [{e :entity ac :ai_context}] [[(:model e) (:id e)] ac]))
         (t2/select [:model/CuratedSearchEntry :entity :ai_context])))
 
 (defn- desired-docs
-  "The full set of docs the index should hold, deduped by `doc_id` (a synonym equal to two others, etc.)."
+  "The full set of docs the index should hold, deduped by `doc_id` (identical values collapse to one)."
   []
   (let [ac-by-entity (ai-context-by-entity)]
     (->> (library-entities)
          (mapcat (fn [{:keys [entity_type entity_local_id] :as ent}]
                    (entity->docs ent (get ac-by-entity [entity_type entity_local_id]))))
+         ;; key by doc_id so a value that appears twice (e.g. a synonym equal to the name) collapses.
          (reduce (fn [acc d] (assoc acc (:doc_id d) d)) {})
          vals)))
 

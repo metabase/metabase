@@ -19,13 +19,18 @@
 
 (deftest score-shape-matches-regular-search-test
   (let [score (var-get #'curated-search.core/score)]
-    (testing "weighted-scorer breakdown: similarity factor + total_score (similarity-only for now)"
-      (is (=? {:scores [{:name :similarity :score (approx 0.8) :weight 1.0 :contribution (approx 0.8)}]
-               :total_score (approx 0.8)}
-              (score {:distance 0.2}))))
+    (testing "weighted-scorer breakdown: similarity factor + doc_type bump + total_score"
+      (is (=? {:scores [{:name :similarity :score (approx 0.8) :weight 1.0 :contribution (approx 0.8)}
+                        {:name :doc-type :score 1.0 :weight (approx 0.02) :contribution (approx 0.02)}]
+               :total_score (approx 0.82)}
+              (score {:distance 0.2 :doc_type "name"}))))
+    (testing "the doc_type bump favors name over synonym, and is zero for unweighted types"
+      (is (> (:total_score (score {:distance 0.2 :doc_type "name"}))
+             (:total_score (score {:distance 0.2 :doc_type "synonym"}))))
+      (is (=? {:total_score (approx 0.8)} (score {:distance 0.2 :doc_type "example"}))))
     (testing "a nearer document (smaller distance) scores strictly higher"
-      (is (> (:total_score (score {:distance 0.1}))
-             (:total_score (score {:distance 0.5})))))))
+      (is (> (:total_score (score {:distance 0.1 :doc_type "name"}))
+             (:total_score (score {:distance 0.5 :doc_type "name"})))))))
 
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
@@ -138,6 +143,41 @@
                         (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
                         (is (empty? (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" WHERE doc_type = 'synonym' AND entity_local_id = %d"
                                                                index-table/*vectors-table* table-id)])))))
+                    (finally
+                      (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
+                                              index-table/*vectors-table* ", "
+                                              index-table/*meta-table*)]))))))))))))
+
+(deftest ^:sequential doc-type-boost-breaks-ties-test
+  (testing "on a distance tie, a name match outranks a synonym match (blended ORDER BY, not raw NN)"
+    (when semantic.db.datasource/db-url
+      (mt/with-premium-features #{:library :semantic-search}
+        (let [suffix  (System/nanoTime)
+              ds      (semantic.db.datasource/ensure-initialized-data-source!)
+              q       "the query"
+              synonym "a curated synonym"]
+          (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                      (constantly semantic.tu/mock-embedding-model)]
+            (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
+                      index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
+              ;; alpha's name and beta's curated synonym both tie the query exactly; beta's name is orthogonal.
+              (semantic.tu/with-mock-embeddings {q       [1.0 0.0 0.0 0.0]
+                                                 "alpha" [1.0 0.0 0.0 0.0]
+                                                 synonym [1.0 0.0 0.0 0.0]
+                                                 "beta"  [0.0 1.0 0.0 0.0]}
+                (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
+                               :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
+                               :model/Database   {db-id :id}    {}
+                               :model/Table      {alpha :id}    {:db_id db-id :collection_id data-id :is_published true
+                                                                 :active true :name "alpha" :display_name "alpha"}
+                               :model/Table      {beta :id}     {:db_id db-id :collection_id data-id :is_published true
+                                                                 :active true :name "beta" :display_name "beta"}]
+                  (try
+                    (put-ai-context! {:model "table" :id beta} {:synonyms [synonym]})
+                    (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
+                    ;; raw NN would tie both at distance 0; the 0.02 vs 0.01 doc_type bump puts alpha's name first.
+                    (is (= [[alpha "name"] [beta "synonym"]]
+                           (mapv (juxt (comp :id :entity) :doc_type) (take 2 (mirror/search q 10)))))
                     (finally
                       (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
                                               index-table/*vectors-table* ", "
