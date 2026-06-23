@@ -231,6 +231,29 @@
        (json/encode (schema.v2/check-ui-message-chunk "SSE event" payload))
        "\n"))
 
+(defn- error-part->sse-events
+  "The AI SDK SSE event map(s) a streamed `:error` part serializes to. Every
+  error yields an `error` event carrying the message; typed errors (those with
+  an `:error-code`) additionally lead with a `data-error_details` event so
+  clients can branch on the code (e.g. the usage-limit upgrade prompt)."
+  [{:keys [error]}]
+  (let [msg        (or (:message error) (str error))
+        error-code (some-> (:error-code error) name)]
+    (cond-> []
+      error-code (conj {:type "data-error_details"
+                        :id   (mkid)
+                        :data {:message msg :error_code error-code}})
+      true       (conj {:type "error" :errorText msg}))))
+
+(defn format-error-line
+  "Render a streamed `:error` part as its AI SDK SSE event line(s), for injecting
+  a well-formed failure into a stream that has already started after the HTTP
+  response was committed — the out-of-band counterpart to the `:error` branch of
+  [[parts->aisdk-sse-xf]], sharing [[error-part->sse-events]]. Joins multi-event
+  payloads with the blank-line boundary; the caller appends the final newline."
+  [error-part]
+  (str/join "\n" (map format-sse-event (error-part->sse-events error-part))))
+
 (defn- ->message-metadata
   "Translate accumulated per-model usage into the `finish` event's message
   metadata.
@@ -381,18 +404,9 @@
                                             :data (:data part)}))
 
               :error
-              ;; The error event only carries text; typed errors additionally
-              ;; emit a data part so the client can branch on the code (e.g.
-              ;; the usage-limit upgrade prompt).
-              (let [error      (:error part)
-                    msg        (or (:message error) (str error))
-                    error-code (some-> (:error-code error) name)]
+              (do
                 (vreset! error? true)
-                (cond-> result
-                  error-code (rf (format-sse-event {:type "data-error_details"
-                                                    :id   (mkid)
-                                                    :data {:message msg :error_code error-code}}))
-                  true       (rf (format-sse-event {:type "error" :errorText msg}))))
+                (reduce rf result (map format-sse-event (error-part->sse-events part))))
 
               :finish
               result

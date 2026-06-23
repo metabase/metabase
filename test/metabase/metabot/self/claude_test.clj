@@ -47,7 +47,8 @@
           parts (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
           err   (m/find-first #(= :error (:type %)) parts)]
       (is (=? {:message "Overloaded"} (:error err)))
-      (is (= "3:\"Overloaded\"" (self.core/format-error-line err))))))
+      (is (= (self.core/format-sse-event {:type "error" :errorText "Overloaded"})
+             (self.core/format-error-line err))))))
 
 (deftest ^:parallel claude-tool-input-conv-test
   (let [raw-chunks (fixture "claude-tool-input"
