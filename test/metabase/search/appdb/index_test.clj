@@ -566,28 +566,21 @@
                              [p ds])))
                    table->descendants))))))
 
-(deftest reset-index!-keeps-serving-index-test
+(deftest ^:synchronized reset-index!-keeps-serving-index-test
   ;; reset-index! must never blank out search: when a complete index is already serving, it builds the
   ;; replacement as :pending and leaves the old :active table answering queries until the caller populates
   ;; and rotates. It only activates a fresh empty table immediately when nothing is serving.
-  (when (search/supports-index?)
-    (binding [search.spec/*testing-only-index-version-hash* "reset-signal-test"]
-      (try
-        (testing ":activated when nothing is serving — a fresh empty table becomes active immediately"
-          (search.engine/reset-tracking! :search.engine/appdb)
-          (is (= :activated (search.index/reset-index!)))
-          (is (search.table/exists? (search.index/active-table)) "fresh table is active and exists")
-          (is (nil? (search.index/pending-table)) "no pending left behind"))
-        (testing ":pending when a complete index is serving — old active kept, replacement is pending"
-          (let [serving (search.index/active-table)]
-            (is (= :pending (search.index/reset-index!)))
-            (is (= serving (search.index/active-table)) "old active still serving queries")
-            (is (some? (search.index/pending-table)) "replacement created as pending")
-            (is (not= serving (search.index/pending-table)) "pending is a different, empty table")))
-        (finally
-          (search.engine/reset-tracking! :search.engine/appdb)
-          (t2/delete! :model/SearchIndexMetadata :version "reset-signal-test")
-          (#'search.table/delete-obsolete-tables!))))))
+  (search.tu/with-temp-real-index "reset-signal-test"
+    (testing ":activated when nothing is serving — a fresh empty table becomes active immediately"
+      (is (= :activated (search.index/reset-index!)))
+      (is (search.table/exists? (search.index/active-table)) "fresh table is active and exists")
+      (is (nil? (search.index/pending-table)) "no pending left behind"))
+    (testing ":pending when a complete index is serving — old active kept, replacement is pending"
+      (let [serving (search.index/active-table)]
+        (is (= :pending (search.index/reset-index!)))
+        (is (= serving (search.index/active-table)) "old active still serving queries")
+        (is (some? (search.index/pending-table)) "replacement created as pending")
+        (is (not= serving (search.index/pending-table)) "pending is a different, empty table")))))
 
 (deftest ^:synchronized pending-rebuild-keeps-serving-old-index-test
   ;; The headline :pending win, end to end: when a complete index is already serving, a forced rebuild creates
@@ -595,45 +588,38 @@
   ;; build finishes, then rotates atomically — search is never blanked mid-rebuild. (writer-test covers the
   ;; per-batch routing; reset-index!-keeps-serving-index-test covers reset-index!'s :pending signal; this
   ;; covers the full init! populate-then-rotate flow with live queries.)
-  (when (search/supports-index?)
-    (binding [search.spec/*testing-only-index-version-hash* "serving-continuity-test"
-              search.ingestion/*force-sync*                 true]
-      (try
-        (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User 1) {:id 1})
-                       :model/Collection {col-id :id} {:name "Collection"}
-                       :model/Card       {}           {:name "Serving Continuity Probe" :collection_id col-id}]
-          (search.engine/reset-tracking! :search.engine/appdb)
-          ;; Build the initial complete index (t1) containing the probe card.
-          (search.engine/reindex! :search.engine/appdb {})
-          (let [t1            (search.index/active-table)
-                observed      (atom nil)
-                real-populate (deref #'appdb.core/populate-index!)]
+  (search.tu/with-temp-real-index "serving-continuity-test"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User 1) {:id 1})
+                     :model/Collection {col-id :id} {:name "Collection"}
+                     :model/Card       {}           {:name "Serving Continuity Probe" :collection_id col-id}]
+        ;; Build the initial complete index (t1) containing the probe card.
+        (search.engine/reindex! :search.engine/appdb {})
+        (let [t1            (search.index/active-table)
+              observed      (atom nil)
+              real-populate (deref #'appdb.core/populate-index!)]
+          (is (pos? (count (search.index/search "Serving Continuity Probe")))
+              "the original index serves the probe card")
+          ;; Force a rebuild. The pending replacement is created by reset-index! before populate runs, so we
+          ;; snapshot the world at the start of the populate step (mid-rebuild, pre-rotation), then let the
+          ;; real populate fill the pending table so activation has something to rotate in.
+          (with-redefs [appdb.core/populate-index!
+                        (fn [mode]
+                          (reset! observed {:active  (search.index/active-table)
+                                            :pending (search.index/pending-table)
+                                            :hits    (count (search.index/search "Serving Continuity Probe"))})
+                          (real-populate mode))]
+            (search.engine/init! :search.engine/appdb {:force-reset? true}))
+          (testing "mid-rebuild the old index is still active and answering queries"
+            (is (= t1 (:active @observed)) "old active table is unchanged during the build")
+            (is (some? (:pending @observed)) "the replacement is built as a separate pending table")
+            (is (not= t1 (:pending @observed)) "pending is a different table from the serving active one")
+            (is (pos? (:hits @observed)) "search still returns results from the old index mid-rebuild"))
+          (testing "after the build the replacement is rotated in atomically"
+            (is (not= t1 (search.index/active-table)) "a new table is now active")
+            (is (= (:pending @observed) (search.index/active-table)) "the pending we built became active")
             (is (pos? (count (search.index/search "Serving Continuity Probe")))
-                "the original index serves the probe card")
-            ;; Force a rebuild. The pending replacement is created by reset-index! before populate runs, so we
-            ;; snapshot the world at the start of the populate step (mid-rebuild, pre-rotation), then let the
-            ;; real populate fill the pending table so activation has something to rotate in.
-            (with-redefs [appdb.core/populate-index!
-                          (fn [mode]
-                            (reset! observed {:active  (search.index/active-table)
-                                              :pending (search.index/pending-table)
-                                              :hits    (count (search.index/search "Serving Continuity Probe"))})
-                            (real-populate mode))]
-              (search.engine/init! :search.engine/appdb {:force-reset? true}))
-            (testing "mid-rebuild the old index is still active and answering queries"
-              (is (= t1 (:active @observed)) "old active table is unchanged during the build")
-              (is (some? (:pending @observed)) "the replacement is built as a separate pending table")
-              (is (not= t1 (:pending @observed)) "pending is a different table from the serving active one")
-              (is (pos? (:hits @observed)) "search still returns results from the old index mid-rebuild"))
-            (testing "after the build the replacement is rotated in atomically"
-              (is (not= t1 (search.index/active-table)) "a new table is now active")
-              (is (= (:pending @observed) (search.index/active-table)) "the pending we built became active")
-              (is (pos? (count (search.index/search "Serving Continuity Probe")))
-                  "the rotated-in index serves the probe card"))))
-        (finally
-          (search.engine/reset-tracking! :search.engine/appdb)
-          (t2/delete! :model/SearchIndexMetadata :version "serving-continuity-test")
-          (#'search.table/delete-obsolete-tables!))))))
+                "the rotated-in index serves the probe card")))))))
 
 (deftest ^:synchronized init!-forced-reindex-reenters-cluster-lock-test
   ;; init! on a >3-day-old index calls reindex! while ALREADY holding the cluster reindex-lock, so correctness
@@ -642,98 +628,79 @@
   ;; stubbed contract tests in core-test, this drives the REAL lock end to end: if reentrancy regressed, the
   ;; inner reindex! would block, time out, and get swallowed as "already running elsewhere", so the forced
   ;; reindex would silently no-op and the active table would NOT change.
-  (when (search/supports-index?)
-    (binding [search.spec/*testing-only-index-version-hash* "reindex-reentrancy-test"
-              search.ingestion/*force-sync*                 true]
-      (try
-        (is (true? (index-state/db-backed? search.index/*state-store*))
-            "sanity: running against the real db-backed store, so the actual cluster lock is taken")
-        (search.engine/reset-tracking! :search.engine/appdb)
-        (let [old-table (search.table/gen-table-name)
-              version   (search.spec/index-version-hash)]
-          (search.table/create-table! old-table)
-          (search-index-metadata/create-pending! :appdb version old-table)
-          (search-index-metadata/active-pending! :appdb version)
-          ;; backdate so init! treats the existing index as stale (>3 days) and forces a reindex
-          (t2/update! :model/SearchIndexMetadata :version version
-                      {:created_at (t/minus (t/offset-date-time) (t/days 4))})
-          (search.index/sync-from-restored-db!)
-          (is (= old-table (search.index/active-table)) "the stale table is serving before init!")
-          (let [reindex-ran? (atom false)]
-            ;; Skip the heavy document populate; prepare!/finish! still build + rotate a fresh (empty) table,
-            ;; which is all we need to prove the inner reindex! body ran under the re-entered lock.
-            (with-redefs [appdb.core/populate-index! (fn [_mode] (reset! reindex-ran? true) {})]
-              (search.engine/init! :search.engine/appdb {:force-reset? false}))
-            (is (true? @reindex-ran?)
-                "the forced early reindex body executed — the inner reindex! re-acquired the held lock")
-            (is (not= old-table (search.index/active-table))
-                "a fresh index table was rotated in (init! did not silently skip the reindex)")))
-        (finally
-          (search.engine/reset-tracking! :search.engine/appdb)
-          (t2/delete! :model/SearchIndexMetadata :version "reindex-reentrancy-test")
-          (#'search.table/delete-obsolete-tables!))))))
+  (search.tu/with-temp-real-index "reindex-reentrancy-test"
+    (binding [search.ingestion/*force-sync* true]
+      (is (true? (index-state/db-backed? search.index/*state-store*))
+          "sanity: running against the real db-backed store, so the actual cluster lock is taken")
+      (let [old-table (search.table/gen-table-name)
+            version   (search.spec/index-version-hash)]
+        (search.table/create-table! old-table)
+        (search-index-metadata/create-pending! :appdb version old-table)
+        (search-index-metadata/active-pending! :appdb version)
+        ;; backdate so init! treats the existing index as stale (>3 days) and forces a reindex
+        (t2/update! :model/SearchIndexMetadata :version version
+                    {:created_at (t/minus (t/offset-date-time) (t/days 4))})
+        (search.index/sync-from-restored-db!)
+        (is (= old-table (search.index/active-table)) "the stale table is serving before init!")
+        (let [reindex-ran? (atom false)]
+          ;; Skip the heavy document populate; prepare!/finish! still build + rotate a fresh (empty) table,
+          ;; which is all we need to prove the inner reindex! body ran under the re-entered lock.
+          (with-redefs [appdb.core/populate-index! (fn [_mode] (reset! reindex-ran? true) {})]
+            (search.engine/init! :search.engine/appdb {:force-reset? false}))
+          (is (true? @reindex-ran?)
+              "the forced early reindex body executed — the inner reindex! re-acquired the held lock")
+          (is (not= old-table (search.index/active-table))
+              "a fresh index table was rotated in (init! did not silently skip the reindex)"))))))
 
-(deftest auto-refresh-test
+(deftest ^:synchronized auto-refresh-test
   ;; TTL caching duration is tested in index-state-test. This integration test verifies
   ;; that the appdb index uses the cached state and that force-refresh! reads new DB state.
-  (when (search/supports-index?)
-    (binding [search.spec/*testing-only-index-version-hash* "auto-refresh-test"]
-      (try
-        ;; Start from a clean slate so reset-index! activates a fresh table (nothing is serving yet).
-        (search.engine/reset-tracking! :search.engine/appdb)
-        (search.index/reset-index!)
-        (let [active-before (search.index/active-table)
-              active-after  (search.table/gen-table-name)
-              pending-after (search.table/gen-table-name)
-              version       (search.spec/index-version-hash)]
-          (search-index-metadata/create-pending! :appdb version active-after)
-          (search.table/create-table! active-after)
-          (search-index-metadata/active-pending! :appdb version)
-          (search-index-metadata/create-pending! :appdb version pending-after)
-          (search.table/create-table! pending-after)
-          (testing "We continue using our cached references without a force-refresh"
-            (is (= active-before (search.index/active-table))))
-          (testing "But we see the new active table after force-refresh!"
-            (index-state/force-refresh! search.index/*state-store*)
-            (is (= active-after (search.index/active-table)))))
-        (finally
-          (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
-          (#'search.table/delete-obsolete-tables!))))))
+  (search.tu/with-temp-real-index "auto-refresh-test"
+    ;; Start from a clean slate so reset-index! activates a fresh table (nothing is serving yet).
+    (search.index/reset-index!)
+    (let [active-before (search.index/active-table)
+          active-after  (search.table/gen-table-name)
+          pending-after (search.table/gen-table-name)
+          version       (search.spec/index-version-hash)]
+      (search-index-metadata/create-pending! :appdb version active-after)
+      (search.table/create-table! active-after)
+      (search-index-metadata/active-pending! :appdb version)
+      (search-index-metadata/create-pending! :appdb version pending-after)
+      (search.table/create-table! pending-after)
+      (testing "We continue using our cached references without a force-refresh"
+        (is (= active-before (search.index/active-table))))
+      (testing "But we see the new active table after force-refresh!"
+        (index-state/force-refresh! search.index/*state-store*)
+        (is (= active-after (search.index/active-table)))))))
 
-(deftest pending-table-expiry-test
-  (when (search/supports-index?)
-    (binding [search.spec/*testing-only-index-version-hash* "pending-timeout-test"]
-      (try
-        ;; Start clean so reset-index! activates a fresh table rather than leaving a pending replacement.
-        (search.engine/reset-tracking! :search.engine/appdb)
-        (search.index/reset-index!)
-        (let [active-table (search.index/active-table)
-              pending-old  (search.table/gen-table-name)
-              pending-new  (search.table/gen-table-name)
-              version      (search.spec/index-version-hash)]
-          ;; Set up old pending table (more than a day old)
-          (search.table/create-table! pending-old)
-          (search-index-metadata/create-pending! :appdb version pending-old)
-          (t2/update! :model/SearchIndexMetadata
-                      {:index_name (name pending-old)}
-                      {:created_at (t/minus (t/offset-date-time) (t/days 2))})
-          ;; Force a re-read so we pick up the (expired) pending table
-          (index-state/force-refresh! search.index/*state-store*)
-          (testing "Active table is returned"
-            (is (= active-table (search.index/active-table))))
-          (testing "Old pending table is ignored (more than a day old)"
-            (is (nil? (#'search.index/pending-table))))
-          ;; Create new pending table (less than a day old)
-          (search.table/create-table! pending-new)
-          (search-index-metadata/create-pending! :appdb version pending-new)
-          ;; Force a re-read so we pick up the new pending table
-          (index-state/force-refresh! search.index/*state-store*)
-          (testing "New pending table is included (less than a day old)"
-            (is (= active-table (search.index/active-table)))
-            (is (= pending-new (#'search.index/pending-table)))))
-        (finally
-          (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
-          (#'search.table/delete-obsolete-tables!))))))
+(deftest ^:synchronized pending-table-expiry-test
+  (search.tu/with-temp-real-index "pending-timeout-test"
+    ;; Start clean so reset-index! activates a fresh table rather than leaving a pending replacement.
+    (search.index/reset-index!)
+    (let [active-table (search.index/active-table)
+          pending-old  (search.table/gen-table-name)
+          pending-new  (search.table/gen-table-name)
+          version      (search.spec/index-version-hash)]
+      ;; Set up old pending table (more than a day old)
+      (search.table/create-table! pending-old)
+      (search-index-metadata/create-pending! :appdb version pending-old)
+      (t2/update! :model/SearchIndexMetadata
+                  {:index_name (name pending-old)}
+                  {:created_at (t/minus (t/offset-date-time) (t/days 2))})
+      ;; Force a re-read so we pick up the (expired) pending table
+      (index-state/force-refresh! search.index/*state-store*)
+      (testing "Active table is returned"
+        (is (= active-table (search.index/active-table))))
+      (testing "Old pending table is ignored (more than a day old)"
+        (is (nil? (#'search.index/pending-table))))
+      ;; Create new pending table (less than a day old)
+      (search.table/create-table! pending-new)
+      (search-index-metadata/create-pending! :appdb version pending-new)
+      ;; Force a re-read so we pick up the new pending table
+      (index-state/force-refresh! search.index/*state-store*)
+      (testing "New pending table is included (less than a day old)"
+        (is (= active-table (search.index/active-table)))
+        (is (= pending-new (#'search.index/pending-table)))))))
 
 (deftest reindex-survives-duplicate-most-recent-revisions-test
   ;; Two `revision` rows with `most_recent = true` for the same card cause the spec's LEFT
@@ -762,7 +729,7 @@
           (search.engine/reindex! :search.engine/appdb {:in-place? true})
           (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str card-id)))))))))
 
-(deftest reindex-does-not-misdirect-writes-to-active-when-pending-tracking-lost-test
+(deftest ^:synchronized reindex-does-not-misdirect-writes-to-active-when-pending-tracking-lost-test
   ;; Regression for the reindex write-misdirection race. A full reindex resolved its destination table
   ;; per batch from the tracking atom. If a concurrent TTL resync transiently blanked the :pending entry
   ;; mid-reindex, later batches fell through to the LIVE active table instead of the pending one -- so
@@ -797,7 +764,7 @@
           (finally
             (#'search.table/drop-table! pending-tbl)))))))
 
-(deftest reindex-without-pending-populates-active-table-test
+(deftest ^:synchronized reindex-without-pending-populates-active-table-test
   ;; The initial-build path populates the freshly-activated table directly with :search/reindexing context
   ;; and NO pending table. That must keep writing to the active table (it is the captured destination), even
   ;; if the tracking atom is blanked mid-build -- it must NOT be treated as an error.
@@ -823,39 +790,39 @@
         (testing "every document lands in the active table that was captured at the start of the build"
           (is (= (count docs) (t2/count active-tbl))))))))
 
-(deftest build-rotate-requires-db-backed-store-test
-  ;; The build/rotate lifecycle persists to search_index_metadata and creates physical tables. Running it
-  ;; against a mock store (e.g. inside with-temp-index-table) would silently pollute real-version metadata, so
-  ;; it must fail loudly. Rotation tests bind *testing-only-index-version-hash* and use the real store instead.
-  (testing "maybe-create-pending! refuses to run against a mock store"
-    (binding [search.index/*state-store* (index-state/mock-store {:active :some-table})]
-      (is (thrown-with-msg? Exception #"db-backed"
-                            (search.index/maybe-create-pending!)))))
-  (testing "activate-table! refuses to persist a rotation against a mock store"
-    (binding [search.index/*state-store* (index-state/mock-store {:active :a :pending :p})]
-      (is (thrown-with-msg? Exception #"db-backed"
-                            (search.index/activate-table!)))))
-  (testing "activate-table! is still a harmless no-op on a mock store with no pending (the in-place finish! path)"
-    (binding [search.index/*state-store* (index-state/mock-store {:active :a})]
-      (is (false? (search.index/activate-table!))))))
-
 (deftest when-index-created
+  (search.tu/with-temp-real-index "index-age-test"
+    (let [table-name (search.table/gen-table-name)
+          version (search.spec/index-version-hash)]
+      (testing "Nil age if no active table"
+        (is (nil? (#'search.index/when-index-created))))
+      (testing "Returns age of active table"
+        (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
+          (search.table/create-table! table-name)
+          (search-index-metadata/create-pending! :appdb version table-name)
+          (search-index-metadata/active-pending! :appdb version)
+          (t2/update! :model/SearchIndexMetadata
+                      :index_name  (name table-name)
+                      {:created_at  update-time})
+          (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))))
+
+(deftest ^:synchronized with-temp-resyncs-search-state-after-rollback-test
+  ;; Regression: a top-level with-temp body that mutates the in-memory appdb search state store -- e.g. a
+  ;; synchronous reindex builds + tracks a fresh table inside the (rolled-back) with-temp transaction -- must not
+  ;; leave the GLOBAL store pointing at that now-vanished table. metabase.test.redefs re-syncs the store after the
+  ;; transaction; without that, later tests' ingestion upserts into the missing relation, aborting and poisoning
+  ;; the pooled connection ("current transaction is aborted") and cascading into unrelated tests.
   (when (search/supports-index?)
-    (binding [search.spec/*testing-only-index-version-hash* "index-age-test"]
-      (try
-        (let [table-name (search.table/gen-table-name)
-              version (search.spec/index-version-hash)]
-          (testing "Nil age if no active table"
-            (is (nil? (#'search.index/when-index-created))))
-          (testing "Returns age of active table"
-            (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
-              (search.table/create-table! table-name)
-              (search-index-metadata/create-pending! :appdb version table-name)
-              (search-index-metadata/active-pending! :appdb version)
-              (t2/update! :model/SearchIndexMetadata
-                          :index_name  (name table-name)
-                          {:created_at  update-time})
-              (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
-        (finally
-          (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
-          (#'search.table/delete-obsolete-tables!))))))
+    (index-state/force-refresh! search.index/*state-store*)
+    (let [committed (search.index/active-table)]
+      (mt/with-temp [:model/Card _ {:name "resync-probe"}]
+        ;; mimic ensure-ready!/reset-index! creating + tracking a table inside the transaction
+        (let [t (search.table/gen-table-name)]
+          (search.table/create-table! t)
+          (index-state/set-state! search.index/*state-store* {:active t :pending nil})))
+      ;; the with-temp transaction has rolled back: the in-txn table is gone
+      (let [after (search.index/active-table)]
+        (is (= committed after)
+            "the state store is re-synced to the committed active table, not the rolled-back one")
+        (is (or (nil? after) (search.table/exists? after))
+            "the state store never points at a non-existent table")))))

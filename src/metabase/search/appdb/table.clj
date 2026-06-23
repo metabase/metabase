@@ -136,6 +136,21 @@
                              :from   [(t2/table-name :model/SearchIndexMetadata)]
                              :where  [:= :engine [:inline "appdb"]]}]]})))
 
+(defn- drop-orphan-table!
+  "Drop an orphaned index `table`, bounding how long the DROP will wait for the table's lock.
+
+  [[delete-obsolete-tables!]] runs while the cluster reindex lock is held (it's called from `activate-table!`
+  during a reindex). A `DROP TABLE` needs an exclusive lock, so if the orphan is still locked by a concurrent
+  search transaction the DROP blocks indefinitely -- holding the cluster lock and deadlocking every other
+  reindex behind it. Run the drop in its own transaction with a short `lock_timeout` so a contended drop fails
+  fast (and is then skipped by the caller); the orphan is cleaned up on a later pass. Only Postgres needs this --
+  H2 has a short default lock timeout and the appdb engine only runs on those two."
+  [table]
+  (t2/with-transaction [_ (mdb/app-db)]
+    (when (= :postgres (mdb/db-type))
+      (t2/query ["SET LOCAL lock_timeout = '5s'"]))
+    (t2/query (sql.helpers/drop-table table))))
+
 (defn delete-obsolete-tables!
   "Delete metadata for obsolete indexes and drop any physical tables no longer referenced by metadata."
   []
@@ -145,9 +160,10 @@
   (let [dropped (volatile! [])]
     (doseq [table (orphan-indexes)]
       (try
-        (t2/query (sql.helpers/drop-table table))
+        (drop-orphan-table! table)
         (vswap! dropped conj table)
-        ;; Deletion could fail if it races with other instances
+        ;; Deletion could fail if it races with other instances, or if the table is still locked (we use a short
+        ;; lock timeout to avoid wedging) -- either way just skip it; it'll be retried on a later pass.
         (catch Exception e
           (log/warnf e "Failed to drop stale index %s" table))))
     (log/infof "Dropped %d stale indexes: %s" (count @dropped) @dropped)))

@@ -7,8 +7,19 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.search.core :as search]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.random :refer [random-name]]))
+
+;; These tests reindex against the appdb search index. Without isolation they would drive a real reindex/rotation
+;; on the SHARED global state store (and enqueue async ingestion on the background worker, which reads that global
+;; store), leaving a throwaway :active table cached for the TTL that later gets dropped -- "search_index__… does
+;; not exist" -> aborted connection -> cascading failures in unrelated tests. with-new-search-if-available* binds
+;; an isolated mock index + synchronous ingestion, so the rebuild never touches global state.
+(use-fixtures :each
+  (fn [thunk]
+    (search.tu/with-new-search-if-available-otherwise-legacy
+      (thunk))))
 
 (deftest published-table-collection-filter-test
   (mt/with-premium-features #{:library}

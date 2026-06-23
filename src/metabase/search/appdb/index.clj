@@ -87,24 +87,10 @@
 
 ;;; --------------------------------------- Rotation ------------------------------------------------
 
-(defn- assert-db-backed!
-  "Fail loudly if the current state store is a test mock. The build/rotate lifecycle persists to
-   search_index_metadata and creates physical tables, so it must run against the real store; a mock would
-   silently pollute the real-version metadata. Tests that exercise it must bind
-   [[metabase.search.spec/*testing-only-index-version-hash*]] (which isolates and cleans up that state) and use
-   the real store rather than [[with-temp-index-table]]."
-  [op]
-  (when-not (index-state/db-backed? *state-store*)
-    (throw (ex-info (str op " must run against the real (db-backed) state store, not a mock. Rotation tests "
-                         "should bind metabase.search.spec/*testing-only-index-version-hash*, not use "
-                         "with-temp-index-table.")
-                    {:op op}))))
-
 (defn maybe-create-pending!
   "Create a pending index table if one does not already exist. Returns the pending table name, or nil."
   []
   (locking index-lock
-    (assert-db-backed! "maybe-create-pending!")
     (or (pending-table)
         ;; We may fail to insert a new metadata row if we lose a race with another instance.
         (let [table-name (table/gen-table-name)]
@@ -139,9 +125,6 @@
     (let [{:keys [pending]} (index-state/force-refresh! *state-store*)]
       (log/infof "Activating pending index %s" pending)
       (when pending
-        ;; A pending table means we're about to persist a rotation (active-pending! + metadata churn); that
-        ;; must not happen against a mock store. With no pending this is a harmless no-op (the in-place path).
-        (assert-db-backed! "activate-table!")
         ;; Refresh statistics before rotation so size estimates are accurate the moment it goes active.
         (analyze-table! pending)
         (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
@@ -284,11 +267,14 @@
   "Create a single temporary index table for the duration of the body, for tests that write to and read from
    one fixed index table (ingestion, scoring, search).
 
-   Binds *state-store* to an isolated MockStateStore so DDL within the body doesn't touch the real
-   search_index_metadata records. NOTE: because the mock's force-refresh! is a no-op, this does NOT support
-   the build/rotate flow — [[maybe-create-pending!]]/[[activate-table!]] can't track tables they create, and
-   rotation would still mutate real-version metadata. Tests that exercise init!/reindex! must instead bind
-   [[metabase.search.spec/*testing-only-index-version-hash*]] and use the real store.
+   Binds *state-store* to an isolated MockStateStore so DDL within the body doesn't touch the real index, and
+   binds [[metabase.search.spec/*testing-only-index-version-hash*]] to a throwaway version so any metadata a
+   build/rotate inside the body writes (e.g. via [[maybe-create-pending!]]) is scoped to that version and swept
+   up on exit — nothing leaks into the real-version metadata or leaves orphan tables behind.
+
+   NOTE: because the mock's force-refresh! is a no-op, the in-memory active/pending tracking does not follow a
+   rotation. Tests that need to assert against a real pending→active rotation should bind
+   [[metabase.search.spec/*testing-only-index-version-hash*]] and use the real store directly.
 
    Re-entrant: when already inside a with-temp-index-table (the state store is a mock), it reuses the existing
    temp table rather than creating a new one, so nested scopes share a single index and content accumulates
@@ -298,7 +284,8 @@
      (do ~@body)
      (let [table-name# (table/gen-table-name "_temp")
            version#    (str (string/random-string 8) "-temp")]
-       (binding [*state-store* (index-state/mock-store {:active table-name#})]
+       (binding [*state-store*                                 (index-state/mock-store {:active table-name#})
+                 search.spec/*testing-only-index-version-hash* version#]
          (try
            (t2/insert! :model/SearchIndexMetadata {:engine     :appdb
                                                    :version    version#
@@ -308,5 +295,9 @@
            (table/create-table! table-name#)
            ~@body
            (finally
+             ;; Drop every physical table registered under the throwaway version — the temp table plus any a
+             ;; reindex inside the body created — then delete the metadata, so nothing leaks into the real index.
+             (doseq [t# (t2/select-fn-set :index_name :model/SearchIndexMetadata :version version#)]
+               (table/drop-table! (keyword t#)))
              (table/drop-table! table-name#)
              (t2/delete! :model/SearchIndexMetadata :version version#)))))))

@@ -90,10 +90,22 @@
                                                        :order-by [[[:max :updated_at] :desc]
                                                                   [[:max :id] :desc]]
                                                        :limit    3})))]
-    (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
-                   :where       [:or
-                                 [:not-in :version most-recent]
-                                 ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
-                                 [:and
-                                  [:not-in :version (filter some? [our-version (first most-recent)])]
-                                  [:< :updated_at (t/minus (t/zoned-date-time) pending-table-cut-off)]]]})))
+    (let [;; Versions still serving an :active index. They must never be pruned just for being crowded out of the
+          ;; most-recent window: dropping a live version's metadata orphans its active table (the engine then
+          ;; sweeps it), breaking in-flight reads/writes on every node still pointing at it. Without this guard,
+          ;; transient/test-only versions can crowd the live version out of the window and delete it out from
+          ;; under search. Such a version is only retired by the age-based clause below. (Materialized rather than
+          ;; a NOT IN sub-select for portability — H2 mishandles NOT IN over an empty sub-select.)
+          serving        (seq (map :version (t2/query {:select   [[[:distinct :version]]]
+                                                       :from     [(t2/table-name :model/SearchIndexMetadata)]
+                                                       :where    [:= :status "active"]})))
+          out-of-window  (if serving
+                           [:and [:not-in :version most-recent] [:not-in :version serving]]
+                           [:not-in :version most-recent])]
+      (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
+                     :where       [:or
+                                   out-of-window
+                                   ;; Drop those older than 1 day, unless we are using them, or they are the most recent.
+                                   [:and
+                                    [:not-in :version (filter some? [our-version (first most-recent)])]
+                                    [:< :updated_at (t/minus (t/zoned-date-time) pending-table-cut-off)]]]}))))
