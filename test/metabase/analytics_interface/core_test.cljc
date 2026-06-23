@@ -9,8 +9,8 @@
   the capture; record only calls made on the thread that installed the reporter — the test thread —
   so these assertions stay deterministic."
   [calls]
-  (let [capture-thread #?(:clj (Thread/currentThread) :cljs nil)
-        ours?          (fn [] #?(:clj (identical? (Thread/currentThread) capture-thread) :cljs true))]
+  (let [#?@(:clj [capture-thread (Thread/currentThread)])
+        ours? (fn [] #?(:clj (identical? (Thread/currentThread) capture-thread) :cljs true))]
     (reify analytics.interface/Reporter
       (-inc! [_ metric labels amount]
         (when (ours?) (swap! calls conj {:op :inc! :metric metric :labels labels :amount amount})))
