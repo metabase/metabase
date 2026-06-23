@@ -1,0 +1,135 @@
+## Append-only audit trail for the OAuth dynamic client registration (DCR) lifecycle.
+## One row is recorded when a client registers, and one row per approve/deny decision.
+##
+## Backport from v63 (migrations/063/20260601_oauth_client_event.yaml). Each changeset is
+## guarded with a MARK_RAN precondition against its v63 counterpart so a v63 -> v62 downgrade
+## (where the v63 changeset already created the object) skips instead of failing.
+
+databaseChangeLog:
+  - changeSet:
+      id: v62.k7m2qd
+      author: bshepherdson
+      comment: Create oauth_client_event table to audit DCR registration and decision events
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v63.k7m2qd
+              author: bshepherdson
+              changeLogFile: migrations/063/20260601_oauth_client_event.yaml
+      changes:
+        - createTable:
+            tableName: oauth_client_event
+            remarks: Append-only audit log of dynamic client registration and authorization events
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Auto-incrementing primary key
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: oauth_client_id
+                  type: int
+                  remarks: FK to oauth_client.id; nulled out if the client is deleted
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: FK to core_user.id of the user who made the decision; null for registration events
+                  constraints:
+                    nullable: true
+              - column:
+                  name: event_type
+                  type: varchar(20)
+                  remarks: "Event type: registered, approved, or denied"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the event occurred
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v62.r9w4xb
+      author: bshepherdson
+      comment: Add index on oauth_client_event.oauth_client_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v63.r9w4xb
+              author: bshepherdson
+              changeLogFile: migrations/063/20260601_oauth_client_event.yaml
+      changes:
+        - createIndex:
+            tableName: oauth_client_event
+            indexName: idx_oauth_client_event_oauth_client_id
+            columns:
+              - column:
+                  name: oauth_client_id
+
+  - changeSet:
+      id: v62.x2d7kq
+      author: bshepherdson
+      comment: Add index on oauth_client_event.user_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v63.x2d7kq
+              author: bshepherdson
+              changeLogFile: migrations/063/20260601_oauth_client_event.yaml
+      changes:
+        - createIndex:
+            tableName: oauth_client_event
+            indexName: idx_oauth_client_event_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v62.t3z8np
+      author: bshepherdson
+      comment: Add FK on oauth_client_event.oauth_client_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v63.t3z8np
+              author: bshepherdson
+              changeLogFile: migrations/063/20260601_oauth_client_event.yaml
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: oauth_client_event
+            baseColumnNames: oauth_client_id
+            referencedTableName: oauth_client
+            referencedColumnNames: id
+            constraintName: fk_oauth_client_event_oauth_client_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v62.h5c1vj
+      author: bshepherdson
+      comment: Add FK on oauth_client_event.user_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v63.h5c1vj
+              author: bshepherdson
+              changeLogFile: migrations/063/20260601_oauth_client_event.yaml
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: oauth_client_event
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_oauth_client_event_user_id
+            onDelete: SET NULL

@@ -19,23 +19,23 @@ function jsonToCsvFormData(jsonData) {
   return formData;
 }
 
-function uploadCsvToMb({ baseUrl, tableId, jsonData, mode = 'append' }) {
+async function uploadCsvToMb({ baseUrl, tableId, jsonData, mode = 'append' }) {
   const formData = jsonToCsvFormData(jsonData);
   const operation = mode === 'replace' ? 'replace-csv' : 'append-csv';
 
-  return fetch(`${baseUrl}/api/table/${tableId}/${operation}`, {
+  const response = await fetch(`${baseUrl}/api/table/${tableId}/${operation}`, {
     method: 'POST',
     headers: {
       "x-api-key": process.env.API_KEY
     },
     body: formData
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`Upload failed`);
-    }
-    return { success: true };
   });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Upload failed: ${response.status} ${response.statusText} ${body}`.trim());
+  }
+  return { success: true };
 }
 
 module.exports = { uploadCsvToMb };

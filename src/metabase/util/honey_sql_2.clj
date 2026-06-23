@@ -302,6 +302,18 @@
   (let [info (type-info honeysql-form)]
     (or (:effective-type info) (:base-type info))))
 
+(defn database-or-effective-type-isa?
+  "Returns true if `honeysql-form`'s known `database-type` (case-insensitive) equals `db-type`, OR — when no
+  `database-type` is attached — if its [[effective-type]] descends from `effective-type-supertype`. Useful in driver
+  bucketing code that special-cases columns by their warehouse type and needs to fall back when the column reached
+  the driver from a nested query (so the database-type was lost) but its Metabase effective type is still known."
+  [honeysql-form db-type effective-type-supertype]
+  (let [dbt (database-type honeysql-form)]
+    (if dbt
+      (= (u/lower-case-en dbt) (u/lower-case-en (name db-type)))
+      (when effective-type-supertype
+        (isa? (effective-type honeysql-form) effective-type-supertype)))))
+
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `db-type`?
   Where `db-type` could be a string or a regex.
@@ -436,9 +448,9 @@
   "HoneySQL form that should be used to get the current `datetime` (or equivalent), e.g. `:%now`."
   [db-type]
   (case db-type
-    (:h2 :h2-mbql5) (with-database-type-info :%now "timestamp")
+    :h2       (with-database-type-info :%now "timestamp")
     :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
-    (:postgres :postgres-mbql5) (with-database-type-info :%now "timestamptz")))
+    :postgres (with-database-type-info :%now "timestamptz")))
 
 (defn- format-postgres-interval
   "Generate a Postgres 'INTERVAL' literal.
@@ -493,10 +505,6 @@
       (-> (+ hsql-form (pg-interval amount unit))
           (with-type-info (type-info hsql-form))))))
 
-(defmethod add-interval-honeysql-form :postgres-mbql5
-  [db-type hsql-form amount unit]
-  ((get-method add-interval-honeysql-form :postgres) db-type hsql-form amount unit))
-
 (defmethod add-interval-honeysql-form :mysql
   [db-type hsql-form amount unit]
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
@@ -528,10 +536,6 @@
 
     :else
     (dateadd-h2 unit amount hsql-form)))
-
-(defmethod add-interval-honeysql-form :h2-mbql5
-  [db-type hsql-form amount unit]
-  ((get-method add-interval-honeysql-form :h2) db-type hsql-form amount unit))
 
 (defmethod add-interval-honeysql-form :default
   [db-type hsql-form amount unit]

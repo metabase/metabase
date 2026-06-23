@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   canonicalCollectionId,
   canonicalCollectionIdOrEntityId,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { trackMetricCreated } from "metabase/data-studio/analytics";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";

@@ -30,7 +30,7 @@ export const getEntityIcon = (entityType?: string) => {
 
 export const ENTITY_ICON_COLORS: ColorName[] = [
   "text-primary",
-  "brand",
+  "core-brand",
   "accent1",
   "accent2",
   "accent3",

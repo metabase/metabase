@@ -3,8 +3,8 @@ import { Component, cloneElement } from "react";
 import { Route } from "react-router";
 import { push } from "react-router-redux";
 
-import { Modal } from "metabase/common/components/Modal";
 import { connect } from "metabase/redux";
+import { Modal, type ModalProps } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
 
 type RouteParams = Record<string, string | undefined>;
@@ -56,7 +56,7 @@ interface WrappedModalRouteProps {
 
 const ModalWithRoute = (
   ComposedModal: React.ComponentType<ComposedModalProps>,
-  modalProps = {},
+  modalProps: Partial<ModalProps> = {},
   noWrap = false,
 ) => {
   class ModalRouteComponent extends Component<WrappedModalRouteProps> {
@@ -77,7 +77,14 @@ const ModalWithRoute = (
       }
 
       return (
-        <Modal {...modalProps} onClose={this.onClose}>
+        <Modal
+          opened
+          onClose={this.onClose}
+          withCloseButton={false}
+          padding={0}
+          size="lg"
+          {...modalProps}
+        >
           <ComposedModal {...this.props} onClose={this.onClose} />
         </Modal>
       );
@@ -99,7 +106,7 @@ export type ModalComponentProps = {
 interface ModalRouteProps {
   path: string;
   modal: React.ComponentType<ModalComponentProps>;
-  modalProps?: unknown;
+  modalProps?: Partial<ModalProps>;
   noWrap?: boolean;
 }
 

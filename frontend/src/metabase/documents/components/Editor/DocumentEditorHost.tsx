@@ -24,6 +24,10 @@ import {
 import { useCardData } from "../../hooks/use-card-data";
 import { useDraftCardOperations } from "../../hooks/use-draft-card-operations";
 import { useExternalCardDataLoader } from "../../hooks/use-external-card-data";
+import {
+  useNodeInViewport,
+  useReportPrefetchLoading,
+} from "../../hooks/use-node-in-viewport";
 import { useUnresolvedCommentsCount } from "../../hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
@@ -63,6 +67,8 @@ export const documentEditorHost: EditorHost = {
   useCardData,
   useExternalCardDataLoader,
   useUnresolvedCommentsCount,
+  useNodeInViewport,
+  useReportPrefetchLoading,
   useDraftCardOperations,
 };
 

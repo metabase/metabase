@@ -2,6 +2,7 @@ import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
+import { listChannelSummaries } from "metabase/admin/tools/notifications/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {
@@ -17,11 +18,7 @@ import {
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { getUserLabel } from "metabase/utils/user";
-import type {
-  AdminNotification,
-  NotificationChannelType,
-  NotificationId,
-} from "metabase-types/api";
+import type { AdminNotification, NotificationId } from "metabase-types/api";
 
 import { NotificationSummary } from "../NotificationSummary";
 import {
@@ -43,26 +40,6 @@ type Props = {
 };
 
 const getNodeId = (notification: AdminNotification) => String(notification.id);
-
-type ChannelSummary = {
-  channel: NotificationChannelType;
-  count: number;
-};
-
-const summarizeChannels = (
-  notification: AdminNotification,
-): ChannelSummary[] => {
-  const handlers = notification.handlers ?? [];
-  const map = new Map<NotificationChannelType, number>();
-  for (const handler of handlers) {
-    const prev = map.get(handler.channel_type) ?? 0;
-    map.set(handler.channel_type, prev + handler.recipients.length);
-  }
-  return Array.from(map.entries()).map(([channel, count]) => ({
-    channel,
-    count,
-  }));
-};
 
 export const NotificationsTable = ({
   notifications,
@@ -109,7 +86,7 @@ export const NotificationsTable = ({
               bg="background-secondary"
               c="text-primary"
               tt="none"
-              bd="1px solid var(--mb-color-border)"
+              bd="1px solid var(--mb-color-border-neutral)"
               h="auto"
               px="sm"
               py="xs"
@@ -169,11 +146,11 @@ export const NotificationsTable = ({
         width: "auto",
         enableSorting: false,
         accessorFn: (notification) =>
-          summarizeChannels(notification)
+          listChannelSummaries(notification)
             .map(({ channel, count }) => `${channel}${count}`)
             .join(" "),
         cell: ({ row }) => {
-          const summaries = summarizeChannels(row.original);
+          const summaries = listChannelSummaries(row.original);
           if (summaries.length === 0) {
             return EMPTY_CELL_PLACEHOLDER;
           }

@@ -73,9 +73,10 @@
          (seq data))
     (str "```json\n" (json/encode data {:pretty true}) "\n```")))
 
-(defn- escape-xml
+(defn escape-xml
   "Escape XML special characters in a string.
-   Only needed for content that bypasses Selmer's auto-escaping (marked with |safe)."
+   Only needed for content that bypasses Selmer's auto-escaping (marked with |safe) or is interpolated
+   into hand-built XML."
   [s]
   (when s
     (-> (str s)
@@ -83,6 +84,31 @@
         (str/replace "<" "&lt;")
         (str/replace ">" "&gt;")
         (str/replace "\"" "&quot;"))))
+
+(defn- escape-xml-content
+  "Like `escape-xml` but leaves double-quotes intact. Safe for element/table-cell *content*
+  (only `& < >` are structural there), so a value such as a JSON portable-FK array renders
+  readably instead of with `&quot;` noise."
+  [s]
+  (when s
+    (-> (str s)
+        (str/replace "&" "&amp;")
+        (str/replace "<" "&lt;")
+        (str/replace ">" "&gt;"))))
+
+(defn- escape-pipes
+  "Escape `|` so a value can't break a markdown table row.
+  Custom `:value-fn`s replace [[metabase.metabot.tmpl/markdown-table]]'s default, which does this."
+  [s]
+  (when s
+    (str/replace s "|" "\\|")))
+
+(defn- json-cell-safe
+  "Keep a JSON string valid inside a markdown table cell. Markdown `\\|` escaping is not
+  valid JSON, so encode pipe characters as JSON unicode escapes instead."
+  [s]
+  (when s
+    (str/replace s "|" "\\u007c")))
 
 (defn- database-type-or-unknown
   "Return database type or 'unknown' if nil."
@@ -151,11 +177,12 @@
   (te/markdown-table
    fields columns
    {:value-fn (fn [k v]
-                (escape-xml
-                 (cond
-                   (nil? v)                                  ""
-                   (and (#{:type :base-type} k) (keyword? v)) (clojure.core/name v)
-                   :else                                      (str v))))}))
+                (escape-pipes
+                 (escape-xml
+                  (cond
+                    (nil? v)                                  ""
+                    (and (#{:type :base-type} k) (keyword? v)) (clojure.core/name v)
+                    :else                                      (str v)))))}))
 
 (defn- fully-qualified-name
   "Get fully qualified name for a table."
@@ -175,8 +202,11 @@
   (render-llm-template
    :field
    {:field_id            field_id
-    ;; Uses |safe in template to preserve literal \" quotes, so we escape the name for XML safety
-    :field_name_quoted   (str "\\\"" (escape-xml name) "\\\"")
+    ;; The bare physical column name — emitted unquoted so the LLM copies it verbatim into a
+    ;; portable field reference (`[db schema table COL]`). Wrapping it in quotes here caused the
+    ;; model to paste `"COL"` into MBQL field refs, which the resolver rejects. Uses |safe in the
+    ;; template, so escape for XML safety here.
+    :field_name          (escape-xml name)
     :field_display_name  (or display_name name)
     :field_base_type     (when type (clojure.core/name type))
     :field_database_type (database-type-or-unknown database_type)
@@ -238,6 +268,43 @@
     :related_table_fqn           fully_qualified_name
     :related_table_fields_xml    (when (seq fields) (str/join "\n" (map field->xml fields)))}))
 
+(defn- dimension-source-table
+  "Human-readable `schema.table` for a queryable dimension, derived from its portable FK, plus
+  the join label when the dimension is reached through an FK from the base table."
+  [{:keys [portable_fk table_reference]}]
+  (when (and (vector? portable_fk) (>= (count portable_fk) 3))
+    (let [[_db schema table] portable_fk
+          fqn (fully-qualified-name schema table)]
+      (if (not-empty table_reference)
+        (str fqn " (via " table_reference ")")
+        fqn))))
+
+(defn format-metric-dimensions-table
+  "Render a metric's queryable dimensions as a markdown table that names the **source table**
+  each dimension comes from and the exact **portable FK** to copy into a `field` clause.
+
+  A metric's dimensions span its base table and every FK-reachable table, so a bare field list
+  is ambiguous: the LLM can't tell which table a name like `name` lives on, and duplicate names
+  across joined tables (e.g. several `campaign_id`/`id` columns) are indistinguishable. The
+  `Source table` and `Reference` columns remove that ambiguity."
+  [dims]
+  (te/markdown-table
+   (map (fn [d]
+          (assoc d
+                 :source    (dimension-source-table d)
+                 :reference (when (vector? (:portable_fk d)) (json/encode (:portable_fk d)))))
+        dims)
+   {:name "Field Name" :field_id "Field ID" :type "Type"
+    :source "Source table" :reference "Reference (copy into a field clause)"}
+   {:value-fn (fn [k v]
+                (cond
+                  (nil? v)         ""
+                  (keyword? v)     (escape-pipes (clojure.core/name v))
+                  ;; `reference` is a JSON array the LLM copies verbatim. Keep the cell valid
+                  ;; JSON by encoding pipes as `\u007c` instead of markdown `\|`.
+                  (= k :reference) (json-cell-safe (escape-xml-content v))
+                  :else            (escape-pipes (escape-xml (str v)))))}))
+
 (defn metric->xml
   "Format metric for LLM consumption.
    Matches Python Metric.get_llm_representation exactly, except we additionally surface
@@ -263,7 +330,7 @@
     :metric_collection_xml         (when collection (collection->xml collection))
     :metric_default_time_dimension (:name default_time_dimension_field)
     :metric_dimensions_table       (when (seq queryable-dimensions)
-                                     (format-fields-table queryable-dimensions))}))
+                                     (format-metric-dimensions-table queryable-dimensions))}))
 
 (defn table->xml
   "Format table for LLM consumption.
@@ -616,7 +683,7 @@
    Matches Python FieldValuesMetadata.llm_representation exactly.
    Note: Tables are used with |safe in the template, so values must be escaped."
   [{:keys [field_values statistics]}]
-  (let [escape-value        (fn [_k v] (escape-xml (str v)))
+  (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
         sample-values-table (when (seq field_values)
                               (te/markdown-table
                                (map vector field_values)
@@ -636,11 +703,18 @@
 
 (defn field-metadata->xml
   "Format field metadata for LLM consumption.
-   Matches Python GetFieldMetadataResultSchema.llm_representation exactly."
-  [{:keys [field_id value_metadata]}]
+   Matches Python GetFieldMetadataResultSchema.llm_representation exactly, plus an optional
+   `source table` + `reference` (portable FK) when the caller supplies them — so a drilled-into
+   field/dimension detail tells the LLM exactly how to reference the column."
+  [{:keys [field_id value_metadata portable_fk table_reference]}]
   (render-llm-template
    :field_metadata
    {:field_metadata_field_id field_id
+    :field_metadata_source    (dimension-source-table {:portable_fk portable_fk
+                                                       :table_reference table_reference})
+    ;; rendered with |safe — escape XML structural chars but keep the JSON's quotes readable,
+    ;; like the `:reference` column in [[format-metric-dimensions-table]]
+    :field_metadata_reference (when (vector? portable_fk) (escape-xml-content (json/encode portable_fk)))
     :field_metadata_value_xml (when value_metadata
                                 (field-values-metadata->xml value_metadata))}))
 
@@ -735,22 +809,25 @@
      {:list-type :databases     ; keyword, becomes the type attribute
       :items     [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
       :total     5
-      :truncated false}
+      :page      1
+      :pages     1}
 
    Output shape:
-     <list type=\"databases\" total=\"5\" truncated=\"false\">
+     <list type=\"databases\" total=\"5\" page=\"1\" pages=\"1\" showing=\"5\" truncated=\"false\">
        <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
        ...
      </list>"
-  [{:keys [list-type items total truncated]}]
+  [{:keys [list-type items total page pages]}]
   (let [type-attr (clojure.core/name (or list-type :items))
         item-xml  (str/join "\n" (map list-item->xml items))
         showing   (count items)
+        truncated (< page pages)
         note      (when truncated
-                    (str "<truncation-note>Showing " showing " of " total ". "
-                         "More items exist — read individual items via their URIs above "
-                         "or refine via search.</truncation-note>"))]
+                    (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
+                         "Append ?page=" (inc page) " to the URI to fetch the next page.</truncation-note>"))]
     (str "<list type=\"" type-attr "\" total=\"" total
+         "\" page=\"" (or page 1)
+         "\" pages=\"" (or pages 1)
          "\" showing=\"" showing
          "\" truncated=\"" (boolean truncated) "\">\n"
          (when (seq items) (str item-xml "\n"))

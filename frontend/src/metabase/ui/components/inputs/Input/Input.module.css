@@ -32,14 +32,14 @@
   }
 
   &[data-variant="default"] {
-    border-color: var(--mb-color-border);
+    border-color: var(--mb-color-border-neutral);
 
     &:hover:not(:disabled) {
-      border-color: var(--mb-color-brand);
+      border-color: var(--mb-color-core-brand);
     }
 
     &:focus {
-      border-color: var(--mb-color-brand);
+      border-color: var(--mb-color-core-brand);
     }
 
     &[data-error] {

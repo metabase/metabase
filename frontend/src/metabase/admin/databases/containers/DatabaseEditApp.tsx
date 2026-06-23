@@ -121,7 +121,7 @@ function DatabaseEditAppInner({
                     database={database}
                   />
 
-                  <PLUGIN_WORKSPACES.AdminConnectionInfoSection
+                  <PLUGIN_WORKSPACES.WorkspaceDatabaseSection
                     database={database}
                   />
 

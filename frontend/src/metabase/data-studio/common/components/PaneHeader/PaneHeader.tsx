@@ -66,7 +66,7 @@ export const PaneHeader = ({
         <Stack gap="md">
           {title && (
             <Group align="center" gap="sm" wrap="nowrap">
-              {icon && <FixedSizeIcon name={icon} c="brand" size={20} />}
+              {icon && <FixedSizeIcon name={icon} c="core-brand" size={20} />}
               {title}
               {menu}
             </Group>
@@ -122,7 +122,7 @@ export function PaneHeaderInput({
       fz="h3"
       lh="h3"
       px={isOptional ? "xs" : undefined}
-      bd={isOptional ? "1px solid var(--mb-color-border)" : undefined}
+      bd={isOptional ? "1px solid var(--mb-color-border-neutral)" : undefined}
       isOptional={isOptional}
       isDisabled={readOnly}
       data-testid={dataTestId}
@@ -157,7 +157,7 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
             to={to}
             size="sm"
             radius="xl"
-            c={selected ? "brand" : undefined}
+            c={selected ? "core-brand" : undefined}
             bg={selected ? "background-selected" : backgroundColor}
             bd="none"
             leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}

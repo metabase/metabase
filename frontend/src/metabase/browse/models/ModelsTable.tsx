@@ -3,7 +3,7 @@ import { type MouseEvent, useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { getCollectionName } from "metabase/collections/utils";
+import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EntityItem } from "metabase/common/components/EntityItem";

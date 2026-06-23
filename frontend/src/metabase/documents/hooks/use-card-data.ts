@@ -17,6 +17,7 @@ import { getCardWithDraft } from "../selectors";
 
 interface UseCardDataProps {
   id: number;
+  skip?: boolean;
 }
 
 function buildAdhocQueryParams(card: Card) {
@@ -73,9 +74,12 @@ function selectIsLoadingDataset(
   return isLoadingDraft;
 }
 
-export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
+export function useCardData({
+  id,
+  skip = false,
+}: UseCardDataProps): UseCardDataResult {
   const isDraft = id < 0;
-  const shouldSkipSavedCard = !id || isDraft;
+  const shouldSkipSavedCard = !id || isDraft || skip;
 
   const {
     data: card,
@@ -106,8 +110,8 @@ export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
     }
   }, [isDraft, isPivotTable, cardToUse, metadata]);
 
-  const shouldSkipRegularQuery = !id || isDraft || !card;
-  const canQueryDraftCard = isDraft && cardToUse?.dataset_query;
+  const shouldSkipRegularQuery = !id || isDraft || !card || skip;
+  const canQueryDraftCard = isDraft && cardToUse?.dataset_query && !skip;
   const shouldQueryDraftNonPivot = canQueryDraftCard && !isPivotTable;
   const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable && metadata;
 

@@ -254,7 +254,7 @@
 
 (defmethod sql.qp/date [:sqlserver :minute]
   [_driver _unit expr]
-  (if (= (h2x/database-type expr) "time")
+  (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
     (time-from-parts (date-part :hour expr) (date-part :minute expr) 0 0 0)
     (h2x/maybe-cast :smalldatetime expr)))
 
@@ -282,7 +282,7 @@
 
 (defmethod sql.qp/date [:sqlserver :hour]
   [_driver _unit expr]
-  (if (= (h2x/database-type expr) "time")
+  (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
     (time-from-parts (date-part :hour expr) 0 0 0 0)
     (date-time-2-from-parts (h2x/year expr) (h2x/month expr) (h2x/day expr) (date-part :hour expr) 0 0 0 0)))
 
@@ -294,13 +294,12 @@
 ;; with something using the new system
 ;; Issue: https://github.com/metabase/metabase/issues/39386
 (defn- weekday
-  "Wrapper around (date-part :weekday ...) to account for potentially varying @@DATEFIRST"
+  "Wrapper around (date-part :weekday ...) to account for potentially varying @@DATEFIRST.
+  `((dow + @@DATEFIRST - 1) % 7) + 1` shifts the day-of-week into the range [1, 7] and propagates NULL."
   [expr]
-  [:coalesce
-   [:nullif
-    (h2x/mod (h2x/+ (date-part :weekday expr) [:raw "@@DATEFIRST"]) [:inline 7])
-    [:inline 0]]
-   [:inline 7]])
+  (h2x/+ (h2x/mod (h2x/- (h2x/+ (date-part :weekday expr) [:raw "@@DATEFIRST"]) [:inline 1])
+                  [:inline 7])
+         [:inline 1]))
 
 (defmethod sql.qp/date [:sqlserver :day]
   [_driver _unit expr]

@@ -31,13 +31,13 @@
       /* Mantine compatibility: supports old and new data-indeterminate. See: https://github.com/mantinedev/mantine/pull/8385 */
       &[data-indeterminate],
       &[data-indeterminate="true"] {
-        border-color: var(--mb-color-border);
+        border-color: var(--mb-color-border-neutral);
         background-color: var(--mb-color-background-primary);
       }
 
       &:after {
         content: "";
-        border: rem(1) solid var(--mb-color-border);
+        border: rem(1) solid var(--mb-color-border-neutral);
         position: absolute;
         top: rem(-2);
         left: rem(2);
@@ -50,11 +50,11 @@
       }
 
       &:checked:not([disabled]):after {
-        border: 1px solid var(--mb-color-brand);
+        border: 1px solid var(--mb-color-core-brand);
       }
 
       &:disabled:after {
-        border: 1px solid var(--mb-color-border);
+        border: 1px solid var(--mb-color-border-neutral);
       }
     }
   }
@@ -65,19 +65,19 @@
 }
 
 .input {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background-primary);
 
   /* Mantine compatibility: supports old and new data-indeterminate. See: https://github.com/mantinedev/mantine/pull/8385 */
   &[data-indeterminate],
   &[data-indeterminate="true"] {
-    border-color: var(--mb-color-brand);
-    background-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-core-brand);
   }
 
   &:checked {
-    border-color: var(--mb-color-brand);
-    background-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-core-brand);
   }
 
   &:not(:disabled) {

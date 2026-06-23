@@ -306,6 +306,16 @@
                            :visibility-type :details-only}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
+(deftest describe-table-respects-sync-max-fields-per-table-test
+  (mt/test-driver :mongo
+    (testing "describe-table caps the total number of fields at sync-max-fields-per-table"
+      ;; `venues` has 6 fields; with a tiny limit only that many are returned (capped during the tree build so a huge
+      ;; or deeply-nested collection can't OOM sync).
+      (mt/with-temporary-setting-values [sync-max-fields-per-table 2]
+        (is (= 2 (count (:fields (driver/describe-table
+                                  :mongo (mt/db)
+                                  (t2/select-one :model/Table :id (mt/id :venues)))))))))))
+
 ;; Index sync is turned off across the application as it is not used ATM.
 #_(deftest sync-indexes-info-test
     (mt/test-driver :mongo
@@ -467,6 +477,21 @@
                   {:aggregation [[:count]]
                    :breakout    [$tips.source.username]
                    :limit       4}))))))))
+
+(deftest ^:parallel breakoutable-columns-disambiguates-same-named-nested-fields-test
+  (testing "Nested fields with the same leaf name at different paths get path-qualified display names (#33698)"
+    (mt/test-driver :mongo
+      (mt/dataset geographical-tips
+        (let [mp       (mt/metadata-provider)
+              query    (lib/query mp (lib.metadata/table mp (mt/id :tips)))
+              displays (into #{} (map #(lib/display-name query %))
+                             (lib/breakoutable-columns query))]
+          (testing "root-level vs nested same-name collision"
+            (is (contains? displays "URL"))
+            (is (contains? displays "Source: URL")))
+          (testing "sibling subdocument same-name collision"
+            (is (contains? displays "Source: Categories"))
+            (is (contains? displays "Venue: Categories"))))))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
 (tx/defdataset all-null-columns

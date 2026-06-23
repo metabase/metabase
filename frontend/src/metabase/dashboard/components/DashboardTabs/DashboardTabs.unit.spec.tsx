@@ -15,15 +15,21 @@ import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
-import { TEST_CARD } from "metabase/query_builder/containers/test-utils";
 import { useSelector } from "metabase/redux";
 import type { DashboardState, State } from "metabase/redux/store";
 import type { DashboardTab } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
 
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
+
+const TEST_CARD = createMockCard({
+  id: 1,
+  name: "Test card",
+  type: "model",
+});
 
 function setup({
   tabs,

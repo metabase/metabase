@@ -12,7 +12,7 @@ export const RequiredToggleLabel = styled.label`
 `;
 
 export const Divider = styled.div`
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   margin: var(--mantine-spacing-md) 0;
 `;
 
@@ -27,6 +27,6 @@ export const SettingsTriggerIcon = styled(Icon)`
   color: var(--mb-color-text-primary);
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

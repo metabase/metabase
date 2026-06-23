@@ -17,6 +17,7 @@ import {
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
+import { MetabotInlineChart } from "./MetabotInlineChart";
 
 type AgentDataPartMessageProps = {
   message: MetabotAgentDataPartMessage;
@@ -67,6 +68,15 @@ export const AgentDataPartMessage = ({
         </Stack>
       );
     })
+    .with(
+      { part: { type: "generated_entity", value: { type: "card" } } },
+      ({ part }) => (
+        <Stack gap="md">
+          {debug && <DataPartJsonCard type={part.type} value={part.value} />}
+          <MetabotInlineChart value={part.value} />
+        </Stack>
+      ),
+    )
     .with({ part: { type: "adhoc_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
     )
@@ -96,7 +106,7 @@ const DataPartJsonCard = ({
 
   return (
     <Box
-      bd="1px solid var(--mb-color-border)"
+      bd="1px solid var(--mb-color-border-neutral)"
       bdrs="sm"
       className={Styles.agentPartCard}
     >
@@ -123,7 +133,7 @@ const DataPartJsonCard = ({
         p="sm"
         bg="background-primary"
         style={{
-          borderTop: "1px solid var(--mb-color-border)",
+          borderTop: "1px solid var(--mb-color-border-neutral)",
           borderBottomLeftRadius: "var(--mantine-radius-sm)",
           borderBottomRightRadius: "var(--mantine-radius-sm)",
         }}
@@ -151,7 +161,7 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
     direction="row"
     align="center"
     justify="space-between"
-    bd="1px solid var(--mb-color-border)"
+    bd="1px solid var(--mb-color-border-neutral)"
     bdrs="sm"
     className={Styles.agentPartCard}
     p="sm"
@@ -185,7 +195,7 @@ const CodeEditDataPart = ({
 
   return (
     <Box
-      bd="1px solid var(--mb-color-border)"
+      bd="1px solid var(--mb-color-border-neutral)"
       bdrs="sm"
       className={Styles.agentPartCard}
     >
@@ -214,7 +224,7 @@ const CodeEditDataPart = ({
       </Flex>
       <Box
         style={{
-          borderTop: "1px solid var(--mb-color-border)",
+          borderTop: "1px solid var(--mb-color-border-neutral)",
           borderBottomLeftRadius: "var(--mantine-radius-sm)",
           borderBottomRightRadius: "var(--mantine-radius-sm)",
           overflow: "hidden",

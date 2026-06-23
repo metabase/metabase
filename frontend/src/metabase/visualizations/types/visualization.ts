@@ -136,6 +136,9 @@ export interface StaticVisualizationProps {
   renderingContext: RenderingContext;
   isStorybook?: boolean;
   hasDevWatermark?: boolean;
+  width?: number;
+  height?: number;
+  fitWithinBounds?: boolean;
 }
 
 export interface VisualizationProps {
@@ -242,7 +245,7 @@ export type VisualizationPassThroughProps = {
   tableHeaderHeight?: number;
   scrollToColumn?: number;
   renderTableHeader?: (
-    column: number,
+    column: DatasetColumn,
     index: number,
     theme: unknown,
   ) => ReactNode;
@@ -259,7 +262,7 @@ export type VisualizationPassThroughProps = {
 
   showAllLegendItems?: boolean;
 
-  onHeaderColumnReorder?: (columnName: string) => void;
+  onHeaderColumnReorder?: (columnIndex: number) => void;
 
   /**
    * Items that will be shown in a menu when the title is clicked.

@@ -14,6 +14,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.tracing.core :as tracing]
@@ -538,38 +539,37 @@
      [:is :personal_owner_id nil]
      [:= :personal_owner_id current-user-id]]))
 
-(defn- search-filters
-  "Generate WHERE conditions based on search context filters."
+(defn- filter-conditions
+  "Ordered `[filter-key where-condition]` pairs for the structural filters implied by `search-context`. The
+  search query ANDs these together (see [[search-filters]]); the search debug API uses the keys to attribute
+  which specific filter excludes a given row."
   [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by
            table-db-id ids display-type] :as search-context}]
-  (let [conditions (filter some?
-                           [(personal-collection-filter search-context)
-                            (when (some? archived?)
-                              [:= :archived archived?])
-                            (when (some? verified)
-                              [:= :verified verified])
-                            (when (seq models)
-                              [:in :model models])
-                            (when (seq created-by)
-                              [:in :creator_id created-by])
-                            (when (seq last-edited-by)
-                              [:in :last_editor_id last-edited-by])
-                            (when table-db-id
-                              [:= :database_id table-db-id])
-                            (when (seq ids)
-                              [:in :model_id (map str ids)])
-                            (when (seq display-type)
-                              [:in :display_type display-type])
-                            (when (and created-at (:start created-at) (:end created-at))
-                              [:between :model_created_at
-                               (LocalDate/parse (:start created-at))
-                               (LocalDate/parse (:end created-at))])
-                            (when (and last-edited-at (:start last-edited-at) (:end last-edited-at))
-                              [:between :model_updated_at
-                               (LocalDate/parse (:start last-edited-at))
-                               (LocalDate/parse (:end last-edited-at))])])]
-    (when (seq conditions)
-      (into [:and] conditions))))
+  (keep
+   (fn [[k clause]] (when clause [k clause]))
+   [[:personal-collection (personal-collection-filter search-context)]
+    [:archived?           (when (some? archived?) [:= :archived archived?])]
+    [:verified            (when (some? verified) [:= :verified verified])]
+    [:models              (when (seq models) [:in :model models])]
+    [:created-by          (when (seq created-by) [:in :creator_id created-by])]
+    [:last-edited-by      (when (seq last-edited-by) [:in :last_editor_id last-edited-by])]
+    [:table-db-id         (when table-db-id [:= :database_id table-db-id])]
+    [:ids                 (when (seq ids) [:in :model_id (map str ids)])]
+    [:display-type        (when (seq display-type) [:in :display_type display-type])]
+    [:created-at          (when (and created-at (:start created-at) (:end created-at))
+                            [:between :model_created_at
+                             (LocalDate/parse (:start created-at))
+                             (LocalDate/parse (:end created-at))])]
+    [:last-edited-at      (when (and last-edited-at (:start last-edited-at) (:end last-edited-at))
+                            [:between :model_updated_at
+                             (LocalDate/parse (:start last-edited-at))
+                             (LocalDate/parse (:end last-edited-at))])]]))
+
+(defn- search-filters
+  "Generate WHERE conditions based on search context filters."
+  [search-context]
+  (when-let [conditions (seq (map second (filter-conditions search-context)))]
+    (into [:and] conditions)))
 
 (def ^:private common-search-columns
   [[:id :id]
@@ -767,42 +767,47 @@
             (let [decoded (decode-pgobject pgo)]
               (cond-> decoded (string? decoded) json/decode+kw)))))
 
-;; Search-models whose `mi/can-read?` is a pure function of `:collection_id`, which is
-;; already denormalized on the index row. Values are the Toucan model whose `can-read?`
-;; defmethod is invoked on a stub instance carrying only `:collection_id`.
-;;
-;;  - "card" / "metric" / "dataset" → :model/Card
-;;  - "dashboard"                   → :model/Dashboard (as of 20260420 this _could_ be
-;;                                    :model/Card for additional albeit modest perf gains
-;;                                    but choosing to not silently ride Card's semantics)
-;;  - "indexed-entity"              → :model/Card by design: the index row's
-;;                                    `collection_id` is the parent Card's (denormalized
-;;                                    via the spec's Collection join), so routing through
-;;                                    Card short-circuits the original ModelIndex → Card
-;;                                    resolution in `filter-can-read-indexed-entity`.
+(defn- compute-collection-id-only-search-models
+  "Compute search-models whose read perms are determined fully by their collection id."
+  []
+  ;; `search/specifications` must run before reading the registry: its `t2/resolve-model` calls load the
+  ;; model namespaces that populate it. Otherwise cold start caches an empty set for the JVM lifetime.
+  (let [specs                    (search/specifications)
+        registered-t2-models     (perms/collection-id-only-read-models)
+        registered-search-models (set (keys (perms/collection-based-visibility-search-models)))]
+    ;; Two sources:
+    ;; (1) string-form registrations, whose spec's `:model` is a different t2-model (e.g. ModelIndex)
+    ;;     and wouldn't be picked up by the filter below;
+    ;; (2) every spec whose `:model` was registered via the keyword form — `mi/can-read?` dispatches on
+    ;;     the t2-model, so sibling specs like "dataset"/"metric" that share `:model/Card` are covered
+    ;;     by one registration.
+    (into registered-search-models
+          (comp (filter (fn [[_ spec]] (contains? registered-t2-models (:model spec))))
+                (map key))
+          specs)))
+
 (def ^:private collection-id-only-search-models
-  {"card"           :model/Card
-   "metric"         :model/Card
-   "dataset"        :model/Card
-   "dashboard"      :model/Dashboard
-   "indexed-entity" :model/Card})
+  "Search-models whose read perms are determined fully by their collection id.
+  Wrapped in `delay` so the registry can populate before first read."
+  (delay (compute-collection-id-only-search-models)))
 
 (defn- filter-read-permitted
-  "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
+  "Returns the subset of `docs` whose t2 instances pass `mi/can-read?` for the current user."
   [docs]
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        {fast-docs true slow-docs false} (group-by #(contains? collection-id-only-search-models (:model %)) docs)
-        ;; Fast path: the permission check depends only on `:collection_id`, which is already on the
-        ;; index row. Dedupe by `[stub-model, collection_id]` so `can-read?` runs at most once per
-        ;; (model, collection) pair instead of once per document.
-        readable? (memoize
-                   (fn [stub-model coll-id]
-                     (mi/can-read? (t2/instance stub-model {:collection_id coll-id}))))
-        fast-filtered (filterv (fn [doc]
-                                 (readable? (get collection-id-only-search-models (:model doc))
-                                            (:collection_id doc)))
-                               fast-docs)
+        fast-set @collection-id-only-search-models
+        {fast-docs true slow-docs false} (group-by #(contains? fast-set (:model %)) docs)
+        ;; Fast path: for models registered via `perms/define-collection-based-visibility!`, `mi/can-read?` is
+        ;; definitionally `(perms/can-read-via-parent-collection? (:collection_id instance))`, so we skip the
+        ;; t2/select and check perms straight from the denormalized `:collection_id` on the index row.
+        ;; Calling the shared helper means fast and slow paths run the same code for these models.
+        ;; Memoizing dedupes the perm check across docs that share a collection.
+        ;;
+        ;; Trade-off: the indexed `:collection_id` is eventually-consistent, so a moved/deleted row may appear
+        ;; in results until the next reindex. Click-through still enforces live perms.
+        coll-readable? (memoize perms/can-read-via-parent-collection?)
+        fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec
                            (for [[t2-model docs] (group-by doc->t2-model slow-docs)
                                  t2-instance (t2/select t2-model :id [:in (map :id docs)])]
@@ -872,7 +877,8 @@
             embedding (tracing/with-span :search "search.semantic.embedding"
                         {:search.semantic/provider   (:provider embedding-model)
                          :search.semantic/model-name (:model-name embedding-model)}
-                        (embedding/get-embedding embedding-model search-string
+                        (embedding/get-embedding embedding-model
+                                                 (embedding/prefix-search-query embedding-model search-string)
                                                  {:type :query :record-tokens? true}))
             embedding-time-ms (u/since-ms timer)
 
@@ -927,6 +933,56 @@
           (jdbc/execute! db (sql-format-quoted query)))
         {:results final-results
          :raw-count (count raw-results)}))))
+
+(defn- row-present?
+  "Whether a single `(model, id)` row survives `where` against the index `table`."
+  [db table model id where]
+  (some? (jdbc/execute-one! db (sql-format-quoted
+                                {:select [[[:inline 1] :one]]
+                                 :from   [table]
+                                 :where  (into [:and [:= :model model] [:= :model_id (str id)]]
+                                               (when where [where]))})
+                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+
+(defn diagnose-row
+  "Engine-owned diagnostic stages for the semantic index: returns `{:type ..., :details ...}` for the first of
+  `:missing-from-index` / `:filtered` / `:not-matching` that drops `(model, id)`, or `:candidate` if it survives
+  every engine-owned stage. The caller ([[metabase.search.debug]]) handles the engine-independent stages."
+  [db index search-context model id]
+  (let [table (keyword (:table-name index))
+        row   (jdbc/execute-one! db (sql-format-quoted
+                                     {:select [:model :model_id :legacy_input]
+                                      :from   [table]
+                                      :where  [:and [:= :model model] [:= :model_id (str id)]]})
+                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    (cond
+      (nil? row)
+      {:type :missing-from-index :details {:table (:table-name index)}}
+
+      :else
+      ;; Check access control before structural filters so a not-permitted row is reported as such even when a
+      ;; query filter would also drop it (matches the appdb engine, where the permission layers come first).
+      (if (empty? (filter-read-permitted [(:legacy_input (decode-legacy-input row))]))
+        {:type :filtered :details {:excluded-by :permissions}}
+        (if-let [excluded-by (some (fn [[k clause]] (when-not (row-present? db table model id clause) k))
+                                   (filter-conditions search-context))]
+          {:type :filtered :details {:excluded-by excluded-by}}
+          (let [search-string (:search-string search-context)]
+            (if (str/blank? search-string)
+              {:type :candidate :details {}}
+              (let [embedding (embedding/get-embedding (:embedding-model index) search-string
+                                                       {:type :query :record-tokens? true})
+                    distance  (-> (jdbc/execute-one! db (sql-format-quoted
+                                                         {:select [[[:raw (str "embedding <=> " (format-embedding embedding))] :distance]]
+                                                          :from   [table]
+                                                          :where  [:and [:= :model model] [:= :model_id (str id)]]})
+                                                     {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                                  :distance)]
+                ;; A row beyond the cosine cutoff is dropped by the vector arm; the keyword arm may still surface it
+                ;; via RRF, so treat it as a candidate within the cutoff and only call it not-matching past it.
+                (if (and distance (> distance max-cosine-distance))
+                  {:type :not-matching :details {:max-cosine-distance max-cosine-distance :distance distance}}
+                  {:type :candidate :details {:distance distance}})))))))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))

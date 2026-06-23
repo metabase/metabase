@@ -6,20 +6,20 @@
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
 .HelpExternalLink {
   flex: 1;
   padding: 1rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   transition: border 0.3s linear;
   text-decoration: none;
   background-color: var(--mb-color-background-primary);
 
   &:hover {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
   }
 }

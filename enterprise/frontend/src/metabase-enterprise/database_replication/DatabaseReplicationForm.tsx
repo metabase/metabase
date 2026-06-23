@@ -220,7 +220,7 @@ export const DatabaseReplicationForm = ({
                       variant="subtle"
                       size="xs"
                       onClick={() => setShowNoSyncTables(!showNoSyncTables)}
-                      c="brand"
+                      c="core-brand"
                       fz="md"
                       h="auto"
                       mt="xs"
@@ -234,7 +234,7 @@ export const DatabaseReplicationForm = ({
                         justify="flex-start"
                         wrap="nowrap"
                       >
-                        <Text span c="brand">
+                        <Text span c="core-brand">
                           {showNoSyncTables
                             ? t`Hide tables (${noSyncTables.length})`
                             : t`Show tables (${noSyncTables.length})`}
@@ -308,7 +308,7 @@ export const DatabaseReplicationForm = ({
                       onClick={() =>
                         setShowReplicatedTables(!showReplicatedTables)
                       }
-                      c="brand"
+                      c="core-brand"
                       fz="md"
                       h="auto"
                       mt="xs"
@@ -322,7 +322,7 @@ export const DatabaseReplicationForm = ({
                         justify="flex-start"
                         wrap="nowrap"
                       >
-                        <Text span c="brand">
+                        <Text span c="core-brand">
                           {showReplicatedTables
                             ? t`Hide tables (${replicatedTables.length})`
                             : t`Show tables (${replicatedTables.length})`}

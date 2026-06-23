@@ -133,10 +133,13 @@ const SupportingTextComponent = ({
   selected,
 }: NodeViewProps) => {
   const host = useEditorHost();
+  const { ref: viewportRef, isInViewport } = host.useNodeInViewport();
   const childTargetId = useSelector(host.selectors.getChildTargetId);
   const document = useSelector(host.selectors.getCurrentDocument);
   const { _id } = node.attrs;
-  const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id);
+  const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
+    skip: !isInViewport,
+  });
   const isOpen = childTargetId === _id;
   const commentsPath = document
     ? `/document/${document.id}/comments/${_id}`
@@ -157,6 +160,7 @@ const SupportingTextComponent = ({
 
   return (
     <NodeViewWrapper
+      ref={viewportRef}
       className={cx(S.wrapper, { [S.selected]: selected })}
       data-testid="document-card-supporting-text"
       data-type={SUPPORTING_TEXT_NODE_NAME}

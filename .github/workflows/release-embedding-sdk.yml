@@ -400,10 +400,10 @@ jobs:
           echo "Resolved npm tag: $TAG"
           npm publish --tag "$TAG"
 
+  # When a newer release branch goes gold, remove this entire job from this branch.
   tag-latest:
     name: Tag npm release as latest
-    # ⚠️ This should only run on the most recent release branch (e.g. `release-x.61.x`),
-    # and only once it becomes stable (gold). Delete this line when gold — do not delete during the pre-gold window.
+    # Pre-gold: remove `if: false` once this branch becomes gold.
     if: false
     needs: [publish-npm, determine-sdk-version]
     uses: ./.github/workflows/embedding-sdk-tag-latest.yml

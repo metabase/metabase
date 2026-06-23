@@ -2893,8 +2893,8 @@
   (str/trim (t2/select-one-fn :entity_id :collection :id collection-id)))
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test
-  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02: backfill canonical Library root entity IDs"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02-updated: backfill canonical Library root entity IDs"
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
       (let [library-id (insert-legacy-library-collection! {:name      "Library"
                                                            :slug      "library"
                                                            :type      "library"
@@ -2919,7 +2919,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-2
   (testing "ambiguous Library Data direct children are not modified"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
       (let [library-id        (insert-legacy-library-collection! {:name      "Library"
                                                                   :slug      "library"
                                                                   :type      "library"
@@ -2951,7 +2951,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-3
   (testing "Library Data collections outside Library root do not count as ambiguous"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02-updated"] [migrate!]
       (let [library-id      (insert-legacy-library-collection! {:name      "Library"
                                                                 :slug      "library"
                                                                 :type      "library"
@@ -2979,7 +2979,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-4
   (testing "pre-existing canonical Library rows with missing types prevent entity_id collisions"
-    (impl/test-migrations ["v62.2026-05-13T11:59:58" "v62.2026-05-13T12:00:02"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T11:59:58" "v62.2026-05-13T12:00:02-updated"] [migrate!]
       (let [canonical-library-id (insert-legacy-library-collection! {:name      "Pre-existing canonical Library"
                                                                      :slug      "canonical-library"
                                                                      :type      nil
@@ -3133,3 +3133,59 @@
         (testing "user-settings with a real coercion is untouched"
           (is (= "type/Number"
                  (t2/select-one-fn :effective_type :metabase_field_user_settings :field_id with-coercion-id))))))))
+
+(deftest task-run-notification-id-backfill-test
+  ;; Backfill is Postgres/MySQL only: H2 has no JSON-path extraction functions and isn't a production
+  ;; app-db anyway. Skip the whole test there.
+  (when (#{:postgres :mysql} (mdb/db-type))
+    (testing "v62 backfills task_run.notification_id from the notification-send task_history child"
+      (impl/test-migrations ["v62.2026-06-06T00:00:00"] [migrate!]
+        (let [recent    (t/offset-date-time)
+              old       (t/minus (t/offset-date-time) (t/days 100))
+              new-run!  (fn [started run-type status]
+                          (t2/insert-returning-pk! :task_run {:run_type    run-type
+                                                              :entity_type "card"
+                                                              :entity_id   1
+                                                              :status      status
+                                                              :started_at  started}))
+              new-th!   (fn [run-id task status details]
+                          ;; insert via table name (not the model) so task_details is stored as the raw
+                          ;; JSON string the backfill reads, without the model's :json transform.
+                          (t2/insert! :task_history {:task         task
+                                                     :status       status
+                                                     :started_at   recent
+                                                     :run_id       run-id
+                                                     :task_details details}))
+              ;; the three task_history shapes a real notification-send produces, plus the edge cases
+              success   (new-run! recent "alert"        "success")   ; normal: succeeded, notification_id top-level
+              failed    (new-run! recent "alert"        "failed")    ; failed: with-task-history nests under original-info
+              abandoned (new-run! recent "alert"        "abandoned") ; abandoned: died before writing any task_history
+              too-old   (new-run! old    "alert"        "success")   ; outside the 90-day window
+              chan-only (new-run! recent "alert"        "success")   ; only a channel-send child, no notification-send
+              subscript (new-run! recent "subscription" "success")   ; dashboard subscription, also attributed
+              other     (new-run! recent "sync"         "success")]  ; neither alert nor subscription
+          (new-th! success   "notification-send" "success" "{\"notification_id\":101}")
+          (new-th! failed    "notification-send" "failed"  "{\"status\":\"failed\",\"message\":\"boom\",\"original-info\":{\"notification_id\":102}}")
+          ;; `abandoned` intentionally has NO task_history (the run was killed before writing one)
+          (new-th! too-old   "notification-send" "success" "{\"notification_id\":104}")
+          (new-th! chan-only "channel-send"      "success" "{\"notification_id\":105,\"channel_type\":\"channel/email\"}")
+          (new-th! subscript "notification-send" "success" "{\"notification_id\":107}")
+          (new-th! other     "notification-send" "success" "{\"notification_id\":106}")
+          (migrate!)
+          (let [nid #(t2/select-one-fn :notification_id :task_run :id %)]
+            (testing "attributed from a notification-send child in the window"
+              (testing "normal successful send, top-level notification_id"
+                (is (= 101 (nid success))))
+              (testing "failed send, notification_id nested under original-info"
+                (is (= 102 (nid failed))))
+              (testing "subscription run is attributed too"
+                (is (= 107 (nid subscript)))))
+            (testing "not attributed"
+              (testing "abandoned run with no task_history stays null"
+                (is (nil? (nid abandoned))))
+              (testing "run older than the 90-day window"
+                (is (nil? (nid too-old))))
+              (testing "channel-send-only run (no notification-send)"
+                (is (nil? (nid chan-only))))
+              (testing "neither alert nor subscription"
+                (is (nil? (nid other)))))))))))

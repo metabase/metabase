@@ -10,7 +10,7 @@
 }
 
 .ContentTable thead {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .PageHeader {
@@ -48,7 +48,7 @@
 
 .AdminList {
   background-color: var(--mb-color-background-secondary);
-  border: var(--border-size) var(--border-style) var(--mb-color-border);
+  border: var(--border-size) var(--border-style) var(--mb-color-border-neutral);
   border-radius: var(--default-border-radius);
   width: 266px;
   min-height: 300px;
@@ -76,7 +76,7 @@
   width: 100%;
   border-top-left-radius: var(--default-border-radius);
   border-top-right-radius: var(--default-border-radius);
-  border-bottom-color: var(--mb-color-border);
+  border-bottom-color: var(--mb-color-border-neutral);
 }
 
 .AdminListItem {
@@ -87,13 +87,13 @@
 }
 
 .AdminListItem.selected {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .AdminListItem.selected,
 .AdminListItem:hover {
   background-color: var(--mb-color-background-primary);
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
   margin-left: -0.5em;
   margin-right: -0.5em;
   padding-left: 1.5em;
@@ -119,7 +119,7 @@
 }
 
 .AdminInput:focus {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
   box-shadow: none;
   outline: 0;
 }
@@ -158,7 +158,8 @@
 }
 
 .AdminTable thead {
-  border-bottom: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-bottom: var(--border-size) var(--border-style)
+    var(--mb-color-border-neutral);
 }
 
 .AdminTable tbody tr:first-child td {

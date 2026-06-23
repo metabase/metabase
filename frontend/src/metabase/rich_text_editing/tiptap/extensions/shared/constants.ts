@@ -17,7 +17,7 @@ export const LINK_SEARCH_LIMIT = 5;
 
 export const USER_SEARCH_LIMIT = LINK_SEARCH_LIMIT;
 
-export const DROP_ZONE_COLOR = "var(--mb-color-brand)";
+export const DROP_ZONE_COLOR = "var(--mb-color-core-brand)";
 
 /** Maximum number of card embeds a FlexContainer group may hold side-by-side. */
 export const MAX_GROUP_SIZE = 3;

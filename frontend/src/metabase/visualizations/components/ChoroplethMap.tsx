@@ -1,10 +1,8 @@
 import cx from "classnames";
-import Color from "color";
 import * as d3 from "d3";
 import type { Feature, FeatureCollection } from "geojson";
 import type L from "leaflet";
 import { useEffect, useState } from "react";
-import ss from "simple-statistics";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -17,18 +15,18 @@ import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Text } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
-import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import { formatValue } from "metabase/visualizations/lib/formatting";
 import {
-  computeMinimalBounds,
-  getCanonicalRowKey,
-} from "metabase/visualizations/lib/mapping";
+  HEAT_MAP_ZERO_COLOR,
+  buildColorScale,
+  getLegendTitles,
+} from "metabase/visualizations/lib/choropleth";
+import { MinColumnsError } from "metabase/visualizations/lib/errors";
+import { getCanonicalRowKey } from "metabase/visualizations/lib/mapping";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
-  ColumnSettings,
   VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
@@ -44,48 +42,7 @@ import type {
 import { ChartWithLegend } from "./ChartWithLegend";
 import { LeafletChoropleth } from "./LeafletChoropleth";
 import { LegacyChoropleth } from "./LegacyChoropleth";
-
-// TODO COLOR
-// eslint-disable-next-line metabase/no-color-literals
-const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
-// eslint-disable-next-line metabase/no-color-literals
-const HEAT_MAP_ZERO_COLOR = "#CCC";
-
-type ColorScaleOptions = {
-  lightness?: number;
-  darken?: number;
-  darkenLast?: number;
-  saturate?: number;
-};
-
-export function getColorplethColorScale(
-  color: string,
-  {
-    lightness = 92,
-    darken = 0.2,
-    darkenLast = 0.3,
-    saturate = 0.1,
-  }: ColorScaleOptions = {},
-): string[] {
-  const lightColor = Color(color).lightness(lightness).saturate(saturate);
-  const darkColor = Color(color).darken(darken).saturate(saturate);
-
-  const scale = d3.scaleLinear<string>(
-    [0, 1],
-    [lightColor.string(), darkColor.string()],
-  );
-
-  const colors = d3.range(0, 1.25, 0.25).map((value) => scale(value));
-
-  if (darkenLast) {
-    colors[colors.length - 1] = Color(color)
-      .darken(darkenLast)
-      .saturate(saturate)
-      .string();
-  }
-
-  return colors;
-}
+import { computeMinimalBounds } from "./leaflet-bounds";
 
 const geoJsonCache = new Map<string, GeoJSONData>();
 
@@ -105,43 +62,6 @@ function loadGeoJson(
       callback(json);
     }
   });
-}
-
-export function getLegendTitles(
-  groups: number[][],
-  columnSettings: ColumnSettings,
-): string[] {
-  const formatMetric = (value: number, compact: boolean): string =>
-    String(formatValue(value, { ...columnSettings, compact }));
-
-  const compact = shouldUseCompactFormatting(groups, formatMetric);
-
-  return groups.map((group, index) => {
-    const min = formatMetric(group[0], compact);
-    const max = formatMetric(group[group.length - 1], compact);
-    return index === groups.length - 1
-      ? `${min} +` // the last value in the list
-      : min !== max
-        ? `${min} - ${max}` // typical case
-        : min; // special case to avoid zero-width ranges e.g. $88-$88
-  });
-}
-
-// if the average formatted length is greater than this, we switch to compact formatting
-const AVERAGE_LENGTH_CUTOFF = 5;
-
-function shouldUseCompactFormatting(
-  groups: number[][],
-  formatMetric: (value: number, compact: boolean) => string,
-): boolean {
-  const minValues = groups.map(([x]) => x);
-  const maxValues = groups.slice(0, -1).map((group) => group[group.length - 1]);
-  const allValues = minValues.concat(maxValues);
-  const formattedValues = allValues.map((value) => formatMetric(value, false));
-  const averageLength =
-    formattedValues.reduce((sum, { length }) => sum + length, 0) /
-    formattedValues.length;
-  return averageLength > AVERAGE_LENGTH_CUTOFF;
 }
 
 type ChoroplethStateProps = {
@@ -307,28 +227,6 @@ function buildValuesMap(
     valuesMap[key] = (valuesMap[key] || 0) + getRowValue(row);
   }
   return valuesMap;
-}
-
-function buildColorScale(
-  domain: number[],
-  settingsColors: string[] | undefined,
-): {
-  colorScale: (value: number) => string;
-  groups: number[][];
-  heatMapColors: string[];
-} {
-  const baseColors = settingsColors ?? HEAT_MAP_COLORS;
-  const heatMapColors = baseColors.slice(-domain.length);
-
-  const groups = ss.ckmeans(domain, heatMapColors.length);
-  const groupBoundaries = groups.slice(1).map((cluster) => cluster[0]);
-
-  const colorScale = d3
-    .scaleThreshold<number, string>()
-    .domain(groupBoundaries)
-    .range(heatMapColors);
-
-  return { colorScale, groups, heatMapColors };
 }
 
 function computeAspectRatio(

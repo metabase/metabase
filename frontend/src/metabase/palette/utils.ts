@@ -115,7 +115,7 @@ export const getCommandPaletteIcon = (
 ): { name: IconName; c: ColorName } => {
   const icon = {
     name: item.icon as IconName,
-    c: item.extra?.iconColor || "brand",
+    c: item.extra?.iconColor || "core-brand",
   };
 
   return icon;

@@ -1,6 +1,6 @@
 .root {
   background-color: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-md);
 }
 
@@ -10,7 +10,7 @@
   padding-left: 0.75rem;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 

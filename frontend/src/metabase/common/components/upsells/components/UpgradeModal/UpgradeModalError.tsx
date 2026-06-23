@@ -30,7 +30,7 @@ export function UpgradeModalError({ onClose }: UpgradeModalErrorProps) {
       </Stack>
 
       <Flex justify="center" w="100%">
-        <Button variant="filled" color="brand" onClick={onClose}>
+        <Button variant="filled" color="core-brand" onClick={onClose}>
           {t`Close`}
         </Button>
       </Flex>

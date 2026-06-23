@@ -8,12 +8,8 @@ import {
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
   DataPermissionType,
-  type EntityId,
   type PermissionOption,
   type PermissionSectionConfig,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getFieldsPermission,
@@ -26,6 +22,10 @@ import {
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
+  type SchemaEntityId,
+  type TableEntityId,
 } from "metabase-types/api";
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
@@ -81,8 +81,9 @@ const DOWNLOAD_PERMISSIONS_DESC = [
 const getPermissionValue = (
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   permissionSubject: PermissionSubject,
+  permission: DataPermission,
 ) => {
   switch (permissionSubject) {
     case "fields":
@@ -90,27 +91,49 @@ const getPermissionValue = (
         permissions,
         groupId,
         entityId as TableEntityId,
-        DataPermission.DOWNLOAD,
+        permission,
       );
     case "tables":
       return getTablesPermission(
         permissions,
         groupId,
         entityId as SchemaEntityId,
-        DataPermission.DOWNLOAD,
+        permission,
       );
     default:
-      return getSchemasPermission(
-        permissions,
-        groupId,
-        entityId,
-        DataPermission.DOWNLOAD,
-      );
+      return getSchemasPermission(permissions, groupId, entityId, permission);
   }
 };
 
+const getEffectiveDownloadPermissionValue = (
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: PermissionEntityId,
+  permissionSubject: PermissionSubject,
+) => {
+  const viewDataPermissionValue = getPermissionValue(
+    permissions,
+    groupId,
+    entityId,
+    permissionSubject,
+    DataPermission.VIEW_DATA,
+  );
+
+  if (viewDataPermissionValue === DataPermissionValue.BLOCKED) {
+    return DOWNLOAD_PERMISSION_OPTIONS.none.value;
+  }
+
+  return getPermissionValue(
+    permissions,
+    groupId,
+    entityId,
+    permissionSubject,
+    DataPermission.DOWNLOAD,
+  );
+};
+
 export const buildDownloadPermission = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
@@ -124,9 +147,15 @@ export const buildDownloadPermission = (
 
   const value = isBlockPermission
     ? DOWNLOAD_PERMISSION_OPTIONS.none.value
-    : getPermissionValue(permissions, groupId, entityId, permissionSubject);
+    : getPermissionValue(
+        permissions,
+        groupId,
+        entityId,
+        permissionSubject,
+        DataPermission.DOWNLOAD,
+      );
 
-  const defaultGroupValue = getPermissionValue(
+  const defaultGroupValue = getEffectiveDownloadPermissionValue(
     permissions,
     defaultGroup.id,
     entityId,

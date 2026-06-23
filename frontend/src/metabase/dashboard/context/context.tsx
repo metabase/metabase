@@ -13,7 +13,7 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, noop } from "underscore";
 
-import { isAbortError } from "metabase/api/legacy-client";
+import { isAbortError } from "metabase/api/client";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
 import type {

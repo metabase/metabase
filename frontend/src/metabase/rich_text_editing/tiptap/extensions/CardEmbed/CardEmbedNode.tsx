@@ -1,3 +1,4 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   Node,
   findParentNodeClosestToPos,
@@ -39,9 +40,9 @@ import { DocumentMode } from "metabase/visualizations/click-actions/modes/Docume
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
+import { getDatasetError } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, Dataset } from "metabase-types/api";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -69,15 +70,6 @@ function formatCardEmbed(attrs: CardEmbedAttributes): string {
     return `{% card id=${attrs.id} %}`;
   }
 }
-
-const getDatasetError = (dataset: Dataset) => {
-  if (dataset.error) {
-    return {
-      message: getGenericErrorMessage(),
-      icon: "warning" as const,
-    };
-  }
-};
 
 export interface CardEmbedAttributes {
   id?: number;
@@ -161,14 +153,21 @@ export const CardEmbedComponent = memo(
     deleteNode,
   }: NodeViewProps) => {
     const host = useEditorHost();
+    const { _id } = node.attrs;
+    const {
+      ref: viewportRef,
+      isInViewport,
+      shouldLoadData,
+    } = host.useNodeInViewport(_id);
     const childTargetId = useSelector(host.selectors.getChildTargetId);
     const hoveredChildTargetId = useSelector(
       host.selectors.getHoveredChildTargetId,
     );
     const document = useSelector(host.selectors.getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const { _id } = node.attrs;
-    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id);
+    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
+      skip: !isInViewport,
+    });
 
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
@@ -192,12 +191,16 @@ export const CardEmbedComponent = memo(
 
     // Use external hook when viewing an externally-rendered document (e.g. public), otherwise use regular hook
     const isExternalDocument = externalCardData != null;
-    const regularCardData = host.useCardData({ id });
-    const externalCardDataResult = host.useExternalCardDataLoader(id);
+    const regularCardData = host.useCardData({ id, skip: !shouldLoadData });
+    const externalCardDataResult = host.useExternalCardDataLoader(id, {
+      skip: !shouldLoadData,
+    });
 
     const { card, dataset, isLoading, series, error } = isExternalDocument
       ? externalCardDataResult
       : regularCardData;
+
+    host.useReportPrefetchLoading(_id, isLoading);
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -207,6 +210,8 @@ export const CardEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
+
+    const setRef = useMergedRef<HTMLDivElement>(viewportRef, cardEmbedRef);
 
     const shouldAllowAddingSupportingText = () => {
       const pos = getPos();
@@ -489,7 +494,7 @@ export const CardEmbedComponent = memo(
             </>
           )}
           <Box
-            ref={cardEmbedRef}
+            ref={setRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
@@ -517,7 +522,7 @@ export const CardEmbedComponent = memo(
                           lineHeight: 1.55,
                           backgroundColor: "transparent",
                           "&:focus": {
-                            border: "1px solid var(--mb-color-border)",
+                            border: "1px solid var(--mb-color-border-neutral)",
                             backgroundColor:
                               "var(--mb-color-background-primary)",
                             padding: "0 0.25rem",
@@ -631,7 +636,7 @@ export const CardEmbedComponent = memo(
                 </Flex>
               </Box>
             )}
-            {series ? (
+            {series && isInViewport ? (
               <>
                 <Box className={styles.questionResults}>
                   <ExplicitSizeRefreshModeContext.Provider value="layout">

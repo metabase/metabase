@@ -48,10 +48,11 @@
   "Handle processing for a single card query event."
   [topic {:keys [card-id user-id context] :as _event}]
   (try
-    (let [user-id  (or user-id api/*current-user-id*)]
+    (let [user-id (or user-id api/*current-user-id*)]
       ;; we don't want to count pinned card views or document cards
-      (when-not (or (#{:collection :dashboard :dashboard-subscription} context)
-                    (some? (t2/select-one-fn :document_id :model/Card :id card-id)))
+      (when (and user-id
+                 (not (#{:collection :dashboard :dashboard-subscription} context))
+                 (not (t2/select-one-fn :document_id :model/Card :id card-id)))
         (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e
       (log/warnf e "Failed to process recent_views event: %s" topic))))
@@ -74,15 +75,14 @@
 (m/defmethod events/publish-event! ::legacy-card-event
   "Handle recent-view processing for card reads"
   [topic {:keys [object-id user-id context]}]
-  ;; Cards can be read indirectly, either through a pinned collection, or in a dashboard.
-  ;; We only want to count direct views of cards, so we skip processing for indirect views here.
-  ;; Also skip document cards.
-  (when (and (= context :question)
-             (nil? (t2/select-one-fn :document_id :model/Card :id object-id)))
-    (try
-      (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card object-id :view)
-      (catch Throwable e
-        (log/warnf e "Failed to process recent_views event: %s" topic)))))
+  (let [user-id (or user-id api/*current-user-id*)]
+    (when (and user-id
+               (= context :question)
+               (nil? (t2/select-one-fn :document_id :model/Card :id object-id)))
+      (try
+        (recent-views/update-users-recent-views! user-id :model/Card object-id :view)
+        (catch Throwable e
+          (log/warnf e "Failed to process recent_views event: %s" topic))))))
 
 (derive ::collection-touch-event :metabase/event)
 (derive :event/collection-touch ::collection-touch-event)

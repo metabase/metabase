@@ -30,7 +30,16 @@
 
      Takes a source instance implementing this protocol.
 
-     Returns a SourceSnapshot instance representing a point-in-time view of the source."))
+     Returns a SourceSnapshot instance representing a point-in-time view of the source.")
+
+  (snapshot-at [source version]
+    "Creates a snapshot of the source at a specific historical version.
+
+     Takes a source instance implementing this protocol and a version identifier (e.g. a git SHA).
+
+     Returns a SourceSnapshot for that version, or nil if the version cannot be resolved (e.g. it was
+     orphaned by a force-push or rebase). Unlike `snapshot`, this does not fetch from the remote; it
+     resolves against already-fetched local state."))
 
 (defprotocol SourceSnapshot
   (list-files [snapshot]
@@ -58,12 +67,39 @@
 
     Returns the version of the written files.")
 
+  (apply-changes! [snapshot message upserts delete-paths]
+    "Incrementally updates the source: writes/overwrites `upserts`, removes `delete-paths`,
+    and PRESERVES every other existing file (unlike `write-files!`, which deletes managed-dir
+    files absent from the write set).
+
+    Takes a SourceSnapshot instance, a commit message, `upserts` (a sequence of file specs, each
+    a map with :path and :content), and `delete-paths` (a sequence of path strings to remove).
+
+    Returns the version of the written files.")
+
   (version [snapshot]
     "Gets a version identifier for the current state of the snapshot.
 
     Takes a SourceSnapshot instance implementing this protocol.
 
     Returns a version identifier string (e.g., a git SHA)."))
+
+(defprotocol Diffable
+  "Optional capability for snapshots that can cheaply report which files changed since a prior version.
+  Implemented by sources backed by real history (git, in-memory versioned test sources); snapshots that
+  can't diff simply don't implement it and `changed-files` returns nil for them."
+  (changed-files* [snapshot from-version]
+    "Returns `{:added #{} :modified #{} :deleted #{}}` path sets between `from-version` and this
+    snapshot's version, or nil when `from-version` can't be resolved. Prefer calling [[changed-files]]."))
+
+(defn changed-files
+  "Paths that changed between `from-version` and `snapshot`'s version, as
+  `{:added #{} :modified #{} :deleted #{}}`, or nil when an incremental diff isn't available — the base
+  can't be resolved (force-push/rebase), or the snapshot's source type doesn't support diffing. A nil
+  result means diffing is not possible."
+  [snapshot from-version]
+  (when (satisfies? Diffable snapshot)
+    (changed-files* snapshot from-version)))
 
 (methodical/defmulti ->ingestable
   "Creates an ingestable snapshot for remote sync operations.

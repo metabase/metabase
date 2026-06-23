@@ -34,6 +34,18 @@ export interface DraftCardOperations {
   ) => number;
 }
 
+/**
+ * Viewport/prefetch state for a node view, produced by the host's
+ * {@link EditorHost.useNodeInViewport}. Hosts without a scroll container
+ * (comments, metabot) report everything as in-viewport so embedded content
+ * loads eagerly.
+ */
+export interface NodeViewportState {
+  ref: (instance: HTMLElement | null) => void;
+  isInViewport: boolean;
+  shouldLoadData: boolean;
+}
+
 type Selector<T> = (state: State) => T;
 
 /**
@@ -91,9 +103,20 @@ export interface EditorHost {
     url: string,
     document?: Document | null,
   ) => DispatchableAction;
-  useCardData: (props: { id: number }) => UseCardDataResult;
-  useExternalCardDataLoader: (cardId: number) => UseCardDataResult;
-  useUnresolvedCommentsCount: (nodeId: string) => number;
+  useCardData: (props: { id: number; skip?: boolean }) => UseCardDataResult;
+  useExternalCardDataLoader: (
+    cardId: number,
+    opts?: { skip?: boolean },
+  ) => UseCardDataResult;
+  useUnresolvedCommentsCount: (
+    nodeId: string,
+    opts?: { skip?: boolean },
+  ) => number;
+  // Viewport-aware lazy loading: hosts with a scroll container (documents)
+  // defer data fetching until a node is near the viewport. The default host
+  // reports everything as visible so other editors load eagerly.
+  useNodeInViewport: (id?: string) => NodeViewportState;
+  useReportPrefetchLoading: (id: string, isLoading: boolean) => void;
   useDraftCardOperations: (
     draftCard: Card | null | undefined,
     card: Card | null | undefined,
@@ -139,6 +162,12 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
   useCardData: () => ({ isLoading: false, series: null }),
   useExternalCardDataLoader: () => ({ isLoading: false, series: null }),
   useUnresolvedCommentsCount: () => 0,
+  useNodeInViewport: () => ({
+    ref: () => undefined,
+    isInViewport: true,
+    shouldLoadData: true,
+  }),
+  useReportPrefetchLoading: () => undefined,
   useDraftCardOperations: () => ({ ensureDraftCard: () => -1 }),
 };
 

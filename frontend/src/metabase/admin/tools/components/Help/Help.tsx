@@ -9,7 +9,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
 import { useGetBugReportDetailsQuery } from "metabase/api/bug-report";
-import legacyApi from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
@@ -29,7 +29,7 @@ function navigatorInfo() {
 // to support Metabase deployments at a subpath.
 function getConnectionPoolDetailsUrl() {
   const path = "/api/bug-reporting/connection-pool-details";
-  return new URL(legacyApi.basename + path, location.origin).href;
+  return new URL(api.basename + path, location.origin).href;
 }
 
 const template = `**Describe the bug**

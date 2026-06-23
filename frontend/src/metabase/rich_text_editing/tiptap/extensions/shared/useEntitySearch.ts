@@ -27,7 +27,10 @@ import {
 } from "./suggestionHooks";
 import { buildUserMenuItems, filterRecents } from "./suggestionUtils";
 
-export type EntitySearchOptions = Omit<SearchRequest, "q" | "models" | "limit">;
+export type EntitySearchOptions = Omit<
+  SearchRequest,
+  "q" | "models" | "limit" | "context"
+>;
 
 interface UseEntitySearchOptions {
   query: string;
@@ -81,6 +84,7 @@ export function useEntitySearch({
         (model): model is SearchModel => model !== "user",
       ),
       limit: LINK_SEARCH_LIMIT,
+      context: "document",
       ...searchOptions,
     },
     {
