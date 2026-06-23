@@ -116,6 +116,67 @@
   []
   (t2/select-one-pk :model/Database :is_sample true))
 
+(defn- sample-database-dashboard-ids
+  "IDs of Dashboards holding at least one card backed by `database-id`. Captured before the sample
+  database is deleted so the dashboards it empties out can be pruned afterward."
+  [database-id]
+  (t2/select-fn-set :dashboard_id :model/DashboardCard
+                    :card_id [:in {:select [:id]
+                                   :from   [(t2/table-name :model/Card)]
+                                   :where  [:= :database_id database-id]}]))
+
+(defn- delete-emptied-dashboards!
+  "Delete whichever of `dashboard-ids` no longer have any dashcards. A sample dashboard whose cards
+  were all removed with the sample database is deleted; a dashboard that still has cards (e.g. mixes
+  in cards from another database) is left alone."
+  [dashboard-ids]
+  (when (seq dashboard-ids)
+    (let [non-empty (t2/select-fn-set :dashboard_id :model/DashboardCard :dashboard_id [:in dashboard-ids])
+          empty-ids (remove (or non-empty #{}) dashboard-ids)]
+      (when (seq empty-ids)
+        (t2/delete! :model/Dashboard :id [:in empty-ids])))))
+
+(defn- replace-sample-database!
+  "The bundled sample database's engine changed (e.g. H2 -> SQLite on upgrade). The old sample
+  Database's tables, fields, and connection details are incompatible with the new engine, so rather
+  than remapping content we drop the old sample Database wholesale and extract + sync the new one.
+  Deleting the Database cascades to its Cards and those cards' dashcards; Dashboards left empty as a
+  result are deleted too.
+
+  The cleanup runs unconditionally (an incompatible sample database should never linger), but the new
+  Sample Database and its Example collection are only recreated when sample content is enabled - and
+  the Example collection is skipped under test endpoints, matching fresh-install seeding.
+
+  The Example collection itself is left in place: [[example-content/recreate-example-content!]] reuses it
+  (matching by entity id) and replaces only the bundled cards/dashboards, so any content a user filed into
+  the Example collection survives the engine swap."
+  [engine old-sample-db]
+  (log/infof "Bundled sample database engine changed from %s to %s; replacing the sample database"
+             (:engine old-sample-db) engine)
+  ;; Extract the bundled DB file (a multi-MB copy out of the JAR) before opening the transaction, so the file IO
+  ;; doesn't hold the app-DB transaction open.
+  (let [new-db-details (when (config/load-sample-content?)
+                         (try-to-extract-sample-database! engine))
+        new-db (t2/with-transaction [_conn]
+                 (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
+                   (t2/delete! :model/Database (:id old-sample-db))
+                   (delete-emptied-dashboards! dashboard-ids))
+                 (when new-db-details
+                   (first (t2/insert-returning-instances! :model/Database
+                                                          :name sample-database-name
+                                                          :details new-db-details
+                                                          :engine engine
+                                                          :is_sample true))))]
+    (when new-db
+      (when (and (try
+                   (sync/sync-database! new-db)
+                   true
+                   (catch Throwable e
+                     (log/error e "Failed to sync the replacement sample database")
+                     false))
+                 (not (config/config-bool :mb-enable-test-endpoints)))
+        (example-content/recreate-example-content! (:id new-db))))))
+
 (defn update-sample-database-if-needed!
   "Reconcile the existing sample database with the bundled one. When the bundled engine changed
   (H2 <-> SQLite) the old sample database is replaced (see [[replace-sample-database!]]); otherwise
