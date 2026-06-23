@@ -136,10 +136,8 @@
                                         (humanization/name->human-readable-name (:name table)))
            :name                    (:name table)
            :is_writable             (:is_writable table)}
-          ;; pass field order computed from the in-hand engine so the before-insert hook doesn't
-          ;; re-query the DB engine once per table during bulk sync
-          (when-let [engine (:engine database)]
-            {:field_order (driver/default-field-order engine)})
+          (when (:field_order table)
+            {:field_order (:field_order table)})
           (when (:data_source table)
             {:data_source (:data_source table)})
           (when (:data_authority table)
@@ -218,8 +216,9 @@
   (doseq [table-metadata new-table-metadatas]
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
-  (doseq [table-metadata (sort-by (juxt :schema :name) new-table-metadatas)]
-    (create-table! database table-metadata)))
+  (let [field-order (some-> (:engine database) driver/default-field-order)]
+    (doseq [table-metadata (sort-by (juxt :schema :name) new-table-metadatas)]
+      (create-table! database (m/assoc-some table-metadata :field_order field-order)))))
 
 (mu/defn- retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
