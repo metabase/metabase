@@ -218,7 +218,7 @@ export const CardEmbedComponent = memo(
     const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
       skip: !isInViewport,
     });
-    const documentHost = useSelector(host.selectors.getDocumentHost);
+    const capabilities = useSelector(host.selectors.getEditorCapabilities);
 
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
@@ -428,9 +428,9 @@ export const CardEmbedComponent = memo(
         dispatch(host.navigateToCard(chartHref, document));
         return;
       }
-      // exploration documents should have chart_href
-      // but if they don't, they still shouldn't open questions in query builder
-      if (documentHost === "exploration") {
+      // exploration documents should have chart_href; if they don't, they still
+      // shouldn't open questions in the query builder
+      if (!capabilities.canOpenCardInQueryBuilder) {
         return;
       }
       if (card && metadata) {

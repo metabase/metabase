@@ -2,7 +2,6 @@ import type { Editor } from "@tiptap/react";
 import { createContext, useContext } from "react";
 
 import type { State } from "metabase/redux/store";
-import type { DocumentHost } from "metabase/redux/store/documents";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -49,6 +48,18 @@ export interface NodeViewportState {
   shouldLoadData: boolean;
 }
 
+/**
+ * What the surrounding surface lets the editor do. Hosts declare these instead
+ * of exposing a surface enum the editor has to branch on: a restricted surface
+ * (e.g. exploration) flips the relevant flag to false. Adding a new surface is
+ * "provide a host with these flags", not "find every `=== 'exploration'` check".
+ */
+export interface EditorCapabilities {
+  canEmbedCharts: boolean;
+  canUseMetabot: boolean;
+  canOpenCardInQueryBuilder: boolean;
+}
+
 type Selector<T> = (state: State) => T;
 
 /**
@@ -69,12 +80,10 @@ export interface EditorHost {
     getChildTargetId: Selector<string | undefined>;
     getHoveredChildTargetId: Selector<string | undefined>;
     getHasUnsavedChanges: Selector<boolean>;
-    // Which surface is rendering the editor ("standalone" document vs an
-    // "exploration"). Extensions read this through the host instead of the
-    // `documents` `getDocumentHost` selector, so the editor stays decoupled.
-    // (A cleaner follow-up is to replace surface comparisons with explicit
-    // host capability flags — see PR description.)
-    getDocumentHost: Selector<DocumentHost>;
+    // What the surface allows. Extensions gate behaviour on these flags rather
+    // than reading a surface enum; the documents host derives them from its
+    // own (exploration vs standalone) state.
+    getEditorCapabilities: Selector<EditorCapabilities>;
   };
   // Action/thunk creators return the redux action or thunk to be dispatched.
   // Typed as `any` so they satisfy the app's overloaded `dispatch` (which
@@ -166,7 +175,11 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
     getChildTargetId: () => undefined,
     getHoveredChildTargetId: () => undefined,
     getHasUnsavedChanges: () => false,
-    getDocumentHost: () => "standalone",
+    getEditorCapabilities: () => ({
+      canEmbedCharts: true,
+      canUseMetabot: true,
+      canOpenCardInQueryBuilder: true,
+    }),
   },
   actions: {
     createDraftCard: () => ({ type: "@@editor-host/noop" }),

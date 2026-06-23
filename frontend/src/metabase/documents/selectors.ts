@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import type { State } from "metabase/redux/store";
+import type { EditorCapabilities } from "metabase/rich_text_editing/tiptap/EditorHost";
 import type { Card, CardId } from "metabase-types/api";
 
 import { initialState } from "./documents.slice";
@@ -114,4 +115,19 @@ export const getIsHistorySidebarOpen = createSelector(
 export const getDocumentHost = createSelector(
   getDocumentsState,
   (documents) => documents.documentHost,
+);
+
+// Maps the internal document-host mode onto the editor capability flags the
+// editor seam exposes. Exploration is a restricted surface: no chart embeds,
+// no Metabot, and card titles don't open the query builder.
+export const getEditorCapabilities = createSelector(
+  getDocumentHost,
+  (documentHost): EditorCapabilities => {
+    const isExploration = documentHost === "exploration";
+    return {
+      canEmbedCharts: !isExploration,
+      canUseMetabot: !isExploration,
+      canOpenCardInQueryBuilder: !isExploration,
+    };
+  },
 );

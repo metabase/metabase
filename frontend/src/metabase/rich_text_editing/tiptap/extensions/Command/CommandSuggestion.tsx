@@ -106,10 +106,10 @@ export const CommandSuggestion = forwardRef<
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const host = useEditorHost();
   const document = useSelector(host.selectors.getCurrentDocument);
-  // explorations varies the slash-command menu and chart affordances by surface
-  // ("exploration" hides Metabot/chart options). Read it through the host so this
-  // extension does not import the `documents` getDocumentHost selector.
-  const surface = useSelector(host.selectors.getDocumentHost);
+  // The surface declares what the slash-command menu may offer (an exploration
+  // host disables Metabot/chart embeds); the editor gates on capabilities rather
+  // than knowing which surface it is.
+  const capabilities = useSelector(host.selectors.getEditorCapabilities);
   const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
   const metabotName = useMetabotName();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -122,8 +122,8 @@ export const CommandSuggestion = forwardRef<
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(isMetabotEnabled, metabotName, surface),
-    [isMetabotEnabled, metabotName, surface],
+    () => getAllCommandSections(isMetabotEnabled, metabotName, capabilities),
+    [isMetabotEnabled, metabotName, capabilities],
   );
 
   const allCommandOptions = useMemo(
@@ -157,7 +157,7 @@ export const CommandSuggestion = forwardRef<
   });
 
   const areChartsAllowed =
-    !editor.isActive("supportingText") && surface !== "exploration";
+    !editor.isActive("supportingText") && capabilities.canEmbedCharts;
   const canBrowseAll = areChartsAllowed || viewMode === "linkTo";
 
   const canCreateNewQuestion =
