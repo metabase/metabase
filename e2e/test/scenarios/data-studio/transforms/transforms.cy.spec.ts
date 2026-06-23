@@ -2280,17 +2280,17 @@ LIMIT
         cy.findByRole("button", { name: "Select" }).click();
       });
 
-      // The list refetches its collection tree after the create. Wait for that
-      // refetch so the parent row knows it has a child before we expand it —
-      // otherwise the expand click lands on a not-yet-expandable row and is a
-      // no-op, leaving the nested collection hidden.
-      cy.intercept("GET", "/api/collection/tree*").as("nestedCollectionTree");
       H.modal().findByRole("button", { name: "Create" }).click();
-      cy.wait("@nestedCollectionTree");
 
       getTransformsList().within(() => {
-        // Expand the collection to see the nested collection
-        cy.findByText("Marketing Transforms").click();
+        // The list refetches its collection tree after the create, and the
+        // parent row only renders an "Expand" control once the new child is
+        // present in the refetched tree. Clicking the row name to toggle it is
+        // a no-op until then (the row isn't yet expandable), which left the
+        // nested collection hidden. Wait for the Expand control to appear — its
+        // presence is the deterministic signal the child has landed — and click
+        // that instead; it only ever expands, never toggles a collapse.
+        cy.findByRole("button", { name: "Expand" }).click();
         cy.findByText("Q4 Reports").should("be.visible");
       });
 
