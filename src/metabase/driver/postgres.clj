@@ -1418,7 +1418,10 @@
 (defmethod driver/supported-index-methods :postgres
   [_driver _database]
   ;; Phase 0: btree only. Other methods (gin/gist/brin/hash/spgist) come in a later milestone.
-  {:btree {:lifecycle :standalone, :unique true}})
+  {:btree {:lifecycle :standalone
+           :fields    [driver.common/index-name-field
+                       driver.common/index-columns-field
+                       driver.common/index-unique-field]}})
 
 (defmethod driver/refresh-table-stats! :postgres
   [driver database schema table _transform-type]

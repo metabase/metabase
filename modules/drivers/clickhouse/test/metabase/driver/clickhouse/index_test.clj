@@ -13,7 +13,8 @@
    [metabase.driver :as driver]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel feature-flags-test
   (testing "ClickHouse advertises both index lifecycles"
@@ -21,10 +22,19 @@
     (is (true? (driver/database-supports? :clickhouse :index/standalone-create nil)))))
 
 (deftest ^:parallel supported-index-methods-test
-  (testing "ClickHouse advertises the inline order-by and the standalone skip-index"
-    (is (= {:order-by   {:lifecycle :inline}
-            :skip-index {:lifecycle :standalone}}
-           (driver/supported-index-methods :clickhouse nil)))))
+  (testing "ClickHouse advertises the inline order-by and the standalone skip-index, with form fields"
+    (let [methods    (driver/supported-index-methods :clickhouse nil)
+          type-field (->> (get-in methods [:skip-index :fields])
+                          (filter #(= "type" (:name %)))
+                          first)]
+      (is (mr/validate :metabase.driver/supported-index-methods methods))
+      (is (= {:order-by :inline, :skip-index :standalone}
+             (update-vals methods :lifecycle)))
+      (is (= ["columns"] (map :name (get-in methods [:order-by :fields]))))
+      (is (= ["name" "columns" "type" "granularity"]
+             (map :name (get-in methods [:skip-index :fields]))))
+      (is (= #{"minmax" "set" "bloom_filter" "ngrambf_v1" "tokenbf_v1"}
+             (set (map :value (:options type-field))))))))
 
 ;;; --- inline ORDER BY at both creation seams ---
 

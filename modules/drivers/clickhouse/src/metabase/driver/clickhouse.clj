@@ -9,6 +9,7 @@
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql :as driver.sql]
@@ -20,7 +21,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
@@ -272,8 +273,21 @@
 
 (defmethod driver/supported-index-methods :clickhouse
   [_driver _database]
-  {:order-by   {:lifecycle :inline}
-   :skip-index {:lifecycle :standalone}})
+  {:order-by   {:lifecycle :inline
+                :fields    [driver.common/index-columns-field]}
+   :skip-index {:lifecycle :standalone
+                :fields    [driver.common/index-name-field
+                            driver.common/index-columns-field
+                            {:name         "type"
+                             :display-name (deferred-tru "Type")
+                             :type         :select
+                             :required     true
+                             :options      [{:name (deferred-tru "Min/max")             :value "minmax"}
+                                            {:name (deferred-tru "Set")                 :value "set"}
+                                            {:name (deferred-tru "Bloom filter")        :value "bloom_filter"}
+                                            {:name (deferred-tru "N-gram bloom filter") :value "ngrambf_v1"}
+                                            {:name (deferred-tru "Token bloom filter")  :value "tokenbf_v1"}]}
+                            driver.common/index-granularity-field]}})
 
 (defn- order-by-columns
   "Columns for the MergeTree ORDER BY: the inline `:order-by` index's columns when present, else the primary key (the
