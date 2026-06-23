@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
+import { getListCommentsQuery } from "metabase/comments/utils";
 import { EditableText } from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -26,7 +27,6 @@ import {
   getSelectedQuestionId,
   getSidebarMode,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
   ActionIcon,

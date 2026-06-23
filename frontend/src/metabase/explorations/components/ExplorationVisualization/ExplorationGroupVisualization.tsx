@@ -1,8 +1,10 @@
+import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { explorationApi } from "metabase/api/exploration";
+import { Comments } from "metabase/comments/components/Comments";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -21,6 +23,7 @@ import type {
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
+import { ActionToolbar, type CommentDrafts } from "./ActionToolbar";
 import { ExplorationChartError } from "./ExplorationChartError";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
@@ -36,7 +39,9 @@ interface ExplorationGroupVisualizationProps {
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
   interestingTimelineIds?: ReadonlySet<TimelineId>;
-  locationSearch: string;
+  commentDrafts: CommentDrafts;
+  setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
+  isCommentsSidebarOpen: boolean;
 }
 
 const STACK_PANEL_HEIGHT = 64;
@@ -155,12 +160,7 @@ function ExplorationGroupVisualizationBody(
   }
 
   if (queries.some((q) => !isSettledExplorationQueryStatus(q.status))) {
-    return (
-      <ExplorationChartSkeleton
-        name={groupName}
-        explorationQuery={queries[0]}
-      />
-    );
+    return <ExplorationChartSkeleton name={groupName} />;
   }
 
   return (
@@ -177,6 +177,9 @@ function ExplorationGroupVisualizationChart({
   onSelectTimelineId,
   interestingTimelineIds,
   groupName,
+  commentDrafts,
+  setCommentDrafts,
+  isCommentsSidebarOpen,
 }: ExplorationGroupVisualizationProps & { groupName: string }) {
   const dispatch = useDispatch();
   const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
@@ -225,20 +228,9 @@ function ExplorationGroupVisualizationChart({
 
   if (!seriesGroups) {
     if (datasetError) {
-      return (
-        <ExplorationChartError
-          name={groupName}
-          explorationQuery={queries[0]}
-          error={datasetError}
-        />
-      );
+      return <ExplorationChartError name={groupName} error={datasetError} />;
     }
-    return (
-      <ExplorationChartSkeleton
-        name={groupName}
-        explorationQuery={queries[0]}
-      />
-    );
+    return <ExplorationChartSkeleton name={groupName} />;
   }
 
   if (seriesGroups.length === 0) {
@@ -262,48 +254,69 @@ function ExplorationGroupVisualizationChart({
   }
 
   return (
-    <>
-      <ExplorationVisualizationHeader
-        name={groupName}
-        explorationId={explorationId}
-        groupId={group.id}
-        availableTimelines={availableTimelines}
-        selectedTimelineId={selectedTimelineId}
-        onSelectTimelineId={onSelectTimelineId}
-        showTimelineDropdown={showTimelineDropdown}
-        interestingTimelineIds={interestingTimelineIds}
-      />
-      <Box
-        className={S.chartGrid}
-        data-chart-layout={layoutStrategy}
-        data-testid="exploration-chart-grid"
-      >
-        {seriesGroups.map(({ series, stackCount, chartLabel, legendItems }) =>
-          isCartesianChart(series[0].card.display) ? (
-            <ExplorationCartesianChart
-              key={series[0].card.id}
-              series={series}
-              stackCount={stackCount}
-              label={chartLabel}
-            />
-          ) : series[0].card.display === "table" ? (
-            <ExplorationHeatMap
-              key={series[0].card.id}
-              series={series}
-              stackCount={stackCount}
-              label={chartLabel}
-            />
-          ) : (
-            <ExplorationMap
-              key={series[0].card.id}
-              series={series}
-              label={chartLabel}
-              legendItems={legendItems}
-            />
-          ),
-        )}
-      </Box>
-    </>
+    <Group align="flex-start">
+      <Stack flex={1}>
+        <ExplorationVisualizationHeader
+          name={groupName}
+          explorationId={explorationId}
+          availableTimelines={availableTimelines}
+          selectedTimelineId={selectedTimelineId}
+          onSelectTimelineId={onSelectTimelineId}
+          showTimelineDropdown={showTimelineDropdown}
+          interestingTimelineIds={interestingTimelineIds}
+          isCommentsSidebarOpen={isCommentsSidebarOpen}
+        />
+        <Box
+          className={S.chartGrid}
+          data-chart-layout={layoutStrategy}
+          data-testid="exploration-chart-grid"
+        >
+          {seriesGroups.map(
+            ({ series, stackCount, chartLabel, legendItems }) =>
+              isCartesianChart(series[0].card.display) ? (
+                <ExplorationCartesianChart
+                  key={series[0].card.id}
+                  series={series}
+                  stackCount={stackCount}
+                  label={chartLabel}
+                />
+              ) : series[0].card.display === "table" ? (
+                <ExplorationHeatMap
+                  key={series[0].card.id}
+                  series={series}
+                  stackCount={stackCount}
+                  label={chartLabel}
+                />
+              ) : (
+                <ExplorationMap
+                  key={series[0].card.id}
+                  series={series}
+                  label={chartLabel}
+                  legendItems={legendItems}
+                />
+              ),
+          )}
+        </Box>
+        <ActionToolbar
+          explorationId={explorationId}
+          groupId={group.id}
+          commentDrafts={commentDrafts}
+          setCommentDrafts={setCommentDrafts}
+        />
+      </Stack>
+      {isCommentsSidebarOpen && (
+        <Box mt="-1.5rem" className={S.commentsSidebar}>
+          <Comments
+            commentTarget={{
+              target_id: explorationId,
+              target_type: "exploration",
+            }}
+            childTargetId={group.id}
+            showCloseButton={false}
+          />
+        </Box>
+      )}
+    </Group>
   );
 }
 

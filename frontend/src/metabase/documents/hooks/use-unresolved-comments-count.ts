@@ -1,8 +1,10 @@
 import { skipToken, useListCommentsQuery } from "metabase/api";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
+import {
+  getListCommentsQuery,
+  getTargetChildCommentThreads,
+} from "metabase/comments/utils";
 import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
 import { getCurrentDocument } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { useSelector } from "metabase/redux";
 
 export function useUnresolvedCommentsCount(
