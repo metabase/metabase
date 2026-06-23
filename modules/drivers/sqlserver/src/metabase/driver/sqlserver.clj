@@ -178,6 +178,19 @@
       (merge (when port {:port port}))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
+(def ^:private disallowed-additional-opts
+  #"(?i)(?:socketFactoryClass|socketFactoryConstructorArg|trustManagerClass|trustManagerConstructorArg|accessTokenCallbackClass)")
+
+(defmethod driver/validate-db-details! :sqlserver
+  [_driver {:keys [host additional-options]}]
+  (when-let [match (some->> (str host ";" additional-options) (re-find disallowed-additional-opts))]
+    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match}))))
+
+(defmethod driver/can-connect? :sqlserver
+  [driver details]
+  (driver/validate-db-details! driver details)
+  ((get-method driver/can-connect? :sql-jdbc) driver details))
+
 (def ^:private ^:dynamic *field-options*
   "The options part of the `:field` clause we're currently compiling."
   nil)
