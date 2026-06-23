@@ -11,6 +11,7 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
+import { resolveSvgVarPaint, restoreNestedSvgOverflow } from "./image-exports";
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
@@ -266,6 +267,9 @@ export const saveDashboardPdf = async ({
         const branding = createBrandingElement(size);
         node.insertBefore(branding, node.firstChild);
       }
+
+      resolveSvgVarPaint(node);
+      restoreNestedSvgOverflow(node);
     },
   });
 
