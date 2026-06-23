@@ -3,9 +3,9 @@
    resilient upserts against the active and/or pending tables.
 
   This is the *mechanism* half of the indexer; the *policy* half — which table is active/pending and how a
-  reindex rotates them — lives in [[metabase.search.appdb.index]]. A [[metabase.search.appdb.index/ReindexMode]]
-  decides, per batch, which physical tables to write to ([[write-targets]]) and whether to COMMIT each batch
-  in a dedicated connection ([[metabase.search.appdb.index/commits-per-batch?]]).
+  reindex rotates them — lives in [[metabase.search.appdb.index]]. [[write-plan]] turns a
+  [[metabase.search.appdb.index/ReindexMode]] into the complete per-batch decision: which physical tables to
+  write to and whether to COMMIT each batch in a dedicated connection.
 
   The core resilience guarantee is [[safe-batch-upsert!]]: a single batch that lands on a table which was
   dropped out from under us (a concurrent rotation on another node) triggers one transparent state refresh
@@ -28,18 +28,23 @@
 
 (def ^:private insert-batch-size 150)
 
-(defn- write-targets
-  "Which [label table-name-fn] pairs the current batch upserts into.
+(defn- write-plan
+  "The complete per-batch write decision for `mode`: which `[label table-name-fn]` pairs to upsert into, and
+   whether each batch should COMMIT in a dedicated connection.
+
    A committing background rebuild targets ONLY the `reindex-table` captured once at the start of the run
    (see [[index-docs!]]) — the active table keeps serving and is swapped in by [[index/activate-table!]].
    Pinning to the captured table means a concurrent state resync that transiently blanks :pending can't
    redirect writes into the live active table mid-rebuild and silently drop whole models from the new index.
    Every other write dual-writes to active AND pending so that an in-flight rebuild stays current with live
-   edits (pending may be nil, in which case it is simply skipped)."
+   edits (pending may be nil, in which case it is simply skipped), and runs inside the caller's transaction
+   with no per-batch COMMIT."
   [mode reindex-table]
-  (if (and (index/commits-per-batch? mode) reindex-table)
-    [[:pending (constantly reindex-table)]]
-    [[:active index/active-table] [:pending index/pending-table]]))
+  (let [commit? (index/commits-per-batch? mode)]
+    {:commit? commit?
+     :targets (if (and commit? reindex-table)
+                [[:pending (constantly reindex-table)]]
+                [[:active index/active-table] [:pending index/pending-table]])}))
 
 (defn- do-batch-upsert!
   "Write entries to the given table. Returns the table name on success. No error handling."
@@ -106,16 +111,16 @@
           :unknown-error (record-skipped-batch! table-type table-name nil e nil))))))
 
 (defn- batch-update!
-  "Upsert one batch of documents into the tables chosen by `mode` (see [[write-targets]]).
+  "Upsert one batch of documents into the tables chosen by `mode` (see [[write-plan]]).
    When the mode commits per batch, the writes run in a dedicated connection and each batch issues an
    explicit COMMIT so the partial build is visible to other connections during a long rebuild."
   [mode reindex-table documents]
-  (let [commit?   (index/commits-per-batch? mode)
+  (let [{:keys [commit? targets]} (write-plan mode reindex-table)
         do-writes (fn []
                     (let [entries (map document/document->entry documents)
                           written (into {} (map (fn [[label table-name-fn]]
                                                   [label (safe-batch-upsert! label table-name-fn entries)]))
-                                        (write-targets mode reindex-table))]
+                                        targets)]
                       (when (some some? (vals written))
                         (u/prog1 (->> entries (map :model) frequencies)
                           (when commit?
@@ -134,7 +139,7 @@
    For a committing reindex the destination table is captured ONCE here — the pending table when a rebuild is
    staging one, otherwise the active table for an initial build — so that a concurrent TTL resync that
    transiently blanks the tracking state cannot redirect later batches into the live active table and silently
-   drop whole models from the index we are about to activate (see [[write-targets]])."
+   drop whole models from the index we are about to activate (see [[write-plan]])."
   [mode document-reducible]
   (tracing/with-span :search "search.appdb.index-docs" {:search/mode (.getSimpleName (class mode))}
     (let [reindex-table (when (index/commits-per-batch? mode)

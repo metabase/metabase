@@ -87,10 +87,24 @@
 
 ;;; --------------------------------------- Rotation ------------------------------------------------
 
+(defn- assert-db-backed!
+  "Fail loudly if the current state store is a test mock. The build/rotate lifecycle persists to
+   search_index_metadata and creates physical tables, so it must run against the real store; a mock would
+   silently pollute the real-version metadata. Tests that exercise it must bind
+   [[metabase.search.spec/*testing-only-index-version-hash*]] (which isolates and cleans up that state) and use
+   the real store rather than [[with-temp-index-table]]."
+  [op]
+  (when-not (index-state/db-backed? *state-store*)
+    (throw (ex-info (str op " must run against the real (db-backed) state store, not a mock. Rotation tests "
+                         "should bind metabase.search.spec/*testing-only-index-version-hash*, not use "
+                         "with-temp-index-table.")
+                    {:op op}))))
+
 (defn maybe-create-pending!
   "Create a pending index table if one does not already exist. Returns the pending table name, or nil."
   []
   (locking index-lock
+    (assert-db-backed! "maybe-create-pending!")
     (or (pending-table)
         ;; We may fail to insert a new metadata row if we lose a race with another instance.
         (let [table-name (table/gen-table-name)]
@@ -125,6 +139,9 @@
     (let [{:keys [pending]} (index-state/force-refresh! *state-store*)]
       (log/infof "Activating pending index %s" pending)
       (when pending
+        ;; A pending table means we're about to persist a rotation (active-pending! + metadata churn); that
+        ;; must not happen against a mock store. With no pending this is a harmless no-op (the in-place path).
+        (assert-db-backed! "activate-table!")
         ;; Refresh statistics before rotation so size estimates are accurate the moment it goes active.
         (analyze-table! pending)
         (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
@@ -188,8 +205,8 @@
   "Strategy describing how one population pass writes its batches and rotates tables. There are three:
    a background full rebuild, an in-place rebuild, and incremental live updates (see the namespace
    docstring's 'Reindex modes'). [[prepare!]] and [[finish!]] bracket a *reindex*; the live update path
-   and the initial populate reuse only the per-batch write behaviour ([[commits-per-batch?]] + the
-   derived [[write-targets]])."
+   and the initial populate reuse only the per-batch write behavior ([[commits-per-batch?]], which feeds
+   the writer's derived [[metabase.search.appdb.writer/write-plan]])."
   (prepare! [mode]
     "DDL to run before populating: create a fresh pending table, clear the active one, or nothing.")
   (commits-per-batch? [mode]
