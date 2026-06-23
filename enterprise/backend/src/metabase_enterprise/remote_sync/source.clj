@@ -50,19 +50,14 @@
                                             (atom nil) (atom []))
     (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)))
 
-(defn- remote-sync-path
+(defn entity->path
+  "The repo-relative path an extracted `entity` serializes to, using storage context `opts` (from
+  `serdes/storage-base-context`). Cheaper than [[entity->file-spec]] when only the path is needed."
   [opts entity]
   (let [resolved (serialization/resolve-storage-path opts entity)
         dirnames (drop-last resolved)
         basename (str (last resolved) ".yaml")]
     (str/join File/separator (concat dirnames [basename]))))
-
-(defn entity->path
-  "The repo-relative path an extracted `entity` serializes to, using storage context `opts` (from
-  `serdes/storage-base-context`). Cheaper than [[entity->file-spec]] when only the path is needed (e.g. a
-  validation pass that doesn't render the YAML)."
-  [opts entity]
-  (remote-sync-path opts entity))
 
 (defn entity->content
   "The serialized YAML string for an extracted `entity`. Independent of the storage path/dedup context."
