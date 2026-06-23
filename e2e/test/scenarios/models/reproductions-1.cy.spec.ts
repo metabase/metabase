@@ -232,9 +232,18 @@ describe("issue 23103", () => {
     cy.wait("@updateModel");
     cy.button("Saving…").should("not.exist");
 
-    cy.findAllByTestId("header-cell").contains("Category").trigger("mouseover");
+    // After `cy.wait("@updateModel")` the metadata table re-renders on a
+    // microtask, so a single `.trigger("mouseover")` chained off an earlier
+    // find can land on a stale DOM node and the HoverCard never opens. Re-query
+    // the cell for each dispatch, and fire both `mouseenter` (for native
+    // useEventListener handlers Mantine attaches directly) and `mouseover`
+    // (bubbles → React 18 synthetic onMouseEnter for any wrapper).
+    const categoryHeaderCell = () =>
+      cy.findAllByTestId("header-cell").contains("Category").should("be.visible");
+    categoryHeaderCell().trigger("mouseenter", { force: true });
+    categoryHeaderCell().trigger("mouseover", { force: true });
 
-    H.hovercard().findByText("4 distinct values").should("exist");
+    H.hovercard().findByText("4 distinct values").should("be.visible");
   });
 });
 
