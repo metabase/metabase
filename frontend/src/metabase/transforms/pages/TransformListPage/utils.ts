@@ -6,12 +6,15 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getLibQuery } from "metabase/transforms/utils";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Collection,
   CollectionId,
+  RemoteSyncEntity,
   RemoteSyncEntityModel,
+  RemoteSyncEntityStatus,
   Transform,
 } from "metabase-types/api";
 
@@ -190,55 +193,101 @@ export function getDescendantCollectionIds(node: TreeNode): Set<number> {
   return ids;
 }
 
-const EMPTY_DIRTY_TRANSFORM_IDS = new Set<number>();
-
 const TRANSFORM_MODEL = "transform" satisfies RemoteSyncEntityModel;
+const COLLECTION_MODEL = "collection" satisfies RemoteSyncEntityModel;
 const PYTHON_LIBRARY_MODEL = "pythonlibrary" satisfies RemoteSyncEntityModel;
 
-export function useIsNodeDirty(): (node: TreeNode) => boolean {
+const SYNC_STATUS_COLOR: Record<RemoteSyncEntityStatus, ColorName> = {
+  create: "success",
+  update: "warning",
+  touch: "warning",
+  delete: "danger",
+  removed: "danger",
+};
+
+export function getSyncColorForEntities(
+  entities: RemoteSyncEntity[],
+): ColorName | undefined {
+  const colors = new Set(
+    entities.map((entity) => SYNC_STATUS_COLOR[entity.sync_status]),
+  );
+  if (colors.size === 0) {
+    return undefined;
+  }
+  if (colors.size === 1) {
+    const [color] = colors;
+    return color;
+  }
+  return SYNC_STATUS_COLOR.update;
+}
+
+export function getFolderSyncColor(
+  subtreeEntities: RemoteSyncEntity[],
+  folderCollectionId: number,
+): ColorName | undefined {
+  if (subtreeEntities.length === 0) {
+    return undefined;
+  }
+  const folderEntity = subtreeEntities.find(
+    (entity) =>
+      entity.model === COLLECTION_MODEL && entity.id === folderCollectionId,
+  );
+  const isNewFolder = folderEntity?.sync_status === "create";
+  return isNewFolder ? SYNC_STATUS_COLOR.create : SYNC_STATUS_COLOR.update;
+}
+
+export function useGetNodeSyncColor(): (
+  node: TreeNode,
+) => ColorName | undefined {
   const { isVisible: isRemoteSyncVisible } =
     PLUGIN_REMOTE_SYNC.useGitSyncVisible();
-  const { dirty, hasDirtyInCollectionTree } =
-    PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState();
+  const { dirty } = PLUGIN_REMOTE_SYNC.useRemoteSyncDirtyState();
 
-  const dirtyTransformIds = useMemo(() => {
-    if (!isRemoteSyncVisible) {
-      return EMPTY_DIRTY_TRANSFORM_IDS;
+  const { dirtyTransformById, dirtyPythonLibraries } = useMemo(() => {
+    const transformById = new Map<number, RemoteSyncEntity>();
+    const pythonLibraries: RemoteSyncEntity[] = [];
+    if (isRemoteSyncVisible) {
+      for (const entity of dirty) {
+        if (entity.model === TRANSFORM_MODEL) {
+          transformById.set(entity.id, entity);
+        } else if (entity.model === PYTHON_LIBRARY_MODEL) {
+          pythonLibraries.push(entity);
+        }
+      }
     }
-    return new Set(
-      dirty
-        .filter((entity) => entity.model === TRANSFORM_MODEL)
-        .map((entity) => entity.id),
-    );
+    return {
+      dirtyTransformById: transformById,
+      dirtyPythonLibraries: pythonLibraries,
+    };
   }, [isRemoteSyncVisible, dirty]);
 
-  const isPythonLibraryDirty =
-    isRemoteSyncVisible &&
-    dirty.some((entity) => entity.model === PYTHON_LIBRARY_MODEL);
-
   return useCallback(
-    (node: TreeNode): boolean => {
+    (node: TreeNode): ColorName | undefined => {
       if (!isRemoteSyncVisible) {
-        return false;
+        return undefined;
       }
       if (node.nodeType === "transform") {
-        return (
-          node.transformId != null && dirtyTransformIds.has(node.transformId)
-        );
+        const entity =
+          node.transformId != null
+            ? dirtyTransformById.get(node.transformId)
+            : undefined;
+        return getSyncColorForEntities(entity ? [entity] : []);
       }
       if (node.nodeType === "library") {
-        return isPythonLibraryDirty;
+        return getSyncColorForEntities(dirtyPythonLibraries);
       }
       if (isCollectionNode(node)) {
-        return hasDirtyInCollectionTree(getDescendantCollectionIds(node));
+        const collectionIds = getDescendantCollectionIds(node);
+        const entities = dirty.filter(
+          (entity) =>
+            (entity.collection_id != null &&
+              collectionIds.has(entity.collection_id)) ||
+            (entity.model === COLLECTION_MODEL && collectionIds.has(entity.id)),
+        );
+        return getFolderSyncColor(entities, node.collection.id as number);
       }
-      return false;
+      return undefined;
     },
-    [
-      isRemoteSyncVisible,
-      dirtyTransformIds,
-      isPythonLibraryDirty,
-      hasDirtyInCollectionTree,
-    ],
+    [isRemoteSyncVisible, dirty, dirtyTransformById, dirtyPythonLibraries],
   );
 }
