@@ -10,8 +10,7 @@
 (defn hydrate-transform-indexes
   "Structured index defs for `transform`, read from its managed `TableIndex` rows (ordered by name)."
   [transform]
-  (mapv :structured
-        (t2/select :model/TableIndex :transform_id (:id transform) {:order-by [[:index_name :asc]]})))
+  (t2/select-fn-vec :structured :model/TableIndex :transform_id (:id transform) {:order-by [[:index_name :asc]]}))
 
 (defn- resolve-target
   "Apply the workspace target-rewrite hook before dispatch. On a workspaced child
