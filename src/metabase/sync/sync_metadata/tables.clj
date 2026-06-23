@@ -340,14 +340,12 @@
   [database :- i/DatabaseInstance
    tables]
   (let [names (into [] (comp (map :name) (distinct)) tables)]
-    (if (empty? names)
-      {}
-      (m/index-by table-name+schema
-                  (apply t2/select
-                         (into [:model/Table :id :name :schema :data_authority :active] keys-to-update)
-                         :db_id (u/the-id database)
-                         :name [:in names]
-                         nil)))))
+    (if (seq names)
+      (t2/select-fn->fn table-name+schema identity
+                        (into [:model/Table :id :name :schema :data_authority :active] keys-to-update)
+                        :db_id (u/the-id database)
+                        :name [:in names])
+      {})))
 
 (mu/defn- adjusted-schemas :- [:maybe [:map-of :string :string]]
   "Returns a map of schemas that should be adjusted to their new names."
