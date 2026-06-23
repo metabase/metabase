@@ -3454,6 +3454,7 @@
            tracing
            util}
    :model-imports #{:model/Collection
+                    :model/Dashboard
                     :model/Table}}
 
   enterprise/serialization
