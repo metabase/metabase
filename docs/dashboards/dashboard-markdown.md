@@ -10,8 +10,6 @@ Add heading and text cards to your dashboards to label sections, link to other c
 - **Heading cards** for a single line of text that titles a section
 - **Text cards** for longer text you can format with Markdown
 
-For more information on Markdown you can use inside text cards, see [Markdown in Metabase](markdown.md).
-
 ## Add a heading or text card
 
 To add a heading or text card to a dashboard:
@@ -42,7 +40,7 @@ You can add a filter value to a heading card using a variable. See [Add filter v
 
 ## Text cards
 
-A text card displays text you write in Markdown. Add formatting like bold text, lists, links, and images. For more information, see [Markdown in Metabase](markdown.md).
+A text card displays text you write in Markdown. Add formatting like bold text, lists, links, and images.
 
 ![Text card Markdown example](images/text-card-markdown-example.png)
 
