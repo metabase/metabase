@@ -5,20 +5,14 @@ import { isObject } from "metabase-types/guards";
 
 import type { DimensionFilterInput } from "../input-types";
 
-type RelativeDateFilterParts = {
-  value: number;
-  unit: Lib.RelativeDateFilterUnit;
-  offsetValue: number | null;
-  offsetUnit: Lib.RelativeDateFilterUnit | null;
-  options: Lib.RelativeDateFilterOptions;
-};
+type RelativeDateFilterParts = Omit<Lib.RelativeDateFilterParts, "column">;
 
 type RelativeDateFilterInput = {
   value: number;
   unit: Lib.RelativeDateFilterUnit;
-  options: RelativeDateFilterOptionsInput;
   offsetValue?: number;
   offsetUnit?: Lib.RelativeDateFilterUnit;
+  options?: RelativeDateFilterOptionsInput;
 };
 
 type RelativeDateFilterOptionsInput = Lib.RelativeDateFilterOptions & {
@@ -39,42 +33,36 @@ export function buildLibRelativeDateFilter(
     return null;
   }
 
-  return Lib.relativeDateFilterClause({
-    column,
-    ...parts,
-  });
+  return Lib.relativeDateFilterClause({ column, ...parts });
 }
 
 function getRelativeDateFilterParts(
   filter: DimensionFilterInput,
 ): RelativeDateFilterParts | null {
-  const input = getRelativeDateFilterInput(filter);
+  const input = parseRelativeDateFilterInput(filter.values ?? filter.value);
 
   if (!input) {
     return null;
   }
 
-  const { value, unit, options, offsetValue, offsetUnit } = input;
+  const options = input.options ?? {};
 
   return {
-    value,
-    unit,
-    offsetValue: offsetValue ?? options.offsetValue ?? null,
-    offsetUnit: offsetUnit ?? options.offsetUnit ?? null,
-    options: getRelativeDateFilterOptions(options),
+    value: input.value,
+    unit: input.unit,
+    offsetValue: input.offsetValue ?? options.offsetValue ?? null,
+    offsetUnit: input.offsetUnit ?? options.offsetUnit ?? null,
+    options: getLibRelativeDateFilterOptions(options),
   };
 }
 
-function getRelativeDateFilterInput(
-  filter: DimensionFilterInput,
+function parseRelativeDateFilterInput(
+  input: unknown,
 ): RelativeDateFilterInput | null {
-  const values =
-    filter.values ?? (Array.isArray(filter.value) ? filter.value : null);
+  if (Array.isArray(input)) {
+    const [value, unit, options, offsetValue, offsetUnit] = input;
 
-  if (values) {
-    const [value, unit, options, offsetValue, offsetUnit] = values;
-
-    return parseRelativeDateFilterInput({
+    return parseRelativeDateFilterValue({
       value,
       unit,
       options,
@@ -83,20 +71,20 @@ function getRelativeDateFilterInput(
     });
   }
 
-  if (!isObject(filter.value)) {
+  if (!isObject(input)) {
     return null;
   }
 
-  return parseRelativeDateFilterInput({
-    value: filter.value.value,
-    unit: filter.value.unit,
-    options: filter.value.options,
-    offsetValue: filter.value.offsetValue,
-    offsetUnit: filter.value.offsetUnit,
+  return parseRelativeDateFilterValue({
+    value: input.value,
+    unit: input.unit,
+    options: input.options,
+    offsetValue: input.offsetValue,
+    offsetUnit: input.offsetUnit,
   });
 }
 
-function parseRelativeDateFilterInput({
+function parseRelativeDateFilterValue({
   value,
   unit,
   options,
@@ -116,9 +104,9 @@ function parseRelativeDateFilterInput({
   return {
     value,
     unit,
-    options: parseRelativeDateFilterOptions(options),
     offsetValue: typeof offsetValue === "number" ? offsetValue : undefined,
     offsetUnit: isRelativeDateFilterUnit(offsetUnit) ? offsetUnit : undefined,
+    options: parseRelativeDateFilterOptions(options),
   };
 }
 
@@ -142,7 +130,7 @@ function parseRelativeDateFilterOptions(
   };
 }
 
-const getRelativeDateFilterOptions = (
+const getLibRelativeDateFilterOptions = (
   options: Lib.RelativeDateFilterOptions,
 ): Lib.RelativeDateFilterOptions =>
   options.includeCurrent === true ? { includeCurrent: true } : {};

@@ -768,6 +768,41 @@ describe("useMetabaseQuery", () => {
       );
     });
 
+    it("builds offset time-interval filters through metabase-lib", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            filter(
+              TEST_SCHEMA.tables.orders.fields.createdAt,
+              "time-interval",
+              {
+                value: -64,
+                unit: "month",
+                offsetValue: -7,
+                offsetUnit: "month",
+                options: { includeCurrent: true },
+              },
+            ),
+          ],
+        }),
+      ).toEqual(
+        queryObject({
+          filters: [
+            [
+              "relative-time-interval",
+              mbqlOptions(),
+              fieldRef(103),
+              -64,
+              "month",
+              -7,
+              "month",
+            ],
+          ],
+        }),
+      );
+    });
+
     it("does not build filters with operators unsupported by the field type", () => {
       expect(() =>
         createMetabaseQuery({
