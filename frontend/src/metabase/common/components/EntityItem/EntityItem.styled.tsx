@@ -7,12 +7,12 @@ import { darken } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 function getPinnedForeground(disabled: boolean) {
-  return disabled ? darken("border", 0.38) : color("accent4");
+  return disabled ? darken("border-neutral", 0.38) : color("accent4");
 }
 
 function getForeground(model: string, disabled: boolean) {
   return disabled
-    ? darken("border", 0.38)
+    ? darken("border-neutral", 0.38)
     : model === "dataset"
       ? color("accent2")
       : color("core-brand");

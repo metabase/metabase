@@ -6,7 +6,7 @@ import type { Route } from "react-router";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";

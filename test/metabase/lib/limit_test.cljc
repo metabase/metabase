@@ -177,3 +177,32 @@
                              :limit        10
                              :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]
              :constraints  {:max-results 15, :max-results-bare-rows 5}})))))
+
+(deftest ^:parallel max-rows-limit-aggregation-then-empty-stage-test
+  (testing "aggregation in an earlier stage + empty (filter-only) final stage uses `:max-results` (#48439)"
+    (is (= 10
+           (lib/max-rows-limit
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                (lib/aggregate (lib/count))
+                lib/append-stage
+                (assoc :constraints {:max-results 10, :max-results-bare-rows 5})))))))
+
+(deftest ^:parallel max-rows-limit-no-aggregation-multi-stage-test
+  (testing "no aggregation in any stage of a multi-stage query uses `:max-results-bare-rows`"
+    (is (= 5
+           (lib/max-rows-limit
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                lib/append-stage
+                (assoc :constraints {:max-results 10, :max-results-bare-rows 5})))))))
+
+(deftest ^:parallel max-rows-limit-join-after-aggregation-test
+  (testing "join in a stage after aggregation may re-explode rows, so `:max-results-bare-rows` applies"
+    (is (= 5
+           (lib/max-rows-limit
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                (lib/aggregate (lib/count))
+                lib/append-stage
+                (lib/join (lib/join-clause (meta/table-metadata :products)
+                                           [(lib/= (meta/field-metadata :orders :product-id)
+                                                   (meta/field-metadata :products :id))]))
+                (assoc :constraints {:max-results 10, :max-results-bare-rows 5})))))))

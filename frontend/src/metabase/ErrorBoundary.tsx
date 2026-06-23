@@ -6,18 +6,22 @@ import type {
 } from "react";
 import { Component, forwardRef } from "react";
 
+import { useReportFrontendErrorMutation } from "metabase/api";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
-import { FrontendErrorsApi } from "metabase/services";
 
 interface ErrorBoundaryProps extends PropsWithChildren {
   onError?: (errorInfo: ErrorInfo) => void;
   errorComponent?: ComponentType;
   message?: string;
+}
+
+interface ErrorBoundaryInnerProps extends ErrorBoundaryProps {
   forwardedRef?: ForwardedRef<HTMLDivElement>;
+  onReportError: () => void;
 }
 
 class ErrorBoundaryInner extends Component<
-  ErrorBoundaryProps,
+  ErrorBoundaryInnerProps,
   {
     hasError: boolean;
   }
@@ -36,7 +40,7 @@ class ErrorBoundaryInner extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error(error, errorInfo);
-    FrontendErrorsApi.report({ type: "component-crash" }).catch(() => {});
+    this.props.onReportError();
     // if we don't provide a specific onError action, the component will display a generic error message
     if (this.props.onError) {
       this.props.onError(errorInfo);
@@ -67,6 +71,15 @@ class ErrorBoundaryInner extends Component<
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default forwardRef<HTMLDivElement, ErrorBoundaryProps>(
   function ErrorBoundary(props, ref) {
-    return <ErrorBoundaryInner {...props} forwardedRef={ref} />;
+    const [reportFrontendError] = useReportFrontendErrorMutation();
+    return (
+      <ErrorBoundaryInner
+        {...props}
+        forwardedRef={ref}
+        onReportError={() =>
+          void reportFrontendError({ type: "component-crash" })
+        }
+      />
+    );
   },
 );

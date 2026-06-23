@@ -216,10 +216,12 @@
   x)
 
 (defmethod ->rvalue :expression
-  [[_ expression-name]]
-  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
-    (cond->> (->rvalue expression-value)
-      (driver-api/is-clause? :value expression-value) (array-map $literal))))
+  [[_ expression-name {:keys [temporal-unit]}]]
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)
+        rvalue           (cond->> (->rvalue expression-value)
+                           (driver-api/is-clause? :value expression-value) (array-map $literal))]
+    (cond-> rvalue
+      temporal-unit (with-rvalue-temporal-bucketing temporal-unit))))
 
 (def ^:private base64-decoder "
 function(bin) {

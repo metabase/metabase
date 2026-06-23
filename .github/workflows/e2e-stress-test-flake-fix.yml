@@ -41,6 +41,49 @@ on:
         type: boolean
         required: false
         default: false
+  # Reusable form so other workflows (e.g. the flaky-test-fix PR auto-runner) can fan a
+  # matrix of changed specs into individual stress runs. Inputs mirror workflow_dispatch;
+  # both triggers read them via the `inputs` context.
+  workflow_call:
+    inputs:
+      spec:
+        description: "Relative path of the target spec"
+        type: string
+        required: true
+      burn_in:
+        description: "Number of times to run the test (e.g. 20)"
+        type: string
+        required: false
+        default: "20"
+      grep:
+        description: "Grep and filter tests to run in isolation"
+        type: string
+        required: false
+      mb_edition:
+        description: 'Set MB_EDITION env var to "ee" (enterprise) or "oss" (open-source)'
+        type: string
+        required: false
+        default: "ee"
+      qa_db:
+        description: "Whether to set up and include external QA databases"
+        type: boolean
+        required: false
+        default: false
+      enable_network_throttling:
+        description: "Enable network throttling simulation (4g slow like in chrome dev tools)"
+        type: boolean
+        required: false
+        default: true
+      fail_fast:
+        description: "Stop running remaining tests after the first failure"
+        type: boolean
+        required: false
+        default: false
+      build_jar:
+        description: "Build the uberjar from this branch (required to test frontend fixes) instead of downloading a prebuilt one"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   determine-test-type:
@@ -160,13 +203,13 @@ jobs:
 
       # For all options and fine-grained control, take a look at the documentation
       # https://github.com/cypress-io/cypress/tree/develop/npm/grep
-      - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
+      - name: Stress-test ${{ inputs.spec }} ${{ inputs.burn_in }} times
         env:
-          GREP: ${{ github.event.inputs.grep }}
+          GREP: ${{ inputs.grep }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
           FAIL_FAST: ${{ inputs.fail_fast }}
-          SPEC: ${{ github.event.inputs.spec }}
-          BURN_IN: ${{ github.event.inputs.burn_in }}
+          SPEC: ${{ inputs.spec }}
+          BURN_IN: ${{ inputs.burn_in }}
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
           --spec "${SPEC}" \

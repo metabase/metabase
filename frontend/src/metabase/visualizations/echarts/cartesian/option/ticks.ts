@@ -19,7 +19,7 @@ import {
 // For example, when a dataset has two days and minInterval is 1 day in milliseconds datasets like ["2022-01-01", "2022-01-02"]
 // will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would correctly render two ticks as needed.
 // The workaround is to add more padding on sides for this corner case.
-const getPadding = (intervalsCount: number) => {
+export const getPadding = (intervalsCount: number) => {
   if (intervalsCount <= 1) {
     return 5 / 6;
   }

@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,

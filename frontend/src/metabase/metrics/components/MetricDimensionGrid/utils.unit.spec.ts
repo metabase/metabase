@@ -1,9 +1,11 @@
 import {
   createMetricMetadata,
+  setupDefinition,
+} from "metabase-lib/v1/metric/test-helpers";
+import {
   createMockMetricDimension,
   createMockNormalizedMetric,
-  setupDefinition,
-} from "metabase/metrics-viewer/utils/__tests__/test-helpers";
+} from "metabase-types/api/mocks/metric";
 
 import { getDefaultDimensions } from "./utils";
 

@@ -10,7 +10,6 @@ import {
   getCurrentDocument,
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
-import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
 import { useSelector } from "metabase/redux";
 import { documentWithAnchor } from "metabase/urls";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -112,4 +111,23 @@ export function useBlockMenus({
     anchorRefs,
     anchorFloatingStyles,
   };
+}
+
+export function isTopLevel({
+  editor,
+  getPos,
+}: Pick<NodeViewProps, "editor" | "getPos">) {
+  if (!editor || !getPos) {
+    return false;
+  }
+
+  const { doc } = editor.state;
+  const pos = getPos();
+
+  if (pos === null || pos === undefined || pos < 0 || pos > doc.content?.size) {
+    return false;
+  }
+
+  const resolvedPos = doc.resolve(pos);
+  return resolvedPos.depth === 0;
 }

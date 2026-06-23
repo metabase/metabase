@@ -98,7 +98,7 @@ export const DataUsageStep = ({
         activeText={t`Finishing…`}
         failedText={t`Failed`}
         successText={t`Success`}
-        primary
+        variant="filled"
         type="button"
         actionFn={handleStepSubmit}
       />

@@ -1,6 +1,7 @@
 import type { FC } from "react";
 import { useMemo } from "react";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import {
@@ -101,16 +102,56 @@ export type InteractiveQuestionComponents = {
   SqlParametersList: typeof SqlParametersList;
 };
 
-function InteractiveQuestionInner({
-  query,
-  ...rest
-}: InteractiveQuestionInternalProps) {
+function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
+  const {
+    query,
+    questionId,
+    title,
+    withDownloads,
+    isSaveEnabled,
+    withAlerts,
+    ...rest
+  } = props;
+
+  const isNewQuestion = questionId === "new" || questionId === "new-native";
+  const trackingEntityId = questionId != null ? questionId : null;
+
+  useTrackSdkComponentMount(
+    "InteractiveQuestion",
+    trackingEntityId,
+    isNewQuestion
+      ? {
+          id_new: questionId === "new",
+          id_new_native: questionId === "new-native",
+          is_save_enabled: isSaveEnabled,
+          with_title: title !== false,
+          with_downloads: withDownloads,
+          with_alerts: withAlerts,
+        }
+      : {
+          is_save_enabled: isSaveEnabled,
+          with_title: title !== false,
+          with_downloads: withDownloads,
+          with_alerts: withAlerts,
+        },
+  );
+
   const deserializedCard = useMemo(
     () => (query ? deserializeCardFromQuery(query) : undefined),
     [query],
   );
 
-  return <SdkQuestion {...rest} deserializedCard={deserializedCard} />;
+  return (
+    <SdkQuestion
+      {...rest}
+      questionId={questionId}
+      title={title}
+      withDownloads={withDownloads}
+      isSaveEnabled={isSaveEnabled}
+      withAlerts={withAlerts}
+      deserializedCard={deserializedCard}
+    />
+  );
 }
 
 export const _InteractiveQuestion = InteractiveQuestionInner;

@@ -23,6 +23,9 @@ export const StaticVisualization = ({
   renderingContext,
   isStorybook,
   hasDevWatermark,
+  width,
+  height,
+  fitWithinBounds,
 }: StaticVisualizationProps) => {
   const display = rawSeries[0].card.display;
   const transformedSeries = getVisualizationTransformed(rawSeries).series;
@@ -33,6 +36,9 @@ export const StaticVisualization = ({
     renderingContext,
     isStorybook,
     hasDevWatermark,
+    width,
+    height,
+    fitWithinBounds,
   };
 
   switch (display) {

@@ -128,6 +128,7 @@
            analytics
            api
            collections
+           eid-translation
            lib
            permissions
            public-sharing
@@ -194,6 +195,7 @@
   analytics
   {:team "UX West"
    :api  #{metabase.analytics.api
+           metabase.analytics.api.proxy
            metabase.analytics.core
            metabase.analytics.event
            metabase.analytics.init
@@ -492,23 +494,29 @@
            driver
            events
            formatter
+           geojson
            lib
            lib-be
            models
            notification
            parameters
            permissions
+           pivot
            premium-features
            query-processor
+           request
            settings
            slackbot
            system
            task
+           tiles
            timeline
            types
            util}
    :model-exports #{:model/Channel :model/ChannelTemplate}
    :model-imports #{:model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
                     :model/Database
                     :model/PulseChannel
                     :model/User}}
@@ -676,6 +684,18 @@
   {:team "UX West"
    :api  #{}
    :uses :any}
+
+  curated-search
+  {:team "Metabot"
+   :api  #{metabase.curated-search.api
+           metabase.curated-search.core}
+   :uses #{api
+           models
+           premium-features
+           request
+           util}
+   :model-exports #{:model/CuratedSearchEntry}
+   :model-imports #{:model/Card}}
 
   dashboards
   {:team "UX West"
@@ -951,7 +971,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -992,7 +1012,8 @@
   geojson
   {:team "UX West"
    :api  #{metabase.geojson.api
-           metabase.geojson.init}
+           metabase.geojson.init
+           metabase.geojson.settings}
    :uses #{api
            config
            permissions
@@ -1257,6 +1278,7 @@
               channel
               collections
               config
+              curated-search
               documents
               driver
               interestingness
@@ -1441,6 +1463,7 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/TaskHistory
+                    :model/TaskRun
                     :model/User}}
 
   oauth-server
@@ -1482,8 +1505,7 @@
            models
            query-processor
            util
-           warehouse-schema
-           warehouses}
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Field
@@ -1542,7 +1564,8 @@
 
   pivot
   {:team "UX West"
-   :api  #{metabase.pivot.core}
+   :api  #{metabase.pivot.core
+           metabase.pivot.postprocess}
    :uses #{models
            util}}
 
@@ -1822,6 +1845,7 @@
            premium-features
            queries
            query-permissions
+           request
            server
            settings
            system
@@ -1830,8 +1854,6 @@
            util
            workspaces}
    :model-imports #{:model/Card
-                    :model/Dashboard
-                    :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/Database
                     :model/QueryCache
@@ -1890,15 +1912,30 @@
                     :model/Segment
                     :model/Transform}}
 
+  run-tracking
+  {:team "Gadget"
+   :api  #{metabase.run-tracking.core}
+   :uses #{analytics-interface
+           app-db
+           task
+           util}}
+
   sample-data
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{plugins
+   :uses #{config
+           models
+           plugins
            settings
            sync
            util}
-   :model-imports #{:model/Database}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   search
   {:team "UX West"
@@ -2215,17 +2252,17 @@
            metabase.task-history.core
            metabase.task-history.init}
    :uses #{api
-           app-db
            config
            models
            permissions
            premium-features
            query-processor
            request
+           run-tracking
            task
            tracing
            util}
-   :model-exports #{:model/TaskHistory}
+   :model-exports #{:model/TaskHistory :model/TaskRun}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
   tenants
@@ -2262,7 +2299,8 @@
   tiles
   {:team "UX West"
    :api  #{metabase.tiles.api
-           metabase.tiles.init}
+           metabase.tiles.init
+           metabase.tiles.settings}
    :uses #{api
            legacy-mbql
            lib
@@ -2270,7 +2308,8 @@
            parameters
            query-processor
            settings
-           util}}
+           util}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard}}
 
   timeline
   {:team "UX West"
@@ -2319,6 +2358,7 @@
            query-processor
            remote-sync
            revisions
+           run-tracking
            search
            settings
            task
@@ -2330,6 +2370,7 @@
               enterprise/transforms-python}
    :model-exports #{:model/Transform
                     :model/TransformJob
+                    :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}
@@ -2383,6 +2424,7 @@
            util}
    :model-imports #{:model/Transform
                     :model/TransformJob
+                    :model/TransformJobRun
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
@@ -2934,6 +2976,15 @@
    :api  #{metabase-enterprise.core.init}
    :uses :any}
 
+  enterprise/curated-search
+  {:team "Metabot"
+   :api  #{metabase-enterprise.curated-search.init}
+   :uses #{premium-features
+           task
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/CuratedSearchEntry}}
+
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
@@ -3239,6 +3290,7 @@
            events
            models
            premium-features
+           search
            settings
            startup
            task
@@ -3376,6 +3428,8 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.api
            metabase-enterprise.semantic-search.core
+           metabase-enterprise.semantic-search.db.datasource
+           metabase-enterprise.semantic-search.embedding
            metabase-enterprise.semantic-search.init}
    :uses #{activity-feed
            analytics
@@ -3450,6 +3504,7 @@
            settings
            sso
            system
+           task
            util
            enterprise/scim}
    :model-imports #{:model/PermissionsGroup :model/Session}}

@@ -1196,6 +1196,55 @@
               (is (= expected-names
                      (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))))
 
+(deftest updating-model-query-does-not-shift-metadata-overrides-test
+  (testing "Metadata should not shift to another column with the same name when the query changes (#60930)"
+    (let [mp                 (mt/metadata-provider)
+          orders-table       (lib.metadata/table mp (mt/id :orders))
+          products-table     (lib.metadata/table mp (mt/id :products))
+          reviews-table      (lib.metadata/table mp (mt/id :reviews))
+          orders-id          (lib.metadata/field mp (mt/id :orders :id))
+          orders-user-id     (lib.metadata/field mp (mt/id :orders :user_id))
+          orders-product-id  (lib.metadata/field mp (mt/id :orders :product_id))
+          orders-created-at  (lib.metadata/field mp (mt/id :orders :created_at))
+          products-id        (lib.metadata/field mp (mt/id :products :id))
+          products-created   (lib.metadata/field mp (mt/id :products :created_at))
+          reviews-id         (lib.metadata/field mp (mt/id :reviews :id))
+          reviews-product-id (lib.metadata/field mp (mt/id :reviews :product_id))
+          reviews-created-at (lib.metadata/field mp (mt/id :reviews :created_at))
+          join-query (fn [products-fields]
+                       (-> (lib/query mp orders-table)
+                           (lib/with-fields [orders-id orders-user-id orders-product-id orders-created-at])
+                           (lib/join (-> (lib/join-clause products-table
+                                                          [(lib/= orders-product-id products-id)])
+                                         (lib/with-join-alias "Products")
+                                         (lib/with-join-fields products-fields)))
+                           (lib/join (-> (lib/join-clause reviews-table
+                                                          [(lib/= orders-product-id reviews-product-id)])
+                                         (lib/with-join-alias "Reviews")
+                                         (lib/with-join-fields [reviews-id reviews-product-id reviews-created-at])))))
+          with-products (mt/user-http-request :crowberto :post 200 "card"
+                                              {:name                   "model 60930"
+                                               :type                   :model
+                                               :display                :table
+                                               :dataset_query          (join-query [products-id products-created])
+                                               :visualization_settings {}})
+          card-id (:id with-products)
+          without-products (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                                 {:dataset_query   (join-query :none)})]
+      (testing "columns get the correct display name after columns with the same name are removed"
+        (is (= ["ID" "User ID" "Product ID" "Created At"
+                "Reviews → ID" "Reviews → Product ID" "Reviews → Created At"]
+               (map :display_name (:result_metadata without-products))
+               (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))
+      (let [with-products-again (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                                      {:dataset_query   (join-query [products-id products-created])})]
+        (testing "columns get the correct display name after columns with the same name are added"
+          (is (= ["ID" "User ID" "Product ID" "Created At"
+                  "Products → ID" "Products → Created At"
+                  "Reviews → ID" "Reviews → Product ID" "Reviews → Created At"]
+                 (map :display_name (:result_metadata with-products-again))
+                 (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
+
 (deftest ^:parallel updating-native-card-preserves-metadata
   (testing "A trivial change in a native question should not remove result_metadata (#37009)"
     (let [query (to-native (updating-card-updates-metadata-query))
@@ -2676,8 +2725,8 @@
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
       (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
-        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
-                                                                     (apply orig card-id export-format
+        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card export-format & options]
+                                                                     (apply orig card export-format
                                                                             :make-run (constantly (fn [{:keys [constraints]} _]
                                                                                                     {:constraints constraints}))
                                                                             options))]
