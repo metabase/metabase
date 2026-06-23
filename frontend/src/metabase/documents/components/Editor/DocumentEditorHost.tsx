@@ -17,11 +17,13 @@ import {
   createDraftCard,
   generateDraftCardId,
   loadMetadataForDocumentCard,
+  openTimelineEventsSidebar,
   openVizSettingsSidebar,
   updateMentionsCache,
   updateVizSettings,
 } from "../../documents.slice";
 import { useCardData } from "../../hooks/use-card-data";
+import { useCommentUrl } from "../../hooks/use-comment-url";
 import { useDraftCardOperations } from "../../hooks/use-draft-card-operations";
 import { useExternalCardDataLoader } from "../../hooks/use-external-card-data";
 import {
@@ -55,6 +57,7 @@ export const documentEditorHost: EditorHost = {
     generateDraftCardId,
     loadMetadataForDocumentCard,
     openVizSettingsSidebar,
+    openTimelineEventsSidebar,
     updateVizSettings,
     updateMentionsCache,
   },
@@ -71,6 +74,7 @@ export const documentEditorHost: EditorHost = {
   useUnresolvedCommentsCount,
   useNodeInViewport,
   useReportPrefetchLoading,
+  useCommentUrl,
   useDraftCardOperations,
 };
 

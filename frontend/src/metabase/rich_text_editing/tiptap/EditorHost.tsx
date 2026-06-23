@@ -4,11 +4,13 @@ import { createContext, useContext } from "react";
 import type { State } from "metabase/redux/store";
 import type { DocumentHost } from "metabase/redux/store/documents";
 import type Question from "metabase-lib/v1/Question";
+import type { EntityId } from "metabase-types/api/comments";
 import type {
   Card,
   Dataset,
   Document,
   RawSeries,
+  StoredResultSort,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -89,6 +91,9 @@ export interface EditorHost {
     openVizSettingsSidebar: (payload: {
       embedIndex: number;
     }) => DispatchableAction;
+    openTimelineEventsSidebar: (payload: {
+      embedIndex: number;
+    }) => DispatchableAction;
     updateVizSettings: (payload: {
       cardId: number;
       settings: VisualizationSettings;
@@ -110,7 +115,13 @@ export interface EditorHost {
     url: string,
     document?: Document | null,
   ) => DispatchableAction;
-  useCardData: (props: { id: number; skip?: boolean }) => UseCardDataResult;
+  useCardData: (props: {
+    id: number;
+    skip?: boolean;
+    // Static-card mode (explorations): read from a cached stored_result snapshot.
+    storedResultId?: number;
+    storedResultSort?: StoredResultSort;
+  }) => UseCardDataResult;
   useExternalCardDataLoader: (
     cardId: number,
     opts?: { skip?: boolean },
@@ -124,6 +135,12 @@ export interface EditorHost {
   // reports everything as visible so other editors load eagerly.
   useNodeInViewport: (id?: string) => NodeViewportState;
   useReportPrefetchLoading: (id: string, isLoading: boolean) => void;
+  // Builds the comment-sidebar URL for a node. Centralised by the host so the
+  // editor doesn't import the `documents` useCommentUrl hook.
+  useCommentUrl: (opts: {
+    childTargetId: EntityId | null;
+    searchParams?: Record<string, string>;
+  }) => string;
   useDraftCardOperations: (
     draftCard: Card | null | undefined,
     card: Card | null | undefined,
@@ -156,6 +173,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
     generateDraftCardId: () => -1,
     loadMetadataForDocumentCard: () => ({ type: "@@editor-host/noop" }),
     openVizSettingsSidebar: () => ({ type: "@@editor-host/noop" }),
+    openTimelineEventsSidebar: () => ({ type: "@@editor-host/noop" }),
     updateVizSettings: () => ({ type: "@@editor-host/noop" }),
     updateMentionsCache: () => ({ type: "@@editor-host/noop" }),
   },
@@ -176,6 +194,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
     shouldLoadData: true,
   }),
   useReportPrefetchLoading: () => undefined,
+  useCommentUrl: () => "",
   useDraftCardOperations: () => ({ ensureDraftCard: () => -1 }),
 };
 

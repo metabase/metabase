@@ -18,34 +18,6 @@ import { ExplicitSizeRefreshModeContext } from "metabase/common/components/Expli
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
-import { navigateToCardFromDocument } from "metabase/documents/actions";
-import {
-  trackDocumentAddSupportingText,
-  trackDocumentReplaceCard,
-} from "metabase/documents/analytics";
-import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
-import { MAX_GROUP_SIZE } from "metabase/documents/constants";
-import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
-import {
-  loadMetadataForDocumentCard,
-  openTimelineEventsSidebar,
-  openVizSettingsSidebar,
-} from "metabase/documents/documents.slice";
-import { useCardData } from "metabase/documents/hooks/use-card-data";
-import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
-import { useExternalCardDataLoader } from "metabase/documents/hooks/use-external-card-data";
-import {
-  useNodeInViewport,
-  useReportPrefetchLoading,
-} from "metabase/documents/hooks/use-node-in-viewport";
-import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
-import {
-  getChildTargetId,
-  getCurrentDocument,
-  getDocumentHost,
-  getHasUnsavedChanges,
-  getHoveredChildTargetId,
-} from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {
@@ -245,12 +217,12 @@ export const CardEmbedComponent = memo(
     const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
       skip: !isInViewport,
     });
-    const documentHost = useSelector(getDocumentHost);
+    const documentHost = useSelector(host.selectors.getDocumentHost);
 
     const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const commentsPath = useCommentUrl({
+    const commentsPath = host.useCommentUrl({
       childTargetId: _id,
       searchParams: unresolvedCommentsCount > 0 ? undefined : { new: "true" },
     });
@@ -268,14 +240,14 @@ export const CardEmbedComponent = memo(
     const embedIndex = getEmbedIndex(editor, getPos);
 
     const isExternalDocument = externalCardData != null;
-    const regularCardData = useCardData({
+    const regularCardData = host.useCardData({
       id,
       skip: !shouldLoadData,
       ...(storedResultId != null
         ? { storedResultId, storedResultSort: staticSort }
         : {}),
     });
-    const externalCardDataResult = useExternalCardDataLoader(id, {
+    const externalCardDataResult = host.useExternalCardDataLoader(id, {
       skip: !shouldLoadData,
     });
 
@@ -445,14 +417,14 @@ export const CardEmbedComponent = memo(
 
     const handleEditTimelineEvents = () => {
       if (embedIndex !== -1) {
-        dispatch(openTimelineEventsSidebar({ embedIndex }));
+        dispatch(host.actions.openTimelineEventsSidebar({ embedIndex }));
       }
     };
 
     const handleTitleClick = () => {
       const chartHref = node.attrs.chart_href as string | null | undefined;
       if (chartHref) {
-        dispatch(navigateToCardFromDocument(chartHref, document));
+        dispatch(host.navigateToCard(chartHref, document));
         return;
       }
       // exploration documents should have chart_href
