@@ -1301,11 +1301,7 @@
 
     (model? card)
     (let [native?   (lib/native? (:dataset_query card))
-          ;; `:id` is the link from each model column to its underlying Field. It isn't in `model-preserved-keys`
-          ;; for MBQL models, but serdes must still carry it (as a portable field ref, via `*export-field-fk*`
-          ;; below) so a filter mapped to the model column can resolve the field's values after import. See
-          ;; GHY-3946.
-          keep-keys (into #{:name :id}
+          keep-keys (into #{:name}
                           (map u/->snake_case_en)
                           (lib/model-preserved-keys native?))]
       (mapv (fn [m]
