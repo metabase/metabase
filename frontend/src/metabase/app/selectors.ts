@@ -1,11 +1,11 @@
 import { createSelector } from "@reduxjs/toolkit";
 
+import { documentApi } from "metabase/api/document";
 import {
   getDashboard,
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
-import { getCurrentDocument } from "metabase/documents/selectors";
 import {
   getIsSavedQuestionChanged,
   getQuestion,
@@ -18,6 +18,7 @@ import {
 } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
+import type { Document } from "metabase-types/api";
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props?.location?.pathname ?? window.location.pathname;
@@ -25,6 +26,18 @@ export const getRouterPath = (state: State, props: RouterProps) => {
 
 export const getRouterHash = (state: State, props: RouterProps) => {
   return props?.location?.hash ?? window.location.hash;
+};
+
+// The app bar's collection breadcrumb needs the open document's collection_id.
+// Read it from the `getDocument` query cache keyed by the route id, rather than
+// duplicating the document into a bespoke `currentDocument` in the documents slice.
+const getRouteDocument = (state: State, props: RouterProps): Document | null => {
+  const match = getRouterPath(state, props).match(/\/document\/([^/?#]+)/);
+  const id = match ? Urls.extractEntityId(match[1]) : undefined;
+  if (id == null) {
+    return null;
+  }
+  return documentApi.endpoints.getDocument.select({ id })(state).data ?? null;
 };
 
 export const getIsAdminApp = createSelector([getRouterPath], (path) => {
@@ -95,7 +108,7 @@ export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,
     getDashboard,
-    getCurrentDocument,
+    getRouteDocument,
     getRouterPath,
     getIsEmbeddingIframe,
     getEmbedOptions,
@@ -220,7 +233,7 @@ export const getCollectionId = createSelector(
     getQuestion,
     getDashboard,
     getDashboardId,
-    getCurrentDocument,
+    getRouteDocument,
     getDetailViewState,
     getRouterPath,
   ],

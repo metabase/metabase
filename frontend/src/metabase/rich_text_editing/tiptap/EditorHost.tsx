@@ -54,23 +54,39 @@ type Selector<T> = (state: State) => T;
  */
 type DispatchableAction = any;
 
-/**
- * The document-specific capabilities the editor extensions need, injected by
- * the host (e.g. documents) rather than imported. This keeps `rich_text_editing`
- * a document-agnostic editor primitive: consumers that do not configure a host
- * (e.g. the comments editor) transparently get {@link DEFAULT_EDITOR_HOST}.
- */
-export interface EditorHost {
+// Action/thunk creators return the redux action or thunk to be dispatched.
+// Typed as `any` (see DispatchableAction) so they satisfy the app's overloaded
+// `dispatch` (which accepts both plain actions and thunks) without coupling this
+// primitive to the host's concrete action types.
+
+/** Document state read by most extensions, regardless of which are enabled. */
+export interface EditorDocumentHost {
   selectors: {
     getCurrentDocument: Selector<Document | null>;
-    getChildTargetId: Selector<string | undefined>;
-    getHoveredChildTargetId: Selector<string | undefined>;
     getHasUnsavedChanges: Selector<boolean>;
   };
-  // Action/thunk creators return the redux action or thunk to be dispatched.
-  // Typed as `any` so they satisfy the app's overloaded `dispatch` (which
-  // accepts both plain actions and thunks) without coupling this primitive to
-  // the host's concrete action types.
+}
+
+/** Embedding, rendering and authoring cards — CardEmbed, the create/modify
+ *  question modals, and the Metabot embed. */
+export interface EditorCardHost {
+  useCardData: (props: { id: number; skip?: boolean }) => UseCardDataResult;
+  useExternalCardDataLoader: (
+    cardId: number,
+    opts?: { skip?: boolean },
+  ) => UseCardDataResult;
+  useDraftCardOperations: (
+    draftCard: Card | null | undefined,
+    card: Card | null | undefined,
+    cardId: number,
+    editorInstance: Editor | null | undefined,
+    selectedEmbedIndex: number | null,
+    regularDataset: Dataset | null | undefined,
+  ) => DraftCardOperations;
+  navigateToCard: (
+    url: string,
+    document?: Document | null,
+  ) => DispatchableAction;
   actions: {
     createDraftCard: (payload: {
       originalCard: Card | undefined;
@@ -86,12 +102,42 @@ export interface EditorHost {
       cardId: number;
       settings: VisualizationSettings;
     }) => DispatchableAction;
+  };
+}
+
+/** Comment menus on blocks and card embeds. */
+export interface EditorCommentsHost {
+  useUnresolvedCommentsCount: (
+    nodeId: string,
+    opts?: { skip?: boolean },
+  ) => number;
+  selectors: {
+    getChildTargetId: Selector<string | undefined>;
+    getHoveredChildTargetId: Selector<string | undefined>;
+  };
+}
+
+/** Viewport-aware lazy loading: hosts with a scroll container (documents) defer
+ *  data fetching until a node is near the viewport. The default host reports
+ *  everything as visible so other editors load eagerly. */
+export interface EditorViewportHost {
+  useNodeInViewport: (id?: string) => NodeViewportState;
+  useReportPrefetchLoading: (id: string, isLoading: boolean) => void;
+}
+
+/** Mention / smart-link suggestions. */
+export interface EditorMentionsHost {
+  actions: {
     updateMentionsCache: (payload: {
       entityId: string;
       model: string;
       name: string;
     }) => DispatchableAction;
   };
+}
+
+/** Product analytics for editor affordances. */
+export interface EditorAnalyticsHost {
   analytics: {
     trackAddCard: (document?: Document | null) => void;
     trackAddSmartLink: (document?: Document | null) => void;
@@ -99,33 +145,23 @@ export interface EditorHost {
     trackReplaceCard: (document?: Document | null) => void;
     trackAddSupportingText: (document?: Document | null) => void;
   };
-  navigateToCard: (
-    url: string,
-    document?: Document | null,
-  ) => DispatchableAction;
-  useCardData: (props: { id: number; skip?: boolean }) => UseCardDataResult;
-  useExternalCardDataLoader: (
-    cardId: number,
-    opts?: { skip?: boolean },
-  ) => UseCardDataResult;
-  useUnresolvedCommentsCount: (
-    nodeId: string,
-    opts?: { skip?: boolean },
-  ) => number;
-  // Viewport-aware lazy loading: hosts with a scroll container (documents)
-  // defer data fetching until a node is near the viewport. The default host
-  // reports everything as visible so other editors load eagerly.
-  useNodeInViewport: (id?: string) => NodeViewportState;
-  useReportPrefetchLoading: (id: string, isLoading: boolean) => void;
-  useDraftCardOperations: (
-    draftCard: Card | null | undefined,
-    card: Card | null | undefined,
-    cardId: number,
-    editorInstance: Editor | null | undefined,
-    selectedEmbedIndex: number | null,
-    regularDataset: Dataset | null | undefined,
-  ) => DraftCardOperations;
 }
+
+/**
+ * The document-specific capabilities the editor extensions need, injected by
+ * the host (e.g. documents) rather than imported. This keeps `rich_text_editing`
+ * a document-agnostic editor primitive: consumers that do not configure a host
+ * (e.g. the comments editor) transparently get {@link DEFAULT_EDITOR_HOST}.
+ *
+ * Composed from per-concern slices so a new host can see — and implement — only
+ * the slices for the extensions it enables.
+ */
+export type EditorHost = EditorDocumentHost &
+  EditorCardHost &
+  EditorCommentsHost &
+  EditorViewportHost &
+  EditorMentionsHost &
+  EditorAnalyticsHost;
 
 const noop = () => undefined;
 
