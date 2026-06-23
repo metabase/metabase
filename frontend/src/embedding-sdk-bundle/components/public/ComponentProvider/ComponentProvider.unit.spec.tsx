@@ -7,7 +7,6 @@ jest.mock("embedding-sdk-bundle/hooks/private/use-init-data", () => ({
   useInitDataInternal: jest.fn(),
 }));
 
-import { screen } from "__support__/ui";
 import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 
@@ -18,18 +17,6 @@ describe("ComponentProvider — tracker wiring", () => {
     jest.clearAllMocks();
   });
 
-  it("calls useInitSdkTracker with 3 arguments", () => {
-    renderWithSDKProviders(<div data-testid="child" />, {
-      componentProviderProps: {
-        authConfig: { metabaseInstanceUrl: "https://metabase.example.com" },
-      },
-    });
-
-    screen.getByTestId("child");
-    expect(mockUseInitSdkTracker).toHaveBeenCalled();
-    expect(mockUseInitSdkTracker.mock.calls[0]).toHaveLength(3);
-  });
-
   it("passes locale != null as the third argument when locale is set", () => {
     renderWithSDKProviders(<div />, {
       componentProviderProps: {
@@ -38,7 +25,11 @@ describe("ComponentProvider — tracker wiring", () => {
       },
     });
 
-    expect(mockUseInitSdkTracker.mock.calls[0][2]).toBe(true);
+    expect(mockUseInitSdkTracker).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      true,
+    );
   });
 
   it("passes false as the third argument when locale is not set", () => {
@@ -49,6 +40,10 @@ describe("ComponentProvider — tracker wiring", () => {
       },
     });
 
-    expect(mockUseInitSdkTracker.mock.calls[0][2]).toBe(false);
+    expect(mockUseInitSdkTracker).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      false,
+    );
   });
 });

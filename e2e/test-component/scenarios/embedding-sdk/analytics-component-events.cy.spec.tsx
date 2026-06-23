@@ -47,6 +47,17 @@ const sdkEventsFromProxyBody = (body: unknown): SdkEventData[] => {
     .map((selfDescribing) => selfDescribing.data as SdkEventData);
 };
 
+const parseEventDetail = (event: SdkEventData) => {
+  try {
+    return JSON.parse(event.event_detail ?? "{}");
+  } catch {
+    return {};
+  }
+};
+
+const findEventByComponent = (events: SdkEventData[], component: string) =>
+  events.find((event) => parseEventDetail(event).component === component);
+
 describe("scenarios > embedding-sdk > analytics — per-mount component events", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
@@ -95,18 +106,9 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     cy.wait(["@analyticsProxy", "@analyticsProxy"]);
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
-      const componentEvent = events.find((event) => {
-        try {
-          return (
-            JSON.parse(event.event_detail ?? "{}").component ===
-            "StaticQuestion"
-          );
-        } catch {
-          return false;
-        }
-      });
+      const componentEvent = findEventByComponent(events, "StaticQuestion");
       expect(componentEvent, "StaticQuestion mount event").to.exist;
-      const detail = JSON.parse(componentEvent?.event_detail ?? "{}");
+      const detail = parseEventDetail(componentEvent!);
       expect(detail.global.auth_method, "auth_method in event_detail").to.eq(
         "sso",
       );
@@ -137,33 +139,21 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     cy.wait("@analyticsProxy");
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
-      const interactiveQuestionEvent = events.find((event) => {
-        try {
-          return (
-            JSON.parse(event.event_detail ?? "{}").component ===
-            "InteractiveQuestion"
-          );
-        } catch {
-          return false;
-        }
-      });
+      const interactiveQuestionEvent = findEventByComponent(
+        events,
+        "InteractiveQuestion",
+      );
       expect(interactiveQuestionEvent, "InteractiveQuestion mount event").to
         .exist;
-      const detail = JSON.parse(interactiveQuestionEvent?.event_detail ?? "{}");
+      const detail = parseEventDetail(interactiveQuestionEvent!);
       expect(detail.properties.id_new, "id_new in event_detail").to.eq("true");
     });
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
-      const createQuestionEvent = events.find((event) => {
-        try {
-          return (
-            JSON.parse(event.event_detail ?? "{}").component ===
-            "CreateQuestion"
-          );
-        } catch {
-          return false;
-        }
-      });
+      const createQuestionEvent = findEventByComponent(
+        events,
+        "CreateQuestion",
+      );
       expect(createQuestionEvent, "no CreateQuestion event").to.be.undefined;
     });
   });
@@ -195,29 +185,17 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     cy.wait(["@analyticsProxy", "@analyticsProxy"]);
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
-      const interactiveQuestionEvent = events.find((event) => {
-        try {
-          return (
-            JSON.parse(event.event_detail ?? "{}").component ===
-            "InteractiveQuestion"
-          );
-        } catch {
-          return false;
-        }
-      });
+      const interactiveQuestionEvent = findEventByComponent(
+        events,
+        "InteractiveQuestion",
+      );
       expect(interactiveQuestionEvent, "InteractiveQuestion mount event").to
         .exist;
 
-      const collectionBrowserEvent = events.find((event) => {
-        try {
-          return (
-            JSON.parse(event.event_detail ?? "{}").component ===
-            "CollectionBrowser"
-          );
-        } catch {
-          return false;
-        }
-      });
+      const collectionBrowserEvent = findEventByComponent(
+        events,
+        "CollectionBrowser",
+      );
       expect(collectionBrowserEvent, "CollectionBrowser mount event").to.exist;
     });
   });

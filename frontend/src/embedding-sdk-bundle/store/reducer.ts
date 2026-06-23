@@ -214,11 +214,11 @@ export const sdk = createReducer(initialState, (builder) => {
     state.pluginsReady = action.payload;
   });
 
-  builder.addCase(setSdkTrackerReady, (state, action) => {
-    state.sdkTrackerReady = action.payload;
-  });
-
   builder.addCase(setInitialDashboardTabId, (state, action) => {
     state.initialDashboardTabId = action.payload;
+  });
+
+  builder.addCase(setSdkTrackerReady, (state, action) => {
+    state.sdkTrackerReady = action.payload;
   });
 });
