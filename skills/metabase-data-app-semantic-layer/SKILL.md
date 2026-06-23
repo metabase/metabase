@@ -1,6 +1,6 @@
 ---
 name: metabase-data-app-semantic-layer
-description: Use when building, creating, or editing data apps that should use Metabase data, a Metabase semantic layer, or generated schema files like metabase.data.ts or *.metabase.data.ts.
+description: Use when building, creating, or editing data apps that should use Metabase data, a Metabase semantic layer, generated schema files like metabase.data.ts or *.metabase.data.ts, or custom filter interfaces for data-app queries.
 ---
 
 # Metabase Data App Semantic Layer
@@ -16,6 +16,10 @@ Keep the semantic layer and presentation layer separate.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
 - Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it in the query instead of manually recreating the concept from raw rows.
+- Filter UI must default to showing data. Empty controls, "All" options, and incomplete custom ranges should produce no filter instead of blocking queries or showing a blank dashboard.
+- Do not hardcode categorical filter option values such as channels, countries, statuses, regions, or segments. Query them from Metabase at runtime using the same generated schema field or metric dimension that the filter applies.
+- Dashboard-level filters should apply to every compatible card, table, KPI, and trend. If a filter can only apply to one query, make that scope obvious in the UI.
+- Do not use native `<input type="date">` for data-app filter bars. Its placeholder and calendar popover are browser-controlled, often show `mm/dd/yyyy`, and cannot be reliably themed. If the repo already has a date picker component or component library, use that. Otherwise install `react-datepicker` for custom date selection.
 - Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Measures must come from `schema.tables.*.measures.*`; metrics must come from `schema.metrics.*`.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, segments, or chart series.
 - Visualization data must come from Metabase through `useMetabaseQuery`, `useMetabaseQueryObject` with `InteractiveQuestion`/`StaticQuestion`, or saved-question SDK components. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
@@ -411,6 +415,95 @@ const { data } = useMetabaseQuery<EventsTable>({
 });
 ```
 
+## Filter UI Patterns
+
+When the user asks for custom filters, build normal React controls that feed semantic query filters.
+
+Filter state rules:
+
+- Default every filter to "all" or empty, and run the unfiltered query.
+- Convert "all", `""`, `null`, and `undefined` to `[]`.
+- Keep "All" options selectable even while runtime option queries are loading, empty, or errored.
+- If a selected runtime option disappears from the latest option query, reset that filter to "all" so stale values do not keep filtering the dashboard to no rows.
+- For custom date ranges, apply the filter only when both dates are valid.
+- Keep one filter array per queried semantic object when charts use different date fields or metric dimensions.
+- Memoize filter arrays so SDK query keys stay stable.
+
+For categorical filters, query actual option values instead of inventing them:
+
+- Run a `useMetabaseQuery` breakout on the same table field or metric dimension used by `filter(...)`, then derive a deduped option list from returned rows.
+- Keep labels separate from values. For entities with IDs and names, display the name but filter by the stable ID.
+- Prefer querying options from the same semantic object used by the charts so the option list stays compatible with the filter.
+- Use a searchable picker/combobox for long runtime option lists; plain `<select>` is only reasonable for short, stable lists.
+
+Date ranges should use ISO `YYYY-MM-DD` strings for query values. Never use `type="date"`.
+
+For custom date pickers:
+
+- First check whether the repo already has a date picker component or component library. If it does, use the existing component.
+- If the repo has no existing date picker, install `react-datepicker`. The default data-app template only includes React, React DOM, and the Metabase SDK.
+- Do not install a large UI suite just for one data-app date filter.
+- Import `react-datepicker/dist/react-datepicker.css`, then add small CSS overrides for the app's visual style if needed.
+- For custom date ranges, use `selectsRange` with local `Date | null` start/end state, but only commit the query range when both dates are selected.
+- If the custom range control should look like the other preset buttons, use `customInput` with a `forwardRef` button, spread react-datepicker's injected props, and call its injected `onClick` so the popover still opens.
+- Convert selected dates to ISO `YYYY-MM-DD` strings before building filters. Use local date getters (`getFullYear`, `getMonth`, `getDate`) rather than `toISOString()` when preserving the selected local calendar day matters.
+- Recent `react-datepicker` packages include their own TypeScript types; do not add `@types/react-datepicker` unless the installed version actually needs it.
+
+Install `react-datepicker` only when the repo does not already have a date picker:
+
+```bash
+npm install react-datepicker
+```
+
+```tsx
+type DatePreset = "30d" | "90d" | "custom" | "all";
+
+const [datePreset, setDatePreset] = useState<DatePreset>("all");
+const [customStart, setCustomStart] = useState("");
+const [customEnd, setCustomEnd] = useState("");
+const [repo, setRepo] = useState("all");
+
+const dateRange = useMemo((): readonly [string, string] | null => {
+  if (datePreset === "all") {
+    return null;
+  }
+
+  if (datePreset === "custom") {
+    return customStart && customEnd ? [customStart, customEnd] : null;
+  }
+
+  return getPresetDateRange(datePreset);
+}, [datePreset, customStart, customEnd]);
+
+const stargazerFilters = useMemo(
+  () => [
+    ...(dateRange
+      ? [filter(stargazers.fields.starredAt, "between", dateRange)]
+      : []),
+    ...(repo === "all" ? [] : [filter(stargazers.fields.repoName, "=", repo)]),
+  ],
+  [dateRange, repo],
+);
+```
+
+For metric-backed charts, use metric dimensions instead of table fields:
+
+```ts
+const metricFilters = useMemo(
+  () =>
+    dateRange
+      ? [
+          filter(
+            starCount.dimensions.stargazers.starredAt,
+            "between",
+            dateRange,
+          ),
+        ]
+      : [],
+  [dateRange],
+);
+```
+
 ## Result Shape And Charts
 
 - Prefer keyed `data.rows`.
@@ -463,6 +556,13 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Passing raw strings for metric dimensions or table fields.
 - Adding lookup helpers instead of using keyed generated schema objects.
 - Mixing fields, dimensions, segments, or measures from unrelated tables/metrics.
+- Adding a filter UI that sends empty values instead of omitting the filter.
+- Hardcoding categorical filter values like channels, countries, statuses, regions, or segments instead of querying the runtime values from Metabase.
+- Displaying entity names but filtering by those names when a stable ID is available.
+- Applying a dashboard-level filter to only one KPI while related charts and tables ignore it.
+- Rendering a very long categorical list in a plain `<select>` instead of using a searchable control.
+- Disabling a whole categorical filter select when options are empty, which also prevents users from returning to "All".
+- Using native `<input type="date">` and shipping browser-controlled `mm/dd/yyyy` placeholders or unthemed calendar popovers.
 - Assuming `filter(...)` fully validates value types.
 - Letting a `null` bucket become the latest time-series point.
 - Hardcoding business values, labels, timestamps, or rankings.
