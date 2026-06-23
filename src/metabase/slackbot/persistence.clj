@@ -1,7 +1,7 @@
 (ns metabase.slackbot.persistence
   "Slack-specific persistence: reconstruct conversation history from stored messages."
   (:require
-   [clojure.string :as str]
+   [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -15,20 +15,22 @@
   result to replay. Text and data parts are skipped — assistant text still
   comes from Slack's copy of the thread."
   [part]
-  (when (and (string? (:type part))
-             (str/starts-with? (:type part) "tool-")
+  (when (and (schema.v2/tool-part? part)
              (not= "input-available" (:state part)))
     (let [input       (:input part)
+          state       (:state part)
           tool-call   {:role       :assistant
                        :tool_calls [{:id        (:toolCallId part)
-                                     :name      (subs (:type part) 5)
-                                     :arguments (if (string? input) input (json/encode input))}]}
-          tool-result (when (#{"output-available" "output-error"} (:state part))
+                                     :name      (schema.v2/tool-part-name part)
+                                     :arguments (if (string? input)
+                                                  input
+                                                  (json/encode (or input {})))}]}
+          tool-result (when (#{"output-available" "output-error"} state)
                         {:role         :tool
                          :tool_call_id (:toolCallId part)
-                         :content      (or (get-in part [:output :output])
-                                           (:errorText part)
-                                           "Tool execution failed")})]
+                         :content      (if (= "output-error" state)
+                                         (or (:errorText part) "Tool execution failed")
+                                         (or (get-in part [:output :output]) ""))})]
       (cond-> [tool-call]
         tool-result (conj tool-result)))))
 

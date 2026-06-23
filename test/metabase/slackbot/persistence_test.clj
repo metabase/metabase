@@ -125,6 +125,34 @@
                               (-> % :tool_calls first :id))
                          msgs)))))))))
 
+(deftest message-history-degenerate-parts-test
+  (testing "nil input and outputs without an inner :output string replay safely"
+    (let [conv-id  (str (random-uuid))
+          slack-ts "1712000000.000002"
+          call-id  "call-degenerate"]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    slack-ts
+                     :role            "assistant"
+                     :profile_id      "slackbot"
+                     :total_tokens    10
+                     :data            [{:type       "tool-search"
+                                        :toolCallId call-id
+                                        :state      "output-available"
+                                        :input      nil
+                                        :output     {}}]
+                     :data_version    2})
+        (let [msgs (get (slackbot.persistence/message-history conv-id #{slack-ts}) slack-ts)]
+          (testing "nil input encodes as an empty JSON object, not \"null\""
+            (is (= "{}" (-> msgs first :tool_calls first :arguments))))
+          (testing "a successful call with no LLM-facing output replays as empty content, not a failure"
+            (is (= {:role         :tool
+                    :tool_call_id call-id
+                    :content      ""}
+                   (second msgs)))))))))
+
 (deftest message-history-migrates-v1-rows-test
   (testing "data_version 1 rows are upgraded on read and replay through the v2 history reader"
     (let [conv-id  (str (random-uuid))
