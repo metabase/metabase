@@ -232,16 +232,21 @@ describe("issue 23103", () => {
     cy.wait("@updateModel");
     cy.button("Saving…").should("not.exist");
 
-    // The column hovercard (MetadataInfo `Popover`) is a Mantine `HoverCard`
-    // with a 250ms `openDelay` and floating-ui pointer tracking, so it needs a
-    // real, held cursor: a one-shot `.trigger("mouseover")` races the delay
-    // timer and the post-save metadata refetch, so the dropdown never opens.
-    // `realHover()` on a freshly-queried, visible cell keeps the pointer in
-    // place while the dropdown opens and the distinct-value fingerprint loads.
+    // After saving, the model reloads its results in view mode. The flaky
+    // "HoverCard dropdown never found" happened when the column header was
+    // hovered while that post-save re-render was still in flight, detaching
+    // the cell out from under the synthetic event. Wait for the reloaded
+    // table data to settle first so the header cell is stable when we hover.
+    H.tableInteractive().should("be.visible").and("contain", "Gizmo");
+
+    // Hovering the column header opens the MetadataInfo `HoverCard`
+    // (`HeaderCellWithColumnInfo`, openDelay 500ms). A React-synthetic
+    // `mouseover` is the trigger this hovercard responds to (see
+    // table.cy.spec.js), so dispatch it on the now-stable, visible cell.
     cy.findAllByTestId("header-cell")
       .contains("Category")
       .should("be.visible")
-      .realHover();
+      .trigger("mouseover");
 
     H.hovercard().findByText("4 distinct values").should("be.visible");
   });
