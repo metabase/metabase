@@ -12,12 +12,12 @@ import {
 } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
 import { shouldShowParentLabels } from "metabase/visualizations/echarts/graph/treemap/model/labels";
-import {
-  type TreemapMeasuredLabelLayouts,
-  measureTreemapLabelLayouts,
-} from "metabase/visualizations/echarts/graph/treemap/model/measure";
+import { measureTreemapLabelLayouts } from "metabase/visualizations/echarts/graph/treemap/model/measure";
 import { getTreemapLayoutNodes } from "metabase/visualizations/echarts/graph/treemap/model/tree";
-import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
+import {
+  type TreemapChartOptionConfig,
+  getStaticTreemapOption,
+} from "metabase/visualizations/echarts/graph/treemap/option/option";
 
 import Watermark from "../../watermark.svg?component";
 
@@ -54,20 +54,15 @@ export function TreemapChart({
   const colors = getTreemapColors(tree, treemapRows);
   const formatters = getTreemapFormatters(treemapColumns, settings);
 
-  const buildOption = (layouts: Partial<TreemapMeasuredLabelLayouts>) => ({
-    animation: false,
-    ...getTreemapChartOption({
-      tree,
-      colors,
-      showParentLabels: shouldShowParentLabels(undefined, settings),
-      showLeafLabels: settings["treemap.show_leaf_labels"] ?? true,
-      labelLayout: layouts.leafLabelLayout,
-      parentLabelLayout: layouts.parentLabelLayout,
-      formatValue: formatters.value,
-      formatPercent: formatters.percent,
-      renderingContext,
-    }),
-  });
+  const config: TreemapChartOptionConfig = {
+    tree,
+    colors,
+    showParentLabels: shouldShowParentLabels(undefined, settings),
+    showLeafLabels: settings["treemap.show_leaf_labels"] ?? true,
+    formatValue: formatters.value,
+    formatPercent: formatters.percent,
+    renderingContext,
+  };
 
   const chart = init(null, null, {
     renderer: "svg",
@@ -77,7 +72,7 @@ export function TreemapChart({
   });
 
   // first pass to general layout of nodes
-  chart.setOption(buildOption({}));
+  chart.setOption(getStaticTreemapOption(config));
   chart.renderToSVGString();
   const layouts = measureTreemapLabelLayouts({
     nodes: getTreemapLayoutNodes(chart),
@@ -89,7 +84,7 @@ export function TreemapChart({
   });
 
   // 2nd to render/hide labels
-  chart.setOption(buildOption(layouts));
+  chart.setOption(getStaticTreemapOption(config, layouts));
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
 
   const legendModel = getTreemapLegendModel(
