@@ -312,12 +312,6 @@
   [table]
   (select-keys table [:name :schema]))
 
-(mu/defn- table-set :- [:set i/DatabaseMetadataTable]
-  "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
-  Get set of user tables only, excluding metabase metadata tables."
-  [db-metadata :- i/DatabaseMetadata]
-  (into #{} (remove ignore-table?) (:tables db-metadata)))
-
 (mu/defn- select-tables :- [:set (ms/InstanceOf :model/Table)]
   "Selects the columns we need for `:model/Table`, with some optional filters"
   [database :- i/DatabaseInstance
