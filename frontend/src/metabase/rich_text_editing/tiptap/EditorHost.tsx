@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { createContext, useContext } from "react";
 
 import type { State } from "metabase/redux/store";
+import type { DocumentHost } from "metabase/redux/store/documents";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -66,6 +67,12 @@ export interface EditorHost {
     getChildTargetId: Selector<string | undefined>;
     getHoveredChildTargetId: Selector<string | undefined>;
     getHasUnsavedChanges: Selector<boolean>;
+    // Which surface is rendering the editor ("standalone" document vs an
+    // "exploration"). Extensions read this through the host instead of the
+    // `documents` `getDocumentHost` selector, so the editor stays decoupled.
+    // (A cleaner follow-up is to replace surface comparisons with explicit
+    // host capability flags — see PR description.)
+    getDocumentHost: Selector<DocumentHost>;
   };
   // Action/thunk creators return the redux action or thunk to be dispatched.
   // Typed as `any` so they satisfy the app's overloaded `dispatch` (which
@@ -142,6 +149,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
     getChildTargetId: () => undefined,
     getHoveredChildTargetId: () => undefined,
     getHasUnsavedChanges: () => false,
+    getDocumentHost: () => "standalone",
   },
   actions: {
     createDraftCard: () => ({ type: "@@editor-host/noop" }),

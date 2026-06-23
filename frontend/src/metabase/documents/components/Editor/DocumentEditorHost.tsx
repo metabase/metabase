@@ -32,6 +32,7 @@ import { useUnresolvedCommentsCount } from "../../hooks/use-unresolved-comments-
 import {
   getChildTargetId,
   getCurrentDocument,
+  getDocumentHost,
   getHasUnsavedChanges,
   getHoveredChildTargetId,
 } from "../../selectors";
@@ -47,6 +48,7 @@ export const documentEditorHost: EditorHost = {
     getChildTargetId,
     getHoveredChildTargetId,
     getHasUnsavedChanges,
+    getDocumentHost,
   },
   actions: {
     createDraftCard,
