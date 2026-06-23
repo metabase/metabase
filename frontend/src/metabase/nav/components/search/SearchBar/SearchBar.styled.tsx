@@ -46,7 +46,7 @@ export const SearchInputContainer = styled.div<{
       }
     `;
   }}
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   overflow: hidden;
   transition:
     background 150ms,
@@ -67,7 +67,7 @@ export const SearchInputContainer = styled.div<{
       props.isActive &&
       css`
         width: 100%;
-        border-color: var(--mb-color-border);
+        border-color: var(--mb-color-border-neutral);
         ${activeInputCSS};
       `};
   }

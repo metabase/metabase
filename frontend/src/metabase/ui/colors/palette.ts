@@ -8,8 +8,8 @@ export const ACCENT_COUNT = 8;
 export const originalColors = getColors();
 
 export const aliases: Record<string, (palette: ColorPalette) => string> = {
-  dashboard: (palette) => color("brand", palette),
-  document: (palette) => color("brand", palette),
+  dashboard: (palette) => color("core-brand", palette),
+  document: (palette) => color("core-brand", palette),
   nav: (palette) => color("background-primary", palette),
   content: (palette) => color("background-secondary", palette),
   database: (palette) => color("accent2", palette),
@@ -19,7 +19,7 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
   "text-tertiary": (palette) => color("text-tertiary", palette),
   background: (palette) => color("white", palette),
   "background-disbaled": (palette) => color("accent-gray", palette),
-  focus: (palette) => getFocusColor("brand", palette),
+  focus: (palette) => getFocusColor("core-brand", palette),
 
   "accent0-light": (palette) => tint(color(`accent0`, palette)),
   "accent1-light": (palette) => tint(color(`accent1`, palette)),

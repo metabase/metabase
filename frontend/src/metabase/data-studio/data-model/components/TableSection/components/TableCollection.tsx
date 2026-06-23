@@ -1,6 +1,8 @@
 import { Link } from "react-router";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
@@ -14,6 +16,14 @@ type TableCollectionProps = {
 
 export function TableCollection({ table }: TableCollectionProps) {
   const { collection } = table;
+  const { path } = useCollectionPath({ collectionId: collection?.id ?? null });
+
+  // Expand the path down to the published collection (skipping the library
+  // root, which isn't a tree node) so it's revealed instead of the root.
+  const expandedIds = match({ path, collection })
+    .with({ path: P.nonNullable }, ({ path }) => path.slice(1).map((c) => c.id))
+    .with({ collection: P.nonNullable }, ({ collection }) => [collection.id])
+    .otherwise(() => []);
 
   return (
     <>
@@ -22,7 +32,7 @@ export function TableCollection({ table }: TableCollectionProps) {
           <Box
             className={S.link}
             component={Link}
-            to={Urls.dataStudioLibrary({ expandedIds: [collection.id] })}
+            to={Urls.dataStudioLibrary({ expandedIds })}
             fw="bold"
           >
             {collection.name}

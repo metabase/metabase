@@ -54,7 +54,7 @@ export function getVisualizationTheme({
       splitLine: {
         lineStyle: {
           color: isStaticViz
-            ? Color(color("border")).hex()
+            ? Color(color("border-neutral")).hex()
             : cartesian.splitLine.lineStyle.color,
         },
       },

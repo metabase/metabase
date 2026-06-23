@@ -2,7 +2,7 @@ import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetTableSelectionInfoQuery } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";
 import {
@@ -109,14 +109,15 @@ function ModalBody({
   const [publishTables] = usePublishTablesMutation();
   const { sendSuccessToast } = useMetadataToasts();
   const dispatch = useDispatch();
-  const dataCollection = PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
-    type: "library-data",
-  });
+  const { data: dataCollection, isLoading: isLoadingDataCollection } =
+    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
+      type: "library-data",
+    });
 
   if (isLoading || error != null || data == null || dataCollection == null) {
     return (
       <DelayedLoadingAndErrorWrapper
-        loading={isLoading || dataCollection == null}
+        loading={isLoading || isLoadingDataCollection || dataCollection == null}
         error={error}
       />
     );

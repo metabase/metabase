@@ -12,12 +12,8 @@ global.console = {
   error: print,
 };
 
-global.makeCellBackgroundGetter = function (
-  rowsJavaList,
-  colsJSON,
-  settingsJSON,
-) {
-  const rows = rowsJavaList;
+global.makeCellBackgroundGetter = function (rowsJSON, colsJSON, settingsJSON) {
+  const rows = JSON.parse(rowsJSON);
   const cols = JSON.parse(colsJSON);
   const settings = settingsJSON ? JSON.parse(settingsJSON) : {};
   try {

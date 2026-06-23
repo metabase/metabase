@@ -38,7 +38,7 @@ export const ComparisonPickerButton = styled(Button)<ButtonProps>`
 
   &:hover {
     ${ComparisonPickerSecondaryText} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 ` as unknown as typeof Button;

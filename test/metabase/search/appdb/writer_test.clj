@@ -19,19 +19,23 @@
 ;;; ---------------------------------- Reindex-mode write routing -----------------------------------
 
 (deftest reindex-mode-write-routing-test
-  (let [write-targets     #'search.writer/write-targets
-        commits?          #'search.index/commits-per-batch?
-        target-labels     (fn [mode] (map first (write-targets mode)))]
-    (testing "a background full reindex with a pending table writes ONLY to pending"
-      ;; the active table keeps serving queries and is swapped in by activate-table! when the build finishes
+  (let [write-targets #'search.writer/write-targets
+        commits?      #'search.index/commits-per-batch?
+        ;; Mirror how index-docs! captures the destination table ONCE at the start of a committing reindex.
+        captured      (fn [mode] (when (commits? mode) (or (search.index/pending-table) (search.index/active-table))))
+        target-labels (fn [mode] (map first (write-targets mode (captured mode))))]
+    (testing "a committing background reindex pins ALL writes to the single table captured at the start"
+      ;; the active table keeps serving queries and is swapped in by activate-table! when the build finishes;
+      ;; pinning prevents a concurrent resync from redirecting writes mid-rebuild
       (binding [search.index/*state-store*    (index-state/mock-store {:active :active-t :pending :pending-t})
                 search.ingestion/*force-sync* false]
         (is (= [:pending] (target-labels (search.index/background-mode))))
         (is (true? (commits? (search.index/background-mode))))))
-    (testing "a background reindex with no pending yet (e.g. initial populate) writes through to active"
+    (testing "an initial background build with no pending pins to the captured active table"
+      ;; the captured destination is the active table (no pending yet); writes are still pinned to it
       (binding [search.index/*state-store*    (index-state/mock-store {:active :active-t :pending nil})
                 search.ingestion/*force-sync* false]
-        (is (= [:active :pending] (target-labels (search.index/background-mode))))
+        (is (= [:pending] (target-labels (search.index/background-mode))))
         (is (true? (commits? (search.index/background-mode))))))
     (testing "*force-sync* disables per-batch commits and keeps active current via dual-write"
       ;; synchronous runs happen inside the caller's transaction, so we must not open a side connection

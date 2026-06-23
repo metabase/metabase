@@ -1445,7 +1445,8 @@
     (let [{collection-after-update :collection_id :as model-after-update} <>]
       (when (remote-synced-collection? collection-after-update)
         (check-non-remote-synced-dependencies model-after-update)
-        (when (api/column-will-change? :archived model-before-update model-after-update)
+        (when (and (api/column-will-change? :archived model-before-update model-after-update)
+                   (:archived model-after-update))
           (check-remote-synced-dependents model-after-update)))
       (when (and (api/column-will-change? :collection_id model-before-update model-after-update)
                  (moving-from-remote-synced? collection-before-update collection-after-update))
@@ -1592,6 +1593,13 @@
   `(binding [*allow-modifying-tenant-root-collections?* true]
      (do ~@body)))
 
+(defenterprise unpublish-downstream-fk-tables!
+  "When Library tables are unpublished because their collection is archived or deleted, also unpublish any tables that
+  depend on them via FK remapping (Dimensions) so implicit joins are not broken. OSS no-op."
+  metabase-enterprise.data-studio.api.table
+  [_seed-table-ids]
+  nil)
+
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]
@@ -1630,9 +1638,13 @@
                                                 :id   [:in affected-collection-ids]
                                                 :type library-data-collection-type)]
         (when (seq library-data-ids)
-          (t2/update! :model/Table {:collection_id [:in library-data-ids]}
-                      {:collection_id nil
-                       :is_published  false}))))
+          (let [published-table-ids (t2/select-pks-set :model/Table
+                                                       :collection_id [:in library-data-ids]
+                                                       :is_published  true)]
+            (t2/update! :model/Table {:collection_id [:in library-data-ids]}
+                        {:collection_id nil
+                         :is_published  false})
+            (unpublish-downstream-fk-tables! published-table-ids)))))
     (let [updated-collection (t2/select-one :model/Collection :id (:id collection))]
       (when (:is_remote_synced updated-collection)
         (check-remote-synced-dependents updated-collection)))))
@@ -1999,9 +2011,13 @@
     (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
   ;; delete all collection children
   (t2/delete! :model/Collection :location (children-location collection))
-  (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))]
+  (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
+        published-table-ids     (t2/select-pks-set :model/Table
+                                                   :collection_id [:in affected-collection-ids]
+                                                   :is_published  true)]
     (t2/update! :model/Table :collection_id [:in affected-collection-ids] {:collection_id nil
                                                                            :is_published  false})
+    (unpublish-downstream-fk-tables! published-table-ids)
     (doseq [model [:model/Card
                    :model/Dashboard
                    :model/NativeQuerySnippet

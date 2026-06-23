@@ -10,10 +10,6 @@ import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module
 import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import { FilterApplyToast } from "metabase/dashboard/components/FilterApplyToast";
-import {
-  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
-  DASHBOARD_PDF_EXPORT_ROOT_ID,
-} from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import {
   ActionButtonsContainer,
@@ -33,6 +29,10 @@ import { Box } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import { initializeIframeResizer, isSmallScreen } from "metabase/utils/dom";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
+import {
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_PDF_EXPORT_ROOT_ID,
+} from "metabase/visualizations/lib/save-dashboard-pdf";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {

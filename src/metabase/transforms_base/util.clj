@@ -753,6 +753,13 @@
       (u/update-some :start_time utc-timestamp-string)
       (u/update-some :end_time   utc-timestamp-string)))
 
+(defn present-run
+  "Prepare a transform run for an API response: localize its timestamps and drop internal-only fields."
+  [run]
+  (-> run
+      localize-run-timestamps
+      (dissoc :last_heartbeat)))
+
 ;;; ------------------------------------------------- Filter Transforms -------------------------------------------------
 
 (defn- matching-timestamp?

@@ -33,6 +33,7 @@
   initial-value
   connection-pool-info
   observe-initial-values
+  pull-collector
   setup!
   shutdown!]
  [metabase.analytics.quartz

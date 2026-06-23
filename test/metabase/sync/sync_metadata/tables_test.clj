@@ -355,6 +355,19 @@
           (is (= 999
                  (t2/select-one-fn :estimated_row_count :model/Table (:id tbl)))))))))
 
+(deftest create-or-reactivate-tables-deterministic-id-order-test
+  (testing "new tables are inserted sorted by [schema name] so auto-increment ids are assigned deterministically"
+    (let [metadatas #{{:schema "public" :name "zebra"}
+                      {:schema "alpha"  :name "beta"}
+                      {:schema "public" :name "apple"}
+                      {:schema "public" :name "mango"}}]
+      (mt/with-temp [:model/Database db {}]
+        (#'sync-tables/create-or-reactivate-tables! db metadatas)
+        (is (= ["beta" "apple" "mango" "zebra"]
+               (map :name (t2/select [:model/Table :name]
+                                     :db_id (u/the-id db)
+                                     {:order-by [[:id :asc]]}))))))))
+
 (deftest sample-database-tables-data-authority-test
   (testing "Tables from sample databases should be marked as :ingested"
     (mt/with-temp [:model/Database sample-db {:is_sample true}
@@ -376,3 +389,26 @@
             (let [updated-table (t2/select-one :model/Table (:id existing-table))]
               (is (= :ingested (:data_authority updated-table)))
               (is (:active updated-table)))))))))
+
+(deftest remove-tables-with-too-long-names-test
+  (testing "Tables whose name is too long to store in the app DB are dropped, so they don't abort the creation pass"
+    (let [remove-too-long @#'sync-tables/remove-tables-with-too-long-names
+          database        (t2/instance :model/Database {:id 1, :name "db", :engine :h2})
+          tbl             (fn [nm] {:name nm, :schema "public"})
+          ok              (tbl "short_name")
+          too-long        (tbl (apply str (repeat 300 "a")))]
+      (testing "an over-long name is removed while the rest are kept"
+        (is (= #{ok} (remove-too-long database #{ok too-long}))))
+      (testing "everything is kept when all names fit"
+        (is (= #{ok} (remove-too-long database #{ok}))))
+      (testing "boundary: a name of exactly the max length is kept; one character longer is dropped"
+        (let [at-limit   (tbl (apply str (repeat 256 "a")))
+              over-limit (tbl (apply str (repeat 257 "a")))]
+          (is (= #{at-limit} (remove-too-long database #{at-limit over-limit})))))
+      (testing "a table whose schema (dataset) name is too long is also dropped"
+        (let [long-schema {:name "t", :schema (apply str (repeat 300 "s"))}]
+          (is (= #{ok} (remove-too-long database #{ok long-schema})))))
+      (testing "boundary: a schema of exactly the max length is kept; one character longer is dropped"
+        (let [at-limit   {:name "t1", :schema (apply str (repeat 254 "s"))}
+              over-limit {:name "t2", :schema (apply str (repeat 255 "s"))}]
+          (is (= #{at-limit} (remove-too-long database #{at-limit over-limit}))))))))

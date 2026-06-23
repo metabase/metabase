@@ -6,7 +6,7 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
-import { useInitialCollectionId } from "metabase/collections/hooks";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
@@ -65,7 +65,9 @@ export const useCommandPaletteBasicActions = ({
     enabled: isLoggedIn,
   });
   const { data: searchResults } = useSearchQuery(
-    isLoggedIn ? { models: ["dataset"], limit: 1 } : skipToken,
+    isLoggedIn
+      ? { models: ["dataset"], limit: 1, context: "basic-actions" }
+      : skipToken,
   );
   const hasModels = (searchResults?.data?.length ?? 0) > 0;
 

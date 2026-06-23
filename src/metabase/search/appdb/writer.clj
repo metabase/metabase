@@ -30,12 +30,15 @@
 
 (defn- write-targets
   "Which [label table-name-fn] pairs the current batch upserts into.
-   A committing background rebuild targets ONLY the pending table — the active table keeps serving and is
-   swapped in by [[index/activate-table!]]. Every other write dual-writes to active AND pending so that an
-   in-flight rebuild stays current with live edits (pending may be nil, in which case it is simply skipped)."
-  [mode]
-  (if (and (index/commits-per-batch? mode) (index/pending-table))
-    [[:pending index/pending-table]]
+   A committing background rebuild targets ONLY the `reindex-table` captured once at the start of the run
+   (see [[index-docs!]]) — the active table keeps serving and is swapped in by [[index/activate-table!]].
+   Pinning to the captured table means a concurrent state resync that transiently blanks :pending can't
+   redirect writes into the live active table mid-rebuild and silently drop whole models from the new index.
+   Every other write dual-writes to active AND pending so that an in-flight rebuild stays current with live
+   edits (pending may be nil, in which case it is simply skipped)."
+  [mode reindex-table]
+  (if (and (index/commits-per-batch? mode) reindex-table)
+    [[:pending (constantly reindex-table)]]
     [[:active index/active-table] [:pending index/pending-table]]))
 
 (defn- do-batch-upsert!
@@ -106,25 +109,18 @@
   "Upsert one batch of documents into the tables chosen by `mode` (see [[write-targets]]).
    When the mode commits per batch, the writes run in a dedicated connection and each batch issues an
    explicit COMMIT so the partial build is visible to other connections during a long rebuild."
-  [mode documents]
+  [mode reindex-table documents]
   (let [commit?   (index/commits-per-batch? mode)
         do-writes (fn []
-                    (let [entries         (map document/document->entry documents)
-                          written         (into {} (map (fn [[label table-name-fn]]
-                                                          [label (safe-batch-upsert! label table-name-fn entries)]))
-                                                (write-targets mode))
-                          active-updated  (:active written)
-                          pending-updated (:pending written)]
-                      (when (or active-updated pending-updated)
+                    (let [entries (map document/document->entry documents)
+                          written (into {} (map (fn [[label table-name-fn]]
+                                                  [label (safe-batch-upsert! label table-name-fn entries)]))
+                                        (write-targets mode reindex-table))]
+                      (when (some some? (vals written))
                         (u/prog1 (->> entries (map :model) frequencies)
                           (when commit?
                             (t2/query ["commit"]))
-                          (log/trace "indexed documents for " <>)
-                          (when active-updated
-                            (try
-                              (analytics/set-gauge! :metabase-search/appdb-index-size (t2/count (name active-updated)))
-                              (catch Exception e
-                                (log/warnf e "Unable to measure active search index size (%s)" active-updated))))))))]
+                          (log/trace "indexed documents for " <>)))))]
     (if commit?
       ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
       (t2/with-connection [_conn (mdb/data-source)]
@@ -133,33 +129,32 @@
 
 (defn index-docs!
   "Index the documents from `document-reducible` using the given reindex `mode`, returning per-model counts.
-   `mode` is one of [[index/background-mode]], [[index/in-place-mode]], or [[index/incremental-mode]]."
+   `mode` is one of [[index/background-mode]], [[index/in-place-mode]], or [[index/incremental-mode]].
+
+   For a committing reindex the destination table is captured ONCE here — the pending table when a rebuild is
+   staging one, otherwise the active table for an initial build — so that a concurrent TTL resync that
+   transiently blanks the tracking state cannot redirect later batches into the live active table and silently
+   drop whole models from the index we are about to activate (see [[write-targets]])."
   [mode document-reducible]
   (tracing/with-span :search "search.appdb.index-docs" {:search/mode (.getSimpleName (class mode))}
-    (transduce (comp (partition-all insert-batch-size)
-                     (map (partial batch-update! mode)))
-               (partial merge-with +)
-               document-reducible)))
+    (let [reindex-table (when (index/commits-per-batch? mode)
+                          (or (index/pending-table) (index/active-table)))]
+      (transduce (comp (partition-all insert-batch-size)
+                       (map (partial batch-update! mode reindex-table)))
+                 (partial merge-with +)
+                 document-reducible))))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! (index/incremental-mode) document-reducible))
 
 (defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
   (when (seq ids)
-    (u/prog1 (->> [(index/active-table) (index/pending-table)]
-                  (keep (fn [table-name]
-                          (when table-name
-                            {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
-                                               ;; Race conditions with table being deleted, especially in tests.
-                                               (catch Exception e (if (table/table-not-found-exception? e) 0 (throw e))))})))
-                  (apply merge-with +)
-                  (into {}))
-      (when (index/active-table)
-        (try
-          (analytics/set-gauge! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
-                                                                                         :from   [(index/active-table)]
-                                                                                         :limit  1})))
-          (catch Exception e
-            ;; No point tracking the size of the newer index table, since we won't have modified it.
-            (when-not (table/table-not-found-exception? e)
-              (throw e))))))))
+    ;; The index-size gauge is refreshed out-of-band by metabase.search.appdb.metrics, so we don't measure here.
+    (->> [(index/active-table) (index/pending-table)]
+         (keep (fn [table-name]
+                 (when table-name
+                   {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
+                                      ;; Race conditions with table being deleted, especially in tests.
+                                      (catch Exception e (if (table/table-not-found-exception? e) 0 (throw e))))})))
+         (apply merge-with +)
+         (into {}))))

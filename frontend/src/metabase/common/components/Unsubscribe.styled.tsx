@@ -60,6 +60,6 @@ export const LayoutCard = styled.div`
 export const CheckmarkIcon = styled(Icon)`
   border-radius: 100%;
   padding: 1rem;
-  color: var(--mb-color-brand);
-  background: ${() => alpha("brand", 0.3)};
+  color: var(--mb-color-core-brand);
+  background: ${() => alpha("core-brand", 0.3)};
 `;

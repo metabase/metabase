@@ -16,7 +16,7 @@ import {
   InputSubtitle,
 } from "./Input.styled";
 
-export type InputColorScheme = "brand" | "filter";
+export type InputColorScheme = "core-brand" | "core-filter";
 
 export type InputAttributes = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -52,7 +52,7 @@ const BaseInput = forwardRef(function Input(
     rightIcon,
     rightIconTooltip,
     subtitle,
-    colorScheme = "brand",
+    colorScheme = "core-brand",
     value,
     onLeftIconClick,
     onRightIconClick,

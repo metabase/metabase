@@ -12,12 +12,21 @@ interface BranchSwitchOptionsProps {
   isRemoteSyncReadOnly: boolean;
   optionValue?: OptionValue;
   variant: RemoteSyncConflictVariant;
+  /** When true (push variant only), offer a "Merge changes" option. */
+  canMerge?: boolean;
 }
 
 interface OutOfSyncOption {
   value: OptionValue;
   label: string;
 }
+
+/**
+ * Options that permanently destroy content: force-push wipes remote files that aren't here, discard
+ * throws away local changes. Everything else (merge, push, new branch) keeps all content. Used to split
+ * the choices into a safe and a destructive group.
+ */
+const DESTRUCTIVE_OPTIONS = new Set<OptionValue>(["force-push", "discard"]);
 
 export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
   const {
@@ -26,6 +35,7 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
     isRemoteSyncReadOnly,
     optionValue,
     variant,
+    canMerge,
   } = props;
 
   const options = useMemo<OutOfSyncOption[]>(() => {
@@ -41,7 +51,15 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
     const forcePushOption: OutOfSyncOption = {
       value: "force-push",
       label: c("{0} is the current GitHub branch name")
-        .t`Force push to ${currentBranch} (this will overwrite the remote branch)`,
+        .t`Force push to ${currentBranch}, discarding and overwriting everything (can’t be undone)`,
+    };
+    // Push merges and pushes the result; pull merges into local only (the push happens later).
+    const mergeOption: OutOfSyncOption = {
+      value: "merge",
+      label:
+        variant === "pull"
+          ? t`Merge the remote changes into your local content`
+          : t`Merge the remote changes with yours and push`,
     };
     const discardOption: OutOfSyncOption = {
       value: "discard",
@@ -50,7 +68,9 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
 
     switch (variant) {
       case "push":
-        return [newBranchOption, forcePushOption];
+        return canMerge
+          ? [mergeOption, newBranchOption, forcePushOption]
+          : [newBranchOption, forcePushOption];
       case "switch-branch":
         return [pushOption, newBranchOption, discardOption];
       case "setup":
@@ -58,11 +78,21 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
           ? [discardOption]
           : [newBranchOption, discardOption];
       default: // pull
-        return isRemoteSyncReadOnly
-          ? [discardOption]
+        if (isRemoteSyncReadOnly) {
+          return [discardOption];
+        }
+        return canMerge
+          ? [mergeOption, forcePushOption, newBranchOption, discardOption]
           : [forcePushOption, newBranchOption, discardOption];
     }
-  }, [currentBranch, isRemoteSyncReadOnly, variant]);
+  }, [currentBranch, isRemoteSyncReadOnly, variant, canMerge]);
+
+  const safeOptions = options.filter(
+    (option) => !DESTRUCTIVE_OPTIONS.has(option.value),
+  );
+  const destructiveOptions = options.filter((option) =>
+    DESTRUCTIVE_OPTIONS.has(option.value),
+  );
 
   return (
     <Box mt="xl">
@@ -71,17 +101,48 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
         onChange={(value) => handleOptionChange(value as OptionValue)}
         value={optionValue}
       >
-        <Stack gap="sm">
-          {options.map((option) => (
-            <Radio
-              key={option.value}
-              value={option.value}
-              label={option.label}
-              pb="xs"
+        <Stack gap="lg">
+          {safeOptions.length > 0 && (
+            <OptionGroup title={t`Keep all changes`} options={safeOptions} />
+          )}
+          {destructiveOptions.length > 0 && (
+            <OptionGroup
+              title={t`Permanently lose changes (can’t be undone)`}
+              destructive
+              options={destructiveOptions}
             />
-          ))}
+          )}
         </Stack>
       </Radio.Group>
     </Box>
   );
 };
+
+interface OptionGroupProps {
+  title: string;
+  options: OutOfSyncOption[];
+  destructive?: boolean;
+}
+
+const OptionGroup = ({ title, options, destructive }: OptionGroupProps) => (
+  <Box>
+    <Text
+      size="sm"
+      fw="bold"
+      c={destructive ? "error" : "text-secondary"}
+      mb="sm"
+    >
+      {title}
+    </Text>
+    <Stack gap="sm">
+      {options.map((option) => (
+        <Radio
+          key={option.value}
+          value={option.value}
+          label={option.label}
+          pb="xs"
+        />
+      ))}
+    </Stack>
+  </Box>
+);

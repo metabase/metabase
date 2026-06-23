@@ -42,7 +42,7 @@ export const CardIconContainer = styled.div`
   align-items: center;
   width: 2rem;
   height: 2rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 1rem;
 `;
 
@@ -57,14 +57,14 @@ interface CardProps {
 }
 
 const selectedStyles = css`
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
 
   ${CardTitle}, ${CardDescription}, ${CardAside} {
     color: var(--mb-color-text-primary-inverse);
   }
 
   ${CardIcon} {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 
   ${CardIconContainer} {

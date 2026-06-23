@@ -335,6 +335,7 @@
                    :is-superuser? (mi/superuser?)
                    :is-data-analyst? api/*is-data-analyst?*}
         base-where [:and
+                    [:= :is_stub false]
                     (when-not include-analytics?
                       [:= :is_audit false])
                     (if filter-on-router-database-id
@@ -541,7 +542,7 @@
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
-  [:question :dataset :metric :segment]) ; TODO -- rename `:dataset` to `:model`?
+  [:question :dataset :metric :segment :transform]) ; TODO -- rename `:dataset` to `:model`?
 
 (defmulti ^:private database-usage-query
   "Query that will returns the number of `model` that use the database with id `database-id`.
@@ -576,6 +577,14 @@
    :where  [:in :table_id {:select [:id]
                            :from   [:metabase_table]
                            :where  [:= :db_id db-id]}]})
+
+(defmethod database-usage-query :transform
+  [_ db-id]
+  {:select [[:%count.* :transform]]
+   :from   [:transform]
+   :where  [:or
+            [:= :source_database_id db-id]
+            [:= :target_db_id db-id]]})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -1102,6 +1111,12 @@
     (throw (ex-info (tru "admin-connection must not be set in details")
                     {:status-code 400})))
   (let [existing-database               (api/write-check (t2/select-one :model/Database :id id))
+        ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
+        ;; table editing), so the guard is lifted when test endpoints are enabled
+        _                               (when (and (:is_sample existing-database)
+                                                   (not (config/config-bool :mb-enable-test-endpoints)))
+                                          (throw (ex-info (tru "The sample database cannot be edited.")
+                                                          {:status-code 400})))
         _                               (when write_data_details
                                           (validate-write-data-details! existing-database write_data_details))
         _                               (when admin_details
@@ -1257,7 +1272,8 @@
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [driver.settings/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true
+                            driver.settings/*allow-testing-sqlite-connections* true]
                     (driver.u/can-connect-with-details? (:engine db) (driver.conn/default-details db) :throw-exceptions))
                   nil
                   (catch Throwable e
@@ -1621,7 +1637,8 @@
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
     ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
-    (binding [driver.settings/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true
+              driver.settings/*allow-testing-sqlite-connections* true]
       (if-let [err-map (warehouses/test-database-connection engine connection-details)]
         (merge err-map {:status "error"})
         {:status "ok"}))))

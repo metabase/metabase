@@ -32,7 +32,7 @@
 }
 
 .StrategyFormPanel {
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
   position: relative;
   max-width: 30rem;
 
@@ -45,13 +45,13 @@
   font-size: inherit !important;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
 .ItemLink,
 .CollectionLink {
   :hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }

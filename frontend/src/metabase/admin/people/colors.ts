@@ -2,13 +2,13 @@ import { color } from "metabase/ui/colors";
 import type { GroupId, User } from "metabase-types/api";
 
 export const userToColor = (user: User) => {
-  return user.is_superuser ? color("accent2") : color("brand");
+  return user.is_superuser ? color("accent2") : color("core-brand");
 };
 
 const groupColorPalette = [
   color("error"),
   color("accent2"),
-  color("brand"),
+  color("core-brand"),
   color("accent4"),
   color("accent1"),
 ];

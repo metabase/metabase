@@ -6,7 +6,6 @@ import {
   createMockState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
-import { DashboardApi } from "metabase/services";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -29,9 +28,6 @@ import {
   showClickBehaviorSidebar,
   updateDashboardAndCards,
 } from "./";
-
-DashboardApi.parameterSearch = jest.fn();
-DashboardApi.parameterValues = jest.fn();
 
 describe("dashboard actions", () => {
   let dispatch: jest.MockedFunction<Dispatch>;

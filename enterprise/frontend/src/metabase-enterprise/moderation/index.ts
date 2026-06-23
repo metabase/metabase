@@ -4,12 +4,10 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { EntityModerationIcon } from "./components/EntityModerationIcon";
 import { MetabotVerifiedContentConfigurationPane } from "./components/MetabotVerifiedContentConfigurationPane";
 import {
-  ModerationReviewBanner,
   ModerationReviewTextForDashboard,
   ModerationReviewTextForQuestion,
-} from "./components/ModerationReviewBanner";
+} from "./components/ModerationReviewText";
 import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
-import { QuestionModerationSection } from "./components/QuestionModerationSection";
 import { useCardMenuItems, useDashboardMenuItems } from "./hooks/useMenuItems";
 import {
   getModerationTimelineEvents,
@@ -25,8 +23,6 @@ export function initializePlugin() {
     Object.assign(PLUGIN_MODERATION, {
       isEnabled: () => true,
       EntityModerationIcon,
-      QuestionModerationSection,
-      ModerationReviewBanner,
       ModerationReviewTextForQuestion,
       ModerationReviewTextForDashboard,
       ModerationStatusIcon,

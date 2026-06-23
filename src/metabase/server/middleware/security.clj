@@ -338,7 +338,7 @@
           "Vary"                        "Origin"})
        {"Access-Control-Allow-Headers"  "*"
         "Access-Control-Allow-Methods"  "*"
-        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
+        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version, Mcp-Session-Id"
         ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
         "Access-Control-Max-Age"  "60"}))))
 
@@ -357,9 +357,7 @@
                                                           (setting/get-value-of-type :string :embedding-app-origins-interactive))]
                                           (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
                                           "DENY")})
-   {;; Tell browser to block suspected XSS attacks
-    "X-XSS-Protection"                  "1; mode=block"
-    ;; Prevent Flash / PDF files from including content from site.
+   {;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
     "X-Content-Type-Options"            "nosniff"}

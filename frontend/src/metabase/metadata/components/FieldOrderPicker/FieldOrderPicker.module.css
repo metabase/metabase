@@ -13,7 +13,7 @@
     right: 0;
     bottom: 0;
     left: 0;
-    border: 1px solid var(--mb-color-border);
+    border: 1px solid var(--mb-color-border-neutral);
     border-radius: inherit;
   }
 }

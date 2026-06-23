@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
+import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { PLUGIN_COLLECTIONS, PLUGIN_CUSTOM_VIZ } from "metabase/plugins";

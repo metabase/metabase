@@ -2,13 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useMetabotSetupContext } from "metabase/admin/ai/MetabotSetup";
 import {
   useRefreshTokenStatusMutation,
   useUpdateMetabotSettingsMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
+import { useAIProviderConfigurationContext } from "metabase/metabot";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -165,7 +165,7 @@ export function MetabaseAIProviderSetup({
   ]);
 
   const { isMutating, handleDisconnect, resetProvider, isModal } =
-    useMetabotSetupContext(connectAction, onDisconnect);
+    useAIProviderConfigurationContext(connectAction, onDisconnect);
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(
@@ -381,7 +381,7 @@ function MetabaseManagedProviderCard({
               ) : (
                 <Flex align="center" justify="space-between" gap="md">
                   <Skeleton h="1rem" w="7rem" />
-                  <Box flex={1} h={1} bg="border" />
+                  <Box flex={1} h={1} bg="border-neutral" />
                   <Skeleton h="1rem" w="8rem" />
                 </Flex>
               )}
@@ -402,7 +402,7 @@ function MetabaseManagedProviderCard({
               ) : (
                 <Flex align="center" justify="space-between" gap="md">
                   <Skeleton h="1rem" w="7rem" />
-                  <Box flex={1} h={1} bg="border" />
+                  <Box flex={1} h={1} bg="border-neutral" />
                   <Skeleton h="1rem" w="8rem" />
                 </Flex>
               )}
@@ -427,7 +427,7 @@ function MetabaseUsageRow({ label, value }: { label: string; value: string }) {
         h={1}
         style={{
           alignSelf: "end",
-          borderBottom: "1px dotted var(--mb-color-border)",
+          borderBottom: "1px dotted var(--mb-color-border-neutral)",
         }}
       />
       <Text lh={1} fw="500">
@@ -469,7 +469,7 @@ function MetabasePricingRow({
         h={1}
         style={{
           alignSelf: "end",
-          borderBottom: "1px dotted var(--mb-color-border)",
+          borderBottom: "1px dotted var(--mb-color-border-neutral)",
         }}
       />
       <Text lh={1} fw="500">

@@ -28,30 +28,37 @@
 
 ;;; Query/Chart URL Generation
 
+(defn ->legacy-mbql
+  "Normalize a pMBQL query (has `:lib/type`) to legacy MBQL. Frontend /question#
+  URLs require legacy MBQL format; non-pMBQL values pass through unchanged."
+  [query]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (if (and (map? query) (:lib/type query))
+    (lib/->legacy-MBQL query)
+    query))
+
 (defn- query->url-hash
   "Convert an MBQL query to a base64-encoded URL hash for /question# URLs."
   [query]
-  ;; Frontend /question# URLs require legacy MBQL format
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (let [dataset-query (if (and (map? query) (:lib/type query))
-                        (lib/->legacy-MBQL query)
-                        query)]
-    (-> {:dataset_query          dataset-query
-         :type                   "question"
-         :visualization_settings {}}
-        json/encode
-        (.getBytes "UTF-8")
-        codecs/bytes->b64-str)))
+  (-> {:dataset_query          (->legacy-mbql query)
+       :type                   "question"
+       :visualization_settings {}}
+      json/encode
+      (.getBytes "UTF-8")
+      codecs/bytes->b64-str))
 
 (defn pseudo-card->link
   "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked.
-  `:visualization_settings` defaults to `{}` so the frontend always gets a populated map to read chart settings from."
+  `:visualization_settings` defaults to `{}` so the frontend always gets a populated map to read chart settings from.
+  A pMBQL `:dataset_query` is normalized to legacy MBQL (/question# URLs are legacy-only)."
   [pc]
-  (str "/question#"
-       (-> (merge {:visualization_settings {}} pc)
-           json/encode
-           (.getBytes "UTF-8")
-           codecs/bytes->b64-str)))
+  (let [pc (cond-> (merge {:visualization_settings {}} pc)
+             (:dataset_query pc) (update :dataset_query ->legacy-mbql))]
+    (str "/question#"
+         (-> pc
+             json/encode
+             (.getBytes "UTF-8")
+             codecs/bytes->b64-str))))
 
 (defn query-and-viz-link
   "Generate a question link for query and chart type. Chart type"

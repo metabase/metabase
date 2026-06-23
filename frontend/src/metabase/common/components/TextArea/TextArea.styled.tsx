@@ -17,7 +17,7 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   font-size: 1rem;
   color: var(--mb-color-text-primary);
   padding: 0.75rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   background-color: ${(props) =>
     props.readOnly
@@ -28,11 +28,11 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
 
   &:focus,
   &:hover {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
     transition: border 300ms ease-in-out;
   }
 
-  ${focusOutlineStyle("brand")};
+  ${focusOutlineStyle("core-brand")};
 
   &:disabled {
     pointer-events: none;

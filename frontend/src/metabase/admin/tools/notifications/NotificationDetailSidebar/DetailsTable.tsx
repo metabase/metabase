@@ -9,7 +9,7 @@ export const DetailsTable = ({ children }: { children: ReactNode }) => {
   const items = Children.toArray(children).filter(Boolean);
   return (
     <Box
-      bd="1px solid var(--mb-color-border)"
+      bd="1px solid var(--mb-color-border-neutral)"
       bdrs="lg"
       className={S.detailsTable}
     >

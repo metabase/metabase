@@ -100,6 +100,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.referenced-columns :as lib.referenced-columns]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -210,6 +211,7 @@
          lib.query/keep-me
          lib.query.test-spec/keep-me
          lib.ref/keep-me
+         lib.referenced-columns/keep-me
          lib.remove-replace/keep-me
          lib.schema/keep-me
          metabase.lib.schema.util/keep-me
@@ -670,6 +672,17 @@
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.filter/filters a-query stage-number)))
+
+(mu/defn atomic-filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Like [[filters]], but with any top-level `:and` clauses recursively flattened so the result is a
+  list of atomic (non-`:and`) boolean filter clauses. The conjunction of the returned list is
+  logically equivalent to the conjunction of [[filters]].
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (atomic-filters a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.filter/atomic-filters a-query stage-number)))
 
 (mu/defn filterable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns column metadata for all the columns that could be used for filtering on the target stage of `a-query`.
@@ -1397,6 +1410,7 @@
   binning
   with-binning]
  [metabase.lib.card
+  ->card-metadata-columns
   card->underlying-query
   model-preserved-keys]
  [lib.column-group
@@ -1469,6 +1483,7 @@
  [lib.metric
   available-metrics]
  [lib.limit
+  aggregated-output?
   current-limit
   disable-default-limit
   limit
@@ -1546,7 +1561,7 @@
   ->query
   can-preview
   can-run
-  can-save
+  can-save?
   check-card-overwrite
   native?
   preview-query
@@ -1565,6 +1580,8 @@
   field-ref-id
   field-ref-name
   ref]
+ [lib.referenced-columns
+  referenced-columns]
  [lib.remove-replace
   remove-clause
   remove-join
@@ -1625,8 +1642,10 @@
   duplicate-column-error
   find-bad-refs
   find-bad-refs-with-source
+  missing-card-error
   missing-column-error
   missing-table-alias-error
+  missing-table-error
   syntax-error
   validation-exception-error]
  [metabase.lib.walk.util

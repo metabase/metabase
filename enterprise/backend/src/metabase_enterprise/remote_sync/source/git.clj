@@ -14,12 +14,14 @@
    (java.net URI)
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
-   (org.eclipse.jgit.dircache DirCache DirCacheEntry)
-   (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent Ref)
+   (org.eclipse.jgit.dircache DirCache DirCacheEditor$DeletePath DirCacheEditor$DeleteTree
+                              DirCacheEditor$PathEdit DirCacheEntry)
+   (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent Ref Repository)
    (org.eclipse.jgit.revwalk RevCommit RevWalk)
    (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
                                RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
-   (org.eclipse.jgit.treewalk TreeWalk)))
+   (org.eclipse.jgit.treewalk TreeWalk)
+   (org.eclipse.jgit.treewalk.filter TreeFilter)))
 
 (set! *warn-on-reflection* true)
 
@@ -155,10 +157,15 @@
   Takes a source map containing a :git Git instance and :commit-ish (the ref to resolve). Can optionally take a
   second commit-ish argument which overrides the :commit-ish from the source map.
 
-  Returns the full commit SHA string, or nil if the commit-ish cannot be resolved."
+  Returns the full commit SHA string, or nil if the commit-ish cannot be resolved — including a full SHA
+  whose object is absent from the local clone (e.g. a base commit orphaned by an upstream force-push or
+  rebase). JGit parses a complete SHA into an ObjectId without checking the object exists, so the
+  existence check is what makes orphaned bases resolve to nil rather than blowing up on a later read."
   [{:keys [^Git git]} ^String commit-ish]
-  (when-let [ref (.resolve (.getRepository git) commit-ish)]
-    (.name ref)))
+  (let [repo (.getRepository git)]
+    (when-let [object-id (.resolve repo commit-ish)]
+      (when (.has (.getObjectDatabase repo) object-id)
+        (.name object-id)))))
 
 (defn log
   "Retrieves the commit history log for a branch.
@@ -211,6 +218,38 @@
       (let [loader (.open repo object-id)]
         (String. (.getBytes loader) "UTF-8")))))
 
+(defn changed-files
+  "Paths whose blob differs between commit `from-version` and this snapshot's `version`, classified into
+  `{:added #{} :modified #{} :deleted #{}}`. jgit prunes unchanged subtrees as it walks, so the cost is
+  proportional to the number of changed entries, not the size of the tree.
+
+  Takes a GitSnapshot (:git instance and current :version) and a `from-version` commit-ish to diff against.
+
+  Returns nil when `from-version` cannot be resolved or is no longer present in the local object store
+  (e.g. orphaned by a force-push or rebase), signalling the caller to fall back to a full import."
+  [{:keys [^Git git ^String version]} ^String from-version]
+  (let [^Repository repo (.getRepository git)
+        objects (.getObjectDatabase repo)
+        old-id (.resolve repo from-version)
+        new-id (.resolve repo version)]
+    (when (and old-id new-id (.has objects old-id) (.has objects new-id))
+      (with-open [rw (RevWalk. repo)
+                  ^TreeWalk tw (TreeWalk. repo)]
+        (.addTree tw (.getTree (.parseCommit rw old-id)))
+        (.addTree tw (.getTree (.parseCommit rw new-id)))
+        (.setRecursive tw true)
+        (.setFilter tw TreeFilter/ANY_DIFF)
+        (let [zero (ObjectId/zeroId)]
+          (loop [acc {:added #{} :modified #{} :deleted #{}}]
+            (if (.next tw)
+              (let [in-old? (not (.equals zero (.getObjectId tw 0)))
+                    in-new? (not (.equals zero (.getObjectId tw 1)))
+                    bucket  (cond (not in-old?) :added
+                                  (not in-new?) :deleted
+                                  :else         :modified)]
+                (recur (update acc bucket conj (.getPathString tw))))
+              acc)))))))
+
 (defn push-branch!
   "Pushes a local branch to the remote repository.
 
@@ -233,13 +272,6 @@
       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
     push-response))
 
-(defn- top-level-dir
-  "Extracts the first path segment from a file path.
-  E.g., \"databases/my_db/my_db.yaml\" => \"databases\""
-  [path]
-  (when-let [idx (str/index-of path "/")]
-    (subs path 0 idx)))
-
 (defn default-branch
   "Retrieves the default branch name of the git repository.
 
@@ -257,60 +289,43 @@
               (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
         (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
-(defn write-files!
-  "Writes multiple files to the git repository and commits the changes.
+(defn- commit-edits!
+  "Builds a commit by editing the branch tip's tree in place and pushes it. Seeds an in-core index from
+  the parent commit's tree — so every unchanged entry and subtree is carried forward by object id — then
+  applies only the edits: whole subtrees named in `delete-dirs` are removed (used to fully replace a
+  managed directory), paths in `delete-paths` are removed, and `upserts` (file specs with :path/:content)
+  are written as new blobs. `writeTree` only rewrites the subtrees on the path to an edit, so the work is
+  proportional to the number of changes rather than the size of the repo.
 
-  Takes a snapshot map containing a :git Git instance, :version, and :managed-dirs,
-  a commit message string, and a sequence of file specs (maps with :path and :content keys,
-  paths should be relative to the repository root).
-
-  All existing files within managed directories that are not in the write set are removed.
-  This ensures stale files (from renames, moves, or deletions) are cleaned up automatically.
-  Files outside managed directories are always preserved.
-
-  Returns the version written. Throws ExceptionInfo if the write or push
-  operation fails."
-  [{:keys [^Git git ^String version ^String branch managed-dirs] :as snapshot} ^String message files]
-  (let [repo (.getRepository git)
+  Returns the new commit sha. Throws ExceptionInfo if the write or push fails."
+  [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message upserts delete-paths delete-dirs]
+  (let [repo       (.getRepository git)
         branch-ref (qualify-branch branch)
-        parent-id (.resolve repo version)]
-    (with-open [inserter (.newObjectInserter repo)]
-      (let [index (DirCache/newInCore)
-            builder (.builder index)
-            ;; Set of all paths being written in this commit
-            write-paths (into #{}
-                              (comp (map :path)
-                                    (remove str/blank?))
-                              files)]
-        ;; Add new/updated files to the index
-        (doseq [{:keys [path content]} files
-                :when (not (str/blank? path))]
-          (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
-                entry (doto (DirCacheEntry. ^String path)
-                        (.setFileMode FileMode/REGULAR_FILE)
-                        (.setObjectId blob-id))]
-            (.add builder entry)))
-        ;; Copy existing tree entries that should be preserved:
-        ;; - Outside managed directories AND not being overwritten by the write set
-        ;; Files in managed dirs not in write-paths are dropped (stale file cleanup)
-        ;; Files in write-paths are skipped here (already added above with new content)
-        (when parent-id
-          (with-open [rev-walk (RevWalk. repo)
-                      tree-walk (TreeWalk. repo)]
-            (let [commit (.parseCommit rev-walk parent-id)]
-              (.addTree tree-walk (.getTree commit))
-              (.setRecursive tree-walk true)
-              (while (.next tree-walk)
-                (let [path (.getPathString tree-walk)]
-                  (when (and (not (contains? write-paths path))
-                             (not (contains? managed-dirs (top-level-dir path))))
-                    (let [entry (doto (DirCacheEntry. path)
-                                  (.setFileMode (.getFileMode tree-walk 0))
-                                  (.setObjectId (.getObjectId tree-walk 0)))]
-                      (.add builder entry))))))))
-        (.finish builder)
-        ;; Create commit
-        (let [tree-id (.writeTree index inserter)
+        parent-id  (.resolve repo version)]
+    (with-open [inserter (.newObjectInserter repo)
+                reader   (.newObjectReader repo)
+                rev-walk (RevWalk. repo)]
+      (let [index (DirCache/newInCore)]
+        ;; Seed the index from the parent tree; unchanged entries and subtrees carry forward by id.
+        (let [builder (.builder index)]
+          (when parent-id
+            (.addTree builder (byte-array 0) DirCacheEntry/STAGE_0 reader
+                      (.getTree (.parseCommit rev-walk parent-id))))
+          (.finish builder))
+        ;; Apply only the edits.
+        (let [editor (.editor index)]
+          (doseq [^String dir delete-dirs]
+            (.add editor (DirCacheEditor$DeleteTree. dir)))
+          (doseq [^String path delete-paths]
+            (.add editor (DirCacheEditor$DeletePath. path)))
+          (doseq [{:keys [^String path content]} upserts]
+            (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))]
+              (.add editor (proxy [DirCacheEditor$PathEdit] [path]
+                             (apply [^DirCacheEntry entry]
+                               (.setFileMode entry FileMode/REGULAR_FILE)
+                               (.setObjectId entry blob-id))))))
+          (.finish editor))
+        (let [tree-id        (.writeTree index inserter)
               commit-builder (doto (CommitBuilder.)
                                (.setTreeId tree-id)
                                (.setAuthor (PersonIdent. "Metabase Library" "library@metabase.com"))
@@ -325,6 +340,17 @@
               (.update))
             (push-branch! snapshot)
             (.name commit-id)))))))
+
+(defn- write-files!
+  "Full export: replace every managed dir wholesale with `files` (managed-dir files not in `files` are
+  removed), preserving everything outside the managed dirs."
+  [{:keys [managed-dirs] :as snapshot} ^String message files]
+  (commit-edits! snapshot message files nil managed-dirs))
+
+(defn- apply-changes!
+  "Incremental patch: write `upserts`, remove `delete-paths`, and preserve every other file."
+  [snapshot ^String message upserts delete-paths]
+  (commit-edits! snapshot message upserts delete-paths nil))
 
 (defn branches
   "Retrieves all branch names from the remote repository.
@@ -406,8 +432,15 @@
   (write-files! [this message files]
     (write-files! this message files))
 
+  (apply-changes! [this message upserts delete-paths]
+    (apply-changes! this message upserts delete-paths))
+
   (version [this]
-    (:version this)))
+    (:version this))
+
+  source.p/Diffable
+  (changed-files* [this from-version]
+    (changed-files this from-version)))
 
 (def ^:private jgit (atom {}))
 
@@ -424,7 +457,7 @@
   (FileUtils/deleteDirectory repo-path))
 
 (defn- get-jgit [^File path {:keys [remote-url token] :as args}]
-  (if-let [obj (get @jgit (.getPath path))]
+  (if-let [obj (when (.exists path) (get @jgit (.getPath path)))]
     obj
     (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
                                                                      :token      token})
@@ -459,6 +492,14 @@
             (snapshot* fresh-source)))
         (throw e)))))
 
+(defn snapshot-at-version
+  "Builds a GitSnapshot for `source` at an already-fetched `version` (commit-ish), or nil if the version
+  cannot be resolved against local state (e.g. it was orphaned by a force-push or rebase). Does not fetch."
+  [source version]
+  (when version
+    (when-let [sha (commit-sha source version)]
+      (->GitSnapshot (:git source) (:remote-url source) (:branch source) sha (:token source) (:managed-dirs source)))))
+
 (defrecord GitSource [git remote-url branch token managed-dirs]
   source.p/Source
   (branches [source] (branches source))
@@ -470,7 +511,10 @@
     (default-branch this))
 
   (snapshot [this]
-    (snapshot this)))
+    (snapshot this))
+
+  (snapshot-at [this version]
+    (snapshot-at-version this version)))
 
 (defn git-source
   "Creates a new GitSource instance for a git repository.

@@ -16,13 +16,17 @@ import { HydratedKBarSearch } from "./HydratedKBarSearch";
 import S from "./Palette.module.css";
 import { PaletteResults } from "./PaletteResults";
 
+type CommandPaletteRouteProps = {
+  disableCommandPalette?: boolean;
+};
+
 /** Command palette */
 export const Palette = withRouter((props) => {
   const isLoggedIn = useSelector((state) => !!getUser(state));
 
   const disableCommandPaletteForRoute = props.routes.some(
-    (route: PlainRoute & { disableCommandPalette?: boolean }) =>
-      route.disableCommandPalette,
+    (route: PlainRoute<CommandPaletteRouteProps>) =>
+      route.props?.disableCommandPalette,
   );
 
   useCommandPaletteBasicActions({ ...props, isLoggedIn });
@@ -81,7 +85,7 @@ export const PaletteContainer = withRouter(
         w="640px"
         p="0"
         data-testid="command-palette"
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
       >
         <Stack gap={rem(4)} pb="lg">
           <Box pos="relative">

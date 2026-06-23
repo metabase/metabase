@@ -16,7 +16,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
   CLOSE_NAVBAR,
   OPEN_NAVBAR,
@@ -252,7 +252,7 @@ describe("nav > containers > Navbar > Core App", () => {
       });
     });
 
-    // the current state of App.tsx is such that this should never even happen because we don't even render the parent component
+    // the current state of AppComponent.tsx is such that this should never even happen because we don't even render the parent component
     // but this test will cover any future changes in the component tree
     allRoutes.forEach((route) => {
       it(`should not be visible when embedded and on ${route} with side_nav=false`, async () => {

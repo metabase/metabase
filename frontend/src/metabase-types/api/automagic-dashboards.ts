@@ -16,6 +16,13 @@ export interface GetXrayDashboardQueryMetadataRequest {
   dashboard_load_id?: string;
 }
 
+export interface GetXrayDashboardRequest {
+  // Multi-segment path after `/api/automagic-dashboards/`, e.g. `table/3` or
+  // `transient/table/3/cell/4`. Slashes are preserved (not URL-encoded).
+  subPath: string;
+  dashboard_load_id?: string;
+}
+
 export interface DatabaseXray {
   id: string;
   schema: string;

@@ -91,7 +91,7 @@ export function QueryColumnPicker({
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
   withInfoIcons = false,
-  color: colorProp = "brand",
+  color: colorProp = "core-brand",
   checkIsColumnSelected,
   onSelect,
   onSelectSection,

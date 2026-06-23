@@ -1,8 +1,6 @@
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
-import {
-  getLegendTitles,
-  getMapUrl,
-} from "metabase/visualizations/components/ChoroplethMap";
+import { getMapUrl } from "metabase/visualizations/components/ChoroplethMap";
+import { getLegendTitles } from "metabase/visualizations/lib/choropleth";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 const currencyColumnSettings: ColumnSettings = {

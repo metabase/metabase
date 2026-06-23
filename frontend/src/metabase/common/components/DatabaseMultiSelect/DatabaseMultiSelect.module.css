@@ -3,7 +3,7 @@
 }
 
 .input:focus-within {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .option {
