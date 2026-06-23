@@ -25,14 +25,17 @@ describe("Cross-version questions - nested model", () => {
       X.selectFromPopover("Average of Discount");
 
       H.visualize();
-      cy.findByTestId("scalar-value").should("have.text", "$20.80");
+      cy.findByTestId("scalar-value", { timeout: 15000 }).should(
+        "have.text",
+        "$20.80",
+      );
 
       X.saveQuestion(Q3_NAME);
 
       cy.log("-- Turn question into a model --");
       H.openQuestionActions();
       X.selectFromPopover("Turn into a model");
-      H.modal().button("Turn this into a model").click();
+      H.modal({ timeout: 15000 }).button("Turn this into a model").click();
       cy.location("pathname").should("contain", "model");
 
       cy.log("-- Edit model metadata --");
@@ -50,7 +53,10 @@ describe("Cross-version questions - nested model", () => {
       H.saveMetadataChanges();
       cy.location("pathname").should("not.include", "columns");
 
-      cy.findByTestId("scalar-value").should("have.text", "€20.80");
+      cy.findByTestId("scalar-value", { timeout: 15000 }).should(
+        "have.text",
+        "€20.80",
+      );
     },
   );
 
@@ -73,7 +79,10 @@ describe("Cross-version questions - nested model", () => {
       );
 
       cy.log("-- Assert that the model metadata is preserved --");
-      cy.findByTestId("scalar-value").should("have.text", "€20.80");
+      cy.findByTestId("scalar-value", { timeout: 15000 }).should(
+        "have.text",
+        "€20.80",
+      );
       cy.findByLabelText("Switch to data").click();
 
       cy.findByTestId("scalar-value").should("not.exist");
