@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -219,31 +220,25 @@
                  (pr-str (sort (map (fn [{:keys [schema name]}] (str schema "." name)) too-long)))))
     (set ok)))
 
-(mu/defn- create-tables!
-  "Insert brand-new tables for `database`. Sorted by `[schema name]` so auto-increment ids are
-  assigned deterministically."
+(mu/defn- create-tables! :- [:sequential (ms/InstanceOf :model/Table)]
+  "Insert brand-new tables for `database`, returning the created `:model/Table` instances. Sorted by
+  `[schema name]` so auto-increment ids are assigned deterministically."
   [database :- i/DatabaseInstance
    new-table-metadatas :- [:set i/DatabaseMetadataTable]]
   (doseq [table-metadata new-table-metadatas]
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
   (let [field-order (some-> (:engine database) driver/default-field-order)]
-    (doseq [table-metadata (sort-by (juxt :schema :name) new-table-metadatas)]
-      (create-table! database (m/assoc-some table-metadata :field_order field-order)))))
+    (mapv (fn [table-metadata]
+            (create-table! database (m/assoc-some table-metadata :field_order field-order)))
+          (sort-by (juxt :schema :name) new-table-metadatas))))
 
 (mu/defn- retire-tables!
-  "Mark any `old-tables` belonging to `database` as inactive."
-  [database   :- i/DatabaseInstance
-   old-tables :- [:set TableNameAndSchema]]
-  (log/info "Marking tables as inactive:"
-            (for [table old-tables]
-              (sync-util/name-for-logging (mi/instance :model/Table table))))
-  (doseq [{schema :schema table-name :name :as _table} old-tables]
-    (t2/update! :model/Table {:db_id  (u/the-id database)
-                              :schema schema
-                              :name   table-name
-                              :active true}
-                {:active false})))
+  "Mark the active Tables with `table-ids` as inactive."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (when (seq table-ids)
+    (log/info "Marking tables as inactive:" (pr-str table-ids))
+    (t2/update! :model/Table {:id [:in table-ids] :active true} {:active false})))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
@@ -419,16 +414,13 @@
     @archived))
 
 (def ^:private SyncContext
-  "State threaded through [[sync-table-batch!]] across the single reconcile pass. `:seen` and
-  `:metabase-metadata` are transient accumulators -- a transient set of [[TableNameAndSchema]] and a
-  transient vector of captured `_metabase_metadata` tables respectively -- which Malli can't
-  introspect, so they're left untyped."
+  "State threaded through [[sync-table-batch!]] across the single reconcile pass."
   [:map {:closed true}
-   [:created           :int]                ; running count of created/reactivated tables
-   [:updated           :int]                ; running count of metadata-updated tables
-   [:complete?         :boolean]            ; false once any batch fails -- then we don't retire
-   [:seen              :any]
-   [:metabase-metadata :any]])
+   [:created           :int]                                  ; running count of created/reactivated tables
+   [:updated           :int]                                  ; running count of metadata-updated tables
+   [:complete?         :boolean]                              ; false once any batch fails -- then we don't retire
+   [:seen              :any]                                  ; transient set of reconciled `:model/Table` ids
+   [:metabase-metadata [:vector i/DatabaseMetadataTable]]])   ; captured `_metabase_metadata` table
 
 (mu/defn- sync-table-batch! :- SyncContext
   "Reconcile one batch of warehouse tables against the app DB, threading the sync `context`.
@@ -452,9 +444,9 @@
                   existing-row   #(get existing (table-name+schema %))
                   already-active (into #{} (filter #(:active (existing-row %))) tables)
                   to-create      (into #{} (remove existing-row) tables)
-                  to-reactivate  (into #{} (filter #(and (existing-row %) (not (:active (existing-row %))))) tables)]
-              (when (seq to-create)
-                (create-tables! database to-create))
+                  to-reactivate  (into #{} (filter #(and (existing-row %) (not (:active (existing-row %))))) tables)
+                  created        (when (seq to-create)
+                                   (create-tables! database to-create))]
               (doseq [table-metadata to-reactivate]
                 (reactivate-table! database (existing-row table-metadata)))
               (when (seq to-reactivate)
@@ -468,10 +460,13 @@
                                                              (into #{} (keep existing-row) already-active)
                                                              database)
                           0)
-               :seen    (mapv table-name+schema tables)}))
+               :seen    (-> []
+                            (into (map :id) created)
+                            (into (keep (comp :id existing-row)) to-reactivate)
+                            (into (keep (comp :id existing-row)) already-active))}))
           (conj-metabase-metadata [acc table]
             (cond-> acc
-              (metabase-metadata/is-metabase-metadata-table? table) (conj! table)))]
+              (metabase-metadata/is-metabase-metadata-table? table) (conj table)))]
     (let [result (sync-util/with-error-handling (format "Error creating/reactivating tables for %s" db-name)
                    (reconcile!))]
       (if (map? result)
@@ -483,20 +478,20 @@
         (assoc context :complete? false)))))
 
 (mu/defn- retire-unseen-tables! :- :int
-  "Retire active app-DB tables the warehouse no longer reports. `seen` holds the `{:name :schema}` of
+  "Retire active app-DB tables the warehouse no longer reports. `seen` holds the `:model/Table` id of
   every table reconciled this sync (accumulated by [[sync-table-batch!]], including the injected
-  workspace-canonical tuples). Streams the active app-DB tables and retires, in batches, the ones not
-  in `seen` -- so we never hold the full active set in memory alongside `seen`. Returns the number
-  retired."
+  workspace-canonical tuples). Streams the active app-DB table ids and retires, a batch at a time, the
+  ones not in `seen` -- so we never hold either the full active set or the full retire set in memory.
+  Returns the number retired."
   [database :- i/DatabaseInstance
-   seen     :- [:set TableNameAndSchema]]
-  (let [to-retire (into #{}
-                        (comp (map table-name+schema) (remove seen))
-                        (t2/reducible-select [:model/Table :name :schema]
-                                             :db_id (u/the-id database) :active true))]
-    (doseq [batch (partition-all table-sync-batch-size to-retire)]
-      (retire-tables! database (set batch)))
-    (count to-retire)))
+   seen     :- [:set ::lib.schema.id/table]]
+  (transduce
+   (comp (map :id) (remove seen) (partition-all table-sync-batch-size))
+   (completing (fn [retired batch]
+                 (retire-tables! (set batch))
+                 (+ retired (count batch))))
+   0
+   (t2/reducible-select [:model/Table :id] :db_id (u/the-id database) :active true)))
 
 (mu/defn sync-tables-and-database!
   "Sync the `:model/Table` rows for `database` against its driver's `describe-database`, and the DB
@@ -526,12 +521,12 @@
            context  (transduce (partition-all table-sync-batch-size)
                                (completing reconcile-batch)
                                {:created 0, :updated 0, :complete? true
-                                :seen (transient #{}), :metabase-metadata (transient [])}
+                                :seen (transient #{}), :metabase-metadata []}
                                (:tables db-metadata))
            context  (reconcile-batch context (ws.table-remapping/inject-workspace-canonical-tuples [] (u/the-id database)))
            {:keys [created updated complete?]} context]
        (when-let [holder (:metabase-metadata-tables db-metadata)]
-         (vreset! holder (persistent! (:metabase-metadata context))))
+         (vreset! holder (:metabase-metadata context)))
        (let [retired  (when complete?
                         (sync-util/with-error-handling (format "Error retiring tables for %s" db-name)
                           (retire-unseen-tables! database (persistent! (:seen context)))))

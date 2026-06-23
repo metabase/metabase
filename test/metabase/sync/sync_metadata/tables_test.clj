@@ -63,10 +63,10 @@
 
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
-    (mt/with-temp [:model/Database db {}
-                   :model/Table    table-1 {:name "Table 1" :db_id (u/the-id db)}
-                   :model/Table    _       {:name "Table 2" :db_id (u/the-id db)}]
-      (#'sync-tables/retire-tables! db #{{:name "Table 1" :schema (:schema table-1)}})
+    (mt/with-temp [:model/Database db               {}
+                   :model/Table    {table-1-id :id} {:name "Table 1" :db_id (u/the-id db)}
+                   :model/Table    _                {:name "Table 2" :db_id (u/the-id db)}]
+      (#'sync-tables/retire-tables! #{table-1-id})
       (is (= {"Table 1" false "Table 2" true}
              (t2/select-fn->fn :name :active :model/Table :db_id (u/the-id db)))))))
 
