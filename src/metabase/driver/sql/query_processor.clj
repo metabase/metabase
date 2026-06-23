@@ -2111,7 +2111,10 @@
     {:source-table 0, :breakout 1, ...}"
   (into {} (map-indexed
             #(vector %2 %1)
-            [:source-table :breakout :aggregation :fields :filter :filters :joins :order-by :page :limit])))
+            ;; `:pivot` runs AFTER `:order-by` so it can both prepend its `GROUPING(...) ASC` primary sort and convert
+            ;; any user ORDER BY on a breakout column from ASC to ASC NULLS LAST (so subtotal NULL rows sort to the end
+            ;; of each group).
+            [:source-table :breakout :aggregation :fields :filter :filters :joins :order-by :pivot :page :limit])))
 
 (defn- query->keys-in-application-order
   "Return the keys present in an MBQL `inner-query` in the order they should be processed."

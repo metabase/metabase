@@ -11,11 +11,14 @@
    [metabase.util.performance :as perf :refer [empty? mapv]]))
 
 (def ^:private pivot-grouping-column-metadata
-  {:name                     lib.pivot/pivot-grouping-column-name
-   :display_name             lib.pivot/pivot-grouping-column-name
-   :lib/desired-column-alias lib.pivot/pivot-grouping-column-name
-   :base_type                :type/Integer
-   :effective_type           :type/Integer})
+  "Result-metadata-shape column entry spliced into `:cols` of pivot query results. Extends
+  [[lib.pivot/pivot-grouping-column-metadata]] with the snake_case mirrors and explicit `:lib/desired-column-alias`
+  the result-metadata layer expects."
+  (merge lib.pivot/pivot-grouping-column-metadata
+         {:display_name             lib.pivot/pivot-grouping-column-name
+          :lib/desired-column-alias lib.pivot/pivot-grouping-column-name
+          :base_type                :type/Integer
+          :effective_type           :type/Integer}))
 
 (defn- add-column-grouping-metadata [cols num-breakouts]
   (vec

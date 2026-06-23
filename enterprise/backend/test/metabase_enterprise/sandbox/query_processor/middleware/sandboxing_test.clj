@@ -24,6 +24,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -1214,6 +1215,28 @@
                       :breakout [&P.people.source
                                  $product_id->products.category]
                       :limit 5}))))))))))
+
+(deftest pivot-query-without-limit-test
+  (testing "Pivot table queries under sandboxing return identical results from the multi-query and native paths"
+    (mt/test-drivers (sandboxing-fk-drivers)
+      (mt/dataset test-data
+        (met/with-gtaps! {:gtaps      (mt/$ids
+                                        {:orders   {:remappings {:user_id  [:dimension $orders.user_id]}}
+                                         :products {:remappings {:user_cat [:dimension $products.category]}}})
+                          :attributes {:user_id 1, :user_cat "Widget"}}
+          (data-perms/set-table-permission! &group (mt/id :people) :perms/create-queries :query-builder)
+          (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+          (let [mp     (mt/metadata-provider)
+                orders (lib.metadata/table mp (mt/id :orders))
+                query  (-> (lib/query mp orders)
+                           (lib.tu.notebook/add-join {:display-name "People"} {:display-name "User ID"} {:display-name "ID"})
+                           (lib/aggregate (lib/count))
+                           (lib.tu.notebook/add-breakout {:display-name "People"} {:display-name "Source"})
+                           (lib.tu.notebook/add-breakout {:display-name "Product"} {:display-name "Category"})
+                           (merge {:pivot-rows [0] :pivot-cols [1]}))]
+            (qp.pivot.test-util/with-pivot-parity-check
+              (is (=? {:status :completed}
+                      (qp.pivot/run-pivot-query query))))))))))
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"

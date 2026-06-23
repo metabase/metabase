@@ -82,6 +82,7 @@
                               :expressions/text               true
                               :identifiers-with-spaces        true
                               :metadata/table-existence-check true
+                              :native-pivot-tables            true
                               :now                            true
                               :persist-models                 true
                               :rename                         true
