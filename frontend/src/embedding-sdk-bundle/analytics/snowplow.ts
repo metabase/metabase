@@ -7,8 +7,8 @@ import {
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import {
+  type EmbeddingSdkEvent,
   SIMPLE_EVENT_SCHEMA_URI,
-  type SimpleEventSchema,
 } from "metabase-types/analytics/event";
 
 // The SDK runs inside the customer's app. A direct POST to the Snowplow
@@ -121,7 +121,7 @@ function trackSdkEvent(event: SelfDescribingJson): void {
 
 // Use instead of trackSimpleEvent in the SDK: the main-app "sp" tracker is not
 // initialized in the customer's page, so trackSimpleEvent's Snowplow leg is a no-op.
-export function trackSdkSimpleEvent(event: SimpleEventSchema): void {
+export function trackSdkSimpleEvent(event: EmbeddingSdkEvent): void {
   trackSdkEvent({ schema: SIMPLE_EVENT_SCHEMA_URI, data: event });
 
   if (sdkMetaplowEnabled) {

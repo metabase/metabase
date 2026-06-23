@@ -97,14 +97,19 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const componentEvent = events.find((event) => {
         try {
-          return JSON.parse(event.event_detail ?? "{}").component === "StaticQuestion";
+          return (
+            JSON.parse(event.event_detail ?? "{}").component ===
+            "StaticQuestion"
+          );
         } catch {
           return false;
         }
       });
       expect(componentEvent, "StaticQuestion mount event").to.exist;
       const detail = JSON.parse(componentEvent?.event_detail ?? "{}");
-      expect(detail.global.auth_method, "auth_method in event_detail").to.eq("sso");
+      expect(detail.global.auth_method, "auth_method in event_detail").to.eq(
+        "sso",
+      );
       expect(detail.global.sdk_version, "sdk_version in event_detail").to.be.a(
         "string",
       );
@@ -134,7 +139,10 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const interactiveQuestionEvent = events.find((event) => {
         try {
-          return JSON.parse(event.event_detail ?? "{}").component === "InteractiveQuestion";
+          return (
+            JSON.parse(event.event_detail ?? "{}").component ===
+            "InteractiveQuestion"
+          );
         } catch {
           return false;
         }
@@ -148,7 +156,10 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const createQuestionEvent = events.find((event) => {
         try {
-          return JSON.parse(event.event_detail ?? "{}").component === "CreateQuestion";
+          return (
+            JSON.parse(event.event_detail ?? "{}").component ===
+            "CreateQuestion"
+          );
         } catch {
           return false;
         }
@@ -186,7 +197,10 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const interactiveQuestionEvent = events.find((event) => {
         try {
-          return JSON.parse(event.event_detail ?? "{}").component === "InteractiveQuestion";
+          return (
+            JSON.parse(event.event_detail ?? "{}").component ===
+            "InteractiveQuestion"
+          );
         } catch {
           return false;
         }
@@ -196,7 +210,10 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
 
       const collectionBrowserEvent = events.find((event) => {
         try {
-          return JSON.parse(event.event_detail ?? "{}").component === "CollectionBrowser";
+          return (
+            JSON.parse(event.event_detail ?? "{}").component ===
+            "CollectionBrowser"
+          );
         } catch {
           return false;
         }

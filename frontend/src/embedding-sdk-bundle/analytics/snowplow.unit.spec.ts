@@ -217,7 +217,10 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
     it("does not call Metaplow when the tracker has not been initialized", async () => {
       const { trackSdkSimpleEvent } = await loadModule();
 
-      trackSdkSimpleEvent({ event: "embedding_sdk_initialized" });
+      trackSdkSimpleEvent({
+        event: "embedding_sdk_initialized",
+        event_detail: "",
+      });
 
       expect(mockTrackMetaplowEvent).not.toHaveBeenCalled();
     });
@@ -232,7 +235,10 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         store: makeStore({ "metaplow-tracking-enabled": false }),
       });
 
-      trackSdkSimpleEvent({ event: "embedding_sdk_initialized" });
+      trackSdkSimpleEvent({
+        event: "embedding_sdk_initialized",
+        event_detail: "",
+      });
 
       expect(mockTrackMetaplowEvent).not.toHaveBeenCalled();
     });
