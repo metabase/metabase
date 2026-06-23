@@ -22,7 +22,6 @@
    [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
-   (org.h2.jdbc JdbcSQLSyntaxErrorException)
    (org.postgresql.util PSQLException)))
 
 (comment
@@ -284,11 +283,19 @@
         (dissoc :native_query)
         (merge (specialization/extra-entry-fields entity)))))
 
+(defn- h2-syntax-error?
+  "Whether `e` is an H2 `org.h2.jdbc.JdbcSQLSyntaxErrorException`, matched by class name rather than `instance?`. H2 is
+  an optional driver, so we can't reference its class here (it may be absent from the classpath); a name check keeps
+  this namespace loadable without H2 while preserving the original H2-only matching. See
+  [[metabase.config.core/h2-available?]]."
+  [e]
+  (= "org.h2.jdbc.JdbcSQLSyntaxErrorException" (some-> e class .getName)))
+
 (defn- table-not-found-exception? [e]
   ;; Use with care, obviously this can give false positives if used with a query that's *actually* malformed.
   ;; TODO we should handle the MySQL and MariaDB flavors here too
   (or (instance? PSQLException (ex-cause e))
-      (instance? JdbcSQLSyntaxErrorException (ex-cause e))))
+      (h2-syntax-error? (ex-cause e))))
 
 (defn- retry-upsert-ex [table-type table-name-before table-name-after e-before e-after]
   (ex-info "Failed retrying search index batch upsert"

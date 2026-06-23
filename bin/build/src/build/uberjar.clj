@@ -82,10 +82,18 @@
    ns-decls))
 
 (def ^:private drivers-excluded-from-aot
-  "Drivers whose JDBC dependencies are not bundled due to licensing restrictions (users must supply the JDBC driver JAR
-  themselves). These drivers are included as source on the classpath and compiled lazily at runtime when their JDBC
-  driver is present in the plugins directory."
+  "Names of `modules/drivers/*` driver modules whose JDBC dependencies are not bundled due to licensing restrictions
+  (users must supply the JDBC driver JAR themselves). These drivers are included as source on the classpath and
+  compiled lazily at runtime when their JDBC driver is present in the plugins directory."
   #{"oracle" "vertica"})
+
+(def ^:private core-driver-namespaces-excluded-from-aot
+  "Driver namespaces that live in `src/` (not `modules/drivers/`) but, like [[drivers-excluded-from-aot]], must NOT be
+  AOT-compiled because their JDBC dependency may be absent from the build classpath. `metabase.driver.h2` `:import`s
+  `org.h2.*` classes, and the H2 JDBC JAR is bundled only in OSS builds -- AOT-compiling it during an EE build (where
+  H2 is absent) would fail. Instead it ships as source (see [[add-non-aot-driver-sources!]]) and is compiled lazily at
+  runtime when H2 is present. See `metabase.config.core/h2-available?`."
+  #{'metabase.driver.h2})
 
 (defn- all-drivers []
   (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
@@ -107,8 +115,10 @@
                         ns.deps/topo-sort
                         (filter ns-symbols))
         orphans    (remove (set sorted) ns-symbols)
-        all        (concat orphans sorted (all-drivers))]
+        all        (->> (concat orphans sorted (all-drivers))
+                        (remove core-driver-namespaces-excluded-from-aot))]
     (assert (contains? (set all) 'metabase.core.bootstrap))
+    (assert (not-any? core-driver-namespaces-excluded-from-aot all))
     (when (contains? ns-symbols 'metabase-enterprise.core.dummy-namespace)
       (assert (contains? (set all) 'metabase-enterprise.core.dummy-namespace)))
     all))
@@ -227,11 +237,31 @@
   (.write (manifest) os)
   (.flush os))
 
+(defn- copy-source-file-into-jar!
+  "Copy the source file `f` (under source root `src-dir`) into the open uberjar filesystem `fs`, preserving its
+  classpath-relative path so it's loadable as source at runtime."
+  [fs ^File src-dir ^File f]
+  (let [rel-path (.toString (.relativize (.toPath src-dir) (.toPath f)))
+        target   (u/get-path-in-filesystem fs rel-path)]
+    (Files/createDirectories (.getParent target) (misc/varargs java.nio.file.attribute.FileAttribute))
+    (Files/copy (.toPath f) target (misc/varargs java.nio.file.CopyOption))))
+
+(defn- ns-sym->source-file
+  "Resolve a namespace symbol to its `.clj` source file under `src-dir` (e.g. `metabase.driver.h2` ->
+  `<src-dir>/metabase/driver/h2.clj`)."
+  ^File [^File src-dir ns-sym]
+  (let [rel (-> (name ns-sym) (str/replace \. \/) (str/replace \- \_) (str ".clj"))]
+    (io/file src-dir rel)))
+
 (defn- add-non-aot-driver-sources!
   "Inject source files for drivers excluded from AOT directly into the uberjar.
   These drivers can't be AOT-compiled (their ns forms reference JDBC classes not bundled due to licensing), so they
   ship as source and are compiled lazily at runtime. We add them after b/uber because uber strips all .clj files from
-  class-dir."
+  class-dir.
+
+  Two cases: driver *modules* under `modules/drivers/*` (see [[drivers-excluded-from-aot]]), and core driver
+  namespaces that live in `src/` (see [[core-driver-namespaces-excluded-from-aot]], currently just
+  `metabase.driver.h2`)."
   []
   (u/step "Add non-AOT driver sources to uberjar"
     (u/with-open-jar-file-system [fs uberjar-filename]
@@ -241,10 +271,13 @@
         (u/step (format "Add source for %s" driver)
           (doseq [^File f (file-seq src-dir)
                   :when (.isFile f)]
-            (let [rel-path (.toString (.relativize (.toPath src-dir) (.toPath f)))
-                  target   (u/get-path-in-filesystem fs rel-path)]
-              (Files/createDirectories (.getParent target) (misc/varargs java.nio.file.attribute.FileAttribute))
-              (Files/copy (.toPath f) target (misc/varargs java.nio.file.CopyOption)))))))))
+            (copy-source-file-into-jar! fs src-dir f))))
+      (let [src-dir (io/file (u/filename u/project-root-directory "src"))]
+        (doseq [ns-sym core-driver-namespaces-excluded-from-aot
+                :let [f (ns-sym->source-file src-dir ns-sym)]]
+          (u/step (format "Add source for %s" ns-sym)
+            (assert (.isFile f) (format "Expected source file for %s at %s" ns-sym f))
+            (copy-source-file-into-jar! fs src-dir f)))))))
 
 (defn update-manifest!
   "Start a build step that updates the manifest.

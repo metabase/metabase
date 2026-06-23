@@ -25,10 +25,9 @@
   {:arglists '([cached])}
   (comp type :results))
 
-;; H2 returns a blob type
-(defmethod results-as-bytes org.h2.jdbc.JdbcBlob
-  [{:keys [^org.h2.jdbc.JdbcBlob results]}]
-  (.getBytes results 1 (.length results)))
+;; NOTE: H2 returns a blob (`org.h2.jdbc.JdbcBlob`); the `results-as-bytes` method for that dispatch value is
+;; registered from `metabase.driver.h2`, since H2 is an optional driver whose classes must not appear in core
+;; (AOT-compiled) namespaces. See `metabase.config.core/h2-available?`.
 
 ;; MySQL/Mariadb/Postgresql return a byte array
 (defmethod results-as-bytes :default

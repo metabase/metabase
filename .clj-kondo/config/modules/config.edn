@@ -333,6 +333,9 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
+           ;; exposes `query-canceled-exception?*` so the optional H2 driver can register its `:h2` method; H2 classes
+           ;; can't live in core (AOT) namespaces. See `metabase.config.core/h2-available?`.
+           metabase.app-db.query-cancelation
            metabase.app-db.setup
            metabase.app-db.transient-error}
    :uses #{auth-provider
@@ -837,7 +840,9 @@
            metabase.driver.common
            metabase.driver.connection
            metabase.driver.ddl.interface
-           metabase.driver.h2
+           ;; NOTE: `metabase.driver.h2` is intentionally NOT here. H2 is an optional driver loaded via a runtime
+           ;; `require` (see `metabase.driver.init` / `metabase.config.core/h2-available?`), so nothing references it
+           ;; at compile time and the module checker treats it as extraneous in `:api`.
            metabase.driver.impl
            metabase.driver.init
            metabase.driver.mysql
@@ -1803,6 +1808,9 @@
               metabase.query-processor.init
               metabase.query-processor.interface
               metabase.query-processor.metadata
+              ;; exposes the `results-as-bytes` multimethod so the optional H2 driver can register its `JdbcBlob`
+              ;; method; H2 classes can't live in core (AOT) namespaces. See `metabase.config.core/h2-available?`.
+              metabase.query-processor.middleware.cache-backend.db
               metabase.query-processor.middleware.constraints
               metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions

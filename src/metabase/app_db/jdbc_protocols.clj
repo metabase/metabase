@@ -77,7 +77,11 @@
 
 (defn clob->str
   "Convert an H2 clob to a String."
-  ^String [^org.h2.jdbc.JdbcClob clob]
+  ;; hint as the standard `java.sql.Clob` interface (which H2's `JdbcClob` implements) rather than the concrete
+  ;; `org.h2.jdbc.JdbcClob` class. H2 is an optional driver, so even though this fn is only ever reached for H2 clobs,
+  ;; avoiding the `org.h2.*` type hint keeps the namespace loadable when H2 is absent. See
+  ;; [[metabase.config.core/h2-available?]].
+  ^String [^java.sql.Clob clob]
   (when clob
     (letfn [(->str [^BufferedReader buffered-reader]
               (loop [acc []]
@@ -93,15 +97,12 @@
 (extend-protocol jdbc/IResultSetReadColumn
   org.postgresql.util.PGobject
   (result-set-read-column [clob _ _]
-    (.getValue clob))
+    (.getValue clob)))
 
-  org.h2.jdbc.JdbcClob
-  (result-set-read-column [clob _ _]
-    (clob->str clob))
-
-  org.h2.jdbc.JdbcBlob
-  (result-set-read-column [^org.h2.jdbc.JdbcBlob blob _ _]
-    (.getBytes blob 0 (.length blob))))
+;; NOTE: H2 returns CLOB/BLOB columns as `org.h2.jdbc.JdbcClob`/`JdbcBlob`. The `IResultSetReadColumn` extensions for
+;; those (which call [[clob->str]]) live in `metabase.driver.h2` rather than here -- H2 is an optional driver, so any
+;; code that names `org.h2.*` classes must stay out of core (AOT-compiled) namespaces and ship as source. See
+;; `metabase.config.core/h2-available?`.
 
 (defmulti ^:private read-column
   {:arglists '([rs rsmeta i])}
