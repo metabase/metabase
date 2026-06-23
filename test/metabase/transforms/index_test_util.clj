@@ -16,17 +16,20 @@
        (map :indexname)
        set))
 
-(defn- redshift-sortkey
+(defn- redshift-table-attributes
+  "Read a Redshift table's inline attributes back as `{:sortkey {:columns .. :style ..} :distkey <col-or-nil>}`.
+  `sortkey` is the column's 1-based position in the key; an interleaved key alternates the sign, so a negative value
+  anywhere means interleaved while `abs` still gives the position. `distkey` is true on the single KEY-dist column."
   [database schema table]
-  ;; `sortkey` is the column's 1-based position in the key; an interleaved key alternates the sign, so a negative
-  ;; value anywhere means interleaved while `abs` still gives the position.
-  (let [rows (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-                         [(str "SELECT column_name, sortkey FROM svv_redshift_columns "
-                               "WHERE schema_name = ? AND table_name = ? AND sortkey <> 0 ORDER BY abs(sortkey)")
-                          schema table])]
-    (when (seq rows)
-      {:columns (mapv :column_name rows)
-       :style   (if (some (comp neg? :sortkey) rows) :interleaved :compound)})))
+  (let [rows      (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                              [(str "SELECT column_name, sortkey, distkey FROM svv_redshift_columns "
+                                    "WHERE schema_name = ? AND table_name = ? ORDER BY abs(sortkey)")
+                               schema table])
+        sort-rows (filter (comp (complement zero?) :sortkey) rows)]
+    {:sortkey (when (seq sort-rows)
+                {:columns (mapv :column_name sort-rows)
+                 :style   (if (some (comp neg? :sortkey) sort-rows) :interleaved :compound)})
+     :distkey (:column_name (first (filter :distkey rows)))}))
 
 (defn- clickhouse-indexes
   [database schema table]
@@ -43,14 +46,17 @@
   "Driver -> test case: `:indexes` to declare (covering every index method the driver supports), `:physical-indexes`
   a `(fn [database schema table])` reading them back from the system catalog, and `:expected` what it should return.
   Target columns come from the transforms-test `transforms_products` (`category` text, `price` float)."
-  {;; Postgres: standalone btree
-   :postgres   {:indexes          [{:kind :btree :name "by_category" :columns [{:name "category"}]}]
-                :expected         #{"by_category"}
+  {;; Postgres: standalone btree + brin (gin/gist need column types transforms_products doesn't have, so they're
+   ;; exercised in the driver-level and fetch suites instead).
+   :postgres   {:indexes          [{:kind :btree :name "by_category" :columns [{:name "category"}]}
+                                   {:kind :brin :name "by_price_brin" :columns [{:name "price"}]}]
+                :expected         #{"by_category" "by_price_brin"}
                 :physical-indexes postgres-indexes}
-   ;; Redshift: inline sortkey
-   :redshift   {:indexes          [{:kind :sortkey :style :interleaved :columns [{:name "category"} {:name "price"}]}]
-                :expected         {:columns ["category" "price"] :style :interleaved}
-                :physical-indexes redshift-sortkey}
+   ;; Redshift: inline distkey + compound sortkey (the realistic combo). Interleaved is covered in fetch-cases.
+   :redshift   {:indexes          [{:kind :distkey :style :key :columns [{:name "category"}]}
+                                   {:kind :sortkey :style :compound :columns [{:name "price"}]}]
+                :expected         {:sortkey {:columns ["price"] :style :compound} :distkey "category"}
+                :physical-indexes redshift-table-attributes}
    ;; ClickHouse: inline order-by + standalone skip-index in one target. It echoes a single-column key/expr back in
    ;; parens, hence "(category)" and "(price)" (a multi-column key would read as a bare "a, b").
    :clickhouse {:indexes          [{:kind :order-by :columns [{:name "category"}]}
@@ -93,15 +99,16 @@
   `:expected` is the set of normalized [[metabase.driver/fetch-table-indexes]] maps (sans `:definition`) it must return.
   Index models differ, so a case carries however many indexes that driver puts on one table."
   {:postgres
-   [{:label  "btree, unique, composite, INCLUDE, partial, gin, brin, hash, expression, and the primary key"
+   [{:label  "btree, unique, composite, INCLUDE, partial, gin, gist, brin, hash, expression, and the primary key"
      :table  "mb_fetch_pg"
-     :create ["CREATE TABLE mb_fetch_pg (id INT PRIMARY KEY, user_id INT, email TEXT, a INT, b INT, data JSONB, created_at TIMESTAMP)"
+     :create ["CREATE TABLE mb_fetch_pg (id INT PRIMARY KEY, user_id INT, email TEXT, a INT, b INT, data JSONB, created_at TIMESTAMP, p POINT)"
               "CREATE INDEX fc_btree ON mb_fetch_pg (user_id)"
               "CREATE UNIQUE INDEX fc_unique ON mb_fetch_pg (email)"
               "CREATE INDEX fc_ab ON mb_fetch_pg (a, b)"
               "CREATE INDEX fc_include ON mb_fetch_pg (a) INCLUDE (b, email)"
               "CREATE INDEX fc_partial ON mb_fetch_pg (user_id) WHERE user_id IS NOT NULL"
               "CREATE INDEX fc_gin ON mb_fetch_pg USING gin (data)"
+              "CREATE INDEX fc_gist ON mb_fetch_pg USING gist (p)"
               "CREATE INDEX fc_brin ON mb_fetch_pg USING brin (created_at)"
               "CREATE INDEX fc_hash ON mb_fetch_pg USING hash (email)"
               "CREATE INDEX fc_expr ON mb_fetch_pg (lower(email))"
@@ -113,6 +120,7 @@
                  (idx "fc_include" :btree "btree" ["a"] :include ["b" "email"])
                  (idx "fc_partial" :btree "btree" ["user_id"] :partial "(user_id IS NOT NULL)")
                  (idx "fc_gin" :gin "gin" ["data"])
+                 (idx "fc_gist" :gist "gist" ["p"])
                  (idx "fc_brin" :brin "brin" ["created_at"])
                  (idx "fc_hash" :hash "hash" ["email"])
                  (idx "fc_expr" :btree "btree" ["lower(email)"])
@@ -134,6 +142,11 @@
      ;; same normalized shape as the compound case, so `:definition` is the only signal it's interleaved.
      :definition-contains "INTERLEAVED"
      :expected #{(idx nil :sortkey nil ["a" "b"])}}
+    {:label  "a KEY distkey alongside a compound sortkey, both reported as unnamed inline rows"
+     :table  "mb_fetch_rs_dist"
+     :create ["CREATE TABLE mb_fetch_rs_dist (a INT, b INT) DISTSTYLE KEY DISTKEY (a) COMPOUND SORTKEY (b)"]
+     :expected #{(idx nil :sortkey nil ["b"])
+                 (idx nil :distkey nil ["a"])}}
     {:label "a table with no sortkey returns []"
      :table "mb_fetch_rs_empty"
      :create ["CREATE TABLE mb_fetch_rs_empty (a INT, b INT)"]

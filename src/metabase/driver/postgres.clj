@@ -1417,11 +1417,34 @@
 
 (defmethod driver/supported-index-methods :postgres
   [_driver _database]
-  ;; Phase 0: btree only. Other methods (gin/gist/brin/hash/spgist) come in a later milestone.
-  {:btree {:lifecycle :standalone
-           :fields    [driver.common/index-name-field
-                       driver.common/index-columns-field
-                       driver.common/index-unique-field]}})
+  ;; btree is the only method that supports UNIQUE; gin/gist/brin are containment/range methods. The niche methods
+  ;; (hash, spgist) and partial/expression indexes are intentionally left out.
+  (let [name+cols [driver.common/index-name-field driver.common/index-columns-field]]
+    {:btree {:lifecycle :standalone :fields (conj name+cols driver.common/index-unique-field)}
+     :gin   {:lifecycle :standalone :fields name+cols}
+     :gist  {:lifecycle :standalone :fields name+cols}
+     :brin  {:lifecycle :standalone :fields name+cols}}))
+
+(defn- pg-index-column-sql
+  "Quote one indexed column; append its `ASC`/`DESC` direction only for btree, the one method where ordering matters."
+  [driver btree? {col-name :name :keys [direction]}]
+  (cond-> (sql.u/quote-name driver :field col-name)
+    (and btree? direction) (str " " (u/upper-case-en (name direction)))))
+
+(defmethod driver/compile-create-index :postgres
+  [driver schema table {index-name :name, :keys [kind columns unique if-not-exists]}]
+  (let [btree? (= kind :btree)
+        target (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))
+        cols   (str/join ", " (map #(pg-index-column-sql driver btree? %) columns))]
+    ;; btree is the default access method, so we omit `USING btree` and emit `USING <method>` only for the others.
+    ;; UNIQUE is btree-only.
+    [[(format "CREATE %sINDEX %s%s ON %s %s(%s)"
+              (if (and btree? unique) "UNIQUE " "")
+              (if if-not-exists "IF NOT EXISTS " "")
+              (sql.u/quote-name driver :field index-name)
+              target
+              (if btree? "" (format "USING %s " (name kind)))
+              cols)]]))
 
 (defmethod driver/refresh-table-stats! :postgres
   [driver database schema table _transform-type]
