@@ -374,15 +374,11 @@ describe("GlossaryTable", () => {
   describe("readOnly", () => {
     it("hides create, edit, and delete controls", async () => {
       const user = userEvent.setup();
-      const onEdit = jest.fn();
 
       renderWithProviders(
         <GlossaryTable
           glossary={[makeItem({ id: 1, term: "Alpha", definition: "First" })]}
           readOnly
-          onCreate={jest.fn()}
-          onEdit={onEdit}
-          onDelete={jest.fn()}
         />,
       );
 
@@ -399,7 +395,6 @@ describe("GlossaryTable", () => {
       // Clicking a term does not open the inline editor
       await user.click(screen.getByText("Alpha"));
       expect(screen.queryByPlaceholderText(/boat/i)).not.toBeInTheDocument();
-      expect(onEdit).not.toHaveBeenCalled();
     });
   });
 });

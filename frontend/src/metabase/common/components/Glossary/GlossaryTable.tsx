@@ -27,15 +27,14 @@ import type { GlossaryField } from "./types";
 export type GlossaryTableProps = {
   className?: string;
   glossary: GlossaryItem[];
-  /** When true, the table is display-only: no create/edit/delete controls. */
   readOnly?: boolean;
-  onCreate: (term: string, definition: string) => Promise<void> | void;
-  onEdit: (
+  onCreate?: (term: string, definition: string) => Promise<void> | void;
+  onEdit?: (
     id: number,
     term: string,
     definition: string,
   ) => Promise<void> | void;
-  onDelete: (id: number) => Promise<void> | void;
+  onDelete?: (id: number) => Promise<void> | void;
 };
 
 export function GlossaryTable({
@@ -149,7 +148,7 @@ export function GlossaryTable({
                   existingTerms={existingTerms}
                   onCancel={() => setIsCreating(false)}
                   onSave={async (term, definition) => {
-                    await onCreate(term, definition);
+                    await onCreate?.(term, definition);
                     setIsCreating(false);
                   }}
                 />
@@ -176,7 +175,7 @@ export function GlossaryTable({
                     .map((g) => g.term)}
                   onCancel={() => setEditingId(null)}
                   onSave={async (newTerm, newDefinition) => {
-                    await onEdit(item.id, newTerm, newDefinition);
+                    await onEdit?.(item.id, newTerm, newDefinition);
                     setEditingId(null);
                     setEditingField(null);
                   }}
@@ -238,7 +237,7 @@ export function GlossaryTable({
         onClose={() => setDeletingItem(null)}
         onConfirm={async () => {
           if (deletingItem) {
-            await onDelete(deletingItem.id);
+            await onDelete?.(deletingItem.id);
             setDeletingItem(null);
           }
         }}
