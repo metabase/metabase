@@ -121,13 +121,6 @@
   [_driver database]
   (:db (:details database)))
 
-;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
-;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
-;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
-(defmethod driver/database-supports? [:mysql :nested-field-columns]
-  [_driver _feat db]
-  (driver.common/json-unfolding-default db))
-
 (doseq [feature [:actions :actions/custom :actions/data-editing]]
   (defmethod driver/database-supports? [:mysql feature]
     [driver _feat _db]
@@ -165,6 +158,11 @@
   "Returns true if the database is MariaDB."
   [conn :- (lib.schema.common/instance-of-class Connection)]
   (= (connection-flavor conn) "MariaDB"))
+
+;; MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
+(defmethod driver/database-supports? [:mysql :nested-field-columns]
+  [_driver _feat db]
+  (and (driver.common/json-unfolding-default db) (not (mariadb? db))))
 
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
@@ -695,7 +693,17 @@
    ;; removing that overhead. See also
    ;; https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-performance-extensions.html#cj-conn-prop_useLocalSessionState
    ;; and #44507
-   :useLocalSessionState true})
+   :useLocalSessionState true
+   ;; A `nil` catalog passed to `DatabaseMetaData.getTables` must mean "the current (bound) database",
+   ;; NOT "every database the user has privileges on". `active-tables` (and `describe-database` generally)
+   ;; relies on this: it passes `nil` for the catalog and trusts the driver to scope results to the
+   ;; connected DB. This is the MariaDB 2.x default, but pin it explicitly so that (a) the contract is
+   ;; documented where the next person bumping the driver will see it, and (b) a future driver upgrade
+   ;; can't silently flip the default to `false` and widen sync to sibling databases — Connector/J 8.x,
+   ;; for instance, defaults this to `false`. Pinning `true` is also why we must pass `nil` rather than
+   ;; `(.getCatalog conn)`: on Vitess/PlanetScale replica connections getCatalog returns the routing-
+   ;; qualified `<db>@replica`, which never matches the bare `TABLE_SCHEMA`. See #75929.
+   :nullCatalogMeansCurrent true})
 
 (defn- maybe-add-program-name-option [jdbc-spec additional-options-map]
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
@@ -751,18 +759,22 @@
            (sql-jdbc.common/handle-additional-options details))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
-  [driver ^java.sql.Connection conn schema-inclusion-filters schema-exclusion-filters]
-  ;; Scope describe-database to the connection's current catalog (= bound DB).
-  ;; By default `post-filtered-active-tables` passes `nil` for the catalog filter,
-  ;; which makes JDBC enumerate every DB the user has privileges on. That's wrong
-  ;; for workspace MySQL users — they own the iso DB and have GRANT SELECT on the
-  ;; canonical DB, so the iso DB's tables would leak into sync. Constraining to
-  ;; `conn.getCatalog()` means only the canonical (bound) DB's tables show up,
-  ;; regardless of what else the user can read. Also strictly more correct for
-  ;; plain MySQL: a user with GRANT on multiple DBs only configured one as the
-  ;; Metabase Database; sync should never have surfaced the others.
-  (sql-jdbc.sync/post-filtered-active-tables
-   driver conn (.getCatalog conn) schema-inclusion-filters schema-exclusion-filters))
+  [& args]
+  ;; Pass `nil` for the catalog filter (the default). Our MySQL/MariaDB JDBC driver defaults to
+  ;; `nullCatalogMeansCurrent=true`, so a `nil` catalog already scopes `getTables()` to the connection's
+  ;; current (bound) database — it does NOT enumerate every DB the user can read.
+  ;;
+  ;; Do NOT pass `(.getCatalog conn)` here. On PlanetScale/Vitess connections made with *replica*
+  ;; credentials (or any `<db>@replica`-targeted connection), `SELECT DATABASE()` — which backs
+  ;; `getCatalog()` — returns the routing-qualified name `<db>@replica`. The driver compiles a non-nil
+  ;; catalog into `WHERE TABLE_SCHEMA = '<db>@replica'`, but `information_schema` stores the bare
+  ;; `TABLE_SCHEMA = '<db>'`, so the filter matches nothing and sync sees an empty database. The `@replica`
+  ;; suffix is a Vitess routing directive, not part of the schema name, so it can never equal a real
+  ;; `TABLE_SCHEMA`. See #75929. (Verified against live PlanetScale: nil → 3 tables, getCatalog → 0.)
+  ;;
+  ;; (If no database is bound, current-DB scoping resolves to nothing and `getTables` returns zero tables;
+  ;; this fails safe and is unreachable in practice since a MySQL Database always has `:dbname`.)
+  (apply sql-jdbc.sync/post-filtered-active-tables args))
 
 (defmethod sql-jdbc.sync/excluded-schemas :mysql
   [_]

@@ -4,15 +4,67 @@
    [clojure.test :refer :all]
    [metabase.app-db.cluster-lock :as sut]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.transient-error :as transient-error]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
+   (java.sql SQLException)
    (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defn- deadlock-exception
+  "Build a deadlock SQLException for the current appdb type. Mirrors the codes in
+  [[metabase.app-db.transient-error]] so the test exercises the real db-type path."
+  []
+  (case (mdb/db-type)
+    :postgres (SQLException. "deadlock detected" "40P01")
+    :mysql    (SQLException. "Deadlock found when trying to get lock; try restarting transaction" "40001" 1213)
+    :h2       (SQLException. "Deadlock" "40001" 40001)))
+
+(deftest retry-if-error?-test
+  (testing "transient deadlocks retry only when :retry-transient? is opted in"
+    ;; opted out (default) — a multi-master deadlock is NOT retried (preserves behavior for callers whose
+    ;; locked body has side effects outside the appdb tx, which aren't safe to re-run)
+    (is (not (#'sut/retry-if-error? false (deadlock-exception))))
+    ;; opted in (stats updates) — retried so the write survives the Galera/multi-master commit conflict
+    (is (#'sut/retry-if-error? true (deadlock-exception)))
+    (testing "even when wrapped in the rollback wrapper the driver adds"
+      (is (#'sut/retry-if-error? true (ex-info "Error rolling back after previous error" {} (deadlock-exception))))))
+  (testing "non-transient errors are never retried, regardless of :retry-transient?"
+    (is (not (#'sut/retry-if-error? true (ex-info "Bad Error" {}))))
+    (is (not (#'sut/retry-if-error? false (ex-info "Bad Error" {}))))))
+
+(deftest retry-transient-end-to-end-test
+  ;; h2 takes an in-process lock and bypasses the retry path entirely, so this only exercises real row locks.
+  (when (not= (mdb/db-type) :h2)
+    (let [retry-cfg {:delay-ms 1 :max-retries 3}]
+      (testing ":retry-transient? true re-runs the locked body after a transient deadlock"
+        (let [attempts (atom 0)
+              result   (sut/with-cluster-lock {:lock ::retry-transient-test
+                                               :retry-transient? true
+                                               :retry-config retry-cfg}
+                         (when (= 1 (swap! attempts inc))
+                           (throw (deadlock-exception)))
+                         :ok)]
+          (is (= :ok result))
+          (is (= 2 @attempts))))
+      (testing "without :retry-transient? the same deadlock is not retried and propagates"
+        (let [attempts (atom 0)
+              ;; toucan2 wraps a body exception thrown inside the tx in an ExceptionInfo, so the deadlock
+              ;; surfaces as that wrapper rather than a bare SQLException — but the SQLException is still in
+              ;; its cause chain.
+              e (is (thrown? Throwable
+                             (sut/with-cluster-lock {:lock ::retry-transient-test
+                                                     :retry-config retry-cfg}
+                               (swap! attempts inc)
+                               (throw (deadlock-exception)))))]
+          ;; it's a genuine transient error; it propagated unretried only because we didn't opt in.
+          (is (transient-error/transient-error? (mdb/db-type) e))
+          (is (= 1 @attempts)))))))
 
 (deftest with-cluster-locking-test
   (testing "works when used non-concurrently"

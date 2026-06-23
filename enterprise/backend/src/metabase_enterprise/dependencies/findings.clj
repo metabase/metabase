@@ -57,14 +57,20 @@
         instance-id (:id toucan-instance)]
     (if-let [errors (seq (pre-analysis-errors toucan-instance))]
       (deps.analysis-finding/upsert-analysis! entity-type instance-id false errors)
-      (when-let [db-id (instance-db-id toucan-instance)]
+      (if-let [db-id (instance-db-id toucan-instance)]
         (let [mp (lib-be/application-database-metadata-provider db-id)
               results (try (deps.analysis/check-entity mp entity-type instance-id)
                            (catch Exception e
                              (log/error e "Error analyzing entity")
                              [(lib/validation-exception-error (.getMessage e))]))
               success (empty? results)]
-          (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))))))
+          (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))
+        ;; No resolvable database, and no pre-analysis error explaining it: record a terminal error so
+        ;; the entity gets a finding (clearing its stale flag) instead of no-oping forever and being
+        ;; re-selected on every run. It re-checks normally if its database later becomes resolvable.
+        (deps.analysis-finding/upsert-analysis!
+         entity-type instance-id false
+         [(lib/validation-exception-error "Could not resolve a database for this entity.")])))))
 
 (defn analyze-instances!
   "Given a series of toucan entities, upsert analyses for all of them and catch errors."
@@ -86,18 +92,14 @@
 (def dependable-entities
   "Entities which can be depended on by other entities, even if they cannot themselves be analyzed.
 
-  For example, `:table`s can be passed to [[mark-dependents-stale!]] as the upstream entity whose dependents are now
+  For example, `:table`s can be passed to [[mark-transitive-dependents-stale!]] as an upstream entity whose dependents are now
   stale, but we cannot analyze tables themselves."
   (conj analyzable-entities :table))
 
-(def ^:private DependableEntityType
-  "Schema for entity types supported by analysis findings."
-  (into [:enum] dependable-entities))
-
 (defn- mark-supported-dependents-stale!
   "Given a map of {entity-type [entity-ids]}, mark all supported (analyzable) types as stale.
-  For non-analyzable entities (e.g., tables), looks through to their dependents so the wave
-  can reach analyzable entities beyond them.
+  For non-analyzable entities (e.g., tables), looks through to their dependents so we still
+  reach analyzable entities beyond them.
   Returns true if any supported dependents were found."
   [dependents]
   (let [{analyzable true non-analyzable false}
@@ -121,31 +123,18 @@
       (deps.analysis-finding/mark-stale! dep-type dep-ids))
     (boolean (seq all-supported))))
 
-(mu/defn mark-dependents-stale! :- :boolean
-  "Mark all transitive dependents of an entity as stale for re-analysis.
-  Returns true if any supported dependents were found, false otherwise.
+(defn mark-transitive-dependents-stale!
+  "Mark all transitive dependents of the given upstream entities stale for re-analysis. Takes `{entity-type [entity-ids]}`
+  — entity types may be non-analyzable (e.g. `:table`), since they can still have analyzable dependents, and each id
+  collection may be any seqable (vector, set, ...). Returns true if any supported (analyzable) dependents were found.
 
   Uses `transitive-dependents` (not `transitive-mbql-dependents`) because:
   1. It's faster - doesn't need to fetch entities to check for native-ness
   2. Native dependents marked stale will just be quickly re-validated as valid"
-  [entity-type :- DependableEntityType
-   entity-id   :- pos-int?]
-  (let [dependents (models.dependency/transitive-dependents {entity-type [{:id entity-id}]})]
-    (mark-supported-dependents-stale! dependents)))
-
-(defn mark-all-immediate-dependents-stale!
-  "Mark the immediate dependents of multiple entities as stale.
-  Takes a map of {entity-type entity-ids} where entity-ids is a set of IDs.
-  Does NOT traverse transitively — the entity-check job loop propagates in waves.
-  Returns true if any supported dependents were found."
   [type->entity-ids]
-  (let [key-seq (for [[entity-type ids] type->entity-ids
-                      id ids]
-                  [entity-type id])
-        deps-map (models.dependency/direct-dependents key-seq)
-        dependents (models.dependency/group-nodes
-                    (into #{} cat (vals deps-map)))]
-    (mark-supported-dependents-stale! dependents)))
+  (-> (models.dependency/transitive-dependents
+       (update-vals type->entity-ids (fn [ids] (map (fn [id] {:id id}) ids))))
+      mark-supported-dependents-stale!))
 
 (mu/defn mark-entity-stale!
   "Mark a single entity as stale for re-analysis by the background job."
@@ -153,41 +142,32 @@
    entity-id   :- pos-int?]
   (deps.analysis-finding/mark-stale! entity-type [entity-id]))
 
-(mu/defn mark-immediate-dependents-stale! :- :boolean
-  "Mark the immediate dependents of an entity as stale.
-  Unlike [[mark-dependents-stale!]], this does NOT traverse transitively."
-  [entity-type :- DependableEntityType
+(mu/defn mark-entity-and-transitive-dependents-stale!
+  "Mark `entity-id` and all of its transitive dependents stale for re-analysis. Use this when an entity changes: it
+  queues the whole affected subtree up front so the entity-check job drains a fixed set of stale entities (see
+  [[metabase-enterprise.dependencies.task.entity-check/check-entities!]]) without re-propagating staleness during the
+  drain — which can never terminate when the dependency graph has a cycle."
+  [entity-type :- AnalyzableEntityType
    entity-id   :- pos-int?]
-  (let [key-seq [[entity-type entity-id]]
-        deps-map (models.dependency/direct-dependents key-seq)
-        dependents (models.dependency/group-nodes
-                    (into #{} cat (vals deps-map)))]
-    (mark-supported-dependents-stale! dependents)))
-
-(defn- analyze-and-propagate!
-  "Analyze an entity and mark its immediate dependents as stale.
-  Wrapped in a transaction so that if marking dependents fails, the analysis
-  is rolled back and the entity stays stale for retry on the next pass.
-  The newly-stale dependents are picked up by the job's loop in
-  `task.entity-check/check-entities!`, which drains all stale entities
-  before returning — no need to re-trigger the job."
-  [instance]
-  (let [entity-type (deps.dependency-types/model->dependency-type (t2/model instance))]
-    (t2/with-transaction [_conn]
-      (upsert-analysis! instance)
-      (mark-immediate-dependents-stale! entity-type (:id instance)))))
+  (mark-entity-stale! entity-type entity-id)
+  (mark-transitive-dependents-stale! {entity-type [entity-id]}))
 
 (mu/defn analyze-batch! :- nat-int?
   "Add or update analyses for a batch of entities.
 
   Takes in an entity type and batch size, and looks for a batch of entities with missing or out of date
-  AnalysisFindings and then upsert new analyses for them."
+  AnalysisFindings and then upsert new analyses for them.
+
+  This only *analyzes* (each [[upsert-analysis!]] clears that entity's stale flag); it does NOT propagate staleness to
+  dependents. Propagation happens up front when an entity changes (see [[mark-entity-and-transitive-dependents-stale!]] and the
+  event handlers), so the entity-check job drains a fixed set of stale entities that only shrinks — guaranteeing
+  termination even when the dependency graph has cycles."
   [type :- AnalyzableEntityType
    batch-size :- pos-int?]
   (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
     (lib-be/with-metadata-provider-cache
       (doseq [instance instances]
-        (try (analyze-and-propagate! instance)
+        (try (upsert-analysis! instance)
              (catch Exception e
                (log/errorf e "Analyzing entity %s %s failed"
                            (t2/model instance) (:id instance))))))

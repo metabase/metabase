@@ -42,6 +42,14 @@
                          :limit        qp.settings/absolute-max-results}}
              (add-default-limit query))))))
 
+(deftest ^:parallel aggregation-then-empty-stage-test
+  (testing "do not add a :limit to the appended (filter-only) stage when an earlier stage aggregates (#48439)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate (lib/count))
+                    lib/append-stage)]
+      (is (nil? (lib/current-limit (limit/add-default-limit query) -1))
+          "no :limit should be added to the last stage since the query is aggregated"))))
+
 (deftest ^:parallel disable-max-results-test-2
   (testing "Don't apply the `absolute-max-results` limit when `disable-max-results` is used."
     (let [query (limit/disable-max-results {:database (meta/id)

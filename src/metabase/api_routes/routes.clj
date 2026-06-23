@@ -5,6 +5,7 @@
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
    [metabase.analytics.api]
+   [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
    [metabase.api.docs]
    [metabase.api.macros :as api.macros]
@@ -20,6 +21,7 @@
    [metabase.collections-rest.api]
    [metabase.comments.api]
    [metabase.config.core :as config]
+   [metabase.curated-search.api]
    [metabase.dashboards-rest.api]
    [metabase.data-studio.api]
    [metabase.documents.api]
@@ -78,6 +80,7 @@
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
          metabase.analytics.api/keep-me
+         metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
@@ -86,6 +89,7 @@
          metabase.cloud-migration.api/keep-me
          metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
+         metabase.curated-search.api/keep-me
          metabase.dashboards-rest.api/keep-me
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
@@ -164,6 +168,7 @@
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
+   "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
    "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
@@ -175,6 +180,7 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
+   "/curated-search"       (+auth 'metabase.curated-search.api)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)

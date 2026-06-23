@@ -303,7 +303,7 @@ const FormButtonsGroup = ({
       style={
         layout === "sidebar"
           ? undefined
-          : { borderTop: "1px solid var(--mb-color-border)" }
+          : { borderTop: "1px solid var(--mb-color-border-neutral)" }
       }
     >
       {children}

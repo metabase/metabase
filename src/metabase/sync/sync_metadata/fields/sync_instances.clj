@@ -24,6 +24,33 @@
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private field-name-max-length
+  "Maximum length of the `metabase_field.name` column in the application DB (a `varchar(254)`). Fields whose name is
+  longer than this can't be stored.
+
+  We skip over-long Fields rather than store them, but an alternative worth considering is widening the column
+  instead so these Fields become usable (e.g. BigQuery allows column names up to 300 characters). `name` is part of
+  the `idx_unique_field` unique constraint and the `idx_field_name_lower` index, so any widening is bounded by
+  MySQL/InnoDB's index key-length limit (~3072 bytes at utf8mb4 = 4 bytes/char) — i.e. up to roughly `varchar(512)`,
+  which would cover every warehouse including BigQuery. Truncating is not an option: `name` is the real warehouse
+  column name used to generate SQL, and truncating would break queries and could collide."
+  254)
+
+(mu/defn- remove-fields-with-too-long-names :- [:set i/TableMetadataField]
+  "Drop any Fields in `db-metadata` whose name is too long to store in the application DB (see
+  `field-name-max-length`), logging a warning. A single over-long column name would otherwise fail the INSERT for the
+  entire chunk of Fields it lands in and prevent the rest of the Table from syncing."
+  [table       :- i/TableInstance
+   db-metadata :- [:set i/TableMetadataField]]
+  (let [{too-long true, ok false} (group-by #(< field-name-max-length (count (:name %))) db-metadata)]
+    (when (seq too-long)
+      (log/warnf "Skipping %d Field(s) in %s whose name exceeds %d characters: %s"
+                 (count too-long)
+                 (sync-util/name-for-logging table)
+                 field-name-max-length
+                 (pr-str (sort (map :name too-long)))))
+    (set ok)))
+
 (mu/defn- matching-inactive-fields :- [:maybe [:sequential i/FieldInstance]]
   "Return inactive Metabase Fields that match any of the Fields described by `new-field-metadatas`, if any such Fields
   exist."
@@ -224,14 +251,15 @@
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]
     parent-id    :- common/ParentID]
-   ;; syncing the active instances makes important changes to `our-metadata` that need to be passed to recursive
-   ;; calls, such as adding new Fields or making inactive ones active again. Keep updated version returned by
-   ;; `sync-active-instances!`
-   (log/tracef "Syncing field instances for %s DB: %s, Existing: %s"
-               (sync-util/name-for-logging table)
-               (pr-str (sort (map common/canonical-name db-metadata)))
-               (pr-str (sort (map common/canonical-name our-metadata))))
-   (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
-     (+ num-updates
-        (retire-fields! table db-metadata our-metadata)
-        (sync-nested-field-instances! table db-metadata our-metadata)))))
+   (let [db-metadata (remove-fields-with-too-long-names table db-metadata)]
+     ;; syncing the active instances makes important changes to `our-metadata` that need to be passed to recursive
+     ;; calls, such as adding new Fields or making inactive ones active again. Keep updated version returned by
+     ;; `sync-active-instances!`
+     (log/tracef "Syncing field instances for %s DB: %s, Existing: %s"
+                 (sync-util/name-for-logging table)
+                 (pr-str (sort (map common/canonical-name db-metadata)))
+                 (pr-str (sort (map common/canonical-name our-metadata))))
+     (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
+       (+ num-updates
+          (retire-fields! table db-metadata our-metadata)
+          (sync-nested-field-instances! table db-metadata our-metadata))))))

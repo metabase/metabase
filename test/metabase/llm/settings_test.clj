@@ -124,6 +124,48 @@
         (llm.settings/llm-bedrock-region! "")
         (is (= "us-east-1" (llm.settings/llm-bedrock-region)))))))
 
+;;; ------------------------------------------- llm-azure setting Setter Tests -------------------------------------------
+
+(deftest llm-azure-api-key-setter-test
+  (testing "accepts an unprefixed Azure data-plane key and trims whitespace"
+    (mt/with-temp-env-var-value! [mb-llm-azure-api-key nil]
+      (mt/discard-setting-changes [llm-azure-api-key]
+        (llm.settings/llm-azure-api-key! "  2QyICJz8sExampleDataPlaneKey  ")
+        (is (= "2QyICJz8sExampleDataPlaneKey" (llm.settings/llm-azure-api-key))))))
+  (testing "empty/nil clears the setting"
+    (mt/with-temp-env-var-value! [mb-llm-azure-api-key nil]
+      (mt/discard-setting-changes [llm-azure-api-key]
+        (llm.settings/llm-azure-api-key! "2QyICJz8sExampleDataPlaneKey")
+        (llm.settings/llm-azure-api-key! "")
+        (is (nil? (llm.settings/llm-azure-api-key)))))))
+
+(deftest llm-azure-api-base-url-setter-test
+  (testing "trims whitespace and trailing slashes"
+    (mt/with-temp-env-var-value! [mb-llm-azure-api-base-url nil]
+      (mt/discard-setting-changes [llm-azure-api-base-url]
+        (llm.settings/llm-azure-api-base-url! "  https://my-resource.services.ai.azure.com/openai///  ")
+        (is (= "https://my-resource.services.ai.azure.com/openai"
+               (llm.settings/llm-azure-api-base-url))))))
+  (testing "is otherwise persisted exactly as entered, with no silent rewriting"
+    (mt/with-temp-env-var-value! [mb-llm-azure-api-base-url nil]
+      (mt/discard-setting-changes [llm-azure-api-base-url]
+        (llm.settings/llm-azure-api-base-url! "https://my-resource.services.ai.azure.com/api/projects/my-project")
+        (is (= "https://my-resource.services.ai.azure.com/api/projects/my-project"
+               (llm.settings/llm-azure-api-base-url))))))
+  (testing "blank clears the setting"
+    (mt/with-temp-env-var-value! [mb-llm-azure-api-base-url nil]
+      (mt/discard-setting-changes [llm-azure-api-base-url]
+        (llm.settings/llm-azure-api-base-url! "https://my-resource.services.ai.azure.com/openai")
+        (llm.settings/llm-azure-api-base-url! "   ")
+        (is (nil? (llm.settings/llm-azure-api-base-url)))))))
+
+(deftest ^:parallel normalize-llm-base-url-test
+  (is (= "https://x.example/openai" (llm.settings/normalize-llm-base-url "  https://x.example/openai/  ")))
+  (is (= "https://x.example" (llm.settings/normalize-llm-base-url "https://x.example///")))
+  (is (nil? (llm.settings/normalize-llm-base-url "   ")))
+  (is (nil? (llm.settings/normalize-llm-base-url nil)))
+  (is (nil? (llm.settings/normalize-llm-base-url "///"))))
+
 ;;; ------------------------------------------- llm-proxy-base-url Feature Guard Tests -------------------------------------------
 
 (deftest llm-proxy-base-url-feature-guard-test

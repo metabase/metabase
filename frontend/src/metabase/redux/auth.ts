@@ -1,4 +1,5 @@
 import {
+  type ThunkDispatch,
   type UnknownAction,
   createAction,
   createReducer,
@@ -6,13 +7,13 @@ import {
 import { push } from "react-router-redux";
 
 import { loadLocalization } from "metabase/api/localization";
+import { sessionApi } from "metabase/api/session";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
-import { SessionApi } from "metabase/services";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
@@ -64,7 +65,9 @@ export const login = createAsyncThunk(
   LOGIN,
   async ({ data }: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
-      await SessionApi.create(data);
+      await dispatch(
+        sessionApi.endpoints.createSession.initiate(data),
+      ).unwrap();
       await dispatch(refreshSession()).unwrap();
       if (!isSmallScreen()) {
         dispatch(openNavbar());
@@ -89,10 +92,12 @@ export const loginGoogle = createAsyncThunk(
     { dispatch, rejectWithValue },
   ) => {
     try {
-      await SessionApi.createWithGoogleAuth({
-        token: credential,
-        remember,
-      });
+      await dispatch(
+        sessionApi.endpoints.createSessionWithGoogleAuth.initiate({
+          token: credential,
+          remember,
+        }),
+      ).unwrap();
       await dispatch(refreshSession()).unwrap();
       if (!isSmallScreen()) {
         dispatch(openNavbar());
@@ -115,7 +120,8 @@ export const logout = createAsyncThunk(
       const user = getUser(state);
 
       if (user?.sso_source === "saml") {
-        const { "saml-logout-url": samlLogoutUrl } = await initiateSLO();
+        const { "saml-logout-url": samlLogoutUrl } =
+          (await initiateSLO(dispatch)) ?? {};
 
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
@@ -124,7 +130,7 @@ export const logout = createAsyncThunk(
           window.location.href = samlLogoutUrl;
         }
       } else {
-        await deleteSession();
+        await deleteSession(dispatch);
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
 
@@ -142,9 +148,11 @@ export const logout = createAsyncThunk(
 export const FORGOT_PASSWORD = "metabase/auth/FORGOT_PASSWORD";
 export const forgotPassword = createAsyncThunk(
   FORGOT_PASSWORD,
-  async (email: string, { rejectWithValue }) => {
+  async (email: string, { dispatch, rejectWithValue }) => {
     try {
-      await SessionApi.forgot_password({ email });
+      await dispatch(
+        sessionApi.endpoints.forgotPassword.initiate(email),
+      ).unwrap();
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -164,7 +172,9 @@ export const resetPassword = createAsyncThunk(
     { dispatch, rejectWithValue },
   ) => {
     try {
-      await SessionApi.reset_password({ token, password });
+      await dispatch(
+        sessionApi.endpoints.resetPassword.initiate({ token, password }),
+      ).unwrap();
       await dispatch(refreshSession()).unwrap();
     } catch (error) {
       return rejectWithValue(error);
@@ -172,9 +182,9 @@ export const resetPassword = createAsyncThunk(
   },
 );
 
-const initiateSLO = async () => {
+const initiateSLO = async (dispatch: ThunkDispatch<any, any, any>) => {
   try {
-    return await SessionApi.slo();
+    return await dispatch(sessionApi.endpoints.logoutSso.initiate()).unwrap();
   } catch (error) {
     if (!isResourceNotFoundError(error)) {
       console.error("Problem clearing session", error);
@@ -182,9 +192,9 @@ const initiateSLO = async () => {
   }
 };
 
-export const deleteSession = async () => {
+const deleteSession = async (dispatch: ThunkDispatch<any, any, any>) => {
   try {
-    await SessionApi.delete();
+    await dispatch(sessionApi.endpoints.deleteSession.initiate()).unwrap();
   } catch (error) {
     if (!isResourceNotFoundError(error)) {
       console.error("Problem clearing session", error);

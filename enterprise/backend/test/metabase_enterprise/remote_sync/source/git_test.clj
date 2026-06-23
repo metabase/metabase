@@ -151,6 +151,22 @@
           master-snapshot (source.p/snapshot master)]
       (is (= (git/commit-sha master "master") (:version master-snapshot))))))
 
+(deftest commit-sha-missing-object-is-nil-test
+  (testing "GHY-3917: a full SHA whose object isn't in the clone resolves to nil, not a phantom id"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"master.txt" "File in master"})
+            ;; JGit parses any complete 40-hex string into an ObjectId without a presence check; the
+            ;; existence guard is what turns a base commit orphaned by an upstream force-push/rebase into
+            ;; nil here instead of a later MissingObjectException when its tree is read.
+            absent-sha "0000000000000000000000000000000000000000"]
+        (is (some? (git/commit-sha master "master"))
+            "a real ref still resolves")
+        (is (nil? (git/commit-sha master absent-sha))
+            "a syntactically valid but absent full SHA resolves to nil")
+        (is (nil? (source.p/snapshot-at master absent-sha))
+            "snapshot-at returns nil for the orphaned base, so callers take the history-rewritten path")))))
+
 (deftest list-files
   (mt/with-temp-dir [remote-dir nil]
     (let [[master remote] (init-source! "master" remote-dir
@@ -309,6 +325,36 @@
           (is (= ["collections/a/keep.yaml" "collections/a/new.yaml"] (source.p/list-files snap)))
           (is (= "new" (source.p/read-file snap "collections/a/new.yaml")))
           (is (= "keep" (source.p/read-file snap "collections/a/keep.yaml"))))))))
+
+(deftest changed-files-test
+  (testing "changed-files classifies the paths whose blob differs between two commits"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"keep.txt"             "unchanged"
+                                                   "edit.txt"             "old content"
+                                                   "remove.txt"           "delete me"
+                                                   "deep/nested/keep.txt" "deep unchanged"})
+            from-version (:version (source.p/snapshot master))]
+        (source.p/apply-changes! (source.p/snapshot master) "Change set"
+                                 [{:path "edit.txt" :content "new content"}
+                                  {:path "add.txt"  :content "brand new"}]
+                                 ["remove.txt"])
+        (let [snap (source.p/snapshot master)]
+          (testing "added / modified / deleted are reported in their own buckets"
+            (is (= {:added    #{"add.txt"}
+                    :modified #{"edit.txt"}
+                    :deleted  #{"remove.txt"}}
+                   (git/changed-files snap from-version))))
+          (testing "unchanged files — including deep untouched subtrees — are not reported"
+            (let [{:keys [added modified deleted]} (git/changed-files snap from-version)
+                  touched (reduce into #{} [added modified deleted])]
+              (is (not (contains? touched "keep.txt")))
+              (is (not (contains? touched "deep/nested/keep.txt")))))
+          (testing "comparing a version against itself reports no changes"
+            (is (= {:added #{} :modified #{} :deleted #{}}
+                   (git/changed-files snap (:version snap)))))
+          (testing "an unresolvable from-version returns nil, signalling a full import"
+            (is (nil? (git/changed-files snap "no-such-ref-or-sha")))))))))
 
 (deftest write-special-collections
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]

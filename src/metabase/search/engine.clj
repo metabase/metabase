@@ -28,6 +28,22 @@
   {:arglists '([search-context])}
   :search-engine)
 
+(defmulti diagnose
+  "Explain why `(expected-model, expected-id)` does not appear in the index/query stages this engine owns.
+  Returns `{:type ..., :details ...}` for the first engine-owned stage that drops it
+  (`:missing-from-index`, `:filtered`, or `:not-matching`), or `{:type :candidate, :details ...}` if it passes
+  every engine-owned stage.
+  Engine-independent stages (`:not-searchable`, terminal `:matched`/`:ranked-out`) are handled by the caller in
+  [[metabase.search.debug]].
+
+  The `:filtered` `:details` `:excluded-by` value names the filter that dropped the row; shared keys (e.g. `:models`,
+  `:created-by`, `:archived?`) are consistent across engines. Access-control exclusions are also reported under
+  `:filtered` here — `:collection-permissions`/`:table-permissions`/`:permissions` (appdb) or `:permissions`
+  (semantic) — and [[metabase.search.debug]] promotes those to `:not-permitted`; engines should check them before
+  structural filters so access denial wins."
+  {:arglists '([search-context expected-model expected-id])}
+  (fn [{engine :search-engine} _ _] engine))
+
 (defmulti score "For legacy search: perform the in-memory ranking"
   {:arglists '([search-context result])}
   (fn [{engine :search-engine} _]

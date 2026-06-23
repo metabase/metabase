@@ -88,10 +88,18 @@
    "test_config"
    "test_resources"])
 
+;; snowflake and bigquery tests are very unreliable; let's bypass an additional
+;; potential source of unreliability by running tests without any parallelism.
+(def ^:private non-parallel-drivers #{:snowflake :bigquery-cloud-sdk})
+
 (defn- default-options []
   {:namespace-pattern   #"^(?:(?:metabase.*)|(?:hooks\..*))" ; anything starting with `metabase*` (including `metabase-enterprise`) or `hooks.*`
    :exclude-directories excluded-directories
-   :test-warn-time      60000})
+   :test-warn-time      60000
+   :multithread?        (if (empty? (set/intersection (tx.env/test-drivers)
+                                                      non-parallel-drivers))
+                          :vars
+                          false)})
 
 (defn module-folders
   [modules]

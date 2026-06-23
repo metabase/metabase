@@ -19,7 +19,7 @@
 
 .accordionContent {
   background-color: var(--mb-color-background-secondary);
-  border-top: 1px solid var(--mb-color-border-subtle);
+  border-top: 1px solid var(--mb-color-border-neutral-subtle);
   padding: 0.5rem 1rem 0.75rem;
 }
 
