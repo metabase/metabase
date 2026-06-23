@@ -50,7 +50,7 @@ export const ClickActionControl = ({
       return (
         <Button
           variant="outline"
-          fz="xl" // exception: the <, >, =, ≠, etc. symbols that render here are hardly readable
+          fz="var(--mantine-h4-font-size)" // exception: the <, >, =, ≠, etc. symbols that render here are hardly readable
           size="xs"
           onClick={handleClick}
           className={S.tokenFilterActionButton}
