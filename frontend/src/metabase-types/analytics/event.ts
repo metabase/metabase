@@ -46,22 +46,3 @@ export type CustomVizEvent =
   | CustomVizPluginToggledEvent
   | CustomVizPluginRefreshedEvent
   | CustomVizSelectedEvent;
-
-// Iglu URI for the simple_event schema. Defined here (next to the event types)
-// so the SDK bundle can import it without pulling in the main-app analytics module.
-export const SIMPLE_EVENT_SCHEMA_URI =
-  "iglu:com.metabase/simple_event/jsonschema/1-0-0";
-
-export type EmbeddingSdkInitializedEvent = ValidateEvent<{
-  event: "embedding_sdk_initialized";
-  event_detail: string;
-}>;
-
-export type EmbeddingSdkComponentRenderedEvent = ValidateEvent<{
-  event: "embedding_sdk_component_rendered";
-  event_detail: string;
-}>;
-
-export type EmbeddingSdkEvent =
-  | EmbeddingSdkInitializedEvent
-  | EmbeddingSdkComponentRenderedEvent;

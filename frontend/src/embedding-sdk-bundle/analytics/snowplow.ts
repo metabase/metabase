@@ -6,10 +6,29 @@ import {
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
-import {
-  type EmbeddingSdkEvent,
-  SIMPLE_EVENT_SCHEMA_URI,
-} from "metabase-types/analytics/event";
+import type { SimpleEventSchema } from "metabase-types/analytics/event";
+
+const SIMPLE_EVENT_SCHEMA_URI =
+  "iglu:com.metabase/simple_event/jsonschema/1-0-0";
+
+type ValidateEvent<
+  T extends SimpleEventSchema &
+    Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
+> = T;
+
+type EmbeddingSdkInitializedEvent = ValidateEvent<{
+  event: "embedding_sdk_initialized";
+  event_detail: string;
+}>;
+
+type EmbeddingSdkComponentRenderedEvent = ValidateEvent<{
+  event: "embedding_sdk_component_rendered";
+  event_detail: string;
+}>;
+
+type EmbeddingSdkEvent =
+  | EmbeddingSdkInitializedEvent
+  | EmbeddingSdkComponentRenderedEvent;
 
 // The SDK runs inside the customer's app. A direct POST to the Snowplow
 // collector (`sp.metabase.com`) is cross-origin and blocked by a strict
