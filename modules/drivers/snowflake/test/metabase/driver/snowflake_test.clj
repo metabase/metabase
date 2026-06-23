@@ -316,10 +316,10 @@
                                   {:name "airport", :schema "PUBLIC", :description nil}}]
             (testing "should work with normal details"
               (is (= expected-tables
-                     (:tables (driver/describe-database :snowflake (mt/db))))))
+                     (into #{} (:tables (driver/describe-database :snowflake (mt/db)))))))
             (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
               (is (= expected-tables
-                     (:tables (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname}))))))
+                     (into #{} (:tables (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))))
             (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
               (is (thrown? Exception
                            (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
