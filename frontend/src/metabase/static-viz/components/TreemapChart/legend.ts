@@ -9,11 +9,13 @@ import { getTreemapTotal } from "metabase/visualizations/echarts/graph/treemap/m
 
 export const TREEMAP_LEGEND_WIDTH = 363;
 export const TREEMAP_LEGEND_ROW_HEIGHT = 16;
+export const TREEMAP_LEGEND_ROW_CENTER_Y = TREEMAP_LEGEND_ROW_HEIGHT / 2;
 export const TREEMAP_LEGEND_GROUP_GAP = 24;
 export const TREEMAP_LEGEND_ROW_GAP = TREEMAP_LEGEND_GROUP_GAP / 2;
 export const TREEMAP_LEGEND_TOTAL_PADDING_TOP = 16;
 export const TREEMAP_LEGEND_INDENT = 18;
 export const TREEMAP_LEGEND_DOT_SIZE = 12;
+export const TREEMAP_LEGEND_DOT_RADIUS = TREEMAP_LEGEND_DOT_SIZE / 2;
 export const TREEMAP_LEGEND_DOT_GAP = 6;
 export const TREEMAP_LEGEND_VALUE_WIDTH = 112;
 export const TREEMAP_LEGEND_PERCENT_WIDTH = 52;
@@ -55,9 +57,9 @@ export function getTreemapLegendModel(
       name: node.displayName,
       valueLabel: formatValue(node.value),
       percentLabel: formatShare(node.value),
-      ...(treeHasChildren ? { color: colors[getTreemapNodeKey(node)] } : {}),
       indent: false,
       top: stride * index,
+      ...(treeHasChildren ? { color: colors[getTreemapNodeKey(node)] } : {}),
     }));
 
   const totalRow: TreemapLegendRow = {
