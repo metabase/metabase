@@ -249,14 +249,18 @@ describe("issue 51926", () => {
       display: "pivot",
     });
 
+    cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
 
     H.openVizTypeSidebar();
-    H.leftSidebar().within(() => {
-      cy.findByTestId("Table-button").click();
-      cy.findByTestId("Pivot Table-button").click();
-    });
+    H.leftSidebar().findByTestId("Table-button").click();
+    // Switching to the flat Table viz re-runs the query; wait for it so the
+    // switch fully settles before picking the next viz type. Clicking both
+    // buttons back-to-back lets the two viz switches race, and the Table
+    // switch can land last and win — leaving the viz stuck on Table.
+    cy.wait("@dataset");
 
+    H.leftSidebar().findByTestId("Pivot Table-button").click();
     // Wait for the pivot query triggered by switching back to the pivot viz
     // type to finish before asserting on the rendered cells.
     cy.wait("@pivotDataset");
