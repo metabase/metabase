@@ -4,12 +4,12 @@ import {
   trackSelfDescribingEvent,
 } from "@snowplow/browser-tracker";
 
-import type { State } from "metabase/redux/store";
+import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
-import type { SimpleEventSchema } from "metabase-types/analytics/event";
-
-// Minimal structural type: only the settings slice the instance-context plugin needs.
-type SettingsGetter = () => Pick<State, "settings">;
+import {
+  SIMPLE_EVENT_SCHEMA_URI,
+  type SimpleEventSchema,
+} from "metabase-types/analytics/event";
 
 // The SDK runs inside the customer's app. A direct POST to the Snowplow
 // collector (`sp.metabase.com`) is cross-origin and blocked by a strict
@@ -18,37 +18,39 @@ type SettingsGetter = () => Pick<State, "settings">;
 // `connect-src` matches host (not path), so the instance origin — already
 // allowlisted for the SDK's data calls — passes with no extra customer config.
 
+// Named tracker, isolated from the main-app tracker ("sp").
 const SDK_TRACKER_NAME = "sdk";
-const SIMPLE_EVENT_SCHEMA = "iglu:com.metabase/simple_event/jsonschema/1-0-0";
 
 export type SdkAuthMethod = "guest" | "api_key" | "sso";
 
+// true = tracker initialized for the first time; false = already running (idempotent call)
 type WasJustInitialized = boolean;
 
 let trackerInitialized = false;
-// Stored at init time so trackSdkSimpleEvent can read settings without a React hook.
-let sdkStoreGetter: SettingsGetter | null = null;
+let sdkAuthMethod: SdkAuthMethod;
+let sdkLocaleUsed: boolean = false;
+let sdkMetaplowEnabled: boolean = false;
 
-export function __resetTrackerForTesting(): void {
-  trackerInitialized = false;
-  sdkStoreGetter = null;
-}
-
-// getStoreState must come from the actual ComponentProvider store (via useSdkStore).
-// The instance-context plugin calls it at event-send time so settings are read
-// from the live store, not a snapshot captured at init time.
+// Initialize the SDK's Snowplow tracker. Idempotent — safe under StrictMode double-mount.
 export function initSdkTracker({
   metabaseInstanceUrl,
-  getStoreState,
+  authMethod,
+  localeUsed = false,
+  store,
 }: {
   metabaseInstanceUrl: string;
-  getStoreState: SettingsGetter;
+  authMethod: SdkAuthMethod;
+  localeUsed?: boolean;
+  store: { getState: () => SdkStoreState };
 }): WasJustInitialized {
   if (trackerInitialized) {
     return false;
   }
   trackerInitialized = true;
-  sdkStoreGetter = getStoreState;
+  sdkAuthMethod = authMethod;
+  sdkLocaleUsed = localeUsed;
+  sdkMetaplowEnabled =
+    !!store.getState().settings?.values?.["metaplow-tracking-enabled"];
 
   newTracker(SDK_TRACKER_NAME, metabaseInstanceUrl, {
     appId: "metabase",
@@ -58,23 +60,40 @@ export function initSdkTracker({
     // Plain JSON on the wire. The main-app tracker uses the default (encodeBase64:true);
     // the SDK tracker is new, so there's no legacy format to preserve.
     encodeBase64: false,
+    // Deliver through the instance proxy, not the collector's tp2 path.
     postPath: "/api/analytics-proxy",
     // No cookies / localStorage: the SDK must not touch the host page's storage.
+    // This also makes cookie-domain config (e.g. discoverRootDomain) irrelevant.
     stateStorageStrategy: "none",
+    // Server-side anonymisation: strip IP + network_userid, send the SP-Anonymous header.
     anonymousTracking: { withServerAnonymisation: true },
-    // The proxy endpoint uses a wildcard CORS origin. Credentialed requests are blocked
-    // by the browser under wildcard CORS (the spec forbids Allow-Credentials: true with *),
-    // so we must send without credentials.
+    // The proxy endpoint uses `Access-Control-Allow-Origin: *`. Wildcard CORS rejects
+    // credentialed requests, so credentials must be omitted.
     withCredentials: false,
-    plugins: [createSdkInstanceContextPlugin(getStoreState)],
+    plugins: [createSdkInstanceContextPlugin(store)],
   });
   return true;
 }
 
-function createSdkInstanceContextPlugin(getStoreState: SettingsGetter) {
+export function getSdkAuthMethod(): SdkAuthMethod | undefined {
+  return sdkAuthMethod;
+}
+
+export function getSdkLocaleUsed(): boolean {
+  return sdkLocaleUsed;
+}
+
+// Attaches the instance context to every SDK event. Omits userId — unlike the
+// main-app tracker, SDK component usage is tracked at instance granularity;
+// the analytics-uuid already identifies the account.
+function createSdkInstanceContextPlugin(store: {
+  getState: () => SdkStoreState;
+}) {
   return {
     contexts(): SelfDescribingJson[] {
-      const settings = getStoreState().settings?.values;
+      // Settings are guaranteed present: initSdkTracker is only called after
+      // isTrackingEnabled, which requires anon-tracking-enabled to be loaded.
+      const settings = store.getState().settings?.values;
       const version = settings?.["version"] ?? {};
 
       return [
@@ -94,20 +113,19 @@ function createSdkInstanceContextPlugin(getStoreState: SettingsGetter) {
   };
 }
 
-export function trackSdkEvent(event: SelfDescribingJson): void {
+// Send a self-describing event through the SDK tracker. Schema-agnostic: the caller
+// supplies the Iglu schema + data, so the transport stays decoupled from the event shape.
+function trackSdkEvent(event: SelfDescribingJson): void {
   trackSelfDescribingEvent({ event }, [SDK_TRACKER_NAME]);
 }
 
 // Use instead of trackSimpleEvent in the SDK: the main-app "sp" tracker is not
 // initialized in the customer's page, so trackSimpleEvent's Snowplow leg is a no-op.
 export function trackSdkSimpleEvent(event: SimpleEventSchema): void {
-  trackSdkEvent({
-    schema: SIMPLE_EVENT_SCHEMA,
-    data: event,
-  });
+  trackSdkEvent({ schema: SIMPLE_EVENT_SCHEMA_URI, data: event });
 
-  if (sdkStoreGetter?.().settings?.values?.["metaplow-tracking-enabled"]) {
-    const { event: name, ...data } = event;
-    trackMetaplowEvent(name, data as Record<string, unknown>);
+  if (sdkMetaplowEnabled) {
+    const { event: name, ...rest } = event;
+    trackMetaplowEvent(name, rest);
   }
 }

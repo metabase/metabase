@@ -2,7 +2,8 @@
 // External const refs (like `const mockFoo = jest.fn()`) cause TDZ errors.
 jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
   trackSdkSimpleEvent: jest.fn(),
-  // SdkAuthMethod is a type — no runtime value needed.
+  getSdkAuthMethod: jest.fn(() => "sso"),
+  getSdkLocaleUsed: jest.fn(() => false),
 }));
 
 jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
@@ -21,7 +22,8 @@ import { useTrackSdkComponentMount } from "./component-events";
 
 const mockTrackSdkSimpleEvent = jest.mocked(trackSdkSimpleEvent);
 
-// Unique instance counter so firedKeys never causes cross-test interference.
+// Unique entity IDs per test so the module-level firedKeys Set never causes
+// cross-test interference (no jest.resetModules() needed).
 let nextId = 1;
 const uniqueId = () => nextId++;
 
@@ -35,6 +37,7 @@ const STUB_DASHBOARD_PROPS = {
 
 interface SetupOptions {
   trackingEnabled?: boolean;
+  sdkTrackerReady?: boolean;
   componentName: SdkComponentName;
   entityId?: number | null;
   properties?: Record<string, unknown>;
@@ -42,6 +45,7 @@ interface SetupOptions {
 
 function setup({
   trackingEnabled = true,
+  sdkTrackerReady = true,
   componentName,
   entityId = null,
   properties = {},
@@ -50,7 +54,7 @@ function setup({
     settingValues: createMockSettings({
       "anon-tracking-enabled": trackingEnabled,
     }),
-    sdkState: createMockSdkState(),
+    sdkState: createMockSdkState({ sdkTrackerReady }),
   });
 
   return renderHookWithProviders(
@@ -64,21 +68,25 @@ describe("useTrackSdkComponentMount", () => {
     jest.clearAllMocks();
   });
 
-  it("fires one event when tracking is enabled", () => {
+  it("fires one event when tracking is enabled and tracker is ready", () => {
+    const entityId = uniqueId();
     setup({
       componentName: "StaticDashboard",
-      entityId: uniqueId(),
+      entityId,
       properties: { ...STUB_DASHBOARD_PROPS, with_title: true },
     });
 
     expect(mockTrackSdkSimpleEvent).toHaveBeenCalledTimes(1);
     expect(mockTrackSdkSimpleEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event: "embedding_sdk_component_rendered",
-        triggered_from: "StaticDashboard",
-        event_detail: expect.stringContaining('"with_title":"true"'),
-      }),
+      expect.objectContaining({ event: "embedding_sdk_component_rendered" }),
     );
+    const call = mockTrackSdkSimpleEvent.mock.calls[0][0];
+    const detail = JSON.parse(call.event_detail ?? "{}");
+    expect(detail.component).toBe("StaticDashboard");
+    expect(detail.properties.with_title).toBe("true");
+    expect(detail.global.auth_method).toBe("sso");
+    expect(detail.global.sdk_version).toBe("1.2.3");
+    expect(detail.global.locale_used).toBe(false);
   });
 
   it("does not fire when tracking is disabled", () => {
@@ -92,10 +100,23 @@ describe("useTrackSdkComponentMount", () => {
     expect(mockTrackSdkSimpleEvent).not.toHaveBeenCalled();
   });
 
-  it("deduplicates — re-renders with the same instance key do not re-fire", () => {
+  it("does not fire when isTrackingEnabled is true but isTrackerReady is false", () => {
+    setup({
+      trackingEnabled: true,
+      sdkTrackerReady: false,
+      componentName: "StaticDashboard",
+      entityId: uniqueId(),
+      properties: STUB_DASHBOARD_PROPS,
+    });
+
+    expect(mockTrackSdkSimpleEvent).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates — re-renders with same key do not re-fire", () => {
+    const entityId = uniqueId();
     const { rerender } = setup({
       componentName: "InteractiveDashboard",
-      entityId: uniqueId(),
+      entityId,
       properties: STUB_DASHBOARD_PROPS,
     });
     rerender();
@@ -104,10 +125,36 @@ describe("useTrackSdkComponentMount", () => {
     expect(mockTrackSdkSimpleEvent).toHaveBeenCalledTimes(1);
   });
 
-  it("fires separate events for two mounts of the same component type", () => {
+  it("deduplicates across separate hook instances with same presence key", () => {
     const { state } = setupSdkState({
       settingValues: createMockSettings({ "anon-tracking-enabled": true }),
-      sdkState: createMockSdkState(),
+      sdkState: createMockSdkState({ sdkTrackerReady: true }),
+    });
+    const renderOptions = {
+      storeInitialState: state,
+      customReducers: sdkReducers,
+    };
+
+    // First mount fires.
+    renderHookWithProviders(
+      () => useTrackSdkComponentMount("CollectionBrowser", null, {}),
+      renderOptions,
+    );
+    // Second mount — same dedup key (CollectionBrowser:presence), already fired.
+    renderHookWithProviders(
+      () => useTrackSdkComponentMount("CollectionBrowser", null, {}),
+      renderOptions,
+    );
+
+    expect(mockTrackSdkSimpleEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("fires separate events for different entity IDs", () => {
+    const idA = uniqueId();
+    const idB = uniqueId();
+    const { state } = setupSdkState({
+      settingValues: createMockSettings({ "anon-tracking-enabled": true }),
+      sdkState: createMockSdkState({ sdkTrackerReady: true }),
     });
     const renderOptions = {
       storeInitialState: state,
@@ -116,54 +163,37 @@ describe("useTrackSdkComponentMount", () => {
 
     renderHookWithProviders(
       () =>
-        useTrackSdkComponentMount(
-          "StaticDashboard",
-          uniqueId(),
-          STUB_DASHBOARD_PROPS,
-        ),
+        useTrackSdkComponentMount("StaticDashboard", idA, STUB_DASHBOARD_PROPS),
       renderOptions,
     );
     renderHookWithProviders(
       () =>
-        useTrackSdkComponentMount(
-          "StaticDashboard",
-          uniqueId(),
-          STUB_DASHBOARD_PROPS,
-        ),
+        useTrackSdkComponentMount("StaticDashboard", idB, STUB_DASHBOARD_PROPS),
       renderOptions,
     );
 
     expect(mockTrackSdkSimpleEvent).toHaveBeenCalledTimes(2);
   });
 
-  it("uses the correct component name as triggered_from", () => {
+  it("uses the correct component name in the emitted event", () => {
     setup({ componentName: "MetabotQuestion", properties: { layout: "auto" } });
 
-    expect(mockTrackSdkSimpleEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ triggered_from: "MetabotQuestion" }),
-    );
+    const call = mockTrackSdkSimpleEvent.mock.calls[0][0];
+    const detail = JSON.parse(call.event_detail ?? "{}");
+    expect(detail.component).toBe("MetabotQuestion");
   });
 
-  it("fires for CreateDashboardModal with empty properties", () => {
+  it("fires a presence event for CreateDashboardModal", () => {
     setup({ componentName: "CreateDashboardModal" });
 
     expect(mockTrackSdkSimpleEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "embedding_sdk_component_rendered",
-        triggered_from: "CreateDashboardModal",
       }),
     );
-  });
-
-  it("includes sdk_version in event_detail JSON", () => {
-    setup({
-      componentName: "StaticDashboard",
-      entityId: uniqueId(),
-      properties: STUB_DASHBOARD_PROPS,
-    });
-
     const call = mockTrackSdkSimpleEvent.mock.calls[0][0];
-    const detail = JSON.parse(call.event_detail!);
-    expect(detail.sdk_version).toBe("1.2.3");
+    const detail = JSON.parse(call.event_detail ?? "{}");
+    expect(detail.component).toBe("CreateDashboardModal");
+    expect(Object.keys(detail.properties)).toHaveLength(0);
   });
 });

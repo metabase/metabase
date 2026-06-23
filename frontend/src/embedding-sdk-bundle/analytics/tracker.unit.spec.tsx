@@ -1,16 +1,13 @@
-jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
-  initSdkTracker: jest.fn(),
-  trackSdkSimpleEvent: jest.fn(),
-}));
-
 jest.mock("embedding-sdk-bundle/analytics/component-events", () => ({
   ...jest.requireActual("embedding-sdk-bundle/analytics/component-events"),
   useIsTrackingEnabled: jest.fn(),
-  setSdkTrackingContext: jest.fn(),
 }));
 
-jest.mock("embedding-sdk-bundle/store", () => ({
-  useSdkStore: jest.fn(),
+jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
+  initSdkTracker: jest.fn(),
+  trackSdkSimpleEvent: jest.fn(),
+  getSdkAuthMethod: jest.fn(),
+  getSdkLocaleUsed: jest.fn(),
 }));
 
 jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
@@ -19,29 +16,24 @@ jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
 
 import { renderHook } from "@testing-library/react";
 
-import {
-  setSdkTrackingContext,
-  useIsTrackingEnabled,
-} from "embedding-sdk-bundle/analytics/component-events";
+import { useIsTrackingEnabled } from "embedding-sdk-bundle/analytics/component-events";
 import {
   initSdkTracker,
   trackSdkSimpleEvent,
 } from "embedding-sdk-bundle/analytics/snowplow";
-import { useSdkStore } from "embedding-sdk-bundle/store";
+import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 
-import {
-  __resetBeaconForTesting,
-  deriveAuthMethod,
-  useInitSdkTracker,
-} from "./tracker";
+import { deriveAuthMethod, useInitSdkTracker } from "./tracker";
 
 const mockUseIsTrackingEnabled = jest.mocked(useIsTrackingEnabled);
-const mockTrackSdkSimpleEvent = jest.mocked(trackSdkSimpleEvent);
-const mockSetSdkTrackingContext = jest.mocked(setSdkTrackingContext);
 const mockInitSdkTracker = jest.mocked(initSdkTracker);
-const mockUseSdkStore = jest.mocked(useSdkStore);
+const mockTrackSdkSimpleEvent = jest.mocked(trackSdkSimpleEvent);
+
+function makeStore() {
+  return { dispatch: jest.fn(), getState: jest.fn() } as any;
+}
 
 const SSO_AUTH_CONFIG: MetabaseAuthConfig = {
   metabaseInstanceUrl: "https://metabase.example.com",
@@ -75,9 +67,7 @@ describe("deriveAuthMethod", () => {
 describe("useInitSdkTracker", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    __resetBeaconForTesting();
     EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = false;
-    mockUseSdkStore.mockReturnValue({ getState: jest.fn() } as never);
   });
 
   afterEach(() => {
@@ -87,64 +77,64 @@ describe("useInitSdkTracker", () => {
   it("does nothing in iframe embed context", () => {
     EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
     mockUseIsTrackingEnabled.mockReturnValue(true);
+    const store = makeStore();
 
-    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, false));
+    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, store, false));
 
-    expect(mockTrackSdkSimpleEvent).not.toHaveBeenCalled();
     expect(mockInitSdkTracker).not.toHaveBeenCalled();
+    expect(store.dispatch).not.toHaveBeenCalled();
   });
 
   it("does nothing when tracking is disabled", () => {
     mockUseIsTrackingEnabled.mockReturnValue(false);
+    const store = makeStore();
 
-    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, false));
+    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, store, false));
 
-    expect(mockTrackSdkSimpleEvent).not.toHaveBeenCalled();
     expect(mockInitSdkTracker).not.toHaveBeenCalled();
+    expect(store.dispatch).not.toHaveBeenCalled();
   });
 
-  it("sets tracking context synchronously during render", () => {
+  it("dispatches setSdkTrackerReady(true) when tracking is enabled", () => {
     mockUseIsTrackingEnabled.mockReturnValue(true);
+    mockInitSdkTracker.mockReturnValue(true);
+    const store = makeStore();
 
-    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, true));
+    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, store, false));
 
-    expect(mockSetSdkTrackingContext).toHaveBeenCalledWith("sso", true);
+    expect(store.dispatch).toHaveBeenCalledWith(setSdkTrackerReady(true));
   });
 
-  it("initializes the SDK Snowplow tracker with the instance URL", () => {
+  it("dispatches setSdkTrackerReady(true) even when tracker was already initialized", () => {
     mockUseIsTrackingEnabled.mockReturnValue(true);
+    mockInitSdkTracker.mockReturnValue(false);
+    const store = makeStore();
 
-    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, false));
+    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, store, false));
 
-    expect(mockInitSdkTracker).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metabaseInstanceUrl: "https://metabase.example.com",
-        getStoreState: expect.any(Function),
-      }),
-    );
+    expect(store.dispatch).toHaveBeenCalledWith(setSdkTrackerReady(true));
   });
 
-  it("fires embedding_sdk_initialized beacon when tracking is enabled", () => {
+  it("fires embedding_sdk_initialized beacon only on first initialization", () => {
     mockUseIsTrackingEnabled.mockReturnValue(true);
+    mockInitSdkTracker.mockReturnValue(true);
+    const store = makeStore();
 
-    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, false));
+    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, store, false));
 
     expect(mockTrackSdkSimpleEvent).toHaveBeenCalledTimes(1);
     expect(mockTrackSdkSimpleEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event: "embedding_sdk_initialized",
-        event_detail: expect.stringContaining('"auth_method":"sso"'),
-      }),
+      expect.objectContaining({ event: "embedding_sdk_initialized" }),
     );
   });
 
-  it("includes sdk_version in the beacon event_detail", () => {
+  it("does not fire the init beacon when tracker was already initialized", () => {
     mockUseIsTrackingEnabled.mockReturnValue(true);
+    mockInitSdkTracker.mockReturnValue(false);
+    const store = makeStore();
 
-    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, false));
+    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, store, false));
 
-    const call = mockTrackSdkSimpleEvent.mock.calls[0][0];
-    const detail = JSON.parse(call.event_detail!);
-    expect(detail.sdk_version).toBe("1.2.3");
+    expect(mockTrackSdkSimpleEvent).not.toHaveBeenCalled();
   });
 });

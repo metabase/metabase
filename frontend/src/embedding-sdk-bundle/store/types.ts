@@ -53,6 +53,9 @@ export type SdkState = {
    * cross-dashboard push overwrites this slot anyway.
    */
   initialDashboardTabId: DashboardTabId | null;
+  // Set to true by useInitSdkTracker after the Snowplow tracker is registered.
+  // Per-mount hooks check this before sending to avoid sending to an uninitialised tracker.
+  sdkTrackerReady: boolean;
 };
 
 export interface SdkStoreState extends State {
