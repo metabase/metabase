@@ -310,7 +310,7 @@
 (defn- table-name+schema
   "The `{:name :schema}` identity a Table is keyed on during sync."
   [table]
-  {:name (:name table), :schema (:schema table)})
+  (select-keys table [:name :schema]))
 
 (mu/defn- table-set :- [:set i/DatabaseMetadataTable]
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
