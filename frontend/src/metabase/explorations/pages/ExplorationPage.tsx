@@ -10,7 +10,7 @@ import { idTag } from "metabase/api/tags";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { Box, Group } from "metabase/ui";
+import { Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   DocumentId,
@@ -38,12 +38,12 @@ import {
   ExplorationChartAreaSkeleton,
   ExplorationGroupVisualization,
 } from "../components/ExplorationVisualization";
+import type { CommentDrafts } from "../components/ExplorationVisualization/ActionToolbar";
 import {
   getInterestingTimelineIds,
   getMostInterestingTimelineId,
 } from "../components/ExplorationVisualization/utils";
 import { setCurrentExploration } from "../explorations.slice";
-
 const QUERY_POLL_INTERVAL_MS = 2000;
 
 const NO_TIMELINE_PARAM = "none";
@@ -101,7 +101,6 @@ export function ExplorationPage({
   params,
   route,
   location,
-  children,
 }: ExplorationPageProps) {
   const dispatch = useDispatch();
 
@@ -123,6 +122,7 @@ export function ExplorationPage({
   // RTK Query reads `pollingInterval` on every render, so deriving it from
   // the response is enough — passing 0 stops polling.
   const [shouldPoll, setShouldPoll] = useState(true);
+  const [commentDrafts, setCommentDrafts] = useState<CommentDrafts>({});
 
   const {
     data: exploration,
@@ -376,7 +376,7 @@ export function ExplorationPage({
       : undefined;
   }, [selectedEntityId, documentIdToDocument]);
 
-  const isCommentsSidebarOpen = Boolean(children);
+  const isCommentsSidebarOpen = location.pathname.includes("/comments");
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -420,7 +420,9 @@ export function ExplorationPage({
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={handleSelectTimelineId}
           interestingTimelineIds={interestingTimelineIds}
-          locationSearch={location.search}
+          commentDrafts={commentDrafts}
+          setCommentDrafts={setCommentDrafts}
+          isCommentsSidebarOpen={isCommentsSidebarOpen}
         />
       )}
       {selectedDocument && (
@@ -436,7 +438,6 @@ export function ExplorationPage({
       {!selectedGroup &&
         !selectedDocument &&
         hasUnsettledQueries(exploration) && <ExplorationChartAreaSkeleton />}
-      {isCommentsSidebarOpen && <Box bg="background-primary">{children}</Box>}
     </Group>
   );
 }

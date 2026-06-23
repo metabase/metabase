@@ -15,7 +15,7 @@ export function useCommentUrl({
   if (!pathname) {
     return "";
   }
-  const existingCommentIndex = pathname.lastIndexOf("/comments/");
+  const existingCommentIndex = pathname.lastIndexOf("/comments");
   const nextPathname =
     existingCommentIndex !== -1
       ? pathname.slice(0, existingCommentIndex)
@@ -24,5 +24,5 @@ export function useCommentUrl({
     ...query,
     ...searchParams,
   }).toString();
-  return `${nextPathname}/comments/${childTargetId ?? ""}${nextSearch ? `?${nextSearch}` : ""}`;
+  return `${nextPathname}/comments${childTargetId ? `/${childTargetId}` : ""}${nextSearch ? `?${nextSearch}` : ""}`;
 }

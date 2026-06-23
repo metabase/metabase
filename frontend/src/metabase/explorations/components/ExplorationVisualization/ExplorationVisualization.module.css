@@ -83,3 +83,7 @@
   margin-top: var(--mantine-spacing-md);
   margin-right: var(--mantine-spacing-md);
 }
+
+.commentsSidebar {
+  border-left: 1px solid var(--mb-color-border-neutral);
+}

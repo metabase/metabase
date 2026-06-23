@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.urls :as channel.urls]
    [metabase.comments.models.comment :as comment]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.render :as comments.render]
@@ -36,11 +37,18 @@
     :model/Exploration (:archived entity)))
 
 (defn- urlpath-for
-  "Generate a URL to an entity"
+  "Generate a relative URL path to an entity."
   [entity]
   (case (t2/model entity)
-    :model/Document    (str "/document/" (:id entity))
-    :model/Exploration (str "/question/research/" (:id entity))))
+    :model/Document    (channel.urls/document-path (:id entity))
+    :model/Exploration (channel.urls/exploration-path (:id entity))))
+
+(defn- friendly-entity-type-for
+  "Generate a friendly name for a comment target type."
+  [entity]
+  (case (t2/model entity)
+    :model/Document    "document"
+    :model/Exploration "research project"))
 
 ;;; schemas
 
@@ -142,7 +150,7 @@
                                          (cond-> clause
                                            (seq mentions) (sql.helpers/where :or [:in :id mentions])))
                        (disj (:email @api/*current-user*)))
-        payload    {:entity_type    (:target_type comment)
+        payload    {:entity_type    (friendly-entity-type-for entity)
                     :entity_title   (:name entity)
                     :comment_href   (comment/url entity comment)
                     :document_href  (urlpath-for entity)

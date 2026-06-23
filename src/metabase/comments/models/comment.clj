@@ -1,6 +1,7 @@
 (ns metabase.comments.models.comment
   (:require
    [metabase.api.common :as api]
+   [metabase.channel.urls :as channel.urls]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -45,28 +46,16 @@
 ;;;
 
 (defn url
-  "Generate an URL to an entity anchored to a comment"
+  "Generate a URL to an entity anchored to a comment."
   [entity comment]
-  (case (t2/model entity)
-    :model/Document (if (:child_target_id comment)
-                      (format "/document/%s/comments/%s#comment-%s"
-                              (:id entity)
-                              (:child_target_id comment)
-                              (:id comment))
-                      ;; NOTE: not used at the time of writing the code, but given that child_target_id is optional I
-                      ;; feel the need to have this clause
-                      (format "/document/%s#comment-%s"
-                              (:id entity)
-                              (:id comment)))
-    :model/Exploration (if (:child_target_id comment)
-                         (format "/question/research/%s/comments/%s#comment-%s"
-                                 (:id entity)
-                                 (:child_target_id comment)
-                                 (:id comment))
-                         ;; NOTE: not used at the time of writing the code, but given that child_target_id is optional I
-                         ;; feel the need to have this clause
-                         (format "/question/research/%s"
-                                 (:id entity)))))
+  (let [base (case (t2/model entity)
+               :model/Document    (channel.urls/document-path (:id entity))
+               :model/Exploration (channel.urls/exploration-path (:id entity)))]
+    (if-let [child (:child_target_id comment)]
+      (format "%s/comments/%s#comment-%s" base child (:id comment))
+      (case (t2/model entity)
+        :model/Document    (format "%s#comment-%s" base (:id comment))
+        :model/Exploration base))))
 
 (defn mentions
   "Find mentioned users inside of a comment content"

@@ -1,0 +1,14 @@
+.toolbar {
+  align-self: center;
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+.commentDropdown {
+  box-shadow: var(--mantine-shadow-xs);
+}
+/* disable the comment editor container styles - we should instead apply border and shadow to the popover dropdown */
+.commentDropdown > * {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}

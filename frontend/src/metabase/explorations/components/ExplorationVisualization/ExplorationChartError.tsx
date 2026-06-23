@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { Center, Icon, Stack, Text } from "metabase/ui";
-import type { ExplorationQuery } from "metabase-types/api";
 
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
 
@@ -23,20 +22,15 @@ function isPermissionError(error: unknown): boolean {
  */
 export function ExplorationChartError({
   name,
-  explorationQuery,
   error,
 }: {
   name: string | null;
-  explorationQuery?: ExplorationQuery;
   error: unknown;
 }) {
   const permission = isPermissionError(error);
   return (
     <>
-      <ExplorationVisualizationHeader
-        name={name ?? ""}
-        explorationQuery={explorationQuery}
-      />
+      <ExplorationVisualizationHeader name={name ?? ""} />
       <Center h="100%" p="md">
         <Stack align="center" gap="sm" maw="20rem">
           <Icon
