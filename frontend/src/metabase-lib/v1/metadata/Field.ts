@@ -35,20 +35,19 @@ import type Metadata from "./Metadata";
 import type Table from "./Table";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
 
-/**
- * Wrapper class for field metadata objects. Belongs to a Table.
- */
-
 // This interface is intentionally empty: a class cannot `extends` a type alias,
 // so merging an interface with the class is how instances inherit the API
 // field's properties without re-declaring them. The class declares the rest.
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- empty by design, see above
+//
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface Field extends Omit<
   ApiField,
   "table" | "target" | "name_field" | "fingerprint"
 > {}
 
 /**
+ * Wrapper class for field metadata objects. Belongs to a Table.
+ *
  * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
  */
 class Field {
