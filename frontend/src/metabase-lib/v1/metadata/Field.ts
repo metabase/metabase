@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import _ from "underscore";
 
 import { formatField, stripId } from "metabase/utils/formatting";
@@ -26,16 +24,13 @@ import {
   isTime,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
+  Field as ApiField,
   FieldFingerprint,
-  FieldFormattingSettings,
   FieldId,
   FieldReference,
-  FieldValuesType,
-  FieldVisibilityType,
   NormalizedField,
 } from "metabase-types/api";
 
-import Base from "./Base";
 import type Metadata from "./Metadata";
 import type Table from "./Table";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
@@ -48,36 +43,35 @@ import { getIconForField, getUniqueFieldId } from "./utils/fields";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 
+// Merging this interface with the class gives instances the API field's
+// properties without re-declaring them; only the hydrated relationships and the
+// metadata-specific extras differ from the plain API field.
+interface Field extends Omit<
+  ApiField,
+  "table" | "target" | "name_field" | "fingerprint"
+> {
+  _plainObject: NormalizedField;
+  table?: Table;
+  target?: Field;
+  name_field?: Field;
+  fingerprint?: FieldFingerprint;
+  metadata?: Metadata;
+  remapping?: Map<unknown, unknown>;
+  source?: string;
+  uniqueId?: string | number;
+}
+
 /**
  * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
  */
-// eslint-disable-next-line import/no-default-export
-export default class Field extends Base {
-  id: FieldId | FieldReference;
-  name: string;
-  display_name: string;
-  description: string | null;
-  semantic_type: string | null;
-  fingerprint?: FieldFingerprint;
-  base_type: string;
-  effective_type?: string | null;
-  table?: Table;
-  table_id?: Table["id"];
-  target?: Field;
-  name_field?: Field;
-  remapping?: unknown;
-  has_field_values?: FieldValuesType;
-  has_more_values?: boolean;
-  values: any[];
-  position: number;
-  metadata?: Metadata;
-  source?: string;
-  nfc_path?: string[];
-  json_unfolding: boolean | null;
-  coercion_strategy: string | null;
-  fk_target_field_id: FieldId | null;
-  settings?: FieldFormattingSettings;
-  visibility_type: FieldVisibilityType;
+class Field {
+  constructor(object: Record<string, unknown> = {}) {
+    this._plainObject = object as unknown as NormalizedField;
+
+    for (const property in object) {
+      (this as Record<string, unknown>)[property] = object[property];
+    }
+  }
 
   getPlainObject(): NormalizedField {
     return this._plainObject;
@@ -109,8 +103,8 @@ export default class Field extends Base {
   }
 
   path() {
-    const path = [];
-    let field = this;
+    const path: Field[] = [];
+    let field: Field | null = this;
 
     do {
       path.unshift(field);
@@ -276,7 +270,7 @@ export default class Field extends Base {
     const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
 
     if (displayFieldId != null) {
-      return this.metadata.field(displayFieldId);
+      return this.metadata?.field(displayFieldId) ?? null;
     }
 
     // enables "implicit" remapping from type/PK to type/Name on the same table,
@@ -294,26 +288,28 @@ export default class Field extends Base {
    * Returns the human readable remapped value, if any
    * @returns {?string}
    */
-  remappedValue(value) {
+  remappedValue(value: unknown) {
     // TODO: Ugh. Should this be handled further up by the parameter widget?
-    if (this.isNumeric() && typeof value !== "number") {
-      value = parseFloat(value);
+    let key = value;
+    if (this.isNumeric() && typeof key !== "number") {
+      key = parseFloat(String(key));
     }
 
-    return this.remapping && this.remapping.get(value);
+    return this.remapping && this.remapping.get(key);
   }
 
   /**
    * Returns whether the field has a human readable remapped value for this value
    * @returns {?string}
    */
-  hasRemappedValue(value) {
+  hasRemappedValue(value: unknown) {
     // TODO: Ugh. Should this be handled further up by the parameter widget?
-    if (this.isNumeric() && typeof value !== "number") {
-      value = parseFloat(value);
+    let key = value;
+    if (this.isNumeric() && typeof key !== "number") {
+      key = parseFloat(String(key));
     }
 
-    return this.remapping && this.remapping.has(value);
+    return this.remapping && this.remapping.has(key);
   }
 
   /**
@@ -338,13 +334,16 @@ export default class Field extends Base {
     return this.isSearchable() ? this : null;
   }
 
-  clone(fieldMetadata?: FieldMetadata) {
+  clone(fieldMetadata?: Partial<NormalizedField>) {
     if (fieldMetadata instanceof Field) {
       throw new Error("`fieldMetadata` arg must be a plain object");
     }
 
     const plainObject = this.getPlainObject();
-    const newField = new Field({ ...this, ...fieldMetadata });
+    const newField = new Field({ ...this, ...fieldMetadata } as Record<
+      string,
+      unknown
+    >);
     newField._plainObject = { ...plainObject, ...fieldMetadata };
 
     return newField;
@@ -367,13 +366,13 @@ export default class Field extends Base {
 
   /* istanbul ignore next */
   _constructor(
-    id,
-    name,
-    display_name,
-    description,
-    table,
-    name_field,
-    metadata,
+    id: FieldId | FieldReference,
+    name: string,
+    display_name: string,
+    description: string | null,
+    table: Table,
+    name_field: Field,
+    metadata: Metadata,
   ) {
     this.id = id;
     this.name = name;
@@ -384,3 +383,6 @@ export default class Field extends Base {
     this.metadata = metadata;
   }
 }
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Field;
