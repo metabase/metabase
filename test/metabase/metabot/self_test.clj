@@ -500,7 +500,7 @@
               events)))))
 
 (deftest parts->aisdk-sse-xf-usage-test
-  (testing "accumulated usage lands on finish.message_metadata, last snapshot per model"
+  (testing "accumulated usage lands on finish.messageMetadata, last snapshot per model"
     (let [parts  [{:type :start :id "m"}
                   {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 5 :completionTokens 1}}
                   {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
@@ -509,9 +509,9 @@
           finish (last (sse-events parts))]
       (is (= {:type "finish"
               :finishReason "stop"
-              :messageMetadata {:usage          {:input_tokens 12 :output_tokens 8 :total_tokens 20}
-                                :usage_by_model {:claude-sonnet-4-6 {:input_tokens 10 :output_tokens 5 :total_tokens 15}
-                                                 :gpt-5             {:input_tokens 2 :output_tokens 3 :total_tokens 5}}}}
+              :messageMetadata {:usage        {:inputTokens 12 :outputTokens 8 :totalTokens 20}
+                                :usageByModel {:claude-sonnet-4-6 {:inputTokens 10 :outputTokens 5 :totalTokens 15}
+                                               :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5}}}}
              finish))))
   (testing "finish omits messageMetadata when no usage was observed"
     (is (not (contains? (last (sse-events [{:type :text :id "t" :text "x"}]))

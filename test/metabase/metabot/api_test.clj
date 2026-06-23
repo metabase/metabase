@@ -71,7 +71,7 @@
                     (let [text-deltas (filter #(= "text-delta" (:type %)) events)]
                       (is (= "Hello from native agent!"
                              (apply str (map :delta text-deltas)))))
-                    (is (=? {:messageMetadata {:usage {:input_tokens 10 :output_tokens 5 :total_tokens 15}}}
+                    (is (=? {:messageMetadata {:usage {:inputTokens 10 :outputTokens 5 :totalTokens 15}}}
                             (last events))
                         "finish event carries accumulated usage"))
                   (is (=? {:user_id (mt/user->id :rasta)}
@@ -254,8 +254,9 @@
                          :data    {:status 503 :provider :test}}
                         (:error @stored-kwargs))
                     "the throwable becomes a structured error payload")
-                (testing "the failure is streamed to the client as an AI SDK error part (3:...) rather than a silent close"
-                  (is (some #(str/starts-with? % "3:") (str/split-lines response)))
+                (testing "the failure is streamed to the client as an AI SDK error part rather than a silent close"
+                  (is (some #(str/includes? % "\"type\":\"error\"")
+                            (str/split-lines response)))
                   (is (re-find #"(?i)agent setup exploded" response)))))))))))
 
 (deftest settings-get-returns-live-models-test

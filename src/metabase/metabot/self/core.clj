@@ -260,8 +260,8 @@
 
   Input: `{\"provider/model\" {:promptTokens N :completionTokens N}}`.
 
-  Output: `{:usage {:input_tokens N :output_tokens N :total_tokens N}
-            :usage_by_model {\"provider/model\" {…}}}`
+  Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N}
+            :usageByModel {\"provider/model\" {…}}}`
 
   Returns nil if no usage was observed. Reasoning/cached token counts are
   omitted — our provider adapters don't surface them yet."
@@ -270,14 +270,14 @@
     (let [by-model (update-vals usage-by-model
                                 (fn [{:keys [promptTokens completionTokens]
                                       :or   {promptTokens 0 completionTokens 0}}]
-                                  {:input_tokens  promptTokens
-                                   :output_tokens completionTokens
-                                   :total_tokens  (+ promptTokens completionTokens)}))
+                                  {:inputTokens  promptTokens
+                                   :outputTokens completionTokens
+                                   :totalTokens  (+ promptTokens completionTokens)}))
           totals   (reduce (partial merge-with +)
-                           {:input_tokens 0 :output_tokens 0 :total_tokens 0}
+                           {:inputTokens 0 :outputTokens 0 :totalTokens 0}
                            (vals by-model))]
-      {:usage          totals
-       :usage_by_model by-model})))
+      {:usage        totals
+       :usageByModel by-model})))
 
 (defn- tool-output->wire-output
   "The `tool-output-available` event's `:output` value: the LLM-facing output
