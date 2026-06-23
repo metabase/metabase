@@ -36,10 +36,6 @@ import type Table from "./Table";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
 
 /**
- * @typedef { import("./Metadata").FieldValues } FieldValues
- */
-
-/**
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 
@@ -48,30 +44,32 @@ import { getIconForField, getUniqueFieldId } from "./utils/fields";
 // hydrated relationships are represented.
 type FieldInput = Partial<ApiField> | Partial<NormalizedField>;
 
-// Merging this interface with the class gives instances the API field's
-// properties without re-declaring them. `table`/`target`/`name_field` are id
-// references in the plain object (see `_plainObject`/`NormalizedField`); the
-// metadata layer hydrates them into instances (`hydrateField`), so the typed
-// shape here describes a hydrated field, which is how consumers use it.
+// This interface is intentionally empty: a class cannot `extends` a type alias,
+// so merging an interface with the class is how instances inherit the API
+// field's properties without re-declaring them. The class declares the rest.
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- empty by design, see above
 interface Field extends Omit<
   ApiField,
   "table" | "target" | "name_field" | "fingerprint"
-> {
-  table?: Table;
-  target?: Field;
-  name_field?: Field;
-  fingerprint?: FieldFingerprint;
-}
+> {}
 
 /**
  * @deprecated use RTK Query endpoints and plain api objects from metabase-types/api
  */
 class Field {
-  declare _plainObject: NormalizedField;
-  declare metadata?: Metadata;
-  declare remapping?: Map<unknown, unknown>;
-  declare source?: string;
-  declare uniqueId?: string | number;
+  // `table`/`target`/`name_field` are id references in the plain object and are
+  // hydrated into instances by the metadata layer (`hydrateField`), so these
+  // types describe a hydrated field. Properties are populated by the
+  // constructor's copy loop or by hydration.
+  table?: Table;
+  target?: Field;
+  name_field?: Field;
+  fingerprint?: FieldFingerprint;
+  _plainObject: NormalizedField;
+  metadata?: Metadata;
+  remapping?: Map<unknown, unknown>;
+  source?: string;
+  uniqueId?: string | number;
 
   constructor(object: FieldInput = {}) {
     const plainObject = object as Record<string, unknown>;
@@ -228,9 +226,6 @@ class Field {
     return isFK(this);
   }
 
-  /**
-   * @returns {FieldValues}
-   */
   fieldValues() {
     return getFieldValues(this._plainObject);
   }
@@ -271,10 +266,6 @@ class Field {
     return null;
   }
 
-  /**
-   * Returns the remapped field, if any
-   * @return {?Field}
-   */
   remappedExternalField() {
     const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
 
@@ -293,10 +284,6 @@ class Field {
     return null;
   }
 
-  /**
-   * Returns the human readable remapped value, if any
-   * @returns {?string}
-   */
   remappedValue(value: unknown) {
     // TODO: Ugh. Should this be handled further up by the parameter widget?
     let key = value;
@@ -307,10 +294,6 @@ class Field {
     return this.remapping && this.remapping.get(key);
   }
 
-  /**
-   * Returns whether the field has a human readable remapped value for this value
-   * @returns {?string}
-   */
   hasRemappedValue(value: unknown) {
     // TODO: Ugh. Should this be handled further up by the parameter widget?
     let key = value;
@@ -321,10 +304,7 @@ class Field {
     return this.remapping && this.remapping.has(key);
   }
 
-  /**
-   * Returns true if this field can be searched, e.x. in filter or parameter widgets
-   * @returns {boolean}
-   */
+  // Returns true if this field can be searched, e.g. in filter or parameter widgets
   isSearchable() {
     // TODO: ...?
     return this.isString();
@@ -358,17 +338,6 @@ class Field {
   isVirtual() {
     return typeof this.id !== "number";
   }
-
-  /**
-   * @private
-   * @param {number} id
-   * @param {string} name
-   * @param {string} display_name
-   * @param {string} description
-   * @param {Table} table
-   * @param {?Field} name_field
-   * @param {Metadata} metadata
-   */
 
   /* istanbul ignore next */
   _constructor(
