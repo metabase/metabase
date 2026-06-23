@@ -249,20 +249,24 @@ describe("issue 51926", () => {
       display: "pivot",
     });
 
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
-
     H.openVizTypeSidebar();
-    H.leftSidebar().findByTestId("Table-button").click();
-    // Switching to the flat Table viz re-runs the query; wait for it so the
-    // switch fully settles before picking the next viz type. Clicking both
-    // buttons back-to-back lets the two viz switches race, and the Table
-    // switch can land last and win — leaving the viz stuck on Table.
-    cy.wait("@dataset");
 
+    // Switch to the flat Table viz first, then wait until the sidebar marks
+    // that button as selected before picking the next viz type. Clicking both
+    // viz-type buttons back-to-back lets the two switches race: the second
+    // click can land on the sidebar mid-re-render and be lost, leaving the viz
+    // stuck on Table. Gating on the button's selected state keeps the DOM
+    // stable across both clicks so neither switch is dropped.
+    H.leftSidebar().findByTestId("Table-button").click();
+    H.leftSidebar()
+      .findByTestId("Table-button")
+      .should("have.attr", "data-is-selected", "true");
+
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
     H.leftSidebar().findByTestId("Pivot Table-button").click();
-    // Wait for the pivot query triggered by switching back to the pivot viz
-    // type to finish before asserting on the rendered cells.
+    H.leftSidebar()
+      .findByTestId("Pivot Table-button")
+      .should("have.attr", "data-is-selected", "true");
     cy.wait("@pivotDataset");
 
     cy.findAllByTestId("pivot-table-cell").should("contain", "April 27, 2025"); // expect this to break when we shift years in the Sample Database
