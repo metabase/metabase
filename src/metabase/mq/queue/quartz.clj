@@ -1,32 +1,37 @@
 (ns metabase.mq.queue.quartz
   "Push-based queue backend built on Quartz.
 
-  Each published batch is scheduled as a one-shot Quartz job that fires immediately, with the
-  encoded payload carried in the job's data map. Quartz's clustered JDBC JobStore (the `QRTZ_*`
-  tables) is the durable, cross-node queue, and Quartz's worker threads *push* delivery — there is
-  no poll loop, no storage table of our own, and no lease/heartbeat. The poll-shaped
-  `QueueBackend` hooks (`fetch!`, `recover-stale!`, `run-heartbeats!`, ack/nack, depth) are
-  therefore no-ops; their responsibilities are owned by Quartz instead:
+  Every declared queue gets one durable Quartz job (keyed by the queue name); each published batch
+  is a one-shot *trigger* on that job, carrying the encoded payload in the trigger's data map.
+  Quartz's clustered JDBC JobStore (the `QRTZ_*` tables) is the durable, cross-node queue and
+  Quartz's worker threads *push* delivery — there is no poll loop, no storage table of our own, and
+  no lease/heartbeat. The poll-shaped `QueueBackend` hooks (`fetch!`, `recover-stale!`,
+  `run-heartbeats!`, ack/nack, depth) are therefore no-ops; their responsibilities are owned by
+  Quartz instead:
 
-    - delivery       — the scheduler fires [[QueueMessageJob]] on a worker thread
-    - retry          — a failed batch reschedules itself with backoff up to `queue-max-retries`
+    - delivery       — the scheduler fires the queue's job on a worker thread, once per trigger
+    - retry          — a failed batch reschedules itself (a fresh trigger) with backoff up to
+                       `queue-max-retries`
     - durability     — the JDBC JobStore persists the trigger until it fires successfully
     - crash recovery — `requestRecovery` re-fires a job interrupted by a node crash on another node
                        (at-least-once)
 
   Like the other backends this delivers at-least-once, so listeners must be idempotent.
 
-  Not (yet) supported: `:exclusive` queues. The poll backends enforce at-most-one-in-flight
-  cluster-wide via a row lease; with one independent Quartz job per batch there is no per-queue
-  serialization point, so exclusivity/ordering is not honored. No queue currently declares
-  `:exclusive`, so this is a known gap rather than a regression."
+  Exclusive queues: a queue declared `{:exclusive true}` uses a job class annotated
+  `@DisallowConcurrentExecution`, which Quartz honors cluster-wide — at most one batch for that
+  queue executes at a time across the whole cluster (one thread on one node). Because all of a
+  queue's messages are triggers on a *single* per-queue job, the annotation (which keys on job
+  identity) serializes them. Non-exclusive queues use a plain job class and run concurrently up to
+  the Quartz thread pool. This is mutual exclusion, not ordering — Quartz does not fire blocked
+  triggers in submission order."
   (:require
-   [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.settings :as mq.settings]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
@@ -41,8 +46,8 @@
   :queue.backend/quartz)
 
 (def ^:private job-group
-  "Quartz group every queue-message job/trigger lives in, so they're easy to isolate from the rest
-  of the scheduler's jobs."
+  "Quartz group every queue job/trigger lives in, so they're easy to isolate from the rest of the
+  scheduler's jobs."
   "metabase.mq.queue")
 
 ;; Job-data keys. All values are stored as strings so the data map round-trips through the JDBC
@@ -58,61 +63,90 @@
   [attempt]
   (min 60000 (* 1000 (long (Math/pow 2 (dec attempt))))))
 
-(declare schedule-message-job!)
+(defn- queue-job-key [queue]
+  (jobs/key (name queue) job-group))
 
-(task/defjob ^{:doc "Delivers one published queue batch, rescheduling itself on failure."}
-  QueueMessageJob
-  [ctx]
-  (let [^JobExecutionContext ctx ctx
-        data    (qc/from-job-data ctx)
-        queue   (keyword "queue" (get data data-queue))
-        payload (get data data-payload)
-        attempt (Integer/parseInt (str (get data data-attempt "0")))]
+(defn- schedule-message-trigger!
+  "Adds a one-shot trigger to `queue`'s durable job (which must already exist) that fires at
+  `start-at`, carrying `payload` and the retry `attempt` counter in the trigger's data map."
+  [^Scheduler scheduler queue payload attempt ^Date start-at]
+  (.scheduleJob scheduler
+                (triggers/build
+                 (triggers/with-identity (triggers/key (str (random-uuid)) job-group))
+                 (triggers/for-job (queue-job-key queue))
+                 (triggers/start-at start-at)
+                 (triggers/using-job-data {data-payload payload
+                                           data-attempt (str attempt)}))))
+
+(defn- deliver-batch!
+  "Shared job body. Reads the merged job+trigger data, delivers the batch, and on listener failure
+  reschedules a fresh trigger (attempt+1, backoff) onto the firing scheduler — or drops it once
+  `queue-max-retries` is reached. Rescheduling uses `(.getScheduler ctx)` rather than the dynamic
+  `(task/scheduler)`, which isn't bound on Quartz's worker threads; in a cluster the retry lands in
+  the shared JDBC store so any node can pick it up."
+  [^JobExecutionContext ctx]
+  (let [data    (.getMergedJobDataMap ctx)
+        queue   (keyword "queue" (.getString data data-queue))
+        payload (.getString data data-payload)
+        attempt (Integer/parseInt (or (.getString data data-attempt) "0"))]
     (when-not (mq.impl/deliver-reporting! queue payload)
       (let [next-attempt (inc attempt)
             labels       {:backend (name backend-id) :channel (name queue)}]
         (if (< next-attempt (mq.settings/queue-max-retries))
           (do
             (analytics/inc! :metabase-mq/queue-batch-retries labels)
-            ;; Reschedule onto the scheduler that fired this job (NOT the dynamic
-            ;; `(task/scheduler)`, which isn't bound on Quartz's worker threads). In a cluster the
-            ;; retry lands in the shared JDBC store, so any node can pick it up.
-            (schedule-message-job! (.getScheduler ctx) queue payload next-attempt
-                                   (Date. (long (+ (System/currentTimeMillis) (retry-delay-ms next-attempt))))))
+            (schedule-message-trigger! (.getScheduler ctx) queue payload next-attempt
+                                       (Date. (long (+ (System/currentTimeMillis) (retry-delay-ms next-attempt))))))
           (do
             (log/warnf "Queue batch for %s exhausted retries (%d), dropping"
                        queue (mq.settings/queue-max-retries))
             (analytics/inc! :metabase-mq/queue-batch-permanent-failures labels)))))
-    ;; Quartz's Job.execute returns void — make the body's tail nil so the deftype method compiles.
+    ;; Quartz's Job.execute returns void — the body's tail must be nil for the deftype to compile.
     nil))
 
-(defn- schedule-message-job!
-  "Schedules a one-shot Quartz job on `scheduler` that delivers `payload` to `queue` at `start-at`,
-  carrying the retry `attempt` counter (0 on first delivery). `requestRecovery` is set so a node
-  crash mid-delivery re-fires the job on another node. No-ops when `scheduler` is nil."
-  [^Scheduler scheduler queue payload attempt ^Date start-at]
-  (let [id      (str (random-uuid))
-        job     (jobs/build
-                 (jobs/of-type QueueMessageJob)
-                 (jobs/with-identity (jobs/key id job-group))
-                 ;; re-fire on another node if the executing node crashes mid-delivery (at-least-once)
-                 (jobs/request-recovery)
-                 ;; non-durable (the default): the job is removed once its one-shot trigger fires
-                 (jobs/using-job-data {data-queue   (name queue)
-                                       data-payload payload
-                                       data-attempt (str attempt)}))
-        trigger (triggers/build
-                 (triggers/with-identity (triggers/key id job-group))
-                 (triggers/for-job job)
-                 (triggers/start-at start-at))]
-    (task/schedule-task! scheduler job trigger)))
+(task/defjob ^{:doc "Delivers a queue batch (non-exclusive queues; runs concurrently)."}
+  QueueMessageJob
+  [ctx]
+  (deliver-batch! ctx))
+
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
+               :doc "Delivers a batch for an :exclusive queue — at most one execution per queue cluster-wide."}
+  ExclusiveQueueMessageJob
+  [ctx]
+  (deliver-batch! ctx))
+
+(def ^:private ensured-jobs
+  "Per-process cache of queues whose durable Quartz job has been created, keyed by
+  `[queue exclusive?]`, so we don't re-issue `addJob` on every publish. Safe as a process-lifetime
+  cache: production runs one persistent (JDBC) scheduler whose durable jobs survive restarts, and a
+  change to a queue's `:exclusive` flag re-ensures under the new key (replacing the job class)."
+  (atom #{}))
+
+(defn- ensure-queue-job!
+  "Idempotently creates `queue`'s durable job — a `@DisallowConcurrentExecution` job when
+  `exclusive?`, otherwise a plain concurrent one. The job carries no payload (messages are triggers
+  on it), so it is durable (persists across the gaps between messages) and requests recovery
+  (re-fires interrupted work after a crash)."
+  [^Scheduler scheduler queue exclusive?]
+  (when-not (contains? @ensured-jobs [queue exclusive?])
+    (.addJob scheduler
+             (jobs/build
+              (jobs/of-type (if exclusive? ExclusiveQueueMessageJob QueueMessageJob))
+              (jobs/with-identity (queue-job-key queue))
+              (jobs/store-durably)
+              (jobs/request-recovery)
+              (jobs/using-job-data {data-queue (name queue)}))
+             true)
+    (swap! ensured-jobs conj [queue exclusive?])))
 
 (defrecord QuartzQueueBackend []
   q.backend/QueueBackend
   (backend-id [_this] backend-id)
 
   (publish! [_this queue payload]
-    (schedule-message-job! (task/scheduler) queue payload 0 (Date.)))
+    (when-let [scheduler (task/scheduler)]
+      (ensure-queue-job! scheduler queue (q.registry/exclusive? queue))
+      (schedule-message-trigger! scheduler queue payload 0 (Date.))))
 
   ;; Push backend — Quartz drives everything below, so these poll-driver hooks are never invoked
   ;; (the poll loop is never started) and exist only to satisfy the protocol.
