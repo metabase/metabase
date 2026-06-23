@@ -6,7 +6,7 @@ import {
   useGetCollectionQuery,
   useListTimelinesQuery,
 } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -62,6 +62,7 @@ function NewEventModalContainer({
       collection={collection}
       onSubmit={onSubmit}
       onSubmitSuccess={onClose}
+      onClose={onClose}
     />
   );
 }

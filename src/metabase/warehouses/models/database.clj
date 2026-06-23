@@ -691,7 +691,9 @@
   (t2/reducible-select (keyword "model" model-name)
                        {:where (cond-> [:and
                                         (or where true)
-                                        [:= :router_database_id nil]]
+                                        [:= :router_database_id nil]
+                                        ;; never export the sample database, regardless of its driver
+                                        [:not= :is_sample true]]
                                  (not *include-h2-in-extract?*)
                                  (conj [:not= :engine "h2"]))}))
 

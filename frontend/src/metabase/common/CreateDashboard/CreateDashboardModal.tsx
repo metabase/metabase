@@ -3,7 +3,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { useDispatch } from "metabase/redux";
 import { Modal, type ModalProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -39,15 +38,12 @@ export const CreateDashboardModal = ({
     [onCreate, onClose, dispatch],
   );
 
-  useEscapeToCloseModal(onClose);
-
   return (
     <Modal
       title={t`New dashboard`}
       onClose={() => onClose?.()}
       data-testid="new-dashboard-modal"
       size="lg"
-      closeOnEscape={false}
       opened={opened}
     >
       <CreateDashboardForm

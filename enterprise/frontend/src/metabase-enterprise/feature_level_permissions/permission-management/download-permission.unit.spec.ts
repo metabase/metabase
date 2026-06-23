@@ -1,5 +1,7 @@
 import {
+  DataPermission,
   DataPermissionValue,
+  type DownloadPermission,
   type Group,
   type GroupsPermissions,
 } from "metabase-types/api";
@@ -14,23 +16,45 @@ const groupId = 2;
 
 const databaseId = 1;
 
-const getPermissionGraph = (downloadValue = "all"): GroupsPermissions =>
-  ({
-    [defaultGroupId]: {
-      [databaseId]: {
-        download: {
-          schemas: "all",
-        },
+const getPermissionGraph = (
+  downloadValue: DownloadPermission = DataPermissionValue.FULL,
+): GroupsPermissions => ({
+  [defaultGroupId]: {
+    [databaseId]: {
+      [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
+      [DataPermission.DOWNLOAD]: {
+        schemas: DataPermissionValue.FULL,
       },
     },
-    [groupId]: {
-      [databaseId]: {
-        download: {
-          schemas: downloadValue,
-        },
+  },
+  [groupId]: {
+    [databaseId]: {
+      [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
+      [DataPermission.DOWNLOAD]: {
+        schemas: downloadValue,
       },
     },
-  }) as any;
+  },
+});
+
+const getBlockedViewDataPermissionGraph = (): GroupsPermissions => ({
+  [defaultGroupId]: {
+    [databaseId]: {
+      [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+      [DataPermission.DOWNLOAD]: {
+        schemas: DataPermissionValue.LIMITED,
+      },
+    },
+  },
+  [groupId]: {
+    [databaseId]: {
+      [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+      [DataPermission.DOWNLOAD]: {
+        schemas: DataPermissionValue.LIMITED,
+      },
+    },
+  },
+});
 
 const isAdmin = true;
 const isNotAdmin = false;
@@ -39,7 +63,9 @@ const dataAccessPermissionValue = DataPermissionValue.UNRESTRICTED;
 const defaultGroup: Group = {
   id: defaultGroupId,
   name: "All Users",
-} as Group;
+  magic_group_type: "all-internal-users",
+  members: [],
+};
 
 describe("buildDownloadPermission", () => {
   it("sets correct permission and type fields and value", () => {
@@ -53,7 +79,7 @@ describe("buildDownloadPermission", () => {
       "schemas",
     );
 
-    expect(permissionModel.value).toBe("all");
+    expect(permissionModel.value).toBe(DataPermissionValue.FULL);
     expect(permissionModel.type).toBe("download");
     expect(permissionModel.permission).toBe("download");
   });
@@ -169,7 +195,7 @@ describe("buildDownloadPermission", () => {
         { databaseId },
         groupId,
         isNotAdmin,
-        getPermissionGraph("none"),
+        getPermissionGraph(DataPermissionValue.NONE),
         dataAccessPermissionValue,
         defaultGroup,
         "schemas",
@@ -181,6 +207,27 @@ describe("buildDownloadPermission", () => {
       expect(permissionModel.warning).toBe(
         'The "All Users" group has a higher level of access than this, which will override this setting. You should limit or revoke the "All Users" group\'s access to this item.',
       );
+      expect(downgradePermissionConfirmation?.message).toBeUndefined();
+    });
+
+    it("does not warn when both groups have blocked view data access (#75750)", () => {
+      const permissionModel = buildDownloadPermission(
+        { databaseId },
+        groupId,
+        isNotAdmin,
+        getBlockedViewDataPermissionGraph(),
+        DataPermissionValue.BLOCKED,
+        defaultGroup,
+        "schemas",
+      );
+
+      const [downgradePermissionConfirmation] =
+        permissionModel.confirmations?.(DataPermissionValue.NONE) ?? [];
+
+      expect(permissionModel.value).toBe(
+        DOWNLOAD_PERMISSION_OPTIONS.none.value,
+      );
+      expect(permissionModel.warning).toBeNull();
       expect(downgradePermissionConfirmation?.message).toBeUndefined();
     });
   });

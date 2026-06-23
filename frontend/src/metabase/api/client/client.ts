@@ -309,7 +309,7 @@ export class ApiClient extends EventEmitter<EventMap> {
 
   /**
    * Resolve with the raw `Response`, leaving everything after the network to the
-   * caller: unlike `request`, it does not read the body, recover a 202 `_status`,
+   * caller: unlike `request`, it does not read the body,
    * emit events, or throw on a non-2xx status. For streaming callers (e.g. SSE)
    * that consume `response.body` and do their own error handling, while still
    * getting the client pipeline — middleware, client headers, anti-CSRF, and

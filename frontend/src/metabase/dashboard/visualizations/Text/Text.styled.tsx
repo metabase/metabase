@@ -271,7 +271,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown tr {
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
   }
 
   .text-card-markdown tr:nth-of-type(even) {
@@ -281,7 +281,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   .text-card-markdown th,
   .text-card-markdown td {
     padding: 0.75em;
-    border: 1px solid var(--mb-color-border);
+    border: 1px solid var(--mb-color-border-neutral);
   }
 
   .text-card-markdown code {
@@ -301,7 +301,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
 
   .text-card-markdown blockquote {
     color: var(--mb-color-text-secondary);
-    border-left: 5px solid var(--mb-color-border);
+    border-left: 5px solid var(--mb-color-border-neutral);
     padding: 0 1.5em 0 17px;
     margin: 0.5em 0 0.5em 1em;
   }

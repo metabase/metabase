@@ -9,7 +9,7 @@ export const SectionContainer = styled.div`
   ${Radio.RadioGroupVariants.join(", ")} {
     padding-top: 1rem;
     padding-inline: 1.5rem;
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
   }
 
   ${Radio.RadioContainerVariants.join(", ")} {

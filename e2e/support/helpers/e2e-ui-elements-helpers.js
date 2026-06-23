@@ -31,9 +31,7 @@ export function menu() {
 }
 
 export function modal(options = {}) {
-  const MODAL_SELECTOR = ".mb-mantine-Modal-content[role='dialog']";
-  const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
-  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","), options);
+  return cy.get(".mb-mantine-Modal-content[role='dialog']", options);
 }
 
 export function tooltip() {

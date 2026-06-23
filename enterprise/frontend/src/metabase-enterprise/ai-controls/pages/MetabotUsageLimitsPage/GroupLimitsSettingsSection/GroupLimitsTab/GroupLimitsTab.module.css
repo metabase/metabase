@@ -1,5 +1,5 @@
 .TableContainer {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   background: var(--mb-color-background-primary);
   overflow: hidden;
@@ -13,7 +13,7 @@
 
 .HeaderCell {
   background: var(--mb-color-background-primary);
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   box-sizing: border-box;
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
@@ -25,7 +25,7 @@
 }
 
 .BodyRow {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 
   &:last-child {
     border-bottom: none;

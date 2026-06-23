@@ -422,6 +422,66 @@
               (is (some? dash-res) "expected the dashboard to appear in search results")
               (is (not (contains? dash-res :portable_entity_id))))))))))
 
+(deftest entity-refs->search-results-test
+  (testing "hydrates {:model :id} refs (as stored by the semantic layer) into enriched search records"
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Card {m-id :id m-eid :entity_id}
+                     {:name "Hydrate Sample Model" :type :model
+                      :database_id (mt/id) :table_id (mt/id :orders)
+                      :dataset_query {:database (mt/id) :type :query
+                                      :query {:source-table (mt/id :orders)}}}]
+        (mt/with-temp [:model/Card {q-id :id} {:name "Hydrate Sample Question"
+                                               :database_id (mt/id) :table_id (mt/id :orders)
+                                               :dataset_query {:database (mt/id) :type :query
+                                                               :query {:source-table (mt/id :orders)}}}]
+          (let [results (search/entity-refs->search-results
+                         [{:model "model" :id m-id}
+                          {:model "table" :id (mt/id :orders)}
+                          {:model "card" :id q-id}              ; normalized to "question"
+                          {:model "model" :id Integer/MAX_VALUE}]) ; nonexistent → dropped
+                by-id   (into {} (map (juxt (juxt :type :id) identity)) results)]
+            (testing "model ref hydrates with type, name, and portable_entity_id"
+              (is (=? {:type "model" :name "Hydrate Sample Model" :portable_entity_id m-eid
+                       :database_id (mt/id)}
+                      (get by-id ["model" m-id]))))
+            (testing "table ref hydrates with type table and a database name"
+              (is (=? {:type "table" :database_id (mt/id) :database_name string?}
+                      (get by-id ["table" (mt/id :orders)]))))
+            (testing "a card ref hydrates as the agent-facing type question"
+              (is (=? {:type "question" :name "Hydrate Sample Question"}
+                      (get by-id ["question" q-id]))))
+            (testing "refs whose entity no longer exists are dropped"
+              (is (= 3 (count results))))))))))
+
+(deftest entity-refs->search-results-same-card-two-types-test
+  (testing "a card referenced under two type strings hydrates to one record per ref (neither is dropped)"
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Card {c-id :id} {:name "Dual Typed"
+                                             :database_id (mt/id) :table_id (mt/id :orders)
+                                             :dataset_query {:database (mt/id) :type :query
+                                                             :query {:source-table (mt/id :orders)}}}]
+        (let [results (search/entity-refs->search-results
+                       [{:model "model" :id c-id} {:model "metric" :id c-id}])]
+          (is (= #{["model" c-id] ["metric" c-id]}
+                 (set (map (juxt :type :id) results)))))))))
+
+(deftest entity-refs->search-results-respects-read-perms-test
+  (testing "hydration drops entities the current user can't read — a curated entry may point at a restricted one"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {restricted-id :id}
+                     {:name "Secret Card" :collection_id coll-id
+                      :database_id (mt/id) :table_id (mt/id :orders)
+                      :dataset_query {:database (mt/id) :type :query
+                                      :query {:source-table (mt/id :orders)}}}]
+        (let [refs [{:model "card" :id restricted-id}]]
+          (testing "a superuser can read it"
+            (mt/with-test-user :crowberto
+              (is (= [restricted-id] (map :id (search/entity-refs->search-results refs))))))
+          (testing "a user without access to its collection does not see it"
+            (mt/with-test-user :rasta
+              (is (empty? (search/entity-refs->search-results refs))))))))))
+
 (deftest enrich-with-metric-base-tables-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
                 "`source-table:` without a separate entity_details call. We look up\n"

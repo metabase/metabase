@@ -194,7 +194,7 @@ export function IllustrationWidget({
             justify="center"
             w="7.5rem"
             pos="relative"
-            style={{ borderRight: "1px solid var(--mb-color-border)" }}
+            style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
           >
             {getPreviewImage({
               value: localValue,

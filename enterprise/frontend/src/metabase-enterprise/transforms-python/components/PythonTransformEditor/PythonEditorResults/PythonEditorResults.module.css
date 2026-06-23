@@ -1,6 +1,6 @@
 .header {
-  border-top: 1px solid var(--mb-color-border);
-  border-bottom: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .logs {
@@ -16,7 +16,7 @@
 .results {
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-md);
 }
 
@@ -26,7 +26,7 @@
 }
 
 .tableCell {
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
   padding: var(--mantine-spacing-sm);
 }
 
@@ -54,6 +54,6 @@
 }
 
 .footer {
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
   flex-shrink: 0;
 }
