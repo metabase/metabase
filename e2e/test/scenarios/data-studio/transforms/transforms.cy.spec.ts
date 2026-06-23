@@ -2280,7 +2280,13 @@ LIMIT
         cy.findByRole("button", { name: "Select" }).click();
       });
 
+      // The list refetches its collection tree after the create. Wait for that
+      // refetch so the parent row knows it has a child before we expand it —
+      // otherwise the expand click lands on a not-yet-expandable row and is a
+      // no-op, leaving the nested collection hidden.
+      cy.intercept("GET", "/api/collection/tree*").as("nestedCollectionTree");
       H.modal().findByRole("button", { name: "Create" }).click();
+      cy.wait("@nestedCollectionTree");
 
       getTransformsList().within(() => {
         // Expand the collection to see the nested collection
