@@ -1,8 +1,6 @@
 (ns metabase.indexes.requestable-test
-  "The form descriptors `driver/supported-index-methods` returns must stay in sync with `::index-structured`, the schema
-  `POST /api/indexes/request` validates a body against. Postgres (built-in) is exercised end-to-end here; the
-  ClickHouse/Redshift descriptors are checked in their own driver-test namespaces, and the inline kinds' schema shapes
-  are guarded by `schema-accepts-inline-kinds-test`."
+  "Checks that the form descriptors `driver/supported-index-methods` returns stay in sync with `::index-structured`, the
+  schema `POST /api/indexes/request` validates request bodies against."
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -23,8 +21,8 @@
     :select  (-> options first :value)))
 
 (defn- body-from-fields
-  "Assemble a structured index body using ONLY the kind + its descriptor fields, then re-keywordize enum values the way
-  the POST path does. Building from the descriptors (not a hand-written body) is what makes this an anti-drift guard."
+  "Assemble a structured index body from ONLY the kind + its descriptor fields, then re-keywordize enum values the way
+  the POST path does."
   [kind fields]
   (-> (into {:kind kind} (map (fn [{nm :name :as f}] [(keyword nm) (sample-value f)])) fields)
       schema/keywordize-structured))

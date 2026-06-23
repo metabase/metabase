@@ -110,8 +110,7 @@
                        (map transforms.u/add-source-readable)))))))
 
 (defn- requestable-indexes
-  "Index methods the target db's driver can create on `transform`'s target table, for the FE to render index-creation
-  forms. nil when the target db is unknown/unreachable or the driver supports none."
+  "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
   [transform]
   (when-let [db-id (transforms-base.i/target-db-id transform)]
     (when-let [database (t2/select-one :model/Database db-id)]

@@ -1568,9 +1568,9 @@
 
 (mr/def ::index-field
   "One form field describing how to request an index: the same shape as a [[connection-properties]] descriptor, plus a
-  `:columns` type for the indexed columns. Built by the `metabase.driver.common` index field helpers."
+  `:columns` type for the indexed columns."
   [:map
-   ;; the key to write into the structured request body (e.g. "unique", "type")
+   ;; key written into the structured request body, e.g. "unique"
    [:name :string]
    ;; deferred-i18n label (or string)
    [:display-name :any]
@@ -1584,8 +1584,9 @@
                                             [:value :string]]]]])
 
 (mr/def ::index-method
-  "Metadata for one index kind a driver supports: its `:lifecycle` and the `:fields` to request it."
+  "Metadata for one index kind a driver supports."
   [:map
+   ;; :standalone = created by a separate statement after the table; :inline = part of the CREATE TABLE
    [:lifecycle [:enum :standalone :inline]]
    [:fields [:sequential [:ref ::index-field]]]])
 
@@ -1594,13 +1595,8 @@
   [:map-of :keyword [:ref ::index-method]])
 
 (defmulti supported-index-methods
-  "Return the index methods this driver supports for transform target tables, as a map of `index-kind` -> metadata map
-  matching `::supported-index-methods`. Each metadata map carries `:lifecycle`, one of `:standalone` (applied as a
-  separate statement after the table exists) or `:inline` (inlined into the table-creation statement), and `:fields`,
-  the form descriptors (same shape as [[connection-properties]]) the FE renders an index-creation form from. E.g.
-  `{:btree {:lifecycle :standalone :fields [...]}}`. See `metabase.driver.common` for the shared field helpers.
-
-  Defaults to `{}` for drivers with no index support."
+  "Return the index methods this driver supports for transform target tables, as a map of `index-kind` -> metadata
+  matching `::supported-index-methods`. Defaults to `{}` for drivers with no index support."
   {:added "0.63.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

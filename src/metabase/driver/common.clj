@@ -156,11 +156,11 @@
 ;; select option `:value`) matches a key/enum in the kind's `::index-structured` branch (metabase.indexes.schema).
 
 (def index-name-field
-  "Descriptor for a user-supplied physical index name (named kinds: btree, skip-index)."
+  "Descriptor for the index name."
   {:name "name" :display-name (deferred-tru "Index name") :type :string :required true})
 
 (def index-columns-field
-  "Descriptor for the indexed columns, in order, each optionally ascending/descending."
+  "Descriptor for the indexed columns."
   {:name "columns" :display-name (deferred-tru "Columns") :type :columns :directions true :required true})
 
 (def index-unique-field
