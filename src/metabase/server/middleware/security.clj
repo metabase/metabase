@@ -60,6 +60,26 @@
   the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
   {"Strict-Transport-Security" "max-age=31536000"})
 
+(def ^:private url-scheme-pattern
+  "RFC 3986 generic URI scheme syntax: a letter followed by any number of letters, digits, `+`, `-`,
+   or `.`. We don't restrict this to a closed set of known schemes (`http`, `app`, ...) since MCP
+   clients are free to register arbitrary custom schemes (e.g. `vscode-webview`, `chrome-extension`,
+   `electron`). Schemes are case-insensitive; callers that need case-insensitive matching normalize
+   case themselves."
+  "[a-zA-Z][a-zA-Z0-9+.\\-]*")
+
+(def ^:private url-domain-pattern
+  "Valid characters for a CORS origin's domain: standard hostname/IPv4 labels (letters, digits,
+   hyphens, separated by dots), plus `*` so wildcard entries like `*.example.com` are still accepted."
+  "[a-zA-Z0-9*](?:[a-zA-Z0-9*-]*[a-zA-Z0-9*])?(?:\\.[a-zA-Z0-9*](?:[a-zA-Z0-9*-]*[a-zA-Z0-9*])?)*")
+
+(def ^:private url-host-pattern
+  "Bracketed IPv6 literal (e.g. `[::1]`) or a hostname/IPv4/wildcard domain."
+  (str "\\[[^\\]]+\\]|" url-domain-pattern))
+
+(def ^:private url-pattern
+  (re-pattern (str "^(?:(" url-scheme-pattern ")://)?(" url-host-pattern ")(?::(\\d+|\\*))?$")))
+
 (defn try-parse-url
   "Like `parse-url` but returns nil silently on unparsable input. Use this when the caller is parsing
    client-controlled data (e.g. `Origin`/`Host` headers) where bad input is expected and shouldn't
@@ -67,9 +87,7 @@
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
-    ;; Pattern supports both regular hostnames/IPv4 and bracketed IPv6 addresses like [::1]
-    (let [pattern #"^(?:(https?|app|capacitor)://)?(\[[^\]]+\]|[^:/]+)(?::(\d+|\*))?$"
-          [_ protocol domain port] (re-matches pattern url)]
+    (let [[_ protocol domain port] (re-matches url-pattern url)]
       (when domain
         {:protocol protocol :domain domain :port port}))))
 
@@ -284,13 +302,19 @@
    (= reference-port "*")
    (= port reference-port)))
 
+(def ^:private url-authority-pattern
+  ;;                  _________________________________$1_____________________________________
+  (re-pattern (str "^((?:" url-scheme-pattern "://)?(?:" url-host-pattern ")(?::(?:\\d+|\\*))?)(?:/.*)?$")))
+
 (defn- strip-origin-path
   "Strips a trailing `/path` from an admin-entered CORS origin entry. Origins have no path component by
-   definition (just scheme + host + port), so a trailing slash or path pasted into an allowlist setting
+   definition (just scheme + host + port), so a bare trailing slash pasted into an allowlist setting
    (e.g. `http://localhost:6274/`) shouldn't silently make that entry fail to parse and drop out of the
-   allowlist."
+   allowlist. Entries with a real path are rejected at save time (see the setting's `:setter`); this
+   only needs to normalize bare trailing slashes and any non-trivial paths saved before that validation
+   existed."
   [url]
-  (str/replace url #"^((?:https?|app|capacitor)://)?([^/]*)(?:/.*)?$" "$1$2"))
+  (str/replace url url-authority-pattern "$1"))
 
 (defn parse-approved-origins
   "Parses the space separated string of approved origins"
