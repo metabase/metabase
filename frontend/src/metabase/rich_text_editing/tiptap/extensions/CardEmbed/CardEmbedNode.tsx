@@ -197,6 +197,7 @@ export const CardEmbedComponent = memo(
     getPos,
     deleteNode,
   }: NodeViewProps) => {
+    const host = useEditorHost();
     const { _id, id, name } = node.attrs;
     const storedResultId = node.attrs.stored_result_id as number | null;
     const isStatic = storedResultId != null;

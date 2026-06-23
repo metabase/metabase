@@ -116,7 +116,7 @@ export const SupportingText = Node.create<{
   },
 
   addProseMirrorPlugins() {
-    return [createProseMirrorPlugin(this.name)];
+    return [createProseMirrorPlugin("supportingText")];
   },
 });
 
