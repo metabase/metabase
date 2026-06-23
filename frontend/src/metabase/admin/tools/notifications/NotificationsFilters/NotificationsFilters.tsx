@@ -222,7 +222,7 @@ const FilterPill = ({ icon, label, selected, onClick }: FilterPillProps) => (
   <UnstyledButton
     onClick={onClick}
     bg={selected ? "background-selected" : "background-primary"}
-    bd="1px solid var(--mb-color-border)"
+    bd="1px solid var(--mb-color-border-neutral)"
     px={12}
     py="sm"
     bdrs="xl"

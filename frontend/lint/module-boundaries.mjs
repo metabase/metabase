@@ -47,13 +47,13 @@ const elements = [
   createElement({ type: "basic", name: "ui" }),
 
   // shared
-  createElement({ type: "shared", name: "account" }),
+  createElement({ type: "feature", name: "account" }),
   createElement({ type: "shared", name: "actions" }),
   createElement({ type: "shared", name: "api" }),
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
   createElement({ type: "feature", name: "browse" }),
-  createElement({ type: "shared", name: "collections" }),
+  createElement({ type: "feature", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
   createElement({ type: "shared", name: "common" }),
   createElement({
@@ -108,7 +108,7 @@ const elements = [
   createElement({ type: "shared", name: "forms" }),
   createElement({ type: "shared", name: "history" }),
   createElement({ type: "shared", name: "hoc" }),
-  createElement({ type: "shared", name: "home" }),
+  createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "i18n" }),
   createElement({

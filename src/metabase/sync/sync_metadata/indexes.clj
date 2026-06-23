@@ -49,32 +49,39 @@
     empty-stats))
 
 (defn- all-indexes->field-ids
+  "Reduce the (reducible) whole-database `indexes` metadata to the set of indexed Field ids. Streams via a
+  `partition-all` transducer so only one batch of index metadata is held in memory at a time, not every index in the
+  database at once. Indexes are batched in groups of 5000 to stay under the 65,535 SQL parameter limit (see #52746)."
   [database-id indexes]
-  (reduce
-   (fn [accum index-batch]
-     (let [normal-indexes (map (juxt #(:table-schema % "__null__") :table-name :field-name) index-batch)
-           query (t2/reducible-query {:select [[:f.id]]
-                                      :from [[(t2/table-name :model/Field) :f]]
-                                      :inner-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
-                                      :where [:and [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] normal-indexes]
-                                              [:= :t.db_id database-id]
-                                              [:= :parent_id nil]]})]
-       (into accum (keep :id) query)))
+  (transduce
+   (partition-all 5000)
+   (completing
+    (fn [accum index-batch]
+      (let [normal-indexes (map (juxt #(:table-schema % "__null__") :table-name :field-name) index-batch)
+            query (t2/reducible-query {:select [[:f.id]]
+                                       :from [[(t2/table-name :model/Field) :f]]
+                                       :inner-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
+                                       :where [:and [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] normal-indexes]
+                                               [:= :t.db_id database-id]
+                                               [:= :parent_id nil]]})]
+        (into accum (keep :id) query))))
    #{}
-   ;; break the indexes up in groups of 5000 to avoid max
-   ;; parameter limit of 65,535. See #52746 for details.
-   (partition-all 5000 indexes)))
+   indexes))
 
 (def ^:dynamic *update-partition-size*
   "Size of the partition of indexes to update using one `t2/update!` call. Dynamic for testing purposes."
   5000)
 
 (defn- sync-all-indexes!
+  "Mark Fields in `database` as `database_indexed` based on the indexes reported by the driver. `describe-indexes` is a
+  *reducible* over every index in the database; it is reduced straight through [[all-indexes->field-ids]] (never
+  `(into [] ...)`-ed) so a database with a huge or churning set of tables doesn't materialize every index at once and
+  OOM."
   [database]
   (sync-util/with-error-handling "Error syncing Indexes"
     (let [indexes (fetch-metadata/log-if-error
                    "index-metadata"
-                    (into [] (driver/describe-indexes (driver.u/database->driver database) database)))
+                    (driver/describe-indexes (driver.u/database->driver database) database))
           database-id (:id database)
           indexed-field-ids (all-indexes->field-ids database-id indexes)
           existing-indexed-field-ids (t2/select-pks-set :model/Field

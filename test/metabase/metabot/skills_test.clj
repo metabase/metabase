@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.skills :as skills]
    [metabase.test :as mt]))
@@ -85,30 +86,90 @@
       (is (empty? (filter :dialect (skills/skills-for-profile profile ["construct_notebook_query"])))))))
 
 (deftest ^:parallel build-skill-manifest-test
-  (let [profile {:name :internal}
+  ;; :internal declares no :always-on-skills, so every relevant skill is on-demand (catalog).
+  (let [profile  {:name :internal}
         manifest (skills/build-skill-manifest
                   profile
                   ["construct_notebook_query" "read_resource"]
                   [])]
-    (testing "catalog lists available skills with string ids"
+    (testing "catalog lists available on-demand skills with string ids"
       (let [ids (map :id (:catalog manifest))]
         (is (every? string? ids))
         (is (some #{"construct-notebook-query-core"} ids))
-        (is (some #{"read-resource"} ids))))
+        (is (some #{"read-resource"} ids)
+            "without :always-on-skills, read-resource is on-demand for this profile")))
     (testing "catalog entries are display-only (id/title/description), no body"
       (is (every? #(= #{:id :title :description} (set (keys %))) (:catalog manifest))))
     (testing "catalog is sorted by descending priority then id"
       ;; core has priority 60, the rest 50, operators 40 -> core first, operators last
       (is (= "construct-notebook-query-core" (:id (first (:catalog manifest))))))
-    (testing "no always-on skills in this migration"
+    (testing "no always-on skills when the profile declares none"
       (is (empty? (:always-on manifest))))))
+
+(deftest ^:parallel build-skill-manifest-always-on-is-per-profile-test
+  (testing "a skill listed in the profile's :always-on-skills is inlined (body) and removed from
+           the catalog, while the same skill is on-demand for a profile that doesn't list it"
+    (let [tools     ["read_resource"]
+          inlined   (skills/build-skill-manifest
+                     {:name :sql :always-on-skills [:read-resource]} tools [])
+          on-demand (skills/build-skill-manifest
+                     {:name :internal} tools [])]
+      (testing "profile that opts in -> always-on with body, absent from catalog"
+        (is (= ["read-resource"] (map (comp name :id) (:always-on inlined))))
+        (is (every? :body (:always-on inlined)))
+        (is (not (some #{"read-resource"} (map :id (:catalog inlined))))))
+      (testing "profile that opts out -> on-demand in catalog, not always-on"
+        (is (empty? (:always-on on-demand)))
+        (is (some #{"read-resource"} (map :id (:catalog on-demand))))))))
+
+(deftest ^:parallel always-on-skill-body-is-in-system-prompt-test
+  ;; A "marker" line lifted verbatim from the read-resource skill body. If the skill is inlined,
+  ;; this text appears in the rendered system prompt; if it is on-demand, only its one-line catalog
+  ;; description appears (which does not contain this phrase).
+  (let [marker     "Drill, don't re-search"
+        tools      {"read_resource" nil}
+        render     (fn [profile]
+                     (binding [scope/*current-user-metabot-permissions*
+                               {:permission/metabot-sql-generation :yes
+                                :permission/metabot-nlq            :no
+                                :permission/metabot-other-tools    :no}]
+                       (prompts/build-system-message-content
+                        (assoc profile :prompt-template "sql-querying-only.selmer")
+                        {:current_time "2026-06-19T12:00:00Z"}
+                        tools
+                        [])))]
+    (testing "read-resource body IS present when the profile marks it always-on"
+      (let [rendered (render {:name :sql :always-on-skills [:read-resource]})]
+        (is (str/includes? rendered marker)
+            "always-on skill body must be inlined into the system prompt")
+        (is (str/includes? rendered (:body (skills/get-skill :read-resource)))
+            "the full skill body is inlined, not just a fragment")
+        (is (not (str/includes? rendered "# Available skills"))
+            "an empty catalog must NOT render the load_skill header (would invite pointless loads)")))
+    (testing "read-resource body is ABSENT when the profile leaves it on-demand"
+      (let [rendered (render {:name :sql})]
+        (is (not (str/includes? rendered marker))
+            "an on-demand skill's body must not leak into the prompt prefix")
+        (is (str/includes? rendered "# Available skills")
+            "a non-empty catalog renders the load_skill header")
+        (is (str/includes? rendered "read-resource")
+            "the on-demand skill still appears as a one-line catalog entry")))))
 
 (deftest ^:parallel build-skill-manifest-records-loadable-skill-ids-test
   (testing "building the manifest records the request's loadable skill ids"
     (binding [scope/*current-loadable-skill-ids* (atom #{})]
       (skills/build-skill-manifest {:name :internal} ["construct_notebook_query"] [])
       (is (contains? @scope/*current-loadable-skill-ids* :construct-notebook-query-core))
-      (is (not (contains? @scope/*current-loadable-skill-ids* :read-resource))))))
+      (is (not (contains? @scope/*current-loadable-skill-ids* :read-resource)))))
+  (testing "a profile's always-on skills are NOT loadable — their bodies are already inlined, so
+           load_skill must not re-fetch them (a wasted iteration)"
+    (binding [scope/*current-loadable-skill-ids* (atom #{})]
+      (skills/build-skill-manifest
+       {:name :sql :always-on-skills [:read-resource]} ["read_resource"] [])
+      (is (not (contains? @scope/*current-loadable-skill-ids* :read-resource))
+          "an always-on skill must be excluded from the loadable set")
+      (is (not (skills/skill-loadable? (skills/get-skill :read-resource)))
+          "skill-loadable? rejects an always-on skill once a manifest is tracked"))))
 
 (deftest ^:parallel dialect-preload-parts-test
   (testing "resolves a synthetic load_skill pair when the dialect is known"
