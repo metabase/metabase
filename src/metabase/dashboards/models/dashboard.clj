@@ -351,8 +351,14 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set ::parameters.schema/parameter-mapping]]]])
 
-(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
-  [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
+(mu/defn dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+  "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration
+  below for an example). Callers that only need the mappings (e.g. the QP) can pass slim dashcards instead of paying
+  for the full hydration."
+  [dashboard :- [:map
+                 [:parameters [:maybe [:sequential :map]]]
+                 [:dashcards [:maybe [:sequential [:map
+                                                   [:parameter_mappings [:maybe [:sequential :map]]]]]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:dashcards dashboard)
@@ -382,7 +388,7 @@
                                :dashcard     ...
                                :target       [:dimension [:field-id 264]]}}}}"
   [_model k dashboards]
-  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card])]
+  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card :series])]
     (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
 
 (defmethod mi/exclude-internal-content-hsql :model/Dashboard

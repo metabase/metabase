@@ -1150,10 +1150,16 @@
                                              [:in :perm_type (mapv u/qualified-name perm-types)]]})
           ;; Index: {[group_id perm_type] → db-level-perm-row}
           db-level-idx   (into {} (map (fn [p] [[(:group_id p) (:perm_type p)] p]) db-level-perms))
-          ;; Batch SELECT #2: all existing table-level permissions for this DB
-          ;; (needed for schema-permission-value logic and going-granular expansion)
+          ;; Batch SELECT #2: distinct table-level permission values for this DB
+          ;; (needed for schema-permission-value logic and going-granular expansion).
+          ;; `schema-vals-idx` only needs the set of distinct perm-values per
+          ;; (group, perm-type, schema). Selecting DISTINCT on those four columns
+          ;; keeps the result bounded by groups × perm-types × schemas × values
+          ;; instead of growing with the table count, which can be millions of
+          ;; rows on databases with very many tables (see #76077).
           table-perms    (t2/select :model/DataPermissions
-                                    {:where [:and
+                                    {:select-distinct [:group_id :perm_type :schema_name :perm_value]
+                                     :where [:and
                                              [:= :db_id db-id]
                                              [:not= :table_id nil]
                                              [:in :group_id group-ids]
@@ -1234,13 +1240,17 @@
   :full)
 
 (defn has-db-transforms-permission?
-  "Returns true if the given user has the transforms permission for the given source db."
+  "Returns true if the given user has the transforms permission for the given source db.
+  Superusers always pass. A nil `database-id` (an orphaned transform whose source database
+  was deleted) only grants permission to superusers."
   [user-id database-id]
   (and (not= database-id audit/audit-db-id)
-       (user-has-permission-for-database? user-id
-                                          :perms/transforms
-                                          :yes
-                                          database-id)))
+       (or (is-superuser? user-id)
+           (and (some? database-id)
+                (user-has-permission-for-database? user-id
+                                                   :perms/transforms
+                                                   :yes
+                                                   database-id)))))
 
 (defn has-any-transforms-permission?
   "Returns true if the current user has the transforms permission for _any_ source db."
