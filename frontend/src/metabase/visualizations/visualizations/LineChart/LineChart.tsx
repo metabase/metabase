@@ -26,8 +26,11 @@ const LineViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
     },
   };
 
-Object.assign(LineChart, getCartesianChartDefinition(LineViz));
-
-export function LineChart(props: VisualizationProps) {
+function LineChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const LineChart = Object.assign(
+  LineChartComponent,
+  getCartesianChartDefinition(LineViz),
+);

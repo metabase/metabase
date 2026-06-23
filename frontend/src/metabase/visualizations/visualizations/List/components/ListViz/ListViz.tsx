@@ -252,7 +252,7 @@ const vizDefinition: VisualizationDefinition = {
   },
 };
 
-export const ListViz = ({
+const ListVizComponent = ({
   card,
   metadata,
   data,
@@ -332,4 +332,4 @@ export const ListViz = ({
   );
 };
 
-Object.assign(ListViz, vizDefinition);
+export const ListViz = Object.assign(ListVizComponent, vizDefinition);

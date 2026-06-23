@@ -42,8 +42,11 @@ const ScatterViz: Omit<
   },
 };
 
-Object.assign(ScatterPlot, getCartesianChartDefinition(ScatterViz));
-
-export function ScatterPlot(props: VisualizationProps) {
+function ScatterPlotComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const ScatterPlot = Object.assign(
+  ScatterPlotComponent,
+  getCartesianChartDefinition(ScatterViz),
+);

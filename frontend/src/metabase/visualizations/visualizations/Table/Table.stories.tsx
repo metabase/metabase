@@ -26,7 +26,6 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import * as data from "./stories-data";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
 
 const settings = mockSettings();

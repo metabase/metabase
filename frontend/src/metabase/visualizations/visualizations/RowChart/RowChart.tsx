@@ -24,7 +24,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
-import { RowChart } from "metabase/visualizations/shared/components/RowChart";
+import { RowChart as SharedRowChart } from "metabase/visualizations/shared/components/RowChart";
 import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import type {
   GroupedDatum,
@@ -89,7 +89,7 @@ interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
 function RowChartRendererInner(props: RowChartRendererProps) {
   return (
     <RowChartContainer data-testid="row-chart-container">
-      <RowChart {...props} />
+      <SharedRowChart {...props} />
     </RowChartContainer>
   );
 }
@@ -434,6 +434,4 @@ function isTransformedCard(card: Card): card is TransformedCard {
   return "_transformed" in card && card._transformed === true;
 }
 
-Object.assign(RowChartVisualization, RowViz);
-
-export { RowChartVisualization as RowChart };
+export const RowChart = Object.assign(RowChartVisualization, RowViz);

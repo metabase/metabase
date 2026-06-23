@@ -16,7 +16,6 @@ export default {
   component: SmartScalar,
 };
 
-// @ts-expect-error: SmartScalar is not written in TypeScript yet.
 registerVisualization(SmartScalar);
 
 const MOCK_ROWS = [

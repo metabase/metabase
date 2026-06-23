@@ -22,7 +22,6 @@ export default {
   component: BarChart,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
 const MOCK_SERIES = [

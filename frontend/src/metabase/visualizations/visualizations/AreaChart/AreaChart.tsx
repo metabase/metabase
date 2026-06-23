@@ -26,8 +26,11 @@ const AreaViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
     },
   };
 
-Object.assign(AreaChart, getCartesianChartDefinition(AreaViz));
-
-export function AreaChart(props: VisualizationProps) {
+function AreaChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const AreaChart = Object.assign(
+  AreaChartComponent,
+  getCartesianChartDefinition(AreaViz),
+);

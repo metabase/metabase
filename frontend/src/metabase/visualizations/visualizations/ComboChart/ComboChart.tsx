@@ -28,8 +28,11 @@ const ComboViz: Omit<
   },
 };
 
-Object.assign(ComboChart, getCartesianChartDefinition(ComboViz));
-
-export function ComboChart(props: VisualizationProps) {
+function ComboChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const ComboChart = Object.assign(
+  ComboChartComponent,
+  getCartesianChartDefinition(ComboViz),
+);

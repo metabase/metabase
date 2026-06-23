@@ -49,7 +49,7 @@ import {
   validateComparisons,
 } from "./utils";
 
-export function SmartScalar({
+function SmartScalarComponent({
   onVisualizationClick,
   isDashboard,
   settings,
@@ -300,4 +300,4 @@ const SmartScalarViz: VisualizationDefinition = {
   hasEmptyState: true,
 };
 
-Object.assign(SmartScalar, SmartScalarViz);
+export const SmartScalar = Object.assign(SmartScalarComponent, SmartScalarViz);
