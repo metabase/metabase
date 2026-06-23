@@ -122,7 +122,7 @@ export function PaneHeaderInput({
       fz="h3"
       lh="h3"
       px={isOptional ? "xs" : undefined}
-      bd={isOptional ? "1px solid var(--mb-color-border)" : undefined}
+      bd={isOptional ? "1px solid var(--mb-color-border-neutral)" : undefined}
       isOptional={isOptional}
       isDisabled={readOnly}
       data-testid={dataTestId}

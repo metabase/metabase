@@ -4066,7 +4066,7 @@
         "required" : [ "resources", "output" ]
       },
       "metabase.agent-api.api.search-response" : {
-        "description" : "Search results containing tables and metrics matching the query.",
+        "description" : "Search results containing tables, metrics, and models matching the query.",
         "type" : "object",
         "properties" : {
           "data" : {
@@ -4082,7 +4082,7 @@
         "required" : [ "data", "total_count" ]
       },
       "metabase.agent-api.api.search-result-item" : {
-        "description" : "A table or metric returned from search.",
+        "description" : "A table, metric, or model returned from search.",
         "type" : "object",
         "properties" : {
           "id" : {
@@ -4119,7 +4119,7 @@
           },
           "type" : {
             "type" : "string",
-            "enum" : [ "table", "metric" ]
+            "enum" : [ "table", "metric", "model" ]
           },
           "database_schema" : {
             "oneOf" : [ {
@@ -14740,7 +14740,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-dashboard",
         "summary" : "POST /api/agent/v1/dashboard",
-        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.\n  If `collection_id` is omitted the dashboard is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
+        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.\n  If `collection_id` is omitted the dashboard is saved to the caller's personal collection.\n  Pass an explicit `null` to save it to the root collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -14926,7 +14926,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-question",
         "summary" : "POST /api/agent/v1/question",
-        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the question is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
+        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the question is saved to the caller's personal collection.\n  Pass an explicit `null` to save it to the root collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15043,7 +15043,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-search",
         "summary" : "POST /api/agent/v1/search",
-        "description" : "Search for tables and metrics.\n\n  Supports both term-based and semantic search queries. Results are ranked using\n  Reciprocal Rank Fusion when both query types are provided.",
+        "description" : "Search for tables, metrics, and models.\n\n  Supports both term-based and semantic search queries. Results are ranked using\n  Reciprocal Rank Fusion when both query types are provided.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -19513,6 +19513,408 @@
         "tags" : [ "/api/comment" ]
       }
     },
+    "/api/curated-search" : {
+      "get" : {
+        "operationId" : "get-api-curated-search",
+        "summary" : "GET /api/curated-search",
+        "description" : "Get all curated search entries, paginated.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "entity" : {
+                            "type" : "object",
+                            "properties" : {
+                              "id" : {
+                                "type" : "integer"
+                              },
+                              "model" : {
+                                "type" : "string"
+                              },
+                              "name" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "model", "id" ]
+                          },
+                          "id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "search_prompt" : {
+                            "type" : "string"
+                          },
+                          "usage_instructions" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "verified" : {
+                            "type" : "boolean"
+                          }
+                        },
+                        "required" : [ "id", "search_prompt", "entity", "verified" ]
+                      }
+                    },
+                    "limit" : {
+                      "type" : "integer"
+                    },
+                    "offset" : {
+                      "type" : "integer"
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/curated-search" ]
+      },
+      "post" : {
+        "operationId" : "post-api-curated-search",
+        "summary" : "POST /api/curated-search",
+        "description" : "Create a new curated search entry.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "entity" : {
+                      "type" : "object",
+                      "properties" : {
+                        "id" : {
+                          "type" : "integer"
+                        },
+                        "model" : {
+                          "type" : "string"
+                        },
+                        "name" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "model", "id" ]
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "search_prompt" : {
+                      "type" : "string"
+                    },
+                    "usage_instructions" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "verified" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "id", "search_prompt", "entity", "verified" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "entity" : {
+                    "type" : "object",
+                    "properties" : {
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "model" : {
+                        "type" : "string",
+                        "enum" : [ "table", "card", "model", "metric", "question" ]
+                      },
+                      "name" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "model", "id" ]
+                  },
+                  "search_prompt" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "usage_instructions" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "verified" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "search_prompt", "entity" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/curated-search" ]
+      }
+    },
+    "/api/curated-search/{id}" : {
+      "get" : {
+        "operationId" : "get-api-curated-search-id",
+        "summary" : "GET /api/curated-search/{id}",
+        "description" : "Get a curated search entry by ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "entity" : {
+                      "type" : "object",
+                      "properties" : {
+                        "id" : {
+                          "type" : "integer"
+                        },
+                        "model" : {
+                          "type" : "string"
+                        },
+                        "name" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "model", "id" ]
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "search_prompt" : {
+                      "type" : "string"
+                    },
+                    "usage_instructions" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "verified" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "id", "search_prompt", "entity", "verified" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/curated-search" ]
+      },
+      "put" : {
+        "operationId" : "put-api-curated-search-id",
+        "summary" : "PUT /api/curated-search/{id}",
+        "description" : "Update a curated search entry by ID. Only the provided fields are changed; sending a null\n  usage_instructions clears it.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "entity" : {
+                      "type" : "object",
+                      "properties" : {
+                        "id" : {
+                          "type" : "integer"
+                        },
+                        "model" : {
+                          "type" : "string"
+                        },
+                        "name" : {
+                          "type" : "string"
+                        }
+                      },
+                      "required" : [ "model", "id" ]
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "search_prompt" : {
+                      "type" : "string"
+                    },
+                    "usage_instructions" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "verified" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "id", "search_prompt", "entity", "verified" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "entity" : {
+                    "type" : "object",
+                    "properties" : {
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "model" : {
+                        "type" : "string",
+                        "enum" : [ "table", "card", "model", "metric", "question" ]
+                      },
+                      "name" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "model", "id" ]
+                  },
+                  "search_prompt" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "usage_instructions" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "verified" : {
+                    "type" : "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/curated-search" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-curated-search-id",
+        "summary" : "DELETE /api/curated-search/{id}",
+        "description" : "Delete a curated search entry by ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/curated-search" ]
+      }
+    },
     "/api/dashboard" : {
       "get" : {
         "operationId" : "get-api-dashboard",
@@ -20846,6 +21248,89 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/dashboard" ]
+      }
+    },
+    "/api/dashboard/{id}/pdf" : {
+      "post" : {
+        "operationId" : "post-api-dashboard-id-pdf",
+        "summary" : "POST /api/dashboard/{id}/pdf",
+        "description" : "Render Dashboard with ID to a PDF (server-side, the same way dashboard subscriptions render charts) and stream it\n  back as a file download.\n\n  `parameters` are runtime parameter overrides -- the same shape the dashcard query endpoints accept: a sequence of\n  `{:id ... :value ...}` maps, or a JSON-encoded string of that sequence (the string form lets an HTML `<form>`\n  action drive the download). Parameters left unspecified fall back to the dashboard's own defaults.\n\n  `paper_size` is `\"a4\"` (default) or `\"letter\"`.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "paper_size" : {
+                    "default" : "a4",
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "enum" : [ "a4", "letter" ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "parameters" : {
+                    "oneOf" : [ {
+                      "anyOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "description" : "value must be a parameter map with an 'id' key",
+                          "allOf" : [ {
+                            "type" : "object",
+                            "properties" : {
+                              "id" : {
+                                "type" : "string",
+                                "minLength" : 1
+                              }
+                            },
+                            "required" : [ "id" ]
+                          }, {
+                            "type" : "object",
+                            "additionalProperties" : { }
+                          } ]
+                        }
+                      }, {
+                        "description" : "value must be a valid JSON string.",
+                        "type" : "string"
+                      } ]
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ ]
+              }
+            }
           }
         },
         "tags" : [ "/api/dashboard" ]
@@ -28165,6 +28650,14 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "outcome" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : { }
+                        }, {
+                          "type" : "null"
+                        } ]
                       }
                     },
                     "required" : [ "id", "sync_task_type", "progress", "started_at", "status" ]
@@ -28266,6 +28759,14 @@
                     "version" : {
                       "oneOf" : [ {
                         "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "outcome" : {
+                      "oneOf" : [ {
+                        "type" : "object",
+                        "properties" : { }
                       }, {
                         "type" : "null"
                       } ]
@@ -38120,7 +38621,7 @@
       "get" : {
         "operationId" : "get-api-notification-admin",
         "summary" : "GET /api/notification/admin",
-        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification's card (`successful` = latest channel-send succeeded; `failing` = latest\n  channel-send failed).\n\n  `last_check_status` filter operates on the latest terminal TaskRun for the card — the whole-run\n  rollup (`successful` = the run succeeded; `failing` = it failed or was abandoned). This is a\n  superset of `last_send_status`: it also catches query failures and heartbeat-abandoned runs that\n  never reached the send step. The Failing tab uses `?last_check_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
+        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification (`successful` = latest channel-send succeeded; `failing` = latest channel-send\n  failed).\n\n  `last_check_status` filter operates on the latest terminal TaskRun for the notification — the\n  whole-run rollup (`successful` = the run succeeded; `failing` = it failed or was abandoned). This\n  is a superset of `last_send_status`: it also catches query failures and heartbeat-abandoned runs\n  that never reached the send step. The Failing tab uses `?last_check_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
         "parameters" : [ {
           "in" : "query",
           "name" : "active",
@@ -42400,6 +42901,343 @@
           "schema" : {
             "oneOf" : [ {
               "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/search" ]
+      }
+    },
+    "/api/search/debug" : {
+      "get" : {
+        "operationId" : "get-api-search-debug",
+        "summary" : "GET /api/search/debug",
+        "description" : "Superuser-only. Explain why `expected_result_id` / `expected_result_type` does not appear in the results of\n  the given search query. Accepts every `GET /api/search` parameter plus the two expected-result parameters, and\n  returns `{:type ..., :details ...}` for the first stage that drops the item: `not-searchable`,\n  `missing-from-index`, `not-permitted`, `filtered`, `not-matching`, or the terminal `matched` / `ranked-out`.\n\n  - `for_user_id`: diagnose from another user's perspective (defaults to you). Permission and visibility checks run\n    as that user, so a `not-permitted` result means *they* can't see the item.\n\n  Not supported for `indexed-entity` (its id is compound).",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "q",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "context",
+          "required" : false,
+          "schema" : {
+            "default" : "api",
+            "type" : "string",
+            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "basic-actions", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "archived",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "collection",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "table_db_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "models",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "filter_items_in_personal_collection",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "all", "only", "only-mine", "exclude", "exclude-others" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "created_at",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "created_by",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "display_type",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "minLength" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_edited_at",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_edited_by",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "model_ancestors",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "search_engine",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "vector_search_strategy",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "hnsw", "brute-force" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "search_native_query",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "verified",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "ids",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "description" : "value must be an integer greater than zero.",
+                "type" : "integer",
+                "minimum" : 1
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "calculate_available_models",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_dashboard_questions",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_metadata",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "non_temporal_dim_ids",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "has_temporal_dim",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "expected_result_type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "expected_result_id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "for_user_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
             }, {
               "type" : "null"
             } ]

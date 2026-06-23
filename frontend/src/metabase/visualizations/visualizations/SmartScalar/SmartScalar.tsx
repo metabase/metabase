@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box } from "metabase/ui";
@@ -263,7 +263,12 @@ const SmartScalarViz: VisualizationDefinition = {
         getProps: () => ({
           options: [
             { name: t`Full date`, value: "default" },
-            { name: t`Year`, value: "year" },
+            {
+              name: c(
+                "Date granularity option, distinct from the pluralized unit",
+              ).t`Year`,
+              value: "year",
+            },
             { name: t`Quarter and year`, value: "quarter" },
             { name: t`Month and year`, value: "month" },
           ],
