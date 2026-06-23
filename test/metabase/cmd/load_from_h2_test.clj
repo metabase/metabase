@@ -112,7 +112,7 @@
       (mdb.connection/application-db db-type data-source)
       (fn []
         (mt/dataset bird-flocks
-                          ;; make sure the data is there
+          ;; make sure the data is there
           (is (= 18
                  (ffirst (mt/formatted-rows
                           [int]
@@ -125,9 +125,9 @@
                 (liquibase/with-liquibase [liquibase conn]
                   (liquibase/rollback-major-version! conn liquibase false version))))
             (log/info "creating dump" filename)
-                            ;; this migrates the DB back to the newest and creates a dump
+            ;; this migrates the DB back to the newest and creates a dump
             (dump-to-h2/dump-to-h2! filename)
-                            ;; check if after a down and up migration we can still run a query
+            ;; check if after a down and up migration we can still run a query
             (is (= 18 (ffirst (mt/formatted-rows
                                [int]
                                (mt/run-mbql-query bird
@@ -150,7 +150,7 @@
                             {:aggregation [[:count]]})))))
           (log/info "loading dump" h2-filename "version" version)
           (load-from-h2/load-from-h2! (dump-filename h2-filename version))
-                          ;; check that we can run the query using data from the dump
+          ;; check that we can run the query using data from the dump
           (is (= 18
                  (ffirst (mt/formatted-rows
                           [int]
