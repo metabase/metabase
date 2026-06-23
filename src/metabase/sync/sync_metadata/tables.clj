@@ -84,6 +84,12 @@
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
+(def ^:private TableNameAndSchema
+  "The `{:name :schema}` identity a Table is keyed on during sync."
+  [:map {:closed true}
+   [:name   ::lib.schema.common/non-blank-string]
+   [:schema [:maybe ::lib.schema.common/non-blank-string]]])
+
 (mu/defn- update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"
   [database    :- i/DatabaseInstance
@@ -93,9 +99,10 @@
               {:details
                (assoc (:details database) :version (:version db-metadata))}))
 
-(mu/defn- cruft-dependent-cols [{table-name :name :as table}
-                                database
-                                sync-stage :- [:enum ::reactivate ::create ::update]]
+(mu/defn- cruft-dependent-cols :- :map
+  [{table-name :name :as table} :- :map
+   database                     :- i/DatabaseInstance
+   sync-stage                   :- [:enum ::reactivate ::create ::update]]
   (let [is-crufty? (if (and (= sync-stage ::update)
                             (not (:is_attached_dwh database)))
                      ;; TODO: we should add an updated_by column to metabase_table in
@@ -120,10 +127,11 @@
                             :else                   "incomplete")
      :visibility_type     (when is-crufty? :cruft)}))
 
-(defn create-table!
+(mu/defn create-table! :- (ms/InstanceOf :model/Table)
   "Creates a new table in the database, ready to be synced.
    Throws an exception if there is already a table with the same name, schema and database ID."
-  [database table]
+  [database :- i/DatabaseInstance
+   table    :- :map]
   (t2/insert-returning-instance!
    :model/Table
    (merge (cruft-dependent-cols table database ::create)
@@ -146,10 +154,11 @@
             {:data_authority :ingested
              :data_source    :ingested}))))
 
-(defn- reactivate-table!
+(mu/defn- reactivate-table!
   "Mark an existing inactive Table active again, refreshing its cruft-dependent columns. `existing`
   is the app-DB Table instance we already hold, so we don't re-select it."
-  [database existing]
+  [database :- i/DatabaseInstance
+   existing :- (ms/InstanceOf :model/Table)]
   (t2/update! :model/Table (:id existing)
               (cond-> (cruft-dependent-cols existing database ::reactivate)
                 ;; do not unhide tables w/ cruft settings
@@ -158,9 +167,10 @@
                 (:is_sample database)               (assoc :data_authority :ingested
                                                            :data_source    :ingested))))
 
-(defn create-or-reactivate-table!
+(mu/defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if a matching inactive one exists."
-  [database {schema :schema table-name :name :as table}]
+  [database :- i/DatabaseInstance
+   {schema :schema table-name :name :as table} :- :map]
   (if-let [existing (t2/select-one :model/Table
                                    :db_id (u/the-id database)
                                    :schema schema
@@ -187,12 +197,13 @@
   1024 characters."
   254)
 
-(defn- table-name-or-schema-too-long?
+(mu/defn- table-name-or-schema-too-long? :- :boolean
   "Whether `table`'s name or schema is too long to store in the application DB (see `table-name-max-length` /
   `table-schema-max-length`)."
-  [{table-name :name, table-schema :schema}]
-  (or (< table-name-max-length (count table-name))
-      (< table-schema-max-length (count (or table-schema "")))))
+  [{table-name :name, table-schema :schema} :- :map]
+  (boolean
+   (or (< table-name-max-length (count table-name))
+       (< table-schema-max-length (count (or table-schema ""))))))
 
 (mu/defn- remove-tables-with-too-long-names :- [:set i/DatabaseMetadataTable]
   "Drop any tables in `db-metadata-tables` whose name or schema is too long to store in the application DB (see
@@ -223,9 +234,7 @@
 (mu/defn- retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
   [database   :- i/DatabaseInstance
-   old-tables :- [:set [:map
-                        [:name ::lib.schema.common/non-blank-string]
-                        [:schema [:maybe ::lib.schema.common/non-blank-string]]]]]
+   old-tables :- [:set TableNameAndSchema]]
   (log/info "Marking tables as inactive:"
             (for [table old-tables]
               (sync-util/name-for-logging (mi/instance :model/Table table))))
@@ -302,38 +311,18 @@
   database with tens of thousands of tables doesn't have to be diffed all at once."
   1000)
 
-(defn- ignore-table?
+(mu/defn- ignore-table? :- :boolean
   "Tables we never create `:model/Table` rows for: the special `_metabase_metadata` table (its
   contents are applied to other Tables/Fields instead) and temporary transform output tables."
-  [table]
-  (or (metabase-metadata/is-metabase-metadata-table? table)
-      (sync-util/is-temp-transform-table? table)))
+  [table :- :map]
+  (boolean
+   (or (metabase-metadata/is-metabase-metadata-table? table)
+       (sync-util/is-temp-transform-table? table))))
 
-(def ^:private TableNameAndSchema
+(mu/defn- table-name+schema :- TableNameAndSchema
   "The `{:name :schema}` identity a Table is keyed on during sync."
-  [:map {:closed true}
-   [:name   ::lib.schema.common/non-blank-string]
-   [:schema [:maybe ::lib.schema.common/non-blank-string]]])
-
-(defn- table-name+schema
-  "The `{:name :schema}` identity a Table is keyed on during sync."
-  [table]
+  [table :- :map]
   (select-keys table [:name :schema]))
-
-(mu/defn- select-tables :- [:set (ms/InstanceOf :model/Table)]
-  "Selects the columns we need for `:model/Table`, with some optional filters"
-  [database :- i/DatabaseInstance
-   & filters]
-  (set (apply
-        t2/select
-        (into [:model/Table :id :name :schema :data_authority] keys-to-update)
-        :db_id (u/the-id database)
-        filters)))
-
-(mu/defn- db->our-tables :- [:set (ms/InstanceOf :model/Table)]
-  "Return *all* tables we have for this DB in the Metabase appDB, including inactive ones."
-  [database :- i/DatabaseInstance]
-  (select-tables database))
 
 (mu/defn- existing-tables-by-name+schema :- :map
   "The `:model/Table` rows (active *and* inactive) for `database` matching any name in `tables`,
@@ -350,20 +339,25 @@
       {})))
 
 (mu/defn- adjusted-schemas :- [:maybe [:map-of :string :string]]
-  "Returns a map of schemas that should be adjusted to their new names."
+  "Returns a map of `{old-schema new-schema}` for the app-DB schemas the driver re-qualifies. Streams
+  the distinct schemas straight from the DB (selecting only `:schema`) so we never materialize every
+  table just to read their schemas."
   [driver
-   database
-   our-tables :- [:set (ms/InstanceOf :model/Table)]]
-  (reduce
-   (fn [accum schema]
-     (let [new-schema (driver/adjust-schema-qualification driver database schema)]
-       (cond-> accum
-         (not= schema new-schema) (assoc schema new-schema))))
+   database :- i/DatabaseInstance]
+  (transduce
+   (comp (map :schema) (distinct))
+   (completing
+    (fn [accum schema]
+      (let [new-schema (driver/adjust-schema-qualification driver database schema)]
+        (cond-> accum
+          (not= schema new-schema) (assoc schema new-schema)))))
    nil
-   (into #{} (map :schema our-tables))))
+   (t2/reducible-select [:model/Table :schema] :db_id (u/the-id database))))
 
-(defn- adjust-table-schemas!
-  [database schemas-to-update]
+(mu/defn- adjust-table-schemas!
+  "Apply the `{old-schema new-schema}` renames from [[adjusted-schemas]] to the app-DB Table rows."
+  [database          :- i/DatabaseInstance
+   schemas-to-update :- [:maybe [:map-of :string :string]]]
   (when schemas-to-update
     (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
   (doseq [[schema new-schema] schemas-to-update]
@@ -376,11 +370,12 @@
   ^{:doc "threshold after which deactivated tables will be archived"}
   archive-tables-threshold [-14 :day])
 
-(defn- archive-tables!
+(mu/defn- archive-tables! :- :int
   "Mark tables that have been deactivated for longer than the configured threshold as archived
   and suffixes their names. Skips tables with `transform_target = true` (provisional transform
-  output entries) since transforms still reference them by their original name."
-  [database]
+  output entries) since transforms still reference them by their original name. Returns the number
+  of tables archived."
+  [database :- i/DatabaseInstance]
   (let [;; we use UTC offset time for suffix, may not match db time but
         ;; it doesn't matter much, the source of time truth is `archived_at`,
         ;; we're just using this as a cheap namespace
@@ -520,7 +515,7 @@
          db-name              (sync-util/name-for-logging database)
          multi-level-support? (driver.u/supports? driver :multi-level-schema database)
          schemas-to-update    (when multi-level-support?
-                                (adjusted-schemas driver database (db->our-tables database)))]
+                                (adjusted-schemas driver database))]
      (sync-util/with-error-handling (format "Error updating table schemas for %s" db-name)
        (adjust-table-schemas! database schemas-to-update))
      (when (some? (:version db-metadata))
