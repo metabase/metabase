@@ -198,6 +198,7 @@
    [:search-terms [:or
                    [:sequential {:min 1} :keyword]
                    [:map-of :keyword [:or fn? true?]]]]
+   [:embedding-exclude {:optional true} [:set :keyword]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
@@ -399,7 +400,12 @@
    Spec keys:
    - `:model` - Toucan model keyword (required)
    - `:attrs` - Map of search index attributes (required)
-   - `:search-terms` - Vector of searchable text fields (required)
+   - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
+     column keyword to either `true` (use the raw value) or a transform fn applied for
+     full-text search (required)
+   - `:embedding-exclude` - Set of `:search-terms` keys to omit from the semantic-search
+     embedding text (they remain in full-text search). Use for fields whose raw value is
+     not suitable for semantic search.
    - `:render-terms` - Additional attributes needed for display (required)
    - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
    - `:where` - HoneySQL where clause to filter indexed records
