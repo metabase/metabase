@@ -2979,11 +2979,17 @@
   enterprise/curated-search
   {:team "Metabot"
    :api  #{metabase-enterprise.curated-search.init}
-   :uses #{premium-features
+   :uses #{collections
+           premium-features
            task
            util
            enterprise/semantic-search}
-   :model-imports #{:model/CuratedSearchEntry}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/CuratedSearchEntry
+                    :model/Measure
+                    :model/Segment
+                    :model/Table}}
 
   enterprise/custom-viz-plugin
   {:team "Gadget"

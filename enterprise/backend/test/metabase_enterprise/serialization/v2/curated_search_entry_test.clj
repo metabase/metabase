@@ -43,16 +43,13 @@
       (doseq [entity-model ["card" "model" "metric" "question"]]
         (testing entity-model
           (mt/with-temp [:model/CuratedSearchEntry {sli-id :id sli-eid :entity_id}
-                         {:search_prompt (str "find " entity-model) :verified true
-                          :usage_instructions "Use it directly."
+                         {:ai_context {:instructions "Use it directly." :synonyms [entity-model]}
                           :entity {:model entity-model :id card-id}}]
             (let [extracted (ts/extract-one "CuratedSearchEntry" sli-id)]
-              (testing "the entity ref is exported as a portable reference"
-                (is (=? {:entity_id          sli-eid
-                         :search_prompt      (str "find " entity-model)
-                         :usage_instructions "Use it directly."
-                         :verified           true
-                         :entity             {:model entity-model :id card-eid}}
+              (testing "the entity ref is exported as a portable reference; ai_context copies verbatim"
+                (is (=? {:entity_id  sli-eid
+                         :ai_context {:instructions "Use it directly." :synonyms [entity-model]}
+                         :entity     {:model entity-model :id card-eid}}
                         extracted)))
               (testing "dependencies cover the referenced Card"
                 (is (= #{[{:model "Card" :id card-eid}]}
@@ -71,7 +68,7 @@
     ;; The CRUD API rejects unknown models, but rows written before a model string was retired (or by
     ;; direct appdb writes) shouldn't take down a whole export.
     (mt/with-temp [:model/CuratedSearchEntry {sli-id :id}
-                   {:search_prompt "legacy" :entity {:model "garbage" :id 5}}]
+                   {:ai_context {:instructions "legacy"} :entity {:model "garbage" :id 5}}]
       (let [extracted (ts/extract-one "CuratedSearchEntry" sli-id)]
         (is (=? {:entity {:model "garbage" :id 5}} extracted))
         (is (= #{} (serdes/dependencies extracted)))))))
@@ -79,7 +76,7 @@
 (deftest table-entity-round-trip-test
   (let [table-id (mt/id :venues)]
     (mt/with-temp [:model/CuratedSearchEntry {sli-id :id sli-eid :entity_id}
-                   {:search_prompt "best venues" :entity {:model "table" :id table-id}}]
+                   {:ai_context {:instructions "best venues"} :entity {:model "table" :id table-id}}]
       (let [extracted (ts/extract-one "CuratedSearchEntry" sli-id)
             table-ref (:entity extracted)]
         (testing "the table ref is exported as a [db schema table] path"
@@ -111,7 +108,7 @@
           (let [db  (ts/create! :model/Database :name "Prompt DB")
                 t1  (ts/create! :model/Table :name "ORDERS" :db_id (:id db) :schema "PUBLIC")
                 sli (ts/create! :model/CuratedSearchEntry
-                                :search_prompt "orders" :verified true
+                                :ai_context {:instructions "orders guidance"}
                                 :entity {:model "table" :id (:id t1)})]
             (reset! sli-eid (:entity_id sli))
             ;; realize inside with-cache so the cached resolvers are actually used during extraction
@@ -131,6 +128,6 @@
             (ts/with-db dest-db
               (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
               (let [row (t2/select-one :model/CuratedSearchEntry :entity_id @sli-eid)]
-                (is (=? {:verified true} row))
+                (is (=? {:ai_context {:instructions "orders guidance"}} row))
                 (is (= "ORDERS"
                        (t2/select-one-fn :name :model/Table :id (get-in row [:entity :id]))))))))))))

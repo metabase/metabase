@@ -355,6 +355,42 @@
          :verified    (contains? verified id)
          :collection  (when coll (select-keys coll [:id :name :authority_level]))}))))
 
+(defn- measure-segment-refs->results
+  "Build search-result records for measure/segment refs (`{:id .. :type \"measure\"|\"segment\"}`),
+  carrying parent-table context (database + base table). Only surfaces those whose parent Table the
+  current user can read (perms delegate to the table)."
+  [refs]
+  (when (seq refs)
+    (let [by-type (group-by :type refs)
+          fetch   (fn [model ids]
+                    (when-let [ids (not-empty (distinct ids))]
+                      (filter mi/can-read?
+                              (t2/select [model :id :name :description :table_id] :id [:in ids]))))
+          rows    (concat (map #(assoc % :type "measure") (fetch :model/Measure (map :id (get by-type "measure"))))
+                          (map #(assoc % :type "segment") (fetch :model/Segment (map :id (get by-type "segment")))))
+          tbl-ids (not-empty (distinct (keep :table_id rows)))
+          id->tbl (when tbl-ids
+                    (into {} (map (juxt :id identity))
+                          (t2/select [:model/Table :id :name :schema :db_id] :id [:in tbl-ids])))]
+      (for [{:keys [id type name description table_id]} rows
+            :let [t (get id->tbl table_id)]]
+        (cond-> {:id id :type type :name name :description description}
+          t (assoc :database_id       (:db_id t)
+                   :base_table_id      (:id t)
+                   :base_table_name    (:name t)
+                   :base_table_schema  (:schema t)))))))
+
+(defn- enrich-with-measure-segment-base-tables
+  "Assemble `:base_table_portable_fk [database_name schema table]` for measure/segment results once
+  `:database_name` is set (by [[enrich-with-database-engines]]), giving the agent the table to query a
+  measure/segment against — the same affordance metrics get from [[enrich-with-metric-base-tables]]."
+  [results]
+  (mapv (fn [{:keys [type database_name base_table_schema base_table_name] :as r}]
+          (if (and (#{"measure" "segment"} type) database_name base_table_name)
+            (assoc r :base_table_portable_fk [database_name base_table_schema base_table_name])
+            r))
+        results))
+
 (defn ref-model->entity-type
   "Normalize an entity ref's `:model` string to the agent-facing entity type: plain cards are
   `\"question\"` everywhere the agent sees them (`read_resource` URIs, search results)."
@@ -366,21 +402,24 @@
   [[metabase.metabot.tools.shared.llm-shape/search-results->xml]] and the `search` tool consume.
 
   `refs` is a seq of `{:model <entity-type> :id <id>}` where `<entity-type>` is `\"table\"`, `\"model\"`,
-  `\"metric\"`, or `\"question\"` (the names the agent uses with `read_resource`); `\"card\"` is accepted
-  and normalized to `\"question\"`.
-  Returns records carrying `:portable_entity_id`, `:database_name`, fully-qualified names, metric base
-  tables, etc. — everything the LLM needs to build a query without an extra round-trip.
+  `\"metric\"`, `\"question\"`, `\"measure\"`, or `\"segment\"` (the names the agent uses with
+  `read_resource`); `\"card\"` is accepted and normalized to `\"question\"`.
+  Returns records carrying `:portable_entity_id`, `:database_name`, fully-qualified names, metric/measure/
+  segment base tables, etc. — everything the LLM needs to build a query without an extra round-trip.
   Refs whose entity no longer exists are dropped."
   [refs]
   (let [by-model  (group-by (comp ref-model->entity-type :model) refs)
         table-ids (distinct (map :id (get by-model "table")))
-        card-refs (for [m ["model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})]
+        card-refs (for [m ["model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})
+        ms-refs   (for [m ["measure" "segment"], r (get by-model m)] {:id (:id r) :type m})]
     (->> (concat (table-refs->results table-ids)
-                 (card-refs->results (distinct card-refs)))
+                 (card-refs->results (distinct card-refs))
+                 (measure-segment-refs->results (distinct ms-refs)))
          enrich-with-collection-descriptions
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-metric-base-tables
+         enrich-with-measure-segment-base-tables
          remove-unreadable-transforms)))
 
 (defn- format-search-output

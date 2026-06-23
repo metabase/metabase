@@ -1,6 +1,6 @@
 (ns metabase-enterprise.curated-search.core
-  "Enterprise implementation of the curated search mirror: pgvector-backed similarity search over the
-  curated `curated_search_entries` table, and the write-path nudge that keeps the mirror fresh.
+  "Enterprise implementation of the library entity index: pgvector-backed similarity search over the
+  per-value `library_entity_index` documents, and the write-path nudge that keeps the index fresh.
 
   OSS shims live in [[metabase.curated-search.mirror]]; the background sync they nudge is the
   [[metabase-enterprise.curated-search.task.sync]] Quartz job."
@@ -13,12 +13,10 @@
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.task.core :as task]
-   [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
-   (java.sql SQLException)
-   (org.postgresql.util PGobject)))
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -51,10 +49,10 @@
   (when (available?)
     (task/trigger-now! sync-job-key)))
 
-;; Weighted scoring shaped like regular search (metabase.search.scoring): each factor contributes
-;; weight * score; similarity (1 - cosine distance) is primary, verified a flat 0/1 boost.
+;; Scoring shaped like regular search (metabase.search.scoring): each factor contributes weight * score.
+;; Similarity (1 - cosine distance) is the only factor for now.
+;; TODO (Chris 2026-06-23) -- consider a doc_type weight (boost name/synonym over example) once tuned.
 (def ^:private similarity-weight 1.0)
-(def ^:private verified-weight 0.1)
 (def ^:private default-limit 10)
 
 (defn- scorer [nm score weight]
@@ -65,22 +63,15 @@
   "Build a weighted-scorer breakdown for one row, shaped like regular search's scoring.
   Returns a `:scores` vector of `{:name :score :weight :contribution}` plus the weighted-sum
   `:total_score`."
-  [{:keys [distance verified]}]
-  (let [scores [(scorer :similarity (- 1.0 (double distance)) similarity-weight)
-                (scorer :verified   (if verified 1.0 0.0)      verified-weight)]]
+  [{:keys [distance]}]
+  (let [scores [(scorer :similarity (- 1.0 (double distance)) similarity-weight)]]
     {:scores      scores
      :total_score (reduce + (map :contribution scores))}))
 
-(defn- decode-entity [v]
-  (cond
-    (instance? PGobject v) (json/decode (.getValue ^PGobject v) true)
-    (string? v)            (json/decode v true)
-    :else                  v))
-
 (defenterprise search
-  "Find the saved prompts nearest to `user-search-prompt` by cosine distance, up to `limit`.
-  Results are ranked by blended score (similarity + verified boost), each shaped
-  `{:saved_search_prompt :usage_instructions :entity :score}`.
+  "Find the library-entity documents nearest to `user-search-prompt` by cosine distance, up to `limit`.
+  Each result is shaped `{:entity {:model :id} :doc_type :doc_text :instructions :score}`, best score
+  first; the caller dedupes the (many-per-entity) docs down to distinct entities.
   Returns [] when the pgvector store is unconfigured."
   :feature :semantic-search
   [user-search-prompt limit]
@@ -92,29 +83,26 @@
           embedding (embedding/get-embedding model user-search-prompt
                                              {:type :query :record-tokens? true})
           lit       (index-table/format-embedding embedding)
-          ;; Order by the blended score, not raw distance, so a verified row whose boost lifts it into
-          ;; the top N survives the LIMIT. No HNSW index could accelerate this expression — see
-          ;; index-table for why the table has none.
-          ranking   (format "(embedding <=> %s) - (CASE WHEN verified THEN %s ELSE 0.0 END)"
-                            lit verified-weight)
+          distance  (str "doc_embedding <=> " lit)
           rows      (try
                       (jdbc/execute!
                        pgvector
-                       (-> (sql.helpers/select :search_prompt :usage_instructions :entity :verified
-                                               [[:raw (str "embedding <=> " lit)] :distance])
+                       (-> (sql.helpers/select :entity_type :entity_local_id :doc_type :doc_text
+                                               :instructions [[:raw distance] :distance])
                            (sql.helpers/from (keyword index-table/*vectors-table*))
-                           (sql.helpers/order-by [[:raw ranking] :asc])
+                           (sql.helpers/order-by [[:raw distance] :asc])
                            (sql.helpers/limit limit)
                            (sql/format {:quoted true}))
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-                      ;; 42P01 = undefined table: the background sync hasn't created the mirror yet.
+                      ;; 42P01 = undefined table: the background sync hasn't created the index yet.
                       (catch SQLException e
                         (if (= "42P01" (.getSQLState e)) [] (throw e))))]
       (->> rows
            (map (fn [row]
-                  {:saved_search_prompt (:search_prompt row)
-                   :usage_instructions  (:usage_instructions row)
-                   :entity              (decode-entity (:entity row))
-                   :score               (score row)}))
+                  {:entity       {:model (:entity_type row) :id (:entity_local_id row)}
+                   :doc_type     (:doc_type row)
+                   :doc_text     (:doc_text row)
+                   :instructions (:instructions row)
+                   :score        (score row)}))
            (sort-by (comp :total_score :score) >)
            vec))))

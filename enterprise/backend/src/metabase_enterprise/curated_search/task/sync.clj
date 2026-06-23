@@ -1,5 +1,5 @@
 (ns metabase-enterprise.curated-search.task.sync
-  "Quartz job running the curated search mirror reconciliation.
+  "Quartz job running the library entity index reconciliation.
 
   Scheduled periodically as a safety net; appdb writes also trigger it immediately via
   [[metabase-enterprise.curated-search.core/request-sync!]], so curator edits become searchable
@@ -23,14 +23,15 @@
 (set! *warn-on-reflection* true)
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Reconciles the curated search pgvector mirror with the appdb table."}
+               :doc "Reconciles the library entity index (pgvector) with the appdb."}
   CuratedSearchEntrySync [_ctx]
   (when (curated-search.core/available?)
     (try
-      (let [result (reconcile/reconcile! (semantic.db.datasource/ensure-initialized-data-source!)
-                                         (embedding/get-configured-model))]
-        (when (pos? (+ (:upserted result) (:deleted result)))
-          (log/info "curated search mirror reconciled" result)))
+      (let [{:keys [inserted updated deleted] :as result}
+            (reconcile/reconcile! (semantic.db.datasource/ensure-initialized-data-source!)
+                                  (embedding/get-configured-model))]
+        (when (pos? (+ (or inserted 0) (or updated 0) (or deleted 0)))
+          (log/info "library entity index reconciled" result)))
       (catch Throwable e
         ;; Log and move on: the next periodic run retries from the authoritative appdb table.
         (log/error e "curated search mirror reconciliation failed")))))

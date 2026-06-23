@@ -12,20 +12,17 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest content-hash-test
-  (let [row {:search_prompt "p" :usage_instructions "u" :entity {:model "table" :id 1}
-             :verified false}]
-    (testing "equal rows hash equal; nil and absent usage_instructions hash like empty"
-      (is (= (reconcile/content-hash row) (reconcile/content-hash row)))
-      (is (= (reconcile/content-hash (assoc row :usage_instructions nil))
-             (reconcile/content-hash (assoc row :usage_instructions "")))))
-    (testing "every mirror-relevant field changes the hash"
-      (let [h (reconcile/content-hash row)]
-        (doseq [variant [(assoc row :search_prompt "p2")
-                         (assoc row :usage_instructions "u2")
-                         (assoc row :entity {:model "table" :id 2})
-                         (assoc row :verified true)]]
-          (is (not= h (reconcile/content-hash variant)) (pr-str variant)))))))
+(deftest doc-id-test
+  (testing "equal (entity_type, entity_local_id, doc_type, doc_text) tuples hash equal"
+    (is (= (reconcile/doc-id "metric" 9 "name" "Revenue")
+           (reconcile/doc-id "metric" 9 "name" "Revenue"))))
+  (testing "each component changes the doc_id (instructions is deliberately not an input)"
+    (let [d (reconcile/doc-id "metric" 9 "name" "Revenue")]
+      (doseq [variant [(reconcile/doc-id "table"  9 "name"    "Revenue")
+                       (reconcile/doc-id "metric" 8 "name"    "Revenue")
+                       (reconcile/doc-id "metric" 9 "synonym" "Revenue")
+                       (reconcile/doc-id "metric" 9 "name"    "Sales")]]
+        (is (not= d variant) (pr-str variant))))))
 
 (deftest format-embedding-rejects-invalid-values-test
   (testing "non-numbers, NaN and infinities are rejected before they reach a raw SQL literal"
@@ -35,15 +32,15 @@
           (pr-str bad)))
     (is (string? (index-table/format-embedding [0.1 -0.2 0.3])))))
 
-(defmacro ^:private with-isolated-mirror
+(defmacro ^:private with-isolated-index
   "Run `body` with isolated pgvector tables bound and dropped afterwards, binding `ds-sym` to the
   pgvector datasource. Skips the body entirely when no pgvector store is configured."
   [[ds-sym] & body]
   `(when semantic.db.datasource/db-url
      (let [suffix# (System/nanoTime)
            ~ds-sym (semantic.db.datasource/ensure-initialized-data-source!)]
-       (binding [index-table/*vectors-table* (str "curated_search_index_test_" suffix#)
-                 index-table/*meta-table*    (str "curated_search_index_meta_test_" suffix#)]
+       (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix#)
+                 index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix#)]
          (try
            ~@body
            (finally
@@ -51,69 +48,101 @@
                                           index-table/*vectors-table* ", "
                                           index-table/*meta-table*)])))))))
 
-(defn- mirror-rows [ds]
+(defn- index-rows [ds]
   (jdbc/execute! ds
-                 [(format "SELECT index_id, search_prompt, verified, content_hash FROM \"%s\" ORDER BY index_id"
+                 [(format "SELECT doc_id, entity_type, entity_local_id, doc_type, doc_text, instructions FROM \"%s\""
                           index-table/*vectors-table*)]
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
+(defn- docs-for
+  "Index rows describing one entity (robust to any other library content in the test appdb)."
+  [ds entity-type entity-local-id]
+  (filter #(and (= entity-type (:entity_type %)) (= entity-local-id (:entity_local_id %)))
+          (index-rows ds)))
+
 (deftest ^:sequential reconcile-lifecycle-test
-  (with-isolated-mirror [ds]
-    (let [model semantic.tu/mock-embedding-model]
-      (mt/with-temp [:model/CuratedSearchEntry {id-1 :id}
-                     {:search_prompt "monthly revenue"
-                      :entity {:model "table" :id 1}}
-                     :model/CuratedSearchEntry {id-2 :id}
-                     {:search_prompt "orders and customers" :verified true
-                      :entity {:model "table" :id 2}}]
-        (let [appdb-total (t2/count :model/CuratedSearchEntry)]
-          (testing "first run mirrors every appdb row"
-            (is (=? {:upserted appdb-total :deleted 0 :unchanged 0}
-                    (reconcile/reconcile! ds model)))
-            (is (=? {id-1 {:search_prompt "monthly revenue" :verified false}
-                     id-2 {:search_prompt "orders and customers" :verified true}}
-                    (-> (into {} (map (juxt :index_id identity)) (mirror-rows ds))
-                        (select-keys [id-1 id-2])))))
-          (testing "an unchanged second run embeds and writes nothing"
-            (is (=? {:upserted 0 :deleted 0 :unchanged appdb-total}
-                    (reconcile/reconcile! ds model))))
-          (testing "an updated row is re-embedded; the rest stay unchanged"
-            (t2/update! :model/CuratedSearchEntry id-1 {:verified true})
-            (is (=? {:upserted 1 :deleted 0 :unchanged (dec appdb-total)}
-                    (reconcile/reconcile! ds model)))
-            (is (=? {:verified true}
-                    (->> (mirror-rows ds) (filter #(= id-1 (:index_id %))) first))))
-          (testing "a write that bypassed the hooks entirely is still repaired (self-healing)"
-            ;; Tamper with the mirror behind the reconciler's back.
-            (jdbc/execute! ds [(format "UPDATE \"%s\" SET content_hash = 'bogus' WHERE index_id = %d"
-                                       index-table/*vectors-table* id-2)])
-            (is (=? {:upserted 1 :deleted 0}
-                    (reconcile/reconcile! ds model))))))
-      (testing "rows deleted from the appdb are removed from the mirror as orphans"
-        ;; The with-temp rows above are gone now.
-        (is (=? {:upserted 0 :deleted 2}
-                (reconcile/reconcile! ds model)))))))
+  ;; :library lets us publish a Table into a library-data collection; the reconcile enumerates the
+  ;; library tree via collections/library-collection + descendant-ids, so we build a real library root.
+  (mt/with-premium-features #{:library :semantic-search}
+    (with-isolated-index [ds]
+      (let [model semantic.tu/mock-embedding-model]
+        (mt/with-temp [:model/Collection {lib-id :id}     {:type "library" :location "/"}
+                       :model/Collection {data-id :id}    {:type "library-data" :location (str "/" lib-id "/")}
+                       :model/Collection {metrics-id :id}  {:type "library-metrics" :location (str "/" lib-id "/")}
+                       :model/Database   {db-id :id}       {}
+                       :model/Table      {table-id :id}    {:db_id db-id :collection_id data-id
+                                                            :is_published true :active true
+                                                            :name "orders" :display_name "Orders"
+                                                            :description "All orders"}
+                       :model/Card       {metric-id :id}   {:type "metric" :collection_id metrics-id
+                                                            :name "Revenue" :description "Total revenue"
+                                                            :database_id db-id}
+                       :model/CuratedSearchEntry {cse-id :id} {:entity {:model "table" :id table-id}
+                                                               :ai_context {:instructions "Group by month."
+                                                                            :synonyms ["sales" "revenue"]
+                                                                            :examples ["orders last month"]}}]
+          (testing "first run indexes name/description docs for every library entity, plus ai_context docs"
+            (reconcile/reconcile! ds model)
+            (testing "the published table: name + description + 2 synonyms + 1 example, all stamped with instructions"
+              (let [docs (docs-for ds "table" table-id)]
+                (is (= {"name" 1 "description" 1 "synonym" 2 "example" 1}
+                       (frequencies (map :doc_type docs))))
+                (is (= #{"Group by month."} (set (map :instructions docs))))
+                (is (= #{"Orders"} (set (map :doc_text (filter #(= "name" (:doc_type %)) docs)))))))
+            (testing "the library metric: name + description only, no ai_context, no instructions"
+              (let [docs (docs-for ds "metric" metric-id)]
+                (is (= {"name" 1 "description" 1} (frequencies (map :doc_type docs))))
+                (is (= #{nil} (set (map :instructions docs)))))))
+          (testing "an unchanged second run writes nothing"
+            (is (=? {:inserted 0 :updated 0 :deleted 0} (reconcile/reconcile! ds model))))
+          (testing "editing instructions updates rows in place — no doc_id changes, no re-embed"
+            (let [before (set (map :doc_id (docs-for ds "table" table-id)))]
+              (t2/update! :model/CuratedSearchEntry cse-id
+                          {:ai_context {:instructions "Group by week."
+                                        :synonyms ["sales" "revenue"]
+                                        :examples ["orders last month"]}})
+              (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds model)))
+              (let [after (docs-for ds "table" table-id)]
+                (is (= before (set (map :doc_id after))) "doc_ids unchanged")
+                (is (= #{"Group by week."} (set (map :instructions after))) "instructions refreshed"))))
+          (testing "renaming the table mints a new name doc_id and GCs the old one"
+            (let [old-name-id (->> (docs-for ds "table" table-id)
+                                   (filter #(= "name" (:doc_type %))) first :doc_id)]
+              (t2/update! :model/Table table-id {:display_name "Sales Orders"})
+              (reconcile/reconcile! ds model)
+              (let [names (filter #(= "name" (:doc_type %)) (docs-for ds "table" table-id))]
+                (is (= 1 (count names)))
+                (is (= "Sales Orders" (:doc_text (first names))))
+                (is (not= old-name-id (:doc_id (first names)))))))
+          (testing "unpublishing the table removes it from the library, GCing all its docs"
+            (t2/update! :model/Table table-id {:is_published false})
+            (reconcile/reconcile! ds model)
+            (is (empty? (docs-for ds "table" table-id)))
+            (is (seq (docs-for ds "metric" metric-id)) "the metric is untouched")))))))
 
 (deftest ^:sequential rebuild-on-model-change-test
-  (with-isolated-mirror [ds]
-    (let [model semantic.tu/mock-embedding-model]
-      (mt/with-temp [:model/CuratedSearchEntry _
-                     {:search_prompt "monthly revenue"
-                      :entity {:model "table" :id 1}}]
-        (let [appdb-total (t2/count :model/CuratedSearchEntry)]
-          (testing "populate the mirror under the original model"
-            (is (=? {:upserted appdb-total} (reconcile/reconcile! ds model))))
+  (mt/with-premium-features #{:library :semantic-search}
+    (with-isolated-index [ds]
+      (let [model semantic.tu/mock-embedding-model]
+        (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
+                       :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
+                       :model/Database   {db-id :id}    {}
+                       :model/Table      {table-id :id} {:db_id db-id :collection_id data-id
+                                                         :is_published true :active true
+                                                         :name "orders" :display_name "Orders"}]
+          (testing "populate the index under the original model"
+            (reconcile/reconcile! ds model)
+            (is (seq (docs-for ds "table" table-id))))
           (testing "a model-identity change drops the vectors table and the next run re-embeds everything"
             (let [new-model (assoc model :model-name "model-v2")]
               (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
-              (is (= [] (mirror-rows ds)))
-              (is (=? {:upserted appdb-total :deleted 0 :unchanged 0}
-                      (reconcile/reconcile! ds new-model)))
+              (is (= [] (index-rows ds)))
+              (reconcile/reconcile! ds new-model)
+              (is (seq (docs-for ds "table" table-id)))
               (testing "a schema-version mismatch alone also triggers the rebuild"
-                ;; stale-write the meta row, as if the table were built by an older code version
                 (jdbc/execute! ds [(format "UPDATE \"%s\" SET schema_version = schema_version - 1"
                                            index-table/*meta-table*)])
                 (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
-                (is (= [] (mirror-rows ds))))
+                (is (= [] (index-rows ds))))
               (testing "the rebuild heals the meta row, so it doesn't recur on the next sync"
                 (is (= :ok (index-table/ensure-tables! ds new-model)))))))))))

@@ -1,22 +1,25 @@
 (ns metabase-enterprise.curated-search.index-table
-  "Lifecycle of the pgvector tables backing the curated search mirror.
+  "Lifecycle of the pgvector tables backing the library entity index.
 
   Two tables live in the pgvector store:
 
-  - the vectors table: one row per appdb `curated_search_entries` row, carrying the embedding, a copy of
-    the searchable fields, and a `content_hash` used by the reconciler to detect stale rows;
+  - the vectors table (`library_entity_index`): many rows per library entity — one *embedded* document
+    per value (the entity's name, its description, each ai_context synonym, each ai_context example).
+    Each row carries `doc_embedding`, the `doc_text` it was embedded from, flat `entity_type` /
+    `entity_local_id` columns, and the entity's `instructions` (carried, not embedded). The primary key
+    `doc_id` is content-addressed over the embedded text (see [[reconcile]]), so a text edit mints a new
+    row and the reconciler GCs the old one.
   - a single-row meta table recording the embedding model identity and schema version the vectors table
     was built for.
 
-  There is deliberately no HNSW index: the search path orders by the blended score (distance minus the
-  verified boost), which an HNSW index can't accelerate anyway, and an exact scan over a curated table
-  of this size is microseconds.
+  There is deliberately no HNSW index: search orders by similarity over a small curated set, an exact
+  scan is microseconds, and the per-entity dedup happens in app code rather than SQL.
 
   [[ensure-tables!]] is the only entry point: it idempotently creates both tables and, when the
   configured embedding model or the schema version no longer matches the meta row, drops and recreates
   the vectors table so the next reconcile re-embeds everything.
-  That drop-and-rebuild is the entire model-change story — the appdb table is authoritative and small,
-  so rebuilding from it is cheap."
+  That drop-and-rebuild is the entire model-change story — the index is rebuilt from the authoritative
+  appdb (library membership + `osi_ai_context`), so rebuilding is cheap."
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -30,17 +33,19 @@
 
 (def ^:dynamic *vectors-table*
   "Vectors table name. Dynamic so tests can rebind it to an isolated table."
-  "curated_search_index")
+  "library_entity_index")
 
 (def ^:dynamic *meta-table*
   "Meta table name. Dynamic so tests can rebind it to an isolated table."
-  "curated_search_index_meta")
+  "library_entity_index_meta")
 
 (def schema-version
   "Version of the vectors table schema.
   Bump it to force a drop-and-rebuild on instances whose meta row records an older version."
-  ;; 2: dropped the HNSW index — the rebuild sheds it from tables built under version 1.
-  2)
+  ;; 2: dropped the HNSW index.
+  ;; 3: per-value docs — content-addressed doc_id PK; flat entity_type/entity_local_id/doc_type/doc_text/
+  ;;    instructions columns replace the old 1-row-per-entry shape.
+  3)
 
 ;; Advisory lock serializing concurrent ensure-tables! calls (e.g. several cluster nodes starting at
 ;; once). Arbitrary app-wide-unique constant; semantic-search's migration lock uses 19991.
@@ -73,13 +78,17 @@
 (defn- create-vectors-table-sql [dims]
   (-> (sql.helpers/create-table (keyword *vectors-table*) :if-not-exists)
       (sql.helpers/with-columns
-        [[:index_id :bigint [:primary-key]]
-         [:search_prompt :text :not-null]
-         [:usage_instructions :text :not-null]
-         [:entity :jsonb :not-null]
-         [:verified :boolean [:default false] :not-null]
-         [:content_hash :text :not-null]
-         [:embedding [:raw (format "vector(%d)" dims)] :not-null]])
+        ;; doc_id = base64(sha1("entity_type|entity_local_id|doc_type|doc_text")) — content-addresses the
+        ;; embedded text only (instructions is excluded so an instructions edit never re-embeds).
+        [[:doc_id :text [:primary-key]]
+         [:entity_type :text :not-null]
+         [:entity_local_id :bigint :not-null]
+         [:doc_type :text :not-null]
+         [:doc_text :text :not-null]
+         ;; The entity's ai_context instructions, denormalized onto every one of its docs; carried, not
+         ;; embedded. Nullable — most library entities have no ai_context.
+         [:instructions :text]
+         [:doc_embedding [:raw (format "vector(%d)" dims)] :not-null]])
       sql-format-quoted))
 
 (defn- model-identity

@@ -1,6 +1,6 @@
 (ns metabase.curated-search.api
-  "Admin REST API for managing curated search entries: curated search prompts mapped to the entities
-  that answer them."
+  "Admin REST API for managing `osi_ai_context` rows: OSI `ai_context` metadata attached to a library
+  entity."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -24,16 +24,30 @@
    [:id    :int]
    [:name  {:optional true} :string]])
 
+(def ^:private AiContext
+  "OSI ai_context blob. All fields optional; extra keys tolerated for forward-compat with the OSI spec."
+  [:map
+   [:instructions {:optional true} [:maybe :string]]
+   [:synonyms     {:optional true} [:sequential :string]]
+   [:examples     {:optional true} [:sequential :string]]])
+
 (def ^:private Entry
   [:map
-   [:id                 ms/PositiveInt]
-   [:search_prompt      :string]
-   [:usage_instructions {:optional true} [:maybe :string]]
-   [:entity             EntityRefOut]
-   [:verified           :boolean]])
+   [:id         ms/PositiveInt]
+   [:entity     EntityRefOut]
+   [:ai_context AiContext]])
 
 (def ^:private default-limit 50)
 (def ^:private default-offset 0)
+
+(defn- find-by-entity
+  "The existing row for this entity ref, matched on (model, id) only (the optional `:name` is ignored).
+  One ai_context row per entity is enforced here, not by a DB constraint (JSON-text uniqueness is brittle
+  cross-DB)."
+  [{:keys [model id]}]
+  (some (fn [{e :entity :as row}]
+          (when (and (= (:model e) model) (= (:id e) id)) row))
+        (t2/select :model/CuratedSearchEntry)))
 
 (api.macros/defendpoint :get "/"
   :- [:map
@@ -41,7 +55,7 @@
       [:total  :int]
       [:limit  :int]
       [:offset :int]]
-  "Get all curated search entries, paginated."
+  "Get all ai_context entries, paginated."
   [_route-params
    _query-params]
   (api/check-superuser)
@@ -57,7 +71,7 @@
 
 (api.macros/defendpoint :get "/:id"
   :- Entry
-  "Get a curated search entry by ID."
+  "Get an ai_context entry by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)
@@ -65,50 +79,42 @@
 
 (api.macros/defendpoint :post "/"
   :- Entry
-  "Create a new curated search entry."
+  "Create (or replace) the ai_context for an entity. One row per entity: if the entity already has an
+  ai_context row it is updated in place rather than duplicated."
   [_route-params
    _query-params
-   {:keys [search_prompt usage_instructions entity verified]}
+   {:keys [entity ai_context]}
    :- [:map
-       [:search_prompt      ms/NonBlankString]
-       [:usage_instructions {:optional true} [:maybe :string]]
-       [:entity             EntityRef]
-       [:verified           {:optional true} [:maybe :boolean]]]]
+       [:entity     EntityRef]
+       [:ai_context AiContext]]]
   (api/check-superuser)
-  (t2/insert-returning-instance! :model/CuratedSearchEntry
-                                 {:search_prompt      search_prompt
-                                  :usage_instructions usage_instructions
-                                  :entity             entity
-                                  :verified           (boolean verified)}))
+  (if-let [existing (find-by-entity entity)]
+    (do (t2/update! :model/CuratedSearchEntry (:id existing) {:entity entity :ai_context ai_context})
+        (t2/select-one :model/CuratedSearchEntry :id (:id existing)))
+    (t2/insert-returning-instance! :model/CuratedSearchEntry {:entity entity :ai_context ai_context})))
 
 (api.macros/defendpoint :put "/:id"
   :- Entry
-  "Update a curated search entry by ID. Only the provided fields are changed; sending a null
-  usage_instructions clears it."
+  "Update an ai_context entry by ID. Only the provided fields are changed."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   ;; patch semantics: presence of a key (not nil-ness of its value) decides what changes, so an explicit
-   ;; null can clear the nullable usage_instructions. The non-nullable fields reject null in the schema.
-   {:keys [search_prompt usage_instructions entity verified] :as body}
+   ;; patch semantics: presence of a key (not nil-ness of its value) decides what changes.
+   {:keys [entity ai_context] :as body}
    :- [:map
-       [:search_prompt      {:optional true} ms/NonBlankString]
-       [:usage_instructions {:optional true} [:maybe :string]]
-       [:entity             {:optional true} EntityRef]
-       [:verified           {:optional true} :boolean]]]
+       [:entity     {:optional true} EntityRef]
+       [:ai_context {:optional true} AiContext]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/CuratedSearchEntry :id id))
   (let [changes (cond-> {}
-                  (contains? body :search_prompt)      (assoc :search_prompt search_prompt)
-                  (contains? body :usage_instructions) (assoc :usage_instructions usage_instructions)
-                  (contains? body :entity)             (assoc :entity entity)
-                  (contains? body :verified)           (assoc :verified verified))]
+                  (contains? body :entity)     (assoc :entity entity)
+                  (contains? body :ai_context) (assoc :ai_context ai_context))]
     (when (seq changes)
       (t2/update! :model/CuratedSearchEntry id changes)))
   (t2/select-one :model/CuratedSearchEntry :id id))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
-  "Delete a curated search entry by ID."
+  "Delete an ai_context entry by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)

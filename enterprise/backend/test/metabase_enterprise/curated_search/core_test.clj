@@ -19,17 +19,13 @@
 
 (deftest score-shape-matches-regular-search-test
   (let [score (var-get #'curated-search.core/score)]
-    (testing "weighted-scorer breakdown: per-factor {name score weight contribution} + total_score"
-      (is (=? {:scores [{:name :similarity :score (approx 0.8) :weight 1.0 :contribution (approx 0.8)}
-                        {:name :verified   :score 0.0          :weight 0.1 :contribution 0.0}]
+    (testing "weighted-scorer breakdown: similarity factor + total_score (similarity-only for now)"
+      (is (=? {:scores [{:name :similarity :score (approx 0.8) :weight 1.0 :contribution (approx 0.8)}]
                :total_score (approx 0.8)}
-              (score {:distance 0.2 :verified false}))))
-    (testing "the verified boost applies its weight and strictly increases the total"
-      (is (=? {:total_score (approx 0.9)} (score {:distance 0.2 :verified true})))
-      (let [s (score {:distance 0.2 :verified true})]
-        (is (=? (approx (reduce + (map :contribution (:scores s)))) (:total_score s))))
-      (is (> (:total_score (score {:distance 0.2 :verified true}))
-             (:total_score (score {:distance 0.2 :verified false})))))))
+              (score {:distance 0.2}))))
+    (testing "a nearer document (smaller distance) scores strictly higher"
+      (is (> (:total_score (score {:distance 0.1}))
+             (:total_score (score {:distance 0.5})))))))
 
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
@@ -41,7 +37,7 @@
         (is (nil? (mirror/request-sync!)))))))
 
 (deftest request-sync-triggers-the-job-test
-  (testing "when the mirror is available, the nudge fires trigger-now! on the sync job — and nothing else"
+  (testing "when the index is available, the nudge fires trigger-now! on the sync job — and nothing else"
     (mt/with-premium-features #{:semantic-search}
       ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
@@ -60,41 +56,44 @@
       (mt/with-premium-features #{:semantic-search}
         (is (true? (curated-search.core/available?)))))))
 
-(deftest ^:sequential verified-boost-applies-before-limit-test
-  (testing "the SQL LIMIT ranks by blended score: a verified row slightly farther by raw distance still wins top-1"
+(deftest ^:sequential ranks-by-similarity-test
+  (testing "search ranks library documents by cosine similarity, nearest first"
     (when semantic.db.datasource/db-url
-      (let [suffix  (System/nanoTime)
-            ds      (semantic.db.datasource/ensure-initialized-data-source!)
-            p-verif "verified entry"
-            p-plain "plain entry"
-            q       "the query"]
-        (mt/with-premium-features #{:semantic-search}
+      (mt/with-premium-features #{:library :semantic-search}
+        (let [suffix (System/nanoTime)
+              ds     (semantic.db.datasource/ensure-initialized-data-source!)
+              q      "the query"]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]
-            (binding [index-table/*vectors-table* (str "curated_search_index_test_" suffix)
-                      index-table/*meta-table*    (str "curated_search_index_meta_test_" suffix)]
-              ;; plain ties the query exactly (distance 0); verified sits at distance ~0.006, within its
-              ;; 0.1 boost. A raw-distance LIMIT 1 would keep only the plain row.
-              (semantic.tu/with-mock-embeddings {q       [1.0 0.0 0.0 0.0]
-                                                 p-plain [1.0 0.0 0.0 0.0]
-                                                 p-verif [0.9 0.1 0.0 0.0]}
-                (mt/with-temp [:model/CuratedSearchEntry _
-                               {:search_prompt p-plain :entity {:model "table" :id 1}}
-                               :model/CuratedSearchEntry _
-                               {:search_prompt p-verif :verified true :entity {:model "table" :id 2}}]
+            (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
+                      index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
+              ;; the two tables' name docs embed "near"/"far"; q ties "near" exactly and is orthogonal to "far".
+              (semantic.tu/with-mock-embeddings {q      [1.0 0.0 0.0 0.0]
+                                                 "near" [1.0 0.0 0.0 0.0]
+                                                 "far"  [0.0 1.0 0.0 0.0]}
+                (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
+                               :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
+                               :model/Database   {db-id :id}    {}
+                               :model/Table      {near-id :id}  {:db_id db-id :collection_id data-id :is_published true
+                                                                 :active true :name "near" :display_name "near"}
+                               :model/Table      {far-id :id}   {:db_id db-id :collection_id data-id :is_published true
+                                                                 :active true :name "far" :display_name "far"}]
                   (try
                     (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
-                    (is (= [p-verif] (mapv :saved_search_prompt (mirror/search q 1))))
+                    (testing "the nearer table ranks first; each hit carries the entity ref + matched doc"
+                      (is (=? [{:entity {:model "table" :id near-id} :doc_type "name" :doc_text "near"}
+                               {:entity {:model "table" :id far-id}}]
+                              (mirror/search q 10))))
                     (finally
                       (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
                                               index-table/*vectors-table* ", "
                                               index-table/*meta-table*)]))))))))))))
 
-(defn- create-entry!
-  "POST an entry through the CRUD API; returns the created row's id."
-  [search-prompt entity verified]
+(defn- put-ai-context!
+  "POST an ai_context entry through the CRUD API; returns the created row's id."
+  [entity ai-context]
   (:id (mt/user-http-request :crowberto :post 200 "curated-search/"
-                             {:search_prompt search-prompt :entity entity :verified verified})))
+                             {:entity entity :ai_context ai-context})))
 
 (deftest ^:sequential crud-api-to-tool-end-to-end-test
   (testing "CRUD API write -> reconcile -> pgvector -> retrieve_library_entities tool, end to end"
@@ -103,48 +102,43 @@
     ;; deterministic, no network) against isolated temp tables, with the reconciler run directly in
     ;; place of the background Quartz job.
     (when semantic.db.datasource/db-url
-      (let [suffix    (System/nanoTime)
-            ds        (semantic.db.datasource/ensure-initialized-data-source!)
-            ent-1     {:model "table" :id (mt/id :orders)}
-            ent-2     {:model "table" :id (mt/id :people)}
-            ;; Both prompts + the query embed to the same vector, so cosine distance ties and the
-            ;; verified boost (0.10) alone decides the ranking.
-            vec1      [1.0 0.0 0.0 0.0]
-            p-verif   "revenue by region (verified)"
-            p-plain   "revenue by region (plain)"
-            q         "monthly revenue per region"
-            ;; bind a user: the tool's hydration permission-filters via mi/can-read?, which needs
-            ;; *current-user-id* (a superuser can read the test tables).
-            search!   #(mt/with-test-user :crowberto
-                         (get-in (tools.curated-search/retrieve-library-entities-tool
-                                  {:user_search_prompt q})
+      (mt/with-premium-features #{:library :semantic-search}
+        (let [suffix  (System/nanoTime)
+              ds      (semantic.db.datasource/ensure-initialized-data-source!)
+              q       "monthly revenue per region"
+              synonym "revenue per region"
+              ;; bind a user: the tool's hydration permission-filters via mi/can-read?, which needs
+              ;; *current-user-id* (a superuser can read the test tables).
+              search! #(mt/with-test-user :crowberto
+                         (get-in (tools.curated-search/retrieve-library-entities-tool {:user_search_prompt q})
                                  [:structured-output :data]))]
-        (mt/with-premium-features #{:semantic-search}
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]
-            (binding [index-table/*vectors-table* (str "curated_search_index_test_" suffix)
-                      index-table/*meta-table*    (str "curated_search_index_meta_test_" suffix)]
-              (semantic.tu/with-mock-embeddings {p-verif vec1 p-plain vec1 q vec1}
-                (try
-                  (let [id-verif (create-entry! p-verif ent-1 true)
-                        id-plain (create-entry! p-plain ent-2 false)
-                        _        (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
-                        results  (search!)]
-                    (testing "both distinct entities mirrored and returned, the verified one boosted first"
-                      (is (= [p-verif p-plain] (mapv :saved_search_prompt results))))
-                    (testing "data is per-entity hydrated records; total_score reflects the boost, similarity=1.0 (vectors tie)"
-                      (is (=? [{:type "table" :id (mt/id :orders) :similarity (approx 1.0)
-                                :score {:total_score (approx 1.1)}}
-                               {:type "table" :id (mt/id :people) :similarity (approx 1.0)
-                                :score {:total_score (approx 1.0)}}]
-                              results)))
-                    (testing "deleting via the CRUD API + reconcile removes the row from search results"
-                      (mt/user-http-request :crowberto :delete 204 (str "curated-search/" id-verif))
-                      (is (=? {:deleted 1} (reconcile/reconcile! ds semantic.tu/mock-embedding-model)))
-                      (is (= [p-plain] (mapv :saved_search_prompt (search!)))))
-                    ;; clean up the appdb rows we created
-                    (mt/user-http-request :crowberto :delete 204 (str "curated-search/" id-plain)))
-                  (finally
-                    (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
-                                            index-table/*vectors-table* ", "
-                                            index-table/*meta-table*)])))))))))))
+            (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
+                      index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
+              ;; the curated synonym ties the query exactly; the table's own name "orders" is orthogonal.
+              (semantic.tu/with-mock-embeddings {q       [1.0 0.0 0.0 0.0]
+                                                 synonym [1.0 0.0 0.0 0.0]
+                                                 "orders" [0.0 1.0 0.0 0.0]}
+                (mt/with-temp [:model/Collection {lib-id :id}   {:type "library" :location "/"}
+                               :model/Collection {data-id :id}  {:type "library-data" :location (str "/" lib-id "/")}
+                               :model/Database   {db-id :id}     {}
+                               :model/Table      {table-id :id}  {:db_id db-id :collection_id data-id :is_published true
+                                                                  :active true :name "orders" :display_name "orders"}]
+                  (try
+                    (let [cse-id (put-ai-context! {:model "table" :id table-id}
+                                                  {:instructions "Group by month." :synonyms [synonym]})]
+                      (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
+                      (testing "the tool returns the table, matched on the curated synonym, with usage_instructions"
+                        (is (=? [{:type "table" :id table-id :matched_doc_type "synonym" :matched_text synonym
+                                  :usage_instructions "Group by month." :similarity (approx 1.0)}]
+                                (search!))))
+                      (testing "deleting the ai_context via the CRUD API + reconcile drops the synonym doc"
+                        (mt/user-http-request :crowberto :delete 204 (str "curated-search/" cse-id))
+                        (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
+                        (is (empty? (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" WHERE doc_type = 'synonym' AND entity_local_id = %d"
+                                                               index-table/*vectors-table* table-id)])))))
+                    (finally
+                      (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
+                                              index-table/*vectors-table* ", "
+                                              index-table/*meta-table*)]))))))))))))
