@@ -2075,7 +2075,9 @@
                FROM generate_series(1, 5000) AS i;"
             results (qp/process-query (mt/native-query {:query sql})
                                       (temp-storage/notification-rff
-                                       5000 {:context 'complex-types-in-notification-payload}))]
+                                       {:budget (temp-storage/make-resident-budget
+                                                 {:per-card 5000 :resident-cap Long/MAX_VALUE :floor Long/MAX_VALUE})}
+                                       {:context 'complex-types-in-notification-payload}))]
         (is (integer? (:data.rows-file-size results)))
         (is (temp-storage/streaming-temp-file? (-> results :data :rows)))
         (is (=? [1
