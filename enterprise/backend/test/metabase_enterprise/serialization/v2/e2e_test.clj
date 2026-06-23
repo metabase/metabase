@@ -841,7 +841,7 @@
           (testing "Hidden YAML files are still silently skipped"
             (let [{:keys [entities]} (#'ingest/ingest-all (io/file dump-dir))
                   files (->> entities
-                             (map (comp second second))
+                             (map val)
                              (map #(.getName ^File %))
                              set)]
               (is (not (contains? files ".hidden.yaml")))))
