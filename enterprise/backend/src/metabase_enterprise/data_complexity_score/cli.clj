@@ -34,6 +34,7 @@
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.representation :as representation]
+   [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
@@ -135,6 +136,10 @@
   (let [result (complexity/complexity-scores
                 (assoc (synonym-source/complexity-scores-opts)
                        :metabot-scope (metabot-scope/internal-metabot-scope)
+                       ;; Match the level baked into current-fingerprint (used for the persisted row),
+                       ;; so a non-default setting can't store a level-2-shaped score under a
+                       ;; level-0/1 fingerprint.
+                       :level (settings/effective-level)
                        :emit-snowplow? false))]
     (when write?
       (data-complexity-score/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
