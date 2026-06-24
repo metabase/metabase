@@ -786,6 +786,17 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  describe
+  {:team "Metabot"
+   :api  #{metabase.describe.api}
+   :uses #{api
+           lib
+           lib-be
+           util}
+   :model-imports #{:model/Card
+                    :model/Segment
+                    :model/Measure}}
+
   documents
   {:team "UX West"
    :api  #{metabase.documents.api

@@ -23,6 +23,7 @@
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api]
    [metabase.data-studio.api]
+   [metabase.describe.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
@@ -90,6 +91,7 @@
          metabase.collections-rest.api/keep-me
          metabase.dashboards-rest.api/keep-me
          metabase.data-studio.api/keep-me
+         metabase.describe.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
          metabase.frontend-errors.api/keep-me
@@ -182,6 +184,7 @@
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
    "/dataset"              (+auth 'metabase.query-processor.api)
+   "/describe"             (+auth 'metabase.describe.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
