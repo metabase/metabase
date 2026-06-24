@@ -12,8 +12,8 @@ import {
 import { useSelector } from "metabase/redux";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
-import { getFontFamilyValue } from "metabase/ui/fonts";
 import { getSitePath } from "metabase/utils/dom";
+import { getFontFamilyValue } from "metabase/utils/fonts";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 import { getFont, getFontFiles } from "../../selectors";

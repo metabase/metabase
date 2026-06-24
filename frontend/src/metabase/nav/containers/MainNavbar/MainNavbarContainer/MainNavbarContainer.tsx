@@ -9,19 +9,18 @@ import {
   useListDatabasesQuery,
   useReorderBookmarksMutation,
 } from "metabase/api";
-import { logout } from "metabase/auth/actions";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import type { CollectionTreeItem } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import CreateCollectionModal from "metabase/common/collections/containers/CreateCollectionModal";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
   currentUserPersonalCollections,
   getCollectionIcon,
   nonPersonalOrArchivedCollection,
-} from "metabase/collections/utils";
-import { Modal } from "metabase/common/components/Modal";
+} from "metabase/common/collections/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
+import { logout } from "metabase/redux/auth";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -29,6 +28,7 @@ import {
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
+import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, User } from "metabase-types/api";
 
@@ -223,7 +223,15 @@ function MainNavbarContainer({
         showExternalCollectionsSection={showExternalCollectionsSection}
       />
 
-      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
+      <Modal
+        opened={Boolean(modal)}
+        onClose={closeModal}
+        size="lg"
+        withCloseButton={false}
+        padding={0}
+      >
+        {renderModalContent()}
+      </Modal>
     </>
   );
 }

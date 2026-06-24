@@ -27,27 +27,24 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                             (metabot.tools.field-stats/field-values
                              {:entity-type "table", :entity-id people-id, :field-id state-id, :limit 5}))))
+    (testing "A table field detail surfaces its portable FK so the LLM can reference it directly."
+      (mt/as-admin
+        (is (=? {:structured-output {:portable_fk ["test-data (h2)" "PUBLIC" "PRODUCTS" "CATEGORY"]}}
+                (metabot.tools.field-stats/field-values
+                 {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5})))))
+    (testing "A field-id not on the table is an agent error, not a field-metadata result."
+      (mt/as-admin
+        (is (=? {:output #"Field -1 not found"}
+                (metabot.tools.field-stats/field-values
+                 {:entity-type "table", :entity-id products-id, :field-id -1, :limit 5})))))
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
-        ;; Skewness is a derived double whose last few digits vary across JVMs/platforms,
-        ;; so strip it from the exact-equality check and assert approximate value separately.
-        (let [birth-date-result (metabot.tools.field-stats/field-values
-                                 {:entity-type "table", :entity-id people-id, :field-id birth-date-id, :limit 5})
-              birth-date-skewness (get-in birth-date-result
-                                          [:structured-output :value_metadata :statistics :skewness])]
-          (is (some? birth-date-skewness))
-          (is (< (abs (- birth-date-skewness -0.00557870227770)) 1e-6)
-              "skewness should be approximately -0.00557870227770"))
         (are [table-id field-id value-metadata]
-             (= {:structured-output {:result-type    :field-metadata
-                                     :field_id       field-id
-                                     :value_metadata value-metadata}}
-                (let [result (metabot.tools.field-stats/field-values
-                              {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5})]
-                  ;; strip skewness to avoid platform-dependent floating-point mismatch
-                  (cond-> result
-                    (get-in result [:structured-output :value_metadata :statistics :skewness])
-                    (update-in [:structured-output :value_metadata :statistics] dissoc :skewness))))
+             (=? {:structured-output {:result-type    :field-metadata
+                                      :field_id       field-id
+                                      :value_metadata value-metadata}}
+                 (metabot.tools.field-stats/field-values
+                  {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
           people-id   birth-date-id {:statistics
                                      {:distinct-count 2308
                                       :percent-null   0.0

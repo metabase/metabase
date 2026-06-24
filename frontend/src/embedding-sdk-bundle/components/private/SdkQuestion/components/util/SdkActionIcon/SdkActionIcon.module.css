@@ -1,7 +1,7 @@
 .sdkActionIcon:not([data-css-specificity-hack]) {
   color: var(--mb-color-text-primary);
   background: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 
   &:hover {
     background: var(--mb-color-background-hover);
@@ -9,11 +9,15 @@
 
   &[data-active="true"] {
     color: var(--mb-color-text-primary-inverse);
-    background: var(--mb-color-brand);
-    border-color: var(--mb-color-brand);
+    background: var(--mb-color-core-brand);
+    border-color: var(--mb-color-core-brand);
 
     &:hover {
-      background: color-mix(in srgb, var(--mb-color-brand), transparent 20%);
+      background: color-mix(
+        in srgb,
+        var(--mb-color-core-brand),
+        transparent 20%
+      );
     }
   }
 }

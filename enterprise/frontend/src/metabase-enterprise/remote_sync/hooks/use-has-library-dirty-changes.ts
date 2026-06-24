@@ -4,7 +4,7 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import {
   buildCollectionTree,
   isLibraryCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
 import type { CollectionId } from "metabase-types/api";
 

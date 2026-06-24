@@ -44,10 +44,10 @@
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
 
     &:hover {
-      background-color: var(--mb-color-brand);
+      background-color: var(--mb-color-core-brand);
     }
   }
 }
@@ -100,7 +100,7 @@
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 }
 
@@ -226,7 +226,7 @@
 
   &[data-selected] {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 
   &:hover:not([data-selected], :disabled) {

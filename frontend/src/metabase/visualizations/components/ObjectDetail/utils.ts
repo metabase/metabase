@@ -19,6 +19,7 @@ import type {
   Table as ApiTable,
   DatasetColumn,
   DatasetData,
+  IconName,
   TableId,
   VisualizationSettings,
   WritebackAction,
@@ -135,6 +136,13 @@ export const getSinglePKIndex = (cols: DatasetColumn[]) => {
   return index === -1 ? undefined : index;
 };
 
+export type ActionItem = {
+  title: string;
+  icon: IconName;
+  action: () => void;
+};
+
+// TODO: Reuse helpers from DetailView (@stasgavrylov / 13.06.26)
 export const getActionItems = ({
   actions,
   databases,
@@ -145,8 +153,8 @@ export const getActionItems = ({
   databases: Database[];
   onDelete: (action: WritebackAction) => void;
   onUpdate: (action: WritebackAction) => void;
-}) => {
-  const actionItems = [];
+}): ActionItem[] => {
+  const actionItems: ActionItem[] = [];
   /**
    * Public actions require an additional endpoint which is out of scope
    * of Milestone 1 in #32320 epic.

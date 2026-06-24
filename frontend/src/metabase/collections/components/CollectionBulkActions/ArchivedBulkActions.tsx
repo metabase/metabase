@@ -7,7 +7,7 @@ import {
   useDeleteItem,
   useSetArchive,
 } from "metabase/archive/hooks";
-import { isRootTrashCollection } from "metabase/collections/utils";
+import { isRootTrashCollection } from "metabase/common/collections/utils";
 import {
   BulkActionButton,
   BulkActionDangerButton,

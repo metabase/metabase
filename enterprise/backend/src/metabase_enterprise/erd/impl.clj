@@ -9,6 +9,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table :as schema.table]
    [toucan2.core :as t2]))
 
 ;;; -------------------------------------------------- Schema --------------------------------------------------
@@ -48,6 +49,7 @@
    [:description {:optional true} [:maybe :string]]
    [:owner       {:optional true} ::erd-owner]
    [:schema {:optional true} [:maybe :string]]
+   [:visibility_type {:optional true} [:maybe :keyword]]
    [:db_id :int]
    [:fields [:sequential ::erd-field]]])
 
@@ -77,7 +79,7 @@
    (`:db_id`, `:is_published`, `:collection_id`) plus the display columns the
    ERD response surfaces (`:description`, owner fields hydrated below)."
   [:id :db_id :name :display_name :schema :is_published :collection_id
-   :description :owner_user_id :owner_email])
+   :description :owner_user_id :owner_email :visibility_type])
 
 (defn- schema-clause
   "The rest of the database API treats a blank schema name as the union of nil
@@ -93,7 +95,7 @@
   (into {} (map (juxt :id identity)) xs))
 
 (defn- readable-tables
-  "Fetch readable, active, visible tables in `database-id`.
+  "Fetch readable, active tables in `database-id`.
    Optional `table-ids` restricts by IDs; optional `schema` restricts by schema.
    `schema=\"\"` matches both nil and empty-string schemas."
   [database-id & {:keys [table-ids schema] :as opts}]
@@ -101,8 +103,7 @@
     []
     (let [where (cond-> [:and
                          [:= :db_id database-id]
-                         [:= :active true]
-                         [:= :visibility_type nil]]
+                         [:= :active true]]
                   (contains? opts :table-ids) (conj [:in :id table-ids])
                   (contains? opts :schema)    (conj (schema-clause schema)))]
       (->> (t2/select :model/Table
@@ -118,13 +119,15 @@
 
 (defn- fetch-fields-for-tables
   "Fetch all active fields for the given table IDs.
-   Returns a vector of field maps."
+   Returns a vector of field maps ordered by the same ordering
+   as table metadata view (`/api/table/:id/query_metadata`)."
   [table-ids]
   (when (seq table-ids)
     (t2/select :model/Field
-               {:where [:and
-                        [:in :table_id table-ids]
-                        [:= :active true]]})))
+               {:where    [:and
+                           [:in :table_id table-ids]
+                           [:= :active true]]
+                :order-by schema.table/field-order-rule})))
 
 (defn- fetch-fields-by-ids
   "Fetch active fields by ID."
@@ -233,6 +236,7 @@
    :description  (:description table)
    :owner        (:owner table)
    :schema       (:schema table)
+   :visibility_type (:visibility_type table)
    :db_id        (:db_id table)
    :fields       (mapv #(build-erd-field % target-field-id->table-id) fields)})
 

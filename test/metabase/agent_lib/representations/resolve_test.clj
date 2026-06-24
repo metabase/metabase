@@ -288,6 +288,64 @@
           "the portable `source-field` FK is still resolved to its numeric id alongside the alias"))))
 
 ;;; ============================================================
+;;; annotate-field-types — base-type / effective-type stamping
+;;; ============================================================
+
+(def ^:private mp-with-effective-type
+  "Provider that has a field whose effective-type differs from its base-type."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample" :dbms-version {:flavor "PostgreSQL"} :engine :postgres}
+    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
+               {:id 11 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
+               {:id 102 :name "CREATED_AT" :table-id 10 :base-type :type/DateTime}
+               {:id 103 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer
+                :fk-target-field-id 110}
+               {:id 104 :name "UNIX_TS" :table-id 10
+                :base-type :type/Integer :effective-type :type/Temporal}
+               {:id 110 :name "ID"         :table-id 11 :base-type :type/Integer}
+               {:id 111 :name "CATEGORY"   :table-id 11 :base-type :type/Text}]}))
+
+(deftest annotate-field-types-effective-type-test
+  (testing "when a field has :effective-type it is also stamped on the clause"
+    ;; UNIX_TS is stored as Integer but coerced to Temporal — a real pattern for Unix timestamps.
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [["=" {}
+                                                ["field" {}
+                                                 ["Sample" "PUBLIC" "ORDERS" "UNIX_TS"]]
+                                                0]]}]}
+          q     (repr.resolve/resolve-query mp-with-effective-type parsed)
+          [_ _ field-clause] (get-in q [:stages 0 :filters 0])
+          opts  (nth field-clause 1)]
+      (is (= 104 (nth field-clause 2)))
+      (is (= :type/Integer  (:base-type opts)))
+      (is (= :type/Temporal (:effective-type opts))))))
+
+(deftest annotate-field-types-idempotent-test
+  (testing "clauses that already carry :base-type are not overwritten"
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [["=" {"base-type" "type/Text"}
+                                                ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                                "x"]]}]}
+          q   (repr.resolve/resolve-query mp-with-effective-type parsed)
+          ;; TOTAL is :type/Float in the provider, but the LLM authored :type/Text — we must
+          ;; not clobber it.
+          [_ _ field-clause] (get-in q [:stages 0 :filters 0])
+          opts (nth field-clause 1)]
+      ;; The outer `=` opts had "base-type" authored on it (wrong place structurally, but the
+      ;; point is the inner field clause itself has no authored base-type, so it should get
+      ;; the Float from the provider.
+      (is (= :type/Float (:base-type opts))
+          "inner field clause still gets provider type when it has none"))))
+
+;;; ============================================================
 ;;; try-export-query: structured + native + nil/error fallback
 ;;; ============================================================
 

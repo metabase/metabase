@@ -91,6 +91,7 @@
           external-query (walk/keywordize-keys query-data)
           construct-result (tools.construct/construct-notebook-query-tool
                             {:query         external-query
+                             :title         "Counts by category"
                              :visualization {:chart_type "bar"}})
           query-id (get-in construct-result [:structured-output :query-id])
           query (get-in construct-result [:structured-output :query])
@@ -104,7 +105,8 @@
         (testing "Edit chart can handle charts created using construct-notebook-query-tool"
           ;; (3) call the edit-chart-tool which uses the shared memory
           (let [edit-result (tools.charts/edit-chart-tool {:chart_id chart-id
-                                                           :new_viz_settings {:chart_type "pie"}})
+                                                           :new_viz_settings {:chart_type "pie"}
+                                                           :title "Counts by category"})
                 new-chart-id (get-in edit-result [:structured-output :chart-id])
                 new-chart-in-memory (get (tools.shared/current-charts-state) new-chart-id)]
             (is (= :pie
@@ -138,6 +140,7 @@
             external-query (walk/keywordize-keys query-data)
             result (tools.construct/construct-notebook-query-tool
                     {:query         external-query
+                     :title         "Test chart"
                      :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])]
         (testing "order-by inner clause is now an aggregation reference, not :sum"
@@ -181,6 +184,7 @@
             external-query (walk/keywordize-keys query-data)
             result (tools.construct/construct-notebook-query-tool
                     {:query         external-query
+                     :title         "Test chart"
                      :visualization {:chart_type "bar"}})]
         (testing "tool returns a clear, agent-targeted error rather than producing a chart"
           ;; The outer `construct-notebook-query-tool` catches the ex-info and returns
@@ -213,6 +217,7 @@
             external-query (walk/keywordize-keys query-data)
             result (tools.construct/construct-notebook-query-tool
                     {:query         external-query
+                     :title         "Test chart"
                      :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])]
@@ -267,6 +272,7 @@
 
             construct-result (tools.construct/construct-notebook-query-tool
                               {:query         external-query
+                               :title         "Test chart"
                                :visualization {:chart_type "bar"}})
             query (get-in construct-result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])

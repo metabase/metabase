@@ -12,9 +12,10 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.experiment :as experiment]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -39,17 +40,55 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
+(defn- scan-nestable-sql
+  "Single forward pass keeping track of what state we are currently in.
+   Returns the index of the last top-level semicolon and the state at the end of the string."
+  [^String sql]
+  (let [n (.length sql)]
+    (loop [i 0, state :normal, cut nil]
+      (if (>= i n)
+        {:cut cut, :state state}
+        (let [c    (.charAt sql i)
+              next (when (< (inc i) n) (.charAt sql (inc i)))]
+          (case state
+            :normal        (cond
+                             (Character/isWhitespace c)      (recur (inc i) :normal cut)
+                             (= c \;)                        (recur (inc i) :normal (or cut i))
+                             (and (= c \-) (= next \-))      (recur (+ i 2) :line-comment cut)
+                             (and (= c \/) (= next \*))      (recur (+ i 2) :block-comment cut)
+                             (= c \')                        (recur (inc i) :string nil)
+                             (= c \")                        (recur (inc i) :dquote nil)
+                             (= c \`)                        (recur (inc i) :backtick nil)
+                             :else                           (recur (inc i) :normal nil))
+            :string        (cond
+                             (not= c \')                     (recur (inc i) :string cut)
+                             (= next \')                     (recur (+ i 2) :string cut)
+                             :else                           (recur (inc i) :normal cut))
+            :dquote        (cond
+                             (not= c \")                     (recur (inc i) :dquote cut)
+                             (= next \")                     (recur (+ i 2) :dquote cut)
+                             :else                           (recur (inc i) :normal cut))
+            :backtick      (cond
+                             (not= c \`)                     (recur (inc i) :backtick cut)
+                             (= next \`)                     (recur (+ i 2) :backtick cut)
+                             :else                           (recur (inc i) :normal cut))
+            :line-comment  (cond
+                             (= c \newline)                  (recur (inc i) :normal cut)
+                             :else                           (recur (inc i) :line-comment cut))
+            :block-comment (cond
+                             (and (= c \*) (= next \/))      (recur (+ i 2) :normal cut)
+                             :else                           (recur (inc i) :block-comment cut))))))))
+
 (defn make-nestable-sql*
-  "See [[make-nestable-sql]] but does not wrap in result in parens."
+  "See [[make-nestable-sql]] but does not wrap the result in parens."
   [sql]
-  (-> sql
-      (str/replace #";([\s;]*(--.*\n?)*)*$" "")
-      str/trimr
-      (as-> trimmed
-            ;; Query could potentially end with a comment.
-            (if (re-find #"--.*$" trimmed)
-              (str trimmed "\n")
-              trimmed))))
+  ;; Strip the trailing run of semicolons / whitespace / line comments.
+  (let [cut     (:cut (scan-nestable-sql sql))
+        trimmed (str/trimr (cond-> sql cut (subs 0 cut)))]
+    (cond-> trimmed
+      ;; Query could potentially end with a comment.
+      (= :line-comment (:state (scan-nestable-sql trimmed)))
+      (str "\n"))))
 
 (defn make-nestable-sql
   "Do best effort edit to the `sql`, to make it nestable in subselect.
@@ -60,13 +99,8 @@
   - Removing the semicolon(s).
   - Squashing whitespace at the end of the string and replacinig it with newline. This is required in case some
     comments were preceding semicolon.
-  - Wrapping the result in parens.
-
-  This implementation does not handle few cases cases properly. 100% correct comment and semicolon removal would
-  probably require _parsing_ sql string and not just a regular expression replacement. Link to the discussion:
-  https://github.com/metabase/metabase/pull/30677
-
-  For the limitations see the [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"  [sql]
+  - Wrapping the result in parens."
+  [sql]
   (str "(" (make-nestable-sql* sql) ")"))
 
 (defn- format-sql-source-query [_clause [sql params]]
@@ -494,13 +528,13 @@
      (inline? offset) (recur driver day-of-week-honeysql-expr (second offset) mod-fn)
      (zero? offset)   day-of-week-honeysql-expr
      (neg? offset)    (recur driver day-of-week-honeysql-expr (+ offset 7) mod-fn)
-     :else            (-> [:coalesce
-                           [:nullif
-                            (mod-fn (h2x/+ day-of-week-honeysql-expr offset) (inline-num 7))
-                            [:inline 0]]
-                           [:inline 7]]
-                          (h2x/with-database-type-info (or (h2x/database-type day-of-week-honeysql-expr)
-                                                           "integer"))))))
+     ;; `((dow + offset - 1) % 7) + 1` shifts the day-of-week into the range [1, 7] and propagates NULL.
+     :else            (let [shifted (if (= offset 1)
+                                      day-of-week-honeysql-expr
+                                      (h2x/+ day-of-week-honeysql-expr (dec offset)))]
+                        (-> (h2x/+ (mod-fn shifted (inline-num 7)) (inline-num 1))
+                            (h2x/with-database-type-info (or (h2x/database-type day-of-week-honeysql-expr)
+                                                             "integer")))))))
 
 (defmulti quote-style
   "Return the dialect that should be used by Honey SQL 2 when building a SQL statement. Defaults to `:ansi`, but other
@@ -2185,16 +2219,33 @@
          (> (count source-aliases) 1)
          (not (apply distinct? source-aliases)))))
 
+(defn- resolve-persisted-source-sql
+  "If `source-query` came from a card with a valid persisted cache, independently look up the cache from the metadata
+  provider and return the native SQL. Returns nil if no cache exists, or if persisted cache use has been disabled for
+  this query (e.g. due to sandboxing or connection impersonation — see
+  [[metabase.query-processor.middleware.persistence/substitute-persisted-query]])."
+  [source-query]
+  (when-not (:qp/skip-persisted-cache source-query)
+    (when-let [card-id (:qp/stage-is-from-source-card source-query)]
+      (let [mp   (driver-api/metadata-provider)
+            card (lib.metadata.protocols/card mp card-id)]
+        (when-let [persisted-info (:lib/persisted-info card)]
+          (when (qp.persisted/can-substitute? card persisted-info)
+            (qp.persisted/persisted-info-native-query
+             (:id (lib.metadata.protocols/database mp))
+             persisted-info)))))))
+
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
   column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
   are aliased as `__mb_source`."
-  [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
+  [driver honeysql-form {{:keys [native params] :as source-query} :source-query
                          source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
+        persisted-sql (resolve-persisted-source-sql source-query)
         source-clause (cond
-                        persisted
-                        (sql-source-query persisted nil)
+                        persisted-sql
+                        (sql-source-query persisted-sql nil)
 
                         native
                         (sql-source-query native params)
@@ -2255,7 +2306,10 @@
   [driver query]
   (apply-clauses driver {} query))
 
-(defn- mbql->honeysql* [driver query]
+(mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
+  "Build the HoneySQL form we will compile to SQL and execute."
+  [driver :- :keyword
+   query  :- :map]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
       (let [inner-query (preprocess driver query)]
@@ -2270,32 +2324,6 @@
           inner-query       (or (:query query) query)
           mbql5-query (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)]
       (recur driver mbql5-query))))
-
-(def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5
-                                           :postgres :postgres-mbql5})
-
-(defn- mbql5-experiment-report
-  [driver experimental-driver query]
-  (fn [{:keys [match? candidate-outcome control-outcome] :as result}]
-    (when-let [report-fn @experiment/default-report-fn]
-      (report-fn result))
-    (when-not match?
-      (log/with-context {:experimental-mbql5-driver :mismatch
-                         :driver driver
-                         :experimental-driver experimental-driver}
-        (log/warnf "MBQL5 experiment mismatch:\nQuery: %s\nControl result: %s\nCandidate result: %s"
-                   query control-outcome candidate-outcome)))))
-
-(mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
-  "Build the HoneySQL form we will compile to SQL and execute."
-  [driver :- :keyword
-   query  :- :map]
-  (if-let [experimental-driver (experimental-mbql5-drivers driver)]
-    (experiment/experiment {:name :experimental-mbql5-driver
-                            :report-fn (mbql5-experiment-report driver experimental-driver query)}
-                           (mbql->honeysql* driver query)
-                           (mbql->honeysql* experimental-driver query))
-    (mbql->honeysql* driver query)))
 
 ;;;; MBQL -> Native
 

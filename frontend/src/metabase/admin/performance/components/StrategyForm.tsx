@@ -16,7 +16,7 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, isModelWithClearableCache } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -41,11 +41,13 @@ import type {
 } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
-import { strategyValidationSchema } from "../constants/complex";
 import { defaultCronSchedule, rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
-import { isModelWithClearableCache } from "../types";
-import { getDefaultValueForField, getLabelString } from "../utils";
+import {
+  getDefaultValueForField,
+  getLabelString,
+  strategyValidationSchema,
+} from "../utils";
 
 import PerformanceAppStyles from "./PerformanceApp.module.css";
 import S from "./StrategyForm.module.css";
@@ -301,7 +303,7 @@ const FormButtonsGroup = ({
       style={
         layout === "sidebar"
           ? undefined
-          : { borderTop: "1px solid var(--mb-color-border)" }
+          : { borderTop: "1px solid var(--mb-color-border-neutral)" }
       }
     >
       {children}
@@ -612,7 +614,7 @@ const MultiplierFieldSubtitle = () => (
       label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
       maw="20rem"
     >
-      <Text tabIndex={0} fz="md" lh="1.25rem" display="inline" c="brand">
+      <Text tabIndex={0} fz="md" lh="1.25rem" display="inline" c="core-brand">
         {t`Example`}
       </Text>
     </Tooltip>

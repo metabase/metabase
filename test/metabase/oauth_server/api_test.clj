@@ -37,14 +37,38 @@
         (is (nil? (:id_token_signing_alg_values_supported response)))))))
 
 (deftest protected-resource-metadata-test
-  (testing "GET /.well-known/oauth-protected-resource/api/mcp returns correct metadata"
+  (testing "the canonical and legacy MCP paths each advertise themselves as the OAuth protected resource (RFC 9728)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (doseq [path ["/api/metabase-mcp" "/api/mcp"]]
+        (testing path
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (str ".well-known/oauth-protected-resource" path))]
+            (is (=? {:resource                 (str "http://localhost:3000" path)
+                     :authorization_servers    ["http://localhost:3000"]
+                     :bearer_methods_supported ["header"]
+                     :scopes_supported         sequential?}
+                    response))))))))
+
+(deftest protected-resource-metadata-bare-path-test
+  (testing "GET /.well-known/oauth-protected-resource (no resource suffix) serves JSON advertising the canonical resource (BOT-1617)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (let [response (mt/user-http-request :crowberto :get 200
-                                           ".well-known/oauth-protected-resource/api/mcp")]
-        (is (=? {:resource                "http://localhost:3000/api/mcp"
-                 :authorization_servers   ["http://localhost:3000"]
+                                           ".well-known/oauth-protected-resource")]
+        (is (=? {:resource                 "http://localhost:3000/api/metabase-mcp"
+                 :authorization_servers    ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
                 response))))))
+
+(deftest discovery-endpoint-rebuilds-on-site-url-change-test
+  (testing "Discovery advertises endpoints for the *current* site-url, even after it changes (BOT-1617)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (is (=? {:issuer "http://localhost:3000"}
+              (mt/user-http-request :crowberto :get 200 ".well-known/oauth-authorization-server"))))
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+      (is (=? {:issuer                "https://mb.example.com"
+               :authorization_endpoint "https://mb.example.com/oauth/authorize"
+               :token_endpoint         "https://mb.example.com/oauth/token"}
+              (mt/user-http-request :crowberto :get 200 ".well-known/oauth-authorization-server"))))))
 
 ;;; ----------------------------------------- Dynamic Client Registration ----------------------------------------------
 
@@ -110,6 +134,18 @@
               client-id (:client_id response)
               db-client (t2/select-one :model/OAuthClient :client_id client-id)]
           (is (= "dynamic" (:registration_type db-client))))))))
+
+(deftest dynamic-register-records-registered-event-test
+  (testing "POST /oauth/register records a `registered` audit event with no user for the new client"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [response  (register-client! {:redirect_uris ["https://example.com/callback"]})
+              client-pk (t2/select-one-pk :model/OAuthClient :client_id (:client_id response))
+              events    (t2/select :model/OAuthClientEvent :oauth_client_id client-pk)]
+          (is (= 1 (count events)) "Exactly one client event row should have been created")
+          (is (= "registered" (:event_type (first events))))
+          (is (nil? (:user_id (first events)))))))))
 
 (deftest dynamic-client-read-valid-test
   (testing "GET /oauth/register/:client-id with valid registration_access_token returns 200"
@@ -371,6 +407,47 @@
           (is (str/starts-with? location "https://example.com/callback?"))
           (is (str/includes? location "error=access_denied"))
           (is (str/includes? location "state=test-state")))))))
+
+(defn- approve-or-deny!
+  "Drive the consent + decision flow for `client-id` and return the decision response.
+   `approved?` chooses approve vs deny."
+  [user client-id approved?]
+  (let [consent-resp (get-consent-page! user client-id)
+        consent-body (:body consent-resp)]
+    (form-post-decision!
+     user
+     {:approved      (str approved?)
+      :csrf_token    (extract-csrf-token-from-consent consent-body)
+      :params_sig    (extract-params-sig-from-consent consent-body)
+      :client_id     client-id
+      :redirect_uri  "https://example.com/callback"
+      :response_type "code"
+      :scope         "profile"
+      :state         "test-state"}
+     302
+     :csrf-cookie (extract-csrf-cookie consent-resp))))
+
+(deftest authorize-decision-records-approved-event-test
+  (testing "Approving a registration records a separate `approved` event stamped with the deciding user"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client (create-test-client!)]
+          (approve-or-deny! :crowberto (:client_id client) true)
+          (let [events (t2/select :model/OAuthClientEvent :oauth_client_id (:id client))]
+            (is (= 1 (count events)))
+            (is (= "approved" (:event_type (first events))))
+            (is (= (mt/user->id :crowberto) (:user_id (first events))))))))))
+
+(deftest authorize-decision-records-denied-event-test
+  (testing "Denying a registration records a separate `denied` event stamped with the deciding user"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client (create-test-client!)]
+          (approve-or-deny! :crowberto (:client_id client) false)
+          (let [events (t2/select :model/OAuthClientEvent :oauth_client_id (:id client))]
+            (is (= 1 (count events)))
+            (is (= "denied" (:event_type (first events))))
+            (is (= (mt/user->id :crowberto) (:user_id (first events))))))))))
 
 (deftest authorize-decision-csrf-missing-test
   (testing "POST /oauth/authorize/decision without CSRF token returns 403"

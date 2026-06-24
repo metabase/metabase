@@ -52,7 +52,7 @@ export const useGetEntityPickerIcon = () => {
         icon.name = "clock";
       }
 
-      return { ...icon, color: undefined, c: icon.color ?? "brand" };
+      return { ...icon, color: undefined, c: icon.color ?? "core-brand" };
     },
     [getIcon],
   );

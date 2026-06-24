@@ -48,6 +48,7 @@ export const getCartesianChartDefinition = (
 ): Partial<Visualization> => {
   return {
     noHeader: true,
+    usesEChartsRenderer: true,
     supportsVisualizer: true,
 
     isSensible: ({ cols, rows }) => {

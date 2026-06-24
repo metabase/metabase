@@ -53,7 +53,7 @@ export const MiniBarCell = <TValue,>({
   style,
   barWidth = BAR_WIDTH,
   barHeight = BAR_HEIGHT,
-  barColor = color("brand"),
+  barColor = color("core-brand"),
 }: MiniBarCellProps<TValue>) => {
   const [min, max] = extent ?? [undefined, undefined];
   if (
@@ -97,6 +97,7 @@ export const MiniBarCell = <TValue,>({
 
   return (
     <BaseCell
+      data-testid="mini-bar-cell"
       className={S.root}
       backgroundColor={backgroundColor}
       align={align}

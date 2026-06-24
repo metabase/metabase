@@ -146,6 +146,21 @@
                        (update :visibility_type keyword)
                        (update :base_type       keyword))))))))))
 
+(deftest entity-counts-report-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection coll {:name "Some Collection"}
+                         :model/Card       _    {:name "Some Card" :collection_id (:id coll)}]
+        (let [export   (into [] (extract/extract {:no-data-model true :no-transforms true}))
+              models   (map #(-> % :serdes/meta last :model) export)
+              expected (cond-> (frequencies (remove #{"Setting"} models))
+                         (some #{"Setting"} models) (assoc "Setting" 1))
+              report   (storage/store! export (storage.files/file-writer dump-dir))]
+          (testing ":entity-counts is a {model count} map, with all settings tallied as a single entry"
+            (is (= expected (:entity-counts report)))
+            (is (pos? (get-in report [:entity-counts "Setting"] 0))
+                "settings should be part of this export, to exercise the Setting tally")))))))
+
 (deftest yaml-sorted-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!
@@ -190,12 +205,12 @@
                                   (map? v)               (descend v (conj path k))
                                   (and (sequential? v)
                                        (map? (first v))) (run! #(descend % (conj path k)) v))))))]
-          (with-redefs [spit (fn [fname yaml-data]
-                               (testing (format "File %s\n" fname)
-                                 (let [coll (yaml/parse-string yaml-data)]
-                                   (if (str/ends-with? fname "settings.yaml")
-                                     (descend coll [:settings])
-                                     (descend coll)))))]
+          (mt/with-dynamic-fn-redefs [spit (fn [fname yaml-data]
+                                             (testing (format "File %s\n" fname)
+                                               (let [coll (yaml/parse-string yaml-data)]
+                                                 (if (str/ends-with? fname "settings.yaml")
+                                                   (descend coll [:settings])
+                                                   (descend coll)))))]
             (storage/store! export (storage.files/file-writer dump-dir))))))))
 
 (deftest store-error-test
@@ -291,11 +306,11 @@
 
               ;; Export again but with nested entity query results reversed,
               ;; simulating non-deterministic DB row ordering (as seen on Aurora Postgres)
-              original-fn @#'serdes/transform->nested
+              original-fn (mt/original-fn #'serdes/transform->nested)
               yaml-reversed
-              (with-redefs [serdes/transform->nested
-                            (fn [transform opts batch]
-                              (update-vals (original-fn transform opts batch) reverse))]
+              (mt/with-dynamic-fn-redefs [serdes/transform->nested
+                                          (fn [transform opts batch]
+                                            (update-vals (original-fn transform opts batch) reverse))]
                 (clean-and-export!))]
           (testing "Dashcard ordering should be stable regardless of DB return order"
             (is (= yaml-before yaml-reversed)

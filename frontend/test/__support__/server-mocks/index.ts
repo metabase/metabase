@@ -35,6 +35,7 @@ export * from "./metabot";
 export * from "./metric";
 export * from "./model-indexes";
 export * from "./native-query-snippet";
+export * from "./oauth";
 export * from "./performance";
 export * from "./permissions";
 export * from "./premium-features";

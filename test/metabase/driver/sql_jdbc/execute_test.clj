@@ -19,6 +19,7 @@
                           (me/humanize (mr/explain sql-jdbc.execute/ConnectionOptions options)))
     nil                              nil
     {}                               nil
+    {:stream? true}                  nil
     {:session-timezone nil}          nil
     {:session-timezone "US/Pacific"} nil
     {:session-timezone "X"}          {:session-timezone ["invalid timezone ID: \"X\"" "timezone offset string literal"]}))
@@ -68,7 +69,7 @@
         (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                                     (fn [driver db opts]
                                       (when (and (= db test-db-id) (:keep-open? opts))
-                                        (vreset! captured-connection-type driver.conn/*connection-type*))
+                                        (vreset! captured-connection-type @#'driver.conn/*connection-type*))
                                       (orig-fn driver db opts))]
           (let [closed-conn (doto (.getConnection ^DataSource
                                    (orig-fn driver/*driver* test-db-id {}))

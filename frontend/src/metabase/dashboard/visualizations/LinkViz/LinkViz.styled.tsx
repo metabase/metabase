@@ -34,7 +34,7 @@ export const CardLink = styled(Link)`
   font-weight: bold;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 
@@ -49,7 +49,7 @@ export const ExternalLink = styled(BaseExternalLink)`
   font-weight: bold;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 
@@ -64,7 +64,7 @@ const searchResultsStyles = `
 
   max-height: 400px;
 
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 6px;
   box-shadow: 0 7px 20px var(--mb-color-shadow);
   pointer-events: all;

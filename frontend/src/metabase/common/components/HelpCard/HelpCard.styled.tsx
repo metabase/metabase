@@ -9,7 +9,7 @@ import { Icon } from "metabase/ui";
 const CardRootMixin = css`
   display: block;
   padding: 1.5rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.375rem;
   background-color: var(--mb-color-background-primary);
   box-shadow: 0 1px 6px var(--mb-color-shadow);
@@ -45,14 +45,14 @@ export const CardHeaderLink = styled(ExternalLink)`
 export const CardTitle = styled.span`
   display: block;
   flex: 1 1 auto;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-weight: bold;
   margin: 0 0.5rem;
 `;
 
 export const CardIcon = styled(Icon)`
   flex: 0 0 auto;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 export const CardMessage = styled.div`
@@ -69,7 +69,7 @@ export const CardMessage = styled.div`
   }
 
   a {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
     cursor: pointer;
     font-weight: bold;
   }

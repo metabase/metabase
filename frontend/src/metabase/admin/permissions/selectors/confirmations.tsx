@@ -16,11 +16,13 @@ import { Flex, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   ConcreteTableId,
+  DatabaseEntityId,
   Group,
   GroupsPermissions,
+  PermissionEntityId,
+  SchemaEntityId,
 } from "metabase-types/api";
 
-import type { DatabaseEntityId, EntityId, SchemaEntityId } from "../types";
 import { DataPermission, DataPermissionValue } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
@@ -107,7 +109,7 @@ export function getBlockWarning(
   }
 }
 
-function getEntityTypeFromId(entityId: EntityId): [string, string] {
+function getEntityTypeFromId(entityId: PermissionEntityId): [string, string] {
   return isTableEntityId(entityId)
     ? [t`table`, t`tables`]
     : isSchemaEntityId(entityId)
@@ -150,7 +152,7 @@ export function getPermissionWarningModal(
 export function getWillRevokeNativeAccessWarningModal(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
 ) {
   // if the db is set to query builder and native for this group
   // then warn the user that the change will downgrade native permissions
@@ -271,7 +273,7 @@ export function getRevokingAccessToAllTablesWarningModal(
   database: Database,
   permissions: GroupsPermissions,
   groupId: Group["id"],
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   value: DataPermissionValue,
 ) {
   if (

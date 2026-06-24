@@ -15,7 +15,7 @@
       width: 100%;
       height: 100%;
       max-width: 18.75rem;
-      border-left: 1px solid var(--mb-color-border);
+      border-left: 1px solid var(--mb-color-border-neutral);
     }
 
     /**
@@ -69,7 +69,7 @@
 
     /** Only show the top border when there are messages. */
     .chatHistory:not(:empty) {
-      border-top: 1px solid var(--mb-color-border);
+      border-top: 1px solid var(--mb-color-border-neutral);
     }
   }
 }
@@ -88,7 +88,7 @@
   padding: 0.5rem 0.75rem;
   width: fit-content;
   border-radius: 8px;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background-primary);
   color: var(--mb-color-text-secondary);
   font-size: 0.875rem;

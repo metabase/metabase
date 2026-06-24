@@ -39,7 +39,7 @@ export const setupAdminListNotificationsEndpoint = (
     offset: null,
     ...overrides,
   };
-  fetchMock.get("path:/api/ee/notifications", response);
+  fetchMock.get("path:/api/notification/admin", response);
 };
 
 export const setupAdminNotificationDetailEndpoint = (
@@ -47,7 +47,7 @@ export const setupAdminNotificationDetailEndpoint = (
   options?: { delay?: number },
 ) => {
   fetchMock.get(
-    `path:/api/ee/notifications/${notification.id}`,
+    `path:/api/notification/admin/${notification.id}`,
     notification,
     options,
   );
@@ -56,11 +56,11 @@ export const setupAdminNotificationDetailEndpoint = (
 export const setupAdminNotificationDetailErrorEndpoint = (
   id: NotificationId,
 ) => {
-  fetchMock.get(`path:/api/ee/notifications/${id}`, { status: 500 });
+  fetchMock.get(`path:/api/notification/admin/${id}`, { status: 500 });
 };
 
 export const setupBulkNotificationActionEndpoint = (
   response: { updated: number } = { updated: 1 },
 ) => {
-  fetchMock.post("path:/api/ee/notifications/bulk", response);
+  fetchMock.post("path:/api/notification/admin/bulk", response);
 };

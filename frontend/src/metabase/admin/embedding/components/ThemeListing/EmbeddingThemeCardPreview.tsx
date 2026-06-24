@@ -61,7 +61,7 @@ export const EmbeddingThemeCardPreview = ({
       viewBox="0 0 250 250"
       fill="none"
       style={{
-        borderBottom: "1px solid var(--mb-color-border)",
+        borderBottom: "1px solid var(--mb-color-border-neutral)",
         fontFamily: theme.fontFamily ?? "inherit",
       }}
     >

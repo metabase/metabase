@@ -7,6 +7,8 @@ import type {
   ListNotificationsRequest,
   Notification,
   NotificationId,
+  UnsubscribeRequest,
+  UnsubscribeResponse,
   UpdateNotificationRequest,
 } from "metabase-types/api/notification";
 
@@ -104,7 +106,7 @@ export const notificationApi = Api.injectEndpoints({
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/notifications",
+        url: "/api/notification/admin",
         params: params ?? undefined,
       }),
       providesTags: (result) =>
@@ -118,7 +120,7 @@ export const notificationApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/notifications/bulk",
+        url: "/api/notification/admin/bulk",
         body,
       }),
       invalidatesTags: (_result, error, { notification_ids }) =>
@@ -135,10 +137,30 @@ export const notificationApi = Api.injectEndpoints({
     >({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/notifications/${id}`,
+        url: `/api/notification/admin/${id}`,
       }),
       providesTags: (result) =>
         result ? provideAdminNotificationTags(result) : [],
+    }),
+    unsubscribeFromNotificationByEmail: builder.mutation<
+      UnsubscribeResponse,
+      UnsubscribeRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/unsubscribe",
+        body,
+      }),
+    }),
+    undoUnsubscribeFromNotificationByEmail: builder.mutation<
+      UnsubscribeResponse,
+      UnsubscribeRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/notification/unsubscribe/undo",
+        body,
+      }),
     }),
   }),
 });
@@ -157,4 +179,6 @@ export const {
   useAdminListNotificationsQuery,
   useBulkNotificationActionMutation,
   useAdminNotificationDetailQuery,
+  useUnsubscribeFromNotificationByEmailMutation,
+  useUndoUnsubscribeFromNotificationByEmailMutation,
 } = notificationApi;

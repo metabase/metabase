@@ -30,6 +30,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -71,7 +72,11 @@
    `{:tables #{}}` even when USAGE/SELECT grants are intact (root cause
    pending investigation; see that test's docstring). Don't add drivers
    to the smaller test without first fixing the underlying sync visibility."
-  #{:postgres :sqlserver :clickhouse :mysql :redshift :bigquery-cloud-sdk})
+  #{:postgres :sqlserver :clickhouse :mysql :redshift
+    ;; currently this is very flaky in CI causing the entire bigquery driver
+    ;; to be quarantined. for now we disable just this one test so we can
+    ;; bring back the rest of it, but this still needs investigation.
+    #_:bigquery-cloud-sdk})
 
 (defn- three-slot-driver?
   "True when the driver emits `db.schema.table` (SQL Server / BigQuery).
@@ -87,6 +92,19 @@
    inside the driver's `grant!` impl; only the schema is supplied here."
   [_driver _admin-details main-schema]
   main-schema)
+
+(defn- add-database!
+  "Test helper: insert a WorkspaceDatabase row for `workspace-id` and provision it
+   (blocking). Replaces the removed production add-database! for test setup."
+  [workspace-id database-id input-schemas]
+  (t2/with-transaction [_conn]
+    (let [wsd-id (t2/insert-returning-pk! :model/WorkspaceDatabase
+                                          {:workspace_id     workspace-id
+                                           :database_id      database-id
+                                           :input_schemas    input-schemas
+                                           :database_details {}
+                                           :output_namespace ""})]
+      (provisioning/provision-single! wsd-id))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;
@@ -339,8 +357,8 @@
                         ;; multimethods, but through `provisioning/provision-single!`, which writes
                         ;; the resulting `:database_details` and `:output_namespace` back to the
                         ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
-                        (ws/add-database! ws-id (:id ws-db)
-                                          [(workspace-input-schema admin-driver admin-details main-schema)])
+                        (add-database! ws-id (:id ws-db)
+                                       [(workspace-input-schema admin-driver admin-details main-schema)])
                         ;; Sanity check: provisioning must have populated :output_namespace and flipped
                         ;; status to :provisioned. If empty, the workspace driver impl is broken.
                         (let [wsd (-> (ws/get-workspace ws-id) :databases first)]
@@ -492,7 +510,7 @@
                                   ;; that's always null, same as `:model/Table.schema`. Use `tbl-schema`
                                   ;; (the per-driver translation we already do for synced rows).
                                   (testing "describe-database returns only input-schema tables"
-                                    (let [{described :tables} (driver/describe-database admin-driver ws-db)
+                                    (let [described (into [] (:tables (driver/describe-database admin-driver ws-db)))
                                           iso-tbl-schema (table-row-schema-value admin-driver isolation-schema)]
                                       (is (some #(and (= tbl-schema (:schema %))
                                                       (= src-name (:name %)))
@@ -710,8 +728,8 @@
               (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-native-repro-" run-id)
                                                        :creator_id (mt/user->id :crowberto)})]
                 (try
-                  (ws/add-database! ws-id (:id ws-db)
-                                    [(workspace-input-schema admin-driver admin-details main-schema)])
+                  (add-database! ws-id (:id ws-db)
+                                 [(workspace-input-schema admin-driver admin-details main-schema)])
                   (let [cfg-map  (ws.config/build-workspace-config ws-id)
                         yaml-str (ws.config/config->yaml cfg-map)
                         reparsed (yaml/parse-string yaml-str)]

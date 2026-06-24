@@ -16,5 +16,5 @@
 .parent:hover {
   background-color: var(--mb-color-background-secondary);
   cursor: grab;
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 }

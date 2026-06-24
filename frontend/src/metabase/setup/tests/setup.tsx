@@ -12,6 +12,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { SetupStep } from "metabase/redux/store";
 import {
   createMockSetupState,
   createMockState,
@@ -27,7 +28,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { Setup } from "../components/Setup";
-import type { SetupStep } from "../types";
 
 export interface SetupOpts {
   step?: SetupStep;

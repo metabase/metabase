@@ -15,7 +15,7 @@ export const DevInstanceUpsell = UpsellWrapperDismissible(
     );
     return (
       <Alert
-        color="brand"
+        color="core-brand"
         withCloseButton
         onClose={onDismiss}
         classNames={{ closeButton: CS.alignSelfStart }}

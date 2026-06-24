@@ -5,7 +5,6 @@
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   (:refer-clojure :exclude [mapv empty? get-in])
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
@@ -20,6 +19,7 @@
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.tracing.core :as tracing]
@@ -27,26 +27,11 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv empty? get-in]]
+   [metabase.util.performance :as perf :refer [empty? get-in mapv]]
    [potemkin :as p])
   (:import
-   (java.sql
-    Connection
-    JDBCType
-    PreparedStatement
-    ResultSet
-    ResultSetMetaData
-    SQLFeatureNotSupportedException
-    Statement
-    Types)
-   (java.time
-    Instant
-    LocalDate
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
    (javax.sql DataSource)))
 
@@ -65,8 +50,8 @@
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
     [:write? {:optional true, :default false} [:maybe :boolean]]
     [:download? {:optional true} [:maybe :boolean]]
-    ;; true if called from table-rows-sample-query
-    [:sample? {:optional true} [:maybe :boolean]]
+    ;; true for large results we want to *stream* (a server-side cursor) rather than buffer in memory
+    [:stream? {:optional true} [:maybe :boolean]]
     ;; don't autoclose the connection
     [:keep-open? {:optional true} [:maybe :boolean]]]])
 
@@ -345,7 +330,7 @@
   deprecated [[sql-jdbc.execute.old/connection-with-timezone]] method."
   {:added "0.47.0"}
   [driver           :- :keyword
-   db-or-id-or-spec :- [:or :int :map]
+   db-or-id-or-spec :- [:or ::lib.schema.id/database :map]
    options          :- ConnectionOptions
    f                :- fn?]
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
@@ -411,17 +396,17 @@
     ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
     ;; manually. (metabase#40014)
     (cond (not (or write?
-                   (and (-> options :download?) (= driver :postgres))))
+                   (and (-> options :stream?) (isa? driver/hierarchy driver :postgres))))
           (try
             (log/trace (pr-str '(.setAutoCommit conn true)))
             (.setAutoCommit conn true)
             (catch Throwable e
               (log/debug e "Error enabling connection autoCommit")))
 
-          ;; todo (dan 7/11/25): fixing straightforward postgres oom on downloads in #60733, but seems like write? is
-          ;; not set here. Note this is explicitly silent when `write?`. Lots of tests fail with autocommit false
-          ;; there.
-          (and (or (-> options :download?) (-> options :sample?)) (isa? driver/hierarchy driver :postgres))
+          ;; Postgres/Redshift buffer the *entire* ResultSet unless autoCommit is false (then they use a server-side
+          ;; cursor honoring the statement fetch size). So for streamed reads (`:stream?` -- sync metadata reads,
+          ;; table-rows-sample, downloads) flip autoCommit off, else a huge result OOMs.
+          (and (-> options :stream?) (isa? driver/hierarchy driver :postgres))
           (try
             (log/trace (pr-str '(.setAutoCommit conn false)))
             (.setAutoCommit conn false)
@@ -817,7 +802,8 @@
        (driver-api/database (driver-api/metadata-provider))
        {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
         :download? (download? (-> outer-query :info :context))
-        :sample?   (= :table-rows-sample (-> outer-query :info :context))}
+        :stream?   (or (download? (-> outer-query :info :context))
+                       (= :table-rows-sample (-> outer-query :info :context)))}
        (fn [^Connection conn]
          (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
                      ^ResultSet rs (try
@@ -863,7 +849,7 @@
         (do-with-connection-with-options
          driver
          db
-         nil
+         {:stream? true}
          (fn [^Connection conn]
            (with-open [stmt          (statement-or-prepared-statement driver conn sql params nil)
                        ^ResultSet rs (try

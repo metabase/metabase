@@ -80,7 +80,7 @@ describe("scenarios > admin > settings > API keys", () => {
     H.tryToCreateApiKeyViaModal({ name, group });
     cy.wait("@getKeys");
 
-    cy.findByLabelText("Copy and save the API key").findByLabelText(
+    cy.findByLabelText("Copy and save this API key").findByLabelText(
       /the api key/i,
     );
 
@@ -109,15 +109,16 @@ describe("scenarios > admin > settings > API keys", () => {
 
     cy.findByTestId("api-keys-table")
       .contains("Test API Key One")
-      .closest("tr")
-      .icon("trash")
+      .closest('[role="row"]')
+      .findByLabelText("API key actions")
       .click();
+    cy.findByRole("menuitem", { name: /delete/i }).click();
     H.modal().button("Delete API key").click();
 
     cy.wait("@deleteKey");
     cy.wait("@getKeys");
 
-    cy.findByTestId("empty-table-warning").findByText("No API keys here yet");
+    cy.findByTestId("empty-table-warning").findByText("No API keys yet");
   });
 
   it("should allow editing an API key", () => {
@@ -128,13 +129,18 @@ describe("scenarios > admin > settings > API keys", () => {
       .should("include.text", "Development API Key")
       .and("include.text", "All Users");
 
-    cy.findByTestId("api-keys-table").icon("pencil").click();
+    cy.findByTestId("api-keys-table")
+      .contains("Development API Key")
+      .closest('[role="row"]')
+      .findByLabelText("API key actions")
+      .click();
+    cy.findByRole("menuitem", { name: /edit/i }).click();
 
     cy.findByLabelText(/Key name/)
       .clear()
       .type("Different key name");
 
-    cy.findByLabelText(/group/).click();
+    cy.findByLabelText(/group/i).click();
     cy.findByRole("listbox").findByText("collection").click();
 
     cy.button("Save").click();
@@ -144,7 +150,7 @@ describe("scenarios > admin > settings > API keys", () => {
     cy.findByTestId("api-keys-table")
       .should("not.contain", "Development API Key")
       .contains("Different key name")
-      .closest("tr")
+      .closest('[role="row"]')
       .should("contain", "collection");
   });
 
@@ -154,9 +160,10 @@ describe("scenarios > admin > settings > API keys", () => {
     visitApiKeySettings();
     cy.findByTestId("api-keys-table")
       .contains("Personal API Key")
-      .closest("tr")
-      .icon("pencil")
+      .closest('[role="row"]')
+      .findByLabelText("API key actions")
       .click();
+    cy.findByRole("menuitem", { name: /edit/i }).click();
     cy.button("Regenerate API key").click();
     cy.button("Regenerate").click();
     cy.wait("@regenerateKey");

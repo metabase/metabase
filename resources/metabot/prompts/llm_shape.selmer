@@ -15,7 +15,7 @@
 </segment>
 {% endif %}
 {% if is_field %}
-<field id="{{field_id}}" name="{{field_name_quoted|safe}}" display_name="{{field_display_name}}" type="{{field_base_type}}" database_type="{{field_database_type}}"{% if field_fk_target_fqn %} fk_target_fully_qualified_name="{{field_fk_target_fqn}}"{% endif %}>{% if field_description %}
+<field id="{{field_id}}" name="{{field_name|safe}}" display_name="{{field_display_name}}" type="{{field_base_type}}" database_type="{{field_database_type}}"{% if field_fk_target_fqn %} fk_target_fully_qualified_name="{{field_fk_target_fqn}}"{% endif %}>{% if field_description %}
 ## Description
 {{field_description}}{% endif %}</field>
 {% endif %}
@@ -273,7 +273,7 @@ or jargon that may be relevant to the user's questions.
 </user>
 {% endif %}
 {% if is_search_result %}
-<{{search_tag_name}} id="{{search_id}}" name="{{search_name}}"{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
+<{{search_tag_name}} id="{{search_id}}" name="{{search_name}}"{% if search_has_curated %} is_curated="{{search_curated}}"{% endif %}{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_has_official %} is_official="{{search_official}}"{% endif %}{% if search_data_layer %} data_layer="{{search_data_layer}}"{% endif %}{% if search_data_authority %} data_authority="{{search_data_authority}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
 {% if search_description %}
 {{search_description}}
 {% endif %}
@@ -312,7 +312,9 @@ They provide a rough idea of the data characteristics but may not reflect the co
 {% if is_field_metadata %}
 {% if field_metadata_value_xml %}
 <field-metadata field_id="{{field_metadata_field_id}}">
-    {{field_metadata_value_xml|safe}}
+{% if field_metadata_source %}    Source table: {{field_metadata_source}}
+{% endif %}{% if field_metadata_reference %}    Reference (copy into a field clause): {{field_metadata_reference|safe}}
+{% endif %}    {{field_metadata_value_xml|safe}}
 </field-metadata>
 {% else %}
 No metadata available to display. This doesn't mean the column is empty or cannot be queried - there may be various reasons why values aren't shown here.

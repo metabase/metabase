@@ -131,6 +131,7 @@ config:
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
     email-from-name: null
+    email-max-recipients-per-message: 50
     email-max-recipients-per-second: null
     email-reply-to: null
     email-smtp-host: null
@@ -156,6 +157,7 @@ config:
     enable-pivoted-exports: true
     enable-public-sharing: true
     enable-xrays: true
+    fingerprint-max-fields-per-table: 10000
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
     google-auth-client-id: null
@@ -216,6 +218,7 @@ config:
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
     metabot-enabled: true
+    metabot-recent-views-enabled: true
     metabot-slack-signing-secret: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
@@ -273,6 +276,7 @@ config:
     saml-keystore-path: null
     saml-slo-enabled: false
     saml-user-provisioning-enabled: true
+    scan-max-fields-per-table: 10000
     scim-enabled: null
     sdk-encryption-validation-key: null
     search-language: null
@@ -311,6 +315,7 @@ config:
     subscription-allowed-domains: null
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
+    sync-max-fields-per-table: 10000
     synchronous-batch-updates: false
     thread-interrupt-escalation-timeout-ms: 0
     transform-run-job-sql-concurrency: 3
@@ -318,5 +323,9 @@ config:
     transforms-enabled: false
     unaggregated-query-row-limit: null
     uploads-settings: null
+    usage-metadata-enabled: false
+    usage-metadata-last-completed-day: null
+    usage-metadata-retention-days: 90
+    usage-metadata-schedule: 0 0 2 * * ? *
     user-visibility: all
 ```

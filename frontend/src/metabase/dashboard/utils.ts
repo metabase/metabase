@@ -8,12 +8,11 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
 import {
+  getDatasetPermissionError,
   getGenericErrorMessage,
-  getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
@@ -263,22 +262,18 @@ export function isDashcardLoading(
 export function isDashcardAccessRestricted(
   datasets: ReadonlyArray<Pick<Dataset, "error" | "error_type">>,
 ) {
-  return datasets.some(
-    (s) =>
-      s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
-      (typeof s.error === "object" && s.error?.status === 403),
-  );
+  return datasets.some((dataset) => getDatasetPermissionError(dataset) != null);
 }
 
 export function getDashcardResultsError(
   datasets: Dataset[],
   isGuestEmbed: boolean,
 ) {
-  if (isDashcardAccessRestricted(datasets)) {
-    return {
-      message: getPermissionErrorMessage(),
-      icon: "key" as const,
-    };
+  const permissionError = datasets
+    .map(getDatasetPermissionError)
+    .find((error) => error != null);
+  if (permissionError) {
+    return permissionError;
   }
 
   const staticEntityLoadingError = datasets.find((dataset) =>

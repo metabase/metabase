@@ -32,6 +32,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   CollectionItem,
   SchemaName,
@@ -282,7 +283,8 @@ function DatabaseItemList({
 }: {
   parent: MiniPickerDatabaseItem | MiniPickerSchemaItem;
 }) {
-  const { setPath, onChange, isHidden, models } = useMiniPickerContext();
+  const { setPath, onChange, isHidden, models, includeHiddenSchemas } =
+    useMiniPickerContext();
   // Callers opt schemas in as a terminal pick by including "schema" in
   // `models`. Affects three things: schemas fire `onChange` instead of
   // `setPath`, single-schema DBs no longer auto-drill to tables, and the
@@ -291,7 +293,11 @@ function DatabaseItemList({
   const { data: allSchemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       parent.model === "database"
-        ? { id: parent.id, "can-query": true }
+        ? {
+            id: parent.id,
+            "can-query": true,
+            include_hidden: includeHiddenSchemas,
+          }
         : skipToken,
     );
 
@@ -313,6 +319,21 @@ function DatabaseItemList({
         ? schemas[0] // if there's one schema, go straight to tables
         : null;
 
+  // Schema-less DBs (MySQL, Mongo, SQLite, …) report a single nameless schema.
+  // In that case, select the DB immediately instead of showing a blank row at 'schema' step.
+  const shouldAutoSelectNamelessSchema =
+    schemasArePickable &&
+    parent.model === "database" &&
+    schemas?.length === 1 &&
+    isNamelessSchema(schemas[0]);
+
+  useEffect(() => {
+    if (shouldAutoSelectNamelessSchema) {
+      setPath([]);
+      onChange({ model: "schema", id: "", database_id: dbId, name: "" });
+    }
+  }, [shouldAutoSelectNamelessSchema, onChange, setPath, dbId]);
+
   const { data: tablesData, isLoading: isLoadingTables } =
     useListDatabaseSchemaTablesQuery(
       schemaName !== null
@@ -324,7 +345,7 @@ function DatabaseItemList({
         : skipToken,
     );
 
-  if (isLoadingSchemas) {
+  if (isLoadingSchemas || shouldAutoSelectNamelessSchema) {
     return <MiniPickerListLoader />;
   }
 
@@ -480,6 +501,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
       q: query,
       models: models as SearchModel[],
       limit: 50,
+      context: "data-picker",
     };
     const extraParams =
       typeof searchParams === "function" ? searchParams(params) : searchParams;

@@ -63,7 +63,9 @@ export function NotebookStep({
                 [CS.mr1]: !isLastStep || (isLastStep && !hasLargeActionButtons),
               })}
               large={hasLargeActionButtons}
-              {...stepUi}
+              icon={stepUi.icon}
+              color={stepUi.color}
+              secondary={stepUi.secondary}
               title={title}
               aria-label={title}
               onClick={() => action.action({ openStep })}

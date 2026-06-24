@@ -15,10 +15,7 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
-import {
-  canAccessTransforms as canAccessTransformsSelector,
-  getTransformsFeatureAvailable,
-} from "metabase/transforms/selectors";
+import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import {
   ActionIcon,
   Box,
@@ -103,7 +100,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
-  const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
 
   const currentTab = getCurrentTab(pathname);
 
@@ -176,7 +172,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               to={Urls.transformList()}
               isSelected={currentTab === "transforms"}
               showLabel={isNavbarOpened}
-              isGated={!hasTransformsFeature}
               rightSection={
                 hasTransformDirtyChanges &&
                 PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
@@ -212,7 +207,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           {canManageWorkspaces && (
             <DataStudioTab
               label={t`Workspaces`}
-              icon="folder"
+              icon="workspace"
               to={Urls.workspaces()}
               isSelected={currentTab === "workspaces"}
               showLabel={isNavbarOpened}
