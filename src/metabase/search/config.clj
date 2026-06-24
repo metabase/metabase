@@ -317,7 +317,8 @@
   "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
   so the OSS search API param and the EE semantic-search setting validation share one definition.
   Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
-  separate dispatch (with an `:hnsw` default) and must be updated by hand when adding a strategy.
+  separate dispatch (unknown strategies fall back to `:brute-force`) and must be updated by hand when
+  adding a strategy.
 
    - `:hnsw`                   approximate, index-backed, post-filters the candidate set
    - `:brute-force`            exact, filter-first full scan (skips the index)
