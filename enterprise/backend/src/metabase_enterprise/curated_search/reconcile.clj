@@ -16,25 +16,7 @@
   import that bypassed the model hooks).
 
   Runs from the [[metabase-enterprise.curated-search.task.sync]] Quartz job; callers pass the datasource
-  and embedding model, so this namespace reads no settings.
-
-  ## Scalability — full-diff now, incremental later
-
-  The diff is O(total index size) per run, not O(changes), and that is deliberate.
-  Embeddings — the only expensive resource — are already change-scoped: only a new `doc_text` is embedded,
-  so an idle run embeds nothing.
-  The O(total) work is cheap metadata bookkeeping over the *library* (the bounded curated tier), never the
-  whole instance, so it stays comfortable into the tens of thousands of docs.
-
-  Mark-and-sweep (stamp a generation, `DELETE WHERE gen < current`) would be a net loss: it trades the
-  cheap full read for a full write every run — WAL, dead tuples, vacuum pressure on pgvector — while the
-  real cost is already incremental.
-
-  If a library ever outgrows full-diff, the lever is event/watermark incrementality: reconcile only the
-  changed entity's doc slice (the appdb write already nudges this job), with an `updated_at` watermark for
-  membership changes and a periodic full reconcile as the backstop.
-  That needs a `(entity_type, entity_local_id)` index and reliable change capture — build it behind this
-  same `reconcile!` interface only when data demands it."
+  and embedding model, so this namespace reads no settings."
   (:require
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
@@ -53,9 +35,9 @@
 
 (def ^:private embed-batch-size
   "Documents embedded per embedding-service request while backfilling new index rows.
-  TODO (Chris 2026-06-23) -- tune for many short docs (single synonyms/examples) vs the service's
-  per-request token AND item-count limits; 50 is the conservative carryover from the 1-row-per-entry era."
-  50)
+  Matches semantic-search's indexer batch default ([[metabase-enterprise.semantic-search.index/*batch-size*]]);
+  our docs are short (names, single synonyms/examples), so item count, not tokens, is the binding limit."
+  150)
 
 ;; Advisory lock serializing whole reconcile runs across cluster nodes (insert-vs-orphan-delete races).
 ;; Arbitrary app-wide-unique constant, distinct from index-table's ensure lock (20011) and
@@ -133,13 +115,13 @@
   "The full set of docs the index should hold, deduped by `doc_id` (identical values collapse to one)."
   []
   (let [ac-by-entity (ai-context-by-entity)]
-    (->> (library-entities)
-         (mapcat (fn [{:keys [entity_type entity_local_id] :as ent}]
-                   (entity->docs ent (get ac-by-entity [entity_type entity_local_id]))))
-         ;; key by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice) collapses.
-         ;; a synonym equal to the name does NOT collapse — different doc_type, different doc_id.
-         (reduce (fn [acc d] (assoc acc (:doc_id d) d)) {})
-         vals)))
+    ;; key by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice) collapses.
+    ;; a synonym equal to the name does NOT collapse — different doc_type, different doc_id.
+    (vals (into {}
+                (comp (mapcat (fn [{:keys [entity_type entity_local_id] :as ent}]
+                                (entity->docs ent (get ac-by-entity [entity_type entity_local_id]))))
+                      (map (juxt :doc_id identity)))
+                (library-entities)))))
 
 ;;; ------------------------------------------------- Index writes -------------------------------------------------
 
@@ -189,6 +171,19 @@
   [{:keys [entity_type entity_local_id]}]
   [(if (#{"metric" "model"} entity_type) :card entity_type) entity_local_id])
 
+;; Scalability — full-diff now, incremental later.
+;; The diff is O(total index size) per run, not O(changes), and that is deliberate. Embeddings — the only
+;; expensive resource — are already change-scoped (only a new doc_text is embedded; an idle run embeds
+;; nothing). The O(total) work is cheap metadata bookkeeping over the *library* (the bounded curated tier),
+;; never the whole instance, so it stays comfortable into the tens of thousands of docs. Mark-and-sweep
+;; (stamp a generation, DELETE WHERE gen < current) would be a net loss: it trades the cheap full read for a
+;; full write every run (WAL, dead tuples, vacuum pressure) while the real cost is already incremental.
+;;
+;; TODO (Chris 2026-06-24) -- if a library ever outgrows full-diff, switch to event/watermark
+;; incrementality: reconcile only the changed entity's doc slice (the appdb write already nudges this job),
+;; with an updated_at watermark for membership changes and a periodic full reconcile as the backstop. Needs
+;; a (entity_type, entity_local_id) index and reliable change capture; build it behind this same reconcile!
+;; interface only when data demands it.
 (defn- reconcile-against-appdb!
   "The diff body — assumes the reconcile advisory lock is held. See the namespace docstring."
   [pgvector embedding-model]
@@ -215,7 +210,8 @@
         ;; An orphan is often the stale half of an edited value (e.g. a renamed name's old doc).
         ;; Deleting it while its replacement failed to embed would drop that entity from search until the
         ;; next run, so spare orphans whose entity class had a failed insert; every other orphan GCs normally.
-        to-delete     (remove #(contains? @failed (entity-class (get stored %))) orphans)]
+        to-delete     (cond->> orphans
+                        (seq @failed) (remove #(contains? @failed (entity-class (get stored %)))))]
     (delete-rows! pgvector to-delete)
     {:inserted  inserted
      :deleted   (count to-delete)

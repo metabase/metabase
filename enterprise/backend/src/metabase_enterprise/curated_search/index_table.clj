@@ -13,9 +13,6 @@
   - a single-row meta table recording the embedding model identity and schema version the vectors table
     was built for.
 
-  There is deliberately no HNSW index: search orders by a blended score (similarity plus a doc_type bump),
-  which HNSW can't accelerate, and an exact scan over this small curated set is microseconds.
-
   [[ensure-tables!]] is the only entry point: it idempotently creates both tables and, when the
   configured embedding model or the schema version no longer matches the meta row, drops and recreates
   the vectors table so the next reconcile re-embeds everything.
@@ -43,7 +40,7 @@
 (def schema-version
   "Version of the vectors table schema.
   Bump it to force a drop-and-rebuild on instances whose meta row records an older version."
-  ;; This branch ships the index for the first time, so the schema starts fresh at 1.
+  ;; v1 — initial schema.
   1)
 
 ;; Advisory lock serializing concurrent ensure-tables! calls (e.g. several cluster nodes starting at
@@ -77,8 +74,6 @@
 (defn- create-vectors-table-sql [dims]
   (-> (sql.helpers/create-table (keyword *vectors-table*) :if-not-exists)
       (sql.helpers/with-columns
-        ;; doc_id = base64(sha1("entity_type|entity_local_id|doc_type|doc_text")) — content-addresses the
-        ;; embedded text, so a text edit mints a new row.
         [[:doc_id :text [:primary-key]]
          [:entity_type :text :not-null]
          [:entity_local_id :bigint :not-null]
