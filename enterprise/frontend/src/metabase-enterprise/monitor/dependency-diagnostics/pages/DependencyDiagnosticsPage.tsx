@@ -5,11 +5,11 @@ import { replace } from "react-router-redux";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { useDispatch } from "metabase/redux";
 import type * as Urls from "metabase/urls";
-import { DependencyDiagnostics } from "metabase-enterprise/monitor/components/DependencyDiagnostics";
+import { DependencyDiagnostics } from "metabase-enterprise/monitor/dependency-diagnostics/components";
 import type {
   DependencyDiagnosticsMode,
   DependencyDiagnosticsParamsOptions,
-} from "metabase-enterprise/monitor/components/DependencyDiagnostics/types";
+} from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 
 import {
   getPageUrl,

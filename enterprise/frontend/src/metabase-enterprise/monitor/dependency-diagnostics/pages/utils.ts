@@ -1,7 +1,7 @@
 import type { Location } from "history";
 
 import * as Urls from "metabase/urls";
-import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/components/DependencyDiagnostics/types";
+import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import {
   DEPENDENCY_GROUP_TYPES,
   DEPENDENCY_SORT_COLUMNS,

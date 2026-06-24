@@ -13,7 +13,7 @@ import {
   within,
 } from "__support__/ui";
 import type * as Urls from "metabase/urls";
-import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/components/DependencyDiagnostics/types";
+import type { DependencyDiagnosticsMode } from "metabase-enterprise/monitor/dependency-diagnostics/components/types";
 import type {
   DependencyDiagnosticsUserParams,
   DependencyNode,

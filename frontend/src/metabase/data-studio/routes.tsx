@@ -1,8 +1,8 @@
 import type { Store } from "@reduxjs/toolkit";
 import { IndexRoute, Route, type RouteComponent } from "react-router";
 
-import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/app/pages/DependencyDiagnosticsSectionLayout";
-import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/upsells/pages/DependencyDiagnosticsUpsellPage";
+import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
+import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
