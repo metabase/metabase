@@ -67,3 +67,233 @@
     (let [groups [{:group-id 1 :metrics [(metric-with-dims 1 {})]}]]
       (is (= :skip-not-applicable
              (:outcome (planner/plan! qp.adaptive/planner {:metric-dim-ctx {:groups groups}})))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Issue 2 — metric-kind classification
+;;; ---------------------------------------------------------------------------
+
+(deftest metric-kind-test
+  (testing "a share / ratio aggregation is a rate"
+    (is (= :rate (qp.adaptive/metric-kind [[:share [:= [:field 1 nil] "x"]]])))
+    (is (= :rate (qp.adaptive/metric-kind [[:/ [:count-where [:= [:field 1 nil] "x"]] [:count]]]))))
+  (testing "sum / count / avg are additive; absent / undetectable defaults to additive"
+    (is (= :additive (qp.adaptive/metric-kind [[:sum [:field 1 nil]]])))
+    (is (= :additive (qp.adaptive/metric-kind [[:count]])))
+    (is (= :additive (qp.adaptive/metric-kind nil)))))
+
+;;; ---------------------------------------------------------------------------
+;;; Issue 2 — select-split (highest gain, deterministic tie-break)
+;;; ---------------------------------------------------------------------------
+
+(deftest select-split-test
+  (testing "the highest-gain candidate wins"
+    (is (= "b" (:dimension-id
+                (qp.adaptive/select-split
+                 [{:dimension-id "a" :gain 0.2 :prior 0.9}
+                  {:dimension-id "b" :gain 0.8 :prior 0.1}
+                  {:dimension-id "c" :gain 0.5 :prior 0.5}])))))
+  (testing "a flat candidate (gain ~0) loses to any non-flat one"
+    (is (= "live" (:dimension-id
+                   (qp.adaptive/select-split
+                    [{:dimension-id "flat" :gain 0.0 :prior 0.9}
+                     {:dimension-id "live" :gain 0.3 :prior 0.1}])))))
+  (testing "ties on gain break by split prior (desc), then dimension-id (asc) — deterministic"
+    (is (= "hi-prior" (:dimension-id
+                       (qp.adaptive/select-split
+                        [{:dimension-id "lo-prior" :gain 0.5 :prior 0.1}
+                         {:dimension-id "hi-prior" :gain 0.5 :prior 0.9}]))))
+    (is (= "aaa" (:dimension-id
+                  (qp.adaptive/select-split
+                   [{:dimension-id "zzz" :gain 0.5 :prior 0.5}
+                    {:dimension-id "aaa" :gain 0.5 :prior 0.5}])))))
+  (testing "all-flat candidates still yield a deterministic winner (guaranteed output)"
+    (is (= "aaa" (:dimension-id
+                  (qp.adaptive/select-split
+                   [{:dimension-id "zzz" :gain 0.0 :prior 0.0}
+                    {:dimension-id "aaa" :gain 0.0 :prior 0.0}])))))
+  (testing "nil for an empty candidate set"
+    (is (nil? (qp.adaptive/select-split [])))))
+
+(deftest min-split-gain-test
+  (testing "min-split-gain is a centralized tunable in [0,1]"
+    (is (number? qp.adaptive/min-split-gain))
+    (is (<= 0.0 qp.adaptive/min-split-gain 1.0))))
+
+;;; ---------------------------------------------------------------------------
+;;; Issue 2 — split-gain (continuous, support-weighted effect size)
+;;; ---------------------------------------------------------------------------
+
+(deftest split-gain-degenerate-test
+  (testing "k ≤ 1 → 0 (no split to differentiate)"
+    (is (= 0.0 (qp.adaptive/split-gain [] :additive)))
+    (is (= 0.0 (qp.adaptive/split-gain [{:value "a" :metric 100 :count 500}] :additive)))
+    (is (= 0.0 (qp.adaptive/split-gain [{:value "a" :metric 0.5 :count 500}] :rate))))
+  (testing "a flat split (all cells equal) → ~0"
+    (is (> 1e-9 (qp.adaptive/split-gain [{:value "a" :metric 100 :count 500}
+                                         {:value "b" :metric 100 :count 500}] :additive)))
+    (is (> 1e-9 (qp.adaptive/split-gain [{:value "a" :metric 0.5 :count 500}
+                                         {:value "b" :metric 0.5 :count 500}] :rate))))
+  (testing "non-numeric / zero-support cells are dropped (degenerate → 0)"
+    (is (= 0.0 (qp.adaptive/split-gain [{:value "a" :metric nil :count 500}
+                                        {:value "b" :metric 0.5 :count 0}] :rate)))))
+
+(deftest split-gain-strength-test
+  (testing "a strong split scores well above a weak one"
+    (let [strong (qp.adaptive/split-gain [{:value "a" :metric 1000 :count 500}
+                                          {:value "b" :metric 10   :count 500}] :additive)
+          weak   (qp.adaptive/split-gain [{:value "a" :metric 110 :count 500}
+                                          {:value "b" :metric 100 :count 500}] :additive)]
+      (is (> strong weak))
+      (is (> strong 0.1))))
+  (testing "rate effect size is bounded in [0,1] and ranks a strong split high"
+    (let [strong (qp.adaptive/split-gain [{:value "a" :metric 0.9 :count 500}
+                                          {:value "b" :metric 0.1 :count 500}] :rate)]
+      (is (<= 0.0 strong 1.0))
+      (is (> strong 0.5)))))
+
+(deftest split-gain-support-weighting-test
+  (testing "a small-n outlier barely moves a rate gain (support-weighting)"
+    (let [outlier (qp.adaptive/split-gain [{:value "a"   :metric 0.5 :count 100000}
+                                           {:value "b"   :metric 0.5 :count 100000}
+                                           {:value "out" :metric 1.0 :count 3}] :rate)
+          genuine (qp.adaptive/split-gain [{:value "a" :metric 0.55 :count 5000}
+                                           {:value "b" :metric 0.45 :count 5000}] :rate)]
+      (is (> 0.01 outlier))
+      (is (> genuine (* 10 outlier)))))
+  (testing "a large-n modest rate effect outranks a small-n wild one"
+    (let [modest-large (qp.adaptive/split-gain [{:value "a" :metric 0.55 :count 5000}
+                                                {:value "b" :metric 0.45 :count 5000}] :rate)
+          wild-small   (qp.adaptive/split-gain [{:value "a" :metric 0.50 :count 9970}
+                                                {:value "b" :metric 1.00 :count 30}] :rate)]
+      (is (> modest-large wild-small)))))
+
+(deftest split-gain-rate-fallback-test
+  (testing "a rate metric whose cells aren't proportions (mis-scaled) degrades to the
+            scale-free form instead of NaN, preserving a sane ranking"
+    (let [strong (qp.adaptive/split-gain [{:value "a" :metric 90 :count 500}
+                                          {:value "b" :metric 10 :count 500}] :rate)
+          weak   (qp.adaptive/split-gain [{:value "a" :metric 52 :count 500}
+                                          {:value "b" :metric 48 :count 500}] :rate)]
+      (is (not (Double/isNaN strong)))
+      (is (> strong weak)))))
+
+(deftest split-gain-regression-263-test
+  (testing "exploration 263 (signup-completion rate): live funnel-native cells re-rank
+            on the per-df effect-size scale — OS sinks below Browser, OS gain ≈ 0.020,
+            Step (no cells) is 0"
+    (let [os      [{:value "Android" :metric 0.7706093189964157 :count 10109}
+                   {:value "iOS"     :metric 0.7184865712605372 :count 30375}
+                   {:value "Linux"   :metric 0.7745297407219115 :count 23790}
+                   {:value "macOS"   :metric 0.752420470262794  :count 95591}
+                   {:value "Windows" :metric 0.7725474282235974 :count 118934}]
+          browser [{:value "Chrome"  :metric 0.768671536988439  :count 169844}
+                   {:value "Edge"    :metric 0.7780556423882463 :count 19457}
+                   {:value "Firefox" :metric 0.7831441680753441 :count 25078}
+                   {:value "Other"   :metric 0.7756410256410257 :count 5655}
+                   {:value "Safari"  :metric 0.7170979198376457 :count 58765}]
+          g-os      (qp.adaptive/split-gain os :rate)
+          g-browser (qp.adaptive/split-gain browser :rate)
+          g-step    (qp.adaptive/split-gain [] :rate)]
+      (is (< 0.019 g-os 0.021)                "OS per-df gain matches the validated ~0.020")
+      (is (> g-os qp.adaptive/min-split-gain) "OS clears the descent floor (a real effect)")
+      (is (< g-os g-browser)                  "OS ranks below Browser")
+      (is (= 0.0 g-step)                      "Step — the metric's own filter axis — has no split, 0"))))
+
+(deftest split-gain-cardinality-bias-test
+  (testing "ε² removes degrees-of-freedom inflation: a high-cardinality noise split
+            does not out-rank a genuine low-cardinality effect"
+    (let [real-low-k   [{:value "a" :metric 0.80 :count 5000}
+                        {:value "b" :metric 0.66 :count 5000}]
+          noise-high-k (mapv (fn [i] {:value  (str i)
+                                      :metric (+ 0.73 (* 0.002 (- (mod i 5) 2)))
+                                      :count  300})
+                             (range 40))
+          g-real  (qp.adaptive/split-gain real-low-k :rate)
+          g-noise (qp.adaptive/split-gain noise-high-k :rate)]
+      (is (> g-real g-noise)             "the genuine k=2 effect outranks the k=40 noise")
+      (is (> 0.001 g-noise)              "the high-cardinality noise split collapses to ~0")
+      (is (< g-noise qp.adaptive/min-split-gain) "and falls below the descent floor")))
+  (testing "adding null groups does not manufacture gain under the null"
+    (let [base   [{:value "a" :metric 0.50 :count 1000} {:value "b" :metric 0.50 :count 1000}]
+          padded (into base (for [i (range 30)] {:value (str "z" i) :metric 0.50 :count 1000}))]
+      (is (> 1e-9 (qp.adaptive/split-gain base :rate)))
+      (is (> 1e-9 (qp.adaptive/split-gain padded :rate)))))
+  (testing "a granular dimension that merely NESTS a coarse one's signal loses to the
+            coarse dimension — the per-df normalization is what flips this"
+    (let [region  [{:value "Europe"   :metric 0.60 :count 8000}
+                   {:value "APAC"     :metric 0.75 :count 8000}
+                   {:value "Americas" :metric 0.78 :count 8000}
+                   {:value "MEA"      :metric 0.80 :count 8000}]
+          country (vec (for [{:keys [value metric]} region, c (range 4)]
+                         {:value (str value "-" c) :metric metric :count 2000}))
+          g-region  (qp.adaptive/split-gain region :rate)
+          g-country (qp.adaptive/split-gain country :rate)]
+      (is (> g-region g-country)              "Region (k=4) outranks Country (k=16) nesting it")
+      (is (> g-region qp.adaptive/min-split-gain)))))
+
+(deftest split-gain-measured-variance-test
+  (testing "with measured within-group variance, gain is sqrt(ε²/(k−1)) — bias-corrected, per-df"
+    (let [cells [{:value "a" :metric 600 :count 500 :variance 400}
+                 {:value "b" :metric 400 :count 500 :variance 400}]
+          ss-b 1.0e7, ss-w 4.0e5, n 1000.0, k 2
+          eps2     (/ (- ss-b (* (dec k) (/ ss-w (- n k)))) (+ ss-b ss-w))
+          expected (Math/sqrt (/ eps2 (double (dec k))))
+          gain (qp.adaptive/split-gain cells :additive)]
+      (is (<= 0.0 gain 1.0) "the gain is bounded in [0,1]")
+      (is (< (Math/abs (double (- gain expected))) 1e-9) "gain matches sqrt(ε²/(k−1))")))
+  (testing "a null / missing per-group variance contributes 0 to SS_within"
+    (let [cells [{:value "a" :metric 10 :count 100 :variance 0.0}
+                 {:value "b" :metric 20 :count 1   :variance nil}]]
+      (is (number? (qp.adaptive/split-gain cells :additive)))
+      (is (<= 0.0 (qp.adaptive/split-gain cells :additive) 1.0))))
+  (testing "for sum metrics, SS_between is taken around the measured :group-mean"
+    (let [flat-means [{:value "a" :metric 1000 :group-mean 50 :count 20  :variance 100}
+                      {:value "b" :metric 5000 :group-mean 50 :count 100 :variance 100}]
+          real-split [{:value "a" :metric 1000 :group-mean 50 :count 20  :variance 100}
+                      {:value "b" :metric 5000 :group-mean 90 :count 100 :variance 100}]
+          g-flat (qp.adaptive/split-gain flat-means :additive)
+          g-real (qp.adaptive/split-gain real-split :additive)]
+      (is (> 1e-9 g-flat) "equal group means ⇒ ~0 gain despite very different totals")
+      (is (> g-real 0.1)  "a real difference in per-row means scores well")
+      (is (<= 0.0 g-real 1.0)))))
+
+(deftest split-gain-negative-zero-crossing-test
+  (testing "a profit-like additive metric whose group means straddle 0 ranks sanely on η²"
+    (let [straddle [{:value "A" :metric -50 :count 500 :variance 400}
+                    {:value "B" :metric  60 :count 500 :variance 500}
+                    {:value "C" :metric  -5 :count 500 :variance 450}]
+          flat     [{:value "A" :metric -5 :count 500 :variance 450}
+                    {:value "B" :metric -4 :count 500 :variance 450}
+                    {:value "C" :metric -5 :count 500 :variance 450}]
+          eta2-straddle (qp.adaptive/split-gain straddle :additive)
+          eta2-flat     (qp.adaptive/split-gain flat :additive)
+          nwv-straddle  (qp.adaptive/split-gain (mapv #(dissoc % :variance) straddle) :additive)]
+      (is (<= 0.0 eta2-straddle 1.0)  "η² is finite and bounded across zero")
+      (is (> eta2-straddle eta2-flat) "a real straddle outranks a flat split")
+      (is (> nwv-straddle 1.0)        "the NWV fallback would blow past 1 on the same cells"))))
+
+(deftest split-gain-phi2-eta2-identity-test
+  (testing "for a 0/1 outcome, the analytic rate φ² equals the measured η² with
+            within-variance = p(1−p)"
+    (let [rate-cells [{:value "a" :metric 0.9 :count 500}
+                      {:value "b" :metric 0.1 :count 500}
+                      {:value "c" :metric 0.6 :count 1500}]
+          measured   (mapv (fn [{:keys [metric] :as c}]
+                             (assoc c :variance (* metric (- 1.0 metric))))
+                           rate-cells)
+          analytic-phi2 (qp.adaptive/split-gain rate-cells :rate)
+          measured-eta2 (qp.adaptive/split-gain measured :additive)]
+      (is (< (Math/abs (double (- analytic-phi2 measured-eta2))) 1e-12)
+          "φ² (analytic Bernoulli within-variance) == η² (measured within-variance)"))))
+
+(deftest split-gain-graceful-fallback-test
+  (testing "without a :variance field: rate fast-path forms analytic ε², non-rate falls
+            back to the rate-free normalized weighted variance"
+    (let [rate-cells [{:value "a" :metric 0.9 :count 500} {:value "b" :metric 0.1 :count 500}]
+          add-cells  [{:value "a" :metric 1000 :count 500} {:value "b" :metric 10 :count 500}]
+          eps2       (/ (- 160.0 (/ 90.0 998.0)) 250.0)
+          expected   (Math/sqrt eps2)]
+      (is (< (Math/abs (double (- (qp.adaptive/split-gain rate-cells :rate) expected))) 1e-9)
+          "rate fast-path returns sqrt(analytic ε²) ≈ 0.800")
+      (is (> (qp.adaptive/split-gain add-cells :additive) 0.1)
+          "additive NWV fallback still ranks a strong split well"))))
