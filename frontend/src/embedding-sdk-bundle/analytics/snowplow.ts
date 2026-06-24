@@ -49,8 +49,6 @@ let trackerInitialized = false;
 let sdkAuthMethod: SdkAuthMethod;
 let sdkLocaleUsed: boolean = false;
 let sdkMetaplowEnabled: boolean = false;
-let sdkMetaplowUrl: string | null = null;
-let sdkAnalyticsUuid: string = "";
 
 // Initialize the SDK's Snowplow tracker. Idempotent — safe under StrictMode double-mount.
 export function initSdkTracker({
@@ -73,8 +71,6 @@ export function initSdkTracker({
 
   const settingValues = store.getState().settings?.values;
   sdkMetaplowEnabled = !!settingValues?.["metaplow-tracking-enabled"];
-  sdkMetaplowUrl = settingValues?.["metaplow-url"] ?? null;
-  sdkAnalyticsUuid = settingValues?.["analytics-uuid"] ?? "";
 
   newTracker(SDK_TRACKER_NAME, metabaseInstanceUrl, {
     appId: "metabase",
@@ -150,11 +146,6 @@ export function trackSdkSimpleEvent(event: EmbeddingSdkEvent): void {
 
   if (sdkMetaplowEnabled) {
     const { event: name, ...data } = event;
-    trackMetaplowEvent({
-      name,
-      data,
-      metaplowUrl: sdkMetaplowUrl,
-      analyticsUuid: sdkAnalyticsUuid,
-    });
+    trackMetaplowEvent(name, data);
   }
 }

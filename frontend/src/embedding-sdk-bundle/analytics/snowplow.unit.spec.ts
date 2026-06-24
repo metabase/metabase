@@ -265,46 +265,16 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
       });
 
       expect(mockTrackMetaplowEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "embedding_sdk_initialized",
-          data: {
-            event_detail: JSON.stringify({
-              global: {
-                auth_method: "sso",
-                sdk_version: "1.0.0",
-                locale_used: false,
-              },
-            }),
-          },
-          metaplowUrl: null,
-        }),
-      );
-    });
-
-    it("caches metaplow-url and analytics-uuid from the store for Metaplow calls", async () => {
-      const { initSdkTracker, trackSdkSimpleEvent } = await loadModule();
-
-      initSdkTracker({
-        metabaseInstanceUrl: "https://metabase.example.com",
-        authMethod: "sso",
-        localeUsed: false,
-        store: makeStore({
-          "metaplow-tracking-enabled": true,
-          "metaplow-url": "http://localhost:8888",
-          "analytics-uuid": "test-uuid-123",
-        }),
-      });
-
-      trackSdkSimpleEvent({
-        event: "embedding_sdk_initialized",
-        event_detail: "",
-      });
-
-      expect(mockTrackMetaplowEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          metaplowUrl: "http://localhost:8888",
-          analyticsUuid: "test-uuid-123",
-        }),
+        "embedding_sdk_initialized",
+        {
+          event_detail: JSON.stringify({
+            global: {
+              auth_method: "sso",
+              sdk_version: "1.0.0",
+              locale_used: false,
+            },
+          }),
+        },
       );
     });
   });
