@@ -13,6 +13,7 @@
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
    [metabase.explorations.query-plan.planner :as planner]
+   [metabase.interestingness.core :as interestingness]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
    [metabase.util.log :as log]))
@@ -53,14 +54,86 @@
   - `:min-split-gain` — the `split-gain` floor justifying a descent, tuned for
     the per-df effect-size scale (`sqrt(ε²/(k−1))`, ~Cramér's V): real effects
     sit above it, flat / noise / over-granular splits below. Screens flat / noise
-    splits; min-support (a later slice) is the real terminator. Does not suppress
-    surfacing."
-  {:min-split-gain 0.01})
+    splits; min-support is the real terminator. Does not suppress surfacing.
+  - `:min-support-floor/-rate/-fraction` — descent-eligibility floor
+    `max(floor, ceil(fraction · parent-support))`; the absolute floor is raised
+    for `:rate` metrics (a proportion needs a real denominator). Support weighting
+    in `split-gain`, not the floor, does the ranking — the floor is a hard gate
+    that keeps the search out of cells too small to measure.
+  - `:k-child-values` — children descended into per split (top-k by deviation).
+  - `:saturation-epsilon` — the loop does not descend into a `:rate` child cell
+    whose proportion sits within this of a `[0,1]` extreme (no residual variation
+    left to explain — any further split inside it is noise).
+  - `:max-depth` — depth backstop (a placeholder hard cap until the governed
+    best-first search lands)."
+  {:min-split-gain         0.01
+   :min-support-floor      50
+   :min-support-floor-rate 200
+   :min-support-fraction   0.01
+   :k-child-values         2
+   :saturation-epsilon     0.02
+   :max-depth              5})
 
 (def min-split-gain
   "The `split-gain` floor (see `config`). A var so call sites / tests read it
   directly; the source of truth is `config`."
   (:min-split-gain config))
+
+;;; ---------------------------------------------------------------------------
+;;; Descent governance — value selection by deviation, min-support gating
+;;; ---------------------------------------------------------------------------
+
+(defn min-support-threshold
+  "The descent-eligibility floor for a node with `parent-support` rows:
+  `max(absolute-floor, ceil(fraction × parent-support))`. The absolute floor is
+  raised for `:rate` metrics (`:min-support-floor-rate`), which need a real
+  denominator before a proportion is trustworthy; `metric-kind` defaults to
+  `:additive`."
+  ([parent-support] (min-support-threshold parent-support :additive))
+  ([parent-support metric-kind]
+   (max (if (= metric-kind :rate)
+          (:min-support-floor-rate config)
+          (:min-support-floor config))
+        (long (Math/ceil (* (:min-support-fraction config) (double (or parent-support 0))))))))
+
+(defn- saturated?
+  "A `:rate` cell sitting within `:saturation-epsilon` of a `[0,1]` extreme (≈0 or
+  ≈1): the slice has no residual variation left to explain, so descending into it
+  only splits noise. Additive metrics have no intrinsic extreme and are never
+  saturated."
+  [metric metric-kind]
+  (and (= metric-kind :rate)
+       (number? metric)
+       (let [eps (:saturation-epsilon config)
+             m   (double metric)]
+         (or (<= m eps) (>= m (- 1.0 eps))))))
+
+(defn select-child-values
+  "Top-`k` child values to descend into, by **absolute deviation** of each child's
+  metric from the mean of the (min-support-eligible) children — both tails, since
+  a strongly-below child deviates as much as a strongly-above one. Cells below the
+  min-support threshold (raised for `:rate` metrics, see `min-support-threshold`;
+  `metric-kind` defaults to `:additive`), with a non-numeric metric, or — for rate
+  metrics — already saturated at a `[0,1]` extreme (no residual variation to drill,
+  see [[saturated?]]) are dropped first. Ties break by stringified value, so
+  selection is deterministic. Returns raw cell values (the breakout group values,
+  ready for equality/`is-null` inversion)."
+  ([cells k] (select-child-values cells k :additive))
+  ([cells k metric-kind]
+   (let [parent-support (reduce + 0 (keep :count cells))
+         threshold      (min-support-threshold parent-support metric-kind)
+         eligible       (filterv (fn [{:keys [count metric]}]
+                                   (and count (>= count threshold) (number? metric)
+                                        (not (saturated? metric metric-kind))))
+                                 cells)]
+     (if (empty? eligible)
+       []
+       (let [mean (/ (reduce + 0.0 (map :metric eligible)) (clojure.core/count eligible))]
+         (->> eligible
+              (sort-by (juxt #(- (Math/abs (double (- (:metric %) mean))))
+                             #(str (:value %))))
+              (take k)
+              (mapv :value)))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Metric classification — rate vs additive, sniffed from the aggregation
@@ -86,6 +159,51 @@
   (if (some #{:share :/} (aggregation-ops aggregations))
     :rate
     :additive))
+
+(defn rate-scale
+  "The constant a rate proportion is multiplied by in `aggregations` (e.g. a ×100
+  percentage wrapper, `[:* [:/ …] 100]`), so measurement cells can be de-scaled
+  back to `[0,1]` proportions before φ². `1.0` for a bare share / ratio.
+  Heuristic: the product of the literal multiplicands of any `:*` in the
+  aggregation (a mis-scaled rate is caught by `split-gain`'s [0,1] guard)."
+  [aggregations]
+  (transduce (comp (mapcat #(tree-seq vector? seq %))
+                   (filter #(and (vector? %) (= :* (first %))))
+                   (mapcat (fn [clause] (filter number? (drop 2 clause)))))
+             * 1.0 aggregations))
+
+(defn- metric-aggregations
+  "The metric Card's top-level aggregation clauses (lib clause vectors), or nil
+  when the metric-ctx carries no card / the query can't be built (test fixtures)."
+  [metric-ctx]
+  (try
+    (when-let [card (:card metric-ctx)]
+      (lib/aggregations (lib/query (:mp metric-ctx) (:dataset_query card))))
+    (catch Throwable _ nil)))
+
+(defn- field-ids
+  "All integer field ids referenced anywhere in `clauses` (a seq of clause
+  vectors) — walks nested `[:field {opts} id]` refs. The tag is matched as both
+  the keyword `:field` (normalized lib clauses, e.g. a metric's aggregation) and
+  the string `\"field\"` (a thread-group's JSON-snapshotted dimension target, whose
+  tag deserializes as a string). Nominal (string-id) refs are ignored."
+  [clauses]
+  (into #{}
+        (comp (mapcat #(tree-seq vector? seq %))
+              (filter #(and (vector? %) (#{:field "field"} (first %))))
+              (map peek)
+              (filter integer?))
+        clauses))
+
+(defn- definitional-dim?
+  "True when `candidate`'s target field is one the metric's own aggregation is
+  defined on — e.g. the `category` field behind a `share(category = 'detractor')`
+  rate. Splitting a metric by the very field that defines it is a tautology (every
+  bucket lands at a `[0,1]` extreme by construction), so the loop drops it from
+  descent candidacy, the same way it never re-splits a filter-path axis.
+  `agg-field-ids` is `(field-ids (metric-aggregations metric-ctx))`."
+  [agg-field-ids {:keys [target]}]
+  (boolean (some agg-field-ids (field-ids [target]))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Split gain — continuous, support-weighted, bias-corrected, per-df effect size
@@ -199,6 +317,20 @@
                         :dimension-id)
                   measured)))
 
+(defn- descend-gain
+  "Split gain restricted to a chosen split's **non-saturated** cells — the
+  differentiation that survives once cells with no residual variation
+  ([[saturated?]]) are removed. The loop descends a node only when this clears
+  `min-split-gain`, so a split is **not** drilled just because one unsaturated cell
+  happens to remain: the surviving cells must *themselves* form a real split. NPS
+  detractor rate by `comment_topic` — every topic 100%/0% detractor except a lone
+  near-baseline `pricing` — collapses to ~0 here (one cell, no spread), so the loop
+  surfaces the depth-1 chart but does not tunnel into it; `{A:0.7 B:0.1 C:1.0(sat)}`
+  keeps a strong `{A,B}` split and is descended. Additive metrics have no saturated
+  cells, so this equals the full split gain."
+  [cells metric-kind]
+  (split-gain (into [] (remove #(saturated? (:metric %) metric-kind)) cells) metric-kind))
+
 ;;; ---------------------------------------------------------------------------
 ;;; Measurement (impure) — run the breakout eagerly, collect support-weighted cells
 ;;; ---------------------------------------------------------------------------
@@ -282,15 +414,173 @@
   real-measure-split)
 
 ;;; ---------------------------------------------------------------------------
+;;; Survivor emission (rich rendering via the construction catalog)
+;;; ---------------------------------------------------------------------------
+
+(defn- emit-survivor
+  "Emit a survivor for `(metric-ctx, dim)` at `filter-path` as plan items via the
+  shared `items-for-pair` construction catalog (rich variant set — `default` /
+  `top-n-other` / temporal patterns / `time-facet` / transforms where eligible),
+  stamped with `group-id` and the accumulating filter path. The path is stored as
+  `{:dimension_id :value}` pairs in `:params` — the runner resolves each
+  dimension_id's target from the metric's mappings and applies it (so the
+  persisted query carries its filters)."
+  [group-id metric-ctx dim filter-path]
+  (let [stored-path (mapv (fn [{:keys [dimension-id value]}]
+                            {:dimension_id dimension-id :value value})
+                          filter-path)]
+    (mapv #(-> %
+               (assoc :group_id group-id)
+               (update :params assoc :filter_path stored-path))
+          (qp.mechanical/items-for-pair metric-ctx dim))))
+
+;;; ---------------------------------------------------------------------------
+;;; Per-metric planning + descent
+;;; ---------------------------------------------------------------------------
+
+(defn- descale-cells
+  "Divide each cell's `:metric` (and measured `:group-mean`) by `scale` (a no-op at
+  `scale = 1.0`), turning a ×100 percentage rate back into a `[0,1]` proportion so
+  `split-gain`'s φ² is valid. A `:variance` is divided by `scale²` to stay in the
+  de-scaled units (variance scales with the square). Deviation-based child selection
+  is scale-invariant, so this is safe to apply to all downstream cell uses."
+  [cells scale]
+  (if (== scale 1.0)
+    cells
+    (mapv (fn [c] (cond-> c
+                    (number? (:metric c))     (update :metric     #(/ (double %) scale))
+                    (number? (:group-mean c)) (update :group-mean #(/ (double %) scale))
+                    (number? (:variance c))   (update :variance   #(/ (double %) (* scale scale)))))
+          cells)))
+
+(defn- applicable-dims
+  "All of `metric-ctx`'s applicable dims as `{:dimension-id :target :dim}`."
+  [metric-ctx]
+  (into [] (map (fn [[dim-id {:keys [target dim]}]]
+                  {:dimension-id dim-id :target target :dim dim}))
+        (:applicability metric-ctx)))
+
+(defn- fallback-dim
+  "When a metric has no candidate categorical dim, guarantee output by surfacing
+  its best available applicable dim — preferring a temporal one (→ metric over
+  time). Returns a `{:dimension-id :target :dim}` candidate or nil when the
+  metric has no applicable dim at all (then it can't be charted by breakout, and
+  is skipped, as the mechanical planner also does)."
+  [metric-ctx]
+  (let [dims (applicable-dims metric-ctx)]
+    (or (first (filter #(qp.mbql/dim-type-isa? (:dim %) :type/Temporal) dims))
+        (first dims))))
+
+(defn- remaining-candidates
+  "Candidate categorical dims for `metric-ctx` not already consumed by the
+  `filter-path` (you cannot re-split on a dim you have already filtered) and not a
+  definitional axis of the metric (you cannot meaningfully split a metric by the
+  field that defines it — see [[definitional-dim?]])."
+  [metric-ctx filter-path]
+  (let [used     (set (map :dimension-id filter-path))
+        agg-fids (field-ids (metric-aggregations metric-ctx))]
+    (into []
+          (remove (fn [c] (or (used (:dimension-id c))
+                              (definitional-dim? agg-fids c))))
+          (candidate-categorical-dims metric-ctx))))
+
+(defn- measure-node
+  "Build and measure the node `(metric-ctx, filter-path)` at `depth`: measure each
+  candidate split (or the single `forced` one), pick the best by **split-gain**,
+  and fall back to a guaranteed split when nothing categorical is measurable. Rate
+  cells are de-scaled to proportions once per node (the metric's kind/scale are
+  constant across its candidates). Returns `{:node {...} :cost <executions>}`
+  (cost = candidates measured) or nil when the metric can't be charted at all."
+  [group-id metric-ctx filter-path depth forced]
+  (let [aggs       (metric-aggregations metric-ctx)
+        kind       (metric-kind aggs)
+        scale      (rate-scale aggs)
+        measure    (fn [c]
+                     (let [cells (descale-cells (:cells (*measure-split* metric-ctx filter-path c)) scale)]
+                       (assoc c :gain (split-gain cells kind) :cells cells
+                              :prior (interestingness/dimension-interestingness (:dim c)))))
+        candidates (if forced [forced] (remaining-candidates metric-ctx filter-path))
+        measured   (mapv measure candidates)
+        chosen     (cond forced        (first measured)
+                         (seq measured) (select-split measured)
+                         :else          nil)
+        [chosen extra-cost]
+        ;; Fall back to a guaranteed split only when there were no categorical
+        ;; candidates at all (so the metric still surfaces something).
+        (cond chosen        [chosen 0]
+              (seq measured) [nil 0]
+              :else          (when-let [fb (fallback-dim metric-ctx)]
+                               [(measure fb) 1]))]
+    (when chosen
+      {:node {:group-id     group-id
+              :metric-ctx   metric-ctx
+              :filter-path  filter-path
+              :depth        depth
+              :chosen       chosen
+              :gain         (double (:gain chosen))
+              :descend-gain (double (descend-gain (:cells chosen) kind))}
+       :cost (+ (count measured) extra-cost)})))
+
+(defn- child-nodes
+  "Measure the child nodes of `node` — one per selected child value (top-k by
+  deviation), each extending the filter path with `dim = value`. Returns the
+  vector of measured child node maps."
+  [node]
+  (let [{:keys [group-id metric-ctx filter-path depth chosen]} node
+        kind   (metric-kind (metric-aggregations metric-ctx))
+        values (select-child-values (:cells chosen) (:k-child-values config) kind)]
+    (into []
+          (keep (fn [value]
+                  (let [child-path (conj (vec filter-path)
+                                         {:dimension-id (:dimension-id chosen)
+                                          :target       (:target chosen)
+                                          :value        value})]
+                    (:node (measure-node group-id metric-ctx child-path (inc depth) nil)))))
+          values)))
+
+(defn- expand
+  "Drilled survivors at and below `node`'s children. A node is descended only when
+  its **non-saturated** split still differentiates (`:descend-gain` ≥ the floor) and
+  depth allows; each child is surfaced as a drilled survivor and recursively
+  expanded. The root (depth 0, empty path) is itself never emitted here — the
+  depth-1 matrix owns it; only its drilled children become survivors. Hard depth
+  cap is a placeholder for the governed best-first search (Issue 7)."
+  [node]
+  (let [{:keys [min-split-gain max-depth]} config]
+    (if (and (>= (:descend-gain node) min-split-gain)
+             (< (:depth node) max-depth))
+      (into []
+            (mapcat (fn [child]
+                      (into (emit-survivor (:group-id child) (:metric-ctx child)
+                                           (:dim (:chosen child)) (:filter-path child))
+                            (expand child))))
+            (child-nodes node))
+      [])))
+
+(defn- descend-group
+  "Drilled (depth > 1) survivors for one group: seed a root node per metric (free
+  first split) and expand it. Roots are expand-only; only their drilled children
+  surface here."
+  [group]
+  (into []
+        (mapcat (fn [metric-ctx]
+                  (when-let [{:keys [node]} (measure-node (:group-id group) metric-ctx [] 0 nil)]
+                    (expand node))))
+        (:metrics group)))
+
+;;; ---------------------------------------------------------------------------
 ;;; Planner
 ;;; ---------------------------------------------------------------------------
 
 (defn- plan-group
-  "Plan one group: the full depth-1 matrix (every applicable selected pair,
-  surfaced unconditionally via the shared `group-matrix-items`). Later slices
-  append gain-gated descent survivors here."
+  "Plan one group: the **full depth-1 matrix** (every applicable selected pair,
+  surfaced unconditionally via the shared `group-matrix-items`) **plus** the
+  gain-gated descent, which contributes only the drilled (depth > 1) survivors the
+  matrix can't express. Adaptive thus emits a strict superset of the mechanical
+  planner's output."
   [group]
-  (qp.mechanical/group-matrix-items group))
+  (into (qp.mechanical/group-matrix-items group)
+        (descend-group group)))
 
 (defn- run-plan!
   [{:keys [metric-dim-ctx]}]

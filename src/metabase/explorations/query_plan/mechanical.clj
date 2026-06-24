@@ -201,7 +201,7 @@
         (and window? (span-ok? offset-yoy-min-span-days))
         (conj "offset-yoy")))))
 
-(defn- items-for-pair
+(defn items-for-pair
   "Emit eligible variants for one applicable (metric, dim) pair: `default`
   when `default-eligible?`, `top-n-other` when `top-n-other-eligible?`, plus
   any temporal-pattern variants and `time-facet` when applicable. Each

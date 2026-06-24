@@ -48,6 +48,15 @@
   [planner-instance groups]
   (:plan (planner/plan! planner-instance {:metric-dim-ctx {:groups groups}})))
 
+(defn- metric-ctx
+  "A metric-context entry: `:applicability` keyed by dim-id with `{:target :dim}`.
+  `dims` is a seq of dim snapshots (no card/mp, so metric-kind defaults to additive
+  and the definitional-axis guard is inert — descent runs on the canned cells)."
+  [metric-id dims]
+  {:metric-id     metric-id
+   :applicability (into {} (for [d dims]
+                             [(:dimension_id d) {:target [:field 1 nil] :dim d}]))})
+
 ;;; ---------------------------------------------------------------------------
 ;;; Issue 1 — :adaptive ≡ mechanical depth-1 matrix
 ;;; ---------------------------------------------------------------------------
@@ -352,3 +361,164 @@
           "rate fast-path returns sqrt(analytic ε²) ≈ 0.800")
       (is (> (qp.adaptive/split-gain add-cells :additive) 0.1)
           "additive NWV fallback still ranks a strong split well"))))
+
+;;; ---------------------------------------------------------------------------
+;;; Issue 5 — rate-scale + definitional-axis exclusion
+;;; ---------------------------------------------------------------------------
+
+(deftest rate-scale-test
+  (testing "a ×100 percentage wrapper yields scale 100"
+    (is (== 100.0 (qp.adaptive/rate-scale
+                   [[:* {} [:/ {} [:count-where {} [:= {} [:field {} 1] "a"]]
+                            [:count-where {} [:= {} [:field {} 1] "b"]]] 100]]))))
+  (testing "a bare share / ratio is already a proportion (scale 1)"
+    (is (== 1.0 (qp.adaptive/rate-scale [[:share {} [:= {} [:field {} 1] "x"]]])))
+    (is (== 1.0 (qp.adaptive/rate-scale [[:/ {} [:count-where {}] [:count {}]]]))))
+  (testing "no aggregations → scale 1"
+    (is (== 1.0 (qp.adaptive/rate-scale nil)))))
+
+(deftest definitional-dim-test
+  (let [agg      [[:share {:lib/uuid "u"} [:= {:lib/uuid "v"} [:field {:base-type :type/Text} 2342] "detractor"]]]
+        agg-fids (#'qp.adaptive/field-ids agg)]
+    (testing "field-ids walks nested aggregation clauses for integer field refs"
+      (is (= #{2342} agg-fids)))
+    (testing "the metric's defining field is a definitional axis (excluded from descent)"
+      (is (true? (#'qp.adaptive/definitional-dim? agg-fids {:target [:field {} 2342]}))))
+    (testing "a JSON-snapshotted target with a STRING \"field\" tag must still match"
+      (is (= #{2342} (#'qp.adaptive/field-ids [["field" {:base-type "type/Text"} 2342]])))
+      (is (true? (#'qp.adaptive/definitional-dim? agg-fids {:target ["field" {:base-type "type/Text"} 2342]}))))
+    (testing "any other field is not a definitional axis"
+      (is (false? (#'qp.adaptive/definitional-dim? agg-fids {:target [:field {} 2307]}))))
+    (testing "a nominal (string-id) field ref never matches"
+      (is (= #{} (#'qp.adaptive/field-ids [[:field {} "category"]]))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Issue 5 — descent governance: min-support + deviation value selection
+;;; ---------------------------------------------------------------------------
+
+(deftest min-support-threshold-test
+  (testing "max(absolute floor, ceil(fraction * parent-support))"
+    (is (= 50 (qp.adaptive/min-support-threshold 1000)) "floor dominates on small parents")
+    (is (= 100 (qp.adaptive/min-support-threshold 10000)) "fraction dominates on big parents"))
+  (testing "rate metrics get a raised absolute floor (a proportion needs a real denominator)"
+    (is (= 200 (qp.adaptive/min-support-threshold 1000 :rate)) "rate floor dominates")
+    (is (= 50  (qp.adaptive/min-support-threshold 1000 :additive)) "additive floor unchanged")
+    (is (= 300 (qp.adaptive/min-support-threshold 30000 :rate)) "fraction still dominates a huge parent")))
+
+(deftest select-child-values-test
+  (let [cells [{:value "a" :metric 100 :count 200}
+               {:value "b" :metric 900 :count 200}
+               {:value "c" :metric 500 :count 200}
+               {:value "d" :metric 100 :count 5}]]
+    (testing "top-k by absolute deviation from the eligible mean"
+      (is (= #{"a" "b"} (set (qp.adaptive/select-child-values cells 2)))))
+    (testing "both tails: a strongly-below child is as selectable as a strongly-above one"
+      (let [cs [{:value "lo" :metric 10  :count 200}
+                {:value "mid" :metric 500 :count 200}
+                {:value "hi" :metric 990 :count 200}]]
+        (is (= #{"lo" "hi"} (set (qp.adaptive/select-child-values cs 2))))))
+    (testing "min-support gating excludes low-count cells"
+      (is (not (contains? (set (qp.adaptive/select-child-values cells 4)) "d"))))
+    (testing "no eligible cells → empty"
+      (is (= [] (qp.adaptive/select-child-values [{:value "x" :metric 1 :count 1}] 2))))))
+
+(deftest select-child-values-saturation-stop-test
+  (testing "rate: cells saturated at a [0,1] extreme are not descended into"
+    (let [cells [{:value "data_loss"     :metric 1.0   :count 406}
+                 {:value "mysql_perf"    :metric 1.0   :count 748}
+                 {:value "pricing"       :metric 0.327 :count 1351}
+                 {:value "value"         :metric 0.0   :count 591}
+                 {:value "documentation" :metric 0.0   :count 972}]]
+      (is (= ["pricing"] (qp.adaptive/select-child-values cells 2 :rate)))))
+  (testing "a strong-but-real cell (0.95, outside the saturation epsilon) is still descended"
+    (let [cells [{:value "cluster" :metric 0.95 :count 500}
+                 {:value "rest"    :metric 0.30 :count 500}]]
+      (is (= #{"cluster" "rest"} (set (qp.adaptive/select-child-values cells 2 :rate))))))
+  (testing "additive metrics have no intrinsic extreme — saturation does not apply"
+    (let [cells [{:value "a" :metric 1.0 :count 500}
+                 {:value "b" :metric 0.0 :count 500}]]
+      (is (= #{"a" "b"} (set (qp.adaptive/select-child-values cells 2 :additive)))))))
+
+(deftest descend-gain-test
+  (testing "descend-gain is the split gain over only the NON-saturated cells"
+    (let [cells [{:value "data_loss" :metric 1.0   :count 406}
+                 {:value "mysql"     :metric 1.0   :count 748}
+                 {:value "pricing"   :metric 0.327 :count 1351}
+                 {:value "value"     :metric 0.0   :count 591}]]
+      (is (> (qp.adaptive/split-gain cells :rate) qp.adaptive/min-split-gain)
+          "the FULL split gain is high (the saturated cells make it look differentiating)")
+      (is (< (#'qp.adaptive/descend-gain cells :rate) qp.adaptive/min-split-gain)
+          "but descend-gain collapses below the floor — no real driver to drill")))
+  (testing "a genuine split keeps its gain — saturated cells removed, the real tails remain"
+    (let [cells [{:value "A" :metric 0.7 :count 500}
+                 {:value "B" :metric 0.1 :count 500}
+                 {:value "C" :metric 1.0 :count 500}]]
+      (is (>= (#'qp.adaptive/descend-gain cells :rate) qp.adaptive/min-split-gain)
+          "the non-saturated {A,B} split still differentiates → descend")))
+  (testing "additive metrics: nothing is saturated, descend-gain == full split gain"
+    (let [cells [{:value "a" :metric 1000 :count 500}
+                 {:value "b" :metric 10   :count 500}]]
+      (is (== (#'qp.adaptive/descend-gain cells :additive)
+              (qp.adaptive/split-gain cells :additive))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Issue 5 — plan! orchestration: depth-1 matrix + drilled descent (canned cells)
+;;; ---------------------------------------------------------------------------
+
+(defn- plan-groups!
+  "Dispatch the adaptive planner over explicit group contexts. `cells-by-dim` maps
+  dimension-id → canned measurement cells (injected via the *measure-split* seam)."
+  [groups cells-by-dim]
+  (binding [qp.adaptive/*measure-split* (fn [_metric-ctx _filter-path candidate]
+                                          {:cells (get cells-by-dim (:dimension-id candidate) [])})]
+    (planner/plan! qp.adaptive/planner {:metric-dim-ctx {:groups groups}})))
+
+(deftest plan-metric-anchor-test
+  (testing "a metric-anchored group surfaces EVERY selected dim at depth 1 (full matrix),
+            even the flat/boring one — the loser is not discarded"
+    (let [group {:group-id 1 :type "metric"
+                 :metrics [(metric-ctx 10 [(text-dim "plan" 5) (text-dim "region" 5)])]}
+          {:keys [outcome plan]} (plan-groups! [group]
+                                               {"region" [{:value "x" :metric 1000 :count 5}
+                                                          {:value "y" :metric 10 :count 5}]
+                                                "plan"   [{:value "x" :metric 100 :count 5}
+                                                          {:value "y" :metric 100 :count 5}]})]
+      (is (= :ok outcome))
+      (is (= #{"region" "plan"} (set (map :dimension_id plan)))
+          "both selected dims surfaced — the flat 'plan' dim is NOT discarded")
+      (is (every? #(empty? (get-in % [:params :filter_path])) plan)
+          "all items are depth-1 matrix charts (no descent — sub-floor support)")
+      (is (every? #(= 1 (:group_id %)) plan) "items stamped with group id")
+      (is (every? #(= 10 (:metric_id %)) plan))
+      (is (contains? (set (map :variant plan)) "default")
+          "rendered via items-for-pair (rich variant set)"))))
+
+(defn- plan-with-measure!
+  "Dispatch the planner with a fully-injected `*measure-split*` (cells), so ranking
+  and descent run deterministically without the QP."
+  [groups measure-fn]
+  (binding [qp.adaptive/*measure-split* measure-fn]
+    (planner/plan! qp.adaptive/planner {:metric-dim-ctx {:groups groups}})))
+
+(deftest descent-accumulates-filter-path-test
+  (testing "the loop descends into top-k child values, accumulating a filter path"
+    (let [group {:group-id 1 :type "metric"
+                 :metrics [(metric-ctx 10 [(text-dim "A" 5) (text-dim "B" 5)])]}
+          measure (fn [_ _ c]
+                    (case (:dimension-id c)
+                      "A" {:cells [{:value "a1" :metric 1000 :count 200}
+                                   {:value "a2" :metric 10   :count 200}]}
+                      "B" {:cells [{:value "b1" :metric 5 :count 200}]}))
+          {:keys [outcome plan]} (plan-with-measure! [group] measure)
+          depth1  (filter #(empty? (get-in % [:params :filter_path])) plan)
+          drilled (filter #(seq (get-in % [:params :filter_path])) plan)]
+      (is (= :ok outcome))
+      (testing "the depth-1 matrix surfaces BOTH selected dims (A and B), empty filter path"
+        (is (= #{"A" "B"} (set (map :dimension_id depth1)))))
+      (testing "drilled survivors carry an accumulating equality filter path (dim = value)"
+        (is (= #{[{:dimension_id "A" :value "a1"}] [{:dimension_id "A" :value "a2"}]}
+               (set (map #(get-in % [:params :filter_path]) drilled)))))
+      (testing "the drilled split is the remaining dimension B (A is already in the path)"
+        (is (every? #(= "B" (:dimension_id %)) drilled)))
+      (testing "B does not descend further (its gain is below the floor)"
+        (is (not-any? #(< 1 (count (get-in % [:params :filter_path]))) plan))))))
