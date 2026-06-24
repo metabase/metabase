@@ -1673,7 +1673,13 @@ serdes/meta:
     (list-files [_] [])
     (read-file [_ _] nil)
     (write-files! [_ _ _] version)
-    (apply-changes! [_ _ _ _] version)))
+    (apply-changes! [_ _ _ _] version)
+    (open-commit [_ _]
+      (reify source.p/CommitBuilder
+        (stage-upsert! [_ _] nil)
+        (stage-delete! [_ _] nil)
+        (finish-commit! [_ _] "written-version")
+        (abort-commit! [_] nil)))))
 
 (defn- export-test-source
   "A minimal Source whose snapshot-at returns a snapshot at the requested version."
@@ -1770,18 +1776,16 @@ serdes/meta:
 (deftest export!-refuses-when-diverged-without-merge-flag-test
   (testing "when the remote advanced and neither force? nor merge? is set, export! refuses without writing or merging"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
-      (let [merged? (atom false)
-            stored? (atom false)]
+      (let [merged? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      source/merge-and-store!          (fn [_ _ _ _ _] (reset! merged? true) {:status :success})
-                      source/store-and-record!         (fn [_ _ _ _] (reset! stored? true) {:version "v" :entries []})]
+                      source/merge-and-store!          (fn [_ _ _ _ _] (reset! merged? true) {:status :success})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :conflict (:status result)))
             (is (false? @merged?) "no merge without the merge flag")
-            (is (false? @stored?) "nothing written")
+            ;; :conflict short-circuits before any write — the version is never advanced
             (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
 
 (deftest export!-force-overwrites-without-merging-test
@@ -1789,17 +1793,16 @@ serdes/meta:
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (let [merged? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
-                      spec/export-targets              (constantly {"Card" [1]})
-                      source/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})
-                      ;; force? routes through full-export!, which uses store-and-record!'s {:version :entries} result.
-                      source/store-and-record!         (fn [& _] {:version "forced-version" :entries []})]
+                      spec/export-targets              (constantly {"Card" [999999999]})  ; absent id -> empty extraction; routing is what's under test
+                      source/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :force? true
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "base-B"))]
             (is (= :success (:status result)))
             (is (false? @merged?) "force? skips the merge path")
-            (is (= "forced-version" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
+            ;; force? routes through full-export!, which commits via the snapshot and advances the version
+            (is (= "written-version" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
 
 (deftest export!-no-merge-when-not-diverged-test
   (testing "when the remote has not advanced, export! takes the normal (non-merge) export path"

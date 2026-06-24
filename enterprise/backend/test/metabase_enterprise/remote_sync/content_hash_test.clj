@@ -197,34 +197,38 @@
 ;;; ------------------------------------------- record-exported-metadata! -------------------------------------------
 
 (deftest content-metadata-matches-row-hash-test
-  (testing "import-content-metadata + record-exported-metadata! write a content_hash matching per-row
-            row->content-hash for every identity flavor — including the extract-query overrides (Collection,
-            NativeQuerySnippet), hybrids (Measure), and path models (Field) that have no entity_id (GHY-3933)"
+  (testing "a full export writes a content_hash matching per-row row->content-hash for every identity flavor —
+            including the extract-query overrides (Collection, NativeQuerySnippet), hybrids (Measure), and path
+            models (Field) that have no entity_id (GHY-3933)"
     (with-library-synced
-      (mt/with-temp [:model/Database db {:name "DB"}
-                     :model/Collection rs {:is_remote_synced true :name "RS" :location "/"}
-                     :model/Collection data {:is_remote_synced true :type collection/library-data-collection-type :name "Data"}
-                     :model/Collection snips {:name "Snippets" :namespace "snippets"}
-                     :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id rs)}
-                     :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id snips)}
-                     :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db) :is_published true :collection_id (:id data)}
-                     :model/Field field {:name "F" :table_id (:id table) :base_type :type/Integer}
-                     :model/Measure measure {:name "M" :table_id (:id table)}]
-        (let [rows (mapv (fn [[mt id]] {:model_type mt :model_id id})
-                         [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
-                          ["Field" (:id field)] ["Measure" (:id measure)]])]
-          (t2/delete! :model/RemoteSyncObject)
-          (doseq [row rows]
-            (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
-                                                            :status_changed_at (t/offset-date-time)})))
-          (#'impl/record-exported-metadata! (#'impl/import-content-metadata rows []) (t/offset-date-time))
-          (doseq [{:keys [model_type model_id] :as row} rows]
-            (is (= (source/row->content-hash row)
-                   (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
-                (str "written hash should match per-row hash for " model_type))))))))
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (mt/with-temp [:model/Database db {:name "DB"}
+                       :model/Collection rs {:is_remote_synced true :name "RS" :location "/"}
+                       :model/Collection data {:is_remote_synced true :type collection/library-data-collection-type :name "Data"}
+                       :model/Collection snips {:name "Snippets" :namespace "snippets"}
+                       :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id rs)}
+                       :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id snips)}
+                       :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db) :is_published true :collection_id (:id data)}
+                       :model/Field field {:name "F" :table_id (:id table) :base_type :type/Integer}
+                       :model/Measure measure {:name "M" :table_id (:id table)}]
+          (mt/with-model-cleanup [:model/RemoteSyncTask]
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+                  rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})
+                                [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
+                                 ["Field" (:id field)] ["Measure" (:id measure)]])]
+              (t2/delete! :model/RemoteSyncObject)
+              (doseq [row rows]
+                (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
+                                                                :status_changed_at (t/offset-date-time)})))
+              ;; force? routes through full-export!, which computes + records the content_hash for every flavor
+              (impl/export! (source.p/snapshot (test-helpers/create-mock-source)) task-id "Full export" :force? true)
+              (doseq [{:keys [model_type model_id] :as row} rows]
+                (is (= (source/row->content-hash row)
+                       (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
+                    (str "written hash should match per-row hash for " model_type))))))))))
 
 (deftest record-exported-metadata!-chunks-rows-test
-  (testing "record-exported-metadata! writes every row even when they span multiple batches (GHY-3933)"
+  (testing "record-exported-metadata! writes every synced row even when they span multiple batches (GHY-3933)"
     (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
                    :model/Card c1 {:name "C1" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
                    :model/Card c2 {:name "C2" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
@@ -232,12 +236,14 @@
       (t2/delete! :model/RemoteSyncObject)
       (doseq [card [c1 c2 c3]]
         (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name (:name card)
-                                             :status "synced" :status_changed_at (t/offset-date-time)}))
-      (let [rows    (mapv (fn [c] {:model_type "Card" :model_id (:id c)}) [c1 c2 c3])
-            entries (#'impl/import-content-metadata rows [])]
-        ;; force more than one chunk for the 3 cards
+                                             :status "create" :status_changed_at (t/offset-date-time)}))
+      ;; synced entries keyed by RSO id, carrying each card's real content hash
+      (let [synced (mapv (fn [r] {:id (:id r) :file_path "p"
+                                  :content_hash (source/row->content-hash (select-keys r [:model_type :model_id]))})
+                         (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
+        ;; force more than one chunk for the 3 rows
         (with-redefs [impl/content-hash-batch-size 2]
-          (#'impl/record-exported-metadata! entries (t/offset-date-time))))
+          (#'impl/record-exported-metadata! synced (t/offset-date-time))))
       (doseq [card [c1 c2 c3]]
         (is (= (source/row->content-hash {:model_type "Card" :model_id (:id card)})
                (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))

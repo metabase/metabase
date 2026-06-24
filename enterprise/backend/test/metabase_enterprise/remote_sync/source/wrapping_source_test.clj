@@ -19,6 +19,9 @@
   (apply-changes! [_ _message _upserts _delete-paths]
     "written-files-version")
 
+  (open-commit [_ _opts]
+    (throw (UnsupportedOperationException. "open-commit not implemented in this test mock")))
+
   (version [_]
     "mock-version"))
 

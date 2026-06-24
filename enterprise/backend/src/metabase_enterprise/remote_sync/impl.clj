@@ -210,26 +210,32 @@
   "Max RemoteSyncObject rows per update batch, to keep IN-lists and CASE expressions bounded."
   500)
 
+(defn- mark-synced!
+  "Set `status`/`file_path`/`content_hash` on the `synced` rows ([{:id :file_path :content_hash}]) to synced,
+  in one batched CASE update per chunk."
+  [synced sync-timestamp]
+  (doseq [chunk (partition-all content-hash-batch-size synced)]
+    (t2/update! :model/RemoteSyncObject
+                {:id [:in (mapv :id chunk)]}
+                {:status            "synced"
+                 :status_changed_at sync-timestamp
+                 :file_path         (into [:case] (mapcat (fn [{:keys [id file_path]}]    [[:= :id id] file_path]))    chunk)
+                 :content_hash      (into [:case] (mapcat (fn [{:keys [id content_hash]}] [[:= :id id] content_hash])) chunk)})))
+
 (defn- record-exported-metadata!
-  "Reconciles the whole RemoteSyncObject table after a full export, in a single write per row. `entries`
-  ({:model_type :model_id :path :content_hash}) name the exported rows. One select fetches every row; rows
-  are then chunked (bounded statements) and each chunk is one update that sets `status`/`status_changed_at`
-  for every row in it and `file_path`/`content_hash` for the exported ones (a CASE over that chunk's exported
-  rows with ELSE keep-existing). A full export normally has no non-exported rows here (removed/delete rows are
-  dropped first); any that remain just get their status reset."
-  [entries sync-timestamp]
-  (let [by-key   (u/index-by (juxt :model_type :model_id) entries)
-        id+entry (mapv (fn [{:keys [id model_type model_id]}] [id (by-key [model_type model_id])])
-                       (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
-    (doseq [chunk (partition-all content-hash-batch-size id+entry)
-            :let  [exported (filter second chunk)]]
-      ;; one combined update per chunk; the honeysql CASE compiles per app-db dialect
+  "Full-export RSO reconcile: mark EVERY row synced, recording file_path/content_hash for the `synced` rows
+  ([{:id :file_path :content_hash}]). One select of all row ids; chunked CASE updates with ELSE keep-existing
+  for rows not in `synced`."
+  [synced sync-timestamp]
+  (let [by-id (u/index-by :id synced)]
+    (doseq [id-chunk (partition-all content-hash-batch-size (t2/select-pks-set :model/RemoteSyncObject))
+            :let     [hits (filter by-id id-chunk)]]
       (t2/update! :model/RemoteSyncObject
-                  {:id [:in (mapv first chunk)]}
+                  {:id [:in id-chunk]}
                   (cond-> {:status "synced" :status_changed_at sync-timestamp}
-                    (seq exported)
-                    (assoc :file_path    (into [:case] (concat (mapcat (fn [[id e]] [[:= :id id] (:path e)])         exported) [:else :file_path]))
-                           :content_hash (into [:case] (concat (mapcat (fn [[id e]] [[:= :id id] (:content_hash e)]) exported) [:else :content_hash]))))))))
+                    (seq hits)
+                    (assoc :file_path    (into [:case] (concat (mapcat (fn [id] [[:= :id id] (:file_path (by-id id))])    hits) [:else :file_path]))
+                           :content_hash (into [:case] (concat (mapcat (fn [id] [[:= :id id] (:content_hash (by-id id))]) hits) [:else :content_hash]))))))))
 
 (defn- import-content-metadata
   "Builds {:model_type :model_id :path :content_hash} entries for the given RemoteSyncObject `rows` (maps
@@ -725,25 +731,26 @@
                        (not (t2/exists? :model/RemoteSyncObject :model_type mt :model_id id)))))
         (export-closure model-type model-id)))
 
-(defn- stream-extract
-  "Lazy eduction that calls `(f row entity)` for each of `rows` (maps with :model_type and :model_id, plus any extra
-  keys) paired with its freshly extracted serdes entity, yielding f's results. Extraction runs without realizing all
-  entities (or their serialized content) at once. Rows whose entity no longer exists are skipped."
-  [f rows]
-  (let [key->row (u/index-by (juxt :model_type :model_id) rows)]
-    (eduction
-     ;; expand each model into bounded id-chunks (keeps each extract-query IN within DB param limits)
-     (mapcat (fn [[model-type model-rows]]
-               (map (fn [id-chunk] [model-type id-chunk])
-                    (partition-all content-hash-batch-size (mapv :model_id model-rows)))))
-     ;; stream each chunk's query through f, extracting in-stream (ResultSet open)
-     (mapcat (fn [[model-type id-chunk]]
-               (let [opts {:where [:in :id (vec id-chunk)] :skip-archived true}]
-                 (eduction (keep (fn [instance]
-                                   (when-let [row (key->row [model-type (:id instance)])]
-                                     (f row (serdes/extract-one model-type opts instance)))))
-                           (serdes/extract-query model-type opts)))))
-     (group-by :model_type rows))))
+(defn- ->chunks
+  "Group `rows` (maps with :model_type and :model_id) by model and partition into chunks of at most
+  `content-hash-batch-size` rows. Each chunk is `[model-type rows]` — one extract-query's worth."
+  [rows]
+  (mapcat (fn [[model-type model-rows]]
+            (map (fn [chunk-rows] [model-type chunk-rows])
+                 (partition-all content-hash-batch-size model-rows)))
+          (group-by :model_type rows)))
+
+(defn- extract-chunk
+  "Extract one chunk's entities in a single query, each paired with its row: a vector of `[row entity]`. Rows
+  whose entity no longer exists are omitted."
+  [[model-type rows]]
+  (let [id->row (u/index-by :model_id rows)
+        opts    {:where [:in :id (mapv :model_id rows)] :skip-archived true}]
+    ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
+    (into [] (keep (fn [instance]
+                     (when-let [row (id->row (:id instance))]
+                       [row (serdes/extract-one model-type opts instance)])))
+          (serdes/extract-query model-type opts))))
 
 (defn- dep-writes
   "Pass-1 validation of the untracked dependency entities `dep-ids` (a set of `[model-type id]`): extracts
@@ -754,12 +761,14 @@
   [snapshot opts dep-ids]
   (if (empty? dep-ids)
     []
-    (let [decisions (into []
-                          (stream-extract (fn [row entity]
-                                            (assoc row
-                                                   :file_path (source/entity->path opts entity)
-                                                   :eid       (:entity_id entity)))
-                                          (mapv (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)))]
+    (let [dep-rows  (mapv (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)
+          decisions (into []
+                          (comp (mapcat extract-chunk)
+                                (map (fn [[row entity]]
+                                       (assoc row
+                                              :file_path (source/entity->path opts entity)
+                                              :eid       (:entity_id entity)))))
+                          (->chunks dep-rows))]
       ;; keep going only if every dependency's target path is free. A present file whose entity_id can't be
       ;; read counts as occupied — don't clobber it.
       (if (every? (fn [{:keys [file_path eid]}]
@@ -870,16 +879,16 @@
                           dirty-rows)
         id->info (try
                    (into {}
-                         (stream-extract
-                          (fn [row entity]
-                            (let [new-path (source/entity->path opts entity)
-                                  content  (source.p/read-file snapshot new-path)]
-                              [(:id row) {:eid          (:entity_id entity)
-                                          :new-path     new-path
-                                          :file-exists? (boolean content)
-                                          ;; parse errors on the existing repo file invalidate the batch
-                                          :file-eid     (when content (:entity_id (yaml/parse-string content)))}]))
-                          cu-rows))
+                         (comp (mapcat extract-chunk)
+                               (map (fn [[row entity]]
+                                      (let [new-path (source/entity->path opts entity)
+                                            content  (source.p/read-file snapshot new-path)]
+                                        [(:id row) {:eid          (:entity_id entity)
+                                                    :new-path     new-path
+                                                    :file-exists? (boolean content)
+                                                    ;; parse errors on the existing repo file invalidate the batch
+                                                    :file-eid     (when content (:entity_id (yaml/parse-string content)))}]))))
+                         (->chunks cu-rows))
                    (catch Exception _ ::extract-error))
         plan     (if (= id->info ::extract-error)
                    :remote-sync/unsyncable-batch
@@ -912,67 +921,84 @@
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
     (not (settings/library-is-remote-synced?)) (conj "snippets")))
 
+(defn- stage-and-commit!
+  "Stage `writes` (WriteRows) to one commit on `snapshot` and push. Wholesale (clears managed dirs) when
+  `:replace?`, else a patch that also removes `:delete-paths`. Streams one chunk at a time — renders each
+  entity's content, stages it at its `:file_path` (or a freshly computed path), and never holds more than a
+  chunk's worth. Returns `{:version :synced}`; `:synced` are the {:id :file_path :content_hash} maps for the
+  tracked (has-:id) writes."
+  [snapshot message {:keys [writes delete-paths replace?]}]
+  (let [opts   (serdes/storage-base-context)
+        synced (volatile! [])
+        commit (source.p/open-commit snapshot {:replace? replace?})]
+    (try
+      (doseq [chunk         (->chunks writes)
+              [wrow entity] (extract-chunk chunk)]
+        (let [path    (or (:file_path wrow) (source/entity->path opts entity))
+              content (source/entity->content entity)]
+          (source.p/stage-upsert! commit {:path path :content content})
+          (when (:id wrow)
+            (vswap! synced conj {:id (:id wrow) :file_path path :content_hash (source/content-hash content)}))))
+      (run! #(source.p/stage-delete! commit %) delete-paths)
+      {:version (source.p/finish-commit! commit message) :synced @synced}
+      (catch Throwable e
+        (source.p/abort-commit! commit)
+        (throw e)))))
+
+(defn- export-write-rows
+  "WriteRows for a full export: every (model, id) in `targets`, tagged with its RemoteSyncObject id when
+  tracked (untracked deps get :id nil so they are written but not recorded)."
+  [targets]
+  (let [rso-id (into {} (map (juxt (juxt :model_type :model_id) :id))
+                     (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
+    (for [[model ids] targets
+          id          ids]
+      {:model_type model :model_id id :id (rso-id [model id])})))
+
+(defn- delete-departed-entities!
+  "Delete RSO rows for entity-id entities that left the synced set (removed/delete status and not in
+  `targets`), matching the incremental path; path/hybrid and still-exported rows are kept."
+  [targets]
+  (let [exported (into #{} (for [[model ids] targets, id ids] [model id]))
+        gone     (into []
+                       (comp (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
+                             (remove #(exported [(:model_type %) (:model_id %)]))
+                             (map :id))
+                       (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
+                                  :status [:in ["removed" "delete"]]))]
+    (when (seq gone)
+      (t2/delete! :model/RemoteSyncObject :id [:in gone]))))
+
 (defn- full-export!
-  "Re-serializes the entire remote-synced set into `snapshot` and commits it, then marks every
-  RemoteSyncObject row synced (as of `sync-timestamp`) and records each entity's file_path and content_hash.
-  Used when the pending changes can't be applied incrementally (name collisions, disabled content needing a
-  reconcile, etc.). Throws if there is no remote-syncable content. Returns {:status :success}."
+  "Re-serialize and commit the entire remote-synced set, then reconcile every RemoteSyncObject row to synced
+  (recording file_path/content_hash for the exported entities) and drop tracking rows for entity-id entities
+  that left the set. Throws if there is no remote-syncable content. Returns {:status :success}."
   [snapshot task-id message sync-timestamp]
   (let [targets (spec/export-targets)]
     (when (empty? targets)
       (throw (ex-info "No remote-syncable content available." {})))
     (remote-sync.task/update-progress! task-id 0.3)
-    ;; serialize once: write the files and get back each entity's path + content_hash (keyed by primary key)
-    (let [{:keys [version entries]} (source/store-and-record! targets snapshot task-id message)]
-      (remote-sync.task/set-version! task-id version)
-      ;; Drop the tracking rows for entity-id entities that genuinely left the synced set — removed/delete
-      ;; status AND not in this export — so full export agrees with the incremental path (which deletes them)
-      ;; instead of leaving synced rows pointing at files the re-serialize already dropped. (Path/hybrid
-      ;; removed rows, and removed rows whose entity is still exported, are kept and reconciled to synced.)
-      (let [exported (into #{} (map (juxt :model_type :model_id)) entries)
-            gone     (into []
-                           (comp (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
-                                 (remove #(exported [(:model_type %) (:model_id %)]))
-                                 (map :id))
-                           (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
-                                      :status [:in ["removed" "delete"]]))]
-        (when (seq gone)
-          (t2/delete! :model/RemoteSyncObject :id [:in gone])))
-      ;; reconcile every remaining row to synced and write file_path + content_hash for the exported entities.
-      (record-exported-metadata! entries sync-timestamp)
+    (let [{:keys [version synced]} (stage-and-commit! snapshot message
+                                                      {:writes (export-write-rows targets) :replace? true})]
+      (t2/with-transaction [_]
+        (remote-sync.task/set-version! task-id version)
+        (delete-departed-entities! targets)
+        (record-exported-metadata! synced sync-timestamp))
       {:status :success
-       :outcome {:kind "pushed"
-                 :count (count entries)
-                 :branch (settings/remote-sync-branch)}})))
+       :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))
 
 (defn- incremental-export! [plan disabled-files task-id snapshot message sync-timestamp]
   (let [{:keys [writes delete-paths removed-ids]} plan
-        delete-paths (into (vec delete-paths) disabled-files)
-        synced       (volatile! [])
-        upserts      (stream-extract
-                      (fn [row entity]
-                        (let [content (source/entity->content entity)]
-                          (when (:id row)
-                            ;; save minimal map (no yaml)
-                            (vswap! synced conj {:id           (:id row)
-                                                 :file_path    (:file_path row)
-                                                 :content_hash (source/content-hash content)}))
-                          {:path (:file_path row) :content content}))
-                      writes)]
+        delete-paths (into (vec delete-paths) disabled-files)]
     (remote-sync.task/update-progress! task-id 0.3)
-    (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
-      (remote-sync.task/set-version! task-id written-version))
-    (doseq [chunk (partition-all content-hash-batch-size @synced)]
-      (t2/update! :model/RemoteSyncObject
-                  {:id [:in (mapv :id chunk)]}
-                  {:status            "synced"
-                   :status_changed_at sync-timestamp
-                   :file_path         (into [:case] (mapcat (fn [{:keys [id file_path]}]    [[:= :id id] file_path]))    chunk)
-                   :content_hash      (into [:case] (mapcat (fn [{:keys [id content_hash]}] [[:= :id id] content_hash])) chunk)}))
-    (when (seq removed-ids)
-      (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-    (log/infof "Remote sync incremental export: wrote %d, deleted %d"
-               (count writes) (count delete-paths))
+    (let [{:keys [version synced]} (stage-and-commit! snapshot message
+                                                      {:writes writes :delete-paths delete-paths :replace? false})]
+      (t2/with-transaction [_]
+        (remote-sync.task/set-version! task-id version)
+        (mark-synced! synced sync-timestamp)
+        (when (seq removed-ids)
+          (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))))
+    (log/infof "Remote sync incremental export: wrote %d, deleted %d" (count writes) (count delete-paths))
     {:status :success
      :outcome {:kind "pushed"
                :count (+ (count writes) (count delete-paths))

@@ -77,12 +77,28 @@
 
     Returns the version of the written files.")
 
+  (open-commit [snapshot opts]
+    "Begin building one commit incrementally; returns a CommitBuilder to stage files into.
+    `opts` may include `:replace-dirs` (top-level dirs to clear first, for a wholesale replace).")
+
   (version [snapshot]
     "Gets a version identifier for the current state of the snapshot.
 
     Takes a SourceSnapshot instance implementing this protocol.
 
     Returns a version identifier string (e.g., a git SHA)."))
+
+(defprotocol CommitBuilder
+  "A single commit being built incrementally — stage files one at a time, then finish (or abort). Lets the
+  caller stream files into a commit without holding them all at once."
+  (stage-upsert! [commit file-spec]
+    "Stage one file (a `{:path :content}` map) into the commit. Returns nil.")
+  (stage-delete! [commit path]
+    "Stage removal of `path` from the commit. Returns nil.")
+  (finish-commit! [commit message]
+    "Write the staged tree, commit with `message`, push, and release resources. Returns the new version.")
+  (abort-commit! [commit]
+    "Release the commit's resources without committing or pushing. Returns nil."))
 
 (defprotocol Diffable
   "Optional capability for snapshots that can cheaply report which files changed since a prior version.
