@@ -120,9 +120,10 @@
   (deferred-tru
    (str "Default vector-search strategy for semantic search: `hnsw` (approximate, HNSW-index-backed) or "
         "`brute-force` (exact, applies non-vector filters first then computes cosine distance over the "
-        "survivors). Individual requests may override this via the `vector_search_strategy` API parameter."))
+        "survivors). Defaults to `brute-force`, which needs no index; selecting `hnsw` builds the HNSW index "
+        "just-in-time. Individual requests may override this via the `vector_search_strategy` API parameter."))
   :type       :keyword
-  :default    :hnsw
+  :default    :brute-force
   :encryption :no
   :export?    false
   :visibility :internal
@@ -134,7 +135,12 @@
                                          ". Valid strategies are: " (pr-str valid-vector-search-strategies))
                                     {:invalid-value new-value
                                      :valid-values  valid-vector-search-strategies})))
-                  (setting/set-value-of-type! :keyword :semantic-search-vector-strategy kw))))
+                  (setting/set-value-of-type! :keyword :semantic-search-vector-strategy kw)
+                  ;; The HNSW index is only built when configured: when switching to :hnsw, build it in the
+                  ;; background so this setter returns promptly. requiring-resolve avoids a require cycle
+                  ;; (core/pgvector-api/index all require this namespace).
+                  (when (= kw :hnsw)
+                    ((requiring-resolve 'metabase-enterprise.semantic-search.core/build-hnsw-index-async!))))))
 
 (defsetting semantic-search-min-results-threshold
   (deferred-tru "Minimum number of semantic search results required before falling back to other engines.")
