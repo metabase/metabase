@@ -2057,9 +2057,11 @@
 
   > **Code health:** Healthy"
   [a-query]
-  (->> (lib.core/template-tags-in-order a-query)
-       (mapv template-tag-cljs->js)
-       (clj->js :keyword-fn u/qualified-name)))
+  ;; Note: `clj->js` takes the collection as its FIRST argument, so we cannot thread it with `->>`
+  ;; (thread-last) the way `mapv` wants. Build the vector first, then call `clj->js` directly -- otherwise
+  ;; the `:keyword-fn` option keyword ends up as `clj->js`'s `x` and the call returns a non-array.
+  (let [tags (mapv template-tag-cljs->js (lib.core/template-tags-in-order a-query))]
+    (clj->js tags :keyword-fn u/qualified-name)))
 
 (defn ^:export template-tags-order
   "Returns the explicit display order of `a-query`'s template tags as a JS array of tag names, or `null`
