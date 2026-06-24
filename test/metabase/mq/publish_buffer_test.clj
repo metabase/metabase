@@ -140,7 +140,6 @@
         (reset! publish-buffer/*publish-buffer*
                 {:queue/test {:messages    ["fresh"]
                               :deadline-ms (+ (System/currentTimeMillis) 100000)
-                              ;; epoch — far older than max-ms, so the cap is already exceeded
                               :created-ms  0}})
         (with-dynamic-fn-redefs [transport/publish! (fn [_channel messages]
                                                       (swap! published into messages))]
