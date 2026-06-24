@@ -706,40 +706,37 @@
    :continue-on-error false :skip-archived true})
 
 (defn- export-closure
-  "All `[model-type id]` entities a full export would pull for the entity `[model-type model-id]`
+  "All `{:model_type :model_id}` entities a full export would pull for the entity `[model-type model-id]`
   (its transitive `serdes/descendants` + `serdes/required`, including the entity itself)."
   [model-type model-id]
-  (keys (merge-with into
-                    (u/traverse #{[model-type model-id]} #(serdes/descendants (first %) (second %) closure-opts))
-                    (u/traverse #{[model-type model-id]} #(serdes/required (first %) (second %))))))
+  ;; serdes works in [model-type id] tuples; map the closure keys to {:model_type :model_id} on the way out
+  (map (fn [[mt id]] {:model_type mt :model_id id})
+       (keys (merge-with into
+                         (u/traverse #{[model-type model-id]} #(serdes/descendants (first %) (second %) closure-opts))
+                         (u/traverse #{[model-type model-id]} #(serdes/required (first %) (second %)))))))
 
 (defn- untracked-content-deps
-  "The `[model-type id]` entities in the change's export closure that are remote-sync content but have
-  no RemoteSyncObject row — dependencies a full export would pull (via `serdes/descendants`/`required`)
-  yet that aren't independently tracked (e.g. a card in a non-synced collection referenced by a synced
-  card, and that card's collection). These get written alongside the change so the incremental export
-  matches what a full export would emit. Excludes the entity itself and non-content deps (e.g.
-  databases, which are resolved by reference at import)."
+  "The `{:model_type :model_id}` entities in the change's export closure that are remote-sync content but have
+  no RemoteSyncObject row — dependencies a full export would pull (via `serdes/descendants`/`required`) yet
+  that aren't independently tracked (e.g. a card in a non-synced collection referenced by a synced card, and
+  that card's collection). These get written alongside the change so the incremental export matches what a
+  full export would emit. Excludes the entity itself and non-content deps (e.g. databases)."
   [model-type model-id]
   (into #{}
-        (filter (fn [[mt id]]
-                  (and (not (and (= mt model-type) (= id model-id)))
-                       (spec/spec-for-model-type mt)
-                       (not (t2/exists? :model/RemoteSyncObject :model_type mt :model_id id)))))
+        (filter (fn [{:keys [model_type model_id]}]
+                  (and (not (and (= model_type model-type) (= model_id model-id)))
+                       (spec/spec-for-model-type model_type)
+                       (not (t2/exists? :model/RemoteSyncObject :model_type model_type :model_id model_id)))))
         (export-closure model-type model-id)))
 
 (defn- resize-chunk [[model-type rows]]
   (map (fn [chunk-rows] [model-type chunk-rows])
        (partition-all content-hash-batch-size rows)))
 
-(defn- by-model-type [rows]
-  (group-by :model_type rows))
-
 (defn- ->sized-chunks
-  "Split `rows` (maps with :model_type/:model_id) into `[model-type rows]` chunks — grouped by model, each
-  capped at `content-hash-batch-size` (one extract-query's worth)."
+  "Builds chunks of maximum size based on model type."
   [rows]
-  (mapcat resize-chunk (by-model-type rows)))
+  (mapcat resize-chunk (group-by :model_type rows)))
 
 (defn- extract-chunk
   "Extract one chunk's entities in a single query.
@@ -791,18 +788,17 @@
           (extract-chunk chunk)))
 
 (defn- dep-writes
-  "Validate the untracked dependency entities `dep-ids` (a set of `[model-type id]`) one chunk at a time: the
-  `{:model_type :model_id :file_path}` write-decisions, or `:remote-sync/incremental-not-possible` at the first chunk
-  whose target path collides with a different entity."
+  "Validate the untracked dependency entities `dep-ids` (a set of `{:model_type :model_id}`) one chunk at a
+  time: the `{:model_type :model_id :file_path}` write-decisions, or `:remote-sync/incremental-not-possible`
+  at the first chunk whose target path collides with a different entity."
   [snapshot opts dep-ids]
-  (let [dep-rows (mapv (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)]
-    (reduce (fn [writes chunk]
-              (let [chunk-writes (dep-chunk-writes snapshot opts chunk)]
-                (if (= :remote-sync/incremental-not-possible chunk-writes)
-                  (reduced :remote-sync/incremental-not-possible)
-                  (into writes chunk-writes))))
-            []
-            (->sized-chunks dep-rows))))
+  (reduce (fn [writes chunk]
+            (let [chunk-writes (dep-chunk-writes snapshot opts chunk)]
+              (if (= :remote-sync/incremental-not-possible chunk-writes)
+                (reduced :remote-sync/incremental-not-possible)
+                (into writes chunk-writes))))
+          []
+          (->sized-chunks dep-ids)))
 
 (defn- row->incremental-export-plan
   "Decide a `row`'s contribution to an incremental plan.
