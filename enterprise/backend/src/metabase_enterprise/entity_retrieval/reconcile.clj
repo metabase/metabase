@@ -77,7 +77,7 @@
   {:entity_type     entity-type
    :entity_local_id id
    :name            nm
-   :description      description})
+   :description     description})
 
 (defn- library-entities
   "Uniform `{:entity_type :entity_local_id :name :description}` maps for every entity in the library."
@@ -149,17 +149,21 @@
 
 (defn- insert-batch!
   "Embed one batch of new docs and insert them, returning the number inserted.
+  Embeds via [[embedding/process-embeddings-streaming]] so a long value can't push a request over the
+  provider's per-batch token limit — it splits into token-aware sub-batches (single batch off OpenAI).
   Its own fn so the failed-insert test can mock it to simulate an embed/insert failure."
   [pgvector embedding-model docs]
-  (let [embeddings (embedding/get-embeddings-batch embedding-model (map :doc_text docs)
-                                                   {:type :index :record-tokens? true})
-        records    (map doc->record docs embeddings)]
-    (jdbc/execute! pgvector
-                   (-> (sql.helpers/insert-into (keyword index-table/*vectors-table*))
-                       (sql.helpers/values (vec records))
-                       (sql.helpers/on-conflict :doc_id)
-                       (sql.helpers/do-nothing)
-                       (sql/format {:quoted true})))
+  (let [text->embedding (volatile! {})]
+    (embedding/process-embeddings-streaming embedding-model (map :doc_text docs)
+                                            #(vswap! text->embedding merge %)
+                                            :type :index :record-tokens? true)
+    (let [records (map #(doc->record % (@text->embedding (:doc_text %))) docs)]
+      (jdbc/execute! pgvector
+                     (-> (sql.helpers/insert-into (keyword index-table/*vectors-table*))
+                         (sql.helpers/values (vec records))
+                         (sql.helpers/on-conflict :doc_id)
+                         (sql.helpers/do-nothing)
+                         (sql/format {:quoted true}))))
     (count docs)))
 
 (defn- delete-rows! [pgvector doc-ids]
