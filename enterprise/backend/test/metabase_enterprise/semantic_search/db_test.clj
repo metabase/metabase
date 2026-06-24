@@ -55,30 +55,29 @@
 
 (deftest parse-db-url-defaults-test
   (testing "a URL with no params leaves the URL untouched and uses the default pool props"
-    (let [{:keys [jdbc-url pool-props]} (parse-db-url base-url)]
-      (is (= base-url jdbc-url))
-      (is (= 5 (get pool-props "maxPoolSize")))
-      (is (= 0 (get pool-props "minPoolSize")))
-      (is (false? (get pool-props "testConnectionOnCheckout"))))))
+    (is (=? {:jdbc-url   base-url
+             :pool-props {"maxPoolSize"              5
+                          "minPoolSize"              0
+                          "testConnectionOnCheckout" false}}
+            (parse-db-url base-url)))))
 
 (deftest parse-db-url-pool-knob-test
   (testing "a recognized pool knob is pulled off the URL, parsed, and merged over the defaults"
-    (let [{:keys [jdbc-url pool-props]} (parse-db-url (str base-url "?maxPoolSize=12"))]
-      (is (= base-url jdbc-url))
-      (is (= 12 (get pool-props "maxPoolSize")))))
+    (is (=? {:jdbc-url   base-url
+             :pool-props {"maxPoolSize" 12}}
+            (parse-db-url (str base-url "?maxPoolSize=12")))))
   (testing "a boolean knob coerces case-insensitively"
-    (is (true? (get (:pool-props (parse-db-url (str base-url "?testConnectionOnCheckout=TRUE")))
-                    "testConnectionOnCheckout")))))
+    (is (=? {:pool-props {"testConnectionOnCheckout" true}}
+            (parse-db-url (str base-url "?testConnectionOnCheckout=TRUE"))))))
 
 (deftest parse-db-url-connection-param-test
   (testing "a recognized Postgres connection param stays on the URL for pgjdbc"
-    (is (= (str base-url "?tcpKeepAlive=true")
-           (:jdbc-url (parse-db-url (str base-url "?tcpKeepAlive=true"))))))
+    (is (=? {:jdbc-url (str base-url "?tcpKeepAlive=true")}
+            (parse-db-url (str base-url "?tcpKeepAlive=true")))))
   (testing "pool knobs are stripped while connection params + credentials are retained, in order"
-    (let [{:keys [jdbc-url pool-props]}
-          (parse-db-url (str base-url "?user=postgres&maxPoolSize=8&tcpKeepAlive=true"))]
-      (is (= 8 (get pool-props "maxPoolSize")))
-      (is (= (str base-url "?user=postgres&tcpKeepAlive=true") jdbc-url)))))
+    (is (=? {:jdbc-url   (str base-url "?user=postgres&tcpKeepAlive=true")
+             :pool-props {"maxPoolSize" 8}}
+            (parse-db-url (str base-url "?user=postgres&maxPoolSize=8&tcpKeepAlive=true"))))))
 
 (deftest parse-db-url-validation-test
   (testing "an unrecognized param throws rather than being silently ignored by pgjdbc"
