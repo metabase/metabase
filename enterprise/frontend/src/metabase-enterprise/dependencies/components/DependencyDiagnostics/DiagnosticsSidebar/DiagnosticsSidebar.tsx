@@ -41,7 +41,7 @@ export const DiagnosticsSidebar = memo(function DiagnosticsSidebar({
         className={S.sidebar}
         p="lg"
         gap="xl"
-        bg="background-primary"
+        bg="background_page-primary"
         data-testid="dependency-list-sidebar"
       >
         <Stack gap="lg">

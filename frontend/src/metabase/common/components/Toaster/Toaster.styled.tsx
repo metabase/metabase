@@ -44,7 +44,7 @@ export const ToasterMessage = styled.p`
 export const ToasterButton = styled.button`
   display: flex;
   padding: 7px 18px;
-  background-color: ${() => alpha("background-primary", 0.1)};
+  background-color: ${() => alpha("background_page-primary", 0.1)};
   border-radius: 6px;
   color: var(--mb-color-text-primary-inverse);
   height: fit-content;
@@ -56,16 +56,16 @@ export const ToasterButton = styled.button`
 
   &:hover {
     cursor: pointer;
-    background-color: ${() => alpha("background-primary", 0.3)};
+    background-color: ${() => alpha("background_page-primary", 0.3)};
   }
 `;
 
 export const ToasterDismiss = styled.button`
   cursor: pointer;
   transition: color 200ms ease;
-  color: var(--mb-color-background-tertiary-inverse);
+  color: var(--mb-color-background_page-tertiary-inverse);
 
   &:hover {
-    color: ${() => lighten("background-tertiary-inverse", 0.3)};
+    color: ${() => lighten("background_page-tertiary-inverse", 0.3)};
   }
 `;

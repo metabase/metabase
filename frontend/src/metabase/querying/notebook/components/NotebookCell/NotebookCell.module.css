@@ -66,7 +66,11 @@
 
   &.leftBorder {
     border-left: 1px solid
-      color-mix(in srgb, var(--mb-color-background-primary), transparent 25%);
+      color-mix(
+        in srgb,
+        var(--mb-color-background_page-primary),
+        transparent 25%
+      );
   }
 
   &.leftRoundedCorners {

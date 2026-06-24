@@ -16,6 +16,7 @@
    [metabase-enterprise.dependencies.init]
    [metabase-enterprise.entity-retrieval.init]
    [metabase-enterprise.gsheets.init]
+   [metabase-enterprise.memoize-monitor.init]
    [metabase-enterprise.metabot.init]
    [metabase-enterprise.remote-sync.init]
    [metabase-enterprise.scim.init]

@@ -275,9 +275,11 @@ describe("MetabotSettingsPanel", () => {
   it("should not show verification switch without content_verification feature", async () => {
     await setup();
 
-    expect(screen.queryByText("Verified content")).not.toBeInTheDocument();
     expect(
-      screen.queryByText("Only use Verified content"),
+      screen.queryByText("Verified or curated content"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Only use verified or curated content"),
     ).not.toBeInTheDocument();
   });
 
@@ -286,13 +288,15 @@ describe("MetabotSettingsPanel", () => {
 
     await setup();
 
-    expect(await screen.findByText("Verified content")).toBeInTheDocument();
     expect(
-      await screen.findByText("Only use Verified content"),
+      await screen.findByText("Verified or curated content"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Only use verified or curated content"),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole("switch", {
-        name: "Only use Verified content",
+        name: "Only use verified or curated content",
       }),
     ).toBeInTheDocument();
   });
@@ -303,7 +307,7 @@ describe("MetabotSettingsPanel", () => {
     await setup();
 
     const verifiedSwitch = await screen.findByRole("switch", {
-      name: "Only use Verified content",
+      name: "Only use verified or curated content",
     });
 
     // Verify switch is initially unchecked (default metabot has use_verified_content: false)

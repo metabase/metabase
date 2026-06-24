@@ -28,7 +28,7 @@
 
 (deftest survive-table-errors
   (testing "Make sure we survive table sync failing"
-    (sync-survives-crash?! sync-tables/create-or-reactivate-tables!)
+    (sync-survives-crash?! sync-tables/create-tables!)
     (sync-survives-crash?! sync-tables/retire-tables!)
     (sync-survives-crash?! sync-tables/update-tables-metadata-if-needed!)))
 

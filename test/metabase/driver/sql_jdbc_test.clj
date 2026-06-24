@@ -29,7 +29,7 @@
                                      "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
                           {:name table, :schema "PUBLIC",
                            :description nil, :is_writable true}))
-                   (:tables (driver/describe-database :h2 (mt/db))))))
+                   (into #{} (:tables (driver/describe-database :h2 (mt/db)))))))
 
 (deftest describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"

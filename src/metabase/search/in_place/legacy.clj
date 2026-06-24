@@ -117,7 +117,9 @@
    ;; returned for Card and Action
    :dataset_query       :text
    ;; returned for Table
-   :is_published        :boolean))
+   :is_published        :boolean
+   :data_authority      :text
+   :data_layer          :text))
 
 (mu/defn- canonical-columns :- [:sequential HoneySQLColumn]
   "Returns a seq of lists of canonical columns for the search query with the given `model` Will return column names
@@ -264,9 +266,11 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
+                               ;; data_authority/data_layer are curation signals, not name/text fields —
+                               ;; exclude them from exact-match ranking (and to keep in-place ordering stable).
                                (remove #{:collection_authority_level :moderated_status
                                          :initial_sync_status :pk_ref :location
-                                         :collection_location}))
+                                         :collection_location :data_authority :data_layer}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -481,6 +485,8 @@
      :collection.name] :collection_name]
    [:collection.authority_level :collection_authority_level]
    [:collection.type :collection_type]
+   [:table.data_authority :data_authority]
+   [:table.data_layer :data_layer]
    [:metabase_database.name :database_name]])
 
 (defmethod columns-for-model "transform"

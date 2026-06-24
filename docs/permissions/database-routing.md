@@ -48,6 +48,8 @@ Database routing **can't be used** on databases with:
 
 With **guest embedding**, database queries will always be routed to the router database. This is because guest embed users don't have Metabase accounts, so there are no user attributes available to determine which destination database to route to.
 
+**Public links** will not work with database routing.
+
 ## How database routing works
 
 You connect Metabase to a database as normal. When you turn on database routing for that database, it becomes a **router database** - the main database that will handle routing queries to **destination databases**. You'll add these destination databases to this router database, with each destination database associated with a value for the user attribute you assign to the router database. You don't need to have your customer databases as separate connections.

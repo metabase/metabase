@@ -28,10 +28,14 @@
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [{:keys [verified moderated_status collection] :as result}]
+  [{:keys [verified moderated_status collection data_authority curated data_layer] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
         collection-info (select-keys collection [:id :name :authority_level])
+        ;; Curation signals beyond verified, so the LLM can see *why* content is curated. `:curated` is
+        ;; the precomputed rollup (present on the appdb/semantic engines); `:data_layer` is table-only.
+        ;; assoc-some keeps them off results that don't carry them (e.g. the in-place fallback).
+        official? (= "official" (:authority_level collection-info))
         common-fields {:id          (:id result)
                        :type        (metabot.search-models/search-model->entity-type model)
                        :name        (:name result)
@@ -43,26 +47,33 @@
       common-fields
 
       "table"
-      (merge common-fields
-             {:name            (:table_name result)
-              :display_name    (:name result)
-              :database_id     (:database_id result)
-              :database_schema (:table_schema result)})
+      (-> common-fields
+          (merge {:name            (:table_name result)
+                  :display_name    (:name result)
+                  :database_id     (:database_id result)
+                  :database_schema (:table_schema result)
+                  :official        official?
+                  :data_authority  data_authority})
+          (m/assoc-some :curated curated :data_layer data_layer))
 
       "dashboard"
-      (merge common-fields
-             {:verified    verified?
-              :collection  collection-info})
+      (-> common-fields
+          (merge {:verified   verified?
+                  :official   official?
+                  :collection collection-info})
+          (m/assoc-some :curated curated))
 
       "transform"
       (merge common-fields
              {:database_id (:database_id result)})
 
       ;; Questions, metrics, and datasets
-      (merge common-fields
-             {:database_id (:database_id result)
-              :verified    verified?
-              :collection  collection-info}))))
+      (-> common-fields
+          (merge {:database_id (:database_id result)
+                  :verified    verified?
+                  :official    official?
+                  :collection  collection-info})
+          (m/assoc-some :curated curated)))))
 
 (defn- enrich-with-collection-descriptions
   "Fetch and merge collection descriptions for all search results that have collection IDs."
@@ -269,7 +280,7 @@
                                                   search-native-query
                                                   (assoc :search-native-query (boolean search-native-query))
                                                   use-verified?
-                                                  (assoc :verified true)
+                                                  (assoc :curated true)
                                                   weights
                                                   (assoc :weights weights)
                                                   search-engine

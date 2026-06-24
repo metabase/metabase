@@ -79,7 +79,7 @@ export const JobListPage = () => {
         maxWidth: 200,
         cell: ({ row }) =>
           isMeterLocked || !row.original.active ? (
-            <TransformBadge bg="background-secondary">
+            <TransformBadge bg="background_page-secondary">
               {t`Disabled`}
             </TransformBadge>
           ) : null,

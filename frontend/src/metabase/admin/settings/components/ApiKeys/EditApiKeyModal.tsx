@@ -70,7 +70,7 @@ const RegenerateKeyModal = ({
             </Stack>
             {/* TODO: swap for the planned metabase/ui Alert variant once it lands. */}
             <Paper
-              bg="background-secondary"
+              bg="background_page-secondary"
               radius="md"
               px="md"
               py="sm"
