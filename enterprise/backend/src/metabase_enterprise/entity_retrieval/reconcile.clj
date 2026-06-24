@@ -87,17 +87,22 @@
     (when-let [lib-ids (not-empty (collections/descendant-ids lib))]
       (let [;; :card_schema is mandatory in any column-scoped Card SELECT (toucan guard).
             cards     (t2/select [:model/Card :id :name :description :type :card_schema]
-                                 :collection_id [:in lib-ids] :archived false
-                                 :type [:in ["metric" "model"]])
+                                 :collection_id [:in lib-ids]
+                                 :archived      false
+                                 :type          [:in ["metric" "model"]])
             tables    (t2/select [:model/Table :id :name :display_name :description]
-                                 :collection_id [:in lib-ids] :is_published true :active true)
+                                 :collection_id [:in lib-ids]
+                                 :is_published  true
+                                 :active        true)
             table-ids (not-empty (set (map :id tables)))
             measures  (when table-ids
                         (t2/select [:model/Measure :id :name :description]
-                                   :table_id [:in table-ids] :archived false))
+                                   :table_id [:in table-ids]
+                                   :archived false))
             segments  (when table-ids
                         (t2/select [:model/Segment :id :name :description]
-                                   :table_id [:in table-ids] :archived false))]
+                                   :table_id [:in table-ids]
+                                   :archived false))]
         (concat
          ;; Card :type is keywordized (:metric / :model); the ref model string is its name.
          (map (fn [c] (->library-entity (name (:type c)) (:id c) (:name c) (:description c))) cards)
