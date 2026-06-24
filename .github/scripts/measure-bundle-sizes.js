@@ -41,7 +41,6 @@ function sizeOf(files) {
   let rawBytes = 0;
   let gzipBytes = 0;
   let brotliBytes = 0;
-  let anyBrotli = false;
   for (const file of files) {
     const contents = fs.readFileSync(file);
     rawBytes += contents.length;
@@ -49,20 +48,17 @@ function sizeOf(files) {
     gzipBytes += zlib.gzipSync(contents).length;
     // brotli: as-served — count the precompressed .br the build ships; files
     // without one (static-viz, sub-threshold chunks) are served compressed on
-    // the fly, so estimate with brotli. Null when no .br shipped at all.
+    // the fly, so estimate with brotli. Always reported (like gzip).
     const brotliPath = `${file}.br`;
-    if (fs.existsSync(brotliPath)) {
-      anyBrotli = true;
-      brotliBytes += fs.statSync(brotliPath).size;
-    } else {
-      brotliBytes += zlib.brotliCompressSync(contents).length;
-    }
+    brotliBytes += fs.existsSync(brotliPath)
+      ? fs.statSync(brotliPath).size
+      : zlib.brotliCompressSync(contents).length;
   }
   return {
     fileCount: files.length,
     rawBytes,
     gzipBytes,
-    brotliBytes: anyBrotli ? brotliBytes : null,
+    brotliBytes,
   };
 }
 
