@@ -200,14 +200,21 @@ describe("issue 8030 + 32444", () => {
 
         H.saveDashboard();
 
-        // Saving exits edit mode and reloads BOTH dashcards, firing two more
-        // card queries on top of the two from the initial edit render. Wait for
-        // all four to settle before re-aliasing below: a slow second post-save
-        // query (especially under network throttling) would otherwise still be
-        // in flight, get captured by the new intercept on the same URL, and be
-        // miscounted as a filter-triggered query (the test then sees 2, not 1).
+        // Saving exits edit mode and reloads the dashcards in view mode. How
+        // many post-save card queries fire is not deterministic (cached results
+        // may be reused), so rather than counting them we wait for the reload to
+        // start and then for both cards to finish loading before re-aliasing
+        // below. Otherwise a still in-flight post-save query — slow under network
+        // throttling — would be captured by the new intercept on the same URL
+        // and miscounted as a filter-triggered query (the test then sees 2,
+        // not 1).
         cy.wait("@getCardQuery");
-        cy.get("@getCardQuery.all").should("have.length", 4);
+        H.getDashboardCard(0)
+          .findByTestId("loading-indicator")
+          .should("not.exist");
+        H.getDashboardCard(1)
+          .findByTestId("loading-indicator")
+          .should("not.exist");
 
         // Reset the intercept after save so we only count filter-triggered queries.
         cy.intercept(
