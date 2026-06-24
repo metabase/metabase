@@ -774,7 +774,7 @@
   be re-sized. Measures the just-consumed page's real bytes/row and re-issues the next page with a `pageSize`
   targeting [[*page-byte-budget*]], so a wide or heavy result fetches fewer rows per page instead of holding a
   large parsed page in memory. Returns nil once the result set is exhausted."
-  [^BigQuery client job-id]
+  [^Job job]
   (let [budget (long *page-byte-budget*)
         seen   (atom {:bytes 0, :rows 0})]
     (fn [^TableResult page]
@@ -787,7 +787,7 @@
                                                             :rows  (+ (long (:rows s)) (long page-rows))}))]
             (log/trace "BigQuery: Fetching new page")
             (*page-callback*)
-            (.getQueryResults client job-id
+            (.getQueryResults job
                               (u/varargs BigQuery$QueryResultsOption
                                 [(BigQuery$QueryResultsOption/pageSize
                                   (next-page-size budget bytes rows Long/MAX_VALUE))
@@ -848,7 +848,7 @@
 
 (defn- bigquery-execute-response
   "Given the initial query page, respond with metadata and a lazy reducible that will page through the rest of the data."
-  [^TableResult page ^BigQuery client respond cancel-chan]
+  [^TableResult page ^Job job ^BigQuery client respond cancel-chan]
   (let [job-id (.getJobId page)
         attempt-job-cancel-fn #(try
                                  (.cancel client job-id)
@@ -865,7 +865,7 @@
         results (eduction (map (fn [^FieldValueList row]
                                  (mapv parse-field-value row parsers)))
                           (reducible-bigquery-results page cancel-chan attempt-job-cancel-fn
-                                                      (adaptive-query-next-page client job-id)))]
+                                                      (adaptive-query-next-page job)))]
     (respond cols results)))
 
 (defn- execute-bigquery
@@ -915,7 +915,7 @@
                     (log/warnf t "Couldn't cancel job %s" job-id))
                   (finally
                     (throw-cancelled sql parameters)))
-        :ready  (bigquery-execute-response result client respond cancel-chan)))))
+        :ready  (bigquery-execute-response result job client respond cancel-chan)))))
 
 (mu/defn- ^:dynamic *process-native*
   [respond  :- fn?
