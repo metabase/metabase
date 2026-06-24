@@ -1103,23 +1103,25 @@ describe("scenarios > dashboard", () => {
           `/api/dashboard/${dashboard.id}/dashcard/*/card/*/query`,
         ).as("dashcardQuery");
 
-        cy.log("should not be visible (below the fold)");
-        cy.visit(`/dashboard/${dashboard.id}`);
-        // wait for the dashboard to finish loading so the layout is settled
-        cy.wait("@dashcardQuery");
-        cy.findByText(TARGET_TEXT).should("not.be.visible");
-
         cy.log("should scroll into view w/ scrollTo hash param");
-        // The auto-scroll runs in the dashcard's on-mount effect, but adding the
-        // #scrollTo hash to an already-loaded dashboard does not remount the
-        // dashcards (a hash-only change does not reload the SPA). Force a full
-        // reload of the #scrollTo URL so the dashcards remount and the scroll
-        // fires deterministically, then wait for the reloaded query to settle.
+        // The auto-scroll runs in the dashcard's on-mount effect, so the
+        // #scrollTo URL must be a fresh full page load for it to fire. Visit it
+        // FIRST (the first navigation of the test is always a real load) rather
+        // than appending the hash to an already-loaded dashboard — a hash-only
+        // change does not remount the dashcards, so the scroll would never run.
         cy.visit(`/dashboard/${dashboard.id}#scrollTo=${targetCard.id}`);
-        cy.reload();
         cy.wait("@dashcardQuery");
+        // The app clears the #scrollTo hash once it has scrolled; this is our
+        // synchronization point — past it the current URL is hash-free.
         cy.location("hash").should("not.include", "scrollTo");
         cy.findByText(TARGET_TEXT).should("be.visible");
+
+        cy.log("should not be visible (below the fold)");
+        // The hash is already cleared (asserted above), so reloading lands on
+        // the plain dashboard with no auto-scroll: the target is below the fold.
+        cy.reload();
+        cy.wait("@dashcardQuery");
+        cy.findByText(TARGET_TEXT).should("not.be.visible");
       },
     );
   });
