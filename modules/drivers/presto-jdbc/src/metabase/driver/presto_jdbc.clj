@@ -625,11 +625,12 @@
           :name   table-name
           :fields (into
                    #{}
-                   (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                  {:name              column
-                                   :database-type     type
-                                   :base-type         (presto-type->base-type type)
-                                   :database-position idx}))
+                   (map-indexed (fn [idx {:keys [column type comment] :as _col}]
+                                  (cond-> {:name              column
+                                           :database-type     type
+                                           :base-type         (presto-type->base-type type)
+                                           :database-position idx}
+                                    (not (str/blank? comment)) (assoc :field-comment comment))))
                    (jdbc/reducible-query {:connection conn} sql))})))))
 
 ;;; The Presto JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the `:sql-jdbc`

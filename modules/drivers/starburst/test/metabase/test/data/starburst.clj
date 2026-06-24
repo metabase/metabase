@@ -182,3 +182,9 @@
 
 (defmethod sql.tx/generated-column-sql :starburst [_ _] nil)
 (defmethod sql.tx/default-column-sql :starburst [_ _] nil)
+
+(defmethod sql.tx/standalone-column-comment-sql :starburst [& args]
+  (apply sql.tx/standard-standalone-column-comment-sql args))
+
+(defmethod sql.tx/standalone-table-comment-sql :starburst [& args]
+  (apply sql.tx/standard-standalone-table-comment-sql args))
