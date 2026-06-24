@@ -522,3 +522,93 @@
         (is (every? #(= "B" (:dimension_id %)) drilled)))
       (testing "B does not descend further (its gain is below the floor)"
         (is (not-any? #(< 1 (count (get-in % [:params :filter_path]))) plan))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Issue 6 — leakage / artifact split exclusion
+;;; ---------------------------------------------------------------------------
+
+(def ^:private region-263-artifact
+  "Real measured cells from exploration 263 (signup-completion rate): an account-attribute
+  'Region' recorded only once a signup completes — a single dominant nil bucket plus
+  non-null buckets all saturated at 100%. A leakage artifact."
+  [{:value "APAC"          :metric 1.0                :count 3594}
+   {:value "Europe"        :metric 1.0                :count 6378}
+   {:value "LATAM"         :metric 1.0                :count 1440}
+   {:value "North America" :metric 1.0                :count 8579}
+   {:value nil             :metric 0.7307152535811072 :count 258808}])
+
+(def ^:private region-263-funnel-native
+  "Real measured cells from exploration 263 for the *other*, funnel-native 'Region' dim:
+  real values at intermediate rates, full support, no dominant null. A real effect."
+  [{:value "APAC"          :metric 0.7688280785246877 :count 50605}
+   {:value "Europe"        :metric 0.7499491904342525 :count 88416}
+   {:value "LATAM"         :metric 0.775391224301933  :count 19550}
+   {:value "North America" :metric 0.7607013665594855 :count 120228}])
+
+(deftest leakage-artifact-test
+  (testing "the artifact (null-bucket-dominant + non-null saturated at 1.0) is flagged"
+    (is (true? (qp.adaptive/leakage-artifact? region-263-artifact :rate))))
+  (testing "it ranks above the funnel-native dim by split-gain — so it must be excluded BEFORE ranking"
+    (is (> (qp.adaptive/split-gain region-263-artifact :rate)
+           (qp.adaptive/split-gain region-263-funnel-native :rate))))
+  (testing "the funnel-native Region (real values, no dominant null) is NOT flagged"
+    (is (false? (qp.adaptive/leakage-artifact? region-263-funnel-native :rate))))
+  (testing "scoped to rate metrics — an additive metric is never flagged"
+    (is (false? (qp.adaptive/leakage-artifact? region-263-artifact :additive)))))
+
+(deftest leakage-artifact-false-positive-guard-test
+  (testing "a genuinely rare-but-real minority bucket (intermediate rate) is NOT excluded"
+    (is (false? (qp.adaptive/leakage-artifact?
+                 [{:value nil :metric 0.73 :count 250000}
+                  {:value "VIP" :metric 0.92 :count 3000}] :rate))))
+  (testing "null bucket not dominant → not an artifact"
+    (is (false? (qp.adaptive/leakage-artifact?
+                 [{:value nil :metric 0.5 :count 4000}
+                  {:value "a" :metric 1.0 :count 6000}] :rate))))
+  (testing "no null bucket at all → not an artifact"
+    (is (false? (qp.adaptive/leakage-artifact?
+                 [{:value "a" :metric 1.0 :count 100}
+                  {:value "b" :metric 1.0 :count 100}] :rate))))
+  (testing "non-null saturated at the LOW extreme also counts (present ⟹ never converts)"
+    (is (true? (qp.adaptive/leakage-artifact?
+                [{:value nil :metric 0.27 :count 250000}
+                 {:value "a" :metric 0.0 :count 3000}
+                 {:value "b" :metric 0.0 :count 3000}] :rate))))
+  (testing "non-null split across BOTH extremes is a real differentiator, not an artifact"
+    (is (false? (qp.adaptive/leakage-artifact?
+                 [{:value nil :metric 0.5 :count 250000}
+                  {:value "a" :metric 0.0 :count 3000}
+                  {:value "b" :metric 1.0 :count 3000}] :rate))))
+  (testing "a blank-string bucket is treated as null"
+    (is (true? (qp.adaptive/leakage-artifact?
+                [{:value "" :metric 0.73 :count 250000}
+                 {:value "a" :metric 1.0 :count 3000}] :rate)))))
+
+(deftest leakage-artifact-excluded-from-root-split-test
+  (testing "a leakage-artifact dim that ranks #1 by gain never roots the search; a real
+            funnel-native dim roots and is descended, and the artifact is in no filter path"
+    (with-redefs [qp.adaptive/metric-kind (constantly :rate)]
+      (let [group {:group-id 1 :type "metric"
+                   :metrics [(metric-ctx 10 [(text-dim "region" 5) (text-dim "browser" 5) (text-dim "plan" 5)])]}
+            measure (fn [_ _ c]
+                      (case (:dimension-id c)
+                        "region"  {:cells [{:value nil    :metric 0.731 :count 250000}
+                                           {:value "APAC" :metric 1.0   :count 3000}
+                                           {:value "EU"   :metric 1.0   :count 3000}]}
+                        "browser" {:cells [{:value "Chrome"  :metric 0.768671536988439  :count 169844}
+                                           {:value "Edge"    :metric 0.7780556423882463 :count 19457}
+                                           {:value "Firefox" :metric 0.7831441680753441 :count 25078}
+                                           {:value "Safari"  :metric 0.7170979198376457 :count 58765}]}
+                        "plan"    {:cells [{:value "Pro"  :metric 0.74 :count 50000}
+                                           {:value "Free" :metric 0.72 :count 50000}]}))
+            {:keys [outcome plan]} (plan-with-measure! [group] measure)
+            drilled (filter #(seq (get-in % [:params :filter_path])) plan)]
+        (is (= :ok outcome))
+        (is (seq drilled) "the real split descended (the guard didn't starve the search)")
+        (testing "the artifact 'region' never roots — every descent path starts with browser"
+          (is (every? #(= "browser" (-> % (get-in [:params :filter_path]) first :dimension_id))
+                      drilled)))
+        (testing "the artifact 'region' is descended into nowhere — it is in no filter path"
+          (is (not-any? (fn [item] (some #(= "region" (:dimension_id %))
+                                         (get-in item [:params :filter_path])))
+                        plan)))))))

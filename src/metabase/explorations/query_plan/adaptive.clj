@@ -10,6 +10,7 @@
   `insert-plan-rows!` materialization are reused unchanged; it is the first
   planner to run QP queries inside `plan!`."
   (:require
+   [clojure.string :as str]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
    [metabase.explorations.query-plan.planner :as planner]
@@ -65,14 +66,22 @@
     whose proportion sits within this of a `[0,1]` extreme (no residual variation
     left to explain — any further split inside it is noise).
   - `:max-depth` — depth backstop (a placeholder hard cap until the governed
-    best-first search lands)."
-  {:min-split-gain         0.01
-   :min-support-floor      50
-   :min-support-floor-rate 200
-   :min-support-fraction   0.01
-   :k-child-values         2
-   :saturation-epsilon     0.02
-   :max-depth              5})
+    best-first search lands).
+  - `:leakage-null-fraction` / `:leakage-saturation-epsilon` — the
+    [[leakage-artifact?]] candidate-eligibility guard. A `:rate` split is dropped
+    when a single `nil`/blank bucket holds ≥ `:leakage-null-fraction` of the support
+    *and* every non-null bucket is within `:leakage-saturation-epsilon` of the same
+    `[0,1]` extreme — the signature of a dimension populated only *because* the
+    outcome occurred."
+  {:min-split-gain             0.01
+   :min-support-floor          50
+   :min-support-floor-rate     200
+   :min-support-fraction       0.01
+   :k-child-values             2
+   :saturation-epsilon         0.02
+   :max-depth                  5
+   :leakage-null-fraction      0.9
+   :leakage-saturation-epsilon 0.02})
 
 (def min-split-gain
   "The `split-gain` floor (see `config`). A var so call sites / tests read it
@@ -332,6 +341,54 @@
   (split-gain (into [] (remove #(saturated? (:metric %) metric-kind)) cells) metric-kind))
 
 ;;; ---------------------------------------------------------------------------
+;;; Candidate eligibility — leakage / artifact split exclusion
+;;; ---------------------------------------------------------------------------
+
+(defn- null-bucket?
+  "A breakout group value standing for **absent / unknown** — `nil` or a blank
+  string (an outer-join miss or an empty account attribute)."
+  [v]
+  (or (nil? v) (and (string? v) (str/blank? v))))
+
+(defn leakage-artifact?
+  "True when a split's measurement `cells` look like a **leakage / outcome
+  artifact** rather than a real effect — a dimension that predicts the metric only
+  because its value is populated *by* the outcome (e.g. an account attribute
+  recorded once a signup completes, so 'region present ⟹ 100% complete'). `gain`
+  ranks such a split highest — the 100%-vs-baseline gap is genuinely large — so it
+  must be excluded from candidacy *before* ranking, not down-weighted after. Two
+  conditions must hold **together**, so a genuinely rare-but-real minority segment
+  is not excluded:
+
+  - **null-bucket dominance** — a single `nil`/blank bucket holds at least
+    `:leakage-null-fraction` of the support, and
+  - **outcome-saturated non-null** — every non-null bucket sits within
+    `:leakage-saturation-epsilon` of the *same* `[0,1]` extreme (all ≈ 1.0 or all
+    ≈ 0.0). A real minority segment lands at an intermediate rate (0.92, 0.40) and
+    so survives.
+
+  Scoped to `:rate` metrics, where 'saturated' is well-defined as the proportion's
+  extreme; additive metrics have no intrinsic max/min to saturate against and are
+  left untouched — a seam for declared provenance. Operates on the **de-scaled**
+  cells `split-gain` consumes."
+  [cells metric-kind]
+  (and (= metric-kind :rate)
+       (let [cells (filterv (fn [{:keys [metric count]}]
+                              (and (number? metric) (number? count) (pos? count)))
+                            cells)
+             total (reduce + 0.0 (map :count cells))
+             {nulls true non-nulls false} (group-by (comp boolean null-bucket? :value) cells)
+             eps   (:leakage-saturation-epsilon config)]
+         (boolean
+          (and (pos? total)
+               (seq nulls)
+               (seq non-nulls)
+               (>= (/ (reduce + 0.0 (map :count nulls)) total)
+                   (:leakage-null-fraction config))
+               (or (every? #(>= (double (:metric %)) (- 1.0 eps)) non-nulls)
+                   (every? #(<= (double (:metric %)) eps) non-nulls)))))))
+
+;;; ---------------------------------------------------------------------------
 ;;; Measurement (impure) — run the breakout eagerly, collect support-weighted cells
 ;;; ---------------------------------------------------------------------------
 
@@ -501,8 +558,13 @@
                               :prior (interestingness/dimension-interestingness (:dim c)))))
         candidates (if forced [forced] (remaining-candidates metric-ctx filter-path))
         measured   (mapv measure candidates)
+        ;; Drop leakage / outcome artifacts before ranking — but never the forced
+        ;; anchor dim (user-selected, kept by definition).
+        eligible   (if forced
+                     measured
+                     (remove #(leakage-artifact? (:cells %) kind) measured))
         chosen     (cond forced        (first measured)
-                         (seq measured) (select-split measured)
+                         (seq eligible) (select-split eligible)
                          :else          nil)
         [chosen extra-cost]
         ;; Fall back to a guaranteed split only when there were no categorical
