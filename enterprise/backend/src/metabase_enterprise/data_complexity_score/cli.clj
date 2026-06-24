@@ -152,7 +152,11 @@
     (mdb/setup-db-without-migrations!))
   (let [{:keys [library universe embedder digest]} (representation/load-dir representation-dir
                                                                             :embeddings-path embeddings)
-        result                                     (complexity/score-from-entities library universe embedder {})]
+        ;; Match the level baked into current-fingerprint (used for the persisted row) so a
+        ;; non-default level setting can't store a level-2-shaped score under a level-0/1 fingerprint.
+        result                                     (complexity/score-from-entities
+                                                    library universe embedder
+                                                    {:level (settings/effective-level)})]
     (when write?
       (data-complexity-score/record-score! (task.complexity-score/current-fingerprint)
                                            (str "representation:" digest)
