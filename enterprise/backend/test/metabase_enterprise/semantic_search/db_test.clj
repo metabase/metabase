@@ -56,9 +56,20 @@
 (deftest parse-db-url-defaults-test
   (testing "a URL with no params leaves the URL untouched and uses the default pool props"
     (is (=? {:jdbc-url   base-url
-             :pool-props {"maxPoolSize"              5
-                          "minPoolSize"              0
-                          "testConnectionOnCheckout" false}}
+             :pool-props {;; tunable knobs at their defaults
+                          "maxPoolSize"                          5
+                          "minPoolSize"                          0
+                          "initialPoolSize"                      0
+                          "checkoutTimeout"                      10000
+                          "unreturnedConnectionTimeout"          0
+                          "debugUnreturnedConnectionStackTraces" false
+                          "testConnectionOnCheckout"             false
+                          ;; fixed props operators can't override
+                          "idleConnectionTestPeriod"             60
+                          "maxIdleTimeExcessConnections"         600
+                          "maxConnectionAge"                     1800
+                          "acquireIncrement"                     1
+                          "dataSourceName"                       "metabase-semantic-search-db"}}
             (parse-db-url base-url)))))
 
 (deftest parse-db-url-pool-knob-test
