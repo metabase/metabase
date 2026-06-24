@@ -90,6 +90,7 @@ export const MIN_FULL_LABEL_TILE_HEIGHT = 100;
 
 export interface TileLabelLayoutsConfig {
   getValueLabelWidth?: (id: string) => number;
+  showLeafLabels?: boolean;
 }
 
 interface GetTileLabelLayoutArgs {
@@ -99,11 +100,21 @@ interface GetTileLabelLayoutArgs {
 
 export function getAllTileLabelLayouts(
   nodes: TreemapLayoutNode[],
-  { getValueLabelWidth = () => Infinity }: TileLabelLayoutsConfig,
+  {
+    getValueLabelWidth = () => Infinity,
+    showLeafLabels = true,
+  }: TileLabelLayoutsConfig,
 ): Record<string, TreemapLabelLayout> {
   const layouts: Record<string, TreemapLabelLayout> = {};
   for (const node of nodes) {
     if (!node.isLeaf) {
+      continue;
+    }
+    if (!showLeafLabels) {
+      layouts[node.id] = {
+        detail: "none",
+        width: Math.max(0, node.rect.width - LABEL_PADDING * 2),
+      };
       continue;
     }
     const fitsLabel =

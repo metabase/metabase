@@ -22,6 +22,7 @@ interface UseLabelMeasurementOptions {
   renderingContext: RenderingContext;
   /** The view root the chart is currently showing (null at the overview). */
   viewRootId: NodeId | null;
+  showLeafLabels: boolean;
   showLeafValues: boolean;
   showParentValues: boolean;
   gridSize?: { width: number; height: number };
@@ -32,6 +33,7 @@ interface MeasurementKey {
   viewRootId: NodeId | null;
   renderingContext: RenderingContext | null;
   formatters: TreemapFormatters | null;
+  showLeafLabels: boolean;
   showLeafValues: boolean;
   showParentValues: boolean;
   gridSize?: { width: number; height: number };
@@ -47,6 +49,7 @@ const EMPTY_MEASURED: MeasuredLayouts = {
   viewRootId: null,
   renderingContext: null,
   formatters: null,
+  showLeafLabels: false,
   showLeafValues: false,
   showParentValues: false,
   gridSize: undefined,
@@ -60,6 +63,7 @@ function isMeasuredFor(measured: MeasurementKey, key: MeasurementKey): boolean {
     measured.viewRootId === key.viewRootId &&
     measured.renderingContext === key.renderingContext &&
     measured.formatters === key.formatters &&
+    measured.showLeafLabels === key.showLeafLabels &&
     measured.showLeafValues === key.showLeafValues &&
     measured.showParentValues === key.showParentValues &&
     _.isEqual(measured.gridSize, key.gridSize)
@@ -72,6 +76,7 @@ export function useLabelMeasurement({
   formatters,
   renderingContext,
   viewRootId,
+  showLeafLabels,
   showLeafValues,
   showParentValues,
   gridSize,
@@ -83,6 +88,7 @@ export function useLabelMeasurement({
     viewRootId,
     renderingContext,
     formatters,
+    showLeafLabels,
     showLeafValues,
     showParentValues,
     gridSize,
@@ -100,6 +106,7 @@ export function useLabelMeasurement({
       viewRootId,
       renderingContext,
       formatters,
+      showLeafLabels,
       showLeafValues,
       showParentValues,
       gridSize,
@@ -109,6 +116,7 @@ export function useLabelMeasurement({
       tree,
       formatters,
       renderingContext,
+      showLeafLabels,
       showLeafValues,
       showParentValues,
     });
@@ -128,6 +136,7 @@ export function useLabelMeasurement({
     formatters,
     renderingContext,
     viewRootId,
+    showLeafLabels,
     showLeafValues,
     showParentValues,
     gridSize,

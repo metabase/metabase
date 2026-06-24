@@ -88,6 +88,26 @@ describe("getTreemapLabelLayouts", () => {
     expect(getValueLabelWidth).toHaveBeenCalledTimes(1);
     expect(getValueLabelWidth).toHaveBeenCalledWith("0-2");
   });
+
+  it("renders no leaf labels when leaf labels are turned off", () => {
+    const nodes: TreemapLayoutNode[] = [
+      group("0", 300),
+      leaf("0-0", 200, 120),
+      leaf("0-1", 200, 120),
+    ];
+    const getValueLabelWidth = jest.fn(() => 100);
+
+    expect(
+      getAllTileLabelLayouts(nodes, {
+        getValueLabelWidth,
+        showLeafLabels: false,
+      }),
+    ).toEqual({
+      "0-0": { detail: "none", width: 176 },
+      "0-1": { detail: "none", width: 176 },
+    });
+    expect(getValueLabelWidth).not.toHaveBeenCalled();
+  });
 });
 
 describe("getTreemapParentLabelLayouts", () => {

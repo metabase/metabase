@@ -64,6 +64,7 @@ type HookOverrides = Partial<{
   viewRootId: string | null;
   renderingContext: RenderingContext;
   formatters: TreemapFormatters;
+  showLeafLabels: boolean;
   showLeafValues: boolean;
   showParentValues: boolean;
   gridSize: { width: number; height: number };
@@ -84,6 +85,7 @@ function setup(initialProps: HookOverrides = {}) {
         formatters,
         renderingContext,
         viewRootId: null,
+        showLeafLabels: true,
         showLeafValues: true,
         showParentValues: true,
         gridSize: undefined,
@@ -154,5 +156,14 @@ describe("useLabelMeasurement", () => {
     expect(result.current.labelLayout["0-0"]).toMatchObject({
       detail: expect.not.stringMatching("none"),
     });
+  });
+
+  it("reports no leaf labels when leaf labels are turned off so tooltips can show", () => {
+    const { result } = setup({ showLeafLabels: false });
+
+    act(() => result.current.handleLabelMeasure());
+
+    expect(result.current.labelLayout["0-0"]).toMatchObject({ detail: "none" });
+    expect(result.current.labelLayout["0-1"]).toMatchObject({ detail: "none" });
   });
 });

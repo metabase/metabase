@@ -28,6 +28,7 @@ export function measureTreemapLabelLayouts({
   tree,
   formatters,
   renderingContext,
+  showLeafLabels,
   showLeafValues,
   showParentValues,
 }: {
@@ -35,6 +36,7 @@ export function measureTreemapLabelLayouts({
   tree: TreemapTree;
   formatters: TreemapFormatters;
   renderingContext: RenderingContext;
+  showLeafLabels: boolean;
   showLeafValues: boolean;
   showParentValues: boolean;
 }): TreemapMeasuredLabelLayouts {
@@ -44,6 +46,7 @@ export function measureTreemapLabelLayouts({
   );
 
   const labelLayout = getAllTileLabelLayouts(nodes, {
+    showLeafLabels,
     getValueLabelWidth: (id) => {
       if (!showLeafValues) {
         return Infinity;

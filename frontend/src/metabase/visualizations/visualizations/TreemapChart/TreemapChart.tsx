@@ -98,6 +98,7 @@ export const TreemapChart = ({
       formatters,
       renderingContext,
       viewRootId,
+      showLeafLabels: settings["treemap.show_leaf_labels"] ?? true,
       showLeafValues: settings["treemap.show_leaf_values"] ?? true,
       showParentValues: settings["treemap.show_parent_values"] ?? true,
       gridSize,
