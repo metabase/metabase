@@ -436,7 +436,7 @@
                   :database-partitioned true}))))
      table-rows)))
 
-(defn- describe-joined-table
+(defn- describe-dataset-table
   "Build the field descriptions for a single table from its joined `COLUMNS`/`COLUMN_FIELD_PATHS` rows (see
   [[describe-dataset-fields-reducible]]). Each top-level column appears once per nested leaf, or once with a `nil`
   `:field_path` when it has none, so de-dup the columns by `:ordinal_position` and build the nested-field lookup from
@@ -458,7 +458,7 @@
   Runs a single `INFORMATION_SCHEMA` query that LEFT JOINs `COLUMNS` (top-level fields) to `COLUMN_FIELD_PATHS` (nested
   STRUCT leaves) on `(table_name, column_name)`. A non-nested column yields one row with a `nil` `:field_path`; a STRUCT
   column yields one row per nested leaf. Ordering by `table_name` keeps each table's rows contiguous, so we consume the
-  live result with a `partition-by` transducer and reconstruct one table at a time (see [[describe-joined-table]]) --
+  live result with a `partition-by` transducer and reconstruct one table at a time (see [[describe-dataset-table]]) --
   never realizing more than a single table's rows. This matters for wide and/or deeply-nested datasets (e.g.
   GA4/Firebase exports, or schemas with thousands of columns per table) where realizing a whole batch's columns would
   spike memory. Each table is emitted exactly once with its fields contiguous (the sync groups fields with `partition-by`
@@ -489,7 +489,7 @@
                  (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))]
     (eduction
      (partition-by :table_name)
-     (mapcat #(describe-joined-table dataset-id %))
+     (mapcat #(describe-dataset-table dataset-id %))
      rows)))
 
 ;; we redef this in a test, don't make `^:const`!
