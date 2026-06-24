@@ -944,21 +944,28 @@
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
     (not (settings/library-is-remote-synced?)) (conj "snippets")))
 
+(defn- stage-write [commit opts [row entity]]
+  (let [path    (or (:file_path row) (source/entity->path opts entity))
+        content (source/entity->content entity)]
+    (source.p/stage-upsert! commit {:path path :content content})
+    (when (:id row)
+      [{:id (:id row) :file_path path :content_hash (source/content-hash content)}])))
+
+(defn- chunk-stage-writes [commit opts chunk]
+  (->> chunk
+       (extract-chunk)
+       (mapcat #(stage-write commit opts %))
+       (doall)))
+
 (defn- stage-writes
   "Stream `chunks` of WriteRows to `commit` one chunk at a time.
 
   Returns:
    - [{:id :file_path :content_hash}]"
   [commit opts chunks]
-  (let [synced (volatile! [])]
-    (doseq [chunk         chunks
-            [wrow entity] (extract-chunk chunk)]
-      (let [path    (or (:file_path wrow) (source/entity->path opts entity))
-            content (source/entity->content entity)]
-        (source.p/stage-upsert! commit {:path path :content content})
-        (when (:id wrow)
-          (vswap! synced conj {:id (:id wrow) :file_path path :content_hash (source/content-hash content)}))))
-    @synced))
+  (->> chunks
+       (mapcat #(chunk-stage-writes commit opts %))
+       (doall)))
 
 (defn- stage-deletes [commit delete-paths]
   (doseq [delete-path delete-paths]
