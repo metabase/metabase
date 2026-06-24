@@ -5,10 +5,7 @@ summary: Add context to your dashboards with text and heading cards, including f
 
 # Dashboard heading and text cards
 
-Add heading and text cards to your dashboards to label sections, link to other content, display images, and more:
-
-- **Heading cards** for a single line of text that titles a section
-- **Text cards** for longer text you can format with Markdown
+Add heading and text cards to your dashboards to label sections, link to other content, display images, and more.
 
 ## Add a heading or text card
 
@@ -33,7 +30,7 @@ A heading card holds a single line of text. Use a heading card to title a dashbo
 A few things to know about heading cards:
 
 - The text is always left-aligned.
-- The text stays the same size, regardless of how you size the card.
+- The text stays the same size, regardless of how you resize the card.
 - You can't use Markdown in heading cards. Markdown syntax renders as plain text.
 
 You can add a filter value to a heading card using a variable. See [Add filter values to a card](#add-filter-values-to-a-card).
@@ -51,27 +48,15 @@ You can set how text sits inside a text card. Open the card's **Visualization op
 - **Horizontal alignment:** Left, Center, or Right.
 - **Vertical alignment:** Top, Middle, or Bottom.
 
-Vertical alignment is easiest to see in a tall card, where the text has room to sit at the top, middle, or bottom.
-
 ![Center-aligned text card](images/text-card-alignment-centered.png)
 
 ### Remove a text card's background
 
 By default, a text card has a white background. To remove the background, open the card's **Visualization options** and disable the **Show background** toggle.
 
-Removing the background makes a card blend into the dashboard. Here's the same card with its background on (top) and off (bottom):
+Here's the same card with its background on (top) and off (bottom):
 
 ![​The same text card shown twice: with its background on (top) and removed (bottom)](images/text-card-background.png)
-
-### Add a divider
-
-To add a horizontal line that separates sections of your dashboard, add a text card that contains three dashes:
-
-```text
----
-```
-
-Metabase renders the three dashes as a horizontal line.
 
 ## Add filter values to a card
 
@@ -80,7 +65,9 @@ You can show the value of a dashboard filter inside a heading or text card. This
 For example, a card might contain:
 
 ```text
+{% raw %}
 Our revenue over {{Date}}:
+{% endraw %}
 ```
 
 Then, when someone selects "Previous 30 days" in the connected filter, the card displays:
@@ -90,13 +77,8 @@ Then, when someone selects "Previous 30 days" in the connected filter, the card 
 To add a filter value to a card:
 
 1. [Add a filter](../dashboards/filters.md) to your dashboard.
-2. Add a variable to your card by wrapping a name in double braces, like `{{Date}}`.
+2. Add a variable to your card by wrapping a name in double braces, like `{% raw %}{{Date}}{% endraw %}`.
 3. Connect the filter to the card's variable.
-
-A few things to know:
-
-- A filter connected to a card changes only that card's text. It doesn't filter the charts around it.
-- You can insert a filter's value, but not query results like a number or table from a question.
 
 ## Add an image
 
@@ -106,4 +88,4 @@ If your admin has [allowed domains for images](../configuring-metabase/settings.
 ![A description of the image](https://example.com/image.png)
 ```
 
-You can't upload an image to Metabase. Host the image somewhere else, then link to the image URL. The URL needs to be one your Metabase can access.
+You can't upload an image to Metabase, only link to images hosted elsewhere.
