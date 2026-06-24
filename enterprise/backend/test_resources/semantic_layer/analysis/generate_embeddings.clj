@@ -9,8 +9,8 @@
       {:dump-dir \"enterprise/backend/test_resources/semantic_layer/appdb_dump\"})"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
-   [metabase-enterprise.semantic-layer.representation :as rep]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
+   [metabase-enterprise.data-complexity-score.representation :as rep]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.util :as u]
    [metabase.util.json :as json]))

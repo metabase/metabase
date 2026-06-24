@@ -14,8 +14,8 @@
   (:refer-clojure :exclude [run!])
   (:require
    [clojure.pprint :as pprint]
-   [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
-   [metabase-enterprise.semantic-layer.representation :as rep]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
+   [metabase-enterprise.data-complexity-score.representation :as rep]
    [metabase.util.json :as json]))
 
 (defn- dot ^double [^floats a ^floats b]

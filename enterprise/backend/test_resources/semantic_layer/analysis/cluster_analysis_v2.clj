@@ -33,8 +33,8 @@
   (:require
    [clojure.pprint :as pprint]
    [clojure.set :as set]
-   [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
-   [metabase-enterprise.semantic-layer.representation :as rep]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
+   [metabase-enterprise.data-complexity-score.representation :as rep]
    [metabase.util.json :as json]))
 
 ;;; -------------------------------- math --------------------------------
@@ -276,23 +276,19 @@
                                                          [(str "... (" (count idxs) " total)")])))]
                                     {:size (count idxs) :members m}))
                                 (take top-n hac-clusters))})}]
-
     ;; Print summary
     (println "\n--- Degree distribution (neighbors per name) ---")
     (let [d (:degree-distribution result)]
       (println (format "  min=%d  p25=%d  median=%d  p75=%d  max=%d  mean=%.1f"
                        (:min d) (:p25 d) (:median d) (:p75 d) (:max d) (:mean d))))
-
     (println "\n--- Connected components ---")
     (println (format "  %d total, %d multi-member"
                      (:count (:connected-components result))
                      (:multi-member (:connected-components result))))
-
     (println "\n--- Greedy cliques (fully-mutually-connected) ---")
     (println (format "  %d total, %d multi-member"
                      (:count (:greedy-cliques result))
                      (:multi-member (:greedy-cliques result))))
-
     (doseq [{:keys [size density avg-sim min-sim members]}
             (take 5 (:top (:greedy-cliques result)))]
       (println (format "  [%d] density=%.2f avg=%.3f min=%.3f %s"
@@ -301,7 +297,6 @@
                        (if (number? avg-sim) avg-sim 0.0)
                        (if (number? min-sim) min-sim 0.0)
                        (vec (take 5 members)))))
-
     (when hac-clusters
       (println "\n--- Average-linkage HAC ---")
       (println (format "  %d clusters, %d multi-member"
@@ -309,7 +304,6 @@
                        (count (filter #(> (count %) 1) hac-clusters))))
       (doseq [{:keys [size members]} (take 5 (:top (:avg-linkage-hac result)))]
         (println (format "  [%d] %s" size (vec (take 5 members))))))
-
     (when output
       (spit output (with-out-str (pprint/pprint result)))
       (println "\nWritten to" output))
