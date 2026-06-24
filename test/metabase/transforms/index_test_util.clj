@@ -42,6 +42,21 @@
                                           schema table])
                         (mapv #(update % :granularity long)))}))
 
+(defn- bigquery-clustering
+  "Clustering columns of `table` in dataset `schema`, in clustering order, read from INFORMATION_SCHEMA. BigQuery has no
+  JDBC connection, so this runs a native query through the QP rather than `jdbc/query`. Returns e.g. `[\"category\"]`."
+  [database schema table]
+  (mapv first
+        (mt/rows
+         (mt/process-query
+          {:database (:id database)
+           :type     :native
+           :native   {:query (format (str "SELECT column_name FROM `%s`.INFORMATION_SCHEMA.COLUMNS "
+                                          "WHERE table_name = ? AND clustering_ordinal_position IS NOT NULL "
+                                          "ORDER BY clustering_ordinal_position")
+                                     schema)
+                      :params [table]}}))))
+
 (def driver-cases
   "Driver -> test case: `:indexes` to declare (every method whose column types `transforms_products` can satisfy; the
   rest, e.g. Postgres gin/gist, live in the driver-level and fetch suites), `:physical-indexes` a
@@ -65,7 +80,11 @@
                                     :columns [{:name "price"}] :granularity 1}]
                 :expected         {:sorting-key  "(category)"
                                    :skip-indexes [{:name "by_price" :type "minmax" :expr "(price)" :granularity 1}]}
-                :physical-indexes clickhouse-indexes}})
+                :physical-indexes clickhouse-indexes}
+   ;; BigQuery: inline, unnamed clustering (`CLUSTER BY`), its only index-equivalent.
+   :bigquery-cloud-sdk {:indexes          [{:kind :clustering :columns [{:name "category"}]}]
+                        :expected         ["category"]
+                        :physical-indexes bigquery-clustering}})
 
 (defn index-test-drivers
   "Drivers that run transforms and declare any index support."
@@ -175,4 +194,14 @@
     {:label "an unsorted table returns []"
      :table "mb_fetch_ch_empty"
      :create ["CREATE TABLE mb_fetch_ch_empty (a Int64) ENGINE = MergeTree ORDER BY ()"]
+     :expected #{}}]
+
+   :bigquery-cloud-sdk
+   [{:label  "the inline clustering, unnamed, reconciled by kind + columns"
+     :table  "mb_fetch_bq"
+     :create ["CREATE TABLE mb_fetch_bq (category STRING, price FLOAT64) CLUSTER BY category"]
+     :expected #{(idx nil :clustering nil ["category"])}}
+    {:label "a table with no clustering returns []"
+     :table "mb_fetch_bq_empty"
+     :create ["CREATE TABLE mb_fetch_bq_empty (a INT64, b INT64)"]
      :expected #{}}]})

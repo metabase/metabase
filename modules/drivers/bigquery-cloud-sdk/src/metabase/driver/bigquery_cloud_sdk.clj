@@ -14,6 +14,7 @@
    ;; isolation (`init-workspace-isolation!`, `grant-workspace-read-access!`,
    ;; `check-isolation-permissions`, `destroy-workspace-isolation!`).
    [metabase.driver.bigquery-cloud-sdk.workspaces]
+   [metabase.driver.common :as driver.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
@@ -46,6 +47,7 @@
     BigQuery$TableOption
     BigQueryException
     BigQueryOptions
+    Clustering
     Dataset
     DatasetId
     Field
@@ -56,6 +58,7 @@
     JobInfo
     QueryJobConfiguration
     Schema
+    StandardTableDefinition
     Table
     TableDefinition$Type
     TableId
@@ -968,6 +971,11 @@
                               :expressions/integer              true
                               :expressions/text                 true
                               :identifiers-with-spaces          true
+                              ;; clustering is BigQuery's only index-equivalent; it's inlined into the CTAS/CREATE
+                              ;; TABLE (`CLUSTER BY`), so there's no separate DDL (`:index/standalone-create`,
+                              ;; `:transforms/index-ddl`).
+                              :index/fetch                      true
+                              :index/inline-create              true
                               :metadata/key-constraints         false
                               :metadata/table-existence-check   true
                               :nested-fields                    true
@@ -1079,6 +1087,60 @@
   (sql.u/format-sql-and-fix-params :mysql native-form))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; BigQuery has no secondary indexes. Clustering is the index-equivalent and is inlined into the table at creation
+;; (`CLUSTER BY`), so it renders in both creation seams: the CTAS in `compile-transform` and the CREATE TABLE in
+;; `create-table!`. Clustering is unnamed (matched by kind + columns in `reconcile/unnamed-inline-kinds`), and
+;; BigQuery allows at most 4 clustering columns.
+
+(defmethod driver/supported-index-methods :bigquery-cloud-sdk
+  [_driver _database]
+  {:clustering {:lifecycle :inline
+                :fields    [driver.common/index-columns-field]}})
+
+(defn- clustering-clause
+  "Render the inline `CLUSTER BY col1, col2, ...` clause for a table's `indexes`, or nil when there's no clustering."
+  [indexes]
+  (when-let [{:keys [columns]} (some #(when (= :clustering (:kind %)) %) indexes)]
+    (let [cols (str/join ", " (map #(sql.u/quote-name :bigquery-cloud-sdk :field (:name %)) columns))]
+      (format "CLUSTER BY %s" cols))))
+
+(defn- table-clustering-columns
+  "Clustering columns of the BigQuery `table` in `schema`, in clustering order, or nil when the table is absent, isn't a
+  standard table (view/external), or isn't clustered. Reads the table metadata directly; no SQL.
+  Uses `get-table*` (like `table-exists?`) so a missing table is nil rather than a Malli error."
+  [database schema table]
+  (when-not (or (str/blank? schema) (str/blank? table))
+    (let [details    (driver.conn/effective-details database)
+          client     (database-details->client details)
+          project-id (bigquery.common/get-project-id details)]
+      (when-let [^Table bq-table (get-table* client project-id schema table)]
+        (let [definition (.getDefinition bq-table)]
+          (when (instance? StandardTableDefinition definition)
+            (when-let [^Clustering clustering (.getClustering ^StandardTableDefinition definition)]
+              (not-empty (vec (.getFields clustering))))))))))
+
+;; The only physical "index" is the inline, unnamed clustering, read straight off the table metadata
+;; (`StandardTableDefinition.getClustering`); views/external tables have no clustering. Returns a single unnamed
+;; `:clustering` row whose `:key-columns` are in clustering order, or `[]` when the table isn't clustered.
+(defmethod driver/fetch-table-indexes :bigquery-cloud-sdk
+  [_driver database schema table]
+  (if-let [cluster-cols (table-clustering-columns database schema table)]
+    [{:name              nil
+      :kind              :clustering
+      :access-method     nil
+      :is-unique         false
+      :is-primary        false
+      :is-valid          true
+      :key-columns       cluster-cols
+      :include-columns   []
+      :partial-predicate nil
+      :definition        (format "CLUSTER BY %s" (str/join ", " cluster-cols))}]
+    []))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Transforms Support                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -1089,10 +1151,13 @@
       (qn (name table)))))
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
-  [_driver {:keys [query output-table]}]
+  [_driver {:keys [query output-table indexes]}]
   (let [{sql-query :query sql-params :params} query
-        table-str (get-table-str output-table)]
-    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str sql-query)
+        table-str (get-table-str output-table)
+        cluster   (clustering-clause indexes)]
+    [(if cluster
+       (format "CREATE OR REPLACE TABLE %s %s AS %s" table-str cluster sql-query)
+       (format "CREATE OR REPLACE TABLE %s AS %s" table-str sql-query))
      sql-params]))
 
 (defmethod driver/compile-insert :bigquery-cloud-sdk
@@ -1108,8 +1173,10 @@
     [(str "DROP TABLE IF EXISTS " table-str)]))
 
 (defmethod driver/create-table! :bigquery-cloud-sdk
-  [driver database-id table-name column-definitions & {:keys [primary-key]}]
-  (let [sql       (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
+  [driver database-id table-name column-definitions & {:keys [primary-key indexes]}]
+  (let [base      (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
+        cluster   (clustering-clause indexes)
+        sql       (if cluster (str base " " cluster) base)
         database  (t2/select-one :model/Database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
