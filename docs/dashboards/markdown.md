@@ -1,19 +1,17 @@
 ---
-title: Markdown in Metabase
-summary: Use Markdown to format text in Metabase dashboard cards, documents, and descriptions.
+title: Format text with Markdown
+summary: How to add headings, lists, code blocks, images, and more to dashboard cards and documents using Markdown syntax.
 ---
 
-# Markdown in Metabase
+# Format text with Markdown
 
 Use Markdown in Metabase to format text, add headings and lists, and insert links and images. In Metabase, you can use Markdown in:
 
 - Dashboard header and text cards
 - Documents
-- Descriptions
+- Descriptions (for entities like questions and dashboards)
 
-This page covers the most common Markdown formatting options in Metabase. For a complete Markdown reference, see [The Markdown Guide](https://www.markdownguide.org/).
-
-> Markdown headings and links are not the same as heading cards and link cards. This page covers Markdown *headings* (text you enlarge with `#`) and Markdown *links* (clickable text you add with brackets and parentheses). Dashboards also have heading cards and link cards, which are separate features.
+Metabase uses GitHub Flavored Markdown.
 
 ## Headings
 
@@ -30,6 +28,8 @@ This renders as:
 ![Three headings rendered in a Metabase text card](./images/markdown-headings.png)
 
 Metabase supports six heading levels, from `#` (largest) to `######` (smallest).
+
+Markdown headings aren't the same as dashboard heading cards. Headings here are text you enlarge with `#`. Heading cards are a separate dashboard feature.
 
 ## Bold and italics
 
@@ -79,20 +79,24 @@ To nest a bulleted item under another bulleted item, indent the nested item with
 To add a link, put the link text in square brackets, followed by the URL in parentheses:
 
 ```text
-[Metabase documentation](https://www.metabase.com/docs/)
+[the internet's finest webpage](https://www.metabase.com)
 ```
 
-This renders as a clickable link: [Metabase documentation](https://www.metabase.com/docs/).
+This renders as a clickable link: [the internet's finest webpage](https://www.metabase.com).
+
+Markdown links aren't the same as dashboard link cards, which are a separate dashboard feature for linking to other items in your Metabase. For more information, see [Link cards](../dashboards/introduction.md#link-cards).
 
 ## Images and GIFs
 
-To add an image, type an exclamation point (`!`), then put the alt text in square brackets, followed by the image URL in parentheses. The alt text describes the image for users with a screen reader or those who can't load the image.
+![Cat GIF](images/markdown-cat.gif)
+
+To add an image, type an exclamation point (!), then a description of the image in square brackets, then the image URL in parentheses. That description is called alt text. It appears if the image can't load, and screen readers read it aloud.
 
 ```text
-![A bar chart of monthly sales](https://example.com/sales-chart.png)
+![A cat wearing a tiny hat](https://example.com/cat-in-hat.png)
 ```
 
-> You can't upload an image to Metabase. Host the image somewhere else, then link to the image URL. The URL needs to be one your Metabase can access.
+You can't upload an image to Metabase. Link to an image that's already online, using a URL your Metabase can access. Your admin can also [restrict which domains images load from](../configuring-metabase/settings.md#allowed-domains-for-images).
 
 The same syntax works for GIFs. Just use the URL of a GIF instead of an image.
 
@@ -119,7 +123,7 @@ WHERE status = 'paid'
 To create a blockquote, start the line with a greater than sign (`>`) and a space.
 
 ```text
-> This dashboard tracks weekly active users.
+> Every number is fine until someone asks how it was calculated.
 ```
 
 ## Horizontal lines
@@ -136,8 +140,14 @@ Section two.
 
 ## Markdown in documents
 
-In a [document](../documents/introduction.md), Metabase formats your text as you type instead of showing the raw Markdown. A few things to know:
+In a [document](../documents/introduction.md), Metabase formats your text as you type instead of showing the raw Markdown. If something doesn't format the way you expect, try retyping the last character or two to trigger the conversion.
+
+A few other things to know:
 
 - Type `/` to open a menu of formatting options.
 - When you paste a URL, Metabase turns it into a clickable link automatically.
 - To add an image, start the image on its own line. Type the closing parenthesis instead of pasting it.
+
+## Further reading
+
+- [The Markdown Guide](https://www.markdownguide.org/) for complete Markdown syntax
