@@ -141,3 +141,28 @@
   (let [base-query (-> (lib/query mp card-dataset-query) lib/remove-all-breakouts)
         ref-clause (normalize-target-ref target)]
     (lib/breakout base-query (apply-default-bucket base-query ref-clause dim))))
+
+(defn apply-filter-path
+  "Fold an accumulating **filter path** onto `query` — the conjunction of equality
+  filters that scopes a drilled node (`plan = Enterprise ∧ region = US`). Each
+  step is `{:target <dim target> :value <raw cell value>}`; the value is the raw
+  QP breakout group value (never a display label), so the filter selects exactly
+  the rows that were measured.
+
+  Inversion is two cases: a `nil` value becomes `is-null` (SQL `= NULL` never
+  matches, so the \"(empty)\" child would otherwise select zero rows); any other
+  value becomes `=`. Categorical-only — every value is a raw scalar, so there is
+  no bucket-range inversion. Used by both the in-loop child measurement and the
+  runner's `finalize-row!`, so a survivor's persisted query carries its path.
+  An empty path is a no-op."
+  [query filter-path]
+  (reduce (fn [q {:keys [target value]}]
+            (let [ref-clause (normalize-target-ref target)
+                  col        (or (lib/find-matching-column q -1 ref-clause
+                                                           (lib/breakoutable-columns q))
+                                 ref-clause)]
+              (lib/filter q (if (nil? value)
+                              (lib/is-null col)
+                              (lib/= col value)))))
+          query
+          filter-path))

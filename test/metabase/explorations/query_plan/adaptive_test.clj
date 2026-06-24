@@ -8,7 +8,10 @@
    [clojure.test :refer :all]
    [metabase.explorations.query-plan.adaptive :as qp.adaptive]
    [metabase.explorations.query-plan.mechanical :as qp.mech]
-   [metabase.explorations.query-plan.planner :as planner]))
+   [metabase.explorations.query-plan.planner :as planner]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.test :as mt]))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Fixture helpers (mirror mechanical-test — hand-built metric-dim-ctx)
@@ -67,6 +70,58 @@
     (let [groups [{:group-id 1 :metrics [(metric-with-dims 1 {})]}]]
       (is (= :skip-not-applicable
              (:outcome (planner/plan! qp.adaptive/planner {:metric-dim-ctx {:groups groups}})))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Issue 3 — candidate-categorical-dims (pure)
+;;; ---------------------------------------------------------------------------
+
+(deftest candidate-categorical-dims-test
+  (let [m (metric-with-dims 1 {"plan"    (text-dim "plan")
+                               "region"  (text-dim "region")
+                               "created" (datetime-dim "created")
+                               "amount"  (numeric-dim "amount")})]
+    (testing "only categorical (default-bucket-nil) dims are candidates; temporal/numeric excluded"
+      (is (= #{"plan" "region"}
+             (set (map :dimension-id (qp.adaptive/candidate-categorical-dims m))))))
+    (testing "each candidate carries its resolved target and dim snapshot"
+      (let [c (first (filter #(= "plan" (:dimension-id %))
+                             (qp.adaptive/candidate-categorical-dims m)))]
+        (is (= [:field 1 nil] (:target c)))
+        (is (= "plan" (-> c :dim :dimension_id))))))
+  (testing "no cardinality cap — a high-cardinality categorical is still a candidate"
+    (let [m (metric-with-dims 1 {"label" (text-dim "label" 5000)})]
+      (is (= ["label"] (map :dimension-id (qp.adaptive/candidate-categorical-dims m)))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Issue 3 — measure-split* (eager QP measurement, DB-backed)
+;;; ---------------------------------------------------------------------------
+
+(defn- sum-price-metric-query []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price)))))))
+
+(deftest measure-split-test
+  (let [mp     (mt/metadata-provider)
+        card   {:dataset_query (sum-price-metric-query)}
+        target ["field" {} (mt/id :products :category)]
+        dim    (text-dim "category")]
+    (testing "cells carry :value :metric :count, one per category"
+      (let [cells (:cells (#'qp.adaptive/measure-split* mp card target dim []))]
+        (is (= 4 (count cells)) "products has 4 categories")
+        (is (every? #(and (some? (:value %)) (number? (:metric %)) (number? (:count %))) cells))))
+    (testing "a sum-of-field metric also carries per-group :variance and :group-mean"
+      (let [cells (:cells (#'qp.adaptive/measure-split* mp card target dim []))]
+        (is (every? #(number? (:variance %)) cells))
+        (is (every? #(number? (:group-mean %)) cells))))
+    (testing "a filter path scopes the measurement"
+      (let [cells (:cells (#'qp.adaptive/measure-split*
+                           mp card target dim
+                           [{:target ["field" {} (mt/id :products :category)] :value "Gadget"}]))]
+        (is (= 1 (count cells)) "filtering to category=Gadget leaves one breakout cell")
+        (is (= "Gadget" (:value (first cells))))))
+    (testing "a failed measurement degrades to {:cells []}"
+      (is (= [] (:cells (#'qp.adaptive/measure-split* mp {:dataset_query nil} target dim [])))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Issue 2 — metric-kind classification

@@ -10,10 +10,35 @@
   `insert-plan-rows!` materialization are reused unchanged; it is the first
   planner to run QP queries inside `plan!`."
   (:require
+   [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
-   [metabase.explorations.query-plan.planner :as planner]))
+   [metabase.explorations.query-plan.planner :as planner]
+   [metabase.lib.core :as lib]
+   [metabase.query-processor.core :as qp]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+;;; ---------------------------------------------------------------------------
+;;; Candidate categorical dimensions
+;;; ---------------------------------------------------------------------------
+
+(defn candidate-categorical-dims
+  "Categorical dimensions the loop may split `metric-ctx`'s subject metric on:
+  the metric's applicable dims (already resolved against the Card via
+  `qp.context` `applicability`) that have **no default bucket**
+  (`default-bucket-for-dim` = nil — i.e. not temporal, not binnable-numeric).
+  No cardinality cap — head-concentrated high-cardinality categoricals are
+  exactly the splits we want; the long tail is handled by the split-gain scorer
+  and min-support, not by exclusion.
+
+  Returns a vector of `{:dimension-id :target :dim}`."
+  [metric-ctx]
+  (into []
+        (keep (fn [[dim-id {:keys [target dim]}]]
+                (when (nil? (qp.mbql/default-bucket-for-dim dim))
+                  {:dimension-id dim-id :target target :dim dim})))
+        (:applicability metric-ctx)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Centralized, tunable configuration
@@ -173,6 +198,92 @@
                         (comp - double :prior)
                         :dimension-id)
                   measured)))
+
+;;; ---------------------------------------------------------------------------
+;;; Measurement (impure) — run the breakout eagerly, collect support-weighted cells
+;;; ---------------------------------------------------------------------------
+
+(defn- col-indices
+  "From a QP result's `:cols`, the breakout column index and the aggregation
+  column indices (in order). The metric is a single aggregation, then the loop's
+  added `count` (support), then — for sum/avg-of-a-field metrics — the within-group
+  variance aggregations: `[metric count var]` for an `avg` metric, or
+  `[metric count avg var]` for a `sum` metric (the extra `avg` recovers the group
+  mean a total can't express)."
+  [cols]
+  {:dim-idx (first (keep-indexed (fn [i c] (when (= :breakout (:source c)) i)) cols))
+   :agg-idxs (vec (keep-indexed (fn [i c] (when (= :aggregation (:source c)) i)) cols))})
+
+(defn- metric-variance-aggregations
+  "Aggregations to append to a sum/avg metric's measurement so `split-gain` can form
+  η² from real within-group variance: a population `var` (`VAR_POP`) of the metric's
+  field for `SS_within`, and — for a `sum` metric, whose cell value is a group
+  *total* rather than a group mean — an `avg` of the same field to recover the true
+  per-row group mean for `SS_between`. Returns `{:aggs [...] :mean? bool}` (the aggs
+  are appended *after* the loop's `count`, so `:mean?` says whether an `avg` precedes
+  the `var`), or `nil` for `count` (no per-row field), rates (within-variance is
+  analytic), and multi-arg / expression aggregations (which then fall back to the
+  rate-free form). The column is resolved fresh from `query` so the new aggs get
+  distinct `:lib/uuid`s."
+  [query]
+  (when-let [agg (first (lib/aggregations query))]
+    (when (and (#{:sum :avg} (first agg)) (= 3 (clojure.core/count agg)))
+      (when-let [col (lib/find-matching-column (nth agg 2) (lib/visible-columns query))]
+        (if (= :sum (first agg))
+          {:aggs [(lib/avg col) (lib/var col)] :mean? true}
+          {:aggs [(lib/var col)]               :mean? false})))))
+
+(defn- measure-split*
+  "Run `metric × dim` under `filter-path` eagerly through the QP, with an extra
+  `count` aggregation for support and — for sum/avg metrics — a per-group `var`
+  (and, for sum metrics, an `avg`) for within-group variance. Returns
+  `{:cells [...]}` where each cell is
+  `{:value <raw breakout value> :metric <metric agg> :count <rows>}`, plus
+  `:variance <population variance>` when the var aggregation is present and
+  `:group-mean <avg>` for sum metrics — exactly what `split-gain` consumes.
+  Returns `{:cells []}` on any failure."
+  [mp card target dim filter-path]
+  (try
+    (let [base     (-> (qp.mbql/build-snapshot-mbql mp (:dataset_query card) target dim)
+                       (qp.mbql/apply-filter-path filter-path))
+          {var-aggs :aggs mean? :mean?} (metric-variance-aggregations base)
+          q        (reduce lib/aggregate (lib/aggregate base (lib/count)) var-aggs)
+          result   (qp/process-query
+                    (qp/userland-query-with-default-constraints q {:context :exploration}))
+          cols     (get-in result [:data :cols])
+          rows     (get-in result [:data :rows])
+          {:keys [dim-idx agg-idxs]} (col-indices cols)
+          metric-idx (nth agg-idxs 0 nil)
+          count-idx  (nth agg-idxs 1 nil)
+          mean-idx   (when mean? (nth agg-idxs 2 nil))
+          var-idx    (nth agg-idxs (if mean? 3 2) nil)
+          cells    (when (and dim-idx metric-idx count-idx)
+                     (mapv (fn [r] (cond-> {:value  (nth r dim-idx nil)
+                                            :metric (nth r metric-idx nil)
+                                            :count  (nth r count-idx nil)}
+                                     mean-idx (assoc :group-mean (nth r mean-idx nil))
+                                     var-idx  (assoc :variance   (nth r var-idx nil))))
+                           rows))]
+      {:cells (or cells [])})
+    (catch Throwable e
+      (log/warnf e "Adaptive loop: measurement failed for dim %s" (:dimension_id dim))
+      {:cells []})))
+
+(defn- real-measure-split
+  "Production measurement: measure `candidate`'s split on `metric-ctx`'s metric
+  under `filter-path`."
+  [metric-ctx filter-path {:keys [target dim]}]
+  (measure-split* (:mp metric-ctx) (:card metric-ctx) target dim filter-path))
+
+(def ^:dynamic *measure-split*
+  "Seam: `(fn [metric-ctx filter-path candidate] -> {:cells [...]})`. Rebound in
+  tests so the orchestration / descent can be exercised with canned measurement
+  cells, without running the QP."
+  real-measure-split)
+
+;;; ---------------------------------------------------------------------------
+;;; Planner
+;;; ---------------------------------------------------------------------------
 
 (defn- plan-group
   "Plan one group: the full depth-1 matrix (every applicable selected pair,
