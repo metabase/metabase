@@ -200,19 +200,31 @@ describe("issue 8030 + 32444", () => {
 
         H.saveDashboard();
 
-        // Saving exits edit mode and reloads both cards (the filter has no value
-        // yet), firing two more card queries (total 4). Wait for both to land
-        // before applying the filter. The previous "reset the intercept after
-        // save" pattern was racy: a late save-triggered query could bleed onto a
-        // freshly registered alias and be miscounted as filter-triggered, so the
-        // post-filter count intermittently saw 2 instead of 1 (metabase#32444).
-        cy.get("@getCardQuery.all").should("have.length", 4);
+        // Saving exits edit mode and reloads the cards. The number of
+        // save-triggered card queries is not deterministic (a card may be
+        // served from cache and skip its query), so we must not hardcode it.
+        // Instead, wait until both cards have rendered their results — which
+        // guarantees every save-triggered query has settled and been logged —
+        // then snapshot the request count as the baseline.
+        H.getDashboardCard(0).findAllByTestId("cell-data").should("be.visible");
+        H.getDashboardCard(1).findAllByTestId("cell-data").should("be.visible");
 
-        addFilterValue("Aerodynamic Bronze Hat");
+        cy.get("@getCardQuery.all").then((queriesBeforeFilter) => {
+          addFilterValue("Aerodynamic Bronze Hat");
 
-        // Only the card connected to the filter should re-execute; the
-        // disconnected card must not — so exactly one more query fires (total 5).
-        cy.get("@getCardQuery.all").should("have.length", 5);
+          // The connected card re-runs and now shows only the filtered product —
+          // a positive anchor that the filter took effect and the card reloaded.
+          H.getDashboardCard(0)
+            .findByText("Aerodynamic Bronze Hat")
+            .should("be.visible");
+
+          // The disconnected card must NOT re-execute, so exactly one more query
+          // fires beyond the baseline (metabase#32444).
+          cy.get("@getCardQuery.all").should(
+            "have.length",
+            queriesBeforeFilter.length + 1,
+          );
+        });
       });
     });
   });
