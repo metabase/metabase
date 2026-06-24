@@ -358,7 +358,7 @@ function clickRowChartBarForLabel(title: string, label: string): void {
   assertChartRendered(title);
   getChartCard(title).within(() => {
     cy.findByText(label).then(([labelEl]) => {
-      cy.get('[aria-roledescription="bar"]')
+      cy.findAllByRole("graphics-symbol")
         .filter((_index, barEl) => {
           const labelRect = labelEl.getBoundingClientRect();
           const labelMidY = labelRect.top + labelRect.height / 2;
