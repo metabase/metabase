@@ -1058,6 +1058,23 @@ describe("useMetabaseQuery", () => {
       );
     });
 
+    it("throws on an unknown sort direction instead of defaulting to asc", () => {
+      expect(() =>
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          sorts: [
+            {
+              column: TEST_SCHEMA.tables.orders.fields.status,
+              // @ts-expect-error invalid directions are rejected at the type level and at runtime
+              direction: "descending",
+            },
+          ],
+        }),
+      ).toThrow(
+        "Table query object creation requires a table reference with id and databaseId.",
+      );
+    });
+
     it("builds a complete dataset query from a generated metric schema", () => {
       expect(
         createMetabaseQuery({

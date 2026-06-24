@@ -109,7 +109,7 @@ function getBreakoutDimension(
 
 export const normalizeSort = (
   sort: unknown,
-): { column: unknown; direction: OrderByDirection } => {
+): { column: unknown; direction: OrderByDirection | null } => {
   if (isObject(sort) && "column" in sort) {
     return {
       column: sort.column,
@@ -120,8 +120,17 @@ export const normalizeSort = (
   return { column: sort, direction: "asc" };
 };
 
-const normalizeSortDirection = (direction: unknown): OrderByDirection =>
-  direction === "desc" ? "desc" : "asc";
+// Returns null for unknown non-empty values so an invalid direction fails the
+// query build instead of silently defaulting to "asc".
+const normalizeSortDirection = (
+  direction: unknown,
+): OrderByDirection | null => {
+  if (direction == null) {
+    return "asc";
+  }
+
+  return direction === "asc" || direction === "desc" ? direction : null;
+};
 
 function getBreakoutOptions(breakout: unknown): Record<string, unknown> {
   if (!isObject(breakout)) {

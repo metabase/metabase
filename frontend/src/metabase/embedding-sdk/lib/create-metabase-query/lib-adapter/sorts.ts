@@ -3,7 +3,7 @@ import type { ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import { isObject } from "metabase-types/guards";
 
-import { normalizeSort } from "../input-utils";
+import { getFieldId, normalizeSort } from "../input-utils";
 
 const STAGE_INDEX = 0;
 
@@ -15,6 +15,10 @@ export function applySorts(
 
   for (const sort of sorts ?? []) {
     const { column, direction } = normalizeSort(sort);
+
+    if (direction == null) {
+      return null;
+    }
 
     const libColumn = findOrderableColumn(nextQuery, column);
 
@@ -32,6 +36,26 @@ function findOrderableColumn(
   query: Query,
   column: unknown,
 ): ColumnMetadata | null {
+  const orderableColumns = Lib.orderableColumns(query, STAGE_INDEX);
+
+  // Field references resolve by field id first: `orderableColumns` can include
+  // implicitly-joinable columns from other tables that share a name (`id`,
+  // `name`, ...), so a name-only match could pick the wrong column.
+  if (isTableFieldSchema(column)) {
+    const fieldId = getFieldId(column);
+
+    if (fieldId != null) {
+      const columnByFieldId = orderableColumns.find(
+        (orderableColumn) =>
+          Lib.fieldValuesSearchInfo(query, orderableColumn).fieldId === fieldId,
+      );
+
+      if (columnByFieldId) {
+        return columnByFieldId;
+      }
+    }
+  }
+
   const name = getSortColumnName(column);
 
   if (!name) {
@@ -41,7 +65,7 @@ function findOrderableColumn(
   const lowerName = name.toLowerCase();
 
   return (
-    Lib.orderableColumns(query, STAGE_INDEX).find(
+    orderableColumns.find(
       (orderableColumn) =>
         Lib.displayInfo(
           query,
