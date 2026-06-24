@@ -8,6 +8,7 @@ import {
 import type {
   CardId,
   CollectionId,
+  DependencyNode,
   FieldId,
   NativeQuerySnippetId,
   SegmentId,
@@ -212,6 +213,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
     it("should persist filter changes after page reload", () => {
       setupEntities();
       H.waitForBackfillComplete();
+      waitForUnreferencedEntities(ENTITY_NAMES);
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({ visibleEntities: MODEL_NAMES });
 
@@ -1096,6 +1098,25 @@ function createDashboardWithParameterWithCardSource({
         },
       }),
     ],
+  });
+}
+
+function getNodeName(node: DependencyNode): string | undefined {
+  if (node.type === "table") {
+    return node.data.display_name;
+  }
+  return "name" in node.data ? node.data.name : undefined;
+}
+
+// `waitForBackfillComplete` only reports that the global backfill task is done,
+// not that freshly-created entities have been analyzed into the unreferenced
+// graph. The list page issues a single query on load, so poll the endpoint until
+// the expected entities are present before visiting — otherwise the list can
+// render without them and the assertions time out (mirrors the broken-list spec).
+function waitForUnreferencedEntities(expectedNames: string[]) {
+  H.waitForUnreferencedEntities((nodes) => {
+    const names = new Set(nodes.map(getNodeName));
+    return expectedNames.every((name) => names.has(name));
   });
 }
 
