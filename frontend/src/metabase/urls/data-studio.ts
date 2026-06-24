@@ -31,6 +31,7 @@ export const DATA_STUDIO_TABLE_METADATA_TABS = [
   "field",
   "segments",
   "measures",
+  "indexes",
 ] as const;
 export type DataStudioTableMetadataTab =
   (typeof DATA_STUDIO_TABLE_METADATA_TABS)[number];
