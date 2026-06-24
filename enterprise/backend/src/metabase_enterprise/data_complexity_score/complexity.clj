@@ -599,13 +599,17 @@
 
         :else
         (let [{:keys [^objects adj edges]} (build-adjacency vecs synonym-similarity-threshold)
-              comps    (union-find-components adj n)
-              multi    (filter #(>= (long %) 2) comps)
-              largest  (if (seq comps) (apply max comps) 0)
-              avg-comp (when (seq multi)
-                         (double (/ (reduce + 0 multi) (count multi))))]
+              comps          (union-find-components adj n)
+              multi          (filter #(>= (long %) 2) comps)
+              largest        (if (seq comps) (apply max comps) 0)
+              avg-comp       (when (seq multi)
+                               (double (/ (reduce + 0 multi) (count multi))))
+              ;; Graph density: edges as a fraction of the n·(n-1)/2 possible undirected edges,
+              ;; so the value stays in [0,100] (a complete graph = 100%). n ≥ 2 here, so the
+              ;; denominator is ≥ 1.
+              possible-edges (/ (* n (dec n)) 2)]
           {:synonym-pairs             (scored-leaf :synonym-pair edges)
-           :synonym-edge-density      (value-leaf (* 100.0 (/ (double ^long edges) (double n))))
+           :synonym-edge-density      (value-leaf (* 100.0 (/ (double ^long edges) (double possible-edges))))
            :synonym-components        (value-leaf (count comps))
            :synonym-largest-component (value-leaf largest)
            :synonym-avg-component     (value-leaf avg-comp)
@@ -959,7 +963,8 @@
                             :meta     (cond-> {:formula-version   formula-version
                                                :format-version    format-version
                                                :synonym-threshold synonym-similarity-threshold
-                                               :level             level}
+                                               :level             level
+                                               :weights           weights}
                                         embedding-model-meta (assoc :embedding-model embedding-model-meta)
                                         text-variant         (assoc :text-variant    text-variant))}
             ;; `emit-snowplow!` returns true only when every event reached the tracker (false when
