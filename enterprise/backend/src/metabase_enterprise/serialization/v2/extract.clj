@@ -45,7 +45,7 @@
     (conj "CustomVizPlugin")
 
     (not (:no-curated-search opts))
-    (conj "CuratedSearchEntry")))
+    (conj "OsiAiContext")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"

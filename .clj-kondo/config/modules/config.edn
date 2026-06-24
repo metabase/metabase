@@ -687,14 +687,11 @@
 
   curated-search
   {:team "Metabot"
-   :api  #{metabase.curated-search.api
-           metabase.curated-search.core}
-   :uses #{api
-           models
+   :api  #{metabase.curated-search.core}
+   :uses #{models
            premium-features
-           request
            util}
-   :model-exports #{:model/CuratedSearchEntry}
+   :model-exports #{:model/OsiAiContext}
    :model-imports #{:model/Card}}
 
   dashboards
@@ -1483,6 +1480,14 @@
            task
            tracing
            util}}
+
+  osi
+  {:team "Metabot"
+   :api  #{metabase.osi.ai-context.api}
+   :uses #{api
+           request
+           util}
+   :model-imports #{:model/OsiAiContext}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -2985,9 +2990,8 @@
            util
            enterprise/semantic-search}
    :model-imports #{:model/Card
-                    :model/Collection
-                    :model/CuratedSearchEntry
                     :model/Measure
+                    :model/OsiAiContext
                     :model/Segment
                     :model/Table}}
 

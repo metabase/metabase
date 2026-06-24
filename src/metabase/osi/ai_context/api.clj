@@ -1,4 +1,4 @@
-(ns metabase.curated-search.api
+(ns metabase.osi.ai-context.api
   "Admin REST API for managing `osi_ai_context` rows: OSI `ai_context` metadata attached to a library
   entity."
   (:require
@@ -9,10 +9,12 @@
    [toucan2.core :as t2]))
 
 (def ^:private EntityRef
-  "Entity ref as accepted on writes: the model must be a known agent-facing entity type (as used with
-  read_resource), plus plain \"card\"."
+  "Entity ref accepted on writes.
+  The model must be one the reconciler indexes as a library entity; anything else (e.g. a plain
+  `card`/`question`) would never match an index doc and is rejected."
+  ;; the reconciler keys library Cards by their type (metric/model) and indexes table-bound measures/segments.
   [:map
-   [:model [:enum "table" "card" "model" "metric" "question"]]
+   [:model [:enum "table" "metric" "model" "measure" "segment"]]
    [:id    ms/PositiveInt]
    [:name  {:optional true} :string]])
 
@@ -41,13 +43,12 @@
 (def ^:private default-offset 0)
 
 (defn- find-by-entity
-  "The existing row for this entity ref, matched on (model, id) only (the optional `:name` is ignored).
-  One ai_context row per entity is enforced here, not by a DB constraint (JSON-text uniqueness is brittle
-  cross-DB)."
+  "The existing row for this entity ref, matched on (model, id) only (the optional `:name` is ignored)."
   [{:keys [model id]}]
+  ;; one row per entity is enforced here, not by a DB constraint — JSON-text uniqueness is brittle cross-DB.
   (some (fn [{e :entity :as row}]
           (when (and (= (:model e) model) (= (:id e) id)) row))
-        (t2/select :model/CuratedSearchEntry)))
+        (t2/select :model/OsiAiContext)))
 
 (api.macros/defendpoint :get "/"
   :- [:map
@@ -61,11 +62,11 @@
   (api/check-superuser)
   (let [limit  (or (request/limit) default-limit)
         offset (or (request/offset) default-offset)]
-    {:data   (t2/select :model/CuratedSearchEntry
+    {:data   (t2/select :model/OsiAiContext
                         {:order-by [[:id :asc]]
                          :limit    limit
                          :offset   offset})
-     :total  (t2/count :model/CuratedSearchEntry)
+     :total  (t2/count :model/OsiAiContext)
      :limit  limit
      :offset offset}))
 
@@ -75,7 +76,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/CuratedSearchEntry :id id)))
+  (api/check-404 (t2/select-one :model/OsiAiContext :id id)))
 
 (api.macros/defendpoint :post "/"
   :- Entry
@@ -89,13 +90,14 @@
        [:ai_context AiContext]]]
   (api/check-superuser)
   (if-let [existing (find-by-entity entity)]
-    (do (t2/update! :model/CuratedSearchEntry (:id existing) {:entity entity :ai_context ai_context})
-        (t2/select-one :model/CuratedSearchEntry :id (:id existing)))
-    (t2/insert-returning-instance! :model/CuratedSearchEntry {:entity entity :ai_context ai_context})))
+    (do (t2/update! :model/OsiAiContext (:id existing) {:entity entity :ai_context ai_context})
+        (t2/select-one :model/OsiAiContext :id (:id existing)))
+    (t2/insert-returning-instance! :model/OsiAiContext {:entity entity :ai_context ai_context})))
 
 (api.macros/defendpoint :put "/:id"
   :- Entry
-  "Update an ai_context entry by ID. Only the provided fields are changed."
+  "Update an ai_context entry by ID. Only the provided fields are changed; pointing `:entity` at an entity
+  that another row already owns is rejected, preserving one row per entity."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    ;; patch semantics: presence of a key (not nil-ness of its value) decides what changes.
@@ -104,13 +106,17 @@
        [:entity     {:optional true} EntityRef]
        [:ai_context {:optional true} AiContext]]]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/CuratedSearchEntry :id id))
+  (api/check-404 (t2/select-one :model/OsiAiContext :id id))
+  (when (contains? body :entity)
+    (let [owner (find-by-entity entity)]
+      (api/check-400 (or (nil? owner) (= (:id owner) id))
+                     "Another ai_context row already exists for that entity")))
   (let [changes (cond-> {}
                   (contains? body :entity)     (assoc :entity entity)
                   (contains? body :ai_context) (assoc :ai_context ai_context))]
     (when (seq changes)
-      (t2/update! :model/CuratedSearchEntry id changes)))
-  (t2/select-one :model/CuratedSearchEntry :id id))
+      (t2/update! :model/OsiAiContext id changes)))
+  (t2/select-one :model/OsiAiContext :id id))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
@@ -118,6 +124,6 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/CuratedSearchEntry :id id))
-  (t2/delete! :model/CuratedSearchEntry :id id)
+  (api/check-404 (t2/select-one :model/OsiAiContext :id id))
+  (t2/delete! :model/OsiAiContext :id id)
   api/generic-204-no-content)

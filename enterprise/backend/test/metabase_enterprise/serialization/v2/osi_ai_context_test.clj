@@ -1,5 +1,5 @@
-(ns metabase-enterprise.serialization.v2.curated-search-entry-test
-  "Round-trip serialization tests for `:model/CuratedSearchEntry`, whose `entity` column holds a
+(ns metabase-enterprise.serialization.v2.osi-ai-context-test
+  "Round-trip serialization tests for `:model/OsiAiContext`, whose `entity` column holds a
   polymorphic Card/Table reference that must survive export and import."
   (:require
    [clojure.java.io :as io]
@@ -42,10 +42,10 @@
     (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
       (doseq [entity-model ["card" "model" "metric" "question"]]
         (testing entity-model
-          (mt/with-temp [:model/CuratedSearchEntry {sli-id :id sli-eid :entity_id}
+          (mt/with-temp [:model/OsiAiContext {sli-id :id sli-eid :entity_id}
                          {:ai_context {:instructions "Use it directly." :synonyms [entity-model]}
                           :entity {:model entity-model :id card-id}}]
-            (let [extracted (ts/extract-one "CuratedSearchEntry" sli-id)]
+            (let [extracted (ts/extract-one "OsiAiContext" sli-id)]
               (testing "the entity ref is exported as a portable reference; ai_context copies verbatim"
                 (is (=? {:entity_id  sli-eid
                          :ai_context {:instructions "Use it directly." :synonyms [entity-model]}
@@ -55,29 +55,29 @@
                 (is (= #{[{:model "Card" :id card-eid}]}
                        (serdes/dependencies extracted))))
               (testing "importing resolves the ref back to the local id"
-                (t2/delete! :model/CuratedSearchEntry :id sli-id)
+                (t2/delete! :model/OsiAiContext :id sli-id)
                 (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
                 (is (= {:model entity-model :id card-id}
-                       (t2/select-one-fn :entity :model/CuratedSearchEntry :entity_id sli-eid)))
+                       (t2/select-one-fn :entity :model/OsiAiContext :entity_id sli-eid)))
                 ;; load-metabase! re-inserts under a new id that with-temp can't reap; clean it up so the
                 ;; row doesn't leak into other tests' view of the (small, fully-scanned) table.
-                (t2/delete! :model/CuratedSearchEntry :entity_id sli-eid)))))))))
+                (t2/delete! :model/OsiAiContext :entity_id sli-eid)))))))))
 
 (deftest unmapped-entity-model-passes-through-test
   (testing "an unrecognized entity model exports as-is (raw id, no deps) instead of aborting the export"
     ;; The CRUD API rejects unknown models, but rows written before a model string was retired (or by
     ;; direct appdb writes) shouldn't take down a whole export.
-    (mt/with-temp [:model/CuratedSearchEntry {sli-id :id}
+    (mt/with-temp [:model/OsiAiContext {sli-id :id}
                    {:ai_context {:instructions "legacy"} :entity {:model "garbage" :id 5}}]
-      (let [extracted (ts/extract-one "CuratedSearchEntry" sli-id)]
+      (let [extracted (ts/extract-one "OsiAiContext" sli-id)]
         (is (=? {:entity {:model "garbage" :id 5}} extracted))
         (is (= #{} (serdes/dependencies extracted)))))))
 
 (deftest table-entity-round-trip-test
   (let [table-id (mt/id :venues)]
-    (mt/with-temp [:model/CuratedSearchEntry {sli-id :id sli-eid :entity_id}
+    (mt/with-temp [:model/OsiAiContext {sli-id :id sli-eid :entity_id}
                    {:ai_context {:instructions "best venues"} :entity {:model "table" :id table-id}}]
-      (let [extracted (ts/extract-one "CuratedSearchEntry" sli-id)
+      (let [extracted (ts/extract-one "OsiAiContext" sli-id)
             table-ref (:entity extracted)]
         (testing "the table ref is exported as a [db schema table] path"
           (is (=? {:entity_id sli-eid
@@ -88,16 +88,16 @@
           (is (= #{[{:model "Database" :id (first (:id table-ref))}]}
                  (serdes/dependencies extracted))))
         (testing "importing resolves the ref back to the local id"
-          (t2/delete! :model/CuratedSearchEntry :id sli-id)
+          (t2/delete! :model/OsiAiContext :id sli-id)
           (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
           (is (= {:model "table" :id table-id}
-                 (t2/select-one-fn :entity :model/CuratedSearchEntry :entity_id sli-eid)))
+                 (t2/select-one-fn :entity :model/OsiAiContext :entity_id sli-eid)))
           ;; load-metabase! re-inserts under a new id that with-temp can't reap; clean it up so the row
           ;; doesn't leak into other tests' view of the (small, fully-scanned) table.
-          (t2/delete! :model/CuratedSearchEntry :entity_id sli-eid))))))
+          (t2/delete! :model/OsiAiContext :entity_id sli-eid))))))
 
 (deftest disk-export-import-round-trip-test
-  (testing "CuratedSearchEntry survives a real on-disk export/import"
+  (testing "OsiAiContext survives a real on-disk export/import"
     ;; The in-memory tests above skip two layers that have silently dropped the model before:
     ;; `extract/model-set` (the default-export selection) and `ingest/legal-top-level-paths` (which
     ;; dirs the importer reads). This drives both through actual YAML on disk.
@@ -107,7 +107,7 @@
         (ts/with-db source-db
           (let [db  (ts/create! :model/Database :name "Prompt DB")
                 t1  (ts/create! :model/Table :name "ORDERS" :db_id (:id db) :schema "PUBLIC")
-                sli (ts/create! :model/CuratedSearchEntry
+                sli (ts/create! :model/OsiAiContext
                                 :ai_context {:instructions "orders guidance"}
                                 :entity {:model "table" :id (:id t1)})]
             (reset! sli-eid (:entity_id sli))
@@ -115,19 +115,19 @@
             (reset! serialized (serdes/with-cache (into [] (extract/extract {}))))))
         (testing "default export selection includes it (guards extract/model-set)"
           (is (= 1 (count (filter (fn [{[{:keys [model]}] :serdes/meta}]
-                                    (= model "CuratedSearchEntry"))
+                                    (= model "OsiAiContext"))
                                   @serialized)))))
         (ts/with-random-dump-dir [dump-dir "sli-serdes-"]
           (storage/store! (seq @serialized) (storage.files/file-writer dump-dir))
-          (testing "stored under the curated_search_entries/ directory"
-            (is (.exists (io/file dump-dir "curated_search_entries"))))
+          (testing "stored under the osi_ai_context/ directory"
+            (is (.exists (io/file dump-dir "osi_ai_context"))))
           (testing "ingest reads it back (guards ingest/legal-top-level-paths)"
             (is (contains? (set (serdes.ingest/ingest-list (serdes.ingest/ingest-yaml dump-dir)))
-                           [{:model "CuratedSearchEntry" :id @sli-eid}])))
+                           [{:model "OsiAiContext" :id @sli-eid}])))
           (testing "loads into a fresh appdb with the table ref resolved"
             (ts/with-db dest-db
               (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
-              (let [row (t2/select-one :model/CuratedSearchEntry :entity_id @sli-eid)]
+              (let [row (t2/select-one :model/OsiAiContext :entity_id @sli-eid)]
                 (is (=? {:ai_context {:instructions "orders guidance"}} row))
                 (is (= "ORDERS"
                        (t2/select-one-fn :name :model/Table :id (get-in row [:entity :id]))))))))))))

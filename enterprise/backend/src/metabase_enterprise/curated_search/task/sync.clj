@@ -24,7 +24,7 @@
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Reconciles the library entity index (pgvector) with the appdb."}
-  CuratedSearchEntrySync [_ctx]
+  OsiAiContextSync [_ctx]
   (when (curated-search.core/available?)
     (try
       (let [{:keys [inserted updated deleted] :as result}
@@ -39,13 +39,13 @@
 (def ^:private ^Duration startup-delay (Duration/parse "PT10S"))
 (def ^:private ^Duration run-frequency (Duration/parse "PT30S"))
 
-(defmethod task/init! ::CuratedSearchEntrySync [_]
+(defmethod task/init! ::OsiAiContextSync [_]
   ;; Gate scheduling on pgvector being configured (boot-fixed), NOT on available? — the job body
   ;; self-gates on the feature flag, so scheduling here lets the periodic safety net (and the
   ;; write-path trigger's target job) exist even when the license is enabled after startup.
   (when (curated-search.core/pgvector-configured?)
     (let [job     (jobs/build
-                   (jobs/of-type CuratedSearchEntrySync)
+                   (jobs/of-type OsiAiContextSync)
                    (jobs/store-durably)
                    (jobs/with-identity curated-search.core/sync-job-key))
           trigger (triggers/build

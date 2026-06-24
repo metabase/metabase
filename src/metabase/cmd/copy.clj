@@ -139,7 +139,7 @@
     :model/MetabotSourceFeedback
     :model/MetabotUsedTable
     :model/MetabotPrompt
-    :model/CuratedSearchEntry]
+    :model/OsiAiContext]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit

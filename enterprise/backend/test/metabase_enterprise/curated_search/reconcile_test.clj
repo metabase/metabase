@@ -5,6 +5,9 @@
    [metabase-enterprise.curated-search.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
@@ -77,10 +80,10 @@
                        :model/Card       {metric-id :id}   {:type "metric" :collection_id metrics-id
                                                             :name "Revenue" :description "Total revenue"
                                                             :database_id db-id}
-                       :model/CuratedSearchEntry {cse-id :id} {:entity {:model "table" :id table-id}
-                                                               :ai_context {:instructions "Group by month."
-                                                                            :synonyms ["sales" "revenue"]
-                                                                            :examples ["orders last month"]}}]
+                       :model/OsiAiContext {cse-id :id} {:entity {:model "table" :id table-id}
+                                                         :ai_context {:instructions "Group by month."
+                                                                      :synonyms ["sales" "revenue"]
+                                                                      :examples ["orders last month"]}}]
           (testing "first run indexes name/description docs for every library entity, plus ai_context docs"
             (reconcile/reconcile! ds model)
             (testing "the published table: name + description + 2 synonyms + 1 example, all stamped with instructions"
@@ -97,7 +100,7 @@
             (is (=? {:inserted 0 :updated 0 :deleted 0} (reconcile/reconcile! ds model))))
           (testing "editing instructions updates rows in place — no doc_id changes, no re-embed"
             (let [before (set (map :doc_id (docs-for ds "table" table-id)))]
-              (t2/update! :model/CuratedSearchEntry cse-id
+              (t2/update! :model/OsiAiContext cse-id
                           {:ai_context {:instructions "Group by week."
                                         :synonyms ["sales" "revenue"]
                                         :examples ["orders last month"]}})
@@ -146,3 +149,48 @@
                 (is (= [] (index-rows ds))))
               (testing "the rebuild heals the meta row, so it doesn't recur on the next sync"
                 (is (= :ok (index-table/ensure-tables! ds new-model)))))))))))
+
+(defn- measure-definition [table-id field-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/aggregate (lib/query mp (lib.metadata/table mp table-id))
+                   (lib/sum (lib.metadata/field mp field-id)))))
+
+(defn- segment-definition [table-id field-id value]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                (lib/> (lib.metadata/field mp field-id) value))))
+
+(deftest ^:sequential measures-and-segments-indexed-and-hydrated-test
+  (testing "measures/segments on a published library table are indexed and hydrate with parent-table context"
+    (mt/with-premium-features #{:library :semantic-search}
+      (with-isolated-index [ds]
+        (let [model  semantic.tu/mock-embedding-model
+              orders (mt/id :orders)
+              total  (mt/id :orders :total)]
+          (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
+                         :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
+                         :model/Measure {measure-id :id} {:name "Order Revenue" :description "sum of order totals"
+                                                          :table_id orders :creator_id (mt/user->id :crowberto)
+                                                          :definition (measure-definition orders total)}
+                         :model/Segment {segment-id :id} {:name "Big Orders" :description "totals over 100"
+                                                          :table_id orders
+                                                          :definition (segment-definition orders total 100)}]
+            ;; publish the (real, fielded) orders table into the library for the duration of the test
+            (mt/with-temp-vals-in-db :model/Table orders {:collection_id data-id :is_published true}
+              (reconcile/reconcile! ds model)
+              (testing "both are indexed with name + description docs"
+                (is (= {"name" 1 "description" 1}
+                       (frequencies (map :doc_type (docs-for ds "measure" measure-id)))))
+                (is (= {"name" 1 "description" 1}
+                       (frequencies (map :doc_type (docs-for ds "segment" segment-id))))))
+              (testing "the tool hydrates them as first-class results carrying parent-table context"
+                (mt/with-test-user :crowberto
+                  (let [by-key (into {} (map (juxt (juxt :type :id) identity))
+                                     (tools.search/entity-refs->search-results
+                                      [{:model "measure" :id measure-id} {:model "segment" :id segment-id}]))]
+                    (is (=? {:type "measure" :id measure-id :name "Order Revenue"
+                             :database_id (mt/id) :base_table_id orders}
+                            (get by-key ["measure" measure-id])))
+                    (is (=? {:type "segment" :id segment-id :name "Big Orders"
+                             :database_id (mt/id) :base_table_id orders}
+                            (get by-key ["segment" segment-id])))))))))))))

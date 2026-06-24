@@ -92,6 +92,12 @@
      (for [s (:synonyms ai_context) :when (not (str/blank? s))] (doc "synonym" s))
      (for [e (:examples ai_context) :when (not (str/blank? e))] (doc "example" e)))))
 
+(defn- ->library-entity [entity-type id nm description]
+  {:entity_type     entity-type
+   :entity_local_id id
+   :name            nm
+   :description      description})
+
 (defn- library-entities
   "Uniform `{:entity_type :entity_local_id :name :description}` maps for every entity in the library."
   []
@@ -113,18 +119,17 @@
                                    :table_id [:in table-ids] :archived false))]
         (concat
          ;; Card :type is keywordized (:metric / :model); the ref model string is its name.
-         (map (fn [c] {:entity_type (name (:type c)) :entity_local_id (:id c) :name (:name c) :description (:description c)}) cards)
+         (map (fn [c] (->library-entity (name (:type c)) (:id c) (:name c) (:description c))) cards)
          ;; A published table's user-facing label is its display_name; fall back to the raw name.
-         (map (fn [t] {:entity_type "table" :entity_local_id (:id t) :name (or (:display_name t) (:name t)) :description (:description t)}) tables)
-         (map (fn [m] {:entity_type "measure" :entity_local_id (:id m) :name (:name m) :description (:description m)}) measures)
-         (map (fn [s] {:entity_type "segment" :entity_local_id (:id s) :name (:name s) :description (:description s)}) segments))))))
+         (map (fn [t] (->library-entity "table" (:id t) (or (:display_name t) (:name t)) (:description t))) tables)
+         (map (fn [m] (->library-entity "measure" (:id m) (:name m) (:description m))) measures)
+         (map (fn [s] (->library-entity "segment" (:id s) (:name s) (:description s))) segments))))))
 
 (defn- ai-context-by-entity
   "Map of `[entity_type entity_local_id] -> ai_context` for every `osi_ai_context` row."
   []
-  (into {}
-        (map (fn [{e :entity ac :ai_context}] [[(:model e) (:id e)] ac]))
-        (t2/select [:model/CuratedSearchEntry :entity :ai_context])))
+  (u/index-by (fn [{e :entity}] [(:model e) (:id e)]) :ai_context
+              (t2/select [:model/OsiAiContext :entity :ai_context])))
 
 (defn- desired-docs
   "The full set of docs the index should hold, deduped by `doc_id` (identical values collapse to one)."
@@ -133,20 +138,21 @@
     (->> (library-entities)
          (mapcat (fn [{:keys [entity_type entity_local_id] :as ent}]
                    (entity->docs ent (get ac-by-entity [entity_type entity_local_id]))))
-         ;; key by doc_id so a value that appears twice (e.g. a synonym equal to the name) collapses.
+         ;; key by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice) collapses.
+         ;; a synonym equal to the name does NOT collapse — different doc_type, different doc_id.
          (reduce (fn [acc d] (assoc acc (:doc_id d) d)) {})
          vals)))
 
 ;;; ------------------------------------------------- Index writes -------------------------------------------------
 
-(defn- stored-instructions
-  "Map of `doc_id -> instructions` for every row currently in the index."
+(defn- stored-docs
+  "Map of `doc_id -> {:entity_type :entity_local_id :instructions}` for every row in the index."
   [pgvector]
-  (into {}
-        (map (juxt :doc_id :instructions))
-        (jdbc/execute! pgvector
-                       [(format "SELECT doc_id, instructions FROM \"%s\"" index-table/*vectors-table*)]
-                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+  (u/index-by :doc_id #(select-keys % [:entity_type :entity_local_id :instructions])
+              (jdbc/execute! pgvector
+                             [(format "SELECT doc_id, entity_type, entity_local_id, instructions FROM \"%s\""
+                                      index-table/*vectors-table*)]
+                             {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (defn- doc->record [doc embedding]
   {:doc_id          (:doc_id doc)
@@ -190,14 +196,18 @@
   [pgvector embedding-model]
   (let [desired       (desired-docs)
         desired-ids   (set (map :doc_id desired))
-        stored        (stored-instructions pgvector)
+        stored        (stored-docs pgvector)
+        entity-key    (juxt :entity_type :entity_local_id)
         to-insert     (remove #(contains? stored (:doc_id %)) desired)
         ;; instructions drift on an existing row: blank and nil are equivalent (no-op).
         norm          #(when-not (str/blank? %) %)
         to-update     (filter (fn [d] (and (contains? stored (:doc_id d))
-                                           (not= (norm (:instructions d)) (norm (get stored (:doc_id d))))))
+                                           (not= (norm (:instructions d))
+                                                 (norm (:instructions (get stored (:doc_id d)))))))
                               desired)
         orphans       (remove desired-ids (keys stored))
+        ;; entities whose insert failed this run — their orphans are spared (see below).
+        failed        (volatile! #{})
         inserted      (transduce
                        (partition-all embed-batch-size)
                        (completing
@@ -205,16 +215,21 @@
                           (+ n (try
                                  (insert-batch! pgvector embedding-model batch)
                                  (catch Exception e
+                                   (vswap! failed into (map entity-key batch))
                                    (log/error e "library entity index: failed to insert batch of"
                                               (count batch) "docs; will retry next run")
                                    0)))))
                        0
-                       to-insert)]
+                       to-insert)
+        ;; An orphan is often the stale half of an edited value (e.g. a renamed name's old doc).
+        ;; Deleting it while its replacement failed to embed would drop that entity from search until the
+        ;; next run, so spare orphans belonging to a failed entity; every other entity's orphans GC normally.
+        to-delete     (remove #(contains? @failed (entity-key (get stored %))) orphans)]
     (doseq [d to-update] (update-instructions! pgvector d))
-    (delete-rows! pgvector orphans)
+    (delete-rows! pgvector to-delete)
     {:inserted  inserted
      :updated   (count to-update)
-     :deleted   (count orphans)
+     :deleted   (count to-delete)
      :unchanged (- (count desired) (count to-insert) (count to-update))}))
 
 (defn reconcile!

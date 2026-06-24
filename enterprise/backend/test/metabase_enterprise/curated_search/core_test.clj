@@ -97,7 +97,7 @@
 (defn- put-ai-context!
   "POST an ai_context entry through the CRUD API; returns the created row's id."
   [entity ai-context]
-  (:id (mt/user-http-request :crowberto :post 200 "curated-search/"
+  (:id (mt/user-http-request :crowberto :post 200 "osi/ai-context/"
                              {:entity entity :ai_context ai-context})))
 
 (deftest ^:sequential crud-api-to-tool-end-to-end-test
@@ -139,7 +139,7 @@
                                   :usage_instructions "Group by month." :similarity (approx 1.0)}]
                                 (search!))))
                       (testing "deleting the ai_context via the CRUD API + reconcile drops the synonym doc"
-                        (mt/user-http-request :crowberto :delete 204 (str "curated-search/" cse-id))
+                        (mt/user-http-request :crowberto :delete 204 (str "osi/ai-context/" cse-id))
                         (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
                         (is (empty? (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" WHERE doc_type = 'synonym' AND entity_local_id = %d"
                                                                index-table/*vectors-table* table-id)])))))
