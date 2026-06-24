@@ -141,7 +141,6 @@ describe("scenarios > admin > people", () => {
         // second modal
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`${FULL_NAME} has been added`);
-        cy.findByLabelText("Show password").click();
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
@@ -164,7 +163,6 @@ describe("scenarios > admin > people", () => {
       // second modal
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${email} has been added`);
-      cy.findByLabelText("Show password").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Done").click();
 

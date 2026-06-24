@@ -134,9 +134,9 @@ const TemporaryPasswordSuccess = ({
 }) => (
   <Stack gap="lg">
     <Text>
-      {jt`We couldn't send an email invite, so share this password with ${(
+      {jt`We couldn't send an email invitation. Share this temporary password with ${(
         <strong key="email">{email}</strong>
-      )} so they can sign in:`}
+      )} so they can sign in.`}
     </Text>
     <PasswordReveal password={password} />
     <CopyTextInput label={t`Link to share`} value={shareUrl} />

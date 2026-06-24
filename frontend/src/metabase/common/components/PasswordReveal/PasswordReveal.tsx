@@ -31,7 +31,6 @@ export const PasswordReveal = ({ password }: PasswordRevealProps) => {
           radius="lg"
           size="lg"
           flex={1}
-          visibilityToggleButtonProps={{ "aria-label": t`Show password` }}
         />
         <CopyButton value={password} timeout={2000}>
           {({ copied, copy }) => (
