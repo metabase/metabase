@@ -19,7 +19,7 @@
          opts))
 
 ;;; =============================================================================
-;;; Priority 4: Quarantine (respected even on master/release)
+;;; Priority 4: Quarantine (respected on PR branches, ignored on master/release)
 ;;; =============================================================================
 
 (deftest quarantined-driver-skips
@@ -42,22 +42,34 @@
       (is (true? (:should-run result)))
       (is (re-find #"break-quarantine-mysql" (:reason result))))))
 
-(deftest quarantine-respected-on-master
-  (testing "Quarantined driver is skipped even on master/release"
-    (let [result (mage.modules/driver-decision :mysql
+(deftest effective-quarantine-ignored-on-master-and-release
+  (testing "the remote quarantine list is dropped on master/release, but honored on PR branches"
+    (is (= #{} (#'mage.modules/effective-quarantined-drivers true))
+        "master/release: nothing is quarantined")
+    (with-redefs [mage.modules/quarantined-drivers (constantly #{:databricks})]
+      (is (= #{:databricks} (#'mage.modules/effective-quarantined-drivers false))
+          "PR/feature branch: quarantined drivers are honored"))))
+
+(deftest quarantined-driver-runs-on-master
+  (testing "a driver quarantined in the remote config still runs (and gates) on master/release"
+    ;; Production clears the quarantine set on master/release via effective-quarantined-drivers,
+    ;; so the decision falls through Priority 4 to Priority 5.
+    (let [quarantined (#'mage.modules/effective-quarantined-drivers true)
+          result (mage.modules/driver-decision :mysql
                                                (make-ctx {:is-master-or-release true})
                                                true ; driver-deps-affected?
-                                               #{:mysql} ; quarantined
+                                               quarantined
                                                #{})] ; updated
-      (is (false? (:should-run result)))
-      (is (= "driver is quarantined" (:reason result))))))
+      (is (true? (:should-run result)))
+      (is (= "master/release branch" (:reason result))))))
 
 (deftest quarantine-config-names-are-translated
   (testing "Config names from ci-test-config.json are translated to internal driver keywords via driver-directory->drivers"
     (testing "directory names are translated to internal keywords"
-      ;; bigquery-cloud-sdk -> :bigquery (via driver-directory->drivers mapping)
+      ;; bigquery-cloud-sdk -> :bigquery (via driver-directory->drivers mapping).
+      ;; Use a PR/feature branch here, since quarantine is ignored on master/release.
       (let [result (mage.modules/driver-decision :bigquery
-                                                 (make-ctx {:is-master-or-release true})
+                                                 (make-ctx {:is-master-or-release false})
                                                  false
                                                  #{:bigquery} ; as if translated from "bigquery-cloud-sdk"
                                                  #{})]
