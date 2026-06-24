@@ -82,35 +82,41 @@ function readStats(statsFile) {
   return fs.existsSync(statsPath) ? JSON.parse(fs.readFileSync(statsPath, "utf8")) : null;
 }
 
-// The .js assets that make up an entrypoint's initial (synchronous) load.
-function entrypointJsAssets(stats, name) {
+// An entrypoint's .js assets for a given field: "assets" = its initial
+// (synchronous) load; "reachableAssets" = initial plus everything it can lazily
+// import (the chunk graph walked at build time in bundle-stats.js).
+function entrypointJsAssets(stats, name, field = "assets") {
   const entry = stats && stats.entrypoints && stats.entrypoints[name];
-  if (!entry) {
+  if (!entry || !entry[field]) {
     return null;
   }
-  return entry.assets.map(asset => asset.name || asset).filter(assetName => assetName.endsWith(".js"));
+  return entry[field].map(asset => asset.name || asset).filter(assetName => assetName.endsWith(".js"));
 }
 
 const assetFiles = (root, names) => names.map(name => path.join(root, name));
 const unique = files => [...new Set(files)];
 
 /**
- * Main app. initial = the app-main entrypoint's initial assets; total = every
- * .js in app/dist. The app has a single entrypoint with a working publicPath, so
- * rspack only emits chunks reachable from it — dist == the reachable set.
+ * Main app = the app-main entrypoint only (app/dist also holds other pages like
+ * app-public, app-embed*, which are not the app). initial = app-main's initial
+ * load; total = everything app-main can reach (initial + its lazy routes),
+ * scoped via the entrypoint's reachable set so sibling entrypoints' code is left
+ * out.
  */
 function measureApp() {
   const dist = resolve(APP_DIST);
   if (!fs.existsSync(dist)) {
     throw new Error(`Bundle output not found for "app": ${dist}`);
   }
-  const initialAssets = entrypointJsAssets(readStats("artifacts/stats-main.json"), "app-main");
-  if (!initialAssets) {
-    throw new Error('app: stats-main.json / "app-main" entrypoint missing; cannot measure initial');
+  const stats = readStats("artifacts/stats-main.json");
+  const initialAssets = entrypointJsAssets(stats, "app-main", "assets");
+  const reachableAssets = entrypointJsAssets(stats, "app-main", "reachableAssets");
+  if (!initialAssets || !reachableAssets) {
+    throw new Error('app: stats-main.json / "app-main" entrypoint (with reachableAssets) missing');
   }
   return [
     { bundle: "app", kind: "initial", ...sizeOf(assetFiles(dist, initialAssets)) },
-    { bundle: "app", kind: "total", ...sizeOf(collectJsFiles(dist)) },
+    { bundle: "app", kind: "total", ...sizeOf(assetFiles(dist, reachableAssets)) },
   ];
 }
 
@@ -130,9 +136,10 @@ function measureLegacySdk() {
 
 /**
  * Chunked SDK delivery. initial = bootstrap (minus its inlined runtime) + the
- * chunked entry's initial chunks. total = initial plus async chunks, but only
- * when they're actually loadable (see SDK_ASYNC_CHUNKS_LOADABLE); every emitted
- * SDK chunk is graph-reachable, so when loadable total == all chunks.
+ * chunked entry's initial chunks. total = the chunked entry's reachable set
+ * (initial + async children, from the chunk graph) — but only when those async
+ * chunks are actually loadable at runtime (see SDK_ASYNC_CHUNKS_LOADABLE);
+ * otherwise total == initial. Never counts chunks owned by a sibling entry.
  */
 function measureChunkedSdk() {
   const chunksDir = resolve(SDK_ROOT, "chunks");
@@ -142,22 +149,22 @@ function measureChunkedSdk() {
   }
   const absRoot = resolve(SDK_ROOT);
   const stats = readStats("artifacts/stats-embedding-sdk.json");
-  const chunked = entrypointJsAssets(stats, "embedding-sdk-chunked");
-  if (!chunked) {
+  const chunkedInitial = entrypointJsAssets(stats, "embedding-sdk-chunked", "assets");
+  if (!chunkedInitial) {
     throw new Error(
-      'embedding-sdk-chunked: stats-embedding-sdk.json / "embedding-sdk-chunked" entrypoint missing; ' +
-        "cannot measure initial without counting unreachable async chunks",
+      'embedding-sdk-chunked: stats-embedding-sdk.json / "embedding-sdk-chunked" entrypoint missing',
     );
   }
-  const bootstrap = entrypointJsAssets(stats, "embedding-sdk-bootstrap") || [];
-  const initialNames = unique([...bootstrap, ...chunked]).filter(name => !SDK_RUNTIME_RE.test(name));
-  const initialFiles = assetFiles(absRoot, initialNames);
+  const bootstrapInitial = entrypointJsAssets(stats, "embedding-sdk-bootstrap", "assets") || [];
+  const chunkedReachable = entrypointJsAssets(stats, "embedding-sdk-chunked", "reachableAssets") || chunkedInitial;
+  const bootstrapReachable = entrypointJsAssets(stats, "embedding-sdk-bootstrap", "reachableAssets") || bootstrapInitial;
 
-  const allChunkFiles = collectJsFiles(chunksDir).filter(file => !SDK_RUNTIME_RE.test(file));
-  const reachableTotalFiles = unique([...initialFiles, ...allChunkFiles]);
+  const notRuntime = name => !SDK_RUNTIME_RE.test(name);
+  const initialNames = unique([...bootstrapInitial, ...chunkedInitial]).filter(notRuntime);
+  const reachableNames = unique([...bootstrapReachable, ...chunkedReachable]).filter(notRuntime);
 
-  const initial = sizeOf(initialFiles);
-  const total = SDK_ASYNC_CHUNKS_LOADABLE ? sizeOf(reachableTotalFiles) : initial;
+  const initial = sizeOf(assetFiles(absRoot, initialNames));
+  const total = SDK_ASYNC_CHUNKS_LOADABLE ? sizeOf(assetFiles(absRoot, reachableNames)) : initial;
   return [
     { bundle: "embedding-sdk-chunked", kind: "initial", ...initial },
     { bundle: "embedding-sdk-chunked", kind: "total", ...total },
