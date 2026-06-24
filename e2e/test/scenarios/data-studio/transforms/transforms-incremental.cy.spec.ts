@@ -402,7 +402,10 @@ function visitTransformListPage() {
 
 function runTransformAndWaitForSuccess() {
   getRunButton().click();
-  getRunButton().should("have.text", "Ran successfully");
+  // The run executes asynchronously (a Python/SQL transform subprocess) and the
+  // button only flips "Running now…" → "Ran successfully" once status polling
+  // resolves, which can exceed the default 4s under CI load. Wait generously.
+  getRunButton({ timeout: 30000 }).should("have.text", "Ran successfully");
 }
 
 function getRunButton(options: { timeout?: number } = {}) {
