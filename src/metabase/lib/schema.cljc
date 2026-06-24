@@ -119,7 +119,15 @@
      :order-by     "MBQL stage keys like :order-by are not allowed in a native query stage."
      :offset       "MBQL stage keys like :offset are not allowed in a native query stage."
      :page         "MBQL stage keys like :page are not allowed in a native query stage."
-     :args         "Native query parameters should use :params, not :args."})])
+     :args         "Native query parameters should use :params, not :args."})
+   [:fn
+    {:error/message ":template-tags-order, when present, must list each template tag name exactly once"}
+    (fn [stage]
+      (let [tags  (:template-tags stage)
+            order (:template-tags-order stage)]
+        (or (not (and (seq tags) (seq order)))
+            (and (= (count order) (count (keys tags)))
+                 (= (set order) (set (keys tags)))))))]])
 
 (mr/def ::breakout
   [:ref ::ref/ref])

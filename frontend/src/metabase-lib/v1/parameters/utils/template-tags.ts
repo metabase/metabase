@@ -95,7 +95,7 @@ export function getTemplateTags(card: Card, metadata: Metadata): TemplateTag[] {
   }
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
-  return isNative ? Object.values(Lib.templateTags(question.query())) : [];
+  return isNative ? Lib.templateTagsInOrder(question.query()) : [];
 }
 
 export function getParametersFromCard(

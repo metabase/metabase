@@ -2015,14 +2015,17 @@
                          (m/update-existing :widget-type #(some-> % keyword))
                          (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))))
 
+(defn- template-tag-cljs->js
+  [tag]
+  (-> tag
+      (update :type name)
+      (m/update-existing :widget-type #(some-> % u/qualified-name))
+      (m/update-existing :dimension #(some-> % ref->legacy-ref))))
+
 (defn- template-tags-cljs->js
   [tags]
   (-> tags
-      (update-vals (fn [tag]
-                     (-> tag
-                         (update :type name)
-                         (m/update-existing :widget-type #(some-> % u/qualified-name))
-                         (m/update-existing :dimension #(some-> % ref->legacy-ref)))))
+      (update-vals template-tag-cljs->js)
       (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export with-template-tags
@@ -2045,6 +2048,35 @@
   > **Code health:** Healthy"
   [a-query]
   (template-tags-cljs->js (lib.core/template-tags a-query)))
+
+(defn ^:export template-tags-in-order
+  "Returns the template tags for the native first stage of `a-query`, as a JS array ordered for display.
+
+  Use this (rather than [[template-tags]]) when rendering filter widgets, so their order is stable and
+  user-controllable regardless of how many tags the query has. See #5136.
+
+  > **Code health:** Healthy"
+  [a-query]
+  (->> (lib.core/template-tags-in-order a-query)
+       (mapv template-tag-cljs->js)
+       (clj->js :keyword-fn u/qualified-name)))
+
+(defn ^:export template-tags-order
+  "Returns the explicit display order of `a-query`'s template tags as a JS array of tag names, or `null`
+  when none is recorded.
+
+  > **Code health:** Healthy"
+  [a-query]
+  (when-let [order (lib.core/template-tags-order a-query)]
+    (into-array order)))
+
+(defn ^:export with-template-tags-order
+  "Sets the explicit display order of `a-query`'s template tags. `order` is a JS array containing every
+  template tag name exactly once. See #5136.
+
+  > **Code health:** Healthy"
+  [a-query order]
+  (lib.core/with-template-tags-order a-query (js->clj order)))
 
 (defn ^:export has-write-permission
   "Returns whether the database targeted by `a-query` has native write permissions.

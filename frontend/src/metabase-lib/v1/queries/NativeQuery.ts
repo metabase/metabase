@@ -231,29 +231,27 @@ export default class NativeQuery {
   }
 
   setParameterIndex(id: string, newIndex: number) {
-    // NOTE: currently all NativeQuery parameters are implicitly generated from
-    // template tags, and the order is determined by the key order
+    // All NativeQuery parameters are generated from template tags; their order is now controlled by the
+    // query's explicit `template-tags-order` rather than Clojure map key order. See #5136.
     const query = this._query();
     const tags = this.templateTags();
 
-    // NOTE: The snippet tags are part of the snippet tags map, but they do
-    // not appear in the parameter lists. To correctly reorder the parameters
-    // and keep track of indexes, we need to pluck out the snippet tags first.
-    // We then tack them on before returning the reordered tags map.
-    // The order of snippet tags is not consequential, which allows us to do this.
+    // Snippet tags are part of the template-tags map but are not shown as widgets. Pluck them out to reorder
+    // only the visible (non-snippet) tags, then keep snippet names in the resulting order so it stays a valid
+    // permutation of every tag name.
     const nonSnippetTags = tags.filter((tag) => tag.type !== "snippet");
     const snippetTags = tags.filter((tag) => tag.type === "snippet");
 
     const oldIndex = nonSnippetTags.findIndex((tag) => tag.id === id);
-    const newTags = [...nonSnippetTags];
-    newTags.splice(newIndex, 0, newTags.splice(oldIndex, 1)[0]);
+    if (oldIndex < 0) {
+      return this;
+    }
 
-    const newTagsWithSnippets = [...snippetTags, ...newTags];
-    const newTagsMap = Object.fromEntries(
-      newTagsWithSnippets.map((tag) => [tag.name, tag]),
-    );
+    const reordered = [...nonSnippetTags];
+    reordered.splice(newIndex, 0, reordered.splice(oldIndex, 1)[0]);
 
-    return this._setQuery(Lib.withTemplateTags(query, newTagsMap));
+    const order = [...snippetTags, ...reordered].map((tag) => tag.name);
+    return this._setQuery(Lib.withTemplateTagsOrder(query, order));
   }
 
   lineCount(): number {
@@ -273,7 +271,10 @@ export default class NativeQuery {
   }
 
   templateTags(): TemplateTag[] {
-    return Object.values(this.templateTagsMap());
+    // Render in explicit display order so filter widgets keep a stable, user-controllable order even when
+    // there are many tags. Clojure maps lose insertion order past 8 keys, which is what scrambled the widgets
+    // before. See #5136.
+    return Lib.templateTagsInOrder(this._query());
   }
 
   variableTemplateTags(): TemplateTag[] {

@@ -144,6 +144,45 @@
                 "SELECT * FROM {{snippet:another snippet}}"
                 {"snippet: first snippet" (assoc s1 :id s1-uuid)})))))))
 
+(deftest ^:parallel template-tags-order-test
+  (testing "Template tags keep their query-text order past the Clojure map threshold (#5136)"
+    ;; 20 tags is well past both the JVM (16) and ClojureScript (8) PersistentArrayMap thresholds, so
+    ;; relying on map iteration order -- as we used to -- would scramble them.
+    (let [sql  (reduce (fn [s i] (str s " {{p" i "}}")) "SELECT" (range 1 21))
+          q    (lib/native-query meta/metadata-provider sql)
+          tags (lib/template-tags-in-order q)]
+      (is (= 20 (count tags)))
+      (is (= (mapv #(str "p" %) (range 1 21))
+             (mapv :name tags)))
+      (is (= (mapv :name tags) (lib/template-tags-order q))))))
+
+(deftest ^:parallel with-template-tags-order-test
+  (testing "with-template-tags-order reorders tags and the change sticks (#5136)"
+    (let [sql   (reduce (fn [s i] (str s " {{p" i "}}")) "SELECT" (range 1 11))
+          q     (lib/native-query meta/metadata-provider sql)
+          names (mapv :name (lib/template-tags-in-order q))
+          q2    (lib/with-template-tags-order q (vec (rseq names)))]
+      (is (= (vec (rseq names)) (mapv :name (lib/template-tags-in-order q2))))
+      (is (= (vec (rseq names)) (lib/template-tags-order q2)))
+      ;; only the order changed; the tags themselves are identical
+      (is (= (lib/template-tags q) (lib/template-tags q2))))))
+
+(deftest ^:parallel with-native-query-preserves-order-test
+  (testing "editing query text keeps surviving tags in place and appends new ones (#5136)"
+    (let [q1 (-> (lib/native-query meta/metadata-provider "SELECT {{a}} {{b}} {{c}}")
+                 ;; reorder away from natural a,b,c to prove order is preserved, not re-derived
+                 (lib/with-template-tags-order ["c" "a" "b"]))
+          q2 (lib/with-native-query q1 "SELECT {{a}} {{b}} {{c}} {{d}}")]
+      (is (= ["c" "a" "b" "d"] (mapv :name (lib/template-tags-in-order q2)))))))
+
+(deftest ^:parallel template-tags-rename-preserves-position-test
+  (testing "renaming a tag keeps it in its original position (#5136)"
+    (let [q1 (-> (lib/native-query meta/metadata-provider "SELECT {{a}} {{b}} {{c}}")
+                 (lib/with-template-tags-order ["c" "a" "b"]))
+          q2 (lib/with-native-query q1 "SELECT {{a}} {{renamed}} {{c}}")]
+      ;; "b" was at position 2; after renaming to "renamed" it stays at position 2
+      (is (= ["c" "a" "renamed"] (mapv :name (lib/template-tags-in-order q2)))))))
+
 (def ^:private qp-results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
   Processor.

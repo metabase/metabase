@@ -30,7 +30,7 @@
                      :mbql.stage/native (fn [query _path stage]
                                           (qp.native/expand-stage query stage)))
           expanded (f query path stage)]
-      (dissoc expanded :parameters :template-tags))))
+      (dissoc expanded :parameters :template-tags :template-tags-order))))
 
 (mu/defn- expand-all :- ::lib.schema/query
   "Expand all `:parameters` anywhere in the query."

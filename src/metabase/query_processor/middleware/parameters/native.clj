@@ -42,4 +42,4 @@
     (let [substituted-stage (driver/substitute-native-parameters-in-stage driver/*driver* metadata-providerable stage)]
       (->
        substituted-stage
-       (dissoc :parameters :template-tags)))))
+       (dissoc :parameters :template-tags :template-tags-order)))))

@@ -44,6 +44,35 @@ export function templateTags(query: Query): TemplateTags {
   return ML.template_tags(query);
 }
 
+/**
+ * Returns the template tags of a native query as an array, ordered for display.
+ *
+ * Prefer this over `Object.values(templateTags(query))`: Clojure maps lose insertion order past 8 keys
+ * (ClojureScript's PersistentArrayMap threshold), which used to scramble SQL filter widgets. The order here
+ * comes from the query's explicit `template-tags-order` and survives reordering. See #5136.
+ */
+export function templateTagsInOrder(query: Query): TemplateTag[] {
+  return ML.template_tags_in_order(query);
+}
+
+/**
+ * Returns the explicit display order of a native query's template tags as tag names, or `null` if none is
+ * recorded. See #5136.
+ */
+export function templateTagsOrder(query: Query): string[] | null {
+  return ML.template_tags_order(query);
+}
+
+/**
+ * Sets the explicit display order of a native query's template tags.
+ *
+ * `order` must contain every template tag name exactly once. This is what makes reordering SQL filter
+ * widgets persist; previously order was derived from Clojure map iteration order. See #5136.
+ */
+export function withTemplateTagsOrder(query: Query, order: string[]): Query {
+  return ML.with_template_tags_order(query, order);
+}
+
 export function hasWritePermission(query: Query): boolean {
   return ML.has_write_permission(query);
 }

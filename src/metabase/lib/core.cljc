@@ -1506,6 +1506,7 @@
   add-parameters-for-template-tags
   engine
   extract-template-tags
+  extract-template-tags-with-order
   fully-parameterized-query?
   has-template-tag-variables?
   has-write-permission
@@ -1513,16 +1514,20 @@
   native-query
   raw-native-query
   recognize-template-tags
+  recognize-template-tags-with-order
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids
   native-query-table-references
-  template-tags-referenced-cards
   template-tags
+  template-tags-in-order
+  template-tags-order
+  template-tags-referenced-cards
   with-different-database
   with-native-extras
   with-native-query
-  with-template-tags]
+  with-template-tags
+  with-template-tags-order]
  [lib.options
   ensure-uuid
   options
