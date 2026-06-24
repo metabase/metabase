@@ -6,9 +6,8 @@
   only the mechanical translation between a resolved artifact and a
   `run-transform!` call, plus reading the result back.
 
-  All functions assume they are called inside `driver.conn/with-transform-connection`
-  (which binds `*connection-type* :transform` so conn-specs resolve write-data
-  credentials)."
+  These functions assume they run inside `driver.conn/with-transform-connection`
+  (the orchestrator wraps the whole run)."
   (:require
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
@@ -44,18 +43,13 @@
   `output-target` — `{:schema :table :db}` spec from a scratch output-target builder.
   `db-id`         — integer database id.
   `db`            — `:model/Database` row.
-  `drv`           — driver keyword.
-
-  Precondition: call inside `with-transform-connection`, which binds
-  `*connection-type* :transform` so the conn-spec resolves write-data credentials."
+  `drv`           — driver keyword."
   [compiled output-target db-id db drv]
   {:db-id          db-id
    :database       db
    :transform-id   nil
    :transform-type :table
-   ;; conn-spec is built here, inside with-transform-connection; effective-details
-   ;; reads *connection-type* = :transform to resolve write-data credentials and
-   ;; route through the :transform JDBC pool.
+   ;; conn-spec resolves write-data creds + the :transform pool from the active context.
    :conn-spec      (driver/connection-spec drv db)
    :query          compiled
    :output-schema  (:schema output-target)

@@ -23,12 +23,11 @@
   The `_test_` segment cannot appear in a hex-only name, so there is zero risk
   that a janitor call drops a live production transform's temp table.
 
-  ## Caller contract (connection context)
+  ## Connection context
 
-  Functions in this namespace do NOT bind `driver.conn/with-transform-connection`.
-  The orchestrator (`test-run.core/run-test!`) wraps the whole run (including
-  seed! and cleanup!) in the canonical connection context. Callers must supply a
-  live `db-id` and `:model/Database` `db` row obtained within that context.
+  The write/DDL seams (`seed!`, `cleanup!`) assert they run inside
+  `driver.conn/with-transform-connection`; the orchestrator wraps the whole run.
+  Callers supply `db-id` and the `:model/Database` row obtained within that context.
 
   ## Public API summary
 
@@ -45,6 +44,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.query-processor.core :as qp]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -215,6 +215,7 @@
         catalog (driver.sql/db-slot-value drv db)
         created (atom [])
         mapping (atom {})]
+    (driver.conn/assert-connection-type! :transform)
     (try
       ;; Create the target schema if absent — some warehouses (e.g. BigQuery) don't
       ;; auto-create it, so a never-run transform's target schema may not exist yet.
@@ -282,6 +283,7 @@
                  (catch Exception e
                    (log/warn e "Failed to drop scratch table during cleanup!"
                              (keyword schema table-name)))))]
+    (driver.conn/assert-connection-type! :transform)
     ;; Drop all input scratch tables
     (doseq [{:keys [schema table]} (vals mapping)]
       (drop schema table))

@@ -7,14 +7,14 @@
   metadata) to parse CSVs against the real table's types.  When no schema is
   given, types are inferred from the data (upload-style inference).
 
-  This namespace does NOT hit the database; callers build the schema from
+  This namespace never touches the database; callers build the schema from
   `:metadata/table` + field metadata and pass it in.
 
   ## NULL vs empty-string rule
 
   Any cell whose string value is blank (empty string or whitespace-only) is
   returned as `nil` (SQL NULL).  Non-blank cells are parsed according to the
-  column type.  Zero (`0`) and `false` are NOT blank and are preserved.
+  column type.  Zero (`0`) and `false` are not blank, and are preserved.
 
   ## Case-sensitivity rule for header matching
 
@@ -22,25 +22,7 @@
   fields in `target-schema`.  No case-folding, no trimming, no normalization.
   If the CSV header and the schema names differ only in case, a `::header-mismatch`
   error is thrown (the caller can inspect `:missing-columns` / `:extra-columns`
-  in ex-data to diagnose).
-
-  ## Output shape
-
-  The return value feeds `transforms-base.u/create-table-from-schema!` and
-  `driver/insert-from-source!` directly:
-
-  ```
-  {:columns [{:name     <string>   ; verbatim column name
-              :base-type <kw>      ; e.g. :type/Integer, :type/Text
-              :nullable? <bool>}
-             ...]
-   :rows    [[v1 v2 ...]           ; vectors of plain Clojure values in column order
-             ...]}
-  ```
-
-  Accepted value types per column type (matches `insert-from-source!` :rows
-  contract): String, Double, BigInteger, Boolean, LocalDate, LocalDateTime,
-  OffsetDateTime, nil."
+  in ex-data to diagnose)."
   (:require
    [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
@@ -243,7 +225,9 @@
    :rows    [[v1 v2 ...] ...]}
   ```
   `:columns` are in CSV column order.  `:rows` are vectors of plain Clojure
-  values, one per data row, in the same column order.
+  values, one per data row, in the same column order. Cell values are one of:
+  String, Double, BigInteger, Boolean, LocalDate, LocalDateTime, OffsetDateTime,
+  or nil.
 
   Throws (all via `ex-info` with typed `:error-type` in ex-data):
   - `::header-mismatch`   — CSV header ≠ schema column names (case-sensitive,

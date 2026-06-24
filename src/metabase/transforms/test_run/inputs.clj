@@ -3,17 +3,10 @@
 
   Two public entry points:
 
-  - [[required-input-tables]] — given a transform value, compute its required
-    input tables fail-closed. Any extraction or resolution failure throws a
-    typed error. Never returns a partial set. Each table-info carries:
-    `:id` (app-DB Table id), `:schema` (string), `:name` (string), and
-    `:columns` — the column schema:
-    `[{:name <string> :base-type <kw> :nullable? <bool>} ...]`.
-
-  - [[match-fixtures]] — given the required-tables list and the set of fixture
-    keys provided by the caller (table ids), verify every required table has
-    exactly one fixture and no unknown keys were supplied. Throws typed errors
-    for missing or unknown keys.
+  - [[required-input-tables]] — compute a transform's required input tables,
+    fail-closed.
+  - [[match-fixtures]] — verify the provided fixture keys cover exactly the
+    required tables.
 
   ## Supported transform types
 
@@ -22,9 +15,7 @@
 
   ## Error taxonomy (`:error-type` keys in ex-data)
 
-  All errors are `ex-info` with a namespaced `:error-type` keyword. The API
-  layer (`transforms_rest.api.transform`) maps these to HTTP response codes and
-  user-facing messages.
+  All errors are `ex-info` with a namespaced `:error-type` keyword.
 
   | `:error-type`                        | Meaning |
   |--------------------------------------|---------|

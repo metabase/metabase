@@ -245,6 +245,16 @@
   []
   (str "the " (name *connection-type*) " connection"))
 
+(defn assert-connection-type!
+  "Assert that `*connection-type*` is currently `expected` (one of [[connection-types]]).
+
+   The sanctioned way for code with a connection-context precondition to verify it:
+   assert, never branch. Branching on connection type is what this namespace's
+   privacy is designed to prevent."
+  [expected]
+  (assert (= *connection-type* expected)
+          (str "Expected " expected " connection context, got " *connection-type*)))
+
 (defn connection-pool-type
   "Returns the effective pool key for the given database. Return value matches malli schema
   [[::connection-type]].

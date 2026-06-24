@@ -1,16 +1,9 @@
 (ns metabase.transforms.test-run.resolve
   "Resolve a transform into a fully-resolved, executable artifact for a test run.
 
-  Given a transform value, the scratch-table `mapping` produced by
-  [[metabase.transforms.test-run.scratch/seed!]], and the redirected
-  `output-target`, [[resolve-test-transform]] produces:
-
-  ```
-  {:driver         <keyword>
-   :compiled       <::compiled>   ; the qp.compile/compile output, modified in place
-   :target         <output-target>
-   :parser-backend <keyword>}     ; the parser backend pinned for this run
-  ```
+  Entry point: [[resolve-test-transform]] — given a transform value, the
+  scratch-table `mapping` from [[metabase.transforms.test-run.scratch/seed!]],
+  and the redirected `output-target`, it produces the executable artifact.
 
   ## Two compile paths
 
@@ -19,10 +12,9 @@
   `verify` guards over the final SQL (defense-in-depth); see [[verify]] and its
   guard comments.
 
-  Any guard failure, or any compile/rewrite failure, becomes ONE typed error:
+  Any guard failure, or any compile/rewrite failure, becomes a single typed error:
   `ex-info` with `:error-type ::cannot-test-run` (plus `:guard` and the offending
-  tokens/refs), consistent with the error taxonomy of
-  [[metabase.transforms.test-run.inputs]]."
+  tokens/refs)."
   (:require
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -67,7 +59,7 @@
   "Build a `sql-tools/replace-names` `:tables` replacements map from the scratch
   `mapping` (`{real-spec → scratch-spec}`, each spec `{:schema :table}`).
 
-  For each real table we register TWO keys, both pointing at the scratch target:
+  For each real table we register two keys, both pointing at the scratch target:
   a bare `{:table <name>}` key (matches unqualified `FROM orders`) and a
   schema-qualified `{:schema :table}` key (matches `FROM public.orders` and
   quoted `\"public\".\"orders\"`).
@@ -166,11 +158,11 @@
   (into #{} (map #(normalize-ref driver %)) (vals mapping)))
 
 (defn- forbidden-tokens
-  "Original (real) identifier tokens that must NOT survive in the final SQL.
+  "Original (real) identifier tokens that must never survive in the final SQL.
 
-  For each mapping entry the real TABLE name is always forbidden (the scratch
-  name differs by construction). The real SCHEMA is forbidden only when the
-  scratch table lives in a DIFFERENT schema — when scratch tables share the real
+  For each mapping entry the real table name is always forbidden (the scratch
+  name differs by construction). The real schema is forbidden only when the
+  scratch table lives in a different schema — when scratch tables share the real
   schema (the common case: same `public`), that schema legitimately appears
   in scratch-qualified output and must not be flagged."
   [mapping]
@@ -188,7 +180,7 @@
   because the FROM-only rewrite retargeted the table source but left the
   qualifier behind.
 
-  This is scope-aware and precise: it flags ONLY genuine dangling qualifiers,
+  This is scope-aware and precise: it flags only genuine dangling qualifiers,
   never legitimate lib-generated join aliases (e.g. a derived-subquery alias
   `\"Products\"`), which a blunt string match would false-positive on. The
   parser normalizes identifier case, so we compare against lowercased forbidden
@@ -206,7 +198,7 @@
 
 (defn- token-survives-as-string-literal?
   "True when `token` survives in `sql` as a whole identifier (identifier-boundary
-  aware: underscore is an identifier char), matched CASE-SENSITIVELY.
+  aware: underscore is an identifier char), matched case-sensitively.
 
   String-literal occurrences (`WHERE x = 'orders'`) fail closed by design — the
   caller names this guard explicitly for that reason. Case-sensitive matching
@@ -230,7 +222,7 @@
   (let [refs (sql-tools/referenced-tables-raw driver final-sql)]
     ;; Guard 1: non-empty refs — but only when mapping is non-empty.
     ;; A parse error on a rewritten SQL loses refs that existed (guard must fire).
-    ;; A zero-table transform has an empty mapping AND empty refs vacuously — safe,
+    ;; A zero-table transform has an empty mapping and empty refs vacuously — safe,
     ;; nothing to protect; Guard 2 still catches any stray refs if they appear.
     (when (and (seq mapping) (empty? refs))
       (cannot-test-run!
@@ -298,7 +290,10 @@
 
   Returns:
   ```
-  {:driver <kw> :compiled <::compiled> :target output-target :parser-backend <kw>}
+  {:driver         <kw>
+   :compiled       <::compiled>   ; qp.compile output, modified in place
+   :target         <output-target>
+   :parser-backend <kw>}          ; backend pinned for this run
   ```
 
   Throws the typed `::cannot-test-run` error on any compile/rewrite/verify
