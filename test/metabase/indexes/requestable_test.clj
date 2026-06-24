@@ -55,4 +55,13 @@
       {:kind :sortkey    :style "compound"    :columns [{:name "a"}]}
       {:kind :sortkey    :style "interleaved" :columns [{:name "a"}]}
       {:kind :skip-index :name "s" :columns [{:name "a"}] :type "minmax"}
-      {:kind :skip-index :name "s" :columns [{:name "a"}] :type "bloom_filter" :granularity 4})))
+      {:kind :skip-index :name "s" :columns [{:name "a"}] :type "bloom_filter" :granularity 4}
+      {:kind :distkey    :style "key" :columns [{:name "a"}]}
+      {:kind :distkey    :style "all"}
+      {:kind :distkey    :style "even"}
+      {:kind :distkey    :style "auto"})))
+
+(deftest distkey-key-requires-a-column-test
+  (testing "a :key distkey without a column is rejected; the column-less styles are fine"
+    (is (not (mr/validate ::schema/index-structured (schema/keywordize-structured {:kind :distkey :style "key"}))))
+    (is (mr/validate ::schema/index-structured (schema/keywordize-structured {:kind :distkey :style "all"})))))

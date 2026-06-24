@@ -24,15 +24,18 @@
     (is (false? (driver/database-supports? :redshift :index/standalone-create nil)))))
 
 (deftest ^:parallel supported-index-methods-test
-  (testing "Redshift advertises the inline sortkey with columns + style form fields"
-    (let [methods     (driver/supported-index-methods :redshift nil)
-          style-field (->> (get-in methods [:sortkey :fields])
-                           (filter #(= "style" (:name %)))
-                           first)]
+  (testing "Redshift advertises inline sortkey + distkey with their form fields"
+    (let [methods       (driver/supported-index-methods :redshift nil)
+          style-options (fn [kind]
+                          (->> (get-in methods [kind :fields])
+                               (filter #(= "style" (:name %)))
+                               first :options (map :value) set))]
       (is (mr/validate :metabase.driver/supported-index-methods methods))
-      (is (= {:sortkey :inline} (update-vals methods :lifecycle)))
+      (is (= {:sortkey :inline :distkey :inline} (update-vals methods :lifecycle)))
       (is (= ["columns" "style"] (map :name (get-in methods [:sortkey :fields]))))
-      (is (= #{"compound" "interleaved"} (set (map :value (:options style-field))))))))
+      (is (= ["style" "columns"] (map :name (get-in methods [:distkey :fields]))))
+      (is (= #{"compound" "interleaved"} (style-options :sortkey)))
+      (is (= #{"key" "all" "even" "auto"} (style-options :distkey))))))
 
 ;;; ------------------------------------------ DDL rendering ------------------------------------------
 
@@ -63,7 +66,24 @@
     :table        :events
     :indexes      []
     :ctas         "CREATE TABLE \"events\" AS SELECT 1"
-    :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER)"}])
+    :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER)"}
+   {:label        "key distribution renders DISTSTYLE KEY DISTKEY"
+    :table        :events
+    :indexes      [{:kind :distkey :style :key :columns [{:name "a"}]}]
+    :ctas         "CREATE TABLE \"events\" DISTSTYLE KEY DISTKEY (\"a\") AS SELECT 1"
+    :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) DISTSTYLE KEY DISTKEY (\"a\")"}
+   {:label        "all distribution renders DISTSTYLE ALL, no column"
+    :table        :events
+    :indexes      [{:kind :distkey :style :all}]
+    :ctas         "CREATE TABLE \"events\" DISTSTYLE ALL AS SELECT 1"
+    :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) DISTSTYLE ALL"}
+   {:label        "distkey + sortkey render in Redshift's required order (distribution then sort)"
+    :table        :events
+    :indexes      [{:kind :distkey :style :key :columns [{:name "a"}]}
+                   {:kind :sortkey :columns [{:name "b"}]}]
+    :ctas         "CREATE TABLE \"events\" DISTSTYLE KEY DISTKEY (\"a\") COMPOUND SORTKEY (\"b\") AS SELECT 1"
+    :create-table (str "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) "
+                       "DISTSTYLE KEY DISTKEY (\"a\") COMPOUND SORTKEY (\"b\")")}])
 
 (deftest ^:parallel sortkey-inlined-at-both-creation-seams-test
   (doseq [{:keys [label table indexes ctas create-table]} inline-cases]

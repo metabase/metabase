@@ -234,9 +234,9 @@
 
 (defmethod driver/supported-index-methods :redshift
   [_driver _database]
-  ;; Redshift has no secondary indexes: a sortkey is inlined into the table at creation time. That's the CTAS for a
-  ;; SQL transform and the CREATE TABLE for a Python transform, so it is rendered in both `compile-transform`
-  ;; and `create-table!`. distkeys come in a later milestone.
+  ;; Redshift has no secondary indexes: a sortkey and a distribution style are inlined into the table at creation.
+  ;; That's the CTAS for a SQL transform and the CREATE TABLE for a Python transform, so both are rendered in
+  ;; `compile-transform` and `create-table!`.
   {:sortkey {:lifecycle :inline
              :fields    [driver.common/index-columns-field
                          {:name         "style"
@@ -244,48 +244,93 @@
                           :type         :select
                           :required     true
                           :options      [{:name (deferred-tru "Compound")    :value "compound"}
-                                         {:name (deferred-tru "Interleaved") :value "interleaved"}]}]}})
+                                         {:name (deferred-tru "Interleaved") :value "interleaved"}]}]}
+   :distkey {:lifecycle :inline
+             :fields    [{:name         "style"
+                          :display-name (deferred-tru "Style")
+                          :type         :select
+                          :required     true
+                          :options      [{:name (deferred-tru "Key")  :value "key"}
+                                         {:name (deferred-tru "All")  :value "all"}
+                                         {:name (deferred-tru "Even") :value "even"}
+                                         {:name (deferred-tru "Auto") :value "auto"}]}
+                         ;; only the :key style takes a column, so this is not required
+                         {:name         "columns"
+                          :display-name (deferred-tru "Columns")
+                          :type         :columns}]}})
 
 (defn- sortkey-clause
-  "Render the inline clause for a table's `indexes`, e.g. `COMPOUND SORTKEY (\"a\", \"b\")`, or nil when there is no
-  sortkey. Shared by both creation seams: the CTAS in `compile-transform` and the CREATE TABLE in `create-table!`."
+  "Render the inline sortkey clause for a table's `indexes`, e.g. `COMPOUND SORTKEY (\"a\", \"b\")`, or nil when there
+  is no sortkey."
   [driver indexes]
   (when-let [{:keys [style columns]} (first (filter (comp #{:sortkey} :kind) indexes))]
     (let [style-sql (if (= style :interleaved) "INTERLEAVED" "COMPOUND")
           cols      (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
       (format "%s SORTKEY (%s)" style-sql cols))))
 
-;; Redshift has no secondary indexes; the only physical "index" is the inline, unnamed sortkey, so we override the
-;; inherited Postgres `pg_index` query. `svv_redshift_columns.sortkey` is the 1-based position (negative marks the
-;; whole key INTERLEAVED). Blank `schema` falls back to `current_schema()`.
+(defn- distkey-clause
+  "Render the inline distribution clause for a table's `indexes`, e.g. `DISTSTYLE KEY DISTKEY (\"a\")` or
+  `DISTSTYLE ALL`, or nil when there is no distkey."
+  [driver indexes]
+  (when-let [{:keys [style columns]} (first (filter (comp #{:distkey} :kind) indexes))]
+    (if (= style :key)
+      (format "DISTSTYLE KEY DISTKEY (%s)" (sql.u/quote-name driver :field (:name (first columns))))
+      (format "DISTSTYLE %s" (u/upper-case-en (name style))))))
+
+(defn- table-attributes-clause
+  "Render the inline Redshift table attributes (distribution then sort key) for `indexes`, in the order Redshift
+  requires, or nil when there are none. Shared by both creation seams: the CTAS in `compile-transform` and the
+  CREATE TABLE in `create-table!`."
+  [driver indexes]
+  (let [clauses (remove nil? [(distkey-clause driver indexes) (sortkey-clause driver indexes)])]
+    (when (seq clauses)
+      (str/join " " clauses))))
+
+;; Redshift has no secondary indexes; the only physical "indexes" are the inline, unnamed sortkey and the distribution
+;; key, so we override the inherited Postgres `pg_index` query. `svv_redshift_columns.sortkey` is the 1-based position
+;; (negative marks the whole key INTERLEAVED); `distkey` is true on the single KEY-distribution column. Blank `schema`
+;; falls back to `current_schema()`.
 (defmethod driver/fetch-table-indexes :redshift
   [_driver database schema table]
-  (let [rows (jdbc/query
-              (sql-jdbc.conn/db->pooled-connection-spec database)
-              [(str "SELECT column_name, sortkey FROM svv_redshift_columns "
-                    "WHERE schema_name = COALESCE(?, current_schema()) AND table_name = ? AND sortkey <> 0 "
-                    "ORDER BY abs(sortkey)")
-               (perf/not-empty schema) table])]
-    (if (seq rows)
-      (let [interleaved? (perf/some (comp neg? :sortkey) rows)
-            columns      (perf/mapv :column_name rows)]
-        [{:name              nil
-          :kind              :sortkey
-          :access-method     nil
-          :is-unique         false
-          :is-primary        false
-          :is-valid          true
-          :key-columns       columns
-          :include-columns   []
-          :partial-predicate nil
-          :definition        (format "%s SORTKEY (%s)"
-                                     (if interleaved? "INTERLEAVED" "COMPOUND")
-                                     (str/join ", " columns))}])
-      [])))
+  (let [rows      (jdbc/query
+                   (sql-jdbc.conn/db->pooled-connection-spec database)
+                   [(str "SELECT column_name, sortkey, distkey FROM svv_redshift_columns "
+                         "WHERE schema_name = COALESCE(?, current_schema()) AND table_name = ? "
+                         "ORDER BY abs(sortkey)")
+                    (perf/not-empty schema) table])
+        sort-rows (filter (comp (complement zero?) :sortkey) rows)
+        dist-row  (perf/some #(when (:distkey %) %) rows)]
+    (cond-> []
+      (seq sort-rows)
+      (conj (let [interleaved? (perf/some (comp neg? :sortkey) sort-rows)
+                  columns      (perf/mapv :column_name sort-rows)]
+              {:name              nil
+               :kind              :sortkey
+               :access-method     nil
+               :is-unique         false
+               :is-primary        false
+               :is-valid          true
+               :key-columns       columns
+               :include-columns   []
+               :partial-predicate nil
+               :definition        (format "%s SORTKEY (%s)"
+                                          (if interleaved? "INTERLEAVED" "COMPOUND")
+                                          (str/join ", " columns))}))
+      dist-row
+      (conj {:name              nil
+             :kind              :distkey
+             :access-method     nil
+             :is-unique         false
+             :is-primary        false
+             :is-valid          true
+             :key-columns       [(:column_name dist-row)]
+             :include-columns   []
+             :partial-predicate nil
+             :definition        (format "DISTKEY (%s)" (:column_name dist-row))}))))
 
 (defmethod driver/compile-transform :redshift
   [driver {:keys [query output-table indexes] :as transform-details}]
-  (if-let [clause (sortkey-clause driver indexes)]
+  (if-let [clause (table-attributes-clause driver indexes)]
     (let [{sql-query :query sql-params :params} query
           k      (keyword output-table)
           target (if (namespace k)
@@ -296,11 +341,13 @@
     ((get-method driver/compile-transform :sql) driver transform-details)))
 
 (defn- create-table-sql
-  "Render the `CREATE TABLE (...)` for a Python-transform target, inlining a sortkey from `:indexes` when present.
+  "Render the `CREATE TABLE (...)` for a Python-transform target, inlining sortkey/distkey from `:indexes` when present.
   Reuses the `:sql-jdbc` renderer for the column list and appends the inline clause."
   [driver table-name column-definitions {:keys [primary-key indexes]}]
-  (cond-> (#'sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
-    (seq indexes) (str " " (sortkey-clause driver indexes))))
+  (let [base (#'sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+    (if-let [clause (table-attributes-clause driver indexes)]
+      (str base " " clause)
+      base)))
 
 (defmethod driver/create-table! :redshift
   [driver db-id table-name column-definitions & {:as opts}]

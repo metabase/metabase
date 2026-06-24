@@ -17,12 +17,14 @@
     (is (true? (driver/database-supports? :postgres :index/standalone-create nil)))))
 
 (deftest ^:parallel supported-index-methods-test
-  (testing "Postgres advertises standalone btree with name/columns/unique form fields"
+  (testing "Postgres advertises btree (with unique) plus the gin/gist/brin access methods, all standalone"
     (let [methods (driver/supported-index-methods :postgres nil)]
-      (is (= #{:btree} (set (keys methods))))
-      (is (= :standalone (get-in methods [:btree :lifecycle])))
-      (is (= ["name" "columns" "unique"]
-             (map :name (get-in methods [:btree :fields])))))))
+      (is (= #{:btree :gin :gist :brin} (set (keys methods))))
+      (is (= {:btree :standalone :gin :standalone :gist :standalone :brin :standalone}
+             (update-vals methods :lifecycle)))
+      (testing "only btree offers the unique toggle"
+        (is (= ["name" "columns" "unique"] (map :name (get-in methods [:btree :fields]))))
+        (is (= ["name" "columns"] (map :name (get-in methods [:gin :fields]))))))))
 
 (deftest default-impls-test
   (testing "a driver without :index/standalone-create inherits safe defaults"
@@ -59,7 +61,31 @@
    {:label      "identifiers that need quoting still get it"
     :schema     nil :table "events"
     :structured {:kind :btree :name "weird idx" :columns [{:name "a\"b"}] :if-not-exists true}
-    :expected   "CREATE INDEX IF NOT EXISTS \"weird idx\" ON \"events\" (\"a\"\"b\")"}])
+    :expected   "CREATE INDEX IF NOT EXISTS \"weird idx\" ON \"events\" (\"a\"\"b\")"}
+   {:label      "gin renders USING gin"
+    :schema     "public" :table "events"
+    :structured {:kind :gin :name "events_data" :columns [{:name "data"}] :if-not-exists true}
+    :expected   "CREATE INDEX IF NOT EXISTS \"events_data\" ON \"public\".\"events\" USING gin (\"data\")"}
+   {:label      "gist renders USING gist"
+    :schema     nil :table "shapes"
+    :structured {:kind :gist :name "shapes_geom" :columns [{:name "geom"}]}
+    :expected   "CREATE INDEX \"shapes_geom\" ON \"shapes\" USING gist (\"geom\")"}
+   {:label      "brin renders USING brin"
+    :schema     nil :table "events"
+    :structured {:kind :brin :name "events_ts" :columns [{:name "ts"}] :if-not-exists true}
+    :expected   "CREATE INDEX IF NOT EXISTS \"events_ts\" ON \"events\" USING brin (\"ts\")"}
+   {:label      "unique is btree-only; ignored for the other methods"
+    :schema     nil :table "events"
+    :structured {:kind :gin :name "g" :columns [{:name "data"}] :unique true}
+    :expected   "CREATE INDEX \"g\" ON \"events\" USING gin (\"data\")"}
+   {:label      "btree renders per-column ASC/DESC direction"
+    :schema     nil :table "events"
+    :structured {:kind :btree :name "by_ts" :columns [{:name "a" :direction :desc} {:name "b" :direction :asc}]}
+    :expected   "CREATE INDEX \"by_ts\" ON \"events\" (\"a\" DESC, \"b\" ASC)"}
+   {:label      "direction is btree-only; dropped for the other methods (gin rejects ASC/DESC)"
+    :schema     nil :table "events"
+    :structured {:kind :gin :name "g" :columns [{:name "data" :direction :desc}]}
+    :expected   "CREATE INDEX \"g\" ON \"events\" USING gin (\"data\")"}])
 
 (deftest ^:parallel compile-create-index-test
   (doseq [{:keys [label schema table structured expected]} render-cases]
@@ -94,7 +120,22 @@
     :table      "perf_idx_unique"
     :columns    "id INT, email TEXT"
     :structured {:kind :btree :name "unique_email" :columns [{:name "email"}] :unique true :if-not-exists true}
-    :expected   {:access-method "btree", :unique? true}}])
+    :expected   {:access-method "btree", :unique? true}}
+   {:label      "gin over a jsonb column"
+    :table      "perf_idx_gin"
+    :columns    "id INT, data JSONB"
+    :structured {:kind :gin :name "gin_data" :columns [{:name "data"}] :if-not-exists true}
+    :expected   {:access-method "gin", :unique? false}}
+   {:label      "brin over a timestamp column"
+    :table      "perf_idx_brin"
+    :columns    "id INT, ts TIMESTAMP"
+    :structured {:kind :brin :name "brin_ts" :columns [{:name "ts"}] :if-not-exists true}
+    :expected   {:access-method "brin", :unique? false}}
+   {:label      "gist over a point column (built-in point_ops opclass, no extension needed)"
+    :table      "perf_idx_gist"
+    :columns    "id INT, p POINT"
+    :structured {:kind :gist :name "gist_p" :columns [{:name "p"}] :if-not-exists true}
+    :expected   {:access-method "gist", :unique? false}}])
 
 (deftest standalone-create-path-test
   (testing "the standalone-create path runs the rendered DDL and then ANALYZE against a real table"

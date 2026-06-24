@@ -33,10 +33,15 @@
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::distkey
-  "Redshift distribution key, inline."
-  [:map
-   [:kind [:= :distkey]]
-   [:column :string]])
+  "Redshift distribution, inline. `:columns` holds the single DISTKEY column, required only for the `:key` style;
+  `:all`/`:even`/`:auto` take no column."
+  [:and
+   [:map
+    [:kind    [:= :distkey]]
+    [:style   [:enum :key :all :even :auto]]
+    [:columns {:optional true} [:vector {:min 1} ::column]]]
+   [:fn {:error/message "a :key distkey requires a column"}
+    (fn [{:keys [style columns]}] (or (not= style :key) (seq columns)))]])
 
 (mr/def ::clustering
   "Snowflake (standalone) / BigQuery (inline) clustering. `:name` is required for the standalone form."
