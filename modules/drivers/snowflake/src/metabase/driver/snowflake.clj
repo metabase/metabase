@@ -67,10 +67,13 @@
                               :expressions/float                      true
                               :expressions/date                       true
                               :identifiers-with-spaces                true
+                              :index/fetch                            true
+                              :index/standalone-create                true
                               :split-part                             true
                               :collate                                true
                               :now                                    true
                               :database-routing                       true
+                              :transforms/index-ddl                   true
                               :metadata/table-existence-check         true
                               :regex/lookaheads-and-lookbehinds       false
                               :transforms/accurate-rows-affected      false
@@ -1009,6 +1012,84 @@
                                :dialect (sql.qp/quote-style driver)))]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Snowflake's only physical "index" is the table's single clustering key (`CLUSTER BY`); there are no secondary
+;; indexes. We model it as a standalone `:clustering` kind whose `:name` is Metabase-side only -- the warehouse keeps
+;; clustering keys unnamed, so `fetch-table-indexes` reports `:name nil` and reconcile matches by kind + columns.
+
+(defmethod driver/supported-index-methods :snowflake
+  [_driver _database]
+  {:clustering {:lifecycle :standalone
+                :fields    [driver.common/index-name-field driver.common/index-columns-field]}})
+
+(defmethod driver/compile-create-index :snowflake
+  [driver schema table {:keys [columns]}]
+  ;; One clustering key per table; re-issuing the same ALTER is harmless, so no IF NOT EXISTS is needed.
+  (let [target (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))
+        cols   (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
+    [[(format "ALTER TABLE %s CLUSTER BY (%s)" target cols)]]))
+
+(defn- split-top-level-commas
+  "Split on commas not nested inside parens, so an expression clustering key like `TO_DATE(ts), category` keeps its
+  function args intact."
+  [^String s]
+  (loop [i 0, depth 0, start 0, acc []]
+    (if (< i (.length s))
+      (let [c (.charAt s i)]
+        (cond
+          (= c \()                     (recur (inc i) (inc depth) start acc)
+          (= c \))                     (recur (inc i) (dec depth) start acc)
+          (and (= c \,) (zero? depth))  (recur (inc i) depth (inc i) (conj acc (subs s start i)))
+          :else                        (recur (inc i) depth start acc)))
+      (conj acc (subs s start)))))
+
+(defn- unquote-ident
+  "Strip the double-quotes off a quoted identifier (doubled quotes unescaped), matching the bare column name the
+  managed side stores. Leaves bare names and expressions untouched."
+  [^String s]
+  (if (and (> (count s) 1) (str/starts-with? s "\"") (str/ends-with? s "\""))
+    (str/replace (subs s 1 (dec (count s))) "\"\"" "\"")
+    s))
+
+(defn- parse-clustering-key
+  "Parse a Snowflake `CLUSTERING_KEY` string like `LINEAR(category, price)` into its top-level column names/expressions
+  in order. Returns nil for a table with no clustering key."
+  [clustering-key]
+  (when-let [s (not-empty (some-> clustering-key str/trim))]
+    ;; the wrapper is `LINEAR(...)`; drop it down to the inner column list.
+    (let [inner (or (second (re-matches #"(?is)\s*LINEAR\s*\((.*)\)\s*" s)) s)]
+      (->> (split-top-level-commas inner)
+           (map (comp unquote-ident str/trim))
+           (remove str/blank?)
+           vec))))
+
+;; Snowflake clustering keys are unnamed in the catalog, so the single `:clustering` row is emitted with `:name nil`
+;; and reconciled by kind + key columns. `CLUSTERING_KEY` lives in the current database's INFORMATION_SCHEMA; a blank
+;; schema falls back to the connection's `current_schema()`.
+(defmethod driver/fetch-table-indexes :snowflake
+  [_driver database schema table]
+  (let [clustering-key (-> (jdbc/query
+                            (sql-jdbc.conn/db->pooled-connection-spec database)
+                            [(str "SELECT clustering_key FROM information_schema.tables "
+                                  "WHERE table_schema = COALESCE(?, current_schema()) AND table_name = ?")
+                             (not-empty schema) table])
+                           first :clustering_key)]
+    (if-let [columns (not-empty (parse-clustering-key clustering-key))]
+      [{:name              nil
+        :kind              :clustering
+        :access-method     nil
+        :is-unique         false
+        :is-primary        false
+        :is-valid          true
+        :key-columns       columns
+        :include-columns   []
+        :partial-predicate nil
+        :definition        (format "CLUSTER BY (%s)" (str/join ", " columns))}]
+      [])))
 
 (defmethod driver/table-name-length-limit :snowflake
   [_driver]

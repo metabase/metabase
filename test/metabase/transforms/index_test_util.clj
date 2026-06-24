@@ -4,6 +4,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]))
 
@@ -42,6 +43,24 @@
                                           schema table])
                         (mapv #(update % :granularity long)))}))
 
+(defn- snowflake-clustering
+  "Read a Snowflake table's clustering key back as a vector of column names in order, or [] when unclustered.
+  `CLUSTERING_KEY` is a string like `LINEAR(category, price)`; strip the wrapper and split on top-level commas."
+  [database schema table]
+  (let [clustering-key (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                                       [(str "SELECT clustering_key FROM information_schema.tables "
+                                             "WHERE table_schema = ? AND table_name = ?")
+                                        schema table])
+                           first :clustering_key)]
+    (if-let [s (some-> clustering-key str/trim not-empty)]
+      (let [inner (or (second (re-matches #"(?is)\s*LINEAR\s*\((.*)\)\s*" s)) s)]
+        (->> (str/split inner #",")
+             (map str/trim)
+             (map #(str/replace % #"^\"|\"$" ""))
+             (remove str/blank?)
+             vec))
+      [])))
+
 (def driver-cases
   "Driver -> test case: `:indexes` to declare (every method whose column types `transforms_products` can satisfy; the
   rest, e.g. Postgres gin/gist, live in the driver-level and fetch suites), `:physical-indexes` a
@@ -65,7 +84,12 @@
                                     :columns [{:name "price"}] :granularity 1}]
                 :expected         {:sorting-key  "(category)"
                                    :skip-indexes [{:name "by_price" :type "minmax" :expr "(price)" :granularity 1}]}
-                :physical-indexes clickhouse-indexes}})
+                :physical-indexes clickhouse-indexes}
+   ;; Snowflake: a single standalone clustering key (no secondary indexes). The `:name` is Metabase-side only;
+   ;; the warehouse reports it unnamed, so we read back just the clustered columns.
+   :snowflake  {:indexes          [{:kind :clustering :name "by_category" :columns [{:name "category"}]}]
+                :expected         ["category"]
+                :physical-indexes snowflake-clustering}})
 
 (defn index-test-drivers
   "Drivers that run transforms and declare any index support."
@@ -175,4 +199,14 @@
     {:label "an unsorted table returns []"
      :table "mb_fetch_ch_empty"
      :create ["CREATE TABLE mb_fetch_ch_empty (a Int64) ENGINE = MergeTree ORDER BY ()"]
+     :expected #{}}]
+
+   :snowflake
+   [{:label  "the clustering key, unnamed, reconciled by kind + columns"
+     :table  "mb_fetch_sf"
+     :create ["CREATE TABLE mb_fetch_sf (category TEXT, price FLOAT) CLUSTER BY (category)"]
+     :expected #{(idx nil :clustering nil ["category"])}}
+    {:label "a table with no clustering key returns []"
+     :table "mb_fetch_sf_empty"
+     :create ["CREATE TABLE mb_fetch_sf_empty (a INT, b INT)"]
      :expected #{}}]})
