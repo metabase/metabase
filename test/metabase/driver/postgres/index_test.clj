@@ -77,6 +77,14 @@
    {:label      "unique is btree-only; ignored for the other methods"
     :schema     nil :table "events"
     :structured {:kind :gin :name "g" :columns [{:name "data"}] :unique true}
+    :expected   "CREATE INDEX \"g\" ON \"events\" USING gin (\"data\")"}
+   {:label      "btree renders per-column ASC/DESC direction"
+    :schema     nil :table "events"
+    :structured {:kind :btree :name "by_ts" :columns [{:name "a" :direction :desc} {:name "b" :direction :asc}]}
+    :expected   "CREATE INDEX \"by_ts\" ON \"events\" (\"a\" DESC, \"b\" ASC)"}
+   {:label      "direction is btree-only; dropped for the other methods (gin rejects ASC/DESC)"
+    :schema     nil :table "events"
+    :structured {:kind :gin :name "g" :columns [{:name "data" :direction :desc}]}
     :expected   "CREATE INDEX \"g\" ON \"events\" USING gin (\"data\")"}])
 
 (deftest ^:parallel compile-create-index-test

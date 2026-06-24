@@ -43,8 +43,9 @@
                         (mapv #(update % :granularity long)))}))
 
 (def driver-cases
-  "Driver -> test case: `:indexes` to declare (covering every index method the driver supports), `:physical-indexes`
-  a `(fn [database schema table])` reading them back from the system catalog, and `:expected` what it should return.
+  "Driver -> test case: `:indexes` to declare (every method whose column types `transforms_products` can satisfy; the
+  rest, e.g. Postgres gin/gist, live in the driver-level and fetch suites), `:physical-indexes` a
+  `(fn [database schema table])` reading them back from the system catalog, and `:expected` what it should return.
   Target columns come from the transforms-test `transforms_products` (`category` text, `price` float)."
   {;; Postgres: standalone btree + brin (gin/gist need column types transforms_products doesn't have, so they're
    ;; exercised in the driver-level and fetch suites instead).
