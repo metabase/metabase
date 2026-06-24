@@ -455,6 +455,7 @@ describe(
               SOURCE_TABLE_LABEL,
               COMPATIBLE_TARGET_LABEL,
             );
+            waitForNativeQueryRewrite(body.id, COMPATIBLE_TARGET);
             H.visitQuestion(body.id);
             assertTargetRowVisible();
             H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
@@ -914,6 +915,35 @@ function replaceSourceWithTarget(
   pickTarget(targetTableLabel);
   confirmReplacement();
   waitForReplacementToComplete();
+}
+
+// The replacement run can report `succeeded` before every dependent card's
+// stored query has been rewritten to the new table — so visiting a dependent
+// question right after `waitForReplacementToComplete` can re-run the *old*
+// query and render stale source rows. Poll the card until its native SQL
+// actually references the target table before visiting.
+function waitForNativeQueryRewrite(cardId: number, targetTableName: string) {
+  const POLL_INTERVAL_MS = 250;
+  const POLL_TIMEOUT_MS = 30_000;
+  const MAX_ATTEMPTS = POLL_TIMEOUT_MS / POLL_INTERVAL_MS;
+
+  const pollCard = (attempt = 0): void => {
+    if (attempt >= MAX_ATTEMPTS) {
+      throw new Error(
+        `Card ${cardId} native query was not rewritten to reference "${targetTableName}" within ${POLL_TIMEOUT_MS}ms`,
+      );
+    }
+
+    cy.request("GET", `/api/card/${cardId}`).then(({ body }) => {
+      const nativeQuery: string = body?.dataset_query?.native?.query ?? "";
+      if (nativeQuery.includes(targetTableName)) {
+        return;
+      }
+      return cy.wait(POLL_INTERVAL_MS).then(() => pollCard(attempt + 1));
+    });
+  };
+
+  pollCard();
 }
 
 function createSourceQuestion(
