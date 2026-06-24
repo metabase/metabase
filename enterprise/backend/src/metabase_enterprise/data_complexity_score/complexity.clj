@@ -28,8 +28,8 @@
 (def format-version
   "Bump when the response shape changes in a way that breaks consumer parsing, even when scores are equivalent.
 
-  v2 introduced the descriptive leaf shape (`{:value ...}`, no `:score`) and the descriptive-only
-  `:metadata` grouping (no `:score`), plus a raft of new keys under `:size`/`:ambiguity`."
+  v2 added a raft of new scored leaves under `:size`/`:ambiguity`, a new scored `:metadata` grouping,
+  and the nested `:synonym-degree` sub-group — every measure is a scored `{:measurement :score}` leaf."
   2)
 
 (def weights
@@ -42,7 +42,30 @@
    :field                  1
    :repeated-measure       2
    :collection-tree-size   1
-   :field-level-collisions 5})
+   :field-level-collisions 5
+   ;; CALIBRATION PLACEHOLDERS -- the measures below were descriptive (`{:value}`) before v2 turned
+   ;; every measure into a scored leaf. These weights are NOT yet tuned against real catalogs; they
+   ;; exist so the new measures contribute to the rollup and are subject to a future calibration pass.
+   :fields-per-entity         1
+   :measure-to-dim-ratio      1
+   :name-collisions-density   1
+   :name-concentration        10
+   :synonym-edge-density      1
+   :synonym-components        1
+   :synonym-largest-component 2
+   :synonym-avg-component     1
+   :synonym-clustering-coef   10
+   :synonym-avg-degree        5
+   :synonym-degree-p50        1
+   :synonym-degree-p90        1
+   :synonym-degree-max        1
+   ;; Metadata measures score the GAP (1 - coverage), so high curation adds ~0 complexity.
+   :description-coverage       10
+   :field-description-coverage 10
+   :semantic-type-coverage     10
+   :curated-metric-coverage    10
+   :embedding-coverage         10
+   :description-quality        1})
 
 (def complexity-bands
   "Tree of rating bands mirroring [[score-catalog]]'s output.
@@ -83,18 +106,12 @@
               bands))
       nil-rating))
 
-(defn- descriptive-leaf?
-  "A descriptive (v2) leaf — carries `:value` and no `:score`. Left untouched by rating decoration
-  so it never gains `:rating`/`:rating_label` keys."
-  [node]
-  (and (contains? node :value) (not (contains? node :score))))
-
 (defn- decorate-with-ratings*
   "Walk a catalog `node` and the matching `bands` subtree in parallel, merging rating fields onto every node.
   Each node is rated against its own `:band-lookup`, or `nil-rating` when absent.
-  Error leaves and descriptive leaves are left untouched (no rating keys). Children recurse along `:components`."
+  Error leaves carry only `:error` and are left untouched. Children recurse along `:components`."
   [bands node]
-  (if (or (:error node) (descriptive-leaf? node))
+  (if (:error node)
     node
     (let [decorated (merge node (rating-for-score (:band-lookup bands) (:score node)))]
       (cond-> decorated
@@ -315,21 +332,19 @@
 ;;; ---------------------------------- leaf builders ----------------------------------
 
 (defn- scored-leaf
-  "Scored leaf map: raw `:measurement` (double — future-proofs non-integer axes like density) and
-  weighted `:score` using the weight at `weight-key`."
+  "Scored leaf map: raw `:measurement` (a number — may be fractional for ratios/analytics) and
+  weighted `:score` (`measurement * weight`). nil-safe: an undefined measurement (e.g. a ratio with
+  a zero denominator, [[safe-ratio]] returning nil) is treated as 0 — both `:measurement` and
+  `:score` become 0. This is the v2 \"every measure is scored\" path; a genuine embedder *error*
+  uses the separate `{:error ... :score nil}` leaf so a real failure still cascades nil."
   [weight-key n]
-  {:measurement (double n)
-   :score       (* n (get weights weight-key))})
-
-(defn- value-leaf
-  "Descriptive leaf — carries a raw `:value` (number, map, or nil) and NO `:score`, so it is skipped
-  by the rollup. `:value` nil means \"not available\" (e.g. a ratio with a zero denominator), which
-  consumers should render distinctly from 0."
-  [v]
-  {:value v})
+  (let [n (or n 0)]
+    {:measurement (double n)
+     :score       (* n (get weights weight-key))}))
 
 (defn- safe-ratio
-  "`num/denom` as a double, or nil when `denom` is zero (undefined, not 0). Both default to 0 if nil."
+  "`num/denom` as a double, or nil when `denom` is zero (undefined). Both default to 0 if nil.
+  Callers wrap the result in [[scored-leaf]], which coerces a nil ratio to a 0 measurement/score."
   [num denom]
   (let [num   (or num 0)
         denom (or denom 0)]
@@ -367,17 +382,17 @@
   (scored-leaf :collection-tree-size (or collection-count 0)))
 
 (defn- fields-per-entity
-  "Descriptive: field-count / entity-count. nil when there are no entities."
+  "Scored: field-count / entity-count. Undefined (no entities) → 0 via [[scored-leaf]]."
   [n total-fields]
-  (value-leaf (safe-ratio total-fields n)))
+  (scored-leaf :fields-per-entity (safe-ratio total-fields n)))
 
 (defn- measure-to-dim-ratio
-  "Descriptive: `(named-measures + metric-cards) / fields` — how densely the catalog is curated as a
-  semantic layer vs. thin wrappers over raw data. nil when there are no fields."
+  "Scored: `(named-measures + metric-cards) / fields` — how densely the catalog is curated as a
+  semantic layer vs. thin wrappers over raw data. Undefined (no fields) → 0."
   [entities total-fields]
   (let [measures     (reduce + 0 (map #(count (:measure-names %)) entities))
         metric-cards (count (filter #(= :metric (:kind %)) entities))]
-    (value-leaf (safe-ratio (+ measures metric-cards) total-fields))))
+    (scored-leaf :measure-to-dim-ratio (safe-ratio (+ measures metric-cards) total-fields))))
 
 ;;; ------------------------------- :ambiguity measures -------------------------------
 
@@ -405,31 +420,33 @@
     (scored-leaf :field-level-collisions collisions)))
 
 (defn- name-collisions-density
-  "Descriptive: collisions per 100 entities. nil when the catalog is empty."
+  "Scored: collisions per 100 entities. Undefined (empty catalog) → 0."
   [entities]
   (let [collisions (repeated-names (map :name entities))]
-    (value-leaf (some-> (safe-ratio collisions (count entities)) (* 100.0)))))
+    (scored-leaf :name-collisions-density
+                 (some-> (safe-ratio collisions (count entities)) (* 100.0)))))
 
 (defn- name-concentration
-  "Descriptive: `1 - Pielou's evenness` over entity-name frequencies. 0 = perfectly even (all names
-  unique); approaching 1 = highly concentrated. nil when there are no named entities; 0.0 when a
-  single name category exists (evenness is trivially 1)."
+  "Scored: `1 - Pielou's evenness` over entity-name frequencies. 0 = perfectly even (all names
+  unique); approaching 1 = highly concentrated. 0 when there are no named entities or a single name
+  category exists (evenness trivially 1)."
   [entities]
   (let [freqs (->> entities (keep (comp embedders/normalize-name :name)) frequencies)
         total (reduce + 0 (vals freqs))
         s     (count freqs)]
-    (cond
-      (zero? total) (value-leaf nil)
-      (<= s 1)      (value-leaf 0.0)
-      :else
-      (let [log-s (Math/log s)
-            h     (reduce (fn [acc c]
-                            (let [p (/ (double c) total)]
-                              (- acc (* p (Math/log p)))))
-                          0.0
-                          (vals freqs))
-            j     (/ h log-s)]
-        (value-leaf (max 0.0 (min 1.0 (- 1.0 j))))))))
+    (scored-leaf :name-concentration
+                 (cond
+                   (zero? total) 0.0
+                   (<= s 1)      0.0
+                   :else
+                   (let [log-s (Math/log s)
+                         h     (reduce (fn [acc c]
+                                         (let [p (/ (double c) total)]
+                                           (- acc (* p (Math/log p)))))
+                                       0.0
+                                       (vals freqs))
+                         j     (/ h log-s)]
+                     (max 0.0 (min 1.0 (- 1.0 j))))))))
 
 ;;; ------------------------------- synonym graph math --------------------------------
 
@@ -553,49 +570,56 @@
                           (keep #(get name->vec %)))
                     entities)))
 
+(defn- degree-group
+  "Nested sub-group of three scored degree-percentile leaves. `rollup-node` rolls this internal node
+  up to `{:score <p50+p90+max> :components {:p50.. :p90.. :max..}}`, which feeds `:ambiguity`'s
+  total — the tree is arbitrarily deep, so no special handling is needed."
+  [{:keys [p50 p90 max]}]
+  {:p50 (scored-leaf :synonym-degree-p50 p50)
+   :p90 (scored-leaf :synonym-degree-p90 p90)
+   :max (scored-leaf :synonym-degree-max max)})
+
 (defn- synonym-block
-  "Build the `:ambiguity` synonym variables (scored `:synonym-pairs` + 7 descriptive analytics) from
-  one adjacency graph. `embedder-out` is the already-invoked [[embedder-result]] so the lookup is
-  shared with `:embedding-coverage`.
+  "Build the `:ambiguity` synonym variables — the scored `:synonym-pairs`, six scored scalar
+  analytics, and the nested `:synonym-degree` sub-group — from one adjacency graph. `embedder-out`
+  is the already-invoked [[embedder-result]] so the lookup is shared with `:embedding-coverage`.
 
-  On embedder error, `:synonym-pairs` carries `{:error ... :score nil}` so the nil cascades through
-  `:ambiguity` → catalog total (visibly distinct from a real zero). n=0 (no embedded names) and n=1
-  (singleton) get the well-defined degenerate values (nil vs 0.0 ratios)."
+  Every measure is a scored leaf now. An undefined analytic (e.g. clustering with no triples, or any
+  ratio at n=0) scores 0 via [[scored-leaf]]. On embedder ERROR, `:synonym-pairs` carries
+  `{:error ... :score nil}` so the nil cascades through `:ambiguity` → the catalog total (visibly
+  distinct from a real zero). n=0 (no embedded names) and n=1 (singleton) are the degenerate graphs."
   [entities {:keys [name->vec error]}]
-  (cond
-    error
-    {:synonym-pairs             {:value nil :score nil :error error}
-     :synonym-edge-density      (value-leaf nil)
-     :synonym-components        (value-leaf 0)
-     :synonym-largest-component (value-leaf 0)
-     :synonym-avg-component     (value-leaf nil)
-     :synonym-clustering-coef   (value-leaf nil)
-     :synonym-avg-degree        (value-leaf nil)
-     :synonym-degree-summary    (value-leaf {:p50 0 :p90 0 :max 0})}
-
-    :else
+  (if error
+    {:synonym-pairs             {:error error :score nil}
+     :synonym-edge-density      (scored-leaf :synonym-edge-density 0)
+     :synonym-components        (scored-leaf :synonym-components 0)
+     :synonym-largest-component (scored-leaf :synonym-largest-component 0)
+     :synonym-avg-component     (scored-leaf :synonym-avg-component 0)
+     :synonym-clustering-coef   (scored-leaf :synonym-clustering-coef 0)
+     :synonym-avg-degree        (scored-leaf :synonym-avg-degree 0)
+     :synonym-degree            (degree-group {:p50 0 :p90 0 :max 0})}
     (let [vecs (entity-vectors entities name->vec)
           n    (alength vecs)]
       (cond
         (zero? n)
         {:synonym-pairs             (scored-leaf :synonym-pair 0)
-         :synonym-edge-density      (value-leaf nil)
-         :synonym-components        (value-leaf 0)
-         :synonym-largest-component (value-leaf 0)
-         :synonym-avg-component     (value-leaf nil)
-         :synonym-clustering-coef   (value-leaf nil)
-         :synonym-avg-degree        (value-leaf nil)
-         :synonym-degree-summary    (value-leaf {:p50 0 :p90 0 :max 0})}
+         :synonym-edge-density      (scored-leaf :synonym-edge-density 0)
+         :synonym-components        (scored-leaf :synonym-components 0)
+         :synonym-largest-component (scored-leaf :synonym-largest-component 0)
+         :synonym-avg-component     (scored-leaf :synonym-avg-component 0)
+         :synonym-clustering-coef   (scored-leaf :synonym-clustering-coef 0)
+         :synonym-avg-degree        (scored-leaf :synonym-avg-degree 0)
+         :synonym-degree            (degree-group {:p50 0 :p90 0 :max 0})}
 
         (= 1 n)
         {:synonym-pairs             (scored-leaf :synonym-pair 0)
-         :synonym-edge-density      (value-leaf 0.0)
-         :synonym-components        (value-leaf 1)
-         :synonym-largest-component (value-leaf 1)
-         :synonym-avg-component     (value-leaf nil)
-         :synonym-clustering-coef   (value-leaf nil)
-         :synonym-avg-degree        (value-leaf 0.0)
-         :synonym-degree-summary    (value-leaf {:p50 0 :p90 0 :max 0})}
+         :synonym-edge-density      (scored-leaf :synonym-edge-density 0.0)
+         :synonym-components        (scored-leaf :synonym-components 1)
+         :synonym-largest-component (scored-leaf :synonym-largest-component 1)
+         :synonym-avg-component     (scored-leaf :synonym-avg-component 0)
+         :synonym-clustering-coef   (scored-leaf :synonym-clustering-coef 0)
+         :synonym-avg-degree        (scored-leaf :synonym-avg-degree 0.0)
+         :synonym-degree            (degree-group {:p50 0 :p90 0 :max 0})}
 
         :else
         (let [{:keys [^objects adj edges]} (build-adjacency vecs synonym-similarity-threshold)
@@ -609,13 +633,13 @@
               ;; denominator is ≥ 1.
               possible-edges (/ (* n (dec n)) 2)]
           {:synonym-pairs             (scored-leaf :synonym-pair edges)
-           :synonym-edge-density      (value-leaf (* 100.0 (/ (double ^long edges) (double possible-edges))))
-           :synonym-components        (value-leaf (count comps))
-           :synonym-largest-component (value-leaf largest)
-           :synonym-avg-component     (value-leaf avg-comp)
-           :synonym-clustering-coef   (value-leaf (clustering-coefficient adj n))
-           :synonym-avg-degree        (value-leaf (double (/ (* 2.0 ^long edges) (double n))))
-           :synonym-degree-summary    (value-leaf (degree-summary adj n))})))))
+           :synonym-edge-density      (scored-leaf :synonym-edge-density (* 100.0 (/ (double ^long edges) (double possible-edges))))
+           :synonym-components        (scored-leaf :synonym-components (count comps))
+           :synonym-largest-component (scored-leaf :synonym-largest-component largest)
+           :synonym-avg-component     (scored-leaf :synonym-avg-component avg-comp)
+           :synonym-clustering-coef   (scored-leaf :synonym-clustering-coef (clustering-coefficient adj n))
+           :synonym-avg-degree        (scored-leaf :synonym-avg-degree (double (/ (* 2.0 ^long edges) (double n))))
+           :synonym-degree            (degree-group (degree-summary adj n))})))))
 
 (defn- embedding-coverage
   "Fraction of distinct normalized names with an embedding in `name->vec` (in [0,1]). nil when there
@@ -643,15 +667,26 @@
   (mapcat :fields entities))
 
 (defn- description-quality
-  "Descriptive: p50 word count over non-empty entity descriptions. nil when none."
+  "Scored (raw, weight 1): p50 word count over non-empty entity descriptions. 0 when none.
+  Unlike the coverage measures this is NOT gap-inverted — more words is (weakly) more to reason
+  about, so a higher raw p50 adds complexity directly."
   [entities]
   (let [words (->> entities
                    (map :description)
                    (filter non-empty-str?)
                    (map #(count (str/split (str/trim %) #"\s+"))))]
-    (value-leaf (when (seq words)
-                  (let [sorted (vec (sort words))]
-                    (nth sorted (quot (count sorted) 2)))))))
+    (scored-leaf :description-quality
+                 (when (seq words)
+                   (let [sorted (vec (sort words))]
+                     (nth sorted (quot (count sorted) 2)))))))
+
+(defn- coverage-gap-leaf
+  "Scored leaf for an inverted-polarity coverage ratio: score the GAP `(1 - coverage)` so a
+  fully-curated catalog adds ~0 and missing curation adds complexity. An undefined coverage (nil —
+  no denominator, e.g. no fields) is treated as a full gap of 1.0 rather than 0: a catalog with
+  nothing to cover offers the agent no curated context, so it is maximally uncovered."
+  [weight-key coverage]
+  (scored-leaf weight-key (- 1.0 (or coverage 0.0))))
 
 ;;; -------------------------------- tree assembly ------------------------------------
 
@@ -661,18 +696,21 @@
   2)
 
 (defn- score-tree-leaves
-  "Pure: build the leaves tree of sub-score maps for one catalog. Scored leaves carry `:score`;
-  descriptive leaves carry only `:value`. The surrounding shape defines the `:size`/`:ambiguity`/
-  `:metadata` groupings that [[score-catalog]] rolls up. `:metadata` is descriptive-only, so it
-  ends up with no `:score` and is excluded from the catalog total.
+  "Pure: build the leaves tree of sub-score maps for one catalog. EVERY measure is a scored leaf
+  (`{:measurement :score}`) and contributes to its grouping's rollup and the catalog total. The
+  surrounding shape defines the `:size`/`:ambiguity`/`:metadata` groupings that [[score-catalog]]
+  rolls up; all three now carry a `:score`.
 
   Cost-tiered by `:level` (default [[default-level]]): level ≥ 1 computes the cheap DB-only measures
   (scale, nominal, metadata coverage minus embedding-coverage); level ≥ 2 ALSO invokes the embedder
-  and adds the synonym graph (`:synonym-pairs` + the 7 `synonym-*` analytics) and
-  `:embedding-coverage`. At level 1 those keys are OMITTED entirely (not emitted as zero leaves).
+  and adds the synonym graph (`:synonym-pairs` + the scalar analytics + the `:synonym-degree`
+  sub-group) and `:embedding-coverage`. At level 1 those keys are OMITTED entirely (not zero leaves).
+
+  Metadata coverage has inverted polarity (more curation = less complexity), so it scores the GAP
+  `(1 - coverage)` — see [[coverage-gap-leaf]]. `:description-quality` scores the raw p50 word count.
 
   Gracefully degrades on the offline/representation path: entities missing `:fields`/`:description`
-  yield 0 / nil rather than throwing, and a nil `:collection-count` scores `collection-tree-size` 0."
+  yield 0 rather than throwing, and a nil `:collection-count` scores `collection-tree-size` 0."
   [entities {:keys [collection-count level] :or {level default-level}} embedder]
   (let [n            (count entities)
         total-fields (total-field-count entities)
@@ -692,25 +730,22 @@
                          :name-collisions-density (name-collisions-density entities)
                          :name-concentration      (name-concentration entities)}
                   (>= level 2) (merge (synonym-block entities emb)))
-     :metadata  (cond-> {:description-coverage       (value-leaf (safe-ratio (count (filter #(has-description? (:description %)) entities))
-                                                                             n))
-                         :field-description-coverage (value-leaf (safe-ratio (count (filter #(non-empty-str? (:description %)) fields))
-                                                                             (count fields)))
-                         :semantic-type-coverage     (value-leaf (safe-ratio (count (filter :semantic-type fields))
-                                                                             (count fields)))
-                         :curated-metric-coverage    (value-leaf (safe-ratio (count (filter #(seq (:measure-names %)) tables))
-                                                                             (count tables)))
+     :metadata  (cond-> {:description-coverage       (coverage-gap-leaf :description-coverage
+                                                                        (safe-ratio (count (filter #(has-description? (:description %)) entities))
+                                                                                    n))
+                         :field-description-coverage (coverage-gap-leaf :field-description-coverage
+                                                                        (safe-ratio (count (filter #(non-empty-str? (:description %)) fields))
+                                                                                    (count fields)))
+                         :semantic-type-coverage     (coverage-gap-leaf :semantic-type-coverage
+                                                                        (safe-ratio (count (filter :semantic-type fields))
+                                                                                    (count fields)))
+                         :curated-metric-coverage    (coverage-gap-leaf :curated-metric-coverage
+                                                                        (safe-ratio (count (filter #(seq (:measure-names %)) tables))
+                                                                                    (count tables)))
                          :description-quality        (description-quality entities)}
                   ;; embedding-coverage reuses the embedder result, so it's a level-2 measure too.
-                  (>= level 2) (assoc :embedding-coverage (value-leaf (embedding-coverage entities emb))))}))
-
-(defn- leaf?
-  "A node is a leaf when it carries `:measurement`, `:value`, or `:error` — i.e. it is not an
-  internal grouping. Internal nodes are recursed into via their values."
-  [node]
-  (or (contains? node :measurement)
-      (contains? node :value)
-      (contains? node :error)))
+                  (>= level 2) (assoc :embedding-coverage (coverage-gap-leaf :embedding-coverage
+                                                                             (embedding-coverage entities emb))))}))
 
 (defn- nil-safe-sum
   "Sum `xs` (numbers and/or nils). Returns nil if any element is nil — used to cascade an
@@ -721,26 +756,24 @@
 
 (defn- rollup-node
   "Recursively roll up a node's children into `{:score <sum> :components {...}}`.
-  Leaves pass through unchanged. A node's `:score` is the sum of `:score` over the children that
-  HAVE a `:score` key (descriptive leaves/groupings are skipped). A node with ZERO scored
-  descendants gets NO `:score` key — it is a descriptive grouping (e.g. `:metadata`), so it drops
-  out of the catalog total. The nil cascade still applies within the scored set: an errored scored
-  leaf's `:score nil` nils its parent."
+  Leaves — maps carrying `:score` (computed) or `:error` (uncomputed) — pass through unchanged.
+  Every leaf now has a `:score` (v2 made all measures scored), so a node's `:score` is the sum of
+  ALL its children's `:score`s; `:score` cascades nil through aggregates so an errored leaf
+  (`:synonym-pairs {:error .. :score nil}`) nils out everything it feeds. The tree is arbitrarily
+  deep — internal nodes (e.g. the `:synonym-degree` sub-group) recurse and roll up the same way."
   [node]
-  (if (leaf? node)
+  (if (or (contains? node :score) (contains? node :error))
     node
-    (let [components    (update-vals node rollup-node)
-          scored-vals   (->> components vals (filter #(contains? % :score)) (map :score))
-          base          {:components components}]
-      (if (seq scored-vals)
-        (assoc base :score (nil-safe-sum scored-vals))
-        base))))
+    (let [components (update-vals node rollup-node)]
+      {:score      (nil-safe-sum (map (comp :score val) components))
+       :components components})))
 
 (defn score-catalog
   "Pure: compute the score breakdown for a catalog given its `entities`, a `ctx`
   (`{:collection-count <long|nil> :level <0..2>}`), and an optional `embedder`. Returns
   `{:score <sum> :components {:size {...} :ambiguity {...} :metadata {...}}}`; see
-  [[score-tree-leaves]] for the leaf layout. `:metadata` carries no `:score` (descriptive-only).
+  [[score-tree-leaves]] for the leaf layout. All three groupings carry a `:score` and sum into the
+  catalog total.
 
   At level 0 the catalog node is `{:components {}}` (no `:score`) — scoring is skipped entirely and
   the embedder is never invoked. `:level` defaults to [[default-level]] when absent."
@@ -794,30 +827,19 @@
   [event score]
   (cond-> event (some? score) (assoc :score score)))
 
-(defn- measurement-of
-  "The numeric measurement to publish for a leaf: a scored leaf's `:measurement`, or a descriptive
-  leaf's `:value` when (and only when) it is a number. Descriptive map/nil values (e.g.
-  `:synonym-degree-summary`) emit no `:measurement` — the Snowplow schema's `measurement` is a
-  single number, not a structure."
-  [node]
-  (cond
-    (:measurement node)        (:measurement node)
-    (number? (:value node))    (:value node)))
-
 (defn- node->events
   "Walk one catalog and emit a Snowplow event per node.
   Computed leaves use a `<path>` key and carry `:measurement`; error leaves use the same `<path>` key with `:error`.
   Internal nodes use a `<path>.total` key with the rolled-up `:score` (the root emits as `total`).
-  `:score` is omitted when nil or absent (descriptive leaves/groupings); see [[with-score]]."
+  `:score` is omitted when nil; see [[with-score]]."
   [base catalog path node]
   (let [;; `:total` here is the Snowplow wire-format suffix for rollup nodes, not an in-memory field.
         key   (apply dotted-key (if (:components node) (conj path :total) path))
-        m     (measurement-of node)
         event (cond-> (-> base
                           (assoc :catalog catalog :key key)
                           (with-score (:score node)))
-                (some? m)     (assoc :measurement m)
-                (:error node) (assoc :error (truncate-error (:error node))))]
+                (:measurement node) (assoc :measurement (:measurement node))
+                (:error node)       (assoc :error (truncate-error (:error node))))]
     (cons event
           (mapcat (fn [[k child]] (node->events base catalog (conj path k) child))
                   (:components node)))))
