@@ -34,10 +34,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.util.time.impl-common :as u.time.impl-common]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -102,66 +99,6 @@
        node))
    pmbql-query))
 
-(defn- temporal-string-literal?
-  "True when `s` is one of the string shapes a `:absolute-datetime` literal can hold — a date,
-  datetime, offset-datetime, year, or year-month. The regexes check structure, not value ranges, so
-  a structurally-valid but out-of-range string (e.g. `\"2024-13-45\"`) matches here and then throws
-  during parsing — intentional fail-fast, so the agent sees the bad input rather than a query that
-  blows up later in the QP."
-  [s]
-  (and (string? s)
-       (boolean (some #(re-matches % s)
-                      [u.time.impl-common/local-date-regex
-                       u.time.impl-common/local-datetime-regex
-                       u.time.impl-common/offset-datetime-regex
-                       u.time.impl-common/year-month-regex
-                       u.time.impl-common/year-regex]))))
-
-(defn- parse-temporal-literal
-  "Parse temporal string `s` to a `java.time` value, re-throwing an unparseable literal as an
-  agent-facing error so the LLM can correct it."
-  [s]
-  (try
-    (u.date/parse s)
-    (catch Exception e
-      (throw (ex-info (tru "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
-                           (pr-str s))
-                      {:agent-error? true
-                       :status-code  400
-                       :error        :invalid-temporal-literal
-                       :literal      s}
-                      e)))))
-
-(defn- parse-absolute-datetime-literals
-  "Parse the string literals in a normalized pMBQL query's `:absolute-datetime` clauses into `java.time` values.
-  Idempotent: a literal that is already a `java.time` value is left untouched. Year and year-month
-  strings parse to a `LocalDate` (month/day default to 1).
-
-  Parsing is context-free — each literal is parsed to its own natural type (`LocalDate` /
-  `LocalDateTime` / `OffsetDateTime`). It does NOT apply the timezone coercion the QP performs for
-  bare string values against a `:type/DateTimeWithTZ` comparison field, because that depends on the
-  report timezone, which is only known at query-execution time, not here at resolve time."
-  [pmbql-query]
-  ;; Temporal literals arrive here as ISO strings: that is how the repair pass and the portable wire
-  ;; format carry them, and on CLJS a string is the only representation.
-  ;; A `between` bound, for example, arrives as `[:absolute-datetime {} "2024-01-01" :day]`.
-  ;;
-  ;; The JVM query processor needs a real `java.time` value.
-  ;; Middleware like `optimize-temporal-filters` hands the literal to functions that demand a
-  ;; `java.time.temporal.Temporal`, and a bare string throws.
-  ;;
-  ;; The QP's own `wrap-value-literals` would parse the string, but only as a raw value, not once it
-  ;; is wrapped in `:absolute-datetime`. So we parse it here.
-  (walk/postwalk
-   (fn [node]
-     (if (and (vector? node)
-              (= :absolute-datetime (nth node 0 nil))
-              (map? (nth node 1 nil))
-              (temporal-string-literal? (nth node 2 nil)))
-       (update node 2 parse-temporal-literal)
-       node))
-   pmbql-query))
-
 (defn resolve-query
   "Convert a parsed (string-keyed, portable) representations query into a canonical, numeric-ID,
   `:lib/uuid`-stamped MBQL 5 query attached to `metadata-provider`.
@@ -180,8 +117,7 @@
          resolved (resolve/import-mbql resolver kw-form)
          with-mp  (assoc resolved :lib/metadata metadata-provider)]
      (-> (lib.normalize/normalize ::lib.schema/query with-mp)
-         (annotate-field-types metadata-provider)
-         parse-absolute-datetime-literals))))
+         (annotate-field-types metadata-provider)))))
 
 ;;; ============================================================
 ;;; Export final pMBQL back to portable representations
@@ -197,11 +133,7 @@
 (defn- portable-repr-form
   "Convert the keyworded portable form returned by serdes export into the LLM-facing
   representations form: string keys, string clause heads / enum values, no internal metadata
-  provider handle.
-
-  Temporal values are formatted back to ISO-8601 strings — [[resolve-query]] parses
-  `:absolute-datetime` literals into `java.time` values, and the portable form carries them as
-  strings, so this inverts that."
+  provider handle."
   [x]
   (cond
     (map? x)
@@ -215,11 +147,10 @@
      (empty x)
      x)
 
-    (vector? x)                                  (mapv portable-repr-form x)
-    (sequential? x)                              (mapv portable-repr-form x)
-    (keyword? x)                                 (keyword->repr-string x)
-    (instance? java.time.temporal.Temporal x)    (u.date/format x)
-    :else                                        x))
+    (vector? x)     (mapv portable-repr-form x)
+    (sequential? x) (mapv portable-repr-form x)
+    (keyword? x)    (keyword->repr-string x)
+    :else           x))
 
 (defn export-query
   "Convert a final normalized numeric-ID pMBQL query back to portable representations data.

@@ -194,6 +194,53 @@
                :query))
         "Datetime literal strings should get parsed in the current report timezone.")))
 
+(deftest ^:parallel wrap-prewrapped-absolute-datetime-strings-test
+  (testing (str "an `:absolute-datetime` whose literal is still a string (e.g. Metabot's "
+                "representations repair wraps `between` bounds as "
+                "`[:absolute-datetime {} \"2024-01-01\" :day]`) gets parsed to a `java.time` value, "
+                "in the comparison field's type and unit — same as a raw string would")
+    (is (=? {:filters [[:between
+                        {}
+                        [:field {:temporal-unit :month} (meta/id :checkins :date)]
+                        [:absolute-datetime {} (t/local-date "2024-01-01") :month]
+                        [:absolute-datetime {} (t/local-date "2024-12-31") :month]]]}
+            (-> (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query checkins
+                   {:filter [:between
+                             [:field (meta/id :checkins :date) {:temporal-unit :month}]
+                             [:absolute-datetime "2024-01-01" :day]
+                             [:absolute-datetime "2024-12-31" :day]]}))
+                wrap-value-literals
+                :stages
+                first))))
+  (testing "an `:absolute-datetime` whose literal is already a `java.time` value is left unchanged"
+    (let [parsed (lib/query
+                  meta/metadata-provider
+                  (lib.tu.macros/mbql-query checkins
+                    {:filter [:= [:field (meta/id :checkins :date) {:temporal-unit :month}]
+                              [:absolute-datetime (t/local-date "2024-01-01") :month]]}))]
+      (is (= (:stages parsed) (:stages (wrap-value-literals parsed)))))))
+
+(deftest wrap-prewrapped-absolute-datetime-strings-tz-test
+  (testing (str "a pre-wrapped local string is coerced using the report timezone, by the field's "
+                "type — the type/tz awareness that can only happen here in the QP, at execution time")
+    (mt/with-report-timezone-id! "US/Pacific"
+      (is (= (:query
+              (lib.tu.macros/mbql-query checkins
+                {:source-query {:source-table $$checkins}
+                 :filter       [:=
+                                [:field "DATE" {:temporal-unit :day, :base-type :type/DateTimeWithZoneID}]
+                                [:absolute-datetime (t/zoned-date-time "2018-10-01T00:00-07:00[US/Pacific]") :day]]}))
+             (-> (lib.tu.macros/mbql-query checkins
+                   {:source-query {:source-table $$checkins}
+                    :filter       [:= [:field "DATE" {:temporal-unit :day, :base-type :type/DateTimeWithZoneID}]
+                                   [:absolute-datetime "2018-10-01" :day]]})
+                 (assoc-in [:settings :report-timezone] "US/Pacific")
+                 (wrap-value-literals "US/Pacific")
+                 :query))
+          "pre-wrapped string coerced to the report timezone for a DateTimeWithZoneID field"))))
+
 (deftest ^:parallel string-filters-test
   (testing "string filters like `starts-with` should not parse datetime strings for obvious reasons"
     (is (= (lib.tu.macros/mbql-query checkins
