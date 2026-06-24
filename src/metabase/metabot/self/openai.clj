@@ -181,6 +181,11 @@
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
+(defn- ai-proxy-unsupported-ex []
+  (ex-info (tru "AI proxy is not supported for OpenAI")
+           {:api-error  true
+            :error-code :proxy-unsupported}))
+
 (defn- openai-error-msg
   "Canonical, status-specific OpenAI error message."
   [res]
@@ -210,8 +215,11 @@
   (contains? supported-models id))
 
 (defn- list-all-models
-  "Fetch the full OpenAI model catalog (`GET /v1/models`)."
+  "Fetch the full OpenAI model catalog (`GET /v1/models`).
+  `:ai-proxy?` is not supported for OpenAI and throws when true."
   [{:keys [credentials ai-proxy?]}]
+  (when ai-proxy?
+    (throw (ai-proxy-unsupported-ex)))
   (when (and credentials (str/blank? (:api-key credentials)))
     (throw (core/missing-api-key-ex "OpenAI")))
   (try
@@ -231,7 +239,8 @@
 
 (defn list-models
   "List the OpenAI chat models supported by this adapter (see [[supported-models]]).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`.
+  `:ai-proxy?` is not supported for OpenAI and throws when true."
   ([] (list-models {}))
   ([opts]
    {:models (->> (list-all-models opts)
@@ -276,9 +285,12 @@
       (assoc :temperature temperature))))
 
 (mu/defn openai-raw
-  "Perform a streaming request to OpenAI Responses API."
+  "Perform a streaming request to OpenAI Responses API.
+  `:ai-proxy?` is not supported for OpenAI and throws when true."
   [{:keys [model ai-proxy?] :as opts
     :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
+  (when ai-proxy?
+    (throw (ai-proxy-unsupported-ex)))
   (let [req (openai-request-body opts)]
     (try
       (let [api-key  (not-empty (llm/llm-openai-api-key))

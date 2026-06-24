@@ -335,17 +335,6 @@
                      :headers {"Authorization" "Bearer sk-ant-byok"}
                      :body    string?}
                     (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
-        (testing "Uses ai proxy when explicitly requested"
-          (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
-            (with-redefs [self.core/sse-reducible identity
-                          debug/capture-stream    (fn [r _] r)
-                          http/request            (fn [req] {:body req})]
-              (is (=? {:method  :post
-                       :url     "https://proxy.example/openai/v1/responses"
-                       :headers {"x-metabase-instance-token" "proxy-token"}
-                       :body    string?}
-                      (openai/openai-raw {:input [{:role :user :content "hi"}]
-                                          :ai-proxy? true}))))))
         (testing "Does not fall back to ai proxy when BYOK is missing"
           (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
             (is (thrown-with-msg?
@@ -359,3 +348,27 @@
                  clojure.lang.ExceptionInfo
                  #"No OpenAI API key is set"
                  (openai/openai-raw {:input [{:role :user :content "hi"}]})))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; AI proxy (unsupported)
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest list-models-ai-proxy-unsupported-test
+  (testing "ai-proxy? throws before credentials are even consulted"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"AI proxy is not supported for OpenAI"
+             (openai/list-models {:ai-proxy? true})))))))
+
+(deftest openai-raw-ai-proxy-unsupported-test
+  (testing "ai-proxy? throws before credentials are even consulted"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"AI proxy is not supported for OpenAI"
+             (openai/openai-raw {:model     "gpt-4.1-mini"
+                                 :input     [{:role :user :content "hi"}]
+                                 :ai-proxy? true})))))))
