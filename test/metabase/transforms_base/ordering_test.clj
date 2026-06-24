@@ -369,3 +369,31 @@
       (is (= {:cycle-str "transform_table_2 -> transform_table_1 -> transform_table_3",
               :cycle     [t1 t3 t2]}
              (ordering/get-transform-cycle (t2/select-one :model/Transform :id t1)))))))
+
+;;; --------------------------------------- Precomputed table_dependencies ---------------------------------------
+;;; These exercise the read side in isolation (no driver / SQL parser): transforms carry their deps in the
+;;; `:table_dependencies` key the way the appdb column supplies them.
+
+(deftest stored-or-live-deps-test
+  (testing "prefers the stored :table_dependencies value"
+    (is (= [{:table 1}] (ordering/stored-or-live-deps {:table_dependencies [{:table 1}]}))))
+  (testing "an empty (non-nil) stored value means \"no dependencies\""
+    (is (= [] (ordering/stored-or-live-deps {:table_dependencies []}))))
+  (testing "falls back to a live computation when the stored value is nil"
+    ;; no :source and an unknown type -> the :default table-dependencies impl returns #{}
+    (is (= #{} (ordering/stored-or-live-deps {:id 1})))))
+
+(deftest transform-ordering-reads-stored-deps-test
+  (testing "transform-ordering resolves dependencies from :table_dependencies, never parsing SQL"
+    (let [producer {:id 1 :target_table_id 100 :table_dependencies []}
+          consumer {:id 2 :table_dependencies [{:table 100}]}]
+      (is (= {1 #{} 2 #{1}}
+             (:dependencies (ordering/transform-ordering #{2} [producer consumer]))))))
+  (testing "a :table-ref dependency resolves to the producing transform by (db, schema, name)"
+    (let [producer {:id 1 :target {:database 10 :schema "public" :name "out"} :table_dependencies []}
+          consumer {:id 2 :table_dependencies [{:table-ref {:database_id 10 :schema "public" :table "out"}}]}]
+      (is (= {1 #{} 2 #{1}}
+             (:dependencies (ordering/transform-ordering #{2} [producer consumer]))))))
+  (testing "an empty stored value yields no dependencies"
+    (is (= {1 #{}}
+           (:dependencies (ordering/transform-ordering #{1} [{:id 1 :table_dependencies []}]))))))
