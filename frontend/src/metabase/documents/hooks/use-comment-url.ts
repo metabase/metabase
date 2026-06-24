@@ -3,15 +3,11 @@ import type { EntityId } from "metabase-types/api/comments";
 
 interface UseCommentUrlOptions {
   childTargetId?: EntityId | null;
-  searchParams?: Record<string, string>;
 }
 
-export function useCommentUrl({
-  childTargetId,
-  searchParams,
-}: UseCommentUrlOptions) {
+export function useCommentUrl({ childTargetId }: UseCommentUrlOptions) {
   const { location } = useRouter();
-  const { pathname, query } = location;
+  const { pathname } = location;
   if (!pathname) {
     return "";
   }
@@ -20,9 +16,5 @@ export function useCommentUrl({
     existingCommentIndex !== -1
       ? pathname.slice(0, existingCommentIndex)
       : pathname;
-  const nextSearch = new URLSearchParams({
-    ...query,
-    ...searchParams,
-  }).toString();
-  return `${nextPathname}/comments${childTargetId ? `/${childTargetId}` : ""}${nextSearch ? `?${nextSearch}` : ""}`;
+  return `${nextPathname}/comments${childTargetId ? `/${childTargetId}` : ""}${location.search}`;
 }

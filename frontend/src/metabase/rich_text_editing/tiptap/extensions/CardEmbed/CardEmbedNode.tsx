@@ -242,10 +242,7 @@ export const CardEmbedComponent = memo(
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const commentsPath = useCommentUrl({
-      childTargetId: _id,
-      searchParams: unresolvedCommentsCount > 0 ? undefined : { new: "true" },
-    });
+    const commentsPath = useCommentUrl({ childTargetId: _id });
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
 

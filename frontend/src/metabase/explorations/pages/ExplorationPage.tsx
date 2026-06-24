@@ -51,6 +51,7 @@ const TIMELINE_QUERY_PARAM = "timeline";
 
 interface ExplorationPageQuery {
   [TIMELINE_QUERY_PARAM]?: string;
+  comments?: string;
 }
 
 interface ExplorationPageProps {
@@ -376,7 +377,7 @@ export function ExplorationPage({
       : undefined;
   }, [selectedEntityId, documentIdToDocument]);
 
-  const isCommentsSidebarOpen = location.pathname.includes("/comments");
+  const isCommentsSidebarOpen = location.query?.comments === "true";
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -429,7 +430,6 @@ export function ExplorationPage({
         <ExplorationDocumentComponent
           explorationId={exploration.id}
           document={selectedDocument}
-          isCommentsSidebarOpen={isCommentsSidebarOpen}
           childTargetId={params.childTargetId}
           route={route}
           locationSearch={location.search}

@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
+import type { CommentExtraRenderer } from "metabase/comments/types";
 import { formatCommentDate, getCommentNodeId } from "metabase/comments/utils";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
@@ -26,6 +27,7 @@ type DiscussionCommentProps = {
   onDelete?: (comment: Comment) => void;
   onEdit?: (comment: Comment, newContent: DocumentContent) => void;
   onCopyLink?: (comment: Comment) => void;
+  renderExtra?: CommentExtraRenderer;
 };
 
 const TOOLTIP_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
@@ -43,6 +45,7 @@ export function DiscussionComment({
   onDelete,
   onEdit,
   onCopyLink,
+  renderExtra,
 }: DiscussionCommentProps) {
   const currentUser = useSelector(getUser);
   const [isEditing, editingHandler] = useDisclosure(false);
@@ -145,6 +148,7 @@ export function DiscussionComment({
           readonly={!isEditing}
           onEscape={editingHandler.close}
         />
+        {renderExtra?.(comment)}
 
         {comment.reactions.length > 0 && (
           <DiscussionReactions

@@ -55,11 +55,20 @@
 (def CommentContent
   "Validation for comment content - expects JSON"
   (mu/with-api-error-message
-    [:and
-     {:error/message "Comment content must be valid JSON"
-      :json-schema   {:type "object"}}
-     [:map]]
-    (deferred-tru "Comment content must be valid JSON.")))
+   [:and
+    {:error/message "Comment content must be valid JSON"
+     :json-schema   {:type "object"}}
+    [:map]]
+   (deferred-tru "Comment content must be valid JSON.")))
+
+(def CommentContext
+  "Validation for comment context - expects JSON map"
+  (mu/with-api-error-message
+   [:and
+    {:error/message "Comment context must be a valid JSON object"
+     :json-schema   {:type "object"}}
+    [:map]]
+   (deferred-tru "Comment context must be a valid JSON object.")))
 
 (def CreateComment
   "Schema for creating a new comment"
@@ -68,6 +77,7 @@
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
    [:child_target_id {:optional true} [:maybe :string]]
+   [:context {:optional true} [:maybe CommentContext]]
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def UpdateComment
@@ -179,7 +189,7 @@
   "Create a new comment"
   [_route-params
    _query-params
-   {:keys [target_type target_id child_target_id parent_comment_id content]} :- CreateComment]
+   {:keys [target_type target_id child_target_id context parent_comment_id content]} :- CreateComment]
   (let [entity     (-> (api/read-check (type->model target_type) target_id)
                        (u/prog1 (api/check-400 (not (entity-archived? <>))
                                                "Cannot comment on archived entities")))
@@ -195,6 +205,7 @@
                                                       {:target_type       target_type
                                                        :target_id         target_id
                                                        :child_target_id   child_target_id
+                                                       :context           context
                                                        :parent_comment_id parent_comment_id
                                                        :content           content
                                                        :creator_id        api/*current-user-id*})

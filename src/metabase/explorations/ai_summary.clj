@@ -288,7 +288,8 @@
                  chart-href (groups/chart-page-url exploration-id
                                                    (:group_id primary-eq)
                                                    (:card_id primary-eq)
-                                                   (:dimension_id primary-eq))]
+                                                   (:dimension_id primary-eq)
+                                                   (:query_type primary-eq))]
              (-> node
                  (assoc-in [:attrs :id] card-id)
                  (assoc-in [:attrs :chart_href] chart-href)))

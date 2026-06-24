@@ -52,7 +52,6 @@ export type ExplorationDocumentWithIsAiSummary = ExplorationDocument & {
 interface ExplorationDocumentProps {
   explorationId: ExplorationId;
   document: ExplorationDocumentWithIsAiSummary;
-  isCommentsSidebarOpen: boolean;
   childTargetId?: string;
   route: Route;
   locationSearch: string;
@@ -61,7 +60,6 @@ interface ExplorationDocumentProps {
 export function ExplorationDocument({
   explorationId,
   document,
-  isCommentsSidebarOpen,
   childTargetId,
   route,
   locationSearch,
@@ -136,7 +134,7 @@ export function ExplorationDocument({
         flex={1}
         h="100%"
         py="3rem"
-        pr={isCommentsSidebarOpen ? "4rem" : "3rem"}
+        pr="3rem"
         align="center"
         style={{
           overflowY: "auto",

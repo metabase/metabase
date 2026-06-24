@@ -7,6 +7,8 @@ export type CommentEntityType = "document" | "exploration";
 
 export type EntityId = string | number;
 
+export type CommentContext = Record<string, unknown>;
+
 export interface Comment {
   id: CommentId;
   parent_comment_id: CommentId | null;
@@ -27,6 +29,7 @@ export interface Comment {
   reactions: CommentReaction[];
 
   version: number;
+  context?: CommentContext | null;
 }
 
 export interface CommentReaction {
@@ -58,6 +61,7 @@ export interface CreateCommentRequest {
   child_target_id: EntityId | null;
   parent_comment_id: CommentId | null;
   content: DocumentContent;
+  context?: CommentContext | null;
 }
 
 export interface UpdateCommentRequest {

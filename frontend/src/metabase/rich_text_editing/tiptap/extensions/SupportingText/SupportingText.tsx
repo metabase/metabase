@@ -146,10 +146,7 @@ const SupportingTextComponent = ({
     skip: !isInViewport,
   });
   const isOpen = childTargetId === _id;
-  const commentsPath = useCommentUrl({
-    childTargetId: _id,
-    searchParams: unresolvedCommentsCount > 0 ? undefined : { new: "true" },
-  });
+  const commentsPath = useCommentUrl({ childTargetId: _id });
   const dispatch = useDispatch();
 
   const canWrite = editor.options.editable;

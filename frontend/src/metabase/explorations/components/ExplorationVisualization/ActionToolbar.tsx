@@ -10,6 +10,7 @@ import type {
   DocumentContent,
   ExplorationId,
   ExplorationQueryGroupId,
+  TimelineId,
 } from "metabase-types/api";
 
 import S from "./ActionToolbar.module.css";
@@ -21,6 +22,7 @@ interface ActionToolbarProps {
   groupId: ExplorationQueryGroupId;
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
+  selectedTimelineId: TimelineId | null;
 }
 
 export function ActionToolbar({
@@ -28,6 +30,7 @@ export function ActionToolbar({
   groupId,
   commentDrafts,
   setCommentDrafts,
+  selectedTimelineId,
 }: ActionToolbarProps) {
   const [isCommentEditorOpen, setCommentEditorOpen] = useState(false);
   const [createComment] = useCreateCommentMutation();
@@ -45,6 +48,9 @@ export function ActionToolbar({
       child_target_id: groupId,
       parent_comment_id: null,
       content,
+      context: {
+        timeline_id: selectedTimelineId,
+      },
     });
 
     if (error) {
@@ -88,13 +94,20 @@ export function ActionToolbar({
           />
         </Popover.Target>
         <Popover.Dropdown className={S.commentDropdown}>
-          <CommentEditor
-            placeholder={t`Add a comment…`}
-            initialContent={commentDrafts[groupId]}
-            onChange={handleChangeCommentDraft}
-            onSubmit={handleAddComment}
-            autoFocus={true}
-          />
+          <div
+            // prevent clicks in mention menu from closing the popover
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <CommentEditor
+              className={S.commentEditor}
+              placeholder={t`Add a comment…`}
+              initialContent={commentDrafts[groupId]}
+              onChange={handleChangeCommentDraft}
+              onSubmit={handleAddComment}
+              autoFocus={"end"}
+            />
+          </div>
         </Popover.Dropdown>
       </Popover>
     </Group>
