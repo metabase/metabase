@@ -28,8 +28,8 @@
   (let [field-values (field-values/get-latest-full-field-values (u/the-id field))]
     (cond
       (not field-values)
-      (log/infof "%s does not have FieldValues. Skipping..."
-                 (sync-util/name-for-logging field))
+      (log/tracef "%s does not have FieldValues. Skipping..."
+                  (sync-util/name-for-logging field))
 
       (field-values/inactive? field-values)
       (log/infof "%s has not been used since %s. Skipping..."
