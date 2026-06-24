@@ -259,10 +259,10 @@
     {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
     com.clojure-goes-fast/clj-memory-meter
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
-    com.h2database/h2 ^:antq/exclude           ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
-    {:mvn/version "2.1.214"}                   ; embedded SQL database
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     com.github.erosb/json-sKema  {:mvn/version "0.25.0"}                    ; validating MBQL JSON Schema
+    com.h2database/h2 ^:antq/exclude           ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
+    {:mvn/version "2.1.214"}                   ; embedded SQL database
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
     integrant/integrant          {:mvn/version "1.0.1"}                   ; component lifecycle management
