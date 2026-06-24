@@ -77,23 +77,32 @@
         (analytics/observe! :metabase-mq/handle-duration-ms labels
                             (/ (double (- (System/nanoTime) start)) 1e6))))))
 
+(defn handle-batch-failure-policy!
+  "Shared retry-vs-drop policy for a just-failed batch. `failures` is the number of attempts that have
+  already failed, so the just-failed attempt makes `(inc failures)` total. When that reaches
+  `queue-max-retries` the batch is dropped (warn-logged + `:queue-batch-permanent-failures` metric)
+  by calling `on-drop`; otherwise `:queue-batch-retries` is emitted and `on-retry` re-enqueues it.
+  `labels` is the metric label map."
+  [channel labels failures on-retry on-drop]
+  (if (>= (inc failures) (mq.settings/queue-max-retries))
+    (do
+      (log/warnf "Batch for %s exhausted retries (%d), dropping" channel (mq.settings/queue-max-retries))
+      (analytics/inc! :metabase-mq/queue-batch-permanent-failures labels)
+      (on-drop))
+    (do
+      (analytics/inc! :metabase-mq/queue-batch-retries labels)
+      (on-retry))))
+
 (defn- handle-batch-failure!
-  "Decides retry vs. permanent failure for a just-failed batch based on its prior failure count
-  and `queue-max-retries`, emits the matching metric, and tells the backend to re-enqueue or drop
-  it. No-ops if the backend no longer owns/knows the batch (`failure-count` returns nil). The
-  policy lives here so it's identical across backends."
+  "Poll-backend failure handler: decides retry vs. permanent failure for a just-failed batch based on
+  its prior failure count, then tells the backend to re-enqueue or drop it. No-ops if the backend no
+  longer owns/knows the batch (`failure-count` returns nil)."
   [backend channel batch-id]
   (when-let [failures (q.backend/failure-count backend channel batch-id)]
     (let [labels {:backend (name (q.backend/backend-id backend)) :channel (name channel)}]
-      (if (>= (inc failures) (mq.settings/queue-max-retries))
-        (do
-          (log/warnf "Batch %s on %s exhausted retries (%d), dropping"
-                     batch-id channel (mq.settings/queue-max-retries))
-          (analytics/inc! :metabase-mq/queue-batch-permanent-failures labels)
-          (q.backend/fail-batch! backend channel batch-id))
-        (do
-          (analytics/inc! :metabase-mq/queue-batch-retries labels)
-          (q.backend/retry-batch! backend channel batch-id))))))
+      (handle-batch-failure-policy! channel labels failures
+                                    #(q.backend/retry-batch! backend channel batch-id)
+                                    #(q.backend/fail-batch! backend channel batch-id)))))
 
 (defn- sliced-invoke-fn
   "Builds the `invoke-fn` that slices `messages` into `:max-batch-messages` chunks and feeds each to
@@ -194,7 +203,19 @@
                                             (dissoc handlers channel)
                                             handlers)))
                                  (mq.polling/notify-all!))))
-            f    (.submit ^ExecutorService @worker-pool task)]
+            f    (try
+                   (.submit ^ExecutorService @worker-pool task)
+                   (catch Throwable t
+                     ;; The slot was already claimed above. If the submit itself fails (e.g. the
+                     ;; worker pool isn't running / was shut down, so the deref or .submit throws),
+                     ;; release the slot we claimed before propagating — otherwise the channel stays
+                     ;; marked busy forever and the queue silently stops delivering.
+                     (swap! active-handlers
+                            (fn [handlers]
+                              (if (identical? gen (:gen (get handlers channel)))
+                                (dissoc handlers channel)
+                                handlers)))
+                     (throw t)))]
         ;; Only set the future if this generation still owns the slot
         (swap! active-handlers
                (fn [handlers]

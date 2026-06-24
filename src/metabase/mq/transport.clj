@@ -21,7 +21,9 @@
     (case (transport-type channel)
       :queue (do
                (q.backend/publish! backend channel payload)
-               (q.polling/notify-on-publish! (:poll-context backend) channel)))))
+               (q.polling/notify-on-publish! (:poll-context backend) channel))
+      (throw (ex-info (format "Unknown transport for channel %s: expected a :queue/* channel" channel)
+                      {:channel channel :transport-type (transport-type channel)})))))
 
 (defn publish!
   "Publishes messages to the appropriate backend for the channel's transport type, then wakes the

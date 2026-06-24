@@ -11,7 +11,7 @@
    [metabase.mq.queue.registry :as q.registry]
    [metabase.mq.test-util :as mq.tu])
   (:import (clojure.lang ExceptionInfo)
-           (java.util.concurrent CountDownLatch CyclicBarrier)))
+           (java.util.concurrent CountDownLatch CyclicBarrier TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -275,17 +275,31 @@
   (mq.impl/start-worker-pool!)
   (mq.tu/with-test-mq [_test-mq]
     (let [queue-name :queue/exclusive-concurrency-test
-          latch      (CountDownLatch. 1)]
+          started    (CountDownLatch. 1)   ; counted down once the worker thread enters the listener
+          release    (CountDownLatch. 1)]  ; blocks the listener until the test releases it
       (mq.tu/listen! queue-name
-                     (fn [_] (.await latch))) ; Block listener until released
+                     (fn [_] (.countDown started) (.await release)))
       (testing "First submission succeeds and marks the channel as busy"
         (is (true? (mq.impl/submit-delivery! queue-name (payload/encode ["msg1"]) nil nil nil)))
-        (Thread/sleep 50) ; Give worker thread time to start and block on latch
+        (is (.await started 5 TimeUnit/SECONDS) "worker thread started and entered the listener")
         (is (true? (mq.impl/channel-busy? queue-name))))
       (testing "Second submission returns false while channel is busy"
         (is (false? (mq.impl/submit-delivery! queue-name (payload/encode ["msg2"]) nil nil nil))))
-      (.countDown latch) ; Release the listener
-      (Thread/sleep 100) ; Wait for delivery to complete and active-handlers to clear
+      (.countDown release) ; Release the listener
       (testing "Channel is no longer busy after delivery completes"
-        (is (false? (mq.impl/channel-busy? queue-name))))
+        (is (true? (mq.tu/wait-for! #(not (mq.impl/channel-busy? queue-name)) 5000))
+            "active-handlers clears once delivery completes"))
       (mq/unlisten! queue-name))))
+
+(deftest submit-delivery-frees-slot-when-pool-unavailable-test
+  (testing "if submitting to the worker pool fails (e.g. pool not running), the channel slot is
+            released rather than left permanently busy — otherwise the queue would silently stop
+            delivering forever"
+    (with-redefs [mq.impl/worker-pool     (atom nil) ; deref/.submit NPEs
+                  mq.impl/active-handlers (atom {})]
+      (let [queue-name :queue/submit-failure-test]
+        (is (thrown? Exception
+                     (mq.impl/submit-delivery! queue-name (payload/encode ["x"]) nil nil nil))
+            "the submit failure propagates to the caller")
+        (is (false? (mq.impl/channel-busy? queue-name))
+            "the channel is not left marked busy after the failed submit")))))

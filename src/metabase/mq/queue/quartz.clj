@@ -28,13 +28,10 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.analytics-interface.core :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.registry :as q.registry]
-   [metabase.mq.settings :as mq.settings]
-   [metabase.task.core :as task]
-   [metabase.util.log :as log])
+   [metabase.task.core :as task])
   (:import
    (java.util Date)
    (org.quartz JobDetail JobExecutionContext Scheduler)))
@@ -92,15 +89,11 @@
     (when-not (mq.impl/deliver-reporting! queue payload)
       (let [next-attempt (inc attempt)
             labels       {:backend (name backend-id) :channel (name queue)}]
-        (if (< next-attempt (mq.settings/queue-max-retries))
-          (do
-            (analytics/inc! :metabase-mq/queue-batch-retries labels)
-            (schedule-message-trigger! (.getScheduler ctx) queue payload next-attempt
-                                       (Date. (long (+ (System/currentTimeMillis) (retry-delay-ms next-attempt))))))
-          (do
-            (log/warnf "Queue batch for %s exhausted retries (%d), dropping"
-                       queue (mq.settings/queue-max-retries))
-            (analytics/inc! :metabase-mq/queue-batch-permanent-failures labels)))))
+        (mq.impl/handle-batch-failure-policy!
+         queue labels attempt
+         #(schedule-message-trigger! (.getScheduler ctx) queue payload next-attempt
+                                     (Date. (long (+ (System/currentTimeMillis) (retry-delay-ms next-attempt)))))
+         (constantly nil))))
     ;; Quartz's Job.execute returns void — the body's tail must be nil for the deftype to compile.
     nil))
 

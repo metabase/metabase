@@ -7,9 +7,11 @@
   no cross-node lease to heartbeat, and nothing to clean up, so those maintenance hooks are
   no-ops; only the depth gauge does real work."
   (:require
+   [metabase.mq.listener :as listener]
    [metabase.mq.memory :as memory]
    [metabase.mq.queue.backend :as q.backend]
-   [metabase.mq.queue.polling :as q.polling]))
+   [metabase.mq.queue.polling :as q.polling]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,7 +46,15 @@
   (fail-batch! [_this _queue-name batch-id]
     (memory/ack! layer batch-id))
 
-  (recover-stale! [_this _stale-timeout-ms _max-retries] nil)
+  ;; No crashed-consumer recovery (single process), but this periodic maintenance hook is reused to
+  ;; reclaim messages for queues that have no listener: on a single-process, non-durable backend such
+  ;; messages can never be delivered, so leaving them would grow the store and the depth gauge without
+  ;; bound (unlike a persistent, cross-node backend, where another node may own the listener).
+  (recover-stale! [_this _stale-timeout-ms _max-retries]
+    (let [dropped (memory/drop-orphaned! layer (set (listener/queue-names)))]
+      (when (pos? dropped)
+        (log/debugf "Dropped %d orphaned in-memory message(s) for queues with no listener" dropped)))
+    nil)
 
   (run-heartbeats! [_this] nil)
 

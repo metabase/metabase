@@ -108,19 +108,22 @@
     ;; exponential backoff to the default 5.
     (mt/with-temporary-setting-values [queue-max-retries 2]
       (mt/with-temp-scheduler!
-        (let [attempts (atom 0)
-              queue    (keyword "queue" (str "quartz-drop-" (random-uuid)))]
+        (let [attempts      (atom 0)
+              extra-attempt (promise) ; delivered only if an (erroneous) attempt past the max fires
+              queue         (keyword "queue" (str "quartz-drop-" (random-uuid)))]
           (do-with-queue!
            queue
-           (fn [_msgs] (swap! attempts inc) (throw (ex-info "always boom" {})))
+           (fn [_msgs]
+             (when (> (swap! attempts inc) (mq.settings/queue-max-retries))
+               (deliver extra-attempt :extra))
+             (throw (ex-info "always boom" {})))
            (fn []
              (publish! queue "doomed")
              (is (wait-for! #(= (mq.settings/queue-max-retries) @attempts) 8000)
                  "the batch is attempted exactly queue-max-retries times")
-             ;; an erroneous extra retry would fire after the ~2s second-level backoff — wait past
-             ;; that, then confirm it didn't
-             (Thread/sleep 2500)
-             (is (= (mq.settings/queue-max-retries) @attempts)
+             ;; An erroneous extra retry would fire after the ~2s second-level backoff. Wait on the
+             ;; promise (returns early if a bad attempt fires) and assert it never resolves.
+             (is (= ::none (deref extra-attempt 2500 ::none))
                  "no further attempts after the batch is dropped"))))))))
 
 (deftest quartz-no-listener-is-dropped-test

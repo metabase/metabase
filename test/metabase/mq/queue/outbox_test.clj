@@ -8,8 +8,10 @@
    [metabase.mq.queue.outbox :as outbox]
    [metabase.mq.queue.quartz :as q.quartz]
    [metabase.mq.test-util :as mq.tu]
+   [metabase.mq.transport :as transport]
    [metabase.task.impl :as task.impl]
    [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs :refer [with-dynamic-fn-redefs]]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -212,6 +214,34 @@
           (outbox/publish-outbox-rows!))
         (is (t2/exists? :queue_message_outbox :id id)
             "publish failed, so the row is retained (not silently deleted)")))))
+
+(deftest recover-outbox-partial-failure-keeps-delivered-rows-deleted-test
+  (testing "a publish failure partway through the sweep does not roll back rows already published+deleted"
+    (mq.tu/with-test-mq [_ctx]
+      (let [good    (payload/encode ["good"])
+            bad     (payload/encode ["bad"])
+            old     (Timestamp/from (.minusMillis (Instant/now) (* 5 60 1000)))
+            good-id (t2/insert-returning-pk! :queue_message_outbox
+                                             {:queue_name "outbox-recover" :payload good :created_at old})
+            ;; higher id -> published after the good row (order-by id asc)
+            bad-id  (t2/insert-returning-pk! :queue_message_outbox
+                                             {:queue_name "outbox-recover" :payload bad :created_at old})
+            published (atom [])
+            ;; capture the unpatched fn via original-fn — a bare var ref would resolve to the
+            ;; with-dynamic-fn-redefs proxy and recurse (see that macro's docstring).
+            real-publish (dynamic-redefs/original-fn #'transport/publish-encoded!)]
+        (with-dynamic-fn-redefs [transport/publish-encoded!
+                                 (fn [channel payload]
+                                   (if (= payload bad)
+                                     (throw (ex-info "boom" {}))
+                                     (do (swap! published conj payload)
+                                         (real-publish channel payload))))]
+          (is (= 1 (outbox/recover-outbox!)) "only the good row counts as recovered"))
+        (is (= [good] @published) "the good row was published exactly once")
+        (is (not (t2/exists? :queue_message_outbox :id good-id))
+            "the published row is deleted and its delete is NOT rolled back by the later failure")
+        (is (t2/exists? :queue_message_outbox :id bad-id)
+            "the failed row is retained for a later sweep")))))
 
 (deftest recover-outbox-skips-fresh-rows-test
   (mq.tu/with-test-mq [_ctx]

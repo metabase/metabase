@@ -40,9 +40,10 @@
   "Returns a set of the idle conditions that currently do NOT hold. Empty set == idle."
   [ctx]
   (cond-> #{}
-    (seq @publish-buffer/*publish-buffer*) (conj :publish-buffer-nonempty)
-    (seq (mq.impl/busy-channels))          (conj :busy-channels)
-    (not (layer-drained? ctx))             (conj :memory-messages-pending)))
+    (seq @publish-buffer/*publish-buffer*)        (conj :publish-buffer-nonempty)
+    (seq @publish-buffer/*publish-retry-batches*) (conj :publish-retry-batches-nonempty)
+    (seq (mq.impl/busy-channels))                 (conj :busy-channels)
+    (not (layer-drained? ctx))                    (conj :memory-messages-pending)))
 
 (defn wait-for-idle!
   "Blocks until the MQ fixture reaches quiescence or `timeout-ms` elapses. Throws
@@ -67,12 +68,14 @@
                                  {:timeout-ms timeout-ms :unmet unmet}))))))))
 
 (defn- force-expire-publish-buffer!
-  "Marks every entry in the publish buffer as past its deadline so the next
-  `flush-publish-buffer!` call drains it immediately."
+  "Marks every accumulation entry and every frozen retry batch as past its deadline so the next
+  `flush-publish-buffer!` call drains them immediately."
   []
   (swap! publish-buffer/*publish-buffer*
          (fn [buf]
-           (into {} (map (fn [[k v]] [k (assoc v :deadline-ms 1)])) buf))))
+           (into {} (map (fn [[k v]] [k (assoc v :deadline-ms 1)])) buf)))
+  (swap! publish-buffer/*publish-retry-batches*
+         (fn [batches] (mapv #(assoc % :deadline-ms 1) batches))))
 
 (defn flush!
   "Force-drains the publish buffer and waits until the MQ is idle. This is the
@@ -83,6 +86,19 @@
    (force-expire-publish-buffer!)
    (publish-buffer/flush-publish-buffer!)
    (wait-for-idle! ctx timeout-ms)))
+
+(defn wait-for!
+  "Polls `pred` until it returns truthy or `timeout-ms` elapses; returns the final value (truthy, or
+  nil/false on timeout). Use for async conditions that aren't expressible as 'the MQ is idle' and
+  that don't need the polling threads woken (unlike [[eventually!]])."
+  ([pred] (wait-for! pred 5000))
+  ([pred timeout-ms]
+   (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
+     (loop []
+       (or (pred)
+           (when (< (System/currentTimeMillis) deadline)
+             (Thread/sleep 10)
+             (recur)))))))
 
 (defn eventually!
   "Polls `pred` until truthy or `timeout-ms` elapses. Returns the final value of
@@ -210,10 +226,11 @@
   ([f] (do-with-test-mq! {} f))
   ([opts f]
    (let [{:keys [backend listeners duplicate-delivery?] :or {backend :memory}} opts]
-     (binding [listener/*listeners*               (atom {})
-               q.registry/*queues*                    (atom {})
-               publish-buffer/*publish-buffer*    (atom {})
-               publish-buffer/*publish-buffer-ms* 0]
+     (binding [listener/*listeners*                  (atom {})
+               q.registry/*queues*                   (atom {})
+               publish-buffer/*publish-buffer*       (atom {})
+               publish-buffer/*publish-retry-batches* (atom [])
+               publish-buffer/*publish-buffer-ms*    0]
        (let [backends (make-fixture-backends backend)
              queue-be (cond-> (:queue-be backends)
                         duplicate-delivery? double-delivery-queue-backend!)
@@ -278,14 +295,17 @@
 (deftest duplicate-delivery-off-by-default-test
   (testing "The default fixture delivers each message exactly once"
     (with-test-mq [ctx]
-      (let [received (atom [])]
-        (listen! :queue/chaos-default #(swap! received conj %))
+      (let [received (atom [])
+            dup      (promise)] ; delivered only if an (unexpected) second delivery arrives
+        (listen! :queue/chaos-default (fn [m]
+                                        (when (> (count (swap! received conj m)) 1)
+                                          (deliver dup :dup))))
         (mq/with-queue :queue/chaos-default [q]
           (mq/put q "once"))
         (eventually! ctx #(>= (count @received) 1) 5000)
-        ;; Give the poll thread an extra moment in case a second (unexpected)
-        ;; delivery is on the way, then confirm exactly one happened.
-        (Thread/sleep 100)
+        ;; A second (unexpected) delivery would resolve `dup`; wait on it (returning early if it
+        ;; fires) and confirm it never does.
+        (is (= ::none (deref dup 200 ::none)) "no second (duplicate) delivery")
         (is (= ["once"] @received)
             "Default fixture delivers exactly once")
         (mq/unlisten! :queue/chaos-default)))))

@@ -60,6 +60,19 @@
        (group-by :queue)
        (map (fn [[queue msgs]] {:channel (name queue) :status "pending" :count (count msgs)}))))
 
+(defn drop-orphaned!
+  "Removes stored messages whose `:queue` is not in `live-queues` (a set of channel keywords that
+  currently have a registered listener). Returns the number of messages dropped. The memory backend
+  is single-process and non-durable, so a message for a queue with no listener can never be
+  consumed; dropping it keeps the store (and the queue-depth gauge) from growing without bound."
+  [{:keys [messages]} live-queues]
+  (let [[old new] (swap-vals! messages
+                              (fn [m]
+                                (into (sorted-map)
+                                      (filter (fn [[_id msg]] (contains? live-queues (:queue msg))))
+                                      m)))]
+    (- (count old) (count new))))
+
 (defn clear!
   "Clears all stored messages. Called by the backend's `shutdown!`."
   [{:keys [messages next-id]}]

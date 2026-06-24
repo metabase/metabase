@@ -37,7 +37,7 @@
 
 (def ^:private recovery-batch-size
   "How many outbox rows [[recover-outbox!]] claims per transaction."
-  100)
+  50)
 
 (defn- for-update-clause
   "FOR UPDATE clause for the recovery sweep: SKIP LOCKED on Postgres/MySQL so concurrent sweeps on
@@ -100,28 +100,35 @@
 
 (defn recover-outbox!
   "Republishes outbox rows a crash left behind — rows older than [[recovery-age-ms]] (the normal
-  after-commit path deletes its rows immediately). Claims rows with FOR UPDATE SKIP LOCKED, publishes
-  each to the backend, and deletes it, all on the transaction's connection so for the appdb backend
-  the publish-insert and the delete commit together (atomic move); other backends get an
-  at-least-once relay. Loops until a claim returns fewer than [[recovery-batch-size]] rows. Returns
-  the number of rows republished."
+  after-commit path deletes its rows immediately)."
   []
   (loop [total 0]
-    ;; `with-transaction` binds the current connectable, so the bare t2 calls below — and the
-    ;; backend's insert inside `publish-encoded!` for the appdb backend — all run on this
-    ;; transaction's connection.
-    (let [n (long (t2/with-transaction [_conn]
-                    (let [threshold (Timestamp/from (.minusMillis (Instant/now) recovery-age-ms))
-                          rows      (t2/query {:select   [:id :queue_name :payload]
-                                               :from     [:queue_message_outbox]
-                                               :where    [:< :created_at threshold]
-                                               :order-by [[:id :asc]]
-                                               :limit    recovery-batch-size
-                                               :for      (for-update-clause)})]
-                      (doseq [{:keys [id queue_name payload]} rows]
-                        (transport/publish-encoded! (keyword "queue" queue_name) payload)
-                        (t2/delete! :queue_message_outbox :id id))
-                      (count rows))))]
-      (if (>= n recovery-batch-size)
-        (recur (+ total n))
-        (+ total n)))))
+    ;; The `with-transaction` holds the FOR UPDATE locks for the whole batch until commit, so another
+    ;; node can't re-claim these rows while we work through them.
+    (let [{:keys [claimed deleted]}
+          (t2/with-transaction [_conn]
+            (let [threshold (Timestamp/from (.minusMillis (Instant/now) recovery-age-ms))
+                  rows      (t2/query {:select   [:id :queue_name :payload]
+                                       :from     [:queue_message_outbox]
+                                       :where    [:< :created_at threshold]
+                                       :order-by [[:id :asc]]
+                                       :limit    recovery-batch-size
+                                       :for      (for-update-clause)})]
+              {:claimed (count rows)
+               :deleted (reduce
+                         (fn [n {:keys [id queue_name payload]}]
+                           (try
+                             (transport/publish-encoded! (keyword "queue" queue_name) payload)
+                             ;; only delete a row once its publish has succeeded
+                             (t2/delete! :queue_message_outbox :id id)
+                             (inc n)
+                             (catch Exception e
+                               (log/error e "Error publishing outbox row during recovery; a later sweep will retry"
+                                          {:queue queue_name :outbox-id id})
+                               n)))
+                         0 rows)}))]
+      ;; Stop once the batch wasn't full, or no row could be published (e.g. an all-failing batch) —
+      ;; recurring then would re-claim the same undeletable rows forever.
+      (if (and (= claimed recovery-batch-size) (pos? deleted))
+        (recur (long (+ total deleted)))
+        (+ total deleted)))))
