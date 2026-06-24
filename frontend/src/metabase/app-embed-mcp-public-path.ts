@@ -22,7 +22,6 @@
 // so the assignment below is rewritten to set the runtime's `publicPath`.
 declare let __webpack_public_path__: string;
 
-// @ts-expect-error -- metabaseConfig is only set on the MCP Apps route
 const instanceUrl: string = window.metabaseConfig?.instanceUrl ?? "";
 
 // In hot/dev mode `output.publicPath` is already an absolute localhost URL served
