@@ -464,10 +464,12 @@
                                                 :order-by [:table_name]})
                                (catch Throwable e
                                  (log/warnf e "error in get-nested-columns-for-tables for dataset: %s" dataset-id)))
-        ;; Lazy per-table groups of `COLUMN_FIELD_PATHS` rows, ordered by `table_name`. We advance through them in
-        ;; lockstep with the per-table `COLUMNS` groups below, keeping only the current table's group realized.
+        ;; Per-table groups of `COLUMN_FIELD_PATHS` rows, ordered by `table_name`. We advance through them in
+        ;; lockstep with the per-table `COLUMNS` groups below. `nested-reducible` is a reduce-only reducible, so
+        ;; realize it with `into` before the (seq-based) `partition-by` -- it holds only the nested-field rows for
+        ;; the current batch of tables.
         group-table       (fn [group] (:table_name (first group)))
-        nested-groups     (volatile! (partition-by :table_name nested-reducible))
+        nested-groups     (volatile! (partition-by :table_name (into [] nested-reducible)))
         lookup-for-table  (fn [table-name]
                             (let [remaining  (drop-while #(neg? (compare (group-table %) table-name)) @nested-groups)
                                   this-table (when (= table-name (group-table (first remaining)))
