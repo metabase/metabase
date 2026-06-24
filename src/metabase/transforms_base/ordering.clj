@@ -1,7 +1,8 @@
 (ns metabase.transforms-base.ordering
   "Transform dependency ordering and cycle detection.
 
-   Pure functions for computing execution order based on table dependencies."
+   Pure functions over table dependencies: execution order, and resolving which
+   transform produces a given input."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -111,11 +112,10 @@
 
   `raw-dep` is a `table-dependencies` entry (`{:table id}`, `{:transform id}`, or
   `{:table-ref {…}}`). The returned fn maps it to the id of the transform that
-  produces that table, or nil when no transform in `all-transforms` produces it
-  (i.e. it is a raw warehouse table). Encapsulates the same resolution context
-  (`output-table-map` + `target-ref-map`) that `transform-ordering` uses
-  internally, exposed so callers (e.g. sub-graph leaf detection) can classify a
-  node's inputs as produced-internally vs. boundary leaves."
+  produces that table, or nil when none does (a raw warehouse table). Shares the
+  resolution context (`output-table-map` + `target-ref-map`) with
+  `transform-ordering`, exposed so callers can classify a node's inputs as
+  produced-internally vs. boundary leaves."
   [all-transforms]
   (let [output-tables (output-table-map all-transforms)
         all-ids       (into #{} (map :id) all-transforms)

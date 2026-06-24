@@ -101,7 +101,7 @@
 
 (defn leaf-deps
   "Boundary input deps for `slice` — every node's raw input dep whose producing
-  transform is NOT in the slice.
+  transform is outside the slice.
 
   `id->raw-deps` maps a transform id to its `table-dependencies` (a seq of raw-dep
   maps); `producer-of` is the function from `ordering/dependency-producer-map`

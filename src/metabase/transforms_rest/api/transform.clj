@@ -361,15 +361,11 @@
    :metabase.transforms.test-run.chain/missing-database-id        422})
 
 (defn- parse-input-table-ids
-  "Parse multipart-params map and extract input fixture files.
+  "Extract input fixture files from the multipart params.
 
-  Scans all keys for the pattern `input-<N>` where N is a positive integer
-  (the table id). Returns `{table-id File}` or throws 400 for malformed keys.
-
-  Unknown keys (not `expected`, `options`, any `extra-reserved` key, or matching
-  `input-<int>`) are rejected with a 400 describing the unexpected part name.
-  `extra-reserved` lets a caller (e.g. the chained endpoint, which also accepts a
-  `sources` part) widen the reserved set."
+  Returns `{table-id File}` for every `input-<table-id>` part. Reserved parts
+  (`expected`, `options`, plus any `extra-reserved`) are skipped; anything else
+  throws a 400 naming the offending part."
   ([multipart-params]
    (parse-input-table-ids multipart-params #{}))
   ([multipart-params extra-reserved]
@@ -462,7 +458,7 @@
   "Convert a typed ex-info from the test-run pipeline to a run-record shaped
   error response body.
 
-  Carries the human-readable text at the TOP level as `:message` (in addition to
+  Carries the human-readable text at the top level as `:message` (in addition to
   the structured `:error` map) so generic API clients — which look for a top-level
   message and don't know our envelope shape — surface the real reason instead of a
   bare status code."
@@ -490,7 +486,7 @@
   Reads the `expected` file part, parses the `input-<id>` fixture files, parses
   the `options` JSON part, and delegates to `transforms.core/run-test!`.
 
-  Returns the HTTP response map directly (status + body). Does NOT throw —
+  Returns the HTTP response map directly (status + body). Never throws —
   typed errors are mapped to HTTP statuses from `test-run-error-http-status`;
   unknown errors become 500."
   [transform multipart-params]
@@ -525,7 +521,7 @@
   source ids), the `input-<id>` leaf fixtures, and the `options` JSON part, then
   delegates to `transforms.core/run-chain-test!`.
 
-  Returns the HTTP response map directly. Does NOT throw — typed errors are mapped
+  Returns the HTTP response map directly. Never throws — typed errors are mapped
   via `test-run-error-http-status`; unknown errors become 500."
   [target-id multipart-params]
   (let [expected-part (get multipart-params "expected")]

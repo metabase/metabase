@@ -27,20 +27,7 @@
 
   The write/DDL seams (`seed!`, `cleanup!`) assert they run inside
   `driver.conn/with-transform-connection`; the orchestrator wraps the whole run.
-  Callers supply `db-id` and the `:model/Database` row obtained within that context.
-
-  ## Public API summary
-
-  - [[new-nonce]]                — generate a unique 8-char nonce for a run.
-  - [[scratch-table-name]]       — build a scratch table name string from nonce + suffix.
-  - [[parse-scratch-table-name]] — parse a name string back to {:epoch-seconds :nonce :suffix}
-                                   or nil if it does not match the test pattern.
-  - [[test-table-name?]]         — predicate; accepts strings and keywords.
-  - [[scratch-output-target]]    — build the output target spec for a run.
-  - [[seed!]]                    — create + populate scratch tables from fixtures.
-                                   Returns mapping {real-spec → scratch-spec}.
-  - [[cleanup!]]                 — drop all scratch tables (best-effort, idempotent).
-  - [[cleanup-all-test-tables!]] — janitor: drop old test scratch tables in a schema."
+  Callers supply `db-id` and the `:model/Database` row obtained within that context."
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
@@ -138,7 +125,7 @@
   `:public/mb_transform_temp_table_test_...`).  Returns false for nil and
   non-string/keyword values.
 
-  Note: does NOT consult the database — purely name-based.
+  Note: never consults the database — purely name-based.
 
   Production transform temp tables (`mb_transform_temp_table_<hex-millis>`) can
   never match because the `_test_` segment is not a valid hex sequence."
