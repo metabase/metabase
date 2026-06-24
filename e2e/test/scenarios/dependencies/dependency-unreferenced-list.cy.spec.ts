@@ -212,6 +212,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
     it("should persist filter changes after page reload", () => {
       setupEntities();
       H.waitForBackfillComplete();
+      waitForUnreferencedEntities([...MODEL_NAMES, ...METRIC_NAMES]);
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({ visibleEntities: MODEL_NAMES });
 
@@ -1096,6 +1097,19 @@ function createDashboardWithParameterWithCardSource({
         },
       }),
     ],
+  });
+}
+
+// Since dependency graph calculation runs asynchronously on entity updates,
+// waitForBackfillComplete only confirms the initial backfill is done — it does
+// not guarantee the just-created entities have been classified into the graph.
+// Poll the unreferenced endpoint until they appear before visiting the page.
+function waitForUnreferencedEntities(names: string[]) {
+  H.waitForUnreferencedEntities((nodes) => {
+    const presentNames = nodes.map((node) =>
+      "name" in node.data ? node.data.name : undefined,
+    );
+    return names.every((name) => presentNames.includes(name));
   });
 }
 
