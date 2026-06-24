@@ -1098,13 +1098,23 @@ describe("scenarios > dashboard", () => {
           (dc) => dc.visualization_settings?.text === TARGET_TEXT,
         );
 
+        cy.intercept(
+          "POST",
+          `/api/dashboard/${dashboard.id}/dashcard/*/card/*/query`,
+        ).as("dashcardQuery");
+
         cy.log("should not be visible (below the fold)");
-        cy.visit(`/dashboard/${dashboard.id}}`);
+        cy.visit(`/dashboard/${dashboard.id}`);
+        // wait for the dashboard to finish loading so the layout is settled
+        cy.wait("@dashcardQuery");
         cy.findByText(TARGET_TEXT).should("not.be.visible");
 
         cy.log("should scroll into view w/ scrollTo hash param");
         cy.visit(`/dashboard/${dashboard.id}#scrollTo=${targetCard.id}`);
-        // wait for scroll to complete (hash cleared) then verify visibility
+        // wait for the dashboard to finish loading so the auto-scroll lands on a
+        // settled layout, then for the scroll to complete (hash cleared) before
+        // verifying visibility
+        cy.wait("@dashcardQuery");
         cy.location("hash").should("not.include", "scrollTo");
         cy.findByText(TARGET_TEXT).should("be.visible");
       },
