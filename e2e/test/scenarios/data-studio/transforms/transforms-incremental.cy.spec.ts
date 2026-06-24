@@ -19,6 +19,7 @@ describe("scenarios > admin > transforms incremental", () => {
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("POST", "/api/transform").as("createTransform");
+    cy.intercept("GET", "/api/transform/*").as("getTransform");
     cy.intercept("PUT", "/api/transform/*").as("updateTransform");
     cy.intercept("DELETE", "/api/transform/*").as("deleteTransform");
     cy.intercept("DELETE", "/api/transform/*/table").as("deleteTransformTable");
@@ -171,7 +172,11 @@ describe("scenarios > admin > transforms incremental", () => {
           .click();
         H.popover().findByText(DB_NAME).click();
 
-        getPythonDataPicker().findByText("Select a table…").click();
+        cy.log("wait for the data picker to load its tables before opening it");
+        getPythonDataPicker()
+          .findByRole("button", { name: "Select a table…" })
+          .should("be.enabled")
+          .click();
         H.entityPickerModal().findByText(SOURCE_TABLE).click();
 
         H.PythonEditor.clear().paste(
@@ -197,6 +202,9 @@ def transform(animals):
             }
           });
         });
+
+        cy.log("wait for the new transform page to load before running");
+        cy.wait("@getTransform");
 
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
