@@ -31,6 +31,17 @@
                  :style   (if (some (comp neg? :sortkey) sort-rows) :interleaved :compound)})
      :distkey (:column_name (first (filter :distkey rows)))}))
 
+(defn- mysql-indexes
+  [database schema table]
+  ;; MySQL has no schema layer, so a transform target's `schema` is nil; fall back to the connection's bound database.
+  (->> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                   [(str "SELECT DISTINCT index_name FROM information_schema.statistics "
+                         "WHERE table_schema = COALESCE(?, DATABASE()) AND table_name = ?")
+                    schema table])
+       (map :index_name)
+       (remove #{"PRIMARY"})
+       set))
+
 (defn- clickhouse-indexes
   [database schema table]
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
@@ -65,7 +76,13 @@
                                     :columns [{:name "price"}] :granularity 1}]
                 :expected         {:sorting-key  "(category)"
                                    :skip-indexes [{:name "by_price" :type "minmax" :expr "(price)" :granularity 1}]}
-                :physical-indexes clickhouse-indexes}})
+                :physical-indexes clickhouse-indexes}
+   ;; MySQL: standalone btree + fulltext. A TEXT column can't be btree-indexed without a prefix length, so btree
+   ;; goes on `price` (float) while fulltext, which requires a text column, goes on `category`.
+   :mysql      {:indexes          [{:kind :btree :name "by_price" :columns [{:name "price"}]}
+                                   {:kind :fulltext :name "ft_category" :columns [{:name "category"}]}]
+                :expected         #{"by_price" "ft_category"}
+                :physical-indexes mysql-indexes}})
 
 (defn index-test-drivers
   "Drivers that run transforms and declare any index support."
@@ -175,4 +192,23 @@
     {:label "an unsorted table returns []"
      :table "mb_fetch_ch_empty"
      :create ["CREATE TABLE mb_fetch_ch_empty (a Int64) ENGINE = MergeTree ORDER BY ()"]
-     :expected #{}}]})
+     :expected #{}}]
+
+   :mysql
+   [{:label  "btree, unique, composite, fulltext, and the auto PRIMARY KEY index"
+     :table  "mb_fetch_mysql"
+     :create ["CREATE TABLE mb_fetch_mysql (id INT PRIMARY KEY, user_id INT, email VARCHAR(255), a INT, b INT, body TEXT)"
+              "CREATE INDEX fc_btree ON mb_fetch_mysql (user_id)"
+              "CREATE UNIQUE INDEX fc_unique ON mb_fetch_mysql (email)"
+              "CREATE INDEX fc_ab ON mb_fetch_mysql (a, b)"
+              "CREATE FULLTEXT INDEX fc_ft ON mb_fetch_mysql (body)"]
+     ;; the PRIMARY KEY surfaces as a unique btree index named 'PRIMARY'.
+     :expected #{(idx "PRIMARY" :btree "btree" ["id"] :unique true :primary true)
+                 (idx "fc_btree" :btree "btree" ["user_id"])
+                 (idx "fc_unique" :btree "btree" ["email"] :unique true)
+                 (idx "fc_ab" :btree "btree" ["a" "b"])
+                 (idx "fc_ft" :fulltext "fulltext" ["body"])}}
+    {:label "a table with no secondary indexes returns just the primary key"
+     :table "mb_fetch_mysql_empty"
+     :create ["CREATE TABLE mb_fetch_mysql_empty (id INT PRIMARY KEY, a INT)"]
+     :expected #{(idx "PRIMARY" :btree "btree" ["id"] :unique true :primary true)}}]})
