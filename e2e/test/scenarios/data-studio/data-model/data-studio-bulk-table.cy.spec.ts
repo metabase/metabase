@@ -169,6 +169,8 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
+    // wait for the database's tables to load before selecting them
+    cy.wait("@getSchema");
     TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
     TablePicker.getTable("Products").find('input[type="checkbox"]').check();
 
