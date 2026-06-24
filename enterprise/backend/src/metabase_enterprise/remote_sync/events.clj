@@ -28,24 +28,23 @@
 (defn enable-snippet-tracking!
   "Mark all existing snippets and snippets-namespace collections as 'create' for initial sync."
   []
-  (let [timestamp (t/offset-date-time)]
-    ;; Mark all snippets-namespace collections for initial sync
-    (doseq [coll (t2/select [:model/Collection :id :name] :namespace "snippets")]
-      (t2/insert! :model/RemoteSyncObject
-                  {:model_type        "Collection"
-                   :model_id          (:id coll)
-                   :model_name        (:name coll)
-                   :status            "create"
-                   :status_changed_at timestamp}))
-    ;; Mark all existing snippets for initial sync
-    (doseq [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id])]
-      (t2/insert! :model/RemoteSyncObject
-                  {:model_type          "NativeQuerySnippet"
-                   :model_id            (:id snippet)
-                   :model_name          (:name snippet)
-                   :model_collection_id (:collection_id snippet)
-                   :status              "create"
-                   :status_changed_at   timestamp}))))
+  (let [timestamp (t/offset-date-time)
+        rows      (concat
+                   (for [coll (t2/select [:model/Collection :id :name] :namespace "snippets")]
+                     {:model_type        "Collection"
+                      :model_id          (:id coll)
+                      :model_name        (:name coll)
+                      :status            "create"
+                      :status_changed_at timestamp})
+                   (for [snippet (t2/select [:model/NativeQuerySnippet :id :name :collection_id])]
+                     {:model_type          "NativeQuerySnippet"
+                      :model_id            (:id snippet)
+                      :model_name          (:name snippet)
+                      :model_collection_id (:collection_id snippet)
+                      :status              "create"
+                      :status_changed_at   timestamp}))]
+    (when (seq rows)
+      (t2/insert! :model/RemoteSyncObject rows))))
 
 (defn disable-snippet-tracking!
   "Remove all snippet-related tracking entries."
