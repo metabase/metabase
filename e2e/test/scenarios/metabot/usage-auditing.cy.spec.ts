@@ -225,7 +225,13 @@ function selectGroupFilter(groupName: string): void {
 function selectUserFilter(userName: string, waitAlias = "@dataset"): void {
   H.main().findByTestId("conversation-filters-user-select").realClick();
   H.selectDropdown().findByText(userName).realClick();
-  cy.url().should("include", "user=");
+  // Anchor on the select reflecting the newly chosen user before waiting. A bare
+  // `url includes "user="` check is a no-op after a drill-through (the URL already
+  // carries the drilled user), so it doesn't gate on the filter actually switching
+  // and the conversations request/table can be read mid-transition.
+  H.main()
+    .findByTestId("conversation-filters-user-select")
+    .should("have.value", userName);
   cy.wait(waitAlias);
 }
 
@@ -333,6 +339,12 @@ function clickLastTimeseriesChartDot(title: string): void {
 }
 
 function clickRowChartBarForLabel(title: string, label: string): void {
+  // Anchor on the chart being fully rendered before measuring + drilling: the page
+  // only waits for the audit metadata, so the chart's dataset query + ECharts render
+  // can still be in flight. Without this, getBoundingClientRect() is captured against
+  // an unrendered chart and the coordinate click lands off the bar, so the drill-through
+  // never fires and the follow-up cy.wait("@conversations") times out.
+  assertChartRendered(title);
   getChartCard(title).within(() => {
     cy.findByTestId("row-chart-container").then(($container) => {
       cy.findByText(label).then(($label) => {
