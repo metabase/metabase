@@ -347,7 +347,7 @@
 
 (deftest settings-put-updates-provider-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
-                                     llm.settings/llm-openai-api-key      "sk-valid"]
+                                     llm.settings/llm-openai-api-key       "sk-valid"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
                                                            ([provider]
                                                             (is (= "openai" provider))
@@ -366,6 +366,31 @@
                                     :model    "gpt-4.1-mini"})))
       (is (= "openai/gpt-4.1-mini"
              (metabot.settings/llm-metabot-provider))))))
+
+(deftest settings-put-connect-openai-defaults-model-test
+  (testing "connecting openai with only an api-key switches to the default openai model"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-openai-api-key       nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
+                                                             ([provider]
+                                                              (is (= "openai" provider))
+                                                              {:models [{:id "gpt-4.1-mini"
+                                                                         :display_name "gpt-4.1-mini"}]})
+                                                             ([provider {:keys [credentials]}]
+                                                              (is (= "openai" provider))
+                                                              (is (= {:api-key "sk-fresh"} credentials))
+                                                              {:models [{:id "gpt-4.1-mini"
+                                                                         :display_name "gpt-4.1-mini"}]}))]
+        (is (= {:value  "openai/gpt-4.1-mini"
+                :models [{:id "gpt-4.1-mini"
+                          :display_name "gpt-4.1-mini"}]}
+               (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                     {:provider "openai"
+                                      :api-key  "sk-fresh"})))
+        (is (= "openai/gpt-4.1-mini"
+               (metabot.settings/llm-metabot-provider)))
+        (is (= "sk-fresh"
+               (llm.settings/llm-openai-api-key)))))))
 
 (deftest settings-put-updates-metabase-provider-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"]

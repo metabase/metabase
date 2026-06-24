@@ -114,6 +114,10 @@
   "Default Bedrock model used for Metabot when no explicit model is selected."
   "anthropic.claude-opus-4-8")
 
+(def ^:private default-openai-llm-metabot-model
+  "Default OpenAI model used for Metabot when no explicit model is selected."
+  "gpt-4.1-mini")
+
 (def default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
   (str "anthropic/" default-anthropic-llm-metabot-model))
@@ -125,6 +129,7 @@
   managed `metabase` provider uses the proxied `provider/model` form."
   {"anthropic"                            default-anthropic-llm-metabot-model
    "bedrock"                              default-bedrock-llm-metabot-model
+   "openai"                               default-openai-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
