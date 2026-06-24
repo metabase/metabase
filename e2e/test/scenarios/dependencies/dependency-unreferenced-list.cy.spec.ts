@@ -8,6 +8,7 @@ import {
 import type {
   CardId,
   CollectionId,
+  DependencyNode,
   FieldId,
   NativeQuerySnippetId,
   SegmentId,
@@ -122,12 +123,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
     it("should show unreferenced entities", () => {
       setupEntities();
       H.waitForBackfillComplete();
+      waitForEntitiesAnalysis();
       H.DependencyDiagnostics.visitUnreferencedEntities();
-      H.DependencyDiagnostics.list().within(() => {
-        ENTITY_NAMES.forEach((name) => {
-          cy.findByText(name).should("be.visible");
-        });
-      });
+      checkList({ visibleEntities: ENTITY_NAMES });
     });
 
     it("should not show referenced entities", () => {
@@ -409,6 +407,24 @@ function setupEntities({
   setupSegmentContent({ withReferences });
   setupMetricContent({ withReferences });
   setupSnippetContent({ withReferences });
+}
+
+function getNodeName(node: DependencyNode): string | null | undefined {
+  if (node.type === "table") {
+    return node.data.display_name;
+  }
+  return "name" in node.data ? node.data.name : undefined;
+}
+
+// Creating entities triggers asynchronous dependency-graph analysis, so the
+// unreferenced list is not guaranteed to be populated right after setup. Poll
+// the analysis endpoint until every created entity is present before asserting
+// on the UI (mirrors `waitForBreakingDependencies` in the broken-list spec).
+function waitForEntitiesAnalysis() {
+  H.waitForUnreferencedEntities((nodes) => {
+    const names = new Set(nodes.map(getNodeName));
+    return ENTITY_NAMES.every((name) => names.has(name));
+  });
 }
 
 function setupTableContent({
