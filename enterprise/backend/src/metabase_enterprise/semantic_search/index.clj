@@ -623,16 +623,20 @@
 (defn- hnsw-search-query
   "Build the semantic vector subquery using the HNSW index, applying `filters` after candidate selection."
   [index embedding-literal filters]
-  ;; The inner `vector_candidates` CTE is a pure vector search (ORDER BY distance LIMIT) so the planner
-  ;; uses the HNSW index. The filters only run in the outer query, so this is approximate: when the
-  ;; globally-closest rows are dominated by a cluster the filters reject, slightly-further survivors that
-  ;; would have passed the filters never enter the candidate set. `brute-force-search-query` is exact.
+  ;; The inner `vector_candidates` CTE is a pure vector search (ORDER BY distance LIMIT) so the planner uses
+  ;; the HNSW index. HNSW is an approximate-nearest-neighbour index, so its results are approximate regardless
+  ;; of filtering -- that's the trade-off we accept for its speed. Running the filters only in the outer query
+  ;; adds a separate problem: under-fetch. The fixed-size candidate set is picked before the filters apply, so
+  ;; when the globally-closest rows are dominated by a cluster the filters reject, we can return fewer rows than
+  ;; asked for -- or none at all. `brute-force-search-query` sidesteps both by skipping the index and scanning
+  ;; every filtered row.
   ;; TODO: only pull in necessary extra columns from configured filters
   (let [hnsw-query {:select (into common-search-columns
                                   [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                     :from   [(keyword (:table-name index))]
                     :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
                     :limit  (semantic-settings/semantic-search-results-limit)}
+        ;; `semantic_rank` feeds the RRF scorer; `semantic_distance` feeds the semantic-distance scorer.
         base-query {:with [[:vector_candidates hnsw-query]]
                     :select (into common-search-columns
                                   [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
@@ -678,10 +682,13 @@
   `:brute-force` is exact and filter-first; `:hnsw` (the default) is approximate and index-backed."
   [index embedding search-context]
   (let [filters           (search-filters search-context)
-        embedding-literal (format-embedding embedding)]
-    (case (vector-search-strategy search-context)
+        embedding-literal (format-embedding embedding)
+        strategy          (vector-search-strategy search-context)]
+    (case strategy
       :brute-force (brute-force-search-query index embedding-literal filters)
-      (hnsw-search-query index embedding-literal filters))))
+      :hnsw        (hnsw-search-query index embedding-literal filters)
+      (do (log/warnf "Unknown vector-search strategy %s; falling back to :hnsw" (pr-str strategy))
+          (hnsw-search-query index embedding-literal filters)))))
 
 (defn- flatten-ctes
   "Flatten nested :with clauses into a single top-level :with.
@@ -693,10 +700,11 @@
   (if-not (:with query)
     {:ctes [] :query query}
     (let [ctes (reduce
-                ;; `opts` carries any trailing CTE options (e.g. `:materialized`) so they survive hoisting.
-                (fn [acc [cte-name cte-query & opts]]
+                ;; `assoc` swaps the (possibly flattened) inner query back into the binding while preserving the
+                ;; CTE name and any trailing opts (e.g. `:materialized`), so they survive hoisting.
+                (fn [acc [_cte-name cte-query & _opts :as cte-binding]]
                   (let [{:keys [ctes query]} (flatten-ctes cte-query)]
-                    (into acc (conj ctes (into [cte-name query] opts)))))
+                    (into acc (conj ctes (assoc cte-binding 1 query)))))
                 []
                 (:with query))]
       {:ctes ctes
