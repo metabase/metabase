@@ -200,7 +200,7 @@ describe("pivot tables", () => {
     QSHelpers.getFilter("Number").click();
     verifyNumberMappingOptions();
 
-    cy.button("Save").click();
+    H.saveDashboard();
 
     cy.log("filter picker");
 
