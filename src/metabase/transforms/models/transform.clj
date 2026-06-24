@@ -119,21 +119,9 @@
   {:source_type        mi/transform-keyword
    :source             {:out transform-source-out, :in transform-source-in}
    :target             mi/transform-json
-   :table_dependencies mi/transform-json
+   ;; nil round-trips as NULL
+   :table_dependencies {:in #(some-> % mi/json-in), :out mi/json-out-with-keywordization}
    :run_trigger        mi/transform-keyword})
-
-(defn compute-table-dependencies
-  "Compute `transform`'s table dependencies as a vector of dependency maps (see
-  `metabase.transforms-base.interface/table-dependencies`), or `nil` if extraction throws.
-
-  `nil` (extraction failed or never computed) means read paths fall back to a live call;
-  `[]` means no dependencies."
-  [transform]
-  (try
-    (vec (transforms-base.i/table-dependencies transform))
-    (catch Throwable e
-      (log/warnf e "Failed to precompute table-dependencies for transform %s" (:id transform))
-      nil)))
 
 (defmethod collection/allowed-namespaces :model/Transform
   [_]
@@ -156,8 +144,7 @@
         (assoc
          :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
-         :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))
-         :table_dependencies (compute-table-dependencies transform)))))
+         :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))))))
 
 (t2/define-before-update :model/Transform
   [{:keys [source source_database_id] :as transform}]
@@ -175,7 +162,8 @@
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
              :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))
-             :table_dependencies (compute-table-dependencies transform))
+             ;; invalidate table dependencies on update, so they get recomputed on next miss
+             :table_dependencies nil)
 
       target-changed?
       (assoc :target_db_id target-db-id)

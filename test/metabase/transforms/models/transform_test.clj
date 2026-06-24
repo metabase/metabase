@@ -115,26 +115,28 @@
 (defn- stored-deps [transform-id]
   (t2/select-one-fn :table_dependencies :model/Transform transform-id))
 
-(deftest table-dependencies-precomputed-test
-  (testing "inserting a transform precomputes the table_dependencies column"
+(deftest table-dependencies-cache-test
+  (testing "table_dependencies is not computed on insert — it is filled lazily on the first read"
     (mt/with-temp [:model/Transform {id :id}
                    {:name   "deps insert"
                     :source {:type  "query"
                              :query {:database (mt/id)
                                      :type     "query"
                                      :query    {:source-table (mt/id :orders)}}}}]
-      (is (= [{:table (mt/id :orders)}] (stored-deps id)))))
-  (testing "updating the source recomputes the table_dependencies column"
+      (is (nil? (stored-deps id)))))
+  (testing "changing the source invalidates any cached table_dependencies"
     (mt/with-temp [:model/Transform {id :id}
                    {:name   "deps update"
                     :source {:type  "query"
                              :query {:database (mt/id)
                                      :type     "query"
                                      :query    {:source-table (mt/id :orders)}}}}]
+      ;; seed a cached value (as the lazy read path would)
+      (t2/update! :model/Transform id {:table_dependencies [{:table (mt/id :orders)}]})
       (is (= [{:table (mt/id :orders)}] (stored-deps id)))
       (t2/update! :model/Transform id
                   {:source {:type  "query"
                             :query {:database (mt/id)
                                     :type     "query"
                                     :query    {:source-table (mt/id :people)}}}})
-      (is (= [{:table (mt/id :people)}] (stored-deps id))))))
+      (is (nil? (stored-deps id))))))
