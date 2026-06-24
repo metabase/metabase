@@ -54,8 +54,7 @@
     (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)))
 
 (defn entity->path
-  "The repo-relative path an extracted `entity` serializes to, using storage context `opts` (from
-  `serdes/storage-base-context`). Cheaper than [[entity->file-spec]] when only the path is needed."
+  "The repo-relative path an extracted `entity` serializes to, using storage context `opts`."
   [opts entity]
   (let [resolved (serialization/resolve-storage-path opts entity)
         dirnames (drop-last resolved)

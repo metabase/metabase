@@ -78,8 +78,8 @@
     Returns the version of the written files.")
 
   (open-commit [snapshot opts]
-    "Begin building one commit incrementally; returns a CommitBuilder to stage files into.
-    `opts` may include `:replace-dirs` (top-level dirs to clear first, for a wholesale replace).")
+    "Begin building one commit incrementally; returns a CommitBuilder. `opts` may set `:replace?` to clear the
+    managed dirs first (a wholesale replace).")
 
   (version [snapshot]
     "Gets a version identifier for the current state of the snapshot.

@@ -362,8 +362,7 @@
       (->GitCommit snapshot inserter reader rev-walk index editor parent-id))))
 
 (defn- with-staged
-  "Open a commit on `snapshot`, run `stage!` (a 1-arg fn given the CommitBuilder), then finish; aborts on any
-  throw. Used to express the one-shot write APIs on top of the incremental builder."
+  "Open a commit on `snapshot`, run `stage!` (given the CommitBuilder), and finish — or abort on any throw."
   [snapshot opts ^String message stage!]
   (let [c (open-commit* snapshot opts)]
     (try
