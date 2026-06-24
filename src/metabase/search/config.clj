@@ -330,6 +330,12 @@
   `ef-search` and `max-scan-tuples` knobs tune it further."
   [:hnsw :brute-force :hnsw-iterative-relaxed :hnsw-iterative-strict])
 
+(def hnsw-index-backed-strategies
+  "The subset of [[vector-search-strategies]] that read the HNSW index. Selecting one of these must build the
+  index just-in-time, and a query under one must fail fast when the index is missing. `:brute-force` is the
+  only strategy that needs no index."
+  #{:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict})
+
 (def ^:private ui-contexts
   "Search `context` values issued by the frontend, one per UI surface.
   Selects ranking weights ([[static-context-weights]]) and filter defaults ([[filter-defaults-by-context]]).

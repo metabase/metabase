@@ -470,9 +470,10 @@
 (defn create-hnsw-index-if-not-exists!
   "Create the HNSW index on the `embedding` column of `index`'s table, if it does not already exist.
 
-  HNSW indexes are expensive to build and maintain, so we only create one when an instance is configured to
-  use the `:hnsw` vector-search strategy (see [[create-index-table-if-not-exists!]] and the async build
-  triggered by [[metabase-enterprise.semantic-search.settings/semantic-search-vector-strategy]]).
+  HNSW indexes are expensive to build and maintain, so we only create one when an instance is configured for
+  an HNSW-index-backed vector-search strategy (`:hnsw` or `:hnsw-iterative-*`; see
+  [[metabase.search.config/hnsw-index-backed-strategies]], [[create-index-table-if-not-exists!]], and the
+  async build triggered by [[metabase-enterprise.semantic-search.settings/semantic-search-vector-strategy]]).
 
   Pass `concurrently? true` to build with `CREATE INDEX CONCURRENTLY` (for a populated table whose writes
   shouldn't be locked out); it must run outside a transaction."
@@ -492,8 +493,9 @@
   "Ensure that the index table exists and is ready to be populated. If
   force-reset? is true, drops and recreates the table if it exists.
 
-  The HNSW index is only created when the instance is configured for the `:hnsw` vector-search strategy;
-  otherwise it is built just-in-time when the strategy is configured (see [[create-hnsw-index-if-not-exists!]])."
+  The HNSW index is only created when the instance is configured for an HNSW-index-backed vector-search
+  strategy (`:hnsw` or `:hnsw-iterative-*`); under `:brute-force` it is skipped, and built just-in-time when
+  an index-backed strategy is later configured (see [[create-hnsw-index-if-not-exists!]])."
   [connectable index & {:keys [force-reset?] :or {force-reset? false}}]
   (try
     (let [{:keys [embedding-model table-name]} index
@@ -508,7 +510,8 @@
        (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
            (sql.helpers/with-columns (index-table-schema vector-dimensions))
            sql-format-quoted))
-      (when (= :hnsw (semantic-settings/semantic-search-vector-strategy))
+      (when (contains? search.config/hnsw-index-backed-strategies
+                       (semantic-settings/semantic-search-vector-strategy))
         (create-hnsw-index-if-not-exists! connectable index))
       (jdbc/execute!
        connectable
@@ -1113,11 +1116,13 @@
     (if (str/blank? search-string)
       {:results [] :raw-count 0}
       (do
-        (when (and (= :hnsw (vector-search-strategy search-context))
+        (when (and (contains? search.config/hnsw-index-backed-strategies (vector-search-strategy search-context))
                    (not (semantic.util/index-exists? db (hnsw-index-name index))))
-          (throw (ex-info (str "HNSW vector-search strategy requested but no HNSW index exists. "
-                               "Set the semantic-search-vector-strategy setting to :hnsw to build it.")
-                          {:table-name (:table-name index)})))
+          (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no HNSW index exists. "
+                               "Set the semantic-search-vector-strategy setting to an index-backed strategy "
+                               "(:hnsw or :hnsw-iterative-*) to build it.")
+                          {:table-name (:table-name index)
+                           :strategy   (vector-search-strategy search-context)})))
         (let [timer (u/start-timer)
 
               ;; Warm the pool concurrently with the embedding round-trip: the pool holds zero idle

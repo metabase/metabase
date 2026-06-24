@@ -92,7 +92,7 @@
     (doseq [strategy [:hnsw :brute-force :hnsw-iterative-relaxed :hnsw-iterative-strict]]
       (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy strategy]
         (is (= strategy (semantic.settings/semantic-search-vector-strategy))))))
-  (testing "the setter kicks off the background build job only on the transition into :hnsw"
+  (testing "the setter kicks off the background build job on the transition into any HNSW-index-backed strategy"
     ;; This asserts *when* the build is triggered (the transition gating), not what the build does -- the
     ;; build itself is covered by pgvector-api-test/ensure-active-hnsw-index!-test. The setter publishes
     ;; :event/semantic-search-hnsw-enabled, whose handler (semantic-search.events) calls the async build; we
@@ -105,10 +105,13 @@
             (is (= 1 @triggers) "transitioning :brute-force -> :hnsw kicks off a build")
             (semantic.settings/semantic-search-vector-strategy! :hnsw)
             (is (= 1 @triggers) "setting :hnsw again when already :hnsw does not re-trigger")
+            ;; switching between index-backed strategies reuses the existing index, so no rebuild
+            (semantic.settings/semantic-search-vector-strategy! :hnsw-iterative-strict)
+            (is (= 1 @triggers) "switching :hnsw -> :hnsw-iterative-strict does not re-trigger")
             (semantic.settings/semantic-search-vector-strategy! :brute-force)
-            (is (= 1 @triggers) "switching away from :hnsw does not trigger")
-            (semantic.settings/semantic-search-vector-strategy! :hnsw)
-            (is (= 2 @triggers) "transitioning back into :hnsw triggers again")))))))
+            (is (= 1 @triggers) "switching away to :brute-force does not trigger")
+            (semantic.settings/semantic-search-vector-strategy! :hnsw-iterative-relaxed)
+            (is (= 2 @triggers) "transitioning :brute-force -> :hnsw-iterative-relaxed kicks off a build")))))))
 
 (deftest vector-session-settings-test
   (testing ":hnsw and :brute-force need no session GUCs"
@@ -218,15 +221,17 @@
               "relfilenode is unchanged, so the index was not dropped, rebuilt, or reindexed"))))))
 
 (deftest query-index-hnsw-without-index-throws-test
-  (testing "a query using the :hnsw strategy fails fast when no HNSW index exists, rather than silently scanning"
+  (testing "a query under any HNSW-index-backed strategy fails fast when no HNSW index exists, rather than silently scanning"
     (mt/with-premium-features #{:semantic-search}
       (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo #"no HNSW index exists"
-             (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
-                                         @index-ref
-                                         {:search-string "puppy" :vector-search-strategy :hnsw})))))))
+        (doseq [strategy [:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict]]
+          (testing strategy
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"no HNSW index exists"
+                 (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
+                                             @index-ref
+                                             {:search-string "puppy" :vector-search-strategy strategy})))))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}

@@ -144,9 +144,12 @@
                                     {:invalid-value new-value
                                      :valid-values  valid-vector-search-strategies})))
                   (setting/set-value-of-type! :keyword :semantic-search-vector-strategy kw)
-                  ;; Gated on the transition (not every set) so re-setting :hnsw doesn't rebuild the index.
-                  (when (and (= kw :hnsw) (not= old :hnsw))
-                    (events/publish-event! :event/semantic-search-hnsw-enabled {})))))
+                  ;; Every HNSW-index-backed strategy needs the index, so build it when transitioning into one
+                  ;; from a non-index-backed strategy. Gated on the transition (not every set) so switching
+                  ;; between index-backed strategies -- e.g. :hnsw -> :hnsw-iterative-strict -- doesn't rebuild.
+                  (let [index-backed? search.config/hnsw-index-backed-strategies]
+                    (when (and (index-backed? kw) (not (index-backed? old)))
+                      (events/publish-event! :event/semantic-search-hnsw-enabled {}))))))
 
 (defsetting semantic-search-ef-search
   (deferred-tru
