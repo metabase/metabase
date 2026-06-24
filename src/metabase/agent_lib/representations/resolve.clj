@@ -102,9 +102,8 @@
    pmbql-query))
 
 (defn- parseable-temporal-string?
-  "True when `s` is a date or datetime string literal that [[u.date/parse]] can turn into a
-  `java.time` value. Year / year-month strings (valid only inside `:absolute-datetime`) are
-  intentionally excluded — they are left untouched."
+  "True when `s` is a date or datetime string that [[u.date/parse]] can turn into a `java.time` value.
+  Bare year and year-month strings — legal only inside `:absolute-datetime` — return `false`."
   [s]
   (and (string? s)
        (boolean (or (re-matches u.time.impl-common/local-date-regex s)
@@ -112,28 +111,26 @@
                     (re-matches u.time.impl-common/offset-datetime-regex s)))))
 
 (defn- parse-absolute-datetime-literals
-  "Walk a normalized pMBQL query and parse string literals inside `:absolute-datetime` clauses into
-  `java.time` values.
-
-  The repair pass (and the portable wire format in general) represents temporal literals as ISO
-  strings — e.g. it wraps `between` date bounds as `[:absolute-datetime {} \"2024-01-01\" :day]`.
-  That string form is schema-valid (Lib accepts string temporal literals, and on CLJS they are the
-  only representation), but the JVM query processor expects a real `java.time` value: middleware
-  like `optimize-temporal-filters` walks `:absolute-datetime` clauses and feeds the literal to
-  functions that demand a `java.time.temporal.Temporal`, throwing on a bare string. Since the QP's
-  own `wrap-value-literals` only parses temporal strings that arrive as *raw* values (not ones
-  already wrapped in `:absolute-datetime`), we parse them here as part of producing QP-ready pMBQL.
-
-  Idempotent: clauses whose literal is already a `java.time` value (or a year / year-month string)
-  are left unchanged."
+  "Parse the string literals in a normalized pMBQL query's `:absolute-datetime` clauses into `java.time` values.
+  Idempotent: a literal that is already a `java.time` value (or a year/year-month string) is left untouched."
   [pmbql-query]
+  ;; Temporal literals arrive here as ISO strings: that is how the repair pass and the portable wire
+  ;; format carry them, and on CLJS a string is the only representation.
+  ;; A `between` bound, for example, arrives as `[:absolute-datetime {} "2024-01-01" :day]`.
+  ;;
+  ;; The JVM query processor needs a real `java.time` value.
+  ;; Middleware like `optimize-temporal-filters` hands the literal to functions that demand a
+  ;; `java.time.temporal.Temporal`, and a bare string throws.
+  ;;
+  ;; The QP's own `wrap-value-literals` would parse the string, but only as a raw value, not once it
+  ;; is wrapped in `:absolute-datetime`. So we parse it here.
   (walk/postwalk
    (fn [node]
      (if (and (vector? node)
               (= :absolute-datetime (nth node 0 nil))
               (map? (nth node 1 nil))
               (parseable-temporal-string? (nth node 2 nil)))
-       (assoc node 2 (u.date/parse (nth node 2)))
+       (update node 2 u.date/parse)
        node))
    pmbql-query))
 
