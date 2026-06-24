@@ -54,14 +54,9 @@
                                      transform-id-2])))
           ordering)))
 
-(def ^:private ordering-columns
-  "Columns needed to resolve and order dependencies. Excludes the heavy `:source` blob (whose
-  deserialization normalizes the query) — dependencies are read from `:table_dependencies` instead."
-  [:model/Transform :id :target :target_table_id :created_at :table_dependencies])
-
 (defn- get-plan [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
-    (let [all-transforms (t2/select ordering-columns)
+    (let [all-transforms (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies])
           ;; Walk only the dependency closure of the transforms we're asked to run.
           ;; `table-dependencies` (and the QP preprocessing it triggers) is therefore called
           ;; only on transforms in that closure — never on unrelated transforms elsewhere in

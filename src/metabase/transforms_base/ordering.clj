@@ -210,16 +210,20 @@
   ```
 "
   [{transform-id :id :as to-check}]
-  (let [transforms       (map (fn [{:keys [id] :as transform}]
+  (let [db-id            (get-in to-check [:source :query :database])
+        ;; Recompute the transform under test live — its source may have just changed, so any stored
+        ;; deps are stale — and pin its source db. Every other transform uses its stored deps.
+        to-check         (-> to-check (assoc :source_database_id db-id) (dissoc :table_dependencies))
+        transforms       (map (fn [{:keys [id] :as transform}]
                                 (if (= id transform-id)
                                   to-check
                                   transform))
-                              (t2/select :model/Transform))
+                              (t2/select [:model/Transform :id :name :target :target_table_id
+                                          :source_database_id :table_dependencies]))
         transforms-by-id (into {}
                                (map (juxt :id identity))
                                transforms)
-        db-id            (get-in to-check [:source :query :database])
-        db-transforms    (filter #(= (get-in % [:source :query :database]) db-id) transforms)
+        db-transforms    (filter #(= (:source_database_id %) db-id) transforms)
         output-tables    (output-table-map db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
         target-refs      (target-ref-map transforms)
