@@ -633,10 +633,12 @@
         temporal-formats))
 
 (def ^:private iso-8601-format-strings
-  "Format strings for ISO-8601 output by type and precision."
-  {:offset-date-time {:millis "YYYY-MM-DDTHH:mm:ss.SSS[Z]"
-                      :second "YYYY-MM-DDTHH:mm:ss[Z]"
-                      :minute "YYYY-MM-DDTHH:mm[Z]"}
+  "Format strings for ISO-8601 output by type and precision.
+  `:offset-date-time` omits the trailing zone; [[offset-zone-suffix]] appends the actual offset so the original
+  instant survives a parse/format round-trip (#73972)."
+  {:offset-date-time {:millis "YYYY-MM-DDTHH:mm:ss.SSS"
+                      :second "YYYY-MM-DDTHH:mm:ss"
+                      :minute "YYYY-MM-DDTHH:mm"}
    :local-date-time  {:millis "YYYY-MM-DDTHH:mm:ss.SSS"
                       :second "YYYY-MM-DDTHH:mm:ss"
                       :minute "YYYY-MM-DDTHH:mm"}
@@ -648,6 +650,15 @@
                       :second "HH:mm:ss"
                       :minute "HH:mm"}})
 
+(defn- offset-zone-suffix
+  "ISO-8601 zone suffix for an offset-bearing dayjs value: \"Z\" when it's in UTC, otherwise the numeric offset
+  like \"+08:00\". Using the real offset (instead of a literal \"Z\") keeps the original instant intact when an
+  offset-date-time string is parsed and reformatted, e.g. by [[truncate]]/[[add]] (#73972)."
+  [^dayjs t]
+  (if (.isUTC t)
+    "Z"
+    (.format t "Z")))
+
 (defn- dayjs+type->iso-8601
   "Format a dayjs instance as ISO-8601 string based on its type."
   [[^dayjs t value-type]]
@@ -657,7 +668,8 @@
                             (pos? (.millisecond t)) (:millis formats)
                             (pos? (.second t))      (:second formats)
                             :else                   (:minute formats)))]
-    (.format t format-string)))
+    (cond-> (.format t format-string)
+      (= value-type :offset-date-time) (str (offset-zone-suffix t)))))
 
 (defn- ^dayjs ->dayjs
   "Convert a value to a dayjs instance. Handles strings, js/Date, and dayjs instances."

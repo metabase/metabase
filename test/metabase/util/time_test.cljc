@@ -479,6 +479,22 @@
       (finally
         #?(:cljs (.tz.setDefault dayjs))))))
 
+#?(:cljs
+   (deftest ^:parallel offset-datetime-round-trip-test
+     (testing "truncating/adding an offset-date-time string keeps the original UTC offset, so the instant is
+              preserved on round-trips (e.g. dashcard viz re-rendering) instead of being mislabeled as UTC (#73972)"
+       (are [expected unit] (= expected (shared.ut/truncate "2024-05-13T08:30:45+08:00" unit))
+         "2024-05-13T08:30:45+08:00" :second
+         "2024-05-13T08:30+08:00"    :minute
+         "2024-05-13T08:00+08:00"    :hour
+         "2024-05-13T00:00+08:00"    :day)
+       (testing "negative offsets are preserved too"
+         (is (= "2026-05-06T00:00-07:00" (shared.ut/truncate "2026-05-06T10:00:00-07:00" :day))))
+       (testing "UTC values are still rendered with Z"
+         (is (= "2024-05-13T00:00Z" (shared.ut/truncate "2024-05-13T08:30:00Z" :day))))
+       (testing "add keeps the original offset"
+         (is (= "2024-05-15T08:30+08:00" (shared.ut/add "2024-05-13T08:30:00+08:00" :day 2)))))))
+
 (deftest ^:parallel zulu-add-time-test
   (testing "Time addition in string format works (#53724)"
     #?(:cljs (.tz.setDefault dayjs "Europe/Helsinki"))
