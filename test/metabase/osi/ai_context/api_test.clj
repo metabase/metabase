@@ -7,16 +7,12 @@
 (set! *warn-on-reflection* true)
 
 (defmacro ^:private with-test-entry
-  "Create an ai_context entry for testing and bind it to `sym`, deleting it on exit."
+  "`mt/with-temp` for an OsiAiContext, with entity/ai_context defaults so callers can pass `{}`."
   [[sym attrs] & body]
-  `(let [~sym (t2/insert-returning-instance! :model/OsiAiContext
-                                             (merge {:entity     {:model "table" :id 1}
-                                                     :ai_context {:instructions "find orders"}}
-                                                    ~attrs))]
-     (try
-       ~@body
-       (finally
-         (t2/delete! :model/OsiAiContext :id (:id ~sym))))))
+  `(mt/with-temp [:model/OsiAiContext ~sym (merge {:entity     {:model "table" :id 1}
+                                                   :ai_context {:instructions "find orders"}}
+                                                  ~attrs)]
+     ~@body))
 
 (deftest list-test
   (with-test-entry [entry {}]
