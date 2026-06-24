@@ -54,12 +54,21 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
-    cy.wait("@getSchema").then(({ response }) => {
-      const tables = response?.body ?? [];
-      const accountTableId = getTableId(tables, "Orders");
-      const feedbackTableId = getTableId(tables, "Products");
+    // Wait for the UI to load the database's tables before interacting.
+    cy.wait("@getSchema");
 
-      cy.wrap([accountTableId, feedbackTableId]).as("tableIds");
+    // Capture the expected table IDs from a direct API request rather than the
+    // intercepted UI response: under stress the aliased `@getSchema` response
+    // body is occasionally a non-array (e.g. an error map), which made
+    // `tables.find` throw `TypeError: tables.find is not a function`. A
+    // `cy.request` deterministically returns the table list.
+    cy.request<Table[]>(
+      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
+    ).then(({ body: tables }) => {
+      const ordersTableId = getTableId(tables, "Orders");
+      const productsTableId = getTableId(tables, "Products");
+
+      cy.wrap([ordersTableId, productsTableId]).as("tableIds");
     });
 
     TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
