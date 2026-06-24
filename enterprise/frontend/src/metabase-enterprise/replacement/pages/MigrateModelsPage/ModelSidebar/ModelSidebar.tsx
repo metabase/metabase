@@ -54,7 +54,7 @@ export const ModelSidebar = memo(function ModelSidebar({
       <Box
         className={S.sidebar}
         p="lg"
-        bg="background-primary"
+        bg="background_page-primary"
         data-testid="model-sidebar"
       >
         {isLoading || error != null || card == null || database == null ? (

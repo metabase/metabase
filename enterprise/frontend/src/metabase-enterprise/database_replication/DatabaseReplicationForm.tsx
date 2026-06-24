@@ -201,7 +201,12 @@ export const DatabaseReplicationForm = ({
                 </Box>
               )}
 
-              <Card radius="md" bg="background-secondary" p={0} shadow="none">
+              <Card
+                radius="md"
+                bg="background_page-secondary"
+                p={0}
+                shadow="none"
+              >
                 <Flex
                   align="flex-start"
                   direction="row"
@@ -288,7 +293,12 @@ export const DatabaseReplicationForm = ({
                 )}
               </Card>
 
-              <Card radius="md" bg="background-secondary" p={0} shadow="none">
+              <Card
+                radius="md"
+                bg="background_page-secondary"
+                p={0}
+                shadow="none"
+              >
                 <Flex
                   align="flex-start"
                   direction="row"
@@ -377,7 +387,7 @@ export const DatabaseReplicationForm = ({
 
               <Card
                 radius="md"
-                bg="background-secondary"
+                bg="background_page-secondary"
                 p="md"
                 my="sm"
                 shadow="none"

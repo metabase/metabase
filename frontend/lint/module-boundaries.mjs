@@ -65,7 +65,6 @@ const elements = [
   createElement({ type: "shared", name: "data-studio" }),
   createElement({ type: "shared", name: "databases" }),
   createElement({ type: "shared", name: "detail-view" }),
-  createElement({ type: "shared", name: "documents" }),
   createElement({
     type: "shared",
     name: "embed",
@@ -156,6 +155,7 @@ const elements = [
   // feature
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
+  createElement({ type: "feature", name: "documents" }),
   createElement({
     type: "feature",
     name: "enterprise",

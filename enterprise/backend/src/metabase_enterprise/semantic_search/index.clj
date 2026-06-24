@@ -25,6 +25,7 @@
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2])
   (:import
+   [com.mchange.v2.c3p0 PooledDataSource]
    [java.time Instant LocalDate OffsetDateTime ZonedDateTime]
    [java.util.concurrent ArrayBlockingQueue RejectedExecutionHandler RejectedExecutionException TimeUnit ThreadPoolExecutor]
    [org.postgresql.util PGobject]))
@@ -70,6 +71,9 @@
      [:collection_type :text]
      [:root_collection_type :text]
      [:data_layer :text]
+     [:data_authority :text]
+     ;; Precomputed "verified or curated content" flag — see metabase.collections.curation/curated?
+     [:curated :boolean]
      [:dashboardcard_count :int]
      [:view_count :int]
      [:created_at :timestamp-with-time-zone [:default [:raw "CURRENT_TIMESTAMP"]] :not-null]
@@ -155,7 +159,7 @@
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
                      pinned dashboardcard_count view_count last_viewed_at collection_type root_collection_type
-                     data_layer] :as doc}]
+                     data_layer data_authority curated] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
@@ -173,6 +177,8 @@
    :collection_type     collection_type
    :root_collection_type root_collection_type
    :data_layer          data_layer
+   :data_authority      data_authority
+   :curated             (some-> curated to-boolean)
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
    :model_created_at    (some-> created_at to-instant)
@@ -288,7 +294,10 @@
   (let [table-name (or table-name (model-table-name embedding-model))]
     {:embedding-model embedding-model
      :table-name table-name
-     :version 4}))
+     ;; Must equal db.migration.impl/dynamic-schema-version — a freshly created index already has the
+     ;; latest schema, so recording an older version would mark it stale on creation. Kept as a literal
+     ;; (not a require) to avoid an index → impl → index-metadata → index cycle; bump both together.
+     :version 5}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -543,14 +552,21 @@
   "Ordered `[filter-key where-condition]` pairs for the structural filters implied by `search-context`. The
   search query ANDs these together (see [[search-filters]]); the search debug API uses the keys to attribute
   which specific filter excludes a given row."
-  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by
+  [{:keys [archived? verified curated? models created-at created-by last-edited-at last-edited-by
            table-db-id ids display-type] :as search-context}]
   (keep
    (fn [[k clause]] (when clause [k clause]))
    [[:personal-collection (personal-collection-filter search-context)]
     [:archived?           (when (some? archived?) [:= :archived archived?])]
     [:verified            (when (some? verified) [:= :verified verified])]
-    [:models              (when (seq models) [:in :model models])]
+    ;; "Verified or curated content" — precomputed flag (collections.curation/curated?)
+    [:curated             (when (some? curated?) [:= :curated curated?])]
+    ;; search.impl sets :models to the applicable models; an empty (but present) set means filters left no
+    ;; applicable model (e.g. curated + non-curatable entity-types), so match nothing rather than omitting the
+    ;; predicate (= all models)
+    [:models              (cond
+                            (seq models)   [:in :model models]
+                            (some? models) [:= [:inline 1] [:inline 0]])]
     [:created-by          (when (seq created-by) [:in :creator_id created-by])]
     [:last-edited-by      (when (seq last-edited-by) [:in :last_editor_id last-edited-by])]
     [:table-db-id         (when table-db-id [:= :database_id table-db-id])]
@@ -590,6 +606,8 @@
    [:collection_type :collection_type]
    [:root_collection_type :root_collection_type]
    [:data_layer :data_layer]
+   [:data_authority :data_authority]
+   [:curated :curated]
    [:dashboardcard_count :dashboardcard_count]
    [:view_count :view_count]
    [:model_created_at :model_created_at]
@@ -624,16 +642,20 @@
 (defn- hnsw-search-query
   "Build the semantic vector subquery using the HNSW index, applying `filters` after candidate selection."
   [index embedding-literal filters]
-  ;; The inner `vector_candidates` CTE is a pure vector search (ORDER BY distance LIMIT) so the planner
-  ;; uses the HNSW index. The filters only run in the outer query, so this is approximate: when the
-  ;; globally-closest rows are dominated by a cluster the filters reject, slightly-further survivors that
-  ;; would have passed the filters never enter the candidate set. `brute-force-search-query` is exact.
+  ;; The inner `vector_candidates` CTE is a pure vector search (ORDER BY distance LIMIT) so the planner uses
+  ;; the HNSW index. HNSW is an approximate-nearest-neighbour index, so its results are approximate regardless
+  ;; of filtering -- that's the trade-off we accept for its speed. Running the filters only in the outer query
+  ;; adds a separate problem: under-fetch. The fixed-size candidate set is picked before the filters apply, so
+  ;; when the globally-closest rows are dominated by a cluster the filters reject, we can return fewer rows than
+  ;; asked for -- or none at all. `brute-force-search-query` sidesteps both by skipping the index and scanning
+  ;; every filtered row.
   ;; TODO: only pull in necessary extra columns from configured filters
   (let [hnsw-query {:select (into common-search-columns
                                   [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                     :from   [(keyword (:table-name index))]
                     :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
                     :limit  (semantic-settings/semantic-search-results-limit)}
+        ;; `semantic_rank` feeds the RRF scorer; `semantic_distance` feeds the semantic-distance scorer.
         base-query {:with [[:vector_candidates hnsw-query]]
                     :select (into common-search-columns
                                   [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
@@ -679,10 +701,13 @@
   `:brute-force` is exact and filter-first; `:hnsw` (the default) is approximate and index-backed."
   [index embedding search-context]
   (let [filters           (search-filters search-context)
-        embedding-literal (format-embedding embedding)]
-    (case (vector-search-strategy search-context)
+        embedding-literal (format-embedding embedding)
+        strategy          (vector-search-strategy search-context)]
+    (case strategy
       :brute-force (brute-force-search-query index embedding-literal filters)
-      (hnsw-search-query index embedding-literal filters))))
+      :hnsw        (hnsw-search-query index embedding-literal filters)
+      (do (log/warnf "Unknown vector-search strategy %s; falling back to :hnsw" (pr-str strategy))
+          (hnsw-search-query index embedding-literal filters)))))
 
 (defn- flatten-ctes
   "Flatten nested :with clauses into a single top-level :with.
@@ -694,10 +719,11 @@
   (if-not (:with query)
     {:ctes [] :query query}
     (let [ctes (reduce
-                ;; `opts` carries any trailing CTE options (e.g. `:materialized`) so they survive hoisting.
-                (fn [acc [cte-name cte-query & opts]]
+                ;; `assoc` swaps the (possibly flattened) inner query back into the binding while preserving the
+                ;; CTE name and any trailing opts (e.g. `:materialized`), so they survive hoisting.
+                (fn [acc [_cte-name cte-query & _opts :as cte-binding]]
                   (let [{:keys [ctes query]} (flatten-ctes cte-query)]
-                    (into acc (conj ctes (into [cte-name query] opts)))))
+                    (into acc (conj ctes (assoc cte-binding 1 query)))))
                 []
                 (:with query))]
       {:ctes ctes
@@ -864,6 +890,18 @@
   [db query]
   (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
+(defn- warm-connection-pool-async!
+  "Warm `db` with one pooled connection on a background thread, unless it already holds an idle one
+  (or isn't a c3p0 pool at all, e.g. a plain datasource in tests).
+  Fire-and-forget: failures surface on the real query that follows."
+  [db]
+  (u/ignore-exceptions
+    (when (and (instance? PooledDataSource db)
+               (zero? (.getNumIdleConnectionsDefaultUser ^PooledDataSource db)))
+      (future
+        (u/ignore-exceptions
+          (with-open [_conn (.getConnection ^PooledDataSource db)]))))))
+
 (defn query-index
   "Query the index for documents similar to the search string.
   Returns a map with :results and :raw-count."
@@ -874,6 +912,11 @@
       {:results [] :raw-count 0}
       (let [timer (u/start-timer)
 
+            ;; Warm the pool concurrently with the embedding round-trip: the pool holds zero idle
+            ;; connections by default (see semantic-search.db.datasource), so the first search after an
+            ;; idle period would otherwise pay the connection handshake serially on top of the embedding
+            ;; latency.
+            _ (warm-connection-pool-async! db)
             embedding (tracing/with-span :search "search.semantic.embedding"
                         {:search.semantic/provider   (:provider embedding-model)
                          :search.semantic/model-name (:model-name embedding-model)}

@@ -34,7 +34,7 @@ export function ColumnLayoutBody({ children }: ColumnLayoutBodyProps) {
       pt="3.5rem"
       pb="xl"
       px="xl"
-      bg="background-secondary"
+      bg="background_page-secondary"
     >
       <Stack flex={1} gap="3.5rem" maw="50rem">
         {children}

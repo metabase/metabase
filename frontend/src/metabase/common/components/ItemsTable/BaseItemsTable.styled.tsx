@@ -32,7 +32,7 @@ export const Table = styled(
     shouldForwardProp: (prop) => prop !== "isInDragLayer",
   },
 )`
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   table-layout: fixed;
   border-collapse: unset;
   border-radius: 0.5rem;

@@ -172,7 +172,7 @@ function DataModelContent({ params }: Props) {
 
   return (
     <Flex
-      bg="background-secondary"
+      bg="background_page-secondary"
       data-testid="data-model"
       h="100%"
       style={{ overflow: "auto" }}
@@ -246,7 +246,7 @@ function DataModelContent({ params }: Props) {
               w="100%"
               data-testid="table-section-header"
               py="lg"
-              bg="background-secondary"
+              bg="background_page-secondary"
               className={S.header}
               px="lg"
             >
@@ -313,7 +313,7 @@ function DataModelContent({ params }: Props) {
               w="100%"
               data-testid="field-section-header"
               p="lg"
-              bg="background-secondary"
+              bg="background_page-secondary"
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>

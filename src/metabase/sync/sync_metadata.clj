@@ -69,6 +69,9 @@
                           (catch Throwable e
                             (sync-util/set-initial-database-sync-aborted! database)
                             (throw e)))
+        ;; holder the `sync-tables` step fills with any `_metabase_metadata` table(s) as it streams
+        ;; `:tables`, so the later `sync-metabase-metadata` step doesn't have to re-scan them
+        db-metadata     (assoc db-metadata :metabase-metadata-tables (volatile! []))
         steps           (make-sync-steps db-metadata)
         essential-steps (into #{} (comp (filter :essential?) (map :step-name)) steps)
         results         (sync-util/run-sync-operation "sync" database steps)]

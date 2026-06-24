@@ -49,7 +49,7 @@ export const Value = ({ children, column, field, value }: Props) => {
   if (isFK(column) && newTableId != null && !isValidLink) {
     return (
       <Text
-        bg="background-secondary"
+        bg="background_page-secondary"
         c="text-primary"
         className={S.fk}
         component={Link}
@@ -67,7 +67,7 @@ export const Value = ({ children, column, field, value }: Props) => {
     return (
       <Stack className={S.value} gap="sm" align="flex-start">
         <Box
-          bg="background-secondary"
+          bg="background_page-secondary"
           className={S.imageFrame}
           mah={FRAME_SIZE}
           maw={FRAME_SIZE}

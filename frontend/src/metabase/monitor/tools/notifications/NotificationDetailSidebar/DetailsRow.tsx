@@ -10,7 +10,7 @@ export const DetailsRow = ({
 }: DetailsRowProps) => {
   if (spanLabel) {
     return (
-      <Flex align="center" px="md" py="sm" bg="background-primary">
+      <Flex align="center" px="md" py="sm" bg="background_page-primary">
         <Text size="md" c="text-secondary">
           {label}
         </Text>
@@ -19,7 +19,7 @@ export const DetailsRow = ({
   }
   return (
     <Flex>
-      <Flex w={160} px="md" py="sm" bg="background-secondary">
+      <Flex w={160} px="md" py="sm" bg="background_page-secondary">
         <Text size="md" c="text-secondary">
           {label}
         </Text>

@@ -15,14 +15,14 @@ interface AlertRootProps {
 
 const colorsByVariant = {
   border: {
-    info: "var(--mb-color-background-tertiary)",
+    info: "var(--mb-color-background_page-tertiary)",
     error: color("error"),
     warning: color("warning"),
   },
   background: {
-    info: "var(--mb-color-background-secondary)",
-    error: color("background-error"),
-    warning: color("background-warning"),
+    info: "var(--mb-color-background_page-secondary)",
+    error: color("background_surface-error"),
+    warning: color("background_surface-warning"),
   },
   icon: {
     info: color("text-primary"),

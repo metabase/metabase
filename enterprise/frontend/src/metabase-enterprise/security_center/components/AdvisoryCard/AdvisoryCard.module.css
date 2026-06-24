@@ -19,6 +19,6 @@
 }
 
 .severityNeutral {
-  background-color: var(--mb-color-background-disabled);
+  background-color: var(--mb-color-background_surface-disabled);
   color: var(--mb-color-text-tertiary);
 }
