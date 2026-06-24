@@ -745,8 +745,13 @@
   (mapcat resize-chunk (by-model-type rows)))
 
 (defn- extract-chunk
-  "Extract one chunk's entities in a single query, returning `[row entity]` pairs (rows whose entity is gone are
-  omitted)."
+  "Extract one chunk's entities in a single query.
+
+  Argument:
+    - [model-type [{:model_type .. :model_id ..}]]
+
+  Return:
+    - [[row entity]] (if no entity, then omit)"
   [[model-type rows]]
   (let [id->row (u/index-by :model_id rows)
         opts    {:where [:in :id (mapv :model_id rows)] :skip-archived true}]
@@ -757,9 +762,13 @@
           (serdes/extract-query model-type opts))))
 
 (defn- path-free?
-  "True if the target path is free for an entity: its existing repo file is absent, or holds that same entity.
-  `info` is `{:eid :file-exists? :file-eid}` — `:file-eid` is the entity_id of the file already at the path
-  (nil if none, or unreadable, which counts as occupied)."
+  "Is this path free to write the entity with eid to?
+
+  Argument:
+    - {:eid .. :file-exists? .. :file-eid}
+
+  Return:
+    - boolean"
   [{:keys [eid file-exists? file-eid]}]
   (or (not file-exists?) (= eid file-eid)))
 
@@ -774,108 +783,117 @@
 
 (defn- dep-chunk-writes
   "Write-decisions ({:model_type :model_id :file_path}) for one chunk of dependency rows, or
-  `:remote-sync/unsyncable-record` if any target path collides with a different entity."
+  `:remote-sync/unsyncable` if any target path collides with a different entity."
   [snapshot opts chunk]
   (reduce (fn [writes [row entity]]
             (let [path (source/entity->path opts entity)]
               (if (path-free? (repo-file-info snapshot path (:entity_id entity)))
                 (conj writes (assoc row :file_path path))
-                (reduced :remote-sync/unsyncable-record))))
+                (reduced :remote-sync/unsyncable))))
           []
           (extract-chunk chunk)))
 
 (defn- dep-writes
   "Validate the untracked dependency entities `dep-ids` (a set of `[model-type id]`) one chunk at a time: the
-  `{:model_type :model_id :file_path}` write-decisions, or `:remote-sync/unsyncable-record` at the first chunk
+  `{:model_type :model_id :file_path}` write-decisions, or `:remote-sync/unsyncable` at the first chunk
   whose target path collides with a different entity."
   [snapshot opts dep-ids]
   (let [dep-rows (mapv (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)]
     (reduce (fn [writes chunk]
               (let [chunk-writes (dep-chunk-writes snapshot opts chunk)]
-                (if (= :remote-sync/unsyncable-record chunk-writes)
-                  (reduced :remote-sync/unsyncable-record)
+                (if (= :remote-sync/unsyncable chunk-writes)
+                  (reduced :remote-sync/unsyncable)
                   (into writes chunk-writes))))
             []
             (->sized-chunks dep-rows))))
 
-(defn- incremental-updates-for-row
-  "Decide a dirty `row`'s contribution to an incremental plan, given its precomputed `info`
-  ({:eid :new-path :file-exists? :file-eid}, or nil if the entity is gone / needs no extraction): a
-  {:writes :delete-paths :removed-ids :pull} fragment, or `:remote-sync/unsyncable-record` if it can't go
-  incrementally."
-  [{:keys [status file_path] :as row} info]
+(defn- row->incremental-export-plan
+  "Decide a `row`'s contribution to an incremental plan.
+
+  Return:
+    - `:remote-sync/unsyncable` OR
+    - {:writes :delete-paths :removed-ids :pull}"
+  [{:keys [id model_type model_id status file_path]} file-info]
   (try
-    (let [write (fn [] {:id         (:id row)
-                        :model_type (:model_type row)
-                        :model_id   (:model_id row)
-                        :file_path  (:new-path info)})]
-      (cond
-        (not= :entity-id ;; only entity-id models can be synced incrementally
-              (:identity (spec/spec-for-model-type (:model_type row))))
-        :remote-sync/unsyncable-record
+    (cond
+      (not= :entity-id ;; only entity-id models can be synced incrementally
+            (:identity (spec/spec-for-model-type model_type)))
+      :remote-sync/unsyncable
 
-        (not (#{"create" "update" "removed" "delete"} status))
-        :remote-sync/unsyncable-record
+      (not (#{"create" "update" "removed" "delete"} status))
+      :remote-sync/unsyncable
 
-        (and (#{"removed" "delete"} status) ;; removed/delete with no stored path needs a full export
-             (str/blank? file_path))
-        :remote-sync/unsyncable-record
+      (and (#{"removed" "delete"} status) ;; removed/delete with no stored path needs a full export
+           (str/blank? file_path))
+      :remote-sync/unsyncable
 
-        (#{"removed" "delete"} status)
-        {:delete-paths [file_path]
-         :removed-ids [(:id row)]}
+      (#{"removed" "delete"} status)
+      {:delete-paths [file_path]
+       :removed-ids [id]}
 
-        ;; past here, we're seeing create and update statuses
-        (not info) ;; entity no longer exists
-        :remote-sync/unsyncable-record
+      ;; past here, we're seeing create and update statuses
+      (not file-info) ;; entity no longer exists
+      :remote-sync/unsyncable
 
-        ;; create: brand-new file, no old path to delete.
-        ;; Target must be free or same entity id
-        (and (= "create" status)
-             (path-free? info))
-        {:pull (untracked-content-deps (:model_type row) (:model_id row))
-         :writes [(write)]}
+      ;; create: brand-new file, no old path to delete.
+      ;; Target must be free or same entity id
+      (and (= "create" status)
+           (path-free? file-info))
+      {:pull (untracked-content-deps model_type model_id)
+       :writes [{:id         id
+                 :model_type model_type
+                 :model_id   model_id
+                 :file_path  (:new-path file-info)}]}
 
-        ;; in-place update: at its stored path, or (no stored path) the repo file at
-        ;; new-path is already this entity — overwrite.
-        (and (= "update" status)
-             (or (= file_path (:new-path info))
-                 (and (str/blank? file_path)
-                      (= (:eid info) (:file-eid info)))))
-        {:pull (untracked-content-deps (:model_type row) (:model_id row))
-         :writes [(write)]}
+      ;; in-place update: at its stored path, or (no stored path) the repo file at
+      ;; new-path is already this entity — overwrite.
+      (and (= "update" status)
+           (or (= file_path (:new-path file-info))
+               (and (str/blank? file_path)
+                    (= (:eid file-info) (:file-eid file-info)))))
+      {:pull (untracked-content-deps model_type model_id)
+       :writes [{:id         id
+                 :model_type model_type
+                 :model_id   model_id
+                 :file_path  (:new-path file-info)}]}
 
-        ;; rename: update whose stored path differs from new path. Write the
-        ;; new file and delete the old one.
-        (and (= "update" status)
-             (not (str/blank? file_path))
-             (not= file_path (:new-path info))
-             (path-free? info))
-        {:pull (untracked-content-deps (:model_type row) (:model_id row))
-         :writes [(write)]
-         :delete-paths [file_path]}
+      ;; rename: update whose stored path differs from new path. Write the
+      ;; new file and delete the old one.
+      (and (= "update" status)
+           (not (str/blank? file_path))
+           (not= file_path (:new-path file-info))
+           (path-free? file-info))
+      {:pull (untracked-content-deps model_type model_id)
+       :writes [{:id         id
+                 :model_type model_type
+                 :model_id   model_id
+                 :file_path  (:new-path file-info)}]
+       :delete-paths [file_path]}
 
-        ;; any other create/update case (e.g. the target path is occupied by a different entity) needs
-        ;; a full export
-        :else
-        :remote-sync/unsyncable-record))
+      ;; any other create/update case (e.g. the target path is occupied by a different entity) needs
+      ;; a full export
+      :else
+      :remote-sync/unsyncable)
     (catch Exception _
-      :remote-sync/unsyncable-record)))
+      :remote-sync/unsyncable)))
 
-(defn- chunk->updates
-  "Plan fragment ({:writes :delete-paths :removed-ids :pull}) for one chunk of create/update rows, or
-  `:remote-sync/unsyncable-record` if any row can't go incrementally (including one whose entity is gone)."
+(defn- chunk->plan
+  "Plan fragment for one chunk of create/update rows.
+
+  Returns:
+   - :remote-sync/unsyncable when the chunk can't be synced
+   - {:writes :delete-paths :removed-ids :pull}"
   [snapshot opts chunk]
   (let [rows  (second chunk)
         found (extract-chunk chunk)]
     (if (< (count found) (count rows))
-      :remote-sync/unsyncable-record                 ; extract-chunk omits gone entities; some row is unsyncable
+      :remote-sync/unsyncable                 ; extract-chunk omits gone entities; some row is unsyncable
       (reduce (fn [frag [row entity]]
                 (let [new-path (source/entity->path opts entity)
                       info     (assoc (repo-file-info snapshot new-path (:entity_id entity)) :new-path new-path)
-                      updates  (incremental-updates-for-row row info)]
-                  (if (= updates :remote-sync/unsyncable-record)
-                    (reduced :remote-sync/unsyncable-record)
+                      updates  (row->incremental-export-plan row info)]
+                  (if (= updates :remote-sync/unsyncable)
+                    (reduced :remote-sync/unsyncable)
                     (merge-with into frag updates))))
               {:writes [] :delete-paths [] :removed-ids [] :pull #{}}
               found))))
@@ -886,13 +904,13 @@
   `snapshot` is the git repo to test existing paths against; `rows` are the RemoteSyncObjects to export.
 
   Returns `{:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}`, or
-  `:remote-sync/unsyncable-batch` when any row can't be exported incrementally."
+  `:remote-sync/unsyncable` when any row can't be exported incrementally."
   [snapshot rows]
   (let [opts          (serdes/storage-base-context)
         init          {:writes [] :delete-paths [] :removed-ids [] :pull #{}}
         merge-or-bail (fn [plan frag]
-                        (if (= :remote-sync/unsyncable-record frag)
-                          (reduced :remote-sync/unsyncable-batch)
+                        (if (= :remote-sync/unsyncable frag)
+                          (reduced :remote-sync/unsyncable)
                           (merge-with into plan frag)))
         ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
         ;; (removed/delete, non-entity-id, bad status) is decided with no entity
@@ -901,22 +919,22 @@
                                  (= :entity-id (:identity (spec/spec-for-model-type (:model_type %))))))
                   rows)
         ;; the no-extraction rows first (cheap)
-        plan          (reduce (fn [plan row] (merge-or-bail plan (incremental-updates-for-row row nil)))
+        plan          (reduce (fn [plan row] (merge-or-bail plan (row->incremental-export-plan row nil)))
                               init other-rows)
         ;; then the create/update rows, one chunk at a time; an extraction error → full export
         plan          (if (keyword? plan)
                         plan
                         (try
-                          (reduce (fn [plan chunk] (merge-or-bail plan (chunk->updates snapshot opts chunk)))
+                          (reduce (fn [plan chunk] (merge-or-bail plan (chunk->plan snapshot opts chunk)))
                                   plan (->sized-chunks cu-rows))
-                          (catch Exception _ :remote-sync/unsyncable-batch)))
+                          (catch Exception _ :remote-sync/unsyncable)))
         deps          (delay (dep-writes snapshot opts (:pull plan)))]
     (cond
-      (= plan :remote-sync/unsyncable-batch)
-      :remote-sync/unsyncable-batch
+      (= plan :remote-sync/unsyncable)
+      :remote-sync/unsyncable
 
-      (= :remote-sync/unsyncable-record @deps)
-      :remote-sync/unsyncable-batch
+      (= :remote-sync/unsyncable @deps)
+      :remote-sync/unsyncable
 
       :else
       (-> plan (update :writes into @deps) (dissoc :pull)))))
@@ -1096,7 +1114,7 @@
                :outcome {:kind "push-skipped"}})
 
             ;; A dirty row can't be applied incrementally → full re-serialize.
-            (= @plan :remote-sync/unsyncable-batch)
+            (= @plan :remote-sync/unsyncable)
             (full-export! snapshot task-id message sync-timestamp)
 
             ;; Incremental fast-path: write only the changed entities, deleting their old paths plus files left behind
