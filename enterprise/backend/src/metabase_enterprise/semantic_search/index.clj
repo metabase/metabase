@@ -25,6 +25,7 @@
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2])
   (:import
+   [com.mchange.v2.c3p0 PooledDataSource]
    [java.time Instant LocalDate OffsetDateTime ZonedDateTime]
    [java.util.concurrent ArrayBlockingQueue RejectedExecutionHandler RejectedExecutionException TimeUnit ThreadPoolExecutor]
    [org.postgresql.util PGobject]))
@@ -889,6 +890,18 @@
   [db query]
   (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
+(defn- warm-connection-pool-async!
+  "Warm `db` with one pooled connection on a background thread, unless it already holds an idle one
+  (or isn't a c3p0 pool at all, e.g. a plain datasource in tests).
+  Fire-and-forget: failures surface on the real query that follows."
+  [db]
+  (u/ignore-exceptions
+    (when (and (instance? PooledDataSource db)
+               (zero? (.getNumIdleConnectionsDefaultUser ^PooledDataSource db)))
+      (future
+        (u/ignore-exceptions
+          (with-open [_conn (.getConnection ^PooledDataSource db)]))))))
+
 (defn query-index
   "Query the index for documents similar to the search string.
   Returns a map with :results and :raw-count."
@@ -899,6 +912,11 @@
       {:results [] :raw-count 0}
       (let [timer (u/start-timer)
 
+            ;; Warm the pool concurrently with the embedding round-trip: the pool holds zero idle
+            ;; connections by default (see semantic-search.db.datasource), so the first search after an
+            ;; idle period would otherwise pay the connection handshake serially on top of the embedding
+            ;; latency.
+            _ (warm-connection-pool-async! db)
             embedding (tracing/with-span :search "search.semantic.embedding"
                         {:search.semantic/provider   (:provider embedding-model)
                          :search.semantic/model-name (:model-name embedding-model)}
