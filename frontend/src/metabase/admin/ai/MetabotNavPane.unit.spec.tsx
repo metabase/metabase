@@ -124,7 +124,7 @@ describe("MetabotNavPane", () => {
     ).toHaveAttribute("href", "/admin/metabot/mcp/authorizations");
   });
 
-  it("displays the usage auditing upsell link when audit app is available and ai controls is unavailable", async () => {
+  it("shows usage auditing as a folder with MCP analytics (audit app) and an upsell Stats when ai controls is unavailable", async () => {
     setup({
       aiControlsEnabled: false,
       auditAppEnabled: true,
@@ -133,8 +133,41 @@ describe("MetabotNavPane", () => {
 
     expect(await screen.findByText("AI Settings")).toBeInTheDocument();
 
+    // "Auditing" is now a folder; expand it to reveal its children
+    await userEvent.click(await screen.findByText("Auditing"));
+
+    // MCP analytics is available with audit_app alone (no ai_controls needed)
     expect(
-      screen.getByRole("link", { name: /Usage auditing/ }),
+      await screen.findByRole("link", { name: "MCP analytics" }),
+    ).toHaveAttribute("href", "/admin/metabot/usage-auditing/mcp");
+
+    // Metabot stats stays an upsell (still links to usage-auditing); Conversations needs ai_controls
+    expect(screen.getByRole("link", { name: /Usage stats/ })).toHaveAttribute(
+      "href",
+      "/admin/metabot/usage-auditing",
+    );
+    expect(screen.queryByText("Conversations")).not.toBeInTheDocument();
+  });
+
+  it("shows usage auditing with Stats, Conversations and MCP analytics when ai controls is available", async () => {
+    setup({
+      aiControlsEnabled: true,
+      auditAppEnabled: true,
+      aiFeaturesEnabled: true,
+    });
+
+    await userEvent.click(await screen.findByText("Auditing"));
+
+    expect(
+      await screen.findByRole("link", { name: "Usage stats" }),
     ).toHaveAttribute("href", "/admin/metabot/usage-auditing");
+    expect(screen.getByRole("link", { name: "Conversations" })).toHaveAttribute(
+      "href",
+      "/admin/metabot/usage-auditing/conversations",
+    );
+    expect(screen.getByRole("link", { name: "MCP analytics" })).toHaveAttribute(
+      "href",
+      "/admin/metabot/usage-auditing/mcp",
+    );
   });
 });

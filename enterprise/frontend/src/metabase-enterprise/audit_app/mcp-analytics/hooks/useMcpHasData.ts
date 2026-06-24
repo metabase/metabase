@@ -1,0 +1,82 @@
+import { useMemo, useRef } from "react";
+
+import type {
+  CardMetadata,
+  MetadataProvider,
+  TableMetadata,
+} from "metabase-lib";
+
+import { useAdhocBreakoutQuery } from "../../metabot-analytics/hooks/useAdhocBreakoutQuery";
+import type { McpFilters } from "../query-utils";
+import { buildTotalCountQuery } from "../query-utils";
+
+type DataSources = {
+  provider: MetadataProvider | null;
+  table: TableMetadata | CardMetadata | null;
+  groupMembersTable: TableMetadata | CardMetadata | null;
+};
+
+type Result = {
+  /** First load, before the count has ever resolved — show a loader, never the empty state. */
+  isInitialLoading: boolean;
+  /** A subsequent load triggered by a filter change — let the charts show their own skeletons. */
+  isRefetching: boolean;
+  /** Whether the current (resolved) filters match any tool calls. */
+  hasData: boolean;
+};
+
+/**
+ * Runs a single count query over the filtered view to drive the page's load/empty/data states.
+ * Distinguishes the initial load (loader) from a filter-change refetch (skeletons) so the page
+ * never flashes the empty state before the first result has resolved.
+ */
+export function useMcpHasData({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  errorsOnly = false,
+}: DataSources & McpFilters & { errorsOnly?: boolean }): Result {
+  const query = useMemo(
+    () =>
+      provider && table && groupMembersTable
+        ? buildTotalCountQuery({
+            provider,
+            table,
+            groupMembersTable,
+            dateFilter,
+            userId,
+            groupId,
+            errorsOnly,
+          })
+        : null,
+    [
+      provider,
+      table,
+      groupMembersTable,
+      dateFilter,
+      userId,
+      groupId,
+      errorsOnly,
+    ],
+  );
+
+  const { data, isFetching } = useAdhocBreakoutQuery(query);
+
+  // Latch once the first count resolves; from then on a fetch is a refetch, not initial load.
+  const hasResolvedOnce = useRef(false);
+  const resolved = query != null && !isFetching && data != null;
+  if (resolved) {
+    hasResolvedOnce.current = true;
+  }
+
+  const count = Number(data?.data?.rows?.[0]?.[0] ?? 0);
+
+  return {
+    isInitialLoading: !hasResolvedOnce.current,
+    isRefetching: hasResolvedOnce.current && isFetching,
+    hasData: count > 0,
+  };
+}
