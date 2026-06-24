@@ -72,19 +72,18 @@
   (URLDecoder/decode s StandardCharsets/UTF_8))
 
 (defn- split-query
-  "Split a JDBC URL into [base pairs], where pairs is a seq of [decoded-key raw-value]. Each pair splits on
-   its first '=' so values may themselves contain '=' (e.g. options=-c statement_timeout=5000)."
+  "Split a JDBC URL into [base pairs], where pairs is a seq of [decoded-key raw-value]."
   [^String url]
   (let [[base query] (str/split url #"\?" 2)]
+    ;; split each pair on its first '=' only, so a value may itself contain '=' (e.g. options=-c foo=bar)
     [base (for [pair  (some-> query (str/split #"&"))
                 :when (seq pair)
                 :let  [[k v] (str/split pair #"=" 2)]]
             [(url-decode k) (or v "")])]))
 
 (defn- parse-db-url
-  "Parse a pgvector JDBC URL into {:jdbc-url ... :pool-props ...}. Recognized c3p0 knobs are pulled off the
-   URL and merged over the defaults; recognized Postgres connection params stay on the URL for pgjdbc; any
-   other param throws."
+  "Parse a pgvector JDBC URL into {:jdbc-url ... :pool-props ...}, or throw if it carries an unrecognized
+  parameter."
   [^String url]
   (let [[base pairs]           (split-query url)
         default-pool           (merge fixed-pool-props
@@ -93,6 +92,7 @@
         (reduce
          (fn [acc [k raw-v]]
            (cond
+             ;; a c3p0 knob: coerce and apply to the pool (pgjdbc can't read these off the URL)
              (contains? tunable-pool-props k)
              (let [parse  (second (tunable-pool-props k))
                    parsed (parse (url-decode raw-v))]
@@ -101,9 +101,11 @@
                                  {:param k, :value raw-v})))
                (assoc-in acc [:pool k] parsed))
 
+             ;; a recognized pgjdbc connection property: leave it on the URL for the driver
              (contains? known-connection-params k)
              (update acc :conn conj (str k "=" raw-v))
 
+             ;; pgjdbc would silently ignore anything else, so treat it as a typo and fail loudly
              :else
              (throw (ex-info (format (str "Unknown pgvector URL parameter %s. Expected a c3p0 pool knob "
                                           "(%s) or a Postgres connection property.")
@@ -115,7 +117,7 @@
      :pool-props pool}))
 
 (defn- parsed-db-config
-  "Parse [[db-url]] into {:jdbc-url ... :pool-props ...}, throwing if it is unset."
+  "Parse [[db-url]] into {:jdbc-url ... :pool-props ...}, or throw if it is unset."
   []
   (if db-url
     (parse-db-url db-url)
