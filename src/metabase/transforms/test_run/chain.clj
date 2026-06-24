@@ -24,8 +24,7 @@
   - **MBQL nodes reading upstream outputs** are not supported and fail at
     `resolve` time with `::cannot-test-run`. Native chains are the clean v1 path.
 
-  Error taxonomy mirrors `core`/`inputs`/`resolve`: typed `ex-info` propagated to
-  the API layer, which maps `:error-type` to an HTTP status."
+  Errors are typed `ex-info` carrying `:error-type`."
   (:require
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -151,7 +150,7 @@
    :output-table   <string>}              ; the target's scratch output table
   ```
 
-  On error, propagates a typed `ex-info` (see ns docstring). Cleanup (drop all
+  On error, throws a typed `ex-info` (`:error-type` in ex-data). Cleanup (drop all
   scratch tables) runs in `finally` on every path."
   [target-id source-ids fixtures-by-table-id expected-csv-file opts]
   (let [timeout-ms     (get opts :timeout-ms core/default-test-run-timeout-ms)
@@ -219,10 +218,8 @@
            :order          order
            :output-table   (:table target-out)})
         (finally
-          ;; Cleanup runs on ALL paths. Must be inside with-transform-connection so
-          ;; DROP TABLE runs under write-data credentials (scratch.clj contract: callers
-          ;; wrap the full run — seed! through cleanup! — in the canonical connection context).
-          ;; Drop every node's output + all leaf scratch tables.
+          ;; Must be inside with-transform-connection so DROP TABLE runs under
+          ;; write-data credentials. Drop every node's output + all leaf scratch tables.
           (doseq [out-spec (vals @outputs*)]
             (scratch/cleanup! db-id db {} out-spec))
           (scratch/cleanup! db-id db @mapping* nil))))))

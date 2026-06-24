@@ -23,29 +23,7 @@
 
   Expected fixture columns are matched by name (exact) to actual columns.
   Missing/extra columns → `:column-issues` in the report; row comparison is skipped.
-  Column ORDER is irrelevant; both sides are re-ordered to match `actual-cols` order.
-
-  ## Report shape
-
-  All fields always present; all values are JSON-serializable (no Java objects):
-
-  ```
-  {:status          :passed | :failed
-   :column-issues   [{:type :missing|:extra :column-name <str>} ...]
-   :missing-rows    [[display-cell ...] ...]   ; expected rows absent from actual
-   :extra-rows      [[display-cell ...] ...]   ; actual rows absent from expected
-   ;; display cells are the canonicalized values in report form (BigDecimal as
-   ;; plain string, temporals as UTC ISO strings) — never internal multiset keys
-   :cell-mismatches [{:column             <str>
-                      :actual-canonical   <str>
-                      :expected-canonical <str>} ...]
-   :row-counts      {:actual N :expected N}
-   :truncated       N}   ; count of mismatches/rows beyond the cap (0 when not truncated)
-  ```
-
-  `:cell-mismatches` are produced when missing-rows and extra-rows counts match and rows
-  can be sorted into stable pairs. They are capped at [[mismatch-cap]] entries.
-  `:missing-rows` and `:extra-rows` are each capped at [[mismatch-cap]] entries."
+  Column ORDER is irrelevant; both sides are re-ordered to match `actual-cols` order."
   (:require
    [clojure.string :as str])
   (:import
@@ -307,12 +285,12 @@
   "When missing and extra counts are equal and both are within the cap, attempt stable-sort
   pairing and produce per-cell mismatch detail.
 
-  Strategy: sort both sides of CANONICAL ROWS deterministically (by display form).
-  Pair positionally. Produce cell-level detail for each pair.
+  Strategy: sort both sides of CANONICAL ROWS deterministically (by display form), pair
+  positionally, produce cell-level detail for each pair.
 
-  Limitation: this pairing is only unambiguous when both sides have exactly one differing
-  row. For larger diffs, the pairing may be arbitrary but is at least deterministic and
-  bounded. Documented limitation: fuzzy/optimal row matching is not implemented."
+  Limitation: the pairing is unambiguous only when each side has exactly one differing
+  row. For larger diffs it may be arbitrary, though always deterministic and bounded;
+  optimal row matching is not implemented."
   [missing-rows extra-rows col-names]
   (when (and (seq missing-rows)
              (= (count missing-rows) (count extra-rows)))
@@ -334,9 +312,34 @@
   - `actual-cols`   — QP `[:data :cols]` vector; each entry has at least `:name` and `:base_type`.
   - `actual-rows`   — QP row vectors; temporals as ISO-8601 Z strings.
   - `expected`      — `parse-fixture` output: `{:columns [...] :rows [...]}`.
-  - `opts`          — options map; see namespace docstring.
+  - `opts`          — options map:
+    - `:ignore-columns` — `#{\"col-name\" ...}` columns excluded from both sides
+                          before comparison (matched exactly against `actual-cols`
+                          names; an unknown name throws `::unknown-ignore-columns`).
+    - `:float-tolerance` — unsupported; supplying it throws `::unsupported-option`.
+                           Float comparison is exact — use `:ignore-columns` for
+                           noisy columns.
 
-  Returns a JSON-serializable report map; see namespace docstring for shape."
+  Returns a JSON-serializable report map; all fields always present, all values
+  JSON-serializable (no Java objects):
+
+  ```
+  {:status          :passed | :failed
+   :column-issues   [{:type :missing|:extra :column-name <str>} ...]
+   :missing-rows    [[display-cell ...] ...]   ; expected rows absent from actual
+   :extra-rows      [[display-cell ...] ...]   ; actual rows absent from expected
+   ;; display cells are the canonicalized values in report form (BigDecimal as
+   ;; plain string, temporals as UTC ISO strings) — never internal multiset keys
+   :cell-mismatches [{:column             <str>
+                      :actual-canonical   <str>
+                      :expected-canonical <str>} ...]
+   :row-counts      {:actual N :expected N}
+   :truncated       N}   ; count of mismatches/rows beyond the cap (0 when not truncated)
+  ```
+
+  `:cell-mismatches` are produced when missing-rows and extra-rows counts match and
+  rows can be sorted into stable pairs. `:cell-mismatches`, `:missing-rows`, and
+  `:extra-rows` are each capped at [[mismatch-cap]] entries."
   [actual-cols actual-rows expected opts]
   (when (contains? opts :float-tolerance)
     (throw (ex-info ":float-tolerance is not supported; float comparison is exact. Use :ignore-columns for noisy columns."

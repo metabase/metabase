@@ -1,18 +1,7 @@
 (ns metabase.transforms.test-run.core
   "Synchronous test-run orchestrator for transform test runs.
 
-  Entry point: [[run-test!]].
-
-  ## Error handling
-
-  `run-test!` propagates typed `ex-info` for error cases — it does NOT catch them
-  into a `{:status :error ...}` envelope internally. The API handler maps each
-  `:error-type` to an HTTP status; `transforms-rest.api.transform`'s
-  `test-run-error-http-status` is the authoritative error→HTTP map. (Keeping the
-  mapping in one place, rather than copied here, is deliberate.)
-
-  Cleanup (drop all scratch tables) runs in `finally`, guaranteeing it executes
-  regardless of success, failure, or timeout."
+  Entry point: [[run-test!]]."
   (:require
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -34,13 +23,8 @@
 ;;; ---------------------------------------------------------------------------
 
 (def default-test-run-timeout-ms
-  "Default statement-level timeout for a test-run transform execution.
-
-  5 minutes — appropriate for interactive test runs against fixture-sized data.
-  Configured separately from the scheduled-transform timeout (240 minutes) so
-  a slow transform cannot tie up an API thread indefinitely.
-
-  Callers may override via `:timeout-ms` in `opts`."
+  "Default statement-level timeout for a test-run transform execution, sized for
+  interactive runs against fixture data. Override via `:timeout-ms` in `opts`."
   (u/minutes->ms 5))
 
 ;;; ---------------------------------------------------------------------------
@@ -67,11 +51,12 @@
    :output-table    <string>}       ; the scratch output table name (for debugging)
   ```
 
-  On error, propagates a typed `ex-info` — see ns docstring for the taxonomy.
-  The API layer catches and maps these to HTTP responses.
+  On error, throws a typed `ex-info` (`:error-type` in ex-data); see
+  [[metabase.transforms.test-run.inputs]] and
+  [[metabase.transforms.test-run.resolve]] for the taxonomy.
 
-  Cleanup (drop all scratch tables) runs in `finally`, guaranteeing it executes
-  regardless of success, failure, or timeout."
+  Cleanup (drop all scratch tables) runs in `finally` — success, failure, or
+  timeout."
   [transform fixtures-by-table-id expected-csv-file opts]
   (let [timeout-ms    (get opts :timeout-ms default-test-run-timeout-ms)
         ignore-cols   (get opts :ignore-columns #{})
@@ -101,9 +86,8 @@
         mapping*     (atom nil)
         output-spec* (atom nil)]
     (driver.conn/with-transform-connection
-      ;; The canonical write-data credentials + :transform JDBC pool.
-      ;; conn-spec construction (inside build-transform-details) reads
-      ;; *connection-type* = :transform via effective-details.
+      ;; Wrap the whole run in the canonical write-data credentials + :transform
+      ;; JDBC pool — seed, DDL, execute, and cleanup all run under it.
       (try
         (let [;; Derive the driver early so we can thread the catalog through scratch specs.
               drv-early    (keyword (:engine db))
@@ -118,17 +102,13 @@
                                                             :input-tables required-tables})
               drv          (:driver artifact)
               compiled     (:compiled artifact)
-              ;; Belt-and-braces DDL guard — asserts every DDL target satisfies
-              ;; scratch/test-table-name?, the last defense against CTAS routing at a real
-              ;; production table. Throws ::pre-execution-guard-failed on violation.
               all-scratch-names
               (concat (map :table (vals mapping))
                       [(:table output-spec)])
               _            (execute/assert-all-test-tables! all-scratch-names)
-              ;; Execute via driver/run-transform! under the canonical bindings.
-              ;; The JDBC layer enforces *query-timeout-ms*; on expiry the driver throws
-              ;; an exception that propagates through run-transform! into the try/finally,
-              ;; and finally still drops all scratch tables.
+              ;; The JDBC layer enforces *query-timeout-ms*; on expiry the driver
+              ;; throws, the exception propagates into the try/finally, and cleanup
+              ;; still runs.
               transform-details (execute/build-transform-details compiled output-spec db-id db drv)
               _            (binding [driver.settings/*query-timeout-ms* timeout-ms]
                              (driver/run-transform! drv transform-details {:overwrite? true}))
@@ -145,11 +125,9 @@
            :parser-backend (:parser-backend artifact)
            :output-table   (:table output-spec)})
         (finally
-          ;; Cleanup runs on ALL paths: success, error, timeout.
-          ;; Must be inside with-transform-connection so DROP TABLE executes under
-          ;; write-data credentials (scratch.clj contract: callers wrap the full
-          ;; run — seed! through cleanup! — in the canonical connection context).
-          ;; drop-table! is idempotent (DROP TABLE IF EXISTS), so double-drops are safe.
+          ;; Cleanup runs on ALL paths: success, error, timeout. Must be inside
+          ;; with-transform-connection so DROP TABLE executes under write-data
+          ;; credentials.
           (scratch/cleanup! db-id db
                             (or @mapping* {})
                             @output-spec*))))))
