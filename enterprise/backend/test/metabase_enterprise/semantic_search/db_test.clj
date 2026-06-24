@@ -109,19 +109,20 @@
     ;; the pool to prove each name took effect. The values below all differ from c3p0's own defaults, so a
     ;; dropped property would surface as a mismatch.
     (when semantic.db.datasource/db-url
-      (let [overrides (str "minPoolSize=2&initialPoolSize=2&maxPoolSize=9&checkoutTimeout=4321"
-                           "&unreturnedConnectionTimeout=77&debugUnreturnedConnectionStackTraces=true"
-                           "&testConnectionOnCheckout=true")
-            url       (str semantic.db.datasource/db-url
-                           (if (re-find #"\?" semantic.db.datasource/db-url) "&" "?")
-                           overrides)]
+      (let [url (str semantic.db.datasource/db-url
+                     "&minPoolSize=2"
+                     "&initialPoolSize=2"
+                     "&maxPoolSize=9"
+                     "&checkoutTimeout=4321"
+                     "&unreturnedConnectionTimeout=77"
+                     "&debugUnreturnedConnectionStackTraces=true"
+                     "&testConnectionOnCheckout=true")]
         (with-redefs [semantic.db.datasource/db-url      url
                       semantic.db.datasource/data-source (atom nil)]
           (try
             (semantic.db.datasource/init-db!)
-            (let [cpds  (.getConnectionPoolDataSource
-                         ^PoolBackedDataSource @semantic.db.datasource/data-source)
-                  props (bean cpds)]
+            (let [cpds (.getConnectionPoolDataSource
+                        ^PoolBackedDataSource @semantic.db.datasource/data-source)]
               (is (=? {;; tunable knobs supplied on the URL
                        :maxPoolSize                          9
                        :minPoolSize                          2
@@ -135,10 +136,6 @@
                        :maxIdleTimeExcessConnections         600
                        :maxConnectionAge                     1800
                        :acquireIncrement                     1}
-                      (select-keys props [:maxPoolSize :minPoolSize :initialPoolSize :checkoutTimeout
-                                          :unreturnedConnectionTimeout :debugUnreturnedConnectionStackTraces
-                                          :testConnectionOnCheckout :idleConnectionTestPeriod
-                                          :maxIdleTimeExcessConnections :maxConnectionAge
-                                          :acquireIncrement]))))
+                      (bean cpds))))
             (finally
               (semantic.db.datasource/shutdown-db!))))))))
