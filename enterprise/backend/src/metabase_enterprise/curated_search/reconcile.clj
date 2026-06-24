@@ -4,13 +4,12 @@
   The index holds one embedded document per library-entity value — the entity's name, its description, and
   each `ai_context` synonym/example.
   The primary key `doc_id` is content-addressed over `entity_type|entity_local_id|doc_type|doc_text`, so
-  editing text mints a new row; the entity's `ai_context` instructions are carried on every row but not
-  embedded.
+  editing text mints a new row.
+  Curator `instructions` are not stored here — the tool reads them live from `osi_ai_context` at query time.
 
   Each run derives the full desired doc set from library membership (published Tables, library
   metric/model Cards, and the Measures/Segments on those Tables) plus `osi_ai_context`, then inserts docs
-  whose `doc_id` is absent (embedding them), UPDATEs `instructions` in place on docs that already exist,
-  and deletes docs with no desired counterpart.
+  whose `doc_id` is absent (embedding them) and deletes docs with no desired counterpart.
   That delete is the GC: an entity leaving the library, a removed synonym/example, and the stale half of
   an edited value all converge there.
   Re-deriving from the appdb every run self-heals any missed write (pgvector downtime, a crashed node, an
@@ -72,20 +71,19 @@
 
 ;;; ------------------------------------------------- Desired docs -------------------------------------------------
 
-(defn- make-doc [entity-type entity-local-id doc-type doc-text instructions]
+(defn- make-doc [entity-type entity-local-id doc-type doc-text]
   {:doc_id          (doc-id entity-type entity-local-id doc-type doc-text)
    :entity_type     entity-type
    :entity_local_id entity-local-id
    :doc_type        doc-type
-   :doc_text        doc-text
-   :instructions    instructions})
+   :doc_text        doc-text})
 
 (defn- entity->docs
   "All desired docs for one library entity: a `name` doc (always), a `description` doc (non-blank), and a
-  `synonym`/`example` doc per `ai_context` value. Every doc is stamped with the entity's `instructions`."
+  `synonym`/`example` doc per `ai_context` value.
+  Instructions are not indexed — the tool reads them live from `osi_ai_context`."
   [{:keys [entity_type entity_local_id name description]} ai_context]
-  (let [instructions (when-not (str/blank? (:instructions ai_context)) (:instructions ai_context))
-        doc          #(make-doc entity_type entity_local_id %1 %2 instructions)]
+  (let [doc #(make-doc entity_type entity_local_id %1 %2)]
     (concat
      [(doc "name" name)]
      (when-not (str/blank? description) [(doc "description" description)])
@@ -146,11 +144,11 @@
 ;;; ------------------------------------------------- Index writes -------------------------------------------------
 
 (defn- stored-docs
-  "Map of `doc_id -> {:entity_type :entity_local_id :instructions}` for every row in the index."
+  "Map of `doc_id -> {:entity_type :entity_local_id}` for every row in the index."
   [pgvector]
-  (u/index-by :doc_id #(select-keys % [:entity_type :entity_local_id :instructions])
+  (u/index-by :doc_id #(select-keys % [:entity_type :entity_local_id])
               (jdbc/execute! pgvector
-                             [(format "SELECT doc_id, entity_type, entity_local_id, instructions FROM \"%s\""
+                             [(format "SELECT doc_id, entity_type, entity_local_id FROM \"%s\""
                                       index-table/*vectors-table*)]
                              {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
@@ -160,7 +158,6 @@
    :entity_local_id (:entity_local_id doc)
    :doc_type        (:doc_type doc)
    :doc_text        (:doc_text doc)
-   :instructions    (:instructions doc)
    :doc_embedding   [:raw (index-table/format-embedding embedding)]})
 
 (defn insert-batch!
@@ -177,13 +174,6 @@
                        (sql.helpers/do-nothing)
                        (sql/format {:quoted true})))
     (count docs)))
-
-(defn- update-instructions! [pgvector doc]
-  (jdbc/execute! pgvector
-                 (-> (sql.helpers/update (keyword index-table/*vectors-table*))
-                     (sql.helpers/set {:instructions (:instructions doc)})
-                     (sql.helpers/where [:= :doc_id (:doc_id doc)])
-                     (sql/format {:quoted true}))))
 
 (defn- delete-rows! [pgvector doc-ids]
   (when (seq doc-ids)
@@ -206,12 +196,6 @@
         desired-ids   (set (map :doc_id desired))
         stored        (stored-docs pgvector)
         to-insert     (remove #(contains? stored (:doc_id %)) desired)
-        ;; instructions drift on an existing row: blank and nil are equivalent (no-op).
-        norm          #(when-not (str/blank? %) %)
-        to-update     (filter (fn [d] (and (contains? stored (:doc_id d))
-                                           (not= (norm (:instructions d))
-                                                 (norm (:instructions (get stored (:doc_id d)))))))
-                              desired)
         orphans       (remove desired-ids (keys stored))
         ;; entity classes whose insert failed this run — their orphans are spared (see below).
         failed        (volatile! #{})
@@ -232,17 +216,15 @@
         ;; Deleting it while its replacement failed to embed would drop that entity from search until the
         ;; next run, so spare orphans whose entity class had a failed insert; every other orphan GCs normally.
         to-delete     (remove #(contains? @failed (entity-class (get stored %))) orphans)]
-    (doseq [d to-update] (update-instructions! pgvector d))
     (delete-rows! pgvector to-delete)
     {:inserted  inserted
-     :updated   (count to-update)
      :deleted   (count to-delete)
-     :unchanged (- (count desired) (count to-insert) (count to-update))}))
+     :unchanged (- (count desired) (count to-insert))}))
 
 (defn reconcile!
   "Bring the pgvector `library_entity_index` in line with the appdb; see the namespace docstring.
   Serialized across nodes with a pg advisory lock — if another node is already reconciling, this run is
-  skipped (the periodic schedule covers it). Returns {:inserted n :updated n :deleted n :unchanged n},
+  skipped (the periodic schedule covers it). Returns {:inserted n :deleted n :unchanged n},
   or {:skipped true} when the lock is contended."
   [pgvector embedding-model]
   (index-table/ensure-tables! pgvector embedding-model)

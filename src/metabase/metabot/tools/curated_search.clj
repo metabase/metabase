@@ -20,6 +20,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -88,16 +89,18 @@
   return the top `n` the current user can read.
   Each match: `{:doc_type :matched_text :usage_instructions :score :similarity :weak? :entity hydrated-hit}`."
   [user-search-prompt n]
-  (let [raw     (curated-search/search
-                 user-search-prompt (min over-fetch-cap (* over-fetch-factor n)))
-        deduped (dedupe-by-entity raw)
+  (let [raw      (curated-search/search
+                  user-search-prompt (min over-fetch-cap (* over-fetch-factor n)))
+        deduped  (dedupe-by-entity raw)
+        refs     (distinct (map :entity deduped))
         ;; Hydration permission-filters (entity-refs->search-results drops entities the user can't read),
         ;; so hydrate the whole deduped candidate set and take `n` from the readable survivors — taking
         ;; `n` first would let unreadable top hits shrink the result below `n` while readable matches sit
         ;; just past the cut.
-        by-key  (into {} (map (juxt (juxt :type :id) identity))
-                      (tools.search/entity-refs->search-results (distinct (map :entity deduped))))]
-    (->> (for [{:keys [doc_type doc_text instructions entity score]} deduped
+        by-key   (u/index-by (juxt :type :id) (tools.search/entity-refs->search-results refs))
+        ;; instructions aren't stored in the index — read the current text from osi_ai_context per request.
+        instrs   (curated-search/ai-context-instructions refs)]
+    (->> (for [{:keys [doc_type doc_text entity score]} deduped
                ;; hydrated records use the agent-facing entity type, so normalize the ref's model to match
                ;; (plain "card" refs hydrate as "question")
                :let [resolved (get by-key [(tools.search/ref-model->entity-type (:model entity)) (:id entity)])
@@ -105,7 +108,7 @@
                :when resolved]
            {:doc_type           doc_type
             :matched_text       doc_text
-            :usage_instructions instructions
+            :usage_instructions (get instrs [(:model entity) (:id entity)])
             :score              score
             :similarity         sim
             :weak?              (< sim weak-similarity-threshold)

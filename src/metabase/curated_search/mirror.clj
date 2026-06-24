@@ -17,7 +17,7 @@
 
 (defenterprise search
   "Similarity-search the library entity index for the documents nearest `user-search-prompt`.
-  Returns up to `limit` matches shaped `{:entity {:model :id} :doc_type :doc_text :instructions :score}`,
+  Returns up to `limit` matches shaped `{:entity {:model :id} :doc_type :doc_text :score}`,
   best score first; [] in OSS or when no pgvector store is configured."
   metabase-enterprise.curated-search.core
   [_user-search-prompt _limit]

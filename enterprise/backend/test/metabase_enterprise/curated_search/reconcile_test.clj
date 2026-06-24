@@ -63,7 +63,7 @@
 
 (defn- index-rows [ds]
   (jdbc/execute! ds
-                 [(format "SELECT doc_id, entity_type, entity_local_id, doc_type, doc_text, instructions FROM \"%s\""
+                 [(format "SELECT doc_id, entity_type, entity_local_id, doc_type, doc_text FROM \"%s\""
                           index-table/*vectors-table*)]
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
@@ -96,28 +96,24 @@
                                                                       :examples ["orders last month"]}}]
           (testing "first run indexes name/description docs for every library entity, plus ai_context docs"
             (reconcile/reconcile! ds model)
-            (testing "the published table: name + description + 2 synonyms + 1 example, all stamped with instructions"
+            (testing "the published table: name + description + 2 synonyms + 1 example"
               (let [docs (docs-for ds "table" table-id)]
                 (is (= {"name" 1 "description" 1 "synonym" 2 "example" 1}
                        (frequencies (map :doc_type docs))))
-                (is (= #{"Group by month."} (set (map :instructions docs))))
                 (is (= #{"Orders"} (set (map :doc_text (filter #(= "name" (:doc_type %)) docs)))))))
-            (testing "the library metric: name + description only, no ai_context, no instructions"
+            (testing "the library metric: name + description only (no ai_context)"
               (let [docs (docs-for ds "metric" metric-id)]
-                (is (= {"name" 1 "description" 1} (frequencies (map :doc_type docs))))
-                (is (= #{nil} (set (map :instructions docs)))))))
+                (is (= {"name" 1 "description" 1} (frequencies (map :doc_type docs)))))))
           (testing "an unchanged second run writes nothing"
-            (is (=? {:inserted 0 :updated 0 :deleted 0} (reconcile/reconcile! ds model))))
-          (testing "editing instructions updates rows in place — no doc_id changes, no re-embed"
+            (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds model))))
+          (testing "editing instructions is a no-op for the index (instructions are read live, not stored)"
             (let [before (set (map :doc_id (docs-for ds "table" table-id)))]
               (t2/update! :model/OsiAiContext cse-id
                           {:ai_context {:instructions "Group by week."
                                         :synonyms ["sales" "revenue"]
                                         :examples ["orders last month"]}})
               (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds model)))
-              (let [after (docs-for ds "table" table-id)]
-                (is (= before (set (map :doc_id after))) "doc_ids unchanged")
-                (is (= #{"Group by week."} (set (map :instructions after))) "instructions refreshed"))))
+              (is (= before (set (map :doc_id (docs-for ds "table" table-id)))) "doc_ids unchanged")))
           (testing "renaming the table mints a new name doc_id and GCs the old one"
             (let [old-name-id (->> (docs-for ds "table" table-id)
                                    (filter #(= "name" (:doc_type %))) first :doc_id)]

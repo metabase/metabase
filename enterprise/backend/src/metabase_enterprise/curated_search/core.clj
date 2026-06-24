@@ -85,8 +85,8 @@
 (defenterprise search
   "Find the library-entity documents best matching `user-search-prompt`, up to `limit`, ranked by a
   blended score (cosine similarity plus a slight doc_type bump).
-  Each result is shaped `{:entity {:model :id} :doc_type :doc_text :instructions :score}`, best score
-  first; the caller dedupes the (many-per-entity) docs down to distinct entities.
+  Each result is shaped `{:entity {:model :id} :doc_type :doc_text :score}`, best score first; the caller
+  dedupes the (many-per-entity) docs down to distinct entities.
   Returns [] when the pgvector store is unconfigured."
   :feature :semantic-search
   [user-search-prompt limit]
@@ -103,7 +103,7 @@
                       (jdbc/execute!
                        pgvector
                        (-> (sql.helpers/select :entity_type :entity_local_id :doc_type :doc_text
-                                               :instructions [[:raw distance] :distance])
+                                               [[:raw distance] :distance])
                            (sql.helpers/from (keyword index-table/*vectors-table*))
                            (sql.helpers/order-by [[:raw (ranking-sql distance)] :asc])
                            (sql.helpers/limit limit)
@@ -114,10 +114,9 @@
                         (if (= "42P01" (.getSQLState e)) [] (throw e))))]
       (->> rows
            (map (fn [row]
-                  {:entity       {:model (:entity_type row) :id (:entity_local_id row)}
-                   :doc_type     (:doc_type row)
-                   :doc_text     (:doc_text row)
-                   :instructions (:instructions row)
-                   :score        (score row)}))
+                  {:entity   {:model (:entity_type row) :id (:entity_local_id row)}
+                   :doc_type (:doc_type row)
+                   :doc_text (:doc_text row)
+                   :score    (score row)}))
            (sort-by (comp :total_score :score) >)
            vec))))

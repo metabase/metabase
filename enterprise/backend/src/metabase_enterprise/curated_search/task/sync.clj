@@ -27,10 +27,10 @@
   OsiAiContextSync [_ctx]
   (when (curated-search.core/available?)
     (try
-      (let [{:keys [inserted updated deleted] :as result}
+      (let [{:keys [inserted deleted] :as result}
             (reconcile/reconcile! (semantic.db.datasource/ensure-initialized-data-source!)
                                   (embedding/get-configured-model))]
-        (when (pos? (+ (or inserted 0) (or updated 0) (or deleted 0)))
+        (when (pos? (+ (or inserted 0) (or deleted 0)))
           (log/info "library entity index reconciled" result)))
       (catch Throwable e
         ;; Log and move on: the next periodic run retries from the authoritative appdb table.

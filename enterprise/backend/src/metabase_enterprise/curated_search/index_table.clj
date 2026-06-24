@@ -5,10 +5,11 @@
 
   - the vectors table (`library_entity_index`): many rows per library entity — one *embedded* document
     per value (the entity's name, its description, each ai_context synonym, each ai_context example).
-    Each row carries `doc_embedding`, the `doc_text` it was embedded from, flat `entity_type` /
-    `entity_local_id` columns, and the entity's `instructions` (carried, not embedded). The primary key
-    `doc_id` is content-addressed over the embedded text (see [[reconcile]]), so a text edit mints a new
-    row and the reconciler GCs the old one.
+    Each row carries `doc_embedding`, the `doc_text` it was embedded from, and flat `entity_type` /
+    `entity_local_id` columns.
+    The primary key `doc_id` is content-addressed over the embedded text (see [[reconcile]]), so a text
+    edit mints a new row and the reconciler GCs the old one.
+    Curator `instructions` are NOT stored here — the tool reads them live from `osi_ai_context` at query time.
   - a single-row meta table recording the embedding model identity and schema version the vectors table
     was built for.
 
@@ -42,10 +43,8 @@
 (def schema-version
   "Version of the vectors table schema.
   Bump it to force a drop-and-rebuild on instances whose meta row records an older version."
-  ;; 2: dropped the HNSW index.
-  ;; 3: per-value docs — content-addressed doc_id PK; flat entity_type/entity_local_id/doc_type/doc_text/
-  ;;    instructions columns replace the old 1-row-per-entry shape.
-  3)
+  ;; This branch ships the index for the first time, so the schema starts fresh at 1.
+  1)
 
 ;; Advisory lock serializing concurrent ensure-tables! calls (e.g. several cluster nodes starting at
 ;; once). Arbitrary app-wide-unique constant; semantic-search's migration lock uses 19991.
@@ -79,15 +78,12 @@
   (-> (sql.helpers/create-table (keyword *vectors-table*) :if-not-exists)
       (sql.helpers/with-columns
         ;; doc_id = base64(sha1("entity_type|entity_local_id|doc_type|doc_text")) — content-addresses the
-        ;; embedded text only (instructions is excluded so an instructions edit never re-embeds).
+        ;; embedded text, so a text edit mints a new row.
         [[:doc_id :text [:primary-key]]
          [:entity_type :text :not-null]
          [:entity_local_id :bigint :not-null]
          [:doc_type :text :not-null]
          [:doc_text :text :not-null]
-         ;; The entity's ai_context instructions, denormalized onto every one of its docs; carried, not
-         ;; embedded. Nullable — most library entities have no ai_context.
-         [:instructions :text]
          [:doc_embedding [:raw (format "vector(%d)" dims)] :not-null]])
       sql-format-quoted))
 
