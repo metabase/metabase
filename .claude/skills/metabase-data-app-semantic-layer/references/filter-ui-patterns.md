@@ -27,6 +27,10 @@ Before rendering a filter, answer:
 
 Query options from Metabase at runtime with a breakout on the same field or metric dimension used by the filter.
 
+- Run a `useMetabaseQuery` breakout on the same table field or metric dimension used by `filter(...)`, then derive a deduped option list from returned rows.
+- Prefer querying options from the same semantic object used by the charts so the option list stays compatible with the filter.
+- Use a searchable picker/combobox for long runtime option lists; plain `<select>` is only reasonable for short, stable lists.
+
 For entity filters, keep display labels and raw values separate:
 
 ```ts
@@ -59,6 +63,16 @@ useEffect(() => {
 
 Keep the `All` option selectable even while options are loading, empty, or errored.
 
+## Filter State Rules
+
+- Default every filter to `all` or empty, and run the unfiltered query.
+- Convert `all`, `""`, `null`, and `undefined` to `[]`.
+- Keep `All` options selectable even while runtime option queries are loading, empty, or errored.
+- If a selected runtime option disappears from the latest option query, reset that filter to `all` so stale values do not keep filtering the dashboard to no rows.
+- For custom date ranges, apply the filter only when both dates are valid.
+- Keep one filter array per queried semantic object when charts use different date fields or metric dimensions.
+- Memoize filter arrays so SDK query keys stay stable.
+
 ## Searchable Runtime Filters
 
 Use an existing app/component-library combobox if one exists. If the repo has no component library, keep the picker minimal; do not build a complex popover, keyboard model, or virtualized list unless the app needs it.
@@ -71,3 +85,24 @@ Minimum behavior:
 - The list is capped or scrollable so it cannot stretch the page.
 
 Style this to match the app. If accessibility, keyboard behavior, or popover positioning becomes non-trivial, prefer a small established combobox component or the app's component library instead of hand-rolling more behavior.
+
+## Date Range Filters
+
+Date ranges should use ISO `YYYY-MM-DD` strings for query values. Never use `type="date"`.
+
+For custom date pickers:
+
+- First check whether the repo already has a date picker component or component library. If it does, use the existing component.
+- If the repo has no existing date picker, install `react-datepicker`. The default data-app template only includes React, React DOM, and the Metabase SDK.
+- Do not install a large UI suite just for one data-app date filter.
+- Import `react-datepicker/dist/react-datepicker.css`, then add small CSS overrides for the app's visual style if needed.
+- For custom date ranges, use `selectsRange` with local `Date | null` start/end state, but only commit the query range when both dates are selected.
+- If the custom range control should look like the other preset buttons, use `customInput` with a `forwardRef` button, spread react-datepicker's injected props, and call its injected `onClick` so the popover still opens.
+- Convert selected dates to ISO `YYYY-MM-DD` strings before building filters. Use local date getters (`getFullYear`, `getMonth`, `getDate`) rather than `toISOString()` when preserving the selected local calendar day matters.
+- Recent `react-datepicker` packages include their own TypeScript types; do not add `@types/react-datepicker` unless the installed version actually needs it.
+
+Install `react-datepicker` only when the repo does not already have a date picker:
+
+```bash
+npm install react-datepicker
+```
