@@ -43,6 +43,13 @@ const ROBERT_TENANT = {
 };
 const TENANT_CONVERSATIONS_CHART_TITLE = "Tenants with most conversations";
 
+// The usage-stats page only waits for the audit metadata before rendering; each
+// chart then fires its own adhoc /api/dataset query and mounts ECharts. With six
+// charts rendering at once, the [data-testid="chart-container"] mount can blow
+// past Cypress's default 4s under CI CPU contention. Give the container readiness
+// assertion a generous budget rather than racing the render.
+const CHART_RENDER_TIMEOUT = 12000;
+
 const METRIC_CHART_TITLES: Record<UsageStatsMetric, string[]> = {
   conversations: [
     "Conversations by day",
@@ -176,7 +183,9 @@ function getChartCard(title: string): Cypress.Chainable<JQuery<HTMLElement>> {
 
 function assertChartRendered(title: string): void {
   getChartCard(title).within(() => {
-    cy.findByTestId(/^(chart|row-chart)-container$/)
+    cy.findByTestId(/^(chart|row-chart)-container$/, {
+      timeout: CHART_RENDER_TIMEOUT,
+    })
       .should("be.visible")
       .find("svg")
       .should("exist");
