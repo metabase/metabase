@@ -560,7 +560,7 @@
     Columns are inferred from the actual output schema; the comparison is
     multiset (order-independent).
 
-  - `options` (optional): a JSON string object with supported keys:
+  - `options` (optional): a JSON object with supported keys:
     - `ignore_columns`: array of column name strings to exclude from the diff.
 
   Error → HTTP status mapping:
@@ -577,9 +577,8 @@
   - Passed/failed: `{:status \"passed\"|\"failed\", :diff <report>, :test_run_id nil}`
   - Error: `{:status \"error\", :error {:type <str>, :message <str>}, :test_run_id nil}`
 
-  `:test_run_id` is `nil` in this synchronous implementation; it is reserved
-  for a future async polling variant that can be added without breaking this
-  response shape."
+  `:test_run_id` is `nil` here (synchronous); reserved for a future async
+  polling variant."
   {:multipart true}
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
@@ -621,9 +620,8 @@
   "Return the required input tables for a transform's test run.
 
   The response is a vector of table descriptors — one per input table the
-  transform depends on. Each descriptor carries the information the frontend
-  needs to render an upload dropzone labelled with the table name and the
-  exact column headers the user's CSV must contain.
+  transform depends on, each carrying the table name and the exact column
+  headers the fixture CSV's header must contain.
 
   Error → HTTP status mapping:
   - 402: feature flag off (transforms premium feature not enabled).
@@ -706,7 +704,7 @@
   param (repeatable, e.g. `?sources=1&sources=2`).
 
   The response is a vector of table descriptors — one per leaf the caller must
-  supply a fixture CSV for (raw source tables AND any sibling outputs not covered
+  supply a fixture CSV for (raw source tables and any sibling outputs not covered
   by the selected sources). The chained analogue of `GET /:id/test-run/inputs`.
 
   Error → HTTP status mapping:

@@ -88,6 +88,19 @@
     (driver.conn/with-transform-connection
       (is (= "the transform connection" (driver.conn/connection-telemetry-info))))))
 
+(deftest assert-connection-type!-test
+  (testing "passes when the current context matches the expected type, throws otherwise"
+    (testing "default context (no with-* binding)"
+      (is (nil? (driver.conn/assert-connection-type! :default)))
+      (is (thrown? AssertionError (driver.conn/assert-connection-type! :transform))))
+    (testing "inside with-transform-connection"
+      (driver.conn/with-transform-connection
+        (is (nil? (driver.conn/assert-connection-type! :transform)))
+        (is (thrown? AssertionError (driver.conn/assert-connection-type! :default)))))
+    (testing "a different context fails the assertion"
+      (driver.conn/with-write-connection
+        (is (thrown? AssertionError (driver.conn/assert-connection-type! :transform)))))))
+
 (deftest effective-details-default-with-admin-details-test
   (testing "effective-details returns :details when *connection-type* is :default, even when :admin-details present"
     (let [details       {:host "read-host" :port 5432}
