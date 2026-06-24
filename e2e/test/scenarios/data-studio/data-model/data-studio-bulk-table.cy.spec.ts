@@ -317,11 +317,11 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.modal().findByText("Publish these tables").click();
     cy.wait("@publishTables");
 
-    // While the database is selected the row click only toggles its expansion, which
-    // races the post-publish re-render and can collapse it. Deselect, then expand.
-    TablePicker.getDatabase("Writable Postgres12")
-      .find('input[type="checkbox"]')
-      .uncheck();
+    // The post-publish re-render auto-expands the database via the active-path effect,
+    // so clicking the (already-expanded, active) row only collapses it again — the
+    // schema fetch never re-fires and the table rows disappear. Re-open Data Studio for
+    // a clean, collapsed tree, then expand the database to reliably load its schema.
+    H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
     cy.wait("@getSchema");
 
