@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type InternalQuestion from "metabase-lib/v1/Question";
@@ -8,12 +9,16 @@ import type {
   Card,
   ParameterValuesMap,
   StructuredDatasetQuery,
+  UnsavedCard,
 } from "metabase-types/api";
 
 import type { SdkDashboardId } from "./dashboard";
 import type { SdkEntityId, SdkEntityToken } from "./entity";
 
-export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
+export type {
+  MetabaseCard,
+  MetabaseQuestion,
+} from "metabase/embedding-sdk/types/question";
 
 /**
  * Represents the identifier for a question in the Metabase SDK.
@@ -67,6 +72,7 @@ export type SdkQuestionEntityPublicProps =
        */
       questionId: SdkQuestionId | null;
       token?: never;
+      card?: never;
       query?: never;
     }
   | {
@@ -75,11 +81,24 @@ export type SdkQuestionEntityPublicProps =
        * A valid JWT token for the guest embed.
        */
       token: SdkEntityToken | null;
+      card?: never;
       query?: never;
     }
   | {
       questionId?: never;
       token?: never;
+      /**
+       * An ad-hoc question to render without saving it first. Either a
+       * {@link MetabaseCard} object, or a serialized card string copied from a
+       * question URL hash (`/question#<base64>` or the bare base64).
+       */
+      card: string | MetabaseCard;
+      query?: never;
+    }
+  | {
+      questionId?: never;
+      token?: never;
+      card?: never;
       /**
        * A table-backed ad hoc query created with `createMetabaseQuery`.
        */
@@ -95,6 +114,7 @@ export type SdkQuestionEntityInternalProps =
   | {
       questionId?: never;
       token?: never;
+      card?: never;
       query: string;
     };
 
@@ -120,7 +140,7 @@ export type LoadSdkQuestionParams = {
   /**
    * @internal
    */
-  deserializedCard?: Card;
+  deserializedCard?: UnsavedCard;
 
   /**
    * @internal
