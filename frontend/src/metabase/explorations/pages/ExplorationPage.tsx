@@ -10,7 +10,7 @@ import { idTag } from "metabase/api/tags";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { Group } from "metabase/ui";
+import { Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   DocumentId,
@@ -29,7 +29,10 @@ import {
   ExplorationDocument as ExplorationDocumentComponent,
   type ExplorationDocumentWithIsAiSummary,
 } from "../components/ExplorationDocument";
-import { ExplorationSidebar } from "../components/ExplorationSidebar";
+import {
+  ExplorationSidebar,
+  ExplorationTitle,
+} from "../components/ExplorationSidebar";
 import {
   getExplorationSidebarTree,
   pickInitialSidebarEntity,
@@ -124,6 +127,7 @@ export function ExplorationPage({
   // the response is enough — passing 0 stops polling.
   const [shouldPoll, setShouldPoll] = useState(true);
   const [commentDrafts, setCommentDrafts] = useState<CommentDrafts>({});
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const {
     data: exploration,
@@ -388,56 +392,62 @@ export function ExplorationPage({
   }
 
   return (
-    <Group
-      pl="2.25rem"
+    <Stack
       h="100%"
-      w="100%"
       bg="background-secondary"
-      align="flex-start"
-      wrap="nowrap"
-      gap={0}
+      pl="1.5rem"
+      pt="1rem"
       data-test-id="exploration-page"
     >
-      <ExplorationSidebar
+      <ExplorationTitle
         exploration={exploration}
-        tree={tree}
-        selectedEntityId={selectedEntityId}
-        setSelectedEntityId={setSelectedEntityId}
-        getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
       />
-      {selectedGroup && (
-        <ExplorationGroupVisualization
-          // Key on group id so the component remounts when the user
-          // navigates between `page` groups. The body calls one
-          // RTKQ hook per query, so the hook count must be stable for
-          // the lifetime of a single mount; remounting on group switch
-          // guarantees that.
-          key={selectedGroup.group.id}
-          explorationId={exploration.id}
-          group={selectedGroup.group}
-          queries={selectedGroup.queries}
-          explorationThread={selectedGroup.thread}
-          availableTimelines={availableTimelines}
-          selectedTimelineId={selectedTimelineId}
-          onSelectTimelineId={handleSelectTimelineId}
-          interestingTimelineIds={interestingTimelineIds}
-          commentDrafts={commentDrafts}
-          setCommentDrafts={setCommentDrafts}
-          isCommentsSidebarOpen={isCommentsSidebarOpen}
-        />
-      )}
-      {selectedDocument && (
-        <ExplorationDocumentComponent
-          explorationId={exploration.id}
-          document={selectedDocument}
-          childTargetId={params.childTargetId}
-          route={route}
-          locationSearch={location.search}
-        />
-      )}
-      {!selectedGroup &&
-        !selectedDocument &&
-        hasUnsettledQueries(exploration) && <ExplorationChartAreaSkeleton />}
-    </Group>
+      <Group flex={1} mih={0} align="flex-start" wrap="nowrap" gap={0}>
+        {isSidebarOpen && (
+          <ExplorationSidebar
+            exploration={exploration}
+            tree={tree}
+            selectedEntityId={selectedEntityId}
+            setSelectedEntityId={setSelectedEntityId}
+            getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+          />
+        )}
+        {selectedGroup && (
+          <ExplorationGroupVisualization
+            // Key on group id so the component remounts when the user
+            // navigates between `page` groups. The body calls one
+            // RTKQ hook per query, so the hook count must be stable for
+            // the lifetime of a single mount; remounting on group switch
+            // guarantees that.
+            key={selectedGroup.group.id}
+            explorationId={exploration.id}
+            group={selectedGroup.group}
+            queries={selectedGroup.queries}
+            explorationThread={selectedGroup.thread}
+            availableTimelines={availableTimelines}
+            selectedTimelineId={selectedTimelineId}
+            onSelectTimelineId={handleSelectTimelineId}
+            interestingTimelineIds={interestingTimelineIds}
+            commentDrafts={commentDrafts}
+            setCommentDrafts={setCommentDrafts}
+            isCommentsSidebarOpen={isCommentsSidebarOpen}
+          />
+        )}
+        {selectedDocument && (
+          <ExplorationDocumentComponent
+            explorationId={exploration.id}
+            document={selectedDocument}
+            childTargetId={params.childTargetId}
+            route={route}
+            locationSearch={location.search}
+          />
+        )}
+        {!selectedGroup &&
+          !selectedDocument &&
+          hasUnsettledQueries(exploration) && <ExplorationChartAreaSkeleton />}
+      </Group>
+    </Stack>
   );
 }
