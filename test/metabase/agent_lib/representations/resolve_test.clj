@@ -137,6 +137,21 @@
 ;;; temporal literals in :absolute-datetime get parsed to java.time
 ;;; ============================================================
 
+(defn- resolve-absolute-datetime
+  "Resolve a query whose only filter is `[= CREATED_AT [absolute-datetime <literal> <unit>]]` and
+  return the parsed literal (position 2 of the resolved `:absolute-datetime` clause)."
+  [literal unit]
+  (let [parsed {"lib/type" "mbql/query"
+                "database" "Sample"
+                "stages"   [{"lib/type"     "mbql.stage/mbql"
+                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                             "filters"      [["=" {}
+                                              ["field" {"temporal-unit" "month"}
+                                               ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                              ["absolute-datetime" {} literal unit]]]}]}
+        q      (repr.resolve/resolve-query mp parsed)]
+    (nth (get-in q [:stages 0 :filters 0 3]) 2)))
+
 (deftest parse-absolute-datetime-literals-test
   (testing (str "string literals inside `:absolute-datetime` (as produced by the repair pass for "
                 "`between` date bounds) are parsed into `java.time` values so the resolved pMBQL is "
@@ -162,6 +177,75 @@
       (is (= (java.time.LocalDate/parse "2024-12-31") (nth upper 2)))
       (testing "query passes lib.schema/query"
         (is (schema-valid? q))))))
+
+(deftest parse-absolute-datetime-literals-by-shape-test
+  (testing "each literal shape parses to its own natural java.time type"
+    (testing "local date → LocalDate"
+      (is (= (java.time.LocalDate/parse "2024-01-15")
+             (resolve-absolute-datetime "2024-01-15" "day"))))
+    (testing "local datetime → LocalDateTime"
+      (is (= (java.time.LocalDateTime/parse "2024-01-15T10:30:00")
+             (resolve-absolute-datetime "2024-01-15T10:30:00" "default"))))
+    (testing "offset datetime → OffsetDateTime"
+      (is (= (java.time.OffsetDateTime/parse "2024-01-15T10:30:00+02:00")
+             (resolve-absolute-datetime "2024-01-15T10:30:00+02:00" "default"))))
+    (testing "year → LocalDate (month/day default to 1)"
+      (is (= (java.time.LocalDate/parse "2024-01-01")
+             (resolve-absolute-datetime "2024" "year"))))
+    (testing "year-month → LocalDate (day defaults to 1)"
+      (is (= (java.time.LocalDate/parse "2024-03-01")
+             (resolve-absolute-datetime "2024-03" "month"))))))
+
+(deftest parse-absolute-datetime-literals-idempotent-test
+  (testing "running the parse pass again on already-parsed java.time literals is a no-op"
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [["=" {}
+                                                ["field" {"temporal-unit" "month"}
+                                                 ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                                ["absolute-datetime" {} "2024-01-15" "day"]]]}]}
+          q      (repr.resolve/resolve-query mp parsed)]
+      (is (= q (#'repr.resolve/parse-absolute-datetime-literals q))))))
+
+(deftest parse-absolute-datetime-literals-invalid-test
+  (testing "a structurally-ISO but out-of-range literal fails fast with an agent-facing error"
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [["=" {}
+                                                ["field" {"temporal-unit" "month"}
+                                                 ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                                ["absolute-datetime" {} "2024-13-45" "day"]]]}]}
+          ex     (try (repr.resolve/resolve-query mp parsed) nil
+                      (catch clojure.lang.ExceptionInfo e e))]
+      (is (some? ex))
+      (is (re-find #"Invalid temporal literal" (ex-message ex)))
+      (is (true? (:agent-error? (ex-data ex)))))))
+
+(deftest parse-absolute-datetime-literals-export-round-trip-test
+  (testing "resolve parses literals to java.time; export formats them back to ISO strings"
+    (let [parsed   {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "filters"      [["between" {}
+                                                  ["field" {"temporal-unit" "month"}
+                                                   ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                                  ["absolute-datetime" {} "2024-01-01" "day"]
+                                                  ["absolute-datetime" {} "2024-12-31" "day"]]]}]}
+          q        (repr.resolve/resolve-query mp parsed)
+          exported (repr.resolve/export-query mp q)
+          lower    (get-in exported ["stages" 0 "filters" 0 3 2])
+          upper    (get-in exported ["stages" 0 "filters" 0 4 2])]
+      (is (string? lower))
+      (is (string? upper))
+      (is (= "2024-01-01" lower))
+      (is (= "2024-12-31" upper))
+      (testing "the exported portable form still validates"
+        (is (= exported (repr/validate-query exported)))))))
 
 ;;; ============================================================
 ;;; fields (projection)
