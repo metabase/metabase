@@ -94,6 +94,7 @@
   ;;   the toucan instance (which the render-term keeps populated).
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
+  ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
   #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer :document})
 
 (def attr-types
@@ -125,7 +126,11 @@
    :collection-type         :text
    :collection-location     :text
    :root-collection-type    :text
-   :data-layer              :text})
+   :data-layer              :text
+   :data-authority          :text
+   ;; Precomputed at ingestion (see metabase.search.ingestion) from the curation signals above, so the
+   ;; "verified or curated content" filter is a single indexed boolean rather than a composite OR.
+   :curated                 :boolean})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -153,7 +158,8 @@
          :collection-type                                   ;;  surfaced for downstream consumers (metabase.search.impl/serialize)
          :collection-location                               ;;  surfaced for downstream consumers (add-dataset-collection-hierarchy)
          :root-collection-type                              ;;  indexed for :library scorer — type of the top-level ancestor collection
-         :data-layer])                                      ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
+         :data-layer                                        ;;  indexed for the :data-layer scorer (table.data_layer; per-tier weights under :data-layer/*)
+         :data-authority])                                  ;;  input to the precomputed :curated flag (authoritative tables)
        distinct
        vec))
 

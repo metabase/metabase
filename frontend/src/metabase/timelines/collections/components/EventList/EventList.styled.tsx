@@ -18,7 +18,7 @@ export const ListFooter = styled.div`
 
 export const ListThread = styled.div`
   height: 100%;
-  border-left: 1px dashed var(--mb-color-border);
+  border-left: 1px dashed var(--mb-color-border-neutral);
 `;
 
 export const ListThreadContainer = styled.div`

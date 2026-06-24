@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
+import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 type LibraryCollectionRowMenuProps = {

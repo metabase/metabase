@@ -79,6 +79,10 @@ export const useChartEvents = (
     metadata,
     isDashboard,
   }: VisualizationProps,
+  // The ECharts instance, mirrored into state by the caller. Used as a signal
+  // to re-run chart-instance-dependent effects (e.g. brush) once it is ready,
+  // which matters because the lazily loaded renderer calls `onInit` late.
+  chartInstance?: EChartsType,
 ) => {
   const isBrushing = useRef<boolean>();
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
@@ -367,7 +371,14 @@ export const useChartEvents = (
   );
   const isBrushable = canBrushChart && !hovered && !clicked;
 
-  useBrush(chartRef, containerRef, canBrushChart, isBrushable, option);
+  useBrush(
+    chartRef,
+    containerRef,
+    canBrushChart,
+    isBrushable,
+    option,
+    chartInstance,
+  );
 
   const onSelectSeries = useCallback(
     (event: React.MouseEvent, seriesIndex: number) => {

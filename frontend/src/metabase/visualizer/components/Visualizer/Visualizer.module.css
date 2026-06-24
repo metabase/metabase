@@ -35,7 +35,7 @@
   transition: var(--transition-duration);
   grid-area: dataSidebar;
   min-width: 0;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .dataSidebarContent {
@@ -44,22 +44,22 @@
 
 .Header {
   grid-area: Header;
-  border-left: 1px solid var(--mb-color-border);
-  border-right: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
+  border-right: 1px solid var(--mb-color-border-neutral);
 }
 
 .Canvas {
   grid-area: Canvas;
   overflow: hidden;
   padding: var(--mantine-spacing-lg);
-  border-left: 1px solid var(--mb-color-border);
-  border-right: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
+  border-right: 1px solid var(--mb-color-border-neutral);
 }
 
 .Footer {
   grid-area: Footer;
-  border-left: 1px solid var(--mb-color-border);
-  border-right: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
+  border-right: 1px solid var(--mb-color-border-neutral);
 }
 
 .settingsSidebar {

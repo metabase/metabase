@@ -86,7 +86,7 @@ export const GitSyncOptionsDropdown = ({
         {isSwitchBranchDisabled ? (
           <Badge
             color="text-primary"
-            bg="background-secondary"
+            bg="background_page-secondary"
             size="md"
             fz="12px"
             py="md"

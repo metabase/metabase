@@ -51,7 +51,9 @@
         (let [cnt->ids (group-by-frequency ids)
               lock-name (view-count-lock model)]
           (log/debugf "Writing %d items to %s view counts with lock %s" (count ids) model lock-name)
-          (cluster-lock/with-cluster-lock lock-name
+          ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
+          ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
+          (cluster-lock/with-cluster-lock {:lock lock-name :retry-transient? true}
             ;; Using t2/query instead of t2/update! avoids triggering Toucan2 model hooks,
             ;; specifically search-index enqueues on after-update.
             (t2/query {:update (t2/table-name model)
@@ -152,7 +154,9 @@
       ;; (specifically :hook/search-index after-update). The search index can tolerate staleness on this field: the
       ;; index will catch up on the next re-index cycle or when the dashboard is edited. This matches the pattern used
       ;; in increment-view-counts!*
-      (cluster-lock/with-cluster-lock dashboard-statistics-lock
+      ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
+      ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
+      (cluster-lock/with-cluster-lock {:lock dashboard-statistics-lock :retry-transient? true}
         (t2/query {:update (t2/table-name :model/Dashboard)
                    :set    {:last_viewed_at (into [:case]
                                                   (mapcat (fn [[id timestamp]]

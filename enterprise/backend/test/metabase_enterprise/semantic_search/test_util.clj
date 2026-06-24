@@ -15,6 +15,7 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.search.config :as search.config]
    [metabase.search.ingestion :as search.ingestion]
@@ -85,8 +86,11 @@
                 semantic.index/model-table-suffix              mock-table-suffix]
     (let [pgvector (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.env/get-index-metadata)
-          embedding-model (semantic.env/get-configured-embedding-model)]
-      (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+          embedding-model (semantic.env/get-configured-embedding-model)
+          index (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)]
+      ;; The HNSW index is only built when configured for the :hnsw strategy; tests exercise both strategies
+      ;; via per-query overrides, so build it unconditionally here.
+      (semantic.index/create-hnsw-index-if-not-exists! pgvector index)
       (thunk))))
 
 ;; TODO: declare with macro (the do- less version) throws weird errors -- investigate!
@@ -361,9 +365,14 @@
     Closeable
     (close [_] (close-fn o))))
 
-(defn open-temp-index! ^Closeable [& {:keys [index] :or {index mock-index}}]
+(defn open-temp-index! ^Closeable [& {:keys [index hnsw?] :or {index mock-index hnsw? true}}]
   (closeable
-   (do (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) index {:force-reset? true})
+   ;; The HNSW index is only built when configured for the :hnsw strategy. Pin the strategy during creation
+   ;; so the table deterministically has (`:hnsw? true`, the default) or lacks (`:hnsw? false`) the index,
+   ;; regardless of the ambient setting.
+   (do (mt/with-dynamic-fn-redefs [semantic.settings/semantic-search-vector-strategy
+                                   (constantly (if hnsw? :hnsw :brute-force))]
+         (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) index {:force-reset? true}))
        index)
    (fn cleanup-temp-index-table! [{:keys [table-name] :as index}]
      (try
@@ -505,6 +514,17 @@
         (-> result first vals first))
       (catch Exception _ false))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn index-relfilenode
+  "Return the on-disk relfilenode for the index named `index-name`, or nil if it doesn't exist. A stable
+  relfilenode across two `CREATE INDEX IF NOT EXISTS` calls proves the second did no work: had it dropped,
+  rebuilt, or reindexed, the relfilenode would change."
+  [index-name]
+  (-> (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
+                         ["SELECT relfilenode FROM pg_class WHERE relname = ?" (name index-name)]
+                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+      :relfilenode))
+
 (defn get-metadata-rows [pgvector index-metadata]
   (jdbc/execute! pgvector
                  (-> {:select [:*]
@@ -546,7 +566,10 @@
   "Create an index table and return a closeable that will drop it when closed."
   ^Closeable [pgvector index]
   (closeable
-   (semantic.index/create-index-table-if-not-exists! pgvector index)
+   (do (semantic.index/create-index-table-if-not-exists! pgvector index)
+       ;; Build the HNSW index for tests; it is otherwise only created when configured for the :hnsw strategy.
+       (semantic.index/create-hnsw-index-if-not-exists! pgvector index)
+       index)
    (fn [_] (semantic.index/drop-index-table! pgvector index))))
 
 (defn- decode-column

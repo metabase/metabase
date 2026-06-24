@@ -1035,16 +1035,16 @@
   [nodes traverse-fn]
   (loop [to-traverse (zipmap nodes (repeat nil))
          traversed   {}]
-    (let [item        (first to-traverse)
-          found       (traverse-fn (key item))
-          traversed   (conj traversed item)
-          ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
-          ;; locations
-          to-traverse (merge-with into
-                                  (dissoc to-traverse (key item))
-                                  (apply dissoc found (keys traversed)))]
-      (if (empty? to-traverse)
-        traversed
+    (if (empty? to-traverse)
+      traversed
+      (let [item (first to-traverse)
+            found (traverse-fn (key item))
+            traversed (conj traversed item)
+            ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
+            ;; locations
+            to-traverse (merge-with into
+                                    (dissoc to-traverse (key item))
+                                    (apply dissoc found (keys traversed)))]
         (recur to-traverse traversed)))))
 
 (defn reverse-compare

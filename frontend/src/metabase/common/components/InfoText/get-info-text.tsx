@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { getCollection } from "metabase/collections/utils";
+import { getCollection } from "metabase/common/collections/utils";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,

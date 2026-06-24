@@ -862,7 +862,15 @@ export const sortDataset = (
 
       if (leftDate == null || rightDate == null) {
         showWarning?.(invalidDateWarning(leftDate == null ? left : right).text);
-        return 0;
+        if (leftDate == null && rightDate == null) {
+          return 0;
+        }
+        if (leftDate == null) {
+          return 1; // sort nulls to end
+        }
+        if (rightDate == null) {
+          return -1;
+        }
       }
 
       return leftDate.valueOf() - rightDate.valueOf();

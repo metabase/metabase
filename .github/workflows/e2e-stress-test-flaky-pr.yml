@@ -1,0 +1,88 @@
+name: E2E Stress Test (flaky-test-fix PR)
+
+# Auto-runs the e2e stress test on every changed Cypress spec in a PR
+
+on:
+  pull_request:
+    # `opened`/`reopened` catch PRs created already labelled; `labeled` catches the label
+    # being added later; `synchronize` re-burns after new commits while the label is set.
+    types: [opened, reopened, synchronize, labeled]
+
+concurrency:
+  # One in-flight set of stress runs per PR branch — new commits cancel the previous burn.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-changed-specs:
+    name: Detect changed e2e specs
+    if: contains(github.event.pull_request.labels.*.name, 'flaky-test-fix')
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      # JSON array of spec paths, consumed by the matrix below.
+      specs: ${{ steps.detect.outputs.specs }}
+      should_run: ${{ steps.detect.outputs.should_run }}
+      # burn-50 / burn-100 labels bump the burn-in past 20
+      burn_in: >-
+        ${{ contains(github.event.pull_request.labels.*.name, 'burn-100') && '100'
+            || contains(github.event.pull_request.labels.*.name, 'burn-50') && '50'
+            || '20' }}
+    steps:
+      - name: Detect changed Cypress spec files
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: | # sh
+          # List every file in the PR, drop deletions, then keep only regular e2e Cypress
+          # specs: paths under e2e/ ending in .cy.spec.{js,ts,tsx}, excluding the
+          # embedding-SDK component specs under e2e/test-component/ (those use a different
+          # runner and are out of scope here). The greps are guarded with `|| true` so an
+          # empty match doesn't trip `pipefail`.
+          FILES=$(
+            gh api "repos/${REPO}/pulls/${PR_NUMBER}/files" \
+              --paginate \
+              --jq '.[] | select(.status != "removed") | .filename' \
+            | { grep -E '^e2e/.*\.cy\.spec\.(js|ts|tsx)$' || true; } \
+            | { grep -v '^e2e/test-component/' || true; } \
+            | sort -u
+          )
+
+          if [[ -z "$FILES" ]]; then
+            echo "No changed e2e Cypress spec files found — nothing to stress test."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Changed e2e Cypress specs:"
+          echo "$FILES" | sed 's/^/  - /'
+
+          # Compact JSON array for the matrix, e.g. ["e2e/test/scenarios/a.cy.spec.js"].
+          SPECS_JSON=$(echo "$FILES" | jq -R . | jq -cs .)
+          echo "specs=${SPECS_JSON}" >> "$GITHUB_OUTPUT"
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+
+          echo "Note: you can use the burn-50 or burn-100 labels to increase the burn-in count from the default of 20." >> $GITHUB_STEP_SUMMARY
+
+  stress-test:
+    name: Stress test
+    needs: detect-changed-specs
+    if: needs.detect-changed-specs.outputs.should_run == 'true'
+    strategy:
+      # Don't let one flaky spec (or one throttling regime) cancel the burn-in of the others.
+      fail-fast: false
+      matrix:
+        spec: ${{ fromJson(needs.detect-changed-specs.outputs.specs) }}
+        # Burn each spec with and without throttle
+        enable_network_throttling: [true, false]
+    uses: ./.github/workflows/e2e-stress-test-flake-fix.yml
+    secrets: inherit
+    with:
+      spec: ${{ matrix.spec }}
+      burn_in: ${{ needs.detect-changed-specs.outputs.burn_in }}
+      qa_db: true
+      mb_edition: ee
+      build_jar: true
+      enable_network_throttling: ${{ matrix.enable_network_throttling }}

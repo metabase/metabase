@@ -510,7 +510,7 @@
                                   ;; that's always null, same as `:model/Table.schema`. Use `tbl-schema`
                                   ;; (the per-driver translation we already do for synced rows).
                                   (testing "describe-database returns only input-schema tables"
-                                    (let [{described :tables} (driver/describe-database admin-driver ws-db)
+                                    (let [described (into [] (:tables (driver/describe-database admin-driver ws-db)))
                                           iso-tbl-schema (table-row-schema-value admin-driver isolation-schema)]
                                       (is (some #(and (= tbl-schema (:schema %))
                                                       (= src-name (:name %)))

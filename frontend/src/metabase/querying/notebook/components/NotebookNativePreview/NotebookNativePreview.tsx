@@ -72,7 +72,7 @@ export const NotebookNativePreview = ({
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
-  const borderStyle = "1px solid var(--mb-color-border)";
+  const borderStyle = "1px solid var(--mb-color-border-neutral)";
 
   const handleConvertClick = useCallback(() => {
     if (newQuestion) {
@@ -86,7 +86,7 @@ export const NotebookNativePreview = ({
       data-testid="native-query-preview-sidebar"
       w="100%"
       h="100%"
-      bg="background-primary"
+      bg="background_page-primary"
       display="flex"
       style={{ flexDirection: "column" }}
     >

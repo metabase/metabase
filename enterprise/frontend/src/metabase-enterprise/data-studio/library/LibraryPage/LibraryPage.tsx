@@ -51,6 +51,7 @@ function LibraryPageContent() {
   const { treeTableInstance, isChildrenLoading, isLoading, emptyMessage } =
     useLibraryTreeTableInstance({
       collections,
+      isLoadingCollections,
       searchQuery,
       onPublishTableClick: openPublishTableModal,
     });
@@ -75,7 +76,7 @@ function LibraryPageContent() {
           py={0}
         />
         <Stack
-          bg="background-secondary"
+          bg="background_page-secondary"
           data-testid="library-page"
           pb="2rem"
           px="3.5rem"

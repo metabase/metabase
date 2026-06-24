@@ -58,10 +58,15 @@
   (let [base-controller (Pools/utilizationController 1.0 3 3)]
     (Pool. (reify IPool$Generator
              (generate [_ _]
-               ;; Generate a tuple of the engine and the expiry timestamp.
+               ;; Generate a tuple of the context and the expiry timestamp.
                [(load-viz-bundle (js.engine/context))
                 (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
-             (destroy [_ _ _v]))
+             (destroy [_ _ [^Context ctx _expiry]]
+               ;; Close the context when it's disposed from the pool (expiry/shutdown). Without this, each disposed
+               ;; static-viz context (~130 MB) leaks its native memory: GraalVM only releases it on `close`, not on GC.
+               (try
+                 (.close ctx true) ;; force close - can't wait for running code
+                 (catch Exception _))))
            ;; Wrap the utilization controller with a modification that doesn't allow the pool to go below 1 instance.
            (reify IPool$Controller
              (shouldIncrement [_ k a b] (.shouldIncrement base-controller k a b))
@@ -169,7 +174,25 @@
   "Height to render svg images. If not bound, will preserve aspect ratio of original image."
   nil)
 
-(def ^:dynamic ^:private *svg-background-color*
+(def ^:dynamic *chart-size*
+  "When bound to a map `{:width <px> :height <px>}`, isomorphic (ECharts) charts rendered via
+  [[*javascript-visualization*]] use `:width`/`:height` as their intrinsic (logical) SVG
+  dimensions, and PNG rasterization targets those same dimensions (stretching to fit). Used to
+  make a backend chart fill an explicit pixel box -- e.g. a dashboard grid cell -- the way the
+  frontend does. When nil, keeps the legacy behavior (fixed width, aspect-preserving height).
+
+  An optional `:scale` (default 1) multiplies *only the raster* dimensions: the chart is still
+  laid out at `:width`x`:height` (so fonts, labels, and spacing are unchanged), but the SVG is
+  rasterized to `scale`x more pixels -- i.e. supersampling for a crisper image at the same on-page
+  size, without relaying the chart out smaller.
+
+  An optional `:fit-within?` (default false) tells legended charts to treat `:width`x`:height` as
+  the exact output box -- fitting the legend *inside* it rather than stacking it on top (which
+  returns an SVG taller than requested and makes it shrink to fit). Used by the PDF renderer so a
+  chart fills its grid cell's full width."
+  nil)
+
+(def ^:dynamic *svg-background-color*
   "Background color for rendered PNG images. Set to nil for transparent background.
   Defaults to white to ensure charts are readable in dark mode email clients."
   java.awt.Color/WHITE)
@@ -181,10 +204,15 @@
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
-          transcoder                   (PNGTranscoder.)]
-      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH *svg-render-width*)
-      (when *svg-render-height*
-        (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT *svg-render-height*))
+          transcoder                   (PNGTranscoder.)
+          ;; `:scale` (default 1) supersamples the raster only -- the SVG is laid out at the
+          ;; logical :width/:height but rasterized to scale-times more pixels.
+          scale                        (:scale *chart-size* 1)
+          render-width                 (float (or (some-> (:width *chart-size*) (* scale)) *svg-render-width*))
+          render-height                (some-> (or (some-> (:height *chart-size*) (* scale)) *svg-render-height*) float)]
+      (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH render-width)
+      (when render-height
+        (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT render-height))
       (when *svg-background-color*
         (.addTranscodingHint transcoder PNGTranscoder/KEY_BACKGROUND_COLOR *svg-background-color*))
       (.transcode transcoder in out))
@@ -217,10 +245,14 @@
                    (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                          (json/encode cards-with-data)
                                                          (json/encode dashcard-viz-settings)
-                                                         (json/encode {:applicationColors (appearance/application-colors)
-                                                                       :startOfWeek (lib-be/start-of-week)
-                                                                       :customFormatting (appearance/custom-formatting)
-                                                                       :tokenFeatures (premium-features/token-features)}))))]
+                                                         (json/encode (cond-> {:applicationColors (appearance/application-colors)
+                                                                               :startOfWeek (lib-be/start-of-week)
+                                                                               :customFormatting (appearance/custom-formatting)
+                                                                               :tokenFeatures (premium-features/token-features)}
+                                                                        *chart-size*
+                                                                        (assoc :width (:width *chart-size*)
+                                                                               :height (:height *chart-size*)
+                                                                               :fitWithinBounds (boolean (:fit-within? *chart-size*))))))))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))

@@ -227,6 +227,7 @@ function BoxPlotInner({
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}
           ref={containerRef}
+          display="boxplot"
           option={option ?? {}}
           eventHandlers={hasValidOption ? eventHandlers : undefined}
           onInit={handleInit}

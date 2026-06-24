@@ -299,11 +299,11 @@ const FormButtonsGroup = ({
       justify={layout === "sidebar" ? "flex-end" : undefined}
       px={layout === "sidebar" ? "md" : "2.5rem"}
       pb={layout === "sidebar" ? 0 : undefined}
-      bg={layout === "sidebar" ? undefined : "background-primary"}
+      bg={layout === "sidebar" ? undefined : "background_page-primary"}
       style={
         layout === "sidebar"
           ? undefined
-          : { borderTop: "1px solid var(--mb-color-border)" }
+          : { borderTop: "1px solid var(--mb-color-border-neutral)" }
       }
     >
       {children}

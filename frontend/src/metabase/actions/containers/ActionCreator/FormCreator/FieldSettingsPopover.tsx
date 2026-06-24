@@ -52,11 +52,7 @@ export function FieldSettingsPopover({
           />
         </UnstyledButton>
       </Popover.Target>
-      <Popover.Dropdown
-        // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={close}
-        maw={400}
-      >
+      <Popover.Dropdown maw={400}>
         <FormCreatorPopoverBody
           fieldSettings={fieldSettings}
           onChange={onChange}

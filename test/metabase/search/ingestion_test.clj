@@ -8,6 +8,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]))
 
 (deftest extract-model-and-id
@@ -201,3 +202,19 @@
         (search/init-index!)
         (is (= 3 @factory-calls)
             "Factory should be called once per unique database-id, not once per lookup")))))
+
+(deftest curation-signals-surfaced-in-results-test
+  (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
+            so Metabot can render them (BOT-1570) — not just stored in the filtering column"
+    (search.tu/with-new-search-if-available-without-fallback
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table _ {:db_id          db-id
+                                     :name           "Curatedgoldtbl"
+                                     :active         true
+                                     :data_authority :authoritative
+                                     :data_layer     :final}]
+        (let [result (->> (search.tu/search-results "Curatedgoldtbl")
+                          (filter (comp #{"table"} :model))
+                          first)]
+          (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
+                  result)))))))

@@ -773,7 +773,10 @@
    ;; metaplow analytics metrics
    (prometheus/counter :metabase-metaplow/errors
                        {:description "Metaplow event pipeline errors by stage."
-                        :labels [:stage]})])
+                        :labels [:stage]})
+   (prometheus/gauge :metabase-memoize/cache-size
+                     {:description "Number of entries currently held in a monitored in-memory memoization cache."
+                      :labels [:cache]})])
 
 (defn- quartz-collectors
   []

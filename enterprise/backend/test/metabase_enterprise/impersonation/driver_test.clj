@@ -808,7 +808,7 @@
                                         driver/*driver*
                                         (t2/select-one :model/Database (mt/id)))
                                        :tables
-                                       set)
+                                       (into #{}))
                       default-table-set (tables-set)
                       do-with-resolved-connection (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)]
                   (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
@@ -1084,6 +1084,39 @@
                             (format "UPDATE %s SET name = 'a' WHERE id = -1; UPDATE %s SET name = 'b' WHERE id = -1" venues-table venues-table)
                             (format "INSERT INTO %s (name) VALUES ('x'); SELECT 1;" venues-table)
                             (format "SET ROLE NONE; DELETE FROM %s WHERE id = -1;" venues-table)))))))))))))))
+
+(deftest admins-can-run-show-timezone-statement-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
+    (mt/with-premium-features #{:advanced-permissions}
+      (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+            role-a (u/lower-case-en (mt/random-name))]
+        (tx/with-temp-roles! driver/*driver*
+          (impersonation-granting-details driver/*driver* (mt/db))
+          {role-a {venues-table {}}}
+          (impersonation-default-user driver/*driver*)
+          (impersonation-default-role driver/*driver*)
+          (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                   :details (impersonation-details driver/*driver* (mt/db))}]
+            (mt/with-db database
+              (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+              (sync/sync-database! database {:scan :schema})
+              (let [impersonation-setup {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                         :attributes     {"impersonation_attr" role-a}}]
+                (testing "A SHOW TIMEZONE statement works for admin"
+                  (impersonation.util-test/with-impersonations-for-user! :crowberto impersonation-setup
+                    (is (= [["UTC"]]
+                           (-> (lib/native-query (mt/metadata-provider) "SHOW TIMEZONE")
+                               (qp/process-query)
+                               (mt/rows))))))
+                (testing "A SHOW TIMEZONE statement errors for non-admin"
+                  (impersonation.util-test/with-impersonations! impersonation-setup
+                    (is (thrown-with-msg?
+                         java.lang.Exception
+                         #"Invalid impersonated native query. Must be a single select statement."
+                         (-> (lib/native-query (mt/metadata-provider) "SHOW TIMEZONE")
+                             (qp/process-query)
+                             (mt/rows))))))))))))))
 
 (deftest ^:parallel impersonated-query-parse-error-message-test
   (testing "When a native query fails to parse, the validator reports a parse error -- not a misleading 'must be a single select' message (#73593)"

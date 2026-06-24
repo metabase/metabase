@@ -83,10 +83,10 @@ export const NotificationsTable = ({
           <Flex justify="center">
             <Badge
               variant="default"
-              bg="background-secondary"
+              bg="background_page-secondary"
               c="text-primary"
               tt="none"
-              bd="1px solid var(--mb-color-border)"
+              bd="1px solid var(--mb-color-border-neutral)"
               h="auto"
               px="sm"
               py="xs"

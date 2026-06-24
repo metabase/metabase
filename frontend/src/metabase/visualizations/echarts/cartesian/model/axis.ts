@@ -170,23 +170,21 @@ function generateSplits(
 function axisCost(extents: Extent[], favorUnsplit = true) {
   const axisExtent = d3.extent(extents.flatMap((e) => e));
 
-  // TODO: handle cases where members of axisExtent is undefined
-  const axisRange = axisExtent[1]! - axisExtent[0]!;
+  const axisRange =
+    axisExtent[0] != null ? axisExtent[1] - axisExtent[0] : undefined;
 
   if (favorUnsplit && extents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
-  } else if (axisRange === 0) {
+  } else if (axisRange === 0 || !axisRange) {
     return 0;
   } else {
-    return extents.reduce(
-      (sum, seriesExtent) =>
-        sum +
-        Math.pow(
-          axisRange / (seriesExtent[1] - seriesExtent[0]),
-          SPLIT_AXIS_COST_FACTOR,
-        ),
-      0,
-    );
+    return extents.reduce((sum, seriesExtent) => {
+      const seriesRange = seriesExtent[1] - seriesExtent[0];
+      if (seriesRange === 0) {
+        return sum;
+      }
+      return sum + Math.pow(axisRange / seriesRange, SPLIT_AXIS_COST_FACTOR);
+    }, 0);
   }
 }
 
@@ -680,6 +678,31 @@ const getFormatUnit = (
 
   return dimensionColumn.unit;
 };
+
+const isDateColumn = (column: DatasetColumn) => {
+  return (
+    (column.effective_type ?? column.base_type)?.startsWith("type/Date") ??
+    false
+  );
+};
+
+const getCategoryXAxisColumn = (
+  column: DatasetColumn,
+  dataset: ChartDataset,
+) => {
+  if (!isDateColumn(column) || isAbsoluteDateTimeUnit(column.unit)) {
+    return column;
+  }
+
+  const xValues = dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
+  const dataTimeSeriesInterval = computeTimeseriesDataInterval(xValues, null);
+  const formatUnit = dataTimeSeriesInterval
+    ? getFormatUnit(column, dataTimeSeriesInterval)
+    : column.unit;
+
+  return formatUnit ? { ...column, unit: formatUnit } : column;
+};
+
 export function getTimeSeriesXAxisModel(
   dimensionModel: DimensionModel,
   rawSeries: RawSeries,
@@ -826,7 +849,7 @@ export function getXAxisModel(
     );
   }
 
-  const column = dimensionModel.column;
+  const column = getCategoryXAxisColumn(dimensionModel.column, dataset);
   const columnSettings =
     column != null ? (settings.column?.(column) ?? {}) : {};
 

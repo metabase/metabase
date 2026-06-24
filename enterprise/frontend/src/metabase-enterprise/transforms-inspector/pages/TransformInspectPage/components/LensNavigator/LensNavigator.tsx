@@ -66,9 +66,9 @@ export const LensNavigator = ({
   return (
     <Stack
       gap="0"
-      bd="1px solid border"
+      bd="1px solid border-neutral"
       bdrs="sm"
-      bg="background-primary"
+      bg="background_page-primary"
       pt={rem(6)}
     >
       <Tabs

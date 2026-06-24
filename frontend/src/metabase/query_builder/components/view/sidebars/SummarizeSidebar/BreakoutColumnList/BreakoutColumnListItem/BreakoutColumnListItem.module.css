@@ -87,11 +87,11 @@
       .Content,
       .ColumnTypeIcon {
         color: var(--mb-color-core-summarize);
-        background-color: var(--mb-color-background-secondary);
+        background-color: var(--mb-color-background_page-secondary);
       }
 
       .AddButton:hover {
-        background-color: var(--mb-color-background-tertiary);
+        background-color: var(--mb-color-background_page-tertiary);
       }
 
       .BucketTriggerButton {
