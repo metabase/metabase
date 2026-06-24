@@ -862,47 +862,55 @@
     (catch Exception _
       :remote-sync/unsyncable-record)))
 
+(defn- chunk->updates
+  "Plan fragment ({:writes :delete-paths :removed-ids :pull}) for one chunk of create/update rows, or
+  `:remote-sync/unsyncable-record` if any row can't go incrementally (including one whose entity is gone)."
+  [snapshot opts chunk]
+  (let [rows  (second chunk)
+        found (extract-chunk chunk)]
+    (if (< (count found) (count rows))
+      :remote-sync/unsyncable-record                 ; extract-chunk omits gone entities; some row is unsyncable
+      (reduce (fn [frag [row entity]]
+                (let [new-path (source/entity->path opts entity)
+                      info     (assoc (repo-file-info snapshot new-path (:entity_id entity)) :new-path new-path)
+                      updates  (incremental-updates-for-row row info)]
+                  (if (= updates :remote-sync/unsyncable-record)
+                    (reduced :remote-sync/unsyncable-record)
+                    (merge-with into frag updates))))
+              {:writes [] :delete-paths [] :removed-ids [] :pull #{}}
+              found))))
+
 (defn- incremental-export-plan
-  "Validate `rsos` (`RemoteSyncObject`s) and build an incremental export plan.
+  "Validate `rows` (`RemoteSyncObject`s) and build an incremental export plan, one chunk at a time.
 
-  `snapshot` is the git repo to test existing paths against
-  `rsos` are the `RemoteSyncObject`s to export
+  `snapshot` is the git repo to test existing paths against; `rows` are the RemoteSyncObjects to export.
 
-  returns:
-    - `:remote-sync/unsyncable-batch` when at least one rso cannot be exported incrementally
-    - `{:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}` for a plan."
+  Returns `{:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}`, or
+  `:remote-sync/unsyncable-batch` when any row can't be exported incrementally."
   [snapshot rows]
-  (let [opts (serdes/storage-base-context)
-        ;; Batch-extract the create/update rows on entity-id models in one query per model/chunk (rather than
-        ;; a read per row), computing each row's target path + existing-repo-file info up front. removed/delete
-        ;; rows and non-entity-id rows need no extraction; a create/update row whose entity is gone gets no
-        ;; info entry and is treated as unsyncable. An extraction error sends the whole batch to a full export.
-        cu-rows  (filterv #(and (#{"create" "update"} (:status %))
-                                (= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
-                          rows)
-        id->info (try
-                   (into {}
-                         (comp (mapcat extract-chunk)
-                               (map (fn [[row entity]]
-                                      (let [new-path (source/entity->path opts entity)
-                                            content  (source.p/read-file snapshot new-path)]
-                                        [(:id row) {:eid          (:entity_id entity)
-                                                    :new-path     new-path
-                                                    :file-exists? (boolean content)
-                                                    ;; parse errors on the existing repo file invalidate the batch
-                                                    :file-eid     (when content (:entity_id (yaml/parse-string content)))}]))))
-                         (->sized-chunks cu-rows))
-                   (catch Exception _ ::extract-error))
-        plan     (if (= id->info ::extract-error)
-                   :remote-sync/unsyncable-batch
-                   (->> rows
-                        (map #(incremental-updates-for-row % (id->info (:id %))))
-                        (reduce (fn [plan updates]
-                                  (if (= updates :remote-sync/unsyncable-record)
-                                    (reduced :remote-sync/unsyncable-batch)
-                                    (merge-with into plan updates)))
-                                {:writes [] :delete-paths [] :removed-ids [] :pull #{}})))
-        deps     (delay (dep-writes snapshot opts (:pull plan)))]
+  (let [opts          (serdes/storage-base-context)
+        init          {:writes [] :delete-paths [] :removed-ids [] :pull #{}}
+        merge-or-bail (fn [plan frag]
+                        (if (= :remote-sync/unsyncable-record frag)
+                          (reduced :remote-sync/unsyncable-batch)
+                          (merge-with into plan frag)))
+        ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
+        ;; (removed/delete, non-entity-id, bad status) is decided with no entity
+        {cu-rows true other-rows false}
+        (group-by #(boolean (and (#{"create" "update"} (:status %))
+                                 (= :entity-id (:identity (spec/spec-for-model-type (:model_type %))))))
+                  rows)
+        ;; the no-extraction rows first (cheap)
+        plan          (reduce (fn [plan row] (merge-or-bail plan (incremental-updates-for-row row nil)))
+                              init other-rows)
+        ;; then the create/update rows, one chunk at a time; an extraction error → full export
+        plan          (if (keyword? plan)
+                        plan
+                        (try
+                          (reduce (fn [plan chunk] (merge-or-bail plan (chunk->updates snapshot opts chunk)))
+                                  plan (->sized-chunks cu-rows))
+                          (catch Exception _ :remote-sync/unsyncable-batch)))
+        deps          (delay (dep-writes snapshot opts (:pull plan)))]
     (cond
       (= plan :remote-sync/unsyncable-batch)
       :remote-sync/unsyncable-batch
