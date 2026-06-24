@@ -319,6 +319,15 @@ describe("scenarios > dependencies > unreferenced list", () => {
     it("should show the sidebar for supported entities and trigger snowplow event", () => {
       setupEntities();
       H.waitForBackfillComplete();
+      // The global backfill flag can report complete before the table's async
+      // metadata-update analysis has surfaced it in the unreferenced query, so
+      // poll the actual endpoint until the table is present before navigating.
+      H.waitForUnreferencedEntities((entities) =>
+        entities.some(
+          (e) =>
+            e.type === "table" && e.data.display_name === TABLE_DISPLAY_NAME,
+        ),
+      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
 
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
