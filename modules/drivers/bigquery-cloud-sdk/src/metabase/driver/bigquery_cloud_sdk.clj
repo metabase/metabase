@@ -438,11 +438,13 @@
 (defn- describe-dataset-fields-reducible
   "Reducibly describe the fields (including nested STRUCT fields) of `table-names` within `dataset-id`.
 
-  Streams two `INFORMATION_SCHEMA` queries -- `COLUMNS` and `COLUMN_FIELD_PATHS` -- both ordered by `table_name`, and
-  merge-joins them by `table_name`, so we only ever hold ONE table's columns and nested-field paths in memory at a
-  time. Realizing the whole batch's nested-field lookup instead OOMs for wide, deeply-nested datasets (e.g.
-  GA4/Firebase exports: hundreds of daily `events_*` tables, each with hundreds of nested STRUCT leaves). Both queries
-  are single-pass live results, so the returned reducible is single-consumption."
+  Runs two `INFORMATION_SCHEMA` queries: `COLUMNS` (top-level fields) and `COLUMN_FIELD_PATHS` (nested STRUCT leaves).
+  The COLUMNS side is small (a handful per table), so we realize it grouped by table. The nested side is the one that
+  explodes for wide, deeply-nested datasets (e.g. GA4/Firebase exports: hundreds of daily `events_*` tables, each with
+  hundreds of nested STRUCT leaves), so we keep it streamed and consume it one table-group at a time. Each table is
+  emitted exactly once with all of its fields contiguous (the sync groups fields with `partition-by` on
+  `[table-name table-schema]`). Both queries are single-pass live results, so the returned reducible is
+  single-consumption."
   [driver database project-id dataset-id table-names]
   (assert (seq table-names))
   (let [columns-reducible (try (query-honeysql driver database
@@ -463,23 +465,25 @@
                                                 :order-by [:table_name]})
                                (catch Throwable e
                                  (log/warnf e "error in get-nested-columns-for-tables for dataset: %s" dataset-id)))
-        ;; Lazy per-table groups of `COLUMN_FIELD_PATHS` rows, ordered by `table_name`. We advance through them in
-        ;; lockstep with the per-table `COLUMNS` groups below, keeping only the current table's group realized.
-        group-table       (fn [group] (:table_name (first group)))
-        nested-groups     (volatile! (partition-by :table_name (into [] nested-reducible)))
-        lookup-for-table  (fn [table-name]
-                            (let [remaining  (drop-while #(neg? (compare (group-table %) table-name)) @nested-groups)
-                                  this-table (when (= table-name (group-table (first remaining)))
-                                               (first remaining))]
-                              (vreset! nested-groups (cond-> remaining this-table next))
-                              (nested-rows->table-lookup dataset-id this-table)))]
+        columns-by-table  (group-by :table_name columns-reducible)
+        nested-tables     (volatile! #{})
+        describe-table    (fn [table-name table-nested-rows]
+                            (sort-by (juxt :table-name :database-position :name)
+                                     (describe-dataset-rows (nested-rows->table-lookup dataset-id table-nested-rows)
+                                                            dataset-id table-name (columns-by-table table-name))))]
     (eduction
-     (partition-by :table_name)
-     (mapcat (fn [table-rows]
-               (let [table-name (:table_name (first table-rows))]
-                 (->> (describe-dataset-rows (lookup-for-table table-name) dataset-id table-name table-rows)
-                      (sort-by (juxt :table-name :database-position :name))))))
-     columns-reducible)))
+     cat
+     [;; tables with nested fields: emit columns + nested STRUCT leaves
+      (eduction (partition-by :table_name)
+                (mapcat (fn [table-nested-rows]
+                          (let [table-name (:table_name (first table-nested-rows))]
+                            (vswap! nested-tables conj table-name)
+                            (describe-table table-name table-nested-rows))))
+                nested-reducible)
+      ;; remaining tables (no nested fields): emit columns only
+      (eduction (remove (fn [[table-name]] (contains? @nested-tables table-name)))
+                (mapcat (fn [[table-name]] (describe-table table-name nil)))
+                columns-by-table)])))
 
 ;; we redef this in a test, don't make `^:const`!
 (def ^:private num-table-partitions
