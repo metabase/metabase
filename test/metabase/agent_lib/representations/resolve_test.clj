@@ -134,6 +134,36 @@
       (is (schema-valid? q)))))
 
 ;;; ============================================================
+;;; temporal literals in :absolute-datetime get parsed to java.time
+;;; ============================================================
+
+(deftest parse-absolute-datetime-literals-test
+  (testing (str "string literals inside `:absolute-datetime` (as produced by the repair pass for "
+                "`between` date bounds) are parsed into `java.time` values so the resolved pMBQL is "
+                "executable by the QP (optimize-temporal-filters demands a real Temporal)")
+    (let [parsed {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "filters"      [["between" {}
+                                                ["field" {"temporal-unit" "month"}
+                                                 ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
+                                                ["absolute-datetime" {} "2024-01-01" "day"]
+                                                ["absolute-datetime" {} "2024-12-31" "day"]]]}]}
+          q      (repr.resolve/resolve-query mp parsed)
+          [op _opts _field lower upper] (get-in q [:stages 0 :filters 0])]
+      (is (= :between op))
+      (testing "both bounds are parsed `:absolute-datetime` clauses carrying java.time values"
+        (doseq [[_tag _opts t unit] [lower upper]]
+          (is (instance? java.time.temporal.Temporal t))
+          (is (= java.time.LocalDate (class t)))
+          (is (= :day unit))))
+      (is (= (java.time.LocalDate/parse "2024-01-01") (nth lower 2)))
+      (is (= (java.time.LocalDate/parse "2024-12-31") (nth upper 2)))
+      (testing "query passes lib.schema/query"
+        (is (schema-valid? q))))))
+
+;;; ============================================================
 ;;; fields (projection)
 ;;; ============================================================
 

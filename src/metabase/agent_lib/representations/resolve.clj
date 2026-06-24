@@ -34,7 +34,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.util.log :as log]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
+   [metabase.util.time.impl-common :as u.time.impl-common]))
 
 (set! *warn-on-reflection* true)
 
@@ -99,6 +101,42 @@
        node))
    pmbql-query))
 
+(defn- parseable-temporal-string?
+  "True when `s` is a date or datetime string literal that [[u.date/parse]] can turn into a
+  `java.time` value. Year / year-month strings (valid only inside `:absolute-datetime`) are
+  intentionally excluded — they are left untouched."
+  [s]
+  (and (string? s)
+       (boolean (or (re-matches u.time.impl-common/local-date-regex s)
+                    (re-matches u.time.impl-common/local-datetime-regex s)
+                    (re-matches u.time.impl-common/offset-datetime-regex s)))))
+
+(defn- parse-absolute-datetime-literals
+  "Walk a normalized pMBQL query and parse string literals inside `:absolute-datetime` clauses into
+  `java.time` values.
+
+  The repair pass (and the portable wire format in general) represents temporal literals as ISO
+  strings — e.g. it wraps `between` date bounds as `[:absolute-datetime {} \"2024-01-01\" :day]`.
+  That string form is schema-valid (Lib accepts string temporal literals, and on CLJS they are the
+  only representation), but the JVM query processor expects a real `java.time` value: middleware
+  like `optimize-temporal-filters` walks `:absolute-datetime` clauses and feeds the literal to
+  functions that demand a `java.time.temporal.Temporal`, throwing on a bare string. Since the QP's
+  own `wrap-value-literals` only parses temporal strings that arrive as *raw* values (not ones
+  already wrapped in `:absolute-datetime`), we parse them here as part of producing QP-ready pMBQL.
+
+  Idempotent: clauses whose literal is already a `java.time` value (or a year / year-month string)
+  are left unchanged."
+  [pmbql-query]
+  (walk/postwalk
+   (fn [node]
+     (if (and (vector? node)
+              (= :absolute-datetime (nth node 0 nil))
+              (map? (nth node 1 nil))
+              (parseable-temporal-string? (nth node 2 nil)))
+       (assoc node 2 (u.date/parse (nth node 2)))
+       node))
+   pmbql-query))
+
 (defn resolve-query
   "Convert a parsed (string-keyed, portable) representations query into a canonical, numeric-ID,
   `:lib/uuid`-stamped MBQL 5 query attached to `metadata-provider`.
@@ -117,7 +155,8 @@
          resolved (resolve/import-mbql resolver kw-form)
          with-mp  (assoc resolved :lib/metadata metadata-provider)]
      (-> (lib.normalize/normalize ::lib.schema/query with-mp)
-         (annotate-field-types metadata-provider)))))
+         (annotate-field-types metadata-provider)
+         parse-absolute-datetime-literals))))
 
 ;;; ============================================================
 ;;; Export final pMBQL back to portable representations
