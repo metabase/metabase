@@ -2167,7 +2167,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       // queryBuilderMain()
       //   .findByText("There was a problem with your question")
       //   .should("not.exist");
-      // queryBuilderMain().findByText("No results!").should("be.visible");
+      // queryBuilderMain().findByText("No results").should("be.visible");
 
       H.openNotebook();
       H.verifyNotebookQuery("Orders", [
