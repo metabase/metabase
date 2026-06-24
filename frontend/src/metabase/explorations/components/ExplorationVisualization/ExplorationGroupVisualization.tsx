@@ -68,13 +68,14 @@ export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
   return (
-    <Stack flex={1} h="100%" py="3rem" pr="2.25rem" align="center">
+    <Stack flex={1} h="100%" pb="3rem" pr="1rem" align="center">
       <Stack
         flex={1}
         w="100%"
         bg="background-primary"
         bd="1px solid border"
         bdrs="md"
+        h="100%"
       >
         <ErrorBoundary errorComponent={ErrorComponent}>
           <ExplorationGroupVisualizationBody {...props} />
@@ -272,8 +273,8 @@ function ExplorationGroupVisualizationChart({
   }
 
   return (
-    <Group flex={1} align="stretch" gap={0}>
-      <Stack flex={1} p="lg" className={S.chartGridContainer}>
+    <Group flex={1} gap={0} mih={0}>
+      <Stack flex={1} p="lg" className={S.chartGridContainer} h="100%">
         <ExplorationVisualizationHeader
           name={groupName}
           explorationId={explorationId}
@@ -320,7 +321,7 @@ function ExplorationGroupVisualizationChart({
         />
       </Stack>
       {isCommentsSidebarOpen && (
-        <Box w="23rem" className={S.commentsSidebar}>
+        <Box w="23rem" h="100%" className={S.commentsSidebar}>
           <Comments
             commentTarget={{
               target_id: explorationId,

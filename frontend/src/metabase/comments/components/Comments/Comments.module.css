@@ -1,3 +1,10 @@
+.tabsContainer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .tabsList {
   position: sticky;
   top: 0;
@@ -6,6 +13,6 @@
 }
 
 .tabPanel {
-  height: calc(100dvh - 160px);
   overflow-y: auto;
+  padding-bottom: 1.5rem;
 }

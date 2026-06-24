@@ -23,6 +23,7 @@ import {
   Flex,
   Icon,
   Image,
+  Stack,
   Tabs,
   Text,
   Title,
@@ -199,7 +200,7 @@ export const Comments = ({
   }
 
   return (
-    <>
+    <Stack gap={0} h="100%">
       {(title || showCloseButton) && (
         <Flex
           px="xl"
@@ -218,6 +219,7 @@ export const Comments = ({
       )}
 
       <Tabs
+        className={S.tabsContainer}
         value={activeTab}
         onChange={(value) => {
           setActiveTab(value as SidesheetTab);
@@ -284,7 +286,7 @@ export const Comments = ({
           />
         </Tabs.Panel>
       </Tabs>
-    </>
+    </Stack>
   );
 };
 
