@@ -333,7 +333,15 @@
                              (catch Exception _ nil)))
             t-dim-id     (:temporal_dimension_id params)
             t-target     (when t-dim-id (qp.mbql/find-dimension-target t-dim-id mappings))
-            t-thread-dim (when t-dim-id (get dim-by-id t-dim-id))]
+            t-thread-dim (when t-dim-id (get dim-by-id t-dim-id))
+            ;; Adaptive-loop drilled survivors carry an accumulating filter path
+            ;; (`{:dimension_id :value}` pairs). Resolve each dim's target here,
+            ;; where the metric mappings live; the runner folds it onto the query.
+            filter-path  (->> (:filter_path params)
+                              (keep (fn [{:keys [dimension_id value]}]
+                                      (when-let [tgt (qp.mbql/find-dimension-target dimension_id mappings)]
+                                        {:target tgt :value value})))
+                              vec)]
         {:mp              mp
          :card            card
          :target          target
@@ -341,6 +349,7 @@
          :dim-label       (or (:display_name thread-dim) dimension_id)
          :segment         segment
          :params          params
+         :filter-path     filter-path
          :temporal-target t-target
          :temporal-dim    t-thread-dim}))))
 

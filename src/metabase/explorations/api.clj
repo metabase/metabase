@@ -148,9 +148,20 @@
   [thread groups card-name-by-id card-dim-by-id]
   (let [enriched-groups (enrich-group-dimensions groups card-dim-by-id)
         ;; Label queries first so group-tree can name metric-anchored leaves "By <dimension>".
-        labeled         (attach-query-dimension-labels thread enriched-groups card-dim-by-id)]
-    (assoc labeled :groups (explorations.groups/group-tree
-                            enriched-groups (:queries labeled) card-name-by-id))))
+        labeled         (attach-query-dimension-labels thread enriched-groups card-dim-by-id)
+        ;; group-tree reads the *unsuffixed* names (its leaf-name fallback), so compute it
+        ;; before appending the drill context to each query's title.
+        tree            (explorations.groups/group-tree
+                         enriched-groups (:queries labeled) card-name-by-id)
+        dim-labels      (into {} (map (juxt :dimension_id (some-fn :display_name :dimension_id)))
+                              (mapcat :dimensions enriched-groups))]
+    (-> labeled
+        (update :queries
+                (fn [qs]
+                  (mapv (fn [q]
+                          (update q :name #(when % (str % (explorations.groups/filter-path-suffix dim-labels q)))))
+                        qs)))
+        (assoc :groups tree))))
 
 (defn- attach-threads-read-data
   "Batch [[attach-thread-read-data]] across `threads`: select every thread's groups and the
