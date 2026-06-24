@@ -1015,7 +1015,9 @@
         ;; Regular groups: compute based on All Users group
         (let [au-id    (t2/select-one-pk :model/PermissionsGroup
                                          :magic_group_type "all-internal-users")
-              au-perms (t2/select :model/DataPermissions :group_id au-id)
+              au-perms (t2/select :model/DataPermissions
+                                  {:select-distinct [:db_id :perm_type :perm_value]
+                                   :where [:= :group_id au-id]})
               au-by-db (reduce (fn [acc {:keys [db_id perm_type perm_value]}]
                                  (update-in acc [db_id perm_type] (fnil conj #{}) perm_value))
                                {}
