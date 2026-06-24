@@ -323,7 +323,7 @@ const configs = [
     files: [
       "**/*.unit.spec.*",
       "frontend/src/metabase/admin/**/*",
-      "frontend/src/metabase/monitor/**/*",
+      "frontend/src/metabase/monitor/tools/**/*",
       "frontend/src/metabase/setup/**/*",
       "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
       "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
