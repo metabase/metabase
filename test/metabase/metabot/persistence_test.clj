@@ -149,6 +149,28 @@
   (testing "empty input"
     (is (= [] (into [] (metabot-persistence/combine-text-parts-xf) [])))))
 
+(deftest ^:parallel parts->storable-content-preserves-non-map-tool-result-test
+  ;; Regression: a non-map tool result used to throw in `select-keys`, failing the turn's persist.
+  (testing "a bare string/scalar tool result is stored as-is under :output"
+    (is (= [{:type "tool-search" :toolCallId "c1" :state "output-available"
+             :input {:q "x"} :output "just a string"}]
+           (metabot-persistence/parts->storable-content
+            [{:type :tool-input :id "c1" :function "search" :arguments {:q "x"}}
+             {:type :tool-output :id "c1" :result "just a string"}]))))
+  (testing "a map result still trims to {:output … :structured_output …}"
+    (is (= [{:type "tool-search" :toolCallId "c1" :state "output-available"
+             :input {} :output {:output "rows" :structured_output {:query-id "q"}}}]
+           (metabot-persistence/parts->storable-content
+            [{:type :tool-input :id "c1" :function "search" :arguments {}}
+             {:type   :tool-output :id "c1"
+              :result {:output "rows" :structured-output {:query-id "q" :resources [:drop-me]}}}]))))
+  (testing "a nil result passes through as nil :output"
+    (is (= [{:type "tool-search" :toolCallId "c1" :state "output-available"
+             :input {} :output nil}]
+           (metabot-persistence/parts->storable-content
+            [{:type :tool-input :id "c1" :function "search" :arguments {}}
+             {:type :tool-output :id "c1" :result nil}])))))
+
 (deftest start-turn-persists-slack-metadata-on-rows-test
   (testing "start-turn! lands slack-team-id / channel-id / slack-thread-ts on the conversation row,
             and slack-msg-id / channel-id / user-id on the user message row, plus user-id on the

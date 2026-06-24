@@ -31,17 +31,21 @@
     (not-empty (select-keys structured persisted-structured-output-keys))))
 
 (defn- tool-result->storable-output
-  "The stored `:output` value for a v2 tool part: the trimmed result map. Keeps
-  `:output` (all the LLM adapters read on history replay) and the
-  `persisted-structured-output-keys` subset of structured output (what the
-  analytics extractor reads off persisted messages), canonicalized to
-  `:structured_output`. Everything else (`:resources`, `:data-parts`,
-  `:reactions`, …) is dropped — that's where the bulk of the bloat lives."
+  "The stored `:output` value for a v2 tool part. A map result is trimmed to
+  `:output` (the LLM-facing text adapters read on history replay) plus the
+  `persisted-structured-output-keys` subset of structured output, canonicalized
+  to `:structured_output`; everything else (`:resources`, `:data-parts`,
+  `:reactions`, …) is dropped — that's where the bulk of the bloat lives. A
+  non-map result (a tool that returned a bare string/scalar) is stored as-is —
+  the v2 part schema types `:output` as any JSON value — so readers must
+  tolerate a non-map `:output` (see [[metabase.slackbot.persistence]])."
   [result]
-  (let [structured (trim-structured-output (or (:structured-output result)
-                                               (:structured_output result)))]
-    (cond-> (select-keys result [:output])
-      structured (assoc :structured_output structured))))
+  (if (map? result)
+    (let [structured (trim-structured-output (or (:structured-output result)
+                                                 (:structured_output result)))]
+      (cond-> (select-keys result [:output])
+        structured (assoc :structured_output structured)))
+    result))
 
 (defn internal-parts->storable
   "Convert internal agent-loop parts to v2 at-rest parts

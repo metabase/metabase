@@ -30,7 +30,11 @@
                          :tool_call_id (:toolCallId part)
                          :content      (if (= "output-error" state)
                                          (or (:errorText part) "Tool execution failed")
-                                         (or (get-in part [:output :output]) ""))})]
+                                         ;; a map result stores the LLM text under
+                                         ;; `[:output :output]`; a non-map result (a
+                                         ;; bare string/scalar) is stored flat under `:output`
+                                         (let [output (:output part)]
+                                           (or (if (map? output) (:output output) output) "")))})]
       (cond-> [tool-call]
         tool-result (conj tool-result)))))
 

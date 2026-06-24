@@ -153,6 +153,31 @@
                     :content      ""}
                    (second msgs)))))))))
 
+(deftest message-history-flat-string-output-test
+  (testing "a tool part whose :output is a bare string (not a map) replays that string as the tool content"
+    (let [conv-id  (str (random-uuid))
+          slack-ts "1712000000.000003"
+          call-id  "call-flat"]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    slack-ts
+                     :role            "assistant"
+                     :profile_id      "slackbot"
+                     :total_tokens    3
+                     :data            [{:type       "tool-search"
+                                        :toolCallId call-id
+                                        :state      "output-available"
+                                        :input      {:q "x"}
+                                        :output     "just a string"}]
+                     :data_version    2})
+        (let [msgs (get (slackbot.persistence/message-history conv-id #{slack-ts}) slack-ts)]
+          (is (= {:role         :tool
+                  :tool_call_id call-id
+                  :content      "just a string"}
+                 (second msgs))))))))
+
 (deftest message-history-migrates-v1-rows-test
   (testing "data_version 1 rows are upgraded on read and replay through the v2 history reader"
     (let [conv-id  (str (random-uuid))
