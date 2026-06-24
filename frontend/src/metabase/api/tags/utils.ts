@@ -1,6 +1,7 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { isNotNull } from "metabase/utils/types";
 import type {
   Alert,
   ApiKey,
@@ -47,6 +48,7 @@ import type {
   Segment,
   Table,
   TableIndex,
+  TableIndexEntry,
   TableRemapping,
   Task,
   TaskRun,
@@ -681,9 +683,15 @@ export function provideTableIndexTags(
 }
 
 export function provideTableIndexListTags(
-  indexes: TableIndex[],
+  indexes: TableIndexEntry[],
 ): TagDescription<TagType>[] {
-  return [listTag("table-index"), ...indexes.flatMap(provideTableIndexTags)];
+  return [
+    listTag("table-index"),
+    ...indexes
+      .map((index) => index.request)
+      .filter(isNotNull)
+      .flatMap(provideTableIndexTags),
+  ];
 }
 
 export function provideTableListTags(

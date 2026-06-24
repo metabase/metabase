@@ -3,6 +3,7 @@ import type {
   ListTableIndexesRequest,
   ListTableIndexesResponse,
   TableIndex,
+  TableIndexEntry,
   TableIndexId,
   UpdateTableIndexRequest,
 } from "metabase-types/api";
@@ -18,26 +19,29 @@ import {
 
 export const indexManagerApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    listTableIndexes: builder.query<TableIndex[], ListTableIndexesRequest>({
-      query: (params) => ({
-        method: "GET",
-        url: "/api/indexes",
-        params,
-      }),
-      transformResponse: (response: ListTableIndexesResponse) => response.data,
-      providesTags: (indexes = []) => provideTableIndexListTags(indexes),
-    }),
+    listTableIndexes: builder.query<TableIndexEntry[], ListTableIndexesRequest>(
+      {
+        query: (params) => ({
+          method: "GET",
+          url: "/api/indexes",
+          params,
+        }),
+        transformResponse: (response: ListTableIndexesResponse) =>
+          response.data,
+        providesTags: (indexes = []) => provideTableIndexListTags(indexes),
+      },
+    ),
     getTableIndex: builder.query<TableIndex, TableIndexId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/indexes/${id}`,
+        url: `/api/indexes/request/${id}`,
       }),
       providesTags: (index) => (index ? provideTableIndexTags(index) : []),
     }),
     createTableIndex: builder.mutation<TableIndex, CreateTableIndexRequest>({
       query: (body) => ({
         method: "POST",
-        url: "/api/indexes",
+        url: "/api/indexes/request",
         body,
       }),
       invalidatesTags: (_index, error) =>
@@ -46,7 +50,7 @@ export const indexManagerApi = Api.injectEndpoints({
     updateTableIndex: builder.mutation<TableIndex, UpdateTableIndexRequest>({
       query: ({ id, structured }) => ({
         method: "PUT",
-        url: `/api/indexes/${id}`,
+        url: `/api/indexes/request/${id}`,
         body: { structured },
       }),
       invalidatesTags: (_index, error, { id }) =>
@@ -58,7 +62,7 @@ export const indexManagerApi = Api.injectEndpoints({
     deleteTableIndex: builder.mutation<void, TableIndexId>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/indexes/${id}`,
+        url: `/api/indexes/request/${id}`,
       }),
       invalidatesTags: (_index, error, id) =>
         invalidateTags(error, [

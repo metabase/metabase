@@ -105,12 +105,27 @@ export type TableIndex = {
   last_executed_at: string | null;
 };
 
+export type TableIndexEntry = {
+  metabase_managed: boolean;
+  present_in_warehouse: boolean;
+  name: string | null;
+  kind: string;
+  key_columns: string[];
+  include_columns: (string | null)[];
+  is_unique: boolean;
+  is_primary: boolean;
+  is_valid: boolean;
+  partial_predicate: string | null;
+  access_method: string | null;
+  request?: TableIndex;
+};
+
 export type ListTableIndexesRequest = {
   "transform-id": TransformId;
 };
 
 export type ListTableIndexesResponse = {
-  data: TableIndex[];
+  data: TableIndexEntry[];
 };
 
 export type CreateTableIndexRequest = {
