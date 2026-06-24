@@ -10,6 +10,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
+   [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -49,6 +50,12 @@
   []
   (when (available?)
     (task/trigger-now! sync-job-key)))
+
+(defenterprise library-entity-keys
+  "Live set of `[entity_type entity_local_id]` for entities currently in the library (see the OSS shim)."
+  :feature :semantic-search
+  []
+  (reconcile/library-entity-keys))
 
 (def ^:private default-limit 10)
 

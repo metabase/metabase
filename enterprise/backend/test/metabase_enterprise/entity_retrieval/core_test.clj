@@ -138,6 +138,11 @@
                         (is (=? [{:type "table" :id table-id :matched_doc_type "synonym" :matched_text synonym
                                   :usage_instructions "Group by month." :similarity (approx 1.0)}]
                                 (search!))))
+                      (testing "an entity that has left the library is post-filtered out before the index catches up"
+                        ;; unpublish without reconciling: the index still holds the docs, but the tool drops
+                        ;; the hit because the table is no longer a current library member.
+                        (mt/with-temp-vals-in-db :model/Table table-id {:is_published false}
+                          (is (empty? (search!)))))
                       (testing "deleting the ai_context via the CRUD API + reconcile drops the synonym doc"
                         (mt/user-http-request :crowberto :delete 204 (str "osi/ai-context/" cse-id))
                         (reconcile/reconcile! ds semantic.tu/mock-embedding-model)

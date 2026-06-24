@@ -22,3 +22,11 @@
   metabase-enterprise.entity-retrieval.core
   [_user-search-prompt _limit]
   [])
+
+(defenterprise library-entity-keys
+  "Set of `[entity_type entity_local_id]` for every entity currently in the library; nil in OSS.
+  The tool drops index hits whose entity has since left the library (the index is eventually consistent),
+  computing membership live the way reconcile does."
+  metabase-enterprise.entity-retrieval.core
+  []
+  nil)

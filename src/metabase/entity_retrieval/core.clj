@@ -15,6 +15,7 @@
 
 (p/import-vars
  [metabase.entity-retrieval.mirror
+  library-entity-keys
   search])
 
 (defn ai-context-instructions

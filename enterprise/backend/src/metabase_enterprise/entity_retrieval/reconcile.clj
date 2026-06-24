@@ -111,6 +111,13 @@
          (map (fn [m] (->library-entity "measure" (:id m) (:name m) (:description m))) measures)
          (map (fn [s] (->library-entity "segment" (:id s) (:name s) (:description s))) segments))))))
 
+(defn library-entity-keys
+  "Set of `[entity_type entity_local_id]` for every entity currently in the library.
+  The tool post-filters its index hits against this so a stale index never surfaces an entity that has
+  since left the library, the same way it post-filters on read permissions."
+  []
+  (into #{} (map (juxt :entity_type :entity_local_id)) (library-entities)))
+
 (defn- ai-context-by-entity
   "Map of `[entity_type entity_local_id] -> ai_context` for every `osi_ai_context` row."
   []
