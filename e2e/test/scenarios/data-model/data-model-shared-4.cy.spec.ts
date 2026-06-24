@@ -462,10 +462,14 @@ function verifyToastAndUndo(message: string) {
   // mutate in place). The original auto-dismisses, but the dismiss can lag
   // past Cypress's 4s retry window, so cy.findByTestId("toast-undo")
   // singular sees two elements and fails with "Found multiple elements".
-  // Scope each step to the toast matching the expected text so we always
-  // operate on the right one.
-  H.undoToastList().filter(`:contains("${message}")`).first().should("contain.text", message);
-  H.undoToastList().filter(`:contains("${message}")`).first().button("Undo").click();
-  H.undoToastList().filter(':contains("Change undone")').first().should("contain.text", "Change undone");
-  H.undoToastList().filter(':contains("Change undone")').first().icon("close").click({ force: true });
+  // Assert against the list (waits for the expected toast), then scope the
+  // action to that toast so we never act on the wrong one.
+  const toast = (text: string) =>
+    H.undoToastList().filter(`:contains("${text}")`).first();
+
+  H.undoToastList().should("contain.text", message);
+  toast(message).button("Undo").click();
+
+  H.undoToastList().should("contain.text", "Change undone");
+  toast("Change undone").icon("close").click({ force: true });
 }
