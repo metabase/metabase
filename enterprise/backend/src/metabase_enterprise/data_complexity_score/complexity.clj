@@ -952,7 +952,10 @@
             ;; three. Per-catalog timing only applies to the pure scoring step.
             ;; `collection-counts` (nil when a caller stubs enumerate-catalogs without it) feeds each
             ;; catalog's `:collection-count` ctx; a missing count degrades `collection-tree-size` to 0.
-            (time-phase! "enumerate" "all" #(enumerate-catalogs metabot-scope))
+            ;; Level 0 disables scoring, so skip enumeration entirely — `score-catalog` short-circuits
+            ;; to `{:components {}}` without reading entities, so there's nothing to enumerate for.
+            (when (pos? ^long level)
+              (time-phase! "enumerate" "all" #(enumerate-catalogs metabot-scope)))
             ctx-for        (fn [catalog] {:collection-count (get collection-counts catalog) :level level})
             universe-score (time-phase! "score" "universe" #(score-catalog universe (ctx-for :universe) embedder))
             library-score  (time-phase! "score" "library"  #(score-catalog library  (ctx-for :library)  embedder))
