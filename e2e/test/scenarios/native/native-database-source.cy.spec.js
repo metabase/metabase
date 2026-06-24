@@ -17,6 +17,7 @@ describe(
       cy.intercept("PUT", "/api/setting/last-used-native-database-id").as(
         "persistDatabase",
       );
+      cy.intercept("GET", "/api/database?saved=true").as("databasePickerData");
 
       H.restore("postgres-12");
       cy.signInAsAdmin();
@@ -380,11 +381,16 @@ function assertNoDatabaseSelected() {
   );
 }
 
-// The database picker list is rebuilt from query metadata, which streams in
-// asynchronously. While it settles, the picker's virtualized rows re-render and
-// the option being clicked can detach from the DOM mid-click. Anchor on the
-// fully populated list before selecting so the click lands on a stable node.
+// The database picker auto-opens before its options finish loading. The legacy
+// DataSelector fetches the database list on open and re-derives its state every
+// time the `metadata` prop gets a fresh reference (which happens on each store
+// update), so the option rows keep remounting until those fetches settle —
+// detaching the row mid-click. Waiting only for the options to be present isn't
+// enough: they're present throughout the remount storm. Wait for the picker's
+// own database fetch to finish so the store quiets and the rows stop remounting,
+// then confirm both options rendered, so the click lands on a stable node.
 function waitForDatabasePicker() {
+  cy.wait("@databasePickerData");
   H.popover()
     .should("contain", "Sample Database")
     .and("contain", postgresName);
