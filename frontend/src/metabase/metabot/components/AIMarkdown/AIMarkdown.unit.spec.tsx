@@ -68,7 +68,7 @@ describe("AIMarkdown", () => {
 
     expect(await screen.findByText(/start/)).toBeInTheDocument();
     expect(screen.getByText(/end/)).toBeInTheDocument();
-    expect(document.querySelector("img")).not.toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("should copy fenced code blocks", async () => {
