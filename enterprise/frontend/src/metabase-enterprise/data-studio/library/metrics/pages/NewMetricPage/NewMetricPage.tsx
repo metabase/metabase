@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { Link, type Route } from "react-router";
 import { t } from "ttag";
 
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { NewMetricPage } from "metabase/metrics/pages/NewMetricPage";
 import * as Urls from "metabase/urls";
 

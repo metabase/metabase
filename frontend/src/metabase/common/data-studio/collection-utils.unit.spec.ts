@@ -2,7 +2,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
-import { canPlaceEntityInCollection } from "./utils";
+import { canPlaceEntityInCollection } from "./collection-utils";
 
 describe("canPlaceEntityInCollection", () => {
   beforeEach(() => {
