@@ -36,6 +36,7 @@
           :inline_parameters      []}
          dashcard))
 
+;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
   [dashcard]
   (if (contains? dashcard :visualization_settings)
