@@ -455,7 +455,7 @@ describe(
               SOURCE_TABLE_LABEL,
               COMPATIBLE_TARGET_LABEL,
             );
-            waitForNativeQueryRewrite(body.id, COMPATIBLE_TARGET);
+            waitForCardToReturnValue(body.id, COMPATIBLE_TARGET_ROW_VALUE);
             H.visitQuestion(body.id);
             assertTargetRowVisible();
             H.main().findByText(SOURCE_ROW_VALUE).should("not.exist");
@@ -920,30 +920,39 @@ function replaceSourceWithTarget(
 // The replacement run can report `succeeded` before every dependent card's
 // stored query has been rewritten to the new table — so visiting a dependent
 // question right after `waitForReplacementToComplete` can re-run the *old*
-// query and render stale source rows. Poll the card until its native SQL
-// actually references the target table before visiting.
-function waitForNativeQueryRewrite(cardId: number, targetTableName: string) {
+// query and render stale source rows. Poll the card's *query result* until it
+// returns a row from the target table before visiting. Asserting on the
+// rendered result (rather than the stored SQL text) keeps this robust to how
+// the backend quotes/qualifies the rewritten table name in native SQL.
+function waitForCardToReturnValue(cardId: number, expectedValue: string) {
   const POLL_INTERVAL_MS = 250;
   const POLL_TIMEOUT_MS = 30_000;
   const MAX_ATTEMPTS = POLL_TIMEOUT_MS / POLL_INTERVAL_MS;
 
-  const pollCard = (attempt = 0): void => {
+  const pollResult = (attempt = 0): void => {
     if (attempt >= MAX_ATTEMPTS) {
       throw new Error(
-        `Card ${cardId} native query was not rewritten to reference "${targetTableName}" within ${POLL_TIMEOUT_MS}ms`,
+        `Card ${cardId} query did not return "${expectedValue}" within ${POLL_TIMEOUT_MS}ms`,
       );
     }
 
-    cy.request("GET", `/api/card/${cardId}`).then(({ body }) => {
-      const nativeQuery: string = body?.dataset_query?.native?.query ?? "";
-      if (nativeQuery.includes(targetTableName)) {
+    cy.request({
+      method: "POST",
+      url: `/api/card/${cardId}/query`,
+      body: { ignore_cache: true },
+    }).then(({ body }) => {
+      const rows: unknown[][] = body?.data?.rows ?? [];
+      const found = rows.some((row) =>
+        row.some((cell) => String(cell).includes(expectedValue)),
+      );
+      if (found) {
         return;
       }
-      return cy.wait(POLL_INTERVAL_MS).then(() => pollCard(attempt + 1));
+      cy.wait(POLL_INTERVAL_MS).then(() => pollResult(attempt + 1));
     });
   };
 
-  pollCard();
+  pollResult();
 }
 
 function createSourceQuestion(
