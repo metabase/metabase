@@ -56,6 +56,9 @@ describe(
       cy.intercept("GET", "/api/ee/dependencies/graph/dependents*").as(
         "dependents",
       );
+      cy.intercept("POST", "/api/ee/replacement/check-replace-source").as(
+        "checkReplaceSource",
+      );
     });
 
     describe("Successful replacements", () => {
@@ -843,6 +846,12 @@ function pickTarget(targetTableLabel: string) {
     .contains(targetTableLabel)
     .closest("a")
     .click();
+
+  // Selecting a target triggers the compatibility check that populates the
+  // modal body (column comparison + the "N items will be changed" tab). Wait
+  // for that response so the tabs are guaranteed present before any assertion
+  // races it — the modal renders an empty state until column_mappings arrive.
+  cy.wait("@checkReplaceSource");
 }
 
 function confirmReplacement() {
