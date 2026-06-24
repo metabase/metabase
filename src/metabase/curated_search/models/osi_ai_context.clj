@@ -1,6 +1,6 @@
 (ns metabase.curated-search.models.osi-ai-context
   "The `osi_ai_context` appdb table: one row per library entity holding OSI `ai_context` metadata
-  (`{instructions, synonyms[], examples[]}`) for the entity referenced by `:entity`.
+  (`{instructions, synonyms[], examples[]}`) for the entity identified by `entity_type`/`entity_local_id`.
 
   This table is authoritative.
   An enterprise pgvector index (`library_entity_index`) is reconciled against this table plus live
@@ -24,8 +24,7 @@
 
 (t2/deftransforms :model/OsiAiContext
   ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly.
-  {:entity     mi/transform-json
-   :ai_context mi/transform-json})
+  {:ai_context mi/transform-json})
 
 ;;; Each write nudges the enterprise background sync, which reconciles the pgvector mirror against this
 ;;; table. The nudge is fire-and-forget (no-op in OSS, error-swallowing in EE), so appdb writes never
@@ -48,13 +47,13 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-;;; `entity` is a polymorphic reference — `{:model "table"|"card"|"model"|"metric"|"question" :id <local-id>}`.
-;;; On export we swap the local id for a portable reference (a Card's entity_id, or a Table's
-;;; `[db schema table]` path) and reverse it on import, mirroring `serdes/export-viz-link-card`.
+;;; The entity ref is `entity_type` plus a local `entity_local_id`. On export we copy `entity_type` and
+;;; swap `entity_local_id` for a portable reference (a Card's entity_id, or a Table's `[db schema table]`
+;;; path), reversing it on import — mirroring `serdes/export-viz-link-card`.
 
-(def ^:private entity-model->toucan
-  "Toucan model each entity ref `:model` string resolves to. Tables get the table-fk treatment instead.
-  The card flavors (the `:model` mirrors the agent's `read_resource` resource type) all map to Card."
+(def ^:private entity-type->toucan
+  "Toucan model each `entity_type` resolves to. Tables get the table-fk treatment instead.
+  The card flavors (the type mirrors the agent's `read_resource` resource type) all map to Card."
   {"card"     :model/Card
    "model"    :model/Card
    "metric"   :model/Card
@@ -62,37 +61,38 @@
    "measure"  :model/Measure
    "segment"  :model/Segment})
 
-(defn- export-entity-ref [{:keys [model id] :as entity}]
+(defn- export-entity-local-id [entity-type id]
   (cond
-    (= model "table")              (assoc entity :id (serdes/*export-table-fk* id))
-    (entity-model->toucan model)   (assoc entity :id (serdes/*export-fk* id (entity-model->toucan model)))
-    ;; Unmapped model string: leave the ref as-is rather than aborting the whole export
+    (= entity-type "table")           (serdes/*export-table-fk* id)
+    (entity-type->toucan entity-type) (serdes/*export-fk* id (entity-type->toucan entity-type))
+    ;; Unmapped type: leave the raw id rather than aborting the whole export
     ;; (same forgiving behavior as serdes/export-viz-link-card).
-    :else                          entity))
+    :else                             id))
 
-(defn- import-entity-ref [{:keys [model id] :as entity}]
+(defn- import-entity-local-id [entity-type id]
   (cond
-    (= model "table")            (assoc entity :id (serdes/*import-table-fk* id))
-    (entity-model->toucan model) (assoc entity :id (serdes/*import-fk* id (entity-model->toucan model)))
-    :else                        entity))
+    (= entity-type "table")           (serdes/*import-table-fk* id)
+    (entity-type->toucan entity-type) (serdes/*import-fk* id (entity-type->toucan entity-type))
+    :else                             id))
 
-;;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it
-;;; copies verbatim. The entity ref still needs portable rewriting via the transform below.
+;;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
+;;; verbatim, as does `entity_type`. Only `entity_local_id` needs portable rewriting, dispatched on its
+;;; row's `entity_type` — hence `:export-with-context`, which sees the whole row.
 (defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
-  {:copy      [:entity_id :ai_context]
-   :transform {:created_at (serdes/date)
-               :updated_at (serdes/date)
-               :entity     {:export export-entity-ref
-                            :import import-entity-ref}}})
+  {:copy      [:entity_id :entity_type :ai_context]
+   :transform {:created_at      (serdes/date)
+               :updated_at      (serdes/date)
+               :entity_local_id {:export-with-context (fn [row _k id] (export-entity-local-id (:entity_type row) id))
+                                 :import-with-context (fn [row _k id] (import-entity-local-id (:entity_type row) id))}}})
 
 (defn- entity-ref-label
-  "Slug source for serdes paths: the entity ref, e.g. \"metric-42\". (There is no longer a search_prompt.)"
-  [{{:keys [model id]} :entity}]
-  (str model "-" id))
+  "Slug source for serdes paths: the entity ref, e.g. \"metric-42\"."
+  [{:keys [entity_type entity_local_id]}]
+  (str entity_type "-" entity_local_id))
 
 (defmethod serdes/hash-fields :model/OsiAiContext
   [_model]
-  [:entity])
+  [:entity_type :entity_local_id])
 
 (defmethod serdes/generate-path "OsiAiContext" [_ entity]
   (serdes/maybe-labeled "OsiAiContext" entity entity-ref-label))
@@ -109,11 +109,12 @@
 ;; Validate how serdes export selection includes a top-level model from only a dependency edge before
 ;; changing direction.
 (defmethod serdes/dependencies "OsiAiContext"
-  [{{:keys [model id]} :entity}]
+  [{:keys [entity_type entity_local_id]}]
+  ;; entity_local_id here is the exported (portable) value: a [db schema table] path for tables, an
+  ;; entity_id for card/measure/segment refs.
   ;; A referenced Table is synthesized on import if missing, so (like link cards) we depend on its Database,
-  ;; not the Table itself.
-  ;; Card/measure/segment refs depend on that entity directly (its serdes model = the toucan model name).
+  ;; not the Table itself; card/measure/segment refs depend on that entity directly.
   (cond
-    (= model "table")            #{[{:model "Database" :id (first id)}]}
-    (entity-model->toucan model) #{[{:model (name (entity-model->toucan model)) :id id}]}
-    :else                        #{}))
+    (= entity_type "table")           #{[{:model "Database" :id (first entity_local_id)}]}
+    (entity-type->toucan entity_type) #{[{:model (name (entity-type->toucan entity_type)) :id entity_local_id}]}
+    :else                             #{}))

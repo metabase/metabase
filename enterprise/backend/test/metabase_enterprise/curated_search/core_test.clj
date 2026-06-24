@@ -96,9 +96,9 @@
 
 (defn- put-ai-context!
   "POST an ai_context entry through the CRUD API; returns the created row's id."
-  [entity ai-context]
+  [entity-type entity-local-id ai-context]
   (:id (mt/user-http-request :crowberto :post 200 "osi/ai-context/"
-                             {:entity entity :ai_context ai-context})))
+                             {:entity_type entity-type :entity_local_id entity-local-id :ai_context ai-context})))
 
 (deftest ^:sequential crud-api-to-tool-end-to-end-test
   (testing "CRUD API write -> reconcile -> pgvector -> retrieve_library_entities tool, end to end"
@@ -131,7 +131,7 @@
                                :model/Table      {table-id :id}  {:db_id db-id :collection_id data-id :is_published true
                                                                   :active true :name "orders" :display_name "orders"}]
                   (try
-                    (let [cse-id (put-ai-context! {:model "table" :id table-id}
+                    (let [cse-id (put-ai-context! "table" table-id
                                                   {:instructions "Group by month." :synonyms [synonym]})]
                       (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
                       (testing "the tool returns the table, matched on the curated synonym, with usage_instructions"
@@ -173,7 +173,7 @@
                                :model/Table      {beta :id}     {:db_id db-id :collection_id data-id :is_published true
                                                                  :active true :name "beta" :display_name "beta"}]
                   (try
-                    (put-ai-context! {:model "table" :id beta} {:synonyms [synonym]})
+                    (put-ai-context! "table" beta {:synonyms [synonym]})
                     (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
                     ;; raw NN would tie both at distance 0; the 0.02 vs 0.01 doc_type bump puts alpha's name first.
                     (is (= [[alpha "name"] [beta "synonym"]]

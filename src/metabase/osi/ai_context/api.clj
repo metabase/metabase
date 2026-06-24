@@ -8,23 +8,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private EntityRef
-  "Entity ref accepted on writes.
-  The model must be one the reconciler indexes as a library entity; anything else (e.g. a plain
-  `card`/`question`) would never match an index doc and is rejected."
-  ;; the reconciler keys library Cards by their type (metric/model) and indexes table-bound measures/segments.
-  [:map
-   [:model [:enum "table" "metric" "model" "measure" "segment"]]
-   [:id    ms/PositiveInt]
-   [:name  {:optional true} :string]])
-
-(def ^:private EntityRefOut
-  "Entity ref as returned on reads. `:model` is any string: rows can predate a model string's retirement
-  (serdes tolerates those too), and one legacy row must not fail response validation for a whole list."
-  [:map
-   [:model :string]
-   [:id    :int]
-   [:name  {:optional true} :string]])
+(def ^:private writable-entity-type
+  "Entity types accepted on writes. The reconciler keys library Cards by their type (metric/model) and
+  indexes table-bound measures/segments; a plain card/question would never match an index doc, so it's
+  rejected."
+  [:enum "table" "metric" "model" "measure" "segment"])
 
 (def ^:private AiContext
   "OSI ai_context blob. All fields optional; extra keys tolerated for forward-compat with the OSI spec."
@@ -34,21 +22,22 @@
    [:examples     {:optional true} [:sequential :string]]])
 
 (def ^:private Entry
+  "An ai_context row as returned on reads. `entity_type` is any string: a row can predate a type's
+  retirement (serdes tolerates those too), and one legacy row must not fail response validation for a list."
   [:map
-   [:id         ms/PositiveInt]
-   [:entity     EntityRefOut]
-   [:ai_context AiContext]])
+   [:id              ms/PositiveInt]
+   [:entity_type     :string]
+   [:entity_local_id :int]
+   [:ai_context      AiContext]])
 
 (def ^:private default-limit 50)
 (def ^:private default-offset 0)
 
 (defn- find-by-entity
-  "The existing row for this entity ref, matched on (model, id) only (the optional `:name` is ignored)."
-  [{:keys [model id]}]
-  ;; one row per entity is enforced here, not by a DB constraint — JSON-text uniqueness is brittle cross-DB.
-  (some (fn [{e :entity :as row}]
-          (when (and (= (:model e) model) (= (:id e) id)) row))
-        (t2/select :model/OsiAiContext)))
+  "The existing row for this entity, or nil.
+  One row per entity is enforced here at the app layer, not by a DB unique constraint."
+  [entity-type entity-local-id]
+  (t2/select-one :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
 
 (api.macros/defendpoint :get "/"
   :- [:map
@@ -84,36 +73,43 @@
   ai_context row it is updated in place rather than duplicated."
   [_route-params
    _query-params
-   {:keys [entity ai_context]}
+   {:keys [entity_type entity_local_id ai_context]}
    :- [:map
-       [:entity     EntityRef]
-       [:ai_context AiContext]]]
+       [:entity_type     writable-entity-type]
+       [:entity_local_id ms/PositiveInt]
+       [:ai_context      AiContext]]]
   (api/check-superuser)
-  (if-let [existing (find-by-entity entity)]
-    (do (t2/update! :model/OsiAiContext (:id existing) {:entity entity :ai_context ai_context})
-        (t2/select-one :model/OsiAiContext :id (:id existing)))
-    (t2/insert-returning-instance! :model/OsiAiContext {:entity entity :ai_context ai_context})))
+  (let [row {:entity_type entity_type :entity_local_id entity_local_id :ai_context ai_context}]
+    (if-let [existing (find-by-entity entity_type entity_local_id)]
+      (do (t2/update! :model/OsiAiContext (:id existing) row)
+          (t2/select-one :model/OsiAiContext :id (:id existing)))
+      (t2/insert-returning-instance! :model/OsiAiContext row))))
 
 (api.macros/defendpoint :put "/:id"
   :- Entry
-  "Update an ai_context entry by ID. Only the provided fields are changed; pointing `:entity` at an entity
-  that another row already owns is rejected, preserving one row per entity."
+  "Update an ai_context entry by ID. Only the provided fields are changed; pointing it at an entity that
+  another row already owns is rejected, preserving one row per entity. `entity_type` and `entity_local_id`
+  must be provided together."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    ;; patch semantics: presence of a key (not nil-ness of its value) decides what changes.
-   {:keys [entity ai_context] :as body}
+   {:keys [entity_type entity_local_id ai_context] :as body}
    :- [:map
-       [:entity     {:optional true} EntityRef]
-       [:ai_context {:optional true} AiContext]]]
+       [:entity_type     {:optional true} writable-entity-type]
+       [:entity_local_id {:optional true} ms/PositiveInt]
+       [:ai_context      {:optional true} AiContext]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/OsiAiContext :id id))
-  (when (contains? body :entity)
-    (let [owner (find-by-entity entity)]
+  (when (or (contains? body :entity_type) (contains? body :entity_local_id))
+    (api/check-400 (and (contains? body :entity_type) (contains? body :entity_local_id))
+                   "entity_type and entity_local_id must be provided together")
+    (let [owner (find-by-entity entity_type entity_local_id)]
       (api/check-400 (or (nil? owner) (= (:id owner) id))
                      "Another ai_context row already exists for that entity")))
   (let [changes (cond-> {}
-                  (contains? body :entity)     (assoc :entity entity)
-                  (contains? body :ai_context) (assoc :ai_context ai_context))]
+                  (contains? body :entity_type)     (assoc :entity_type entity_type)
+                  (contains? body :entity_local_id) (assoc :entity_local_id entity_local_id)
+                  (contains? body :ai_context)      (assoc :ai_context ai_context))]
     (when (seq changes)
       (t2/update! :model/OsiAiContext id changes)))
   (t2/select-one :model/OsiAiContext :id id))

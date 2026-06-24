@@ -25,9 +25,15 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: entity
-                  type: ${text.type}
-                  remarks: JSON entity ref ({model, id, name?}) this ai_context describes
+                  name: entity_type
+                  type: varchar(32)
+                  remarks: Type of entity this ai_context describes (table, metric, model, measure, segment)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_local_id
+                  type: bigint
+                  remarks: Local appdb id of the entity this ai_context describes
                   constraints:
                     nullable: false
               - column:

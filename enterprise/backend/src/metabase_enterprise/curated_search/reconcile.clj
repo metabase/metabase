@@ -109,8 +109,8 @@
 (defn- ai-context-by-entity
   "Map of `[entity_type entity_local_id] -> ai_context` for every `osi_ai_context` row."
   []
-  (u/index-by (fn [{e :entity}] [(:model e) (:id e)]) :ai_context
-              (t2/select [:model/OsiAiContext :entity :ai_context])))
+  (u/index-by (juxt :entity_type :entity_local_id) :ai_context
+              (t2/select [:model/OsiAiContext :entity_type :entity_local_id :ai_context])))
 
 (defn- desired-docs
   "The full set of docs the index should hold, deduped by `doc_id` (identical values collapse to one)."

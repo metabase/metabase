@@ -90,7 +90,7 @@
                        :model/Card       {metric-id :id}   {:type "metric" :collection_id metrics-id
                                                             :name "Revenue" :description "Total revenue"
                                                             :database_id db-id}
-                       :model/OsiAiContext {cse-id :id} {:entity {:model "table" :id table-id}
+                       :model/OsiAiContext {cse-id :id} {:entity_type "table" :entity_local_id table-id
                                                          :ai_context {:instructions "Group by month."
                                                                       :synonyms ["sales" "revenue"]
                                                                       :examples ["orders last month"]}}]

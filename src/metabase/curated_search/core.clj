@@ -8,7 +8,6 @@
   (:require
    [clojure.string :as str]
    [metabase.curated-search.mirror]
-   [metabase.util :as u]
    [potemkin :as p]
    [toucan2.core :as t2]))
 
@@ -19,15 +18,15 @@
   search])
 
 (defn ai-context-instructions
-  "Map of `[entity-model entity-id] -> instructions` for the given entity refs, read live from
-  `osi_ai_context`.
+  "Map of `[entity-type entity-local-id] -> instructions` for the given entity refs (search-result shape
+  `{:model :id}`, where `:model` is the entity_type), read live from `osi_ai_context`.
   Refs with no row, or with blank instructions, are omitted.
   Reading here (rather than storing in the index) means the agent always sees the current text."
   [entity-refs]
-  (let [wanted  (into #{} (map (juxt :model :id)) entity-refs)
-        ref-key (fn [{e :entity}] [(:model e) (:id e)])]
-    (u/index-by ref-key (comp :instructions :ai_context)
-                (filter (fn [{ac :ai_context :as row}]
-                          (and (wanted (ref-key row))
-                               (not (str/blank? (:instructions ac)))))
-                        (t2/select [:model/OsiAiContext :entity :ai_context])))))
+  (if-let [wanted (seq (into #{} (map (juxt :model :id)) entity-refs))]
+    ;; row-value IN isn't portable across our app DBs, so match the wanted (type, id) pairs with OR-of-ANDs.
+    (let [clause (into [:or] (map (fn [[t id]] [:and [:= :entity_type t] [:= :entity_local_id id]])) wanted)]
+      (into {} (remove (comp str/blank? val))
+            (t2/select-fn->fn (juxt :entity_type :entity_local_id) (comp :instructions :ai_context)
+                              :model/OsiAiContext {:where clause})))
+    {}))
