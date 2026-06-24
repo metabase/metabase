@@ -7,7 +7,6 @@ import { createMockTimelineEvent } from "metabase-types/api/mocks";
 import {
   getPositionedTimelineEventGroups,
   getTimelineEventGroupIconName,
-  isTimelineEventGroupSelected,
 } from "./utils";
 
 const BOUNDS: ChartBoundsCoords = { top: 0, bottom: 100, left: 50, right: 450 };
@@ -44,20 +43,6 @@ describe("TimelineEventsBand utils", () => {
     });
   });
 
-  describe("isTimelineEventGroupSelected", () => {
-    it("is true when any event in the group is selected", () => {
-      const group = {
-        date: "2025-01-01T00:00:00Z",
-        events: [
-          createMockTimelineEvent({ id: 1 }),
-          createMockTimelineEvent({ id: 2 }),
-        ],
-      };
-      expect(isTimelineEventGroupSelected(group, [2])).toBe(true);
-      expect(isTimelineEventGroupSelected(group, [9])).toBe(false);
-    });
-  });
-
   describe("getPositionedTimelineEventGroups", () => {
     const timelineEventsModel: TimelineEventsModel = [
       {
@@ -87,9 +72,8 @@ describe("TimelineEventsBand utils", () => {
       const positioned = getPositionedTimelineEventGroups({
         timelineEventsModel,
         chartInstance,
-        bounds: BOUNDS,
+        plotBounds: BOUNDS,
         xAxisIndex: 0,
-        selectedTimelineEventIds: [3],
       });
 
       expect(positioned).toHaveLength(2);
@@ -102,7 +86,6 @@ describe("TimelineEventsBand utils", () => {
         x: 300,
         count: 2,
         iconName: "star",
-        isSelected: true,
       });
     });
 
@@ -112,9 +95,8 @@ describe("TimelineEventsBand utils", () => {
       const positioned = getPositionedTimelineEventGroups({
         timelineEventsModel,
         chartInstance,
-        bounds: BOUNDS,
+        plotBounds: BOUNDS,
         xAxisIndex: 0,
-        selectedTimelineEventIds: [],
       });
 
       expect(positioned).toHaveLength(0);
@@ -130,9 +112,8 @@ describe("TimelineEventsBand utils", () => {
       const positioned = getPositionedTimelineEventGroups({
         timelineEventsModel,
         chartInstance,
-        bounds: BOUNDS,
+        plotBounds: BOUNDS,
         xAxisIndex: 0,
-        selectedTimelineEventIds: [],
       });
 
       expect(positioned).toHaveLength(1);

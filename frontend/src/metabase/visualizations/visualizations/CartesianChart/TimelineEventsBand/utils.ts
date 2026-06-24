@@ -1,15 +1,10 @@
 import type { EChartsType } from "echarts/core";
 
-import type { ChartBoundsCoords } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type {
   TimelineEventGroup,
   TimelineEventsModel,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import type {
-  IconName,
-  TimelineEventId,
-  TimelineIcon,
-} from "metabase-types/api";
+import type { IconName, TimelineIcon } from "metabase-types/api";
 
 export const TIMELINE_ICON_TO_ICON_NAME = {
   star: "star",
@@ -23,16 +18,9 @@ export const TIMELINE_ICON_TO_ICON_NAME = {
 export interface PositionedTimelineEventGroup {
   group: TimelineEventGroup;
   x: number;
-  isSelected: boolean;
   iconName: IconName;
   count: number;
 }
-
-export const isTimelineEventGroupSelected = (
-  group: TimelineEventGroup,
-  selectedTimelineEventIds: TimelineEventId[],
-): boolean =>
-  group.events.some((event) => selectedTimelineEventIds.includes(event.id));
 
 export const getTimelineEventGroupIconName = (
   group: TimelineEventGroup,
@@ -44,9 +32,9 @@ export const getTimelineEventGroupIconName = (
 interface PositioningInput {
   timelineEventsModel: TimelineEventsModel;
   chartInstance: EChartsType;
-  bounds: ChartBoundsCoords;
+  /** Horizontal pixel extent of the plot area (ECharts grid). */
+  plotBounds: { left: number; right: number };
   xAxisIndex: number;
-  selectedTimelineEventIds: TimelineEventId[];
 }
 
 /**
@@ -57,11 +45,10 @@ interface PositioningInput {
 export const getPositionedTimelineEventGroups = ({
   timelineEventsModel,
   chartInstance,
-  bounds,
+  plotBounds,
   xAxisIndex,
-  selectedTimelineEventIds,
 }: PositioningInput): PositionedTimelineEventGroup[] => {
-  const { left, right } = bounds;
+  const { left, right } = plotBounds;
 
   return timelineEventsModel.flatMap((group) => {
     const pixel = chartInstance.convertToPixel({ xAxisIndex }, group.date);
@@ -75,10 +62,6 @@ export const getPositionedTimelineEventGroups = ({
       {
         group,
         x,
-        isSelected: isTimelineEventGroupSelected(
-          group,
-          selectedTimelineEventIds,
-        ),
         iconName: getTimelineEventGroupIconName(group),
         count: group.events.length,
       },

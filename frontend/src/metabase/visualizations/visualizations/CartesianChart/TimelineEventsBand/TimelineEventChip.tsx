@@ -1,117 +1,91 @@
-import cx from "classnames";
-import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { DateTime } from "metabase/common/components/DateTime";
-import { Anchor, Icon, Popover, Stack, Text, Tooltip } from "metabase/ui";
+import { HoverCard, Icon, UnstyledButton } from "metabase/ui";
+import { TIMELINE_EVENTS_BAND } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import S from "./TimelineEventsBand.module.css";
-import { TimelineEventsList } from "./TimelineEventsList";
+import { TimelineEventRow, TimelineEventsList } from "./TimelineEventsList";
 import type { PositionedTimelineEventGroup } from "./utils";
+
+// The popover shows at most this many events; beyond it a "See all" link opens
+// the timeline sidebar.
+const MAX_VISIBLE_EVENTS = 3;
+
+// Push the dropdown far enough above the chip that it clears the x-axis line:
+// the chip sits `marginY + bandPaddingY` below the axis, plus a small gap.
+const AXIS_CLEARANCE = 8;
+const POPOVER_OFFSET =
+  TIMELINE_EVENTS_BAND.marginY +
+  TIMELINE_EVENTS_BAND.bandPaddingY +
+  AXIS_CLEARANCE;
 
 interface TimelineEventChipProps {
   positioned: PositionedTimelineEventGroup;
   centerY: number;
   onOpenTimelines?: () => void;
-  onSelectTimelineEvents?: (
-    events: PositionedTimelineEventGroup["group"]["events"],
-  ) => void;
-  onDeselectTimelineEvents?: () => void;
 }
-
-const CHIP_SIZE = 24;
 
 export const TimelineEventChip = ({
   positioned,
   centerY,
   onOpenTimelines,
-  onSelectTimelineEvents,
-  onDeselectTimelineEvents,
 }: TimelineEventChipProps) => {
-  const { group, x, isSelected, iconName, count } = positioned;
+  const { group, x, iconName, count } = positioned;
   const { events } = group;
-  const [opened, setOpened] = useState(false);
 
-  const handleChange = useCallback(
-    (isOpen: boolean) => {
-      setOpened(isOpen);
-      if (isOpen) {
-        onSelectTimelineEvents?.(events);
-      } else {
-        onDeselectTimelineEvents?.();
-      }
-    },
-    [events, onSelectTimelineEvents, onDeselectTimelineEvents],
-  );
+  const isSingleEvent = events.length === 1;
+  const hasMoreThanMax = events.length > MAX_VISIBLE_EVENTS;
+  const visibleEvents = hasMoreThanMax
+    ? events.slice(0, MAX_VISIBLE_EVENTS)
+    : events;
+  const showSeeAll = hasMoreThanMax && onOpenTimelines != null;
 
   return (
-    <Popover opened={opened} onChange={handleChange} position="top" withArrow>
-      <Popover.Target>
-        <Tooltip
-          label={<ChipTooltipLabel positioned={positioned} />}
-          disabled={opened}
+    <HoverCard
+      position="top"
+      offset={POPOVER_OFFSET}
+      openDelay={50}
+      closeDelay={150}
+      shadow="md"
+      classNames={{ dropdown: S.bridgeDropdown }}
+    >
+      <HoverCard.Target>
+        <UnstyledButton
+          className={S.chip}
+          style={{ left: x, top: centerY }}
+          data-testid="timeline-event-chip"
+          aria-label={getChipLabel(positioned)}
         >
-          <button
-            type="button"
-            className={cx(S.chip, { [S.chipSelected]: isSelected || opened })}
-            style={{
-              left: x,
-              top: centerY - CHIP_SIZE / 2,
-            }}
-            data-testid="timeline-event-chip"
-            aria-label={getChipLabel(positioned)}
-            onClick={() => handleChange(!opened)}
-          >
-            {count > 1 ? (
-              <span className={S.count}>{count}</span>
-            ) : (
-              <Icon name={iconName} size={12} />
-            )}
-          </button>
-        </Tooltip>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <Stack gap="md">
-          <TimelineEventsList events={events} />
-          {onOpenTimelines != null && (
-            <Anchor
-              component="button"
-              type="button"
-              ta="center"
-              fw="bold"
-              onClick={onOpenTimelines}
-            >
-              {t`See all`}
-            </Anchor>
+          {count > 1 ? (
+            <span className={S.count}>{count}</span>
+          ) : (
+            <Icon name={iconName} size={12} />
           )}
-        </Stack>
-      </Popover.Dropdown>
-    </Popover>
+        </UnstyledButton>
+      </HoverCard.Target>
+      <HoverCard.Dropdown p={0} bdrs="lg">
+        <div data-testid="timeline-event-popover">
+          {isSingleEvent ? (
+            <div className={S.singleEvent}>
+              <TimelineEventRow event={events[0]} showIcon={false} />
+            </div>
+          ) : (
+            <>
+              <div className={S.eventList}>
+                <TimelineEventsList events={visibleEvents} />
+              </div>
+              {showSeeAll && (
+                <UnstyledButton className={S.seeAll} onClick={onOpenTimelines}>
+                  {t`See all`}
+                </UnstyledButton>
+              )}
+            </>
+          )}
+        </div>
+      </HoverCard.Dropdown>
+    </HoverCard>
   );
 };
 
 const getChipLabel = ({ group, count }: PositionedTimelineEventGroup) =>
   count > 1 ? t`${count} events` : group.events[0].name;
-
-const ChipTooltipLabel = ({
-  positioned,
-}: {
-  positioned: PositionedTimelineEventGroup;
-}) => {
-  const { group, count } = positioned;
-  if (count > 1) {
-    return <Text c="inherit">{t`${count} events`}</Text>;
-  }
-  const event = group.events[0];
-  return (
-    <Stack gap={0}>
-      <Text c="inherit" fw="bold">
-        {event.name}
-      </Text>
-      <DateTime
-        value={event.timestamp}
-        unit={event.time_matters ? "default" : "day"}
-      />
-    </Stack>
-  );
-};

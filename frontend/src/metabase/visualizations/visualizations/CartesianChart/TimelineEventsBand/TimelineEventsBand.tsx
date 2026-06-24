@@ -1,10 +1,12 @@
 import type { EChartsType } from "echarts/core";
 import { useEffect, useMemo, useState } from "react";
 
-import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
+import {
+  TIMELINE_BAND_HEIGHT,
+  TIMELINE_EVENTS_BAND,
+} from "metabase/visualizations/echarts/cartesian/constants/style";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
-import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import { TimelineEventChip } from "./TimelineEventChip";
 import S from "./TimelineEventsBand.module.css";
@@ -16,10 +18,7 @@ interface TimelineEventsBandProps {
   timelineEventsModel: TimelineEventsModel | null;
   chartLayout: ChartLayout;
   xAxisIndex: number;
-  selectedTimelineEventIds?: TimelineEventId[];
   onOpenTimelines?: () => void;
-  onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
-  onDeselectTimelineEvents?: () => void;
 }
 
 export const TimelineEventsBand = ({
@@ -28,10 +27,7 @@ export const TimelineEventsBand = ({
   timelineEventsModel,
   chartLayout,
   xAxisIndex,
-  selectedTimelineEventIds,
   onOpenTimelines,
-  onSelectTimelineEvents,
-  onDeselectTimelineEvents,
 }: TimelineEventsBandProps) => {
   // ECharts settles its layout asynchronously, so positions read from
   // `convertToPixel` can be stale right after an option/size change. Recompute
@@ -48,10 +44,14 @@ export const TimelineEventsBand = ({
     };
   }, [chartInstance]);
 
-  const bandHeight =
-    CHART_STYLE.axisTicksMarginX + CHART_STYLE.timelineEvents.height;
-  const centerY =
-    chartSize.height - chartLayout.padding.bottom + bandHeight / 2;
+  // The gray band sits `marginY` below the plot bottom; chips center inside it.
+  const gridBottom = chartSize.height - chartLayout.padding.bottom;
+  const trackTop = gridBottom + TIMELINE_EVENTS_BAND.marginY;
+  const centerY = trackTop + TIMELINE_BAND_HEIGHT / 2;
+
+  // The plot area spans the ECharts grid insets, which equal the layout padding.
+  const plotLeft = chartLayout.padding.left;
+  const plotRight = chartSize.width - chartLayout.padding.right;
 
   const positionedGroups = useMemo(() => {
     if (
@@ -65,18 +65,17 @@ export const TimelineEventsBand = ({
     return getPositionedTimelineEventGroups({
       timelineEventsModel,
       chartInstance,
-      bounds: chartLayout.bounds,
+      plotBounds: { left: plotLeft, right: plotRight },
       xAxisIndex,
-      selectedTimelineEventIds: selectedTimelineEventIds ?? [],
     });
     // `renderTick` intentionally re-derives positions after ECharts settles.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     chartInstance,
     timelineEventsModel,
-    chartLayout,
+    plotLeft,
+    plotRight,
     xAxisIndex,
-    selectedTimelineEventIds,
     chartSize.width,
     chartSize.height,
     renderTick,
@@ -91,10 +90,10 @@ export const TimelineEventsBand = ({
       <div
         className={S.track}
         style={{
-          left: chartLayout.bounds.left,
-          width: chartLayout.bounds.right - chartLayout.bounds.left,
-          top: centerY - CHART_STYLE.timelineEvents.height / 2,
-          height: CHART_STYLE.timelineEvents.height,
+          left: plotLeft,
+          width: plotRight - plotLeft,
+          top: trackTop,
+          height: TIMELINE_BAND_HEIGHT,
         }}
       />
       {positionedGroups.map((positioned) => (
@@ -103,8 +102,6 @@ export const TimelineEventsBand = ({
           positioned={positioned}
           centerY={centerY}
           onOpenTimelines={onOpenTimelines}
-          onSelectTimelineEvents={onSelectTimelineEvents}
-          onDeselectTimelineEvents={onDeselectTimelineEvents}
         />
       ))}
     </div>

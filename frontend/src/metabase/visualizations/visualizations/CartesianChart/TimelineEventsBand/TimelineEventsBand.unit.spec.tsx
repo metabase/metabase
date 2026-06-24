@@ -51,13 +51,18 @@ interface SetupOpts {
   timelineEventsModel?: TimelineEventsModel | null;
 }
 
-const setup = ({
-  chartInstance = createChartInstance({
-    "2025-01-01T00:00:00Z": 120,
-    "2025-02-01T00:00:00Z": 300,
-  }),
-  timelineEventsModel: model = timelineEventsModel,
-}: SetupOpts = {}) => {
+const setup = (opts: SetupOpts = {}) => {
+  const { timelineEventsModel: model = timelineEventsModel } = opts;
+  // Using `in` so an explicit `chartInstance: undefined` is honored rather than
+  // falling back to the default (a destructuring default would override it).
+  const chartInstance =
+    "chartInstance" in opts
+      ? opts.chartInstance
+      : createChartInstance({
+          "2025-01-01T00:00:00Z": 120,
+          "2025-02-01T00:00:00Z": 300,
+        });
+
   renderWithProviders(
     <TimelineEventsBand
       chartInstance={chartInstance}

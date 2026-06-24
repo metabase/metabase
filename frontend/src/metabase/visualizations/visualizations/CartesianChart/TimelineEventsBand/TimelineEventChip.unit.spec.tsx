@@ -14,12 +14,11 @@ const singleGroup: PositionedTimelineEventGroup = {
     ],
   },
   x: 100,
-  isSelected: false,
   iconName: "cloud",
   count: 1,
 };
 
-const clusterGroup: PositionedTimelineEventGroup = {
+const twoGroup: PositionedTimelineEventGroup = {
   group: {
     date: "2025-02-01T00:00:00Z",
     events: [
@@ -28,9 +27,23 @@ const clusterGroup: PositionedTimelineEventGroup = {
     ],
   },
   x: 200,
-  isSelected: false,
   iconName: "star",
   count: 2,
+};
+
+const manyGroup: PositionedTimelineEventGroup = {
+  group: {
+    date: "2025-03-01T00:00:00Z",
+    events: [
+      createMockTimelineEvent({ id: 4, name: "Many 1" }),
+      createMockTimelineEvent({ id: 5, name: "Many 2" }),
+      createMockTimelineEvent({ id: 6, name: "Many 3" }),
+      createMockTimelineEvent({ id: 7, name: "Many 4" }),
+    ],
+  },
+  x: 300,
+  iconName: "star",
+  count: 4,
 };
 
 interface SetupOpts {
@@ -43,66 +56,69 @@ const setup = ({
   withOpenTimelines = true,
 }: SetupOpts = {}) => {
   const onOpenTimelines = jest.fn();
-  const onSelectTimelineEvents = jest.fn();
-  const onDeselectTimelineEvents = jest.fn();
 
   renderWithProviders(
     <TimelineEventChip
       positioned={positioned}
       centerY={120}
-      chipSize={24}
       onOpenTimelines={withOpenTimelines ? onOpenTimelines : undefined}
-      onSelectTimelineEvents={onSelectTimelineEvents}
-      onDeselectTimelineEvents={onDeselectTimelineEvents}
     />,
   );
 
-  return { onOpenTimelines, onSelectTimelineEvents, onDeselectTimelineEvents };
+  return { onOpenTimelines };
 };
 
 describe("TimelineEventChip", () => {
   it("renders the event count for a cluster", () => {
-    setup({ positioned: clusterGroup });
-    expect(screen.getByTestId("timeline-event-chip")).toHaveTextContent("2");
+    setup({ positioned: manyGroup });
+    expect(screen.getByTestId("timeline-event-chip")).toHaveTextContent("4");
   });
 
-  it("opens a popover listing the events and selects them on click", async () => {
-    const { onSelectTimelineEvents } = setup({ positioned: clusterGroup });
+  it("opens a single-event popover on hover without a 'See all' link", async () => {
+    setup({ positioned: singleGroup });
 
-    await userEvent.click(screen.getByTestId("timeline-event-chip"));
+    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
 
-    expect(onSelectTimelineEvents).toHaveBeenCalledWith(
-      clusterGroup.group.events,
-    );
+    expect(await screen.findByText("Release v1")).toBeInTheDocument();
+    expect(screen.queryByText("See all")).not.toBeInTheDocument();
+  });
+
+  it("lists all events on hover for a small cluster", async () => {
+    setup({ positioned: twoGroup });
+
+    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
+
     expect(await screen.findByText("Event A")).toBeInTheDocument();
     expect(screen.getByText("Event B")).toBeInTheDocument();
+    expect(screen.queryByText("See all")).not.toBeInTheDocument();
   });
 
-  it("deselects events when the popover is toggled closed", async () => {
-    const { onDeselectTimelineEvents } = setup({ positioned: clusterGroup });
+  it("truncates to three events and shows 'See all' for more than three", async () => {
+    setup({ positioned: manyGroup });
 
-    const chip = screen.getByTestId("timeline-event-chip");
-    await userEvent.click(chip);
-    await userEvent.click(chip);
+    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
 
-    expect(onDeselectTimelineEvents).toHaveBeenCalled();
+    expect(await screen.findByText("Many 1")).toBeInTheDocument();
+    expect(screen.getByText("Many 3")).toBeInTheDocument();
+    expect(screen.queryByText("Many 4")).not.toBeInTheDocument();
+    expect(screen.getByText("See all")).toBeInTheDocument();
   });
 
   it("calls onOpenTimelines from the 'See all' action", async () => {
-    const { onOpenTimelines } = setup({ positioned: clusterGroup });
+    const { onOpenTimelines } = setup({ positioned: manyGroup });
 
-    await userEvent.click(screen.getByTestId("timeline-event-chip"));
+    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
     await userEvent.click(await screen.findByText("See all"));
 
     expect(onOpenTimelines).toHaveBeenCalled();
   });
 
   it("hides 'See all' when onOpenTimelines is not provided", async () => {
-    setup({ positioned: clusterGroup, withOpenTimelines: false });
+    setup({ positioned: manyGroup, withOpenTimelines: false });
 
-    await userEvent.click(screen.getByTestId("timeline-event-chip"));
+    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
 
-    expect(await screen.findByText("Event A")).toBeInTheDocument();
+    expect(await screen.findByText("Many 1")).toBeInTheDocument();
     expect(screen.queryByText("See all")).not.toBeInTheDocument();
   });
 });
