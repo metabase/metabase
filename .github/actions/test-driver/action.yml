@@ -74,7 +74,11 @@ runs:
         REPO_ID: ${{ github.event.repository.id }}
         COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
-        CI_CONDUCTOR_TEST_SUITE: driver-${{ inputs.junit-name }}
+        # junit-name is the per-job test-identity label the repo already uses for
+        # JUnit/Trunk reporting (e.g. be-tests-postgres-ee, semantic-search-tests-h2-…),
+        # so ci-conductor buckets line up with it. Only workflows that also set
+        # CI_CONDUCTOR_BASE_URL actually POST; others no-op.
+        CI_CONDUCTOR_TEST_SUITE: ${{ inputs.junit-name }}
       run: node bin/ci-conductor/report-junit-failures.js
     - name: Upload Logs on Failure
       if: always() && steps.run-test.outcome != 'success'
