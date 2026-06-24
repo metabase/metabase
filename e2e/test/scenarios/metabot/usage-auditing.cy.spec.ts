@@ -242,11 +242,33 @@ function selectTenantFilter(tenantName: string, waitAlias = "@dataset"): void {
   cy.wait(waitAlias);
 }
 
+function openDateFilterDropdown(attemptsLeft = 3): void {
+  // The date filter is a Mantine `Select` whose combobox carries the testId.
+  // Its open click is intermittently dropped when the input is clicked shortly
+  // after a prior selection (a focus / controlled re-render race), so the
+  // dropdown never appears and `selectDropdown()` times out — and because the
+  // click is lost rather than slow, simply waiting longer doesn't help. Only
+  // re-issue the click while the combobox still reports it is collapsed, so an
+  // already-open dropdown is never toggled shut.
+  H.main()
+    .findByTestId("conversation-filters-date-select")
+    .should("be.visible")
+    .then(($select) => {
+      if ($select.attr("aria-expanded") === "true") {
+        return;
+      }
+      cy.wrap($select).realClick();
+      if (attemptsLeft > 1) {
+        openDateFilterDropdown(attemptsLeft - 1);
+      }
+    });
+}
+
 function selectDateFilter(
   dateLabel: DateFilterLabel,
   waitAlias = "@dataset",
 ): void {
-  H.main().findByTestId("conversation-filters-date-select").realClick();
+  openDateFilterDropdown();
   H.selectDropdown().findByText(dateLabel).realClick();
   H.main()
     .findByTestId("conversation-filters-date-select")
