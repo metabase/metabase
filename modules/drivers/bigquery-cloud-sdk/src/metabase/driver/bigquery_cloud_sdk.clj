@@ -954,7 +954,7 @@
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (:include-user-id-and-hash (driver.conn/effective-details database) true)
-                  (str "-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
+                  (str sql "\n\n-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query))
                   sql)]
         (*process-native* respond database sql params (driver-api/canceled-chan))))))
 
