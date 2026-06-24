@@ -55,22 +55,23 @@
 
 (deftest parse-db-url-defaults-test
   (testing "a URL with no params leaves the URL untouched and uses the default pool props"
-    (is (=? {:jdbc-url   base-url
-             :pool-props {;; tunable knobs at their defaults
-                          "maxPoolSize"                          5
-                          "minPoolSize"                          0
-                          "initialPoolSize"                      0
-                          "checkoutTimeout"                      10000
-                          "unreturnedConnectionTimeout"          0
-                          "debugUnreturnedConnectionStackTraces" false
-                          "testConnectionOnCheckout"             false
-                          ;; fixed props operators can't override
-                          "idleConnectionTestPeriod"             60
-                          "maxIdleTimeExcessConnections"         600
-                          "maxConnectionAge"                     1800
-                          "acquireIncrement"                     1
-                          "dataSourceName"                       "metabase-semantic-search-db"}}
-            (parse-db-url base-url)))))
+    ;; strict = (not =?) so an unexpected extra/missing prop also fails, not just a wrong value
+    (is (= {:jdbc-url   base-url
+            :pool-props {;; tunable knobs at their defaults
+                         "maxPoolSize"                          5
+                         "minPoolSize"                          0
+                         "initialPoolSize"                      0
+                         "checkoutTimeout"                      10000
+                         "unreturnedConnectionTimeout"          0
+                         "debugUnreturnedConnectionStackTraces" false
+                         "testConnectionOnCheckout"             false
+                         ;; fixed props operators can't override
+                         "idleConnectionTestPeriod"             60
+                         "maxIdleTimeExcessConnections"         600
+                         "maxConnectionAge"                     1800
+                         "acquireIncrement"                     1
+                         "dataSourceName"                       "metabase-semantic-search-db"}}
+           (parse-db-url base-url)))))
 
 (deftest parse-db-url-pool-knob-test
   (testing "a recognized pool knob is pulled off the URL, parsed, and merged over the defaults"
@@ -121,8 +122,8 @@
                       semantic.db.datasource/data-source (atom nil)]
           (try
             (semantic.db.datasource/init-db!)
-            (let [cpds (.getConnectionPoolDataSource
-                        ^PoolBackedDataSource @semantic.db.datasource/data-source)]
+            (let [pool-ds ^PoolBackedDataSource @semantic.db.datasource/data-source
+                  cpds    (.getConnectionPoolDataSource pool-ds)]
               (is (=? {;; tunable knobs supplied on the URL
                        :maxPoolSize                          9
                        :minPoolSize                          2
@@ -131,11 +132,13 @@
                        :unreturnedConnectionTimeout          77
                        :debugUnreturnedConnectionStackTraces true
                        :testConnectionOnCheckout             true
-                       ;; fixed props we always set
+                       ;; fixed props we always set, on the connection-pool DS
                        :idleConnectionTestPeriod             60
                        :maxIdleTimeExcessConnections         600
                        :maxConnectionAge                     1800
                        :acquireIncrement                     1}
-                      (bean cpds))))
+                      (bean cpds)))
+              ;; dataSourceName is the one fixed prop that lives on the outer pooled DS, not the cpds
+              (is (= "metabase-semantic-search-db" (.getDataSourceName pool-ds))))
             (finally
               (semantic.db.datasource/shutdown-db!))))))))
