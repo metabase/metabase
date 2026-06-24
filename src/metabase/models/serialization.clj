@@ -1804,19 +1804,18 @@
   "Update embedded entity ids to card ids in visualizer dashcard settings"
   [settings]
   (m/update-existing-in
-   settings
-   [:visualization :columnValuesMapping]
-   (fn [mapping]
-     (into {}
-           (for [[k cols] mapping]
-             (let [updated-cols (cond
-                                  ;; e.g. [{:sourceId "card:..."} ...]
-                                  (and (coll? cols) (map? (first cols)))
-                                  (mapv #(update % :sourceId import-visualizer-source-id) cols)
+    settings
+    [:visualization :columnValuesMapping]
+    update-vals
+    (fn [cols]
+      (cond
+        ;; e.g. [{:sourceId "card:..."} ...]
+        (and (coll? cols) (map? (first cols)))
+        (mapv #(update % :sourceId import-visualizer-source-id) cols)
 
-                                  ;; e.g. ["$_card:<id>_name"] for funnel dimensions
-                                  (and (coll? cols) (string? (first cols)))
-                                  (mapv import-card-dimension-ref cols)
+        ;; e.g. ["$_card:<id>_name"] for funnel dimensions
+        (and (coll? cols) (string? (first cols)))
+        (mapv import-card-dimension-ref cols)
 
                                   :else cols)]
                [k updated-cols]))))))
