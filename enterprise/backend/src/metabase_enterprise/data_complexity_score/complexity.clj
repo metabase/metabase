@@ -19,22 +19,30 @@
 (def formula-version
   "Bump when the scoring formula changes in a way that would break historical score comparisons.
   Weight changes, new/removed components, and rollup-affecting restructures count; pure-shape changes do not.
-  Tunables in the fingerprint (`embedding-model`, `synonym-threshold`, `text-variant`, etc) don't need a bump."
-  1)
+  Tunables in the fingerprint (`embedding-model`, `synonym-threshold`, `text-variant`, etc) don't need a bump.
+
+  v2 added two new scored measures (`:collection-tree-size`, `:field-level-collisions`) which change
+  the catalog total, so pre-v2 scores are not comparable."
+  2)
 
 (def format-version
-  "Bump when the response shape changes in a way that breaks consumer parsing, even when scores are equivalent."
-  1)
+  "Bump when the response shape changes in a way that breaks consumer parsing, even when scores are equivalent.
+
+  v2 introduced the descriptive leaf shape (`{:value ...}`, no `:score`) and the descriptive-only
+  `:metadata` grouping (no `:score`), plus a raft of new keys under `:size`/`:ambiguity`."
+  2)
 
 (def weights
   "Per-axis weights applied to raw measurements. Public because they're part of the scoring
   fingerprint — a tuning change must force a re-score and be visible to Snowplow consumers
   without bumping `formula-version`."
-  {:entity           10
-   :name-collision   100
-   :synonym-pair     50
-   :field            1
-   :repeated-measure 2})
+  {:entity                 10
+   :name-collision         100
+   :synonym-pair           50
+   :field                  1
+   :repeated-measure       2
+   :collection-tree-size   1
+   :field-level-collisions 5})
 
 (def complexity-bands
   "Tree of rating bands mirroring [[score-catalog]]'s output.
@@ -75,12 +83,18 @@
               bands))
       nil-rating))
 
+(defn- descriptive-leaf?
+  "A descriptive (v2) leaf — carries `:value` and no `:score`. Left untouched by rating decoration
+  so it never gains `:rating`/`:rating_label` keys."
+  [node]
+  (and (contains? node :value) (not (contains? node :score))))
+
 (defn- decorate-with-ratings*
   "Walk a catalog `node` and the matching `bands` subtree in parallel, merging rating fields onto every node.
   Each node is rated against its own `:band-lookup`, or `nil-rating` when absent.
-  Error leaves carry only `:error` and are left untouched. Children recurse along `:components`."
+  Error leaves and descriptive leaves are left untouched (no rating keys). Children recurse along `:components`."
   [bands node]
-  (if (:error node)
+  (if (or (:error node) (descriptive-leaf? node))
     node
     (let [decorated (merge node (rating-for-score (:band-lookup bands) (:score node)))]
       (cond-> decorated
@@ -117,19 +131,23 @@
    statements top out at 65,535 parameters and we leave headroom for other clauses."
   50000)
 
-(defn- table-field-counts
-  "Return `{table-id field-count}` for active fields on the given `table-ids`."
+(defn- table-fields
+  "Return `{table-id [{:name :semantic-type :description} ...]}` for active fields on `table-ids`.
+  One extra query per scoring run, batched by `in-clause-chunk-size`. The per-field detail powers
+  the v2 measures (`:field-level-collisions`, `:field-description-coverage`, `:semantic-type-coverage`)
+  and the field count is just `(count fields)` — no separate aggregate scan needed."
   [table-ids]
-  (into {}
-        (mapcat (fn [chunk]
-                  (map (juxt :table_id :field_count)
-                       (t2/query {:select   [:table_id [:%count.* :field_count]]
-                                  :from     [:metabase_field]
-                                  :where    [:and
-                                             [:= :active true]
-                                             [:in :table_id chunk]]
-                                  :group-by [:table_id]}))))
-        (partition-all in-clause-chunk-size table-ids)))
+  (->> (mapcat (fn [chunk]
+                 (t2/query {:select [:table_id :name :semantic_type :description]
+                            :from   [:metabase_field]
+                            :where  [:and
+                                     [:= :active true]
+                                     [:in :table_id chunk]]}))
+               (partition-all in-clause-chunk-size table-ids))
+       (reduce (fn [acc {:keys [table_id name semantic_type description]}]
+                 (update acc table_id (fnil conj [])
+                         {:name name :semantic-type semantic_type :description description}))
+               {})))
 
 (defn- table-measure-names
   "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`.
@@ -144,23 +162,29 @@
         (partition-all in-clause-chunk-size table-ids)))
 
 (defn- ->card-entity
-  "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` in
-   v1 — the proposal's +1-per-field rule is about physical Table fields, not Card result columns —
-   so we can skip the fat `result_metadata` column entirely. Measures are a separate first-class
-   model tied to Tables, not Cards, so Cards also don't contribute to `:measure-names`."
-  [{:keys [id name type]}]
+  "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` —
+   the +1-per-field rule is about physical Table fields, not Card result columns — so we can skip
+   the fat `result_metadata` column entirely and `:fields` is always empty. Measures are a separate
+   first-class model tied to Tables, not Cards, so Cards also don't contribute to `:measure-names`.
+   `:description` feeds the v2 `:description-coverage`/`:description-quality` measures."
+  [{:keys [id name type description]}]
   {:id            id
    :name          name
    :kind          (keyword type)
+   :description   description
    :field-count   0
+   :fields        []
    :measure-names []})
 
-(defn- ->table-entity [field-counts measure-names {:keys [id name]}]
-  {:id            id
-   :name          name
-   :kind          :table
-   :field-count   (get field-counts id 0)
-   :measure-names (get measure-names id [])})
+(defn- ->table-entity [fields-by-table measure-names {:keys [id name description]}]
+  (let [fields (get fields-by-table id [])]
+    {:id            id
+     :name          name
+     :kind          :table
+     :description   description
+     :field-count   (count fields)
+     :fields        fields
+     :measure-names (get measure-names id [])}))
 
 (defn- library-collection-ids
   "Set of collection IDs that make up the Library (root + descendants). Empty when the instance has no Library yet."
@@ -169,6 +193,12 @@
         (when-let [root (collections/library-collection)]
           ;; This is cheaper and less brittle than referencing the collection type constants for every entity type.
           (cons (:id root) (collections/descendant-ids root)))))
+
+(defn- universe-collection-count
+  "Count of non-archived, non-personal collections — the `:universe` (and metabot-fallback) scope's
+  collection-tree size."
+  ^long []
+  (t2/count :model/Collection :archived false :personal_owner_id nil))
 
 (defn- metabot-collection-scope-ids
   "Set of collection IDs the internal Metabot can see — its `collection_id` plus descendants.
@@ -214,15 +244,16 @@
 
 (defn- enumerate-catalogs
   "One-pass enumeration of all three scoring catalogs. Returns
-   `{:library [...] :universe [...] :metabot [...]}` where entity maps are shared *by reference*
-   across catalogs — a Card or Table that appears in more than one catalog is one map in memory,
-   not three.
+   `{:library [...] :universe [...] :metabot [...] :collection-counts {...}}` where entity maps are
+   shared *by reference* across catalogs — a Card or Table that appears in more than one catalog is
+   one map in memory, not three. `:collection-counts` is the per-catalog `{:library :universe
+   :metabot}` collection-tree size threaded into scoring as `ctx`.
 
    An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3×
-   per scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]],
-   each a `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset
-   once and derive the `:library` and `:metabot` subsets by in-memory filter, which collapses 6
-   DB round-trips + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
+   per scoring run — most expensively on [[table-fields]] and [[table-measure-names]], each a scan
+   over `metabase_field` / `measure`. We now fetch the universe superset once and derive the
+   `:library` and `:metabot` subsets by in-memory filter, which collapses the DB round-trips and
+   lets the aggregates run once each.
 
    `metabot-scope` is `{:verified-only? <bool> :collection-id <nil|Long>}` describing how the
    internal Metabot narrows its Cards further — it only adds filters, never widens. The caller
@@ -237,18 +268,24 @@
         ;; selected purely to drive the in-memory library/metabot derivations below — they're
         ;; ignored by `->card-entity` / `->table-entity`. `:card_schema` is required by
         ;; `:model/Card`'s post-select hooks even when we don't otherwise use it.
-        universe-cards    (t2/select [:model/Card :id :name :type :collection_id :card_schema]
+        universe-cards    (t2/select [:model/Card :id :name :type :description :collection_id :card_schema]
                                      :type        [:in ["metric" "model"]]
                                      :archived    false
                                      :database_id [:not= audit/audit-db-id])
-        universe-tables   (t2/select [:model/Table :id :name :collection_id :is_published
+        universe-tables   (t2/select [:model/Table :id :name :description :collection_id :is_published
                                       :visibility_type :db_id]
                                      :active true
                                      :db_id  [:not= audit/audit-db-id])
-        field-counts      (table-field-counts  (mapv :id universe-tables))
+        fields-by-table   (table-fields        (mapv :id universe-tables))
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)
-        table-entities    (mapv #(->table-entity field-counts measure-names %) universe-tables)
+        table-entities    (mapv #(->table-entity fields-by-table measure-names %) universe-tables)
+        universe-coll-n   (universe-collection-count)
+        collection-counts {:library  (count library-cids)
+                           ;; metabot scopes its collection tree when a scope is set, else falls
+                           ;; back to the universe collection count (it can retrieve everywhere).
+                           :metabot  (if metabot-cids (count metabot-cids) universe-coll-n)
+                           :universe universe-coll-n}
         in-library-card?  (when (seq library-cids)
                             (fn [{:keys [collection_id]}]
                               (contains? library-cids collection_id)))
@@ -266,20 +303,38 @@
         in-metabot-table? (fn [{:keys [visibility_type db_id]}]
                             (and (nil? visibility_type)
                                  (not (contains? routed-db-ids db_id))))]
-    {:universe (into card-entities table-entities)
-     :library  (into (pick-by-row in-library-card?  universe-cards  card-entities)
-                     (pick-by-row in-library-table? universe-tables table-entities))
-     :metabot  (into (pick-by-row in-metabot-card?  universe-cards  card-entities)
-                     (pick-by-row in-metabot-table? universe-tables table-entities))}))
+    {:universe          (into card-entities table-entities)
+     :library           (into (pick-by-row in-library-card?  universe-cards  card-entities)
+                              (pick-by-row in-library-table? universe-tables table-entities))
+     :metabot           (into (pick-by-row in-metabot-card?  universe-cards  card-entities)
+                              (pick-by-row in-metabot-table? universe-tables table-entities))
+     :collection-counts collection-counts}))
 
 ;;; ------------------------------------- scoring -------------------------------------
 
-(defn- component-score
-  "Sub-score map: raw `:measurement` (double — future-proofs non-integer axes like density) and
+;;; ---------------------------------- leaf builders ----------------------------------
+
+(defn- scored-leaf
+  "Scored leaf map: raw `:measurement` (double — future-proofs non-integer axes like density) and
   weighted `:score` using the weight at `weight-key`."
   [weight-key n]
   {:measurement (double n)
    :score       (* n (get weights weight-key))})
+
+(defn- value-leaf
+  "Descriptive leaf — carries a raw `:value` (number, map, or nil) and NO `:score`, so it is skipped
+  by the rollup. `:value` nil means \"not available\" (e.g. a ratio with a zero denominator), which
+  consumers should render distinctly from 0."
+  [v]
+  {:value v})
+
+(defn- safe-ratio
+  "`num/denom` as a double, or nil when `denom` is zero (undefined, not 0). Both default to 0 if nil."
+  [num denom]
+  (let [num   (or num 0)
+        denom (or denom 0)]
+    (when-not (zero? denom)
+      (double (/ num denom)))))
 
 (defn- repeated-names
   "Count of name occurrences past the first (normalized for comparison). Single pass, no
@@ -295,17 +350,88 @@
            [#{} 0]
            raw-names)))
 
+;;; ----------------------------------- :size measures --------------------------------
+
+(defn- total-field-count ^long [entities]
+  (reduce + 0 (keep :field-count entities)))
+
 (defn- score-entity-count [entities]
-  (component-score :entity (count entities)))
+  (scored-leaf :entity (count entities)))
+
+(defn- score-field-count [total-fields]
+  (scored-leaf :field total-fields))
+
+(defn- score-collection-tree-size
+  "Scored: number of collections in the catalog scope (from ctx). Missing → 0 (graceful)."
+  [collection-count]
+  (scored-leaf :collection-tree-size (or collection-count 0)))
+
+(defn- fields-per-entity
+  "Descriptive: field-count / entity-count. nil when there are no entities."
+  [n total-fields]
+  (value-leaf (safe-ratio total-fields n)))
+
+(defn- measure-to-dim-ratio
+  "Descriptive: `(named-measures + metric-cards) / fields` — how densely the catalog is curated as a
+  semantic layer vs. thin wrappers over raw data. nil when there are no fields."
+  [entities total-fields]
+  (let [measures     (reduce + 0 (map #(count (:measure-names %)) entities))
+        metric-cards (count (filter #(= :metric (:kind %)) entities))]
+    (value-leaf (safe-ratio (+ measures metric-cards) total-fields))))
+
+;;; ------------------------------- :ambiguity measures -------------------------------
 
 (defn- score-name-collisions [entities]
-  (component-score :name-collision (repeated-names (map :name entities))))
-
-(defn- score-field-count [entities]
-  (component-score :field (reduce + (keep :field-count entities))))
+  (scored-leaf :name-collision (repeated-names (map :name entities))))
 
 (defn- score-repeated-measures [entities]
-  (component-score :repeated-measure (repeated-names (mapcat :measure-names entities))))
+  (scored-leaf :repeated-measure (repeated-names (mapcat :measure-names entities))))
+
+(defn- score-field-level-collisions
+  "Scored: count of distinct normalized field names appearing on more than one distinct table.
+  Only scans `:fields` on entities (Cards' `:fields` are empty). Degrades to 0 when no entity
+  carries `:fields` (e.g. the representation path)."
+  [entities]
+  (let [name->tables (reduce (fn [acc e]
+                               (reduce (fn [acc f]
+                                         (if-let [n (embedders/normalize-name (:name f))]
+                                           (update acc n (fnil conj #{}) (:id e))
+                                           acc))
+                                       acc
+                                       (:fields e)))
+                             {}
+                             entities)
+        collisions   (count (filter (fn [[_ tables]] (> (count tables) 1)) name->tables))]
+    (scored-leaf :field-level-collisions collisions)))
+
+(defn- name-collisions-density
+  "Descriptive: collisions per 100 entities. nil when the catalog is empty."
+  [entities]
+  (let [collisions (repeated-names (map :name entities))]
+    (value-leaf (some-> (safe-ratio collisions (count entities)) (* 100.0)))))
+
+(defn- name-concentration
+  "Descriptive: `1 - Pielou's evenness` over entity-name frequencies. 0 = perfectly even (all names
+  unique); approaching 1 = highly concentrated. nil when there are no named entities; 0.0 when a
+  single name category exists (evenness is trivially 1)."
+  [entities]
+  (let [freqs (->> entities (keep (comp embedders/normalize-name :name)) frequencies)
+        total (reduce + 0 (vals freqs))
+        s     (count freqs)]
+    (cond
+      (zero? total) (value-leaf nil)
+      (<= s 1)      (value-leaf 0.0)
+      :else
+      (let [log-s (Math/log s)
+            h     (reduce (fn [acc c]
+                            (let [p (/ (double c) total)]
+                              (- acc (* p (Math/log p)))))
+                          0.0
+                          (vals freqs))
+            j     (/ h log-s)]
+        (value-leaf (max 0.0 (min 1.0 (- 1.0 j))))))))
+
+;;; ------------------------------- synonym graph math --------------------------------
 
 (defn- dot ^double [^floats a ^floats b]
   (let [len (alength a)]
@@ -314,67 +440,273 @@
         (recur (inc i) (+ acc (* (aget a i) (aget b i))))
         acc))))
 
-(defn- synonym-pair?
-  "True when two vectors' cosine similarity is ≥ sqrt(`threshold-sq`).
-   Uses the squared form of the inequality — `(a·b)² ≥ t² · ‖a‖² · ‖b‖²` when `a·b ≥ 0`, avoiding
-   two `Math/sqrt` calls a direct cosine-similarity computation would need.
-   The non-negative guard keeps it sound (squaring a negative `a·b` would flip the inequality).
-
-   `norms-product` is `‖a‖² · ‖b‖²` precomputed by the caller; folding it into one arg keeps us
-   within Clojure's 4-argument cap for primitive-typed `defn`s."
+(defn- edge?
+  "Squared-inequality form of `cosine(a,b) ≥ t` — avoids two `Math/sqrt` calls a direct cosine
+  computation would need. Guards against a negative `a·b` flipping the sign when squared.
+  `norms-product` is `‖a‖² · ‖b‖²` precomputed by the caller."
   [^floats a ^floats b ^double norms-product ^double threshold-sq]
   (and (pos? norms-product)
-       (let [dot-ab (dot a b)]
-         (and (>= dot-ab 0.0)
-              (>= (* dot-ab dot-ab) (* threshold-sq norms-product))))))
+       (let [d (dot a b)]
+         (and (>= d 0.0)
+              (>= (* d d) (* threshold-sq norms-product))))))
 
-(defn- synonym-pair-count
-  "Count of vector pairs whose cosine similarity is ≥ `threshold`. Walks the upper triangle of the
-   N×N pair matrix; each vector's `‖v‖²` is precomputed once and reused across every comparison it
-   participates in.
-
-   TODO: this is O(N²) in the distinct-name count. Fine while the signal source is the shared
-   search-index (bounded by what the indexer has seen), but once we introduce a dedicated name-only
-   embedder this should revisit — either as a chunked `M·Mᵀ` via Neanderthal/dtype-next or as a
-   dedicated pgvector name-index doing the join in SQL."
-  [embeddings threshold]
-  (let [n                 (count embeddings)
-        threshold-sq      (* threshold threshold)
-        ^doubles norms-sq (double-array n)]
+(defn- build-adjacency
+  "Return `{:adj ^objects (of #{j...}) :edges <long> :n <long>}` for the vector array `vecs` at
+  `threshold`. Upper triangle only; each vector's `‖v‖²` is precomputed once."
+  [^objects vecs ^double threshold]
+  (let [n            (alength vecs)
+        threshold-sq (* threshold threshold)
+        norms-sq     (double-array n)
+        adj          (object-array n)
+        edges        (atom 0)]
     (dotimes [i n]
-      (let [v ^floats (embeddings i)]
-        (aset norms-sq ^long i (dot v v))))
-    (count
-     (for [i (range n)
-           j (range (inc ^long i) n)
-           :when (synonym-pair? (embeddings i) (embeddings j)
-                                (* (aget norms-sq i) (aget norms-sq j))
-                                threshold-sq)]
-       :value-doesnt-matter))))
+      (let [^floats v (aget vecs i)]
+        (aset norms-sq i (dot v v)))
+      (aset adj i (transient #{})))
+    (dotimes [i n]
+      (loop [j (inc i)]
+        (when (< j n)
+          (when (edge? (aget vecs i) (aget vecs j)
+                       (* (aget norms-sq i) (aget norms-sq j))
+                       threshold-sq)
+            (aset adj i (conj! ^clojure.lang.ITransientCollection (aget adj i) j))
+            (aset adj j (conj! ^clojure.lang.ITransientCollection (aget adj j) i))
+            (swap! edges inc))
+          (recur (inc j)))))
+    (dotimes [i n]
+      (aset adj i (persistent! (aget adj i))))
+    {:adj adj :edges @edges :n n}))
 
-(defn- score-synonym-pairs
-  "Compute the synonym sub-score for `entities` using `embedder`.
-  On embedder failure returns an `{:error \"...\"}`-only leaf, so the failure cascades through aggregates
-  (their `:score` rolls up to nil) and consumers can branch on `:error` presence.
-  A nil `embedder` produces an empty lookup and scores a real zero."
+(defn- union-find-components
+  "Connected components via iterative BFS over `adj`. Returns a vector of component sizes."
+  [^objects adj ^long n]
+  (let [visited (boolean-array n)
+        sizes   (transient [])]
+    (dotimes [start n]
+      (when-not (aget visited start)
+        (let [q    (java.util.ArrayDeque.)
+              size (atom 0)]
+          (.add q (int start))
+          (aset visited start true)
+          (while (not (.isEmpty q))
+            (let [v (int (.poll q))]
+              (swap! size inc)
+              (doseq [nb (aget adj v)]
+                (when-not (aget visited (long nb))
+                  (aset visited (long nb) true)
+                  (.add q (int nb))))))
+          (conj! sizes @size))))
+    (persistent! sizes)))
+
+(defn- clustering-coefficient
+  "Global clustering coefficient: `3·triangles / connected-triples`. nil when there are no triples."
+  [^objects adj ^long n]
+  (let [triangles (atom 0)
+        triples   (atom 0)]
+    (dotimes [i n]
+      (let [nbs (aget adj i)
+            d   (count nbs)]
+        (when (>= d 2)
+          (swap! triples + (/ (* d (dec d)) 2))
+          (doseq [a nbs
+                  b nbs
+                  :when (and (< (long a) (long b))
+                             (contains? (aget adj (long a)) (long b)))]
+            (swap! triangles inc)))))
+    (let [triples-total (long @triples)
+          triangles-t3  (long @triangles)]
+      (when (pos? triples-total)
+        ;; Each triangle counted 3× above (once per vertex); triples counted once.
+        (double (/ triangles-t3 triples-total))))))
+
+(defn- degree-summary
+  "`{:p50 :p90 :max}` over degrees on `adj`. Callers route n=0/n=1 elsewhere, so `n ≥ 2` here."
+  [^objects adj ^long n]
+  (let [degrees (vec (sort (mapv #(count (aget adj %)) (range n))))]
+    {:p50 (nth degrees (quot n 2))
+     :p90 (nth degrees (min (dec n) (quot (* n 9) 10)))
+     :max (nth degrees (dec n))}))
+
+(defn embedder-result
+  "Invoke `embedder` once and return `{:name->vec <map>}` or `{:error <string>}`. Centralized so the
+  metadata dim's `:embedding-coverage` can reuse the same lookup and the embedder runs once per
+  catalog. Coerces the error string so an exception with a nil/blank message still produces a
+  non-blank `:error` (otherwise an embedder outage would be indistinguishable from a real zero)."
   [entities embedder]
-  (try
-    (let [name->vec     (or (and embedder (embedder entities)) {})
-          ;; We need to materialize all these vectors in a clojure vec for efficient pairwise similarity checks.
-          known-vectors (into []
-                              (comp (keep (comp embedders/normalize-name :name))
-                                    (distinct)
-                                    (keep name->vec))
-                              entities)
-          pairs         (synonym-pair-count known-vectors synonym-similarity-threshold)]
-      (component-score :synonym-pair pairs))
-    (catch Throwable t
-      (log/warn t "Complexity score: synonym detection failed; cascading nil through aggregates")
-      (let [msg (some-> (.getMessage t) str/trim)
-            err (if (str/blank? msg)
-                  (or (some-> (class t) .getName) "synonym detection failed")
-                  msg)]
-        {:error err}))))
+  (if-not embedder
+    {:name->vec {}}
+    (try
+      {:name->vec (or (embedder entities) {})}
+      (catch Throwable t
+        (log/warn t "Complexity score: synonym detection failed; cascading nil through aggregates")
+        {:error (or (some-> (.getMessage t) str/trim not-empty)
+                    (.getName (class t)))}))))
+
+(defn- entity-vectors
+  "Materialize the name → vector lookup into a deterministic array of float arrays, deduping
+  normalized names and dropping those with no embedding."
+  ^objects [entities name->vec]
+  (into-array Object
+              (into []
+                    (comp (keep (comp embedders/normalize-name :name))
+                          (distinct)
+                          (keep #(get name->vec %)))
+                    entities)))
+
+(defn- synonym-block
+  "Build the `:ambiguity` synonym variables (scored `:synonym-pairs` + 7 descriptive analytics) from
+  one adjacency graph. `embedder-out` is the already-invoked [[embedder-result]] so the lookup is
+  shared with `:embedding-coverage`.
+
+  On embedder error, `:synonym-pairs` carries `{:error ... :score nil}` so the nil cascades through
+  `:ambiguity` → catalog total (visibly distinct from a real zero). n=0 (no embedded names) and n=1
+  (singleton) get the well-defined degenerate values (nil vs 0.0 ratios)."
+  [entities {:keys [name->vec error]}]
+  (cond
+    error
+    {:synonym-pairs             {:value nil :score nil :error error}
+     :synonym-edge-density      (value-leaf nil)
+     :synonym-components        (value-leaf 0)
+     :synonym-largest-component (value-leaf 0)
+     :synonym-avg-component     (value-leaf nil)
+     :synonym-clustering-coef   (value-leaf nil)
+     :synonym-avg-degree        (value-leaf nil)
+     :synonym-degree-summary    (value-leaf {:p50 0 :p90 0 :max 0})}
+
+    :else
+    (let [vecs (entity-vectors entities name->vec)
+          n    (alength vecs)]
+      (cond
+        (zero? n)
+        {:synonym-pairs             (scored-leaf :synonym-pair 0)
+         :synonym-edge-density      (value-leaf nil)
+         :synonym-components        (value-leaf 0)
+         :synonym-largest-component (value-leaf 0)
+         :synonym-avg-component     (value-leaf nil)
+         :synonym-clustering-coef   (value-leaf nil)
+         :synonym-avg-degree        (value-leaf nil)
+         :synonym-degree-summary    (value-leaf {:p50 0 :p90 0 :max 0})}
+
+        (= 1 n)
+        {:synonym-pairs             (scored-leaf :synonym-pair 0)
+         :synonym-edge-density      (value-leaf 0.0)
+         :synonym-components        (value-leaf 1)
+         :synonym-largest-component (value-leaf 1)
+         :synonym-avg-component     (value-leaf nil)
+         :synonym-clustering-coef   (value-leaf nil)
+         :synonym-avg-degree        (value-leaf 0.0)
+         :synonym-degree-summary    (value-leaf {:p50 0 :p90 0 :max 0})}
+
+        :else
+        (let [{:keys [^objects adj edges]} (build-adjacency vecs synonym-similarity-threshold)
+              comps    (union-find-components adj n)
+              multi    (filter #(>= (long %) 2) comps)
+              largest  (if (seq comps) (apply max comps) 0)
+              avg-comp (when (seq multi)
+                         (double (/ (reduce + 0 multi) (count multi))))]
+          {:synonym-pairs             (scored-leaf :synonym-pair edges)
+           :synonym-edge-density      (value-leaf (* 100.0 (/ (double ^long edges) (double n))))
+           :synonym-components        (value-leaf (count comps))
+           :synonym-largest-component (value-leaf largest)
+           :synonym-avg-component     (value-leaf avg-comp)
+           :synonym-clustering-coef   (value-leaf (clustering-coefficient adj n))
+           :synonym-avg-degree        (value-leaf (double (/ (* 2.0 ^long edges) (double n))))
+           :synonym-degree-summary    (value-leaf (degree-summary adj n))})))))
+
+(defn- embedding-coverage
+  "Fraction of distinct normalized names with an embedding in `name->vec` (in [0,1]). nil when there
+  are no named entities, or when the embedder errored."
+  [entities {:keys [name->vec error]}]
+  (when-not error
+    (let [names-set (into #{} (keep (comp embedders/normalize-name :name)) entities)
+          covered   (count (filter #(contains? name->vec %) names-set))]
+      (safe-ratio covered (count names-set)))))
+
+;;; ------------------------------- :metadata measures --------------------------------
+
+(def ^:private ^:const description-min-chars
+  "Minimum trimmed length for an entity description to count as present — defends against one-word
+  placeholders gaming the coverage metric."
+  20)
+
+(defn- non-empty-str? [s]
+  (and (string? s) (pos? (count (str/trim s)))))
+
+(defn- has-description? [s]
+  (and (string? s) (>= (count (str/trim s)) description-min-chars)))
+
+(defn- all-fields [entities]
+  (mapcat :fields entities))
+
+(defn- description-quality
+  "Descriptive: p50 word count over non-empty entity descriptions. nil when none."
+  [entities]
+  (let [words (->> entities
+                   (map :description)
+                   (filter non-empty-str?)
+                   (map #(count (str/split (str/trim %) #"\s+"))))]
+    (value-leaf (when (seq words)
+                  (let [sorted (vec (sort words))]
+                    (nth sorted (quot (count sorted) 2)))))))
+
+;;; -------------------------------- tree assembly ------------------------------------
+
+(def ^:private default-level
+  "Level used when a caller omits `:level` — compute everything, so existing callers/tests are
+  unaffected by the cost-tiering gate. Callers that read the setting pass an already-clamped level."
+  2)
+
+(defn- score-tree-leaves
+  "Pure: build the leaves tree of sub-score maps for one catalog. Scored leaves carry `:score`;
+  descriptive leaves carry only `:value`. The surrounding shape defines the `:size`/`:ambiguity`/
+  `:metadata` groupings that [[score-catalog]] rolls up. `:metadata` is descriptive-only, so it
+  ends up with no `:score` and is excluded from the catalog total.
+
+  Cost-tiered by `:level` (default [[default-level]]): level ≥ 1 computes the cheap DB-only measures
+  (scale, nominal, metadata coverage minus embedding-coverage); level ≥ 2 ALSO invokes the embedder
+  and adds the synonym graph (`:synonym-pairs` + the 7 `synonym-*` analytics) and
+  `:embedding-coverage`. At level 1 those keys are OMITTED entirely (not emitted as zero leaves).
+
+  Gracefully degrades on the offline/representation path: entities missing `:fields`/`:description`
+  yield 0 / nil rather than throwing, and a nil `:collection-count` scores `collection-tree-size` 0."
+  [entities {:keys [collection-count level] :or {level default-level}} embedder]
+  (let [n            (count entities)
+        total-fields (total-field-count entities)
+        ;; Only invoke the embedder at level ≥ 2 — at level 1 the synonym/embedding work is skipped
+        ;; entirely, so we never pay for it.
+        emb          (when (>= level 2) (embedder-result entities embedder))
+        fields       (all-fields entities)
+        tables       (filter #(= :table (:kind %)) entities)]
+    {:size      {:entity-count         (score-entity-count entities)
+                 :field-count          (score-field-count total-fields)
+                 :collection-tree-size (score-collection-tree-size collection-count)
+                 :fields-per-entity    (fields-per-entity n total-fields)
+                 :measure-to-dim-ratio (measure-to-dim-ratio entities total-fields)}
+     :ambiguity (cond-> {:name-collisions         (score-name-collisions entities)
+                         :repeated-measures       (score-repeated-measures entities)
+                         :field-level-collisions  (score-field-level-collisions entities)
+                         :name-collisions-density (name-collisions-density entities)
+                         :name-concentration      (name-concentration entities)}
+                  (>= level 2) (merge (synonym-block entities emb)))
+     :metadata  (cond-> {:description-coverage       (value-leaf (safe-ratio (count (filter #(has-description? (:description %)) entities))
+                                                                             n))
+                         :field-description-coverage (value-leaf (safe-ratio (count (filter #(non-empty-str? (:description %)) fields))
+                                                                             (count fields)))
+                         :semantic-type-coverage     (value-leaf (safe-ratio (count (filter :semantic-type fields))
+                                                                             (count fields)))
+                         :curated-metric-coverage    (value-leaf (safe-ratio (count (filter #(seq (:measure-names %)) tables))
+                                                                             (count tables)))
+                         :description-quality        (description-quality entities)}
+                  ;; embedding-coverage reuses the embedder result, so it's a level-2 measure too.
+                  (>= level 2) (assoc :embedding-coverage (value-leaf (embedding-coverage entities emb))))}))
+
+(defn- leaf?
+  "A node is a leaf when it carries `:measurement`, `:value`, or `:error` — i.e. it is not an
+  internal grouping. Internal nodes are recursed into via their values."
+  [node]
+  (or (contains? node :measurement)
+      (contains? node :value)
+      (contains? node :error)))
 
 (defn- nil-safe-sum
   "Sum `xs` (numbers and/or nils). Returns nil if any element is nil — used to cascade an
@@ -383,33 +715,35 @@
   (when (every? some? xs)
     (reduce + xs)))
 
-(defn- score-tree-leaves
-  "Pure: build the leaves-only tree of sub-score maps for one catalog.
-  Each leaf is a `{:measurement <num-or-nil> :score <num-or-nil> [:error <str>]}` map; the surrounding shape
-  defines the `:size`/`:ambiguity` grouping that [[score-catalog]] then rolls up."
-  [entities embedder]
-  {:size      {:entity-count (score-entity-count entities)
-               :field-count  (score-field-count entities)}
-   :ambiguity {:name-collisions   (score-name-collisions entities)
-               :synonym-pairs     (score-synonym-pairs entities embedder)
-               :repeated-measures (score-repeated-measures entities)}})
-
 (defn- rollup-node
   "Recursively roll up a node's children into `{:score <sum> :components {...}}`.
-  Leaves — maps carrying `:score` (computed) or `:error` (uncomputed) — pass through unchanged.
-  `:score` cascades nil through aggregates so an uncomputed sub-score nils out everything it feeds."
+  Leaves pass through unchanged. A node's `:score` is the sum of `:score` over the children that
+  HAVE a `:score` key (descriptive leaves/groupings are skipped). A node with ZERO scored
+  descendants gets NO `:score` key — it is a descriptive grouping (e.g. `:metadata`), so it drops
+  out of the catalog total. The nil cascade still applies within the scored set: an errored scored
+  leaf's `:score nil` nils its parent."
   [node]
-  (if (or (contains? node :score) (contains? node :error))
+  (if (leaf? node)
     node
-    (let [components (update-vals node rollup-node)]
-      {:score      (nil-safe-sum (map (comp :score val) components))
-       :components components})))
+    (let [components    (update-vals node rollup-node)
+          scored-vals   (->> components vals (filter #(contains? % :score)) (map :score))
+          base          {:components components}]
+      (if (seq scored-vals)
+        (assoc base :score (nil-safe-sum scored-vals))
+        base))))
 
 (defn score-catalog
-  "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`.
-  Returns `{:score <sum> :components {:size {...} :ambiguity {...}}}`; see [[score-tree-leaves]] for the leaf layout."
-  [entities embedder]
-  (rollup-node (score-tree-leaves entities embedder)))
+  "Pure: compute the score breakdown for a catalog given its `entities`, a `ctx`
+  (`{:collection-count <long|nil> :level <0..2>}`), and an optional `embedder`. Returns
+  `{:score <sum> :components {:size {...} :ambiguity {...} :metadata {...}}}`; see
+  [[score-tree-leaves]] for the leaf layout. `:metadata` carries no `:score` (descriptive-only).
+
+  At level 0 the catalog node is `{:components {}}` (no `:score`) — scoring is skipped entirely and
+  the embedder is never invoked. `:level` defaults to [[default-level]] when absent."
+  [entities {:keys [level] :or {level default-level} :as ctx} embedder]
+  (if (zero? level)
+    {:components {}}
+    (rollup-node (score-tree-leaves entities ctx embedder))))
 
 ;;; ----------------------------------- public API ------------------------------------
 
@@ -433,9 +767,10 @@
 
 (defn- parameters-map
   "Sorted-map of scoring inputs likely to evolve, published as a JSON object on each event."
-  [{:keys [synonym-threshold embedding-model text-variant weights]}]
+  [{:keys [synonym-threshold embedding-model text-variant weights level]}]
   (cond-> (sorted-map "synonym_threshold" synonym-threshold
                       "weights"           (snake-keys weights))
+    (some? level)   (assoc "level"           level)
     embedding-model (assoc "embedding_model" (snake-keys embedding-model))
     text-variant    (assoc "text_variant"    (snake text-variant))))
 
@@ -455,19 +790,30 @@
   [event score]
   (cond-> event (some? score) (assoc :score score)))
 
+(defn- measurement-of
+  "The numeric measurement to publish for a leaf: a scored leaf's `:measurement`, or a descriptive
+  leaf's `:value` when (and only when) it is a number. Descriptive map/nil values (e.g.
+  `:synonym-degree-summary`) emit no `:measurement` — the Snowplow schema's `measurement` is a
+  single number, not a structure."
+  [node]
+  (cond
+    (:measurement node)        (:measurement node)
+    (number? (:value node))    (:value node)))
+
 (defn- node->events
   "Walk one catalog and emit a Snowplow event per node.
   Computed leaves use a `<path>` key and carry `:measurement`; error leaves use the same `<path>` key with `:error`.
   Internal nodes use a `<path>.total` key with the rolled-up `:score` (the root emits as `total`).
-  `:score` is omitted when nil; see [[with-score]]."
+  `:score` is omitted when nil or absent (descriptive leaves/groupings); see [[with-score]]."
   [base catalog path node]
   (let [;; `:total` here is the Snowplow wire-format suffix for rollup nodes, not an in-memory field.
         key   (apply dotted-key (if (:components node) (conj path :total) path))
+        m     (measurement-of node)
         event (cond-> (-> base
                           (assoc :catalog catalog :key key)
                           (with-score (:score node)))
-                (:measurement node) (assoc :measurement (:measurement node))
-                (:error node)       (assoc :error (truncate-error (:error node))))]
+                (some? m)     (assoc :measurement m)
+                (:error node) (assoc :error (truncate-error (:error node))))]
     (cons event
           (mapcat (fn [[k child]] (node->events base catalog (conj path k) child))
                   (:components node)))))
@@ -519,18 +865,26 @@
      `:metabot-entities` — when non-nil, scored separately as the `:metabot` catalog. When nil
         (default), we assume this means that metabot has no additional filtering configured, and
         reuse the `:universe` score. In the fallback case the response `:meta` includes
-        `:metabot-source :universe-fallback` so benchmark consumers recognise this scenario."
-  [library-entities universe-entities embedder {:keys [embedding-model-meta metabot-entities]}]
-  (let [universe-score     (score-catalog universe-entities embedder)
+        `:metabot-source :universe-fallback` so benchmark consumers recognise this scenario.
+     `:level` — cost-tier (0..2); defaults to [[default-level]] (2). See [[score-catalog]]."
+  [library-entities universe-entities embedder {:keys [embedding-model-meta metabot-entities
+                                                       collection-counts level]
+                                                :or {level default-level}}]
+  ;; Callers from the representation/CLI path omit collection counts entirely; default each catalog's
+  ;; `:collection-count` to nil so `collection-tree-size` scores 0 and the size ratios degrade to nil
+  ;; rather than throwing — keeps representation.clj / cli.clj working without per-catalog counts.
+  (let [ctx-for            (fn [catalog] {:collection-count (get collection-counts catalog) :level level})
+        universe-score     (score-catalog universe-entities (ctx-for :universe) embedder)
         metabot-fallback?  (nil? metabot-entities)]
-    {:library  (score-catalog library-entities embedder)
+    {:library  (score-catalog library-entities (ctx-for :library) embedder)
      :universe universe-score
      :metabot  (if metabot-fallback?
                  universe-score
-                 (score-catalog metabot-entities embedder))
+                 (score-catalog metabot-entities (ctx-for :metabot) embedder))
      :meta     (cond-> {:formula-version   formula-version
                         :format-version    format-version
                         :synonym-threshold synonym-similarity-threshold
+                        :level             level
                         :weights           weights}
                  embedding-model-meta (assoc :embedding-model embedding-model-meta)
                  metabot-fallback?    (assoc :metabot-source :universe-fallback))}))
@@ -555,8 +909,8 @@
       {:library  {:score n :components {...}}
        :universe {:score n :components {...}}
        :metabot  {:score n :components {...}}
-       :meta     {:formula-version 1
-                  :format-version 1
+       :meta     {:formula-version 2
+                  :format-version 2
                   :synonym-threshold 0.80
                   :embedding-model {:provider ..., :model-name ..., :model-dimensions ...}
                   :text-variant :names-split}}
@@ -574,9 +928,12 @@
                               isn't a single named variant).
     `:metabot-scope`        — `{:verified-only? <bool> :collection-id <nil|Long>}` describing how
                               the internal Metabot filters Cards.
-    `:emit-snowplow?`       — whether to publish per-score Snowplow events. Defaults true."
-  [& {:keys [embedder embedding-model-meta text-variant metabot-scope emit-snowplow?]
-      :or {emit-snowplow? true}}]
+    `:emit-snowplow?`       — whether to publish per-score Snowplow events. Defaults true.
+    `:level`                — cost-tier (0..2) controlling how much detail to compute. The caller
+                              passes an already-clamped [[settings/effective-level]]; this fn stays
+                              pure and does not read the setting. Defaults to [[default-level]] (2)."
+  [& {:keys [embedder embedding-model-meta text-variant metabot-scope emit-snowplow? level]
+      :or {emit-snowplow? true level default-level}}]
   ;;; NOTE: we fully materialize vectors of the relevant entities.
   ;;; For very large instances that means holding large lists in memory, but each catalog is consumed
   ;;; by many sub-score functions that each walk the collection, so making this reducible would
@@ -584,21 +941,25 @@
   ;;; currently consume.
   (let [total-timer (u/start-timer)]
     (try
-      (let [{:keys [library universe metabot]}
+      (let [{:keys [library universe metabot collection-counts]}
             ;; Single enumerate phase — see [[enumerate-catalogs]]. Library ⊆ universe and
             ;; metabot ⊆ universe, so fetching each catalog separately duplicated DB work; the
             ;; catalog label `"all"` on the enumerate stage reflects that one pass covers all
             ;; three. Per-catalog timing only applies to the pure scoring step.
+            ;; `collection-counts` (nil when a caller stubs enumerate-catalogs without it) feeds each
+            ;; catalog's `:collection-count` ctx; a missing count degrades `collection-tree-size` to 0.
             (time-phase! "enumerate" "all" #(enumerate-catalogs metabot-scope))
-            universe-score (time-phase! "score" "universe" #(score-catalog universe embedder))
-            library-score  (time-phase! "score" "library"  #(score-catalog library  embedder))
-            metabot-score  (time-phase! "score" "metabot"  #(score-catalog metabot  embedder))
+            ctx-for        (fn [catalog] {:collection-count (get collection-counts catalog) :level level})
+            universe-score (time-phase! "score" "universe" #(score-catalog universe (ctx-for :universe) embedder))
+            library-score  (time-phase! "score" "library"  #(score-catalog library  (ctx-for :library)  embedder))
+            metabot-score  (time-phase! "score" "metabot"  #(score-catalog metabot  (ctx-for :metabot)  embedder))
             result         {:library  library-score
                             :universe universe-score
                             :metabot  metabot-score
                             :meta     (cond-> {:formula-version   formula-version
                                                :format-version    format-version
-                                               :synonym-threshold synonym-similarity-threshold}
+                                               :synonym-threshold synonym-similarity-threshold
+                                               :level             level}
                                         embedding-model-meta (assoc :embedding-model embedding-model-meta)
                                         text-variant         (assoc :text-variant    text-variant))}
             ;; `emit-snowplow!` returns true only when every event reached the tracker (false when

@@ -24,14 +24,17 @@
 
 (defn current-fingerprint
   "String capturing everything that changes the meaning or shape of an emitted score.
-  Includes `formula-version`, `format-version`, `weights`, `synonym-threshold`, and the synonym-axis fragment
-  from [[synonym-source/fingerprint-fragment]] (source toggles, configured embedder, pgvector index swaps)."
+  Includes `formula-version`, `format-version`, `weights`, `synonym-threshold`, the cost-tier
+  `level` (a level change adds/removes leaves, so it must force a re-score), and the synonym-axis
+  fragment from [[synonym-source/fingerprint-fragment]] (source toggles, configured embedder,
+  pgvector index swaps)."
   []
   (pr-str (into (sorted-map)
                 (merge {:formula-version   complexity/formula-version
                         :format-version    complexity/format-version
                         :synonym-threshold complexity/synonym-similarity-threshold
-                        :weights           complexity/weights}
+                        :weights           complexity/weights
+                        :level             (settings/effective-level)}
                        (synonym-source/fingerprint-fragment)))))
 
 (defn maybe-advance-last-fingerprint!
@@ -61,7 +64,8 @@
     (try
       (let [result (complexity/complexity-scores
                     (assoc (synonym-source/complexity-scores-opts)
-                           :metabot-scope (metabot-scope/internal-metabot-scope)))]
+                           :metabot-scope (metabot-scope/internal-metabot-scope)
+                           :level         (settings/effective-level)))]
         (try
           (data-complexity-score/record-score! claim-fingerprint "appdb" result)
           (maybe-advance-last-fingerprint! claim-fingerprint result)
