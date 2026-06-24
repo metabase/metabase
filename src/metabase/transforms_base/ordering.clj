@@ -71,7 +71,11 @@
   [transform]
   (if-some [deps (:table_dependencies transform)]
     deps
-    (transforms-base.i/table-dependencies transform)))
+    (transforms-base.i/table-dependencies
+     ;; load :source on demand on a cache miss, so callers can omit the heavy blob from their select
+     (cond-> transform
+       (and (not (:source transform)) (:id transform))
+       (assoc :source (t2/select-one-fn :source [:model/Transform :id :source] (:id transform)))))))
 
 (defn safe-table-dependencies
   "Like `stored-or-live-deps`, but returns `#{}` if the computation throws. Used by cycle
