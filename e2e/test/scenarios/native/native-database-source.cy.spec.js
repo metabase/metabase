@@ -17,7 +17,9 @@ describe(
       cy.intercept("PUT", "/api/setting/last-used-native-database-id").as(
         "persistDatabase",
       );
-      cy.intercept("GET", "/api/database?saved=true").as("databasePickerData");
+      cy.intercept("GET", "/api/database?can-query=true").as(
+        "databasePickerData",
+      );
 
       H.restore("postgres-12");
       cy.signInAsAdmin();
@@ -381,13 +383,13 @@ function assertNoDatabaseSelected() {
   );
 }
 
-// The database picker auto-opens before its options finish loading. The legacy
-// DataSelector fetches the database list on open and re-derives its state every
-// time the `metadata` prop gets a fresh reference (which happens on each store
-// update), so the option rows keep remounting until those fetches settle —
-// detaching the row mid-click. Waiting only for the options to be present isn't
-// enough: they're present throughout the remount storm. Wait for the picker's
-// own database fetch to finish so the store quiets and the rows stop remounting,
+// The actions database picker auto-opens before its database list has loaded.
+// The legacy DataSelector derives its options from `query.metadata()`, and
+// `getMetadata` returns a fresh reference on every store write — so when the
+// picker's `GET /api/database?can-query=true` response lands, the options
+// remount and the previously-rendered row detaches mid-click. Presence alone
+// isn't enough (the row is present both before and after that write); we must
+// wait for the fetch itself to settle so that store write has already happened,
 // then confirm both options rendered, so the click lands on a stable node.
 function waitForDatabasePicker() {
   cy.wait("@databasePickerData");
@@ -397,6 +399,10 @@ function waitForDatabasePicker() {
 }
 
 function selectDatabase(database) {
+  // Re-query the option immediately before clicking. The picker can remount the
+  // row as metadata settles, detaching a node Cypress already resolved; a fresh
+  // query right before `.click()` targets the current node instead of a stale one.
+  H.popover().findByText(database).should("be.visible");
   H.popover().findByText(database).click();
   cy.findByTestId("selected-database").should("have.text", database);
 }
