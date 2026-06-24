@@ -439,7 +439,7 @@
 (defn- describe-dataset-table
   "Build the field descriptions for a single table from its joined `COLUMNS`/`COLUMN_FIELD_PATHS` rows (see
   [[describe-dataset-fields-reducible]]). Each top-level column appears once per nested leaf, or once with a `nil`
-  `:field_path` when it has none, so de-dup the columns by `:ordinal_position` and build the nested-field lookup from
+  `:field_path` when it has none, so de-dup the columns by `:column_name` and build the nested-field lookup from
   the rows that carry a `:field_path` (whose leaf type is in `:nested_data_type`)."
   [dataset-id table-rows]
   (let [table-name    (:table_name (first table-rows))
@@ -448,7 +448,10 @@
                        (eduction (filter :field_path)
                                  (map #(assoc % :data_type (:nested_data_type %)))
                                  table-rows))
-        columns       (into [] (m/distinct-by :ordinal_position) table-rows)]
+        ;; de-dup by `:column_name`, not `:ordinal_position`: BigQuery reports a NULL `ordinal_position` for
+        ;; pseudo-columns (e.g. `_PARTITIONTIME`), and a table can carry more than one, so keying on position would
+        ;; collapse distinct columns into one.
+        columns       (into [] (m/distinct-by :column_name) table-rows)]
     (sort-by (juxt :table-name :database-position :name)
              (describe-dataset-rows nested-lookup dataset-id table-name columns))))
 
