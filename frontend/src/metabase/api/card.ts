@@ -171,6 +171,7 @@ export const cardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
+        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
         query: ({ file, collection_id }) => {
@@ -221,6 +222,7 @@ export const cardApi = Api.injectEndpoints({
 
           return invalidateTags(error, tags);
         },
+        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       deleteCard: builder.mutation<void, CardId>({
         query: (id) => ({

@@ -1,5 +1,5 @@
 import { useGetCollectionQuery } from "metabase/api/collection";
-import { isRootCollection } from "metabase/collections/utils";
+import { isRootCollection } from "metabase/common/collections/utils";
 import type {
   CollectionId,
   CollectionNamespace,

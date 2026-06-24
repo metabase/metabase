@@ -39,6 +39,7 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -57,17 +58,47 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mu/defn- warn-too-many-fields!
+  "Log that `table`'s warehouse schema has more fields than sync-max-fields-per-table (`limit`), so only the first
+  `limit` (by name) are synced as :model/Field rows and the rest are skipped -- keeps document databases with very
+  large/dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields."
+  [table :- i/TableInstance
+   limit :- ms/PositiveInt]
+  (log/warnf (str "Table %s has more than sync-max-fields-per-table (%d) fields; syncing the first %d (by name) and "
+                  "skipping the rest. Raise MB_SYNC_MAX_FIELDS_PER_TABLE to sync more.")
+             (sync-util/name-for-logging table) limit limit))
+
+(mu/defn- limit-fields-to-sync :- [:set i/TableMetadataField]
+  "Cap `db-metadata` to at most [[driver.settings/sync-max-fields-per-table]] fields, keeping the first by name so the
+  selection is stable across syncs, and warning when fields are dropped.
+
+  Drivers hard-cap their metadata at exactly `limit` fields per table (they read `sync-max-fields-per-table`), so a
+  table that comes back with `limit` fields is assumed to have hit the cap -- warn. We only need to truncate when a
+  driver returned strictly more than `limit` (i.e. one that doesn't honor the cap)."
+  [table       :- i/TableInstance
+   db-metadata :- [:set i/TableMetadataField]]
+  (let [limit (driver.settings/sync-max-fields-per-table)
+        n     (count db-metadata)]
+    (when (>= n limit)
+      (warn-too-many-fields! table limit))
+    (if (> n limit)
+      (into #{} (take limit (sort-by :name db-metadata)))
+      db-metadata)))
+
 (mu/defn- sync-and-update! :- ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
-  properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
+  properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced. Only the first
+  [[driver.settings/sync-max-fields-per-table]] fields are synced; any beyond that are skipped (see
+  [[limit-fields-to-sync]])."
   [database    :- i/DatabaseInstance
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
-  (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
-     ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-     ;; Re-fetch our metadata because there might be some things that have changed after calling
-     ;; `sync-instances`
-     (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))
+  (let [db-metadata (limit-fields-to-sync table db-metadata)]
+    (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
+       ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
+       ;; Re-fetch our metadata because there might be some things that have changed after calling
+       ;; `sync-instances`
+       (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table)))))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.
@@ -80,7 +111,13 @@
 (mu/defn sync-fields! :- [:map
                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]
-  "Sync the Fields in the Metabase application database for all the Tables in a `database`."
+  "Sync the Fields in the Metabase application database for all the Tables in a `database`.
+
+  `fields-metadata` is a *reducible* of per-column metadata, ordered so a table's columns are contiguous. It is passed
+  straight to `sync!` (never `(into [] ...)`-ed): `sync!`'s `partition-by` buffers only one table's columns at a time,
+  so memory stays bounded by the widest single table rather than the whole schema. A schema with a huge or churning
+  set of tables (e.g. BigQuery with thousands of ephemeral tables) would otherwise materialize every column at once
+  and OOM."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver          (driver.u/database->driver database)
@@ -121,14 +158,13 @@
           (transduce (comp
                       (map (fn [schema]
                              (log/infof "Fetching field metadata for %s.%s" (:name database) schema)
-                             (into [] (fetch-metadata/fields-metadata database
-                                                                      :schema-names [schema]))))
+                             (fetch-metadata/fields-metadata database :schema-names [schema])))
                       (map sync!))
                      (completing (partial merge-with +))
                      {:total-fields   0
                       :updated-fields 0}
                      (sync-util/sync-schemas database))
-          (sync! (into [] (fetch-metadata/fields-metadata database))))))))
+          (sync! (fetch-metadata/fields-metadata database)))))))
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."

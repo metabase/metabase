@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import {
   getIsDashCardsRunning,

@@ -1,18 +1,18 @@
 .navButton {
   color: var(--mb-color-text-primary);
-  background: var(--mb-color-background);
-  border: 1px solid var(--mb-color-border);
+  background: var(--mb-color-background_surface-primary);
+  border: 1px solid var(--mb-color-border-neutral);
 
   &:hover {
-    background: var(--mb-color-background-hover);
+    background: var(--mb-color-background_surface-hover);
   }
 
   &[data-disabled] {
     color: var(--mb-color-text-tertiary);
-    background: var(--mb-color-background);
+    background: var(--mb-color-background_surface-primary);
 
     &:hover {
-      background: var(--mb-color-background);
+      background: var(--mb-color-background_surface-primary);
     }
   }
 }

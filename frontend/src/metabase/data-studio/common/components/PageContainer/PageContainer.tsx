@@ -8,7 +8,7 @@ export const PageContainer = React.forwardRef(function PageContainerInner(
 ) {
   return (
     <Stack
-      bg="background-secondary"
+      bg="background_page-secondary"
       h="100%"
       pb="2rem"
       px="3.5rem"

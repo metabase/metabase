@@ -8,7 +8,7 @@ import {
   useListCollectionsQuery,
   useListSnippetsQuery,
 } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { SidebarHeader } from "metabase/common/components/SidebarHeader";

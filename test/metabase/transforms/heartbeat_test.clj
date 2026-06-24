@@ -111,7 +111,7 @@
             (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id stale-id)))
             (is (= :started (t2/select-one-fn :status :model/TransformRun :id fresh-id)))
             (testing "reaped row carries the distinguishing message"
-              (is (= "Timed out: no heartbeat"
+              (is (= "Timed out: crashed"
                      (t2/select-one-fn :message :model/TransformRun :id stale-id))))))
         (testing "a second sweep finds nothing (row already inactive)"
           (is (empty? (transform-run/reap-orphaned-runs! 5))))))))
@@ -171,7 +171,7 @@
             (is (= [stale-id] (mapv :id reaped)))
             (is (= :timeout (t2/select-one-fn :status :model/TransformJobRun :id stale-id)))
             (is (= :started (t2/select-one-fn :status :model/TransformJobRun :id fresh-id)))
-            (is (= "Timed out: no heartbeat"
+            (is (= "Timed out: crashed"
                    (t2/select-one-fn :message :model/TransformJobRun :id stale-id)))))
         (testing "a second sweep finds nothing (row already inactive)"
           (is (empty? (job-run/reap-orphaned-runs! 5))))))))

@@ -131,7 +131,7 @@ export const CustomMappingModal = ({
             </Box>
 
             <Group
-              bg="background-primary"
+              bg="background_page-primary"
               bottom={0}
               className={S.footer}
               gap="md"

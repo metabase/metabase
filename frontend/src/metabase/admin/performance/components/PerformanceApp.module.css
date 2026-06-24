@@ -1,9 +1,9 @@
 .TabsList {
   padding: 0 2.5rem;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-bottom-width: 1px;
   margin-top: 1.5rem;
-  border-bottom-color: var(--mb-color-border);
+  border-bottom-color: var(--mb-color-border-neutral);
 }
 
 .Tab {
@@ -33,7 +33,7 @@
 
 .TabBody {
   flex: 1;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   height: 100%;
 }
 

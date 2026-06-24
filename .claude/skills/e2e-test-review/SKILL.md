@@ -25,7 +25,7 @@ Before starting, determine which mode to use:
 
 ### When to hand off instead of review
 
-If the spec references an issue (`metabase#NNNNN`) and the user wants to **fix** flakiness or assess whether the test still reproduces the original bug, that's outside the review skill's scope. Point them at `/fix-flakey-test` (or the dedicated flake-fixing workflow), which knows to fetch the issue and the resolving PR's diff. The review skill stays focused on "is this test well-written and conformant" — it doesn't fetch external issue context by default.
+If the spec references an issue (`metabase#NNNNN`) and the user wants to **fix** flakiness or assess whether the test still reproduces the original bug, that's outside the review skill's scope. Point them at the dedicated flake-fixing workflow, which knows to fetch the issue and the resolving PR's diff. The review skill stays focused on "is this test well-written and conformant" — it doesn't fetch external issue context by default.
 
 ## Review checklist
 

@@ -83,6 +83,7 @@ const getPermissionValue = (
   groupId: number,
   entityId: PermissionEntityId,
   permissionSubject: PermissionSubject,
+  permission: DataPermission,
 ) => {
   switch (permissionSubject) {
     case "fields":
@@ -90,23 +91,45 @@ const getPermissionValue = (
         permissions,
         groupId,
         entityId as TableEntityId,
-        DataPermission.DOWNLOAD,
+        permission,
       );
     case "tables":
       return getTablesPermission(
         permissions,
         groupId,
         entityId as SchemaEntityId,
-        DataPermission.DOWNLOAD,
+        permission,
       );
     default:
-      return getSchemasPermission(
-        permissions,
-        groupId,
-        entityId,
-        DataPermission.DOWNLOAD,
-      );
+      return getSchemasPermission(permissions, groupId, entityId, permission);
   }
+};
+
+const getEffectiveDownloadPermissionValue = (
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: PermissionEntityId,
+  permissionSubject: PermissionSubject,
+) => {
+  const viewDataPermissionValue = getPermissionValue(
+    permissions,
+    groupId,
+    entityId,
+    permissionSubject,
+    DataPermission.VIEW_DATA,
+  );
+
+  if (viewDataPermissionValue === DataPermissionValue.BLOCKED) {
+    return DOWNLOAD_PERMISSION_OPTIONS.none.value;
+  }
+
+  return getPermissionValue(
+    permissions,
+    groupId,
+    entityId,
+    permissionSubject,
+    DataPermission.DOWNLOAD,
+  );
 };
 
 export const buildDownloadPermission = (
@@ -124,9 +147,15 @@ export const buildDownloadPermission = (
 
   const value = isBlockPermission
     ? DOWNLOAD_PERMISSION_OPTIONS.none.value
-    : getPermissionValue(permissions, groupId, entityId, permissionSubject);
+    : getPermissionValue(
+        permissions,
+        groupId,
+        entityId,
+        permissionSubject,
+        DataPermission.DOWNLOAD,
+      );
 
-  const defaultGroupValue = getPermissionValue(
+  const defaultGroupValue = getEffectiveDownloadPermissionValue(
     permissions,
     defaultGroup.id,
     entityId,

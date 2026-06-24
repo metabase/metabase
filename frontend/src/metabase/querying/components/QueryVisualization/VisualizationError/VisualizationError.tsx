@@ -2,7 +2,7 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { isNetworkError } from "metabase/api/client";
+import { isNetworkError, isStreamInterruptedError } from "metabase/api/client";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
@@ -45,6 +45,23 @@ export function VisualizationError({
   const query = question.query();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const isNative = question && Lib.queryDisplayInfo(query).isNative;
+
+  // The response committed and then the stream broke partway through — typically
+  // a query that errored after results started streaming, aborting the
+  // connection. We can't recover the reason, but it is NOT necessarily a
+  // connectivity/server-outage problem, so don't show the "server issues"
+  // message that implies the user should wait for the server to recover.
+  if (isStreamInterruptedError(error)) {
+    return (
+      <ErrorMessage
+        className={className}
+        type="serverError"
+        title={t`This question didn't finish loading`}
+        message={t`The results stopped before the query finished. This can happen when a query runs into an error after it starts returning data. Try running it again.`}
+        action={<AdminEmail />}
+      />
+    );
+  }
 
   // Treat transport-level failures (server dropped connection, offline, etc.)
   // the same as an HTTP error with a status — the user just needs to know the

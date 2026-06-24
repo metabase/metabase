@@ -114,7 +114,7 @@ export const ChartSettingSelect = ({
       searchable={!!searchProp}
       comboboxProps={{
         withinPortal: false,
-        floatingStrategy: "fixed",
+        floatingStrategy: "absolute",
       }}
       leftSection={resolvedLeftSection}
       leftSectionWidth={icon != null ? iconWidth : undefined}
