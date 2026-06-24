@@ -11,6 +11,7 @@ import type {
   MetabotAgentTurnDisplayError,
   MetabotAgentTurnError,
   MetabotConverstationState,
+  MetabotDebugToolCallMessage,
   MetabotState,
 } from "./types";
 import { createMessageId } from "./utils";
@@ -18,6 +19,15 @@ import { createMessageId } from "./utils";
 export type ConvoPayloadAction<
   Value extends Record<string, any> = Record<string, any>,
 > = PayloadAction<{ agentId: MetabotAgentId } & Value>;
+
+export const findLastToolCallMessage = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+) =>
+  convo.messages.findLast(
+    (m): m is MetabotDebugToolCallMessage =>
+      m.type === "tool_call" && m.id === toolCallId,
+  );
 
 export const getRequestConversation = (
   state: WritableDraft<MetabotState>,

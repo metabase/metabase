@@ -31,31 +31,31 @@ export const AgentDataPartMessage = ({
   debug,
 }: AgentDataPartMessageProps) =>
   match(message)
-    .with({ part: { type: "todo_list" } }, ({ part }) => (
-      <AgentTodoListMessage todos={part.value} />
+    .with({ part: { type: "data-todo_list" } }, ({ part }) => (
+      <AgentTodoListMessage todos={part.data} />
     ))
-    .with({ part: { type: "transform_suggestion" } }, (msg) => (
+    .with({ part: { type: "data-transform_suggestion" } }, (msg) => (
       <AgentSuggestionMessage message={msg} readonly={readonly} />
     ))
-    .with({ part: { type: "navigate_to" } }, ({ part }) => {
+    .with({ part: { type: "data-navigate_to" } }, ({ part }) => {
       const sourcePills = (
         <NavigateToTablePills
-          path={part.value}
+          path={part.data}
           messageId={readonly ? undefined : message.externalId}
         />
       );
 
       return (
         <Stack gap="md">
-          {debug && <NavigateToDataPart type={part.type} path={part.value} />}
+          {debug && <NavigateToDataPart type={part.type} path={part.data} />}
           {sourcePills}
         </Stack>
       );
     })
-    .with({ part: { type: "code_edit" } }, ({ part, metadata }) => {
+    .with({ part: { type: "data-code_edit" } }, ({ part, metadata }) => {
       const sourcePills = (
         <CodeEditTablePills
-          value={part.value}
+          value={part.data}
           buffer={metadata?.codeEditBuffer}
           messageId={readonly ? undefined : message.externalId}
         />
@@ -63,25 +63,25 @@ export const AgentDataPartMessage = ({
 
       return (
         <Stack gap="md">
-          {debug && <CodeEditDataPart type={part.type} value={part.value} />}
+          {debug && <CodeEditDataPart type={part.type} value={part.data} />}
           {sourcePills}
         </Stack>
       );
     })
     .with(
-      { part: { type: "generated_entity", value: { type: "card" } } },
+      { part: { type: "data-generated_entity", data: { type: "card" } } },
       ({ part }) => (
         <Stack gap="md">
-          {debug && <DataPartJsonCard type={part.type} value={part.value} />}
-          <MetabotInlineChart value={part.value} />
+          {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+          <MetabotInlineChart value={part.data} />
         </Stack>
       ),
     )
-    .with({ part: { type: "adhoc_viz" } }, ({ part }) =>
-      debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
+    .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>
+      debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
-    .with({ part: { type: "static_viz" } }, ({ part }) =>
-      debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
+    .with({ part: { type: "data-static_viz" } }, ({ part }) =>
+      debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
     .exhaustive((msg: unknown) => {
       console.warn("AgentDataPartMessage received an unexpected value:", msg);
