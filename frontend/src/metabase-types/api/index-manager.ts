@@ -83,6 +83,47 @@ export type StructuredIndex =
   | OrderByIndex
   | SkipIndex;
 
+export type IndexFieldType =
+  | "string"
+  | "boolean"
+  | "select"
+  | "integer"
+  | "columns";
+
+export type IndexFieldOption = {
+  // localized label
+  name: string;
+  // enum value written into the structured request body
+  value: string;
+};
+
+// One form field describing how to request an index. Mirrors the backend
+// `metabase.driver/::index-field` descriptor (same shape as a connection
+// property), so the FE renders it like a database connection field. Each
+// `name` (and each select option `value`) matches a key/enum in the kind's
+// structured request branch.
+export type IndexField = {
+  name: string;
+  "display-name": string;
+  type: IndexFieldType;
+  required?: boolean;
+  // `columns` only: whether per-column asc/desc is offered
+  directions?: boolean;
+  // `select` only
+  options?: IndexFieldOption[];
+};
+
+export type IndexMethodLifecycle = "standalone" | "inline";
+
+// Metadata for one index kind a driver supports.
+export type IndexMethod = {
+  lifecycle: IndexMethodLifecycle;
+  fields: IndexField[];
+};
+
+// index-kind -> metadata; mirrors backend `driver/supported-index-methods`.
+export type RequestableIndexes = Record<string, IndexMethod>;
+
 export const TABLE_INDEX_REQUEST_STATUSES = [
   "pending",
   "running",
@@ -129,12 +170,23 @@ export type ListTableIndexesResponse = {
   data: TableIndexEntry[];
 };
 
+// A single field value collected by the config-driven index form.
+export type IndexFieldValue = string | number | boolean | IndexColumn[];
+
+// Structured index request body assembled from the driver's field descriptors.
+// The exact key set is dictated by `requestable_indexes`, so we model it
+// structurally rather than as the precise `StructuredIndex` union (used for
+// reading existing requests).
+export type StructuredIndexRequest = Record<string, IndexFieldValue> & {
+  kind: string;
+};
+
 export type CreateTableIndexRequest = {
   transform_id: TransformId;
-  structured: StructuredIndex;
+  structured: StructuredIndexRequest;
 };
 
 export type UpdateTableIndexRequest = {
   id: TableIndexRequestId;
-  structured: StructuredIndex;
+  structured: StructuredIndexRequest;
 };

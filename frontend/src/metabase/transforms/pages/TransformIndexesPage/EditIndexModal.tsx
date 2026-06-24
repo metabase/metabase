@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 
 import {
   skipToken,
@@ -12,70 +11,62 @@ import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
-  FormMultiSelect,
   FormProvider,
   FormSubmitButton,
-  FormTextInput,
 } from "metabase/forms";
-import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
-import * as Errors from "metabase/utils/errors";
 import {
-  CLASSICAL_INDEX_KINDS,
-  type ClassicalIndexKind,
-  type Index,
-  type StructuredIndex,
-  type TableId,
+  Box,
+  Button,
+  type ComboboxItem,
+  FocusTrap,
+  Group,
+  Modal,
+  Stack,
+  Text,
+} from "metabase/ui";
+import type {
+  RequestableIndexes,
+  TableId,
+  TableIndexEntry,
 } from "metabase-types/api";
 
+import { IndexFormFields } from "./IndexFormFields";
+import {
+  type IndexFormValues,
+  buildIndexValidationSchema,
+  buildStructuredIndex,
+  getIndexFormInitialValues,
+} from "./index-form";
+
 type EditIndexModalProps = {
-  index: Index;
+  index: TableIndexEntry;
   tableId: TableId | null;
+  requestableIndexes?: RequestableIndexes | null;
   onClose: () => void;
 };
 
-type EditIndexValues = {
-  name: string;
-  columns: string[];
-};
-
-const EDIT_INDEX_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  columns: Yup.array(Yup.string().required()).min(1, Errors.required),
-});
-
-function isClassicalIndexKind(kind: string): kind is ClassicalIndexKind {
-  return CLASSICAL_INDEX_KINDS.some((classicalKind) => classicalKind === kind);
-}
-
-// Managed indexes are created as classical (btree) indexes, so preserve the
-// existing classical kind on update and fall back to btree otherwise.
-function getEditableKind(structured: StructuredIndex): ClassicalIndexKind {
-  return isClassicalIndexKind(structured.kind) ? structured.kind : "btree";
-}
-
-export function EditIndexModal({
-  index,
-  tableId,
-  onClose,
-}: EditIndexModalProps) {
+export function EditIndexModal(props: EditIndexModalProps) {
   return (
-    <Modal title={t`Edit index`} opened padding="xl" onClose={onClose}>
+    <Modal title={t`Edit index`} opened padding="xl" onClose={props.onClose}>
       <FocusTrap.InitialFocus />
-      <EditIndexForm index={index} tableId={tableId} onClose={onClose} />
+      <EditIndexForm {...props} />
     </Modal>
   );
 }
 
-function EditIndexForm({ index, tableId, onClose }: EditIndexModalProps) {
+function EditIndexForm({
+  index,
+  tableId,
+  requestableIndexes,
+  onClose,
+}: EditIndexModalProps) {
   const [sendToast] = useToast();
   const [updateIndex] = useUpdateTableIndexMutation();
   const { data: table, isLoading } = useGetTableQueryMetadataQuery(
     tableId != null ? { id: tableId } : skipToken,
   );
 
-  const request = index.request;
-
-  const columnOptions = useMemo(
+  const columnOptions = useMemo<ComboboxItem[]>(
     () =>
       (table?.fields ?? []).map((field) => ({
         value: field.name,
@@ -84,27 +75,31 @@ function EditIndexForm({ index, tableId, onClose }: EditIndexModalProps) {
     [table],
   );
 
-  const initialValues = useMemo<EditIndexValues>(
-    () => ({
-      name: request?.index_name ?? index.name ?? "",
-      columns: index.key_columns,
-    }),
-    [request, index.name, index.key_columns],
-  );
-
+  const request = index.request;
   if (request == null) {
     return null;
   }
 
-  const handleSubmit = async ({ name, columns }: EditIndexValues) => {
+  // The kind is fixed for an existing managed index; render the fields the
+  // driver advertises for that kind, seeded from the saved request.
+  const kind = request.structured.kind;
+  const method = requestableIndexes?.[kind];
+  if (method == null) {
+    return (
+      <Text c="text-secondary">{t`This index type can't be edited.`}</Text>
+    );
+  }
+
+  const initialValues = getIndexFormInitialValues(
+    method.fields,
+    request.structured,
+  );
+
+  const handleSubmit = async (values: IndexFormValues) => {
     try {
       await updateIndex({
         id: request.id,
-        structured: {
-          kind: getEditableKind(request.structured),
-          name,
-          columns: columns.map((column) => ({ name: column })),
-        },
+        structured: buildStructuredIndex(kind, method.fields, values),
       }).unwrap();
       onClose();
     } catch (error) {
@@ -118,23 +113,15 @@ function EditIndexForm({ index, tableId, onClose }: EditIndexModalProps) {
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={EDIT_INDEX_SCHEMA}
+      validationSchema={buildIndexValidationSchema(method.fields)}
       onSubmit={handleSubmit}
     >
       <Form>
         <Stack gap="lg">
-          <FormTextInput
-            name="name"
-            label={t`Index name`}
-            placeholder={t`my_index`}
-          />
-          <FormMultiSelect
-            name="columns"
-            label={t`Columns`}
-            placeholder={t`Select columns`}
-            data={columnOptions}
-            disabled={isLoading}
-            searchable
+          <IndexFormFields
+            fields={method.fields}
+            columnOptions={columnOptions}
+            isLoadingColumns={isLoading}
           />
           <Group>
             <Box flex={1}>

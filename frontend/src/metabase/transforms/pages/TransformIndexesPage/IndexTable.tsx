@@ -22,7 +22,12 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import type { Index, RequestIndexStatus, TableId } from "metabase-types/api";
+import type {
+  TableIndexEntry,
+  TableIndexRequestStatus,
+  RequestableIndexes,
+  TableId,
+} from "metabase-types/api";
 
 import { DeleteIndexModal } from "./DeleteIndexModal";
 import { EditIndexModal } from "./EditIndexModal";
@@ -31,9 +36,9 @@ import S from "./IndexTable.module.css";
 // TreeTable rows need a stable `id`. A managed index uses its `request` id; a
 // warehouse index Metabase doesn't manage carries none, so derive one from its
 // observed identity.
-type IndexRow = Index & { id: string };
+type IndexRow = TableIndexEntry & { id: string };
 
-function getRowId(index: Index): string {
+function getRowId(index: TableIndexEntry): string {
   if (index.request) {
     return String(index.request.id);
   }
@@ -42,14 +47,14 @@ function getRowId(index: Index): string {
 
 // Metabase only tracks a lifecycle (a `request`) for indexes it manages. An
 // external index was created in the warehouse outside of Metabase.
-function isManagedIndex(index: Index): boolean {
+function isManagedIndex(index: TableIndexEntry): boolean {
   return index.request != null;
 }
 
 // A pending index gets applied to the warehouse the next time the transform
 // runs, so while the transform is running it's actively being created.
 function isIndexBeingCreated(
-  index: Index,
+  index: TableIndexEntry,
   isTransformRunning: boolean,
 ): boolean {
   return isTransformRunning && index.request?.status === "pending";
@@ -73,10 +78,10 @@ const STATUS_COLORS = {
   succeeded: "success",
   failed: "error",
   dropped: "warning",
-} as const satisfies Record<RequestIndexStatus, string>;
+} as const satisfies Record<TableIndexRequestStatus, string>;
 
 type IndexSourceCellProps = {
-  index: Index;
+  index: TableIndexEntry;
   applicationName: string;
 };
 
@@ -93,7 +98,7 @@ function IndexSourceCell({ index, applicationName }: IndexSourceCellProps) {
   );
 }
 
-function IndexStatusCell({ index }: { index: Index }) {
+function IndexStatusCell({ index }: { index: TableIndexEntry }) {
   const { request } = index;
   // External indexes have no Metabase lifecycle, so there's no status to show.
   if (!request) {
@@ -162,8 +167,8 @@ type GetColumnsOptions = {
   isTransformRunning: boolean;
   applicationName: string;
   readOnly: boolean;
-  onEdit: (index: Index) => void;
-  onDelete: (index: Index) => void;
+  onEdit: (index: TableIndexEntry) => void;
+  onDelete: (index: TableIndexEntry) => void;
 };
 
 function getColumns({
@@ -269,13 +274,14 @@ function getColumns({
 
 type IndexAction = {
   type: "edit" | "delete";
-  index: Index;
+  index: TableIndexEntry;
 };
 
 type IndexTableProps = {
-  indexes: Index[];
+  indexes: TableIndexEntry[];
   isTransformRunning: boolean;
   tableId: TableId | null;
+  requestableIndexes?: RequestableIndexes | null;
   readOnly?: boolean;
 };
 
@@ -283,15 +289,16 @@ export function IndexTable({
   indexes,
   isTransformRunning,
   tableId,
+  requestableIndexes,
   readOnly = false,
 }: IndexTableProps) {
   const applicationName = useSelector(getApplicationName);
   const [action, setAction] = useState<IndexAction>();
 
-  const handleEdit = useCallback((index: Index) => {
+  const handleEdit = useCallback((index: TableIndexEntry) => {
     setAction({ type: "edit", index });
   }, []);
-  const handleDelete = useCallback((index: Index) => {
+  const handleDelete = useCallback((index: TableIndexEntry) => {
     setAction({ type: "delete", index });
   }, []);
   const handleCloseAction = useCallback(() => setAction(undefined), []);
@@ -339,6 +346,7 @@ export function IndexTable({
         <EditIndexModal
           index={action.index}
           tableId={tableId}
+          requestableIndexes={requestableIndexes}
           onClose={handleCloseAction}
         />
       )}

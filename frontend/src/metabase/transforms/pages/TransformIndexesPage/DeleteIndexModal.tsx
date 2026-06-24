@@ -4,10 +4,10 @@ import { useDeleteTableIndexMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useToast } from "metabase/common/hooks";
-import type { Index } from "metabase-types/api";
+import type { TableIndexEntry } from "metabase-types/api";
 
 type DeleteIndexModalProps = {
-  index: Index;
+  index: TableIndexEntry;
   onClose: () => void;
 };
 

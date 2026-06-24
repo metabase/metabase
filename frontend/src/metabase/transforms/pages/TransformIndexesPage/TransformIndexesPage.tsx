@@ -10,8 +10,9 @@ import { isTransformRunning } from "metabase/transforms/utils";
 import { Button, Center, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
-  Index,
-  RequestIndexStatus,
+  TableIndexEntry,
+  TableIndexRequestStatus,
+  RequestableIndexes,
   TableId,
   TransformId,
 } from "metabase-types/api";
@@ -25,9 +26,9 @@ import { IndexTable } from "./IndexTable";
 // state, so newly created indexes update without a manual refresh.
 const POLL_INTERVAL = 5000;
 
-const IN_PROGRESS_STATUSES: RequestIndexStatus[] = ["pending", "running"];
+const IN_PROGRESS_STATUSES: TableIndexRequestStatus[] = ["pending", "running"];
 
-function hasIndexInProgress(indexes: Index[]): boolean {
+function hasIndexInProgress(indexes: TableIndexEntry[]): boolean {
   return indexes.some(
     (index) =>
       index.request != null &&
@@ -69,6 +70,7 @@ export function TransformIndexesPage({ params }: TransformIndexesPageProps) {
       <TransformIndexesContent
         transformId={transform.id}
         tableId={transform.table?.id ?? null}
+        requestableIndexes={transform.requestable_indexes}
         readOnly={readOnly}
         isTransformRunning={isTransformRunning(transform)}
       />
@@ -79,6 +81,7 @@ export function TransformIndexesPage({ params }: TransformIndexesPageProps) {
 type TransformIndexesContentProps = {
   transformId: TransformId;
   tableId: TableId | null;
+  requestableIndexes?: RequestableIndexes | null;
   readOnly?: boolean;
   isTransformRunning: boolean;
 };
@@ -86,6 +89,7 @@ type TransformIndexesContentProps = {
 function TransformIndexesContent({
   transformId,
   tableId,
+  requestableIndexes,
   readOnly,
   isTransformRunning,
 }: TransformIndexesContentProps) {
@@ -112,12 +116,15 @@ function TransformIndexesContent({
     );
   }
 
+  const canCreateIndexes =
+    requestableIndexes != null && Object.keys(requestableIndexes).length > 0;
+
   return (
     <Stack flex={1} gap="md">
       <Group justify="flex-end">
         <Button
           variant="filled"
-          disabled={readOnly}
+          disabled={readOnly || !canCreateIndexes}
           onClick={() => setIsCreateOpen(true)}
         >
           {t`Create index`}
@@ -127,12 +134,14 @@ function TransformIndexesContent({
         indexes={indexes}
         isTransformRunning={isTransformRunning}
         tableId={tableId}
+        requestableIndexes={requestableIndexes}
         readOnly={readOnly}
       />
       {isCreateOpen && (
         <CreateIndexModal
           transformId={transformId}
           tableId={tableId}
+          requestableIndexes={requestableIndexes}
           onClose={() => setIsCreateOpen(false)}
         />
       )}

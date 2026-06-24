@@ -1,6 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 
 import {
   skipToken,
@@ -12,46 +11,46 @@ import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
-  FormMultiSelect,
   FormProvider,
   FormSubmitButton,
-  FormTextInput,
 } from "metabase/forms";
-import { Box, Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
-import * as Errors from "metabase/utils/errors";
-import type { TableId, TransformId } from "metabase-types/api";
+import {
+  Box,
+  Button,
+  type ComboboxItem,
+  FocusTrap,
+  Group,
+  Modal,
+  Select,
+  Stack,
+  Text,
+} from "metabase/ui";
+import type {
+  RequestableIndexes,
+  TableId,
+  TransformId,
+} from "metabase-types/api";
+
+import { IndexFormFields } from "./IndexFormFields";
+import {
+  type IndexFormValues,
+  buildIndexValidationSchema,
+  buildStructuredIndex,
+  getIndexFormInitialValues,
+} from "./index-form";
 
 type CreateIndexModalProps = {
   transformId: TransformId;
   tableId: TableId | null;
+  requestableIndexes?: RequestableIndexes | null;
   onClose: () => void;
 };
 
-type CreateIndexValues = {
-  name: string;
-  columns: string[];
-};
-
-const CREATE_INDEX_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  columns: Yup.array(Yup.string().required()).min(1, Errors.required),
-});
-
-const INITIAL_VALUES: CreateIndexValues = { name: "", columns: [] };
-
-export function CreateIndexModal({
-  transformId,
-  tableId,
-  onClose,
-}: CreateIndexModalProps) {
+export function CreateIndexModal(props: CreateIndexModalProps) {
   return (
-    <Modal title={t`Create index`} opened padding="xl" onClose={onClose}>
+    <Modal title={t`Create index`} opened padding="xl" onClose={props.onClose}>
       <FocusTrap.InitialFocus />
-      <CreateIndexForm
-        transformId={transformId}
-        tableId={tableId}
-        onClose={onClose}
-      />
+      <CreateIndexForm {...props} />
     </Modal>
   );
 }
@@ -59,6 +58,7 @@ export function CreateIndexModal({
 function CreateIndexForm({
   transformId,
   tableId,
+  requestableIndexes,
   onClose,
 }: CreateIndexModalProps) {
   const [sendToast] = useToast();
@@ -67,7 +67,11 @@ function CreateIndexForm({
     tableId != null ? { id: tableId } : skipToken,
   );
 
-  const columnOptions = useMemo(
+  const kinds = Object.keys(requestableIndexes ?? {});
+  const [kind, setKind] = useState(kinds[0] ?? "");
+  const method = requestableIndexes?.[kind];
+
+  const columnOptions = useMemo<ComboboxItem[]>(
     () =>
       (table?.fields ?? []).map((field) => ({
         value: field.name,
@@ -76,15 +80,27 @@ function CreateIndexForm({
     [table],
   );
 
-  const handleSubmit = async ({ name, columns }: CreateIndexValues) => {
+  if (tableId == null) {
+    return (
+      <Text c="text-secondary">
+        {t`Run this transform first to create its target table, then you can add indexes.`}
+      </Text>
+    );
+  }
+
+  if (kinds.length === 0 || method == null) {
+    return (
+      <Text c="text-secondary">
+        {t`This database doesn't support creating indexes on transform tables.`}
+      </Text>
+    );
+  }
+
+  const handleSubmit = async (values: IndexFormValues) => {
     try {
       await createIndex({
         transform_id: transformId,
-        structured: {
-          kind: "btree",
-          name,
-          columns: columns.map((column) => ({ name: column })),
-        },
+        structured: buildStructuredIndex(kind, method.fields, values),
       }).unwrap();
       onClose();
     } catch (error) {
@@ -95,44 +111,43 @@ function CreateIndexForm({
     }
   };
 
-  if (tableId == null) {
-    return (
-      <Text c="text-secondary">
-        {t`Run this transform first to create its target table, then you can add indexes.`}
-      </Text>
-    );
-  }
-
   return (
-    <FormProvider
-      initialValues={INITIAL_VALUES}
-      validationSchema={CREATE_INDEX_SCHEMA}
-      onSubmit={handleSubmit}
-    >
-      <Form>
-        <Stack gap="lg">
-          <FormTextInput
-            name="name"
-            label={t`Index name`}
-            placeholder={t`my_index`}
-          />
-          <FormMultiSelect
-            name="columns"
-            label={t`Columns`}
-            placeholder={t`Select columns`}
-            data={columnOptions}
-            disabled={isLoading}
-            searchable
-          />
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Create`} variant="filled" />
-          </Group>
-        </Stack>
-      </Form>
-    </FormProvider>
+    <Stack gap="lg">
+      {kinds.length > 1 && (
+        <Select
+          label={t`Index type`}
+          data={kinds.map((value) => ({ value, label: value }))}
+          value={kind}
+          onChange={(value) => {
+            if (value) {
+              setKind(value);
+            }
+          }}
+        />
+      )}
+      <FormProvider
+        key={kind}
+        initialValues={getIndexFormInitialValues(method.fields)}
+        validationSchema={buildIndexValidationSchema(method.fields)}
+        onSubmit={handleSubmit}
+      >
+        <Form>
+          <Stack gap="lg">
+            <IndexFormFields
+              fields={method.fields}
+              columnOptions={columnOptions}
+              isLoadingColumns={isLoading}
+            />
+            <Group>
+              <Box flex={1}>
+                <FormErrorMessage />
+              </Box>
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton label={t`Create`} variant="filled" />
+            </Group>
+          </Stack>
+        </Form>
+      </FormProvider>
+    </Stack>
   );
 }
