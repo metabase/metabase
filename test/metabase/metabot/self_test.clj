@@ -489,14 +489,12 @@
       (is (= [{:type "error" :errorText "Something went wrong"}
               {:type "finish" :finishReason "error"}]
              events))))
-  (testing "typed errors emit a data-error_details event before the error event"
+  (testing "a typed error's code rides finish.messageMetadata"
     (let [events (sse-events [{:type :error :error {:message    "You have reached your AI usage limit."
                                                     :error-code :ai_usage_limit_reached}}])]
-      (is (=? [{:type "data-error_details"
-                :data {:message "You have reached your AI usage limit."
-                       :error_code "ai_usage_limit_reached"}}
-               {:type "error" :errorText "You have reached your AI usage limit."}
-               {:type "finish"}]
+      (is (=? [{:type "error" :errorText "You have reached your AI usage limit."}
+               {:type "finish" :finishReason "error"
+                :messageMetadata {:errorCode "ai_usage_limit_reached"}}]
               events)))))
 
 (deftest parts->aisdk-sse-xf-usage-test

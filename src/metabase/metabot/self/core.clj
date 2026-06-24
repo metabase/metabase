@@ -231,28 +231,10 @@
        (json/encode (schema.v2/check-ui-message-chunk "SSE event" payload))
        "\n"))
 
-(defn- error-part->sse-events
-  "The AI SDK SSE event map(s) a streamed `:error` part serializes to. Every
-  error yields an `error` event carrying the message; typed errors (those with
-  an `:error-code`) additionally lead with a `data-error_details` event so
-  clients can branch on the code (e.g. the usage-limit upgrade prompt)."
-  [{:keys [error]}]
-  (let [msg        (or (:message error) (str error))
-        error-code (some-> (:error-code error) name)]
-    (cond-> []
-      error-code (conj {:type "data-error_details"
-                        :id   (mkid)
-                        :data {:message msg :error_code error-code}})
-      true       (conj {:type "error" :errorText msg}))))
-
 (defn format-error-line
-  "Render a streamed `:error` part as its AI SDK SSE event line(s), for injecting
-  a well-formed failure into a stream that has already started after the HTTP
-  response was committed — the out-of-band counterpart to the `:error` branch of
-  [[parts->aisdk-sse-xf]], sharing [[error-part->sse-events]]. Joins multi-event
-  payloads with the blank-line boundary; the caller appends the final newline."
-  [error-part]
-  (str/join "\n" (map format-sse-event (error-part->sse-events error-part))))
+  "An `:error` part's AI SDK `error` SSE event line."
+  [{:keys [error]}]
+  (format-sse-event {:type "error" :errorText (or (:message error) (str error))}))
 
 (defn- ->message-metadata
   "Translate accumulated per-model usage into the `finish` event's message
@@ -315,37 +297,39 @@
     :tool-input       -> tool-input-available
     :tool-output      -> tool-output-available | tool-output-error
     :data             -> data-<data-type>
-    :error            -> [data-error_details]? error
+    :error            -> error
     :usage            -> (accumulated; emitted as finish.message_metadata)
     :finish           -> (ignored — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
   ([{:keys [message-id]}]
    (fn [rf]
-     (let [error?           (volatile! false)
-           started?         (volatile! false)
-           usage-by-model   (volatile! {})
+     (let [error?            (volatile! false)
+           finish-error-code (volatile! nil)
+           started?          (volatile! false)
+           usage-by-model    (volatile! {})
            ;; non-nil while a text block is open; holds the block id so we can
            ;; emit a matching text-end when the block closes
-           current-text-id  (volatile! nil)
-           close-text-block (fn [result]
-                              (if-let [id @current-text-id]
-                                (do (vreset! current-text-id nil)
-                                    (rf result (format-sse-event {:type "text-end" :id id})))
-                                result))]
+           current-text-id   (volatile! nil)
+           close-text-block  (fn [result]
+                               (if-let [id @current-text-id]
+                                 (do (vreset! current-text-id nil)
+                                     (rf result (format-sse-event {:type "text-end" :id id})))
+                                 result))]
        (fn
          ([] (rf))
          ([result]
-          (-> result
-              close-text-block
-              (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
-              (rf (format-sse-event
-                   (cond-> {:type         "finish"
-                            :finishReason (if @error? "error" "stop")}
-                     (seq @usage-by-model)
-                     (assoc :messageMetadata (->message-metadata @usage-by-model)))))
-              (rf "data: [DONE]\n")
-              (rf)))
+          (let [metadata (merge (->message-metadata @usage-by-model)
+                                (when @finish-error-code {:errorCode @finish-error-code}))]
+            (-> result
+                close-text-block
+                (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
+                (rf (format-sse-event
+                     (cond-> {:type         "finish"
+                              :finishReason (if @error? "error" "stop")}
+                       (seq metadata) (assoc :messageMetadata metadata))))
+                (rf "data: [DONE]\n")
+                (rf))))
          ([result part]
           ;; Any non-text part implicitly closes the current text block before
           ;; its own events are emitted; the :text branch handles its own
@@ -406,7 +390,9 @@
               :error
               (do
                 (vreset! error? true)
-                (reduce rf result (map format-sse-event (error-part->sse-events part))))
+                (when-let [code (some-> (:error-code (:error part)) name)]
+                  (vreset! finish-error-code code))
+                (rf result (format-error-line part)))
 
               :finish
               result
