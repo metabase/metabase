@@ -759,8 +759,8 @@
       (= :brute-force strategy)          (brute-force-search-query index embedding-literal filters)
       (iterative-strategy->guc strategy) (hnsw-iterative-search-query index embedding-literal filters)
       (= :hnsw strategy)                 (hnsw-search-query index embedding-literal filters)
-      :else (do (log/warnf "Unknown vector-search strategy %s; falling back to :hnsw" (pr-str strategy))
-                (hnsw-search-query index embedding-literal filters)))))
+      :else (do (log/warnf "Unknown vector-search strategy %s; falling back to :brute-force" (pr-str strategy))
+                (brute-force-search-query index embedding-literal filters)))))
 
 (defn- explain?
   "Whether to run the gated EXPLAIN (ANALYZE) instrumentation for `search-context`, falling back to the
