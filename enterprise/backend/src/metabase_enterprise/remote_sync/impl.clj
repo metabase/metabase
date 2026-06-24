@@ -971,13 +971,12 @@
   (doseq [delete-path delete-paths]
     (source.p/stage-delete! commit delete-path)))
 
-(defn- exportable-entity-chunks
+(defn- exportable-chunks
   "Chunks of WriteRows for a full export — each model's exportable ids tagged with their RemoteSyncObject id
-  (untracked deps get :id nil), capped at chunk size. Built straight from `entities` ({model-name [id ...]})
-  by resizing each model's group, so the whole set is never linearized just to be re-chunked."
-  [entities]
+  (untracked deps get :id nil), capped at chunk size."
+  []
   (let [rso-id (u/index-by (juxt :model_type :model_id) :id (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
-    (->> entities
+    (->> (spec/exportable-entities)
          (map (fn [[model ids]]
                 {:model_type model
                  :rows       (mapv (fn [id] {:model_type model :model_id id :id (rso-id [model id])}) ids)}))
@@ -986,16 +985,17 @@
 (defn- delete-departed-entities!
   "Delete RSO rows for entity-id entities that left the synced set (removed/delete status and not in
   `targets`), matching the incremental path; path/hybrid and still-exported rows are kept."
-  [targets]
-  (let [exported (into #{} (for [[model ids] targets, id ids] [model id]))
-        gone     (into []
-                       (comp (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
-                             (remove #(exported [(:model_type %) (:model_id %)]))
-                             (map :id))
-                       (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
-                                  :status [:in ["removed" "delete"]]))]
-    (when (seq gone)
-      (t2/delete! :model/RemoteSyncObject :id [:in gone]))))
+  [exported-chunks]
+  (let [exported (into #{} (for [{:keys [model_type rows]} exported-chunks
+                                 row rows]
+                             {:model_type model_type :model_id (:model_id row)}))
+        gone     (->> (t2/select [:model/RemoteSyncObject :id :model_type :model_id]
+                                 :status [:in ["removed" "delete"]])
+                      (filter #(= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
+                      (remove #(exported (select-keys % [:model_type :model_id])))
+                      (map :id))]
+    (doseq [ids (partition-all 500 gone)]
+      (t2/delete! :model/RemoteSyncObject :id [:in ids]))))
 
 (defn- full-export!
   "Re-serialize and commit the entire remote-synced set, then reconcile every RemoteSyncObject.
@@ -1004,22 +1004,22 @@
    - {:status :success}
    or throws"
   [snapshot task-id message sync-timestamp]
-  (let [entities (spec/exportable-entities)]
-    (when (empty? entities)
+  (let [chunks-to-export (exportable-chunks)]
+    (when (empty? chunks-to-export)
       (throw (ex-info "No remote-syncable content available." {})))
     (remote-sync.task/update-progress! task-id 0.3)
     (let [opts    (serdes/storage-base-context)
           commit  (source.p/open-commit snapshot)
           [synced version] (try
                              (source.p/replace-all! commit) ; replace the managed dirs wholesale
-                             [(stage-writes commit opts (exportable-entity-chunks entities))
+                             [(stage-writes commit opts chunks-to-export)
                               (source.p/finish-commit! commit message)]
                              (catch Throwable e
                                (source.p/abort-commit! commit)
                                (throw e)))]
       (t2/with-transaction [_]
         (remote-sync.task/set-version! task-id version)
-        (delete-departed-entities! entities)
+        (delete-departed-entities! chunks-to-export)
         (record-exported-metadata! synced sync-timestamp))
       {:status :success
        :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))
@@ -1053,27 +1053,14 @@
 
   Takes a SourceSnapshot instance, a RemoteSyncTask ID for progress tracking, a commit message string, and
   optional keyword arguments:
-  - :force? - when true, overwrite the remote branch wholesale even if it has advanced (no merge)
-  - :merge? - when true and the remote has advanced, perform a 3-way merge (rather than refusing)
+  - :force? - when true, overwrite the remote branch wholesale unconditionally (destructive)
+  - :merge? - when true and the remote has advanced, perform a 3-way merge if no conflicts
   - :source - the Source the snapshot came from, used to resolve the merge base and the merged result
   - :base-snapshot - a snapshot of the last synced version (the merge base), supplied when the remote
     branch has advanced and a 3-way merge is required
   - :pre-task-branch - the value of `remote-sync-branch` at scheduling time; if it differs
     from the current setting at task start, the export aborts with `:error` (defense-in-depth
     against any path that mutates the setting between scheduling and the work running).
-
-  Takes the incremental fast-path when every pending change can be applied incrementally (see
-  `incremental-export-plan). Otherwise does a full export: re-serializes the entire synced set, writes it, marks all
-  RemoteSyncObject rows synced, and records each entity's `file_path` so future renames/deletes can go incremental.
-
-  Behavior when the remote branch has advanced beyond the last sync:
-  - `force?`           -> overwrite the remote wholesale (full re-serialize).
-  - `merge?`           -> 3-way merge; non-conflicting remote changes are merged in and reconciled into the
-                          local app DB; genuine same-entity conflicts return a `:conflict`.
-  - neither (default)  -> refuse with `:conflict` (the UI's export preflight decides force/branch/merge).
-
-  When the remote has NOT advanced, takes the incremental fast-path (see `incremental-plan`) when
-  possible, otherwise a full re-serialize.
 
   Returns a map with :status (`:success`, `:conflict`, or `:error`), and optionally :message, :version,
   and :merge-summary keys. Various exceptions are caught and converted to error status maps."
