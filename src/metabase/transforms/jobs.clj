@@ -62,7 +62,7 @@
           ;; only on transforms in that closure — never on unrelated transforms elsewhere in
           ;; the system. This is what prevents a single broken transform (e.g. one on a
           ;; routing-enabled database) from poisoning the scheduler when no job has asked for it.
-          {:keys [dependencies not-found failed]}
+          {:keys [dependencies not-found failed uncached]}
           (transforms-base.ordering/transform-ordering transform-ids all-transforms)]
       (when (seq not-found)
         (log/warnf "transform-ordering: %d scheduled id(s) not found in transforms (likely deleted between scheduling and lookup): %s"
@@ -70,6 +70,8 @@
       (when (seq failed)
         (log/warnf "transform-ordering: %d transform(s) failed dep extraction; treated as leaves: %s"
                    (count failed) (pr-str (sort failed))))
+      ;; Lazily backfill the table_dependencies column for any closure transform we had to compute live.
+      (transforms-base.ordering/persist-table-dependencies! uncached)
       ;; Fetch full rows only for the closure, which is what callers actually consume.
       (let [transforms-by-id (if (seq dependencies)
                                (u/index-by :id (t2/select :model/Transform :id [:in (keys dependencies)]))

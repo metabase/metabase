@@ -21,12 +21,3 @@ databaseChangeLog:
         - dropColumn:
             tableName: transform
             columnName: table_dependencies
-
-  - changeSet:
-      id: v63.m4z9rt
-      author: bronsa
-      comment: Backfill transform.table_dependencies for existing transforms
-      changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.BackfillTransformTableDependencies"
-      rollback: # No need to roll back; the column is dropped above

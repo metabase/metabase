@@ -14,6 +14,8 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
@@ -137,9 +139,12 @@
 
       {:dependencies {transform-id -> #{transform-ids it depends on}}
        :not-found    #{ids in start-ids that don't refer to any transform in all-transforms}
-       :failed       #{ids whose table-dependencies threw}}
+       :failed       #{ids whose table-dependencies threw}
+       :uncached     {transform-id -> raw-deps} for visited transforms whose `:table_dependencies`
+                     column was absent and had to be computed live}
 
-  `:dependencies` is restricted to the transitive closure reachable from `start-ids`.
+  `:dependencies` is restricted to the transitive closure reachable from `start-ids`. `:uncached`
+  lets the caller persist freshly computed deps so later reads hit the cache instead.
   Diagnostics in `:not-found` and `:failed` let the caller decide how to surface them
   (logging, metrics, error responses)."
   [start-ids all-transforms]
@@ -150,17 +155,19 @@
     (loop [visited   {}
            not-found #{}
            failed    #{}
+           uncached  {}
            queue     (vec start-ids)]
       (if-let [id (first queue)]
         (cond
           (contains? visited id)
-          (recur visited not-found failed (rest queue))
+          (recur visited not-found failed uncached (rest queue))
 
           (not (id->xf id))
-          (recur visited (conj not-found id) failed (rest queue))
+          (recur visited (conj not-found id) failed uncached (rest queue))
 
           :else
           (let [transform        (id->xf id)
+                miss?            (nil? (:table_dependencies transform))
                 [raw-deps fail?] (try
                                    [(stored-or-live-deps transform) false]
                                    (catch Throwable _ [#{} true]))
@@ -171,10 +178,22 @@
             (recur (assoc visited id resolved-ids)
                    not-found
                    (cond-> failed fail? (conj id))
+                   (cond-> uncached (and miss? (not fail?)) (assoc id raw-deps))
                    (into (rest queue) resolved-ids))))
         {:dependencies visited
          :not-found    not-found
-         :failed       failed}))))
+         :failed       failed
+         :uncached     uncached}))))
+
+(defn persist-table-dependencies!
+  "Best-effort write-back of `:uncached` deps from `transform-ordering` into the
+  `transform.table_dependencies` column, keyed by transform id."
+  [id->raw-deps]
+  (doseq [[id raw-deps] id->raw-deps]
+    (try
+      (t2/update! (t2/table-name :model/Transform) id {:table_dependencies (json/encode (vec raw-deps))})
+      (catch Throwable e
+        (log/warnf e "Failed to cache table-dependencies for transform %s" id)))))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.

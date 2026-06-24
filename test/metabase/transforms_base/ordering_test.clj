@@ -397,3 +397,20 @@
   (testing "an empty stored value yields no dependencies"
     (is (= {1 #{}}
            (:dependencies (ordering/transform-ordering #{1} [{:id 1 :table_dependencies []}]))))))
+
+(deftest lazy-table-dependencies-backfill-test
+  (testing "a transform with no cached :table_dependencies is reported in :uncached and persisted"
+    (mt/test-driver (mt/normal-driver-select {:+parent :sql-jdbc})
+      (mt/with-temp [:model/Transform {id :id} (make-transform
+                                                {:database (mt/id)
+                                                 :type     "query"
+                                                 :query    {:source-table (mt/id :orders)}})]
+        ;; simulate a row created before the column existed
+        (t2/update! (t2/table-name :model/Transform) id {:table_dependencies nil})
+        (mt/with-metadata-provider (mt/id)
+          (let [all (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies])
+                {:keys [uncached]} (ordering/transform-ordering #{id} all)]
+            (is (contains? uncached id))
+            (ordering/persist-table-dependencies! uncached)
+            (is (= [{:table (mt/id :orders)}]
+                   (t2/select-one-fn :table_dependencies :model/Transform id)))))))))
