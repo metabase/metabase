@@ -19,10 +19,13 @@ Keep the semantic layer and presentation layer separate.
 - Filter UI must default to showing data. Empty controls, "All" options, and incomplete custom ranges should produce no filter instead of blocking queries or showing a blank dashboard.
 - Do not hardcode categorical filter option values such as channels, countries, statuses, regions, or segments. Query them from Metabase at runtime using the same generated schema field or metric dimension that the filter applies.
 - Dashboard-level filters should apply to every compatible card, table, KPI, and trend. If a filter can only apply to one query, make that scope obvious in the UI.
+- Do not render a free-text search box that writes directly into an exact id filter such as `franchise_id = value` or `tenant_id = value`. For entity filters such as franchise, tenant, customer, or product, query options at runtime and store the raw id from the selected option. If the app only has ids and no readable label field, label the control honestly or omit the global filter until a label field is available.
 - Do not use native `<input type="date">` for data-app filter bars. Its placeholder and calendar popover are browser-controlled, often show `mm/dd/yyyy`, and cannot be reliably themed. If the repo already has a date picker component or component library, use that. Otherwise install `react-datepicker` for custom date selection.
 - Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Measures must come from `schema.tables.*.measures.*`; metrics must come from `schema.metrics.*`.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, segments, or chart series.
 - Visualization data must come from Metabase through `useMetabaseQuery`, `useMetabaseQueryObject` with `InteractiveQuestion`/`StaticQuestion`, or saved-question SDK components. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
+- `useMetabaseQueryObject(...)` returns a `DatasetQuery | null` to pass as `query={...}` to `InteractiveQuestion` or `StaticQuestion`. If TypeScript rejects SDK component props, treat that as a real bug and fix the prop shape instead of working around the error.
+- `useMetabaseQuery().rows` are keyed objects, not tuple arrays. Never read `row[0]` / `row[1]`, and never silence this with `as unknown as [string, number][]`, `DisplayRow`, or another tuple cast. If TypeScript says property `0` does not exist, it is catching a real bug. Use named returned properties, or render the query with an SDK chart via `useMetabaseQueryObject`.
 - Before rendering a field, verify it exists in the generated schema object and is returned by the query. Do not guess column names from business intuition or old mock data.
 - Avoid unsupported freshness or operational claims such as "real-time", "live", "understaffed", or "risk" unless the returned data or curated semantic-layer definition supports them.
 - Before claiming the work is done or preparing a final handoff, run a TypeScript type-only check and report the command/result. If the check fails, fix the type errors before any final summary.
@@ -250,11 +253,28 @@ Measures must come from tables in the metric's `mappedTableIds`. Fields, segment
 
 ## Interactive Metabase Views
 
-Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass the query object to the SDK question component.
+Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass the returned query to the SDK question component with the `query` prop.
 
 `useMetabaseQueryObject` supports generated table objects and generated metric objects. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization.
 
+The prop contract is:
+
+- Saved question: `<StaticQuestion questionId={schema.questions.someQuestion.id} />`
+- Generated table or metric query: `<StaticQuestion query={trendQuery} />`
+- Full interactive question: `<InteractiveQuestion query={trendQuery} />`
+
+Do not invent alternate prop names for generated queries. If the SDK type says a prop does not exist, believe it and use the documented `query` prop shape.
+
 Metabase supports these question displays: `table`, `bar`, `line`, `pie`, `scalar`, `row`, `area`, `combo`, `pivot`, `smartscalar`, `gauge`, `progress`, `funnel`, `object`, `map`, `scatter`, `boxplot`, `waterfall`, `sankey`, and `list`.
+
+When `useMetabaseQuery` is needed, map typed rows into an explicit local view model using named properties before rendering:
+
+```ts
+const chartRows = (data?.rows ?? []).map((row) => ({
+  label: String(row.orderedAt),
+  value: row.count,
+}));
+```
 
 ### SDK Chart Heights
 
@@ -286,6 +306,8 @@ Good custom visualization reasons:
 - unusual chart forms such as calendar grids, timelines, heat strips, radial views, custom maps, or domain-specific diagrams
 
 For custom charts, use an existing charting dependency when the app already has one. Otherwise, SVG charts are fine. Keep metric-only KPI cards and bespoke summaries on `useMetabaseQuery` when you need direct row data, but first consider whether an SDK scalar/smartscalar/gauge/progress view would be good enough.
+
+If you build a custom chart, map typed SDK rows into an explicit local view model using named properties before rendering. Do not write generic chart components that assume positional rows.
 
 Chart only, without the toolbar:
 
@@ -419,6 +441,14 @@ const { data } = useMetabaseQuery<EventsTable>({
 
 When the user asks for custom filters, build normal React controls that feed semantic query filters.
 
+Before implementing filters, create a filter contract for the visible dashboard:
+
+- For each filter, name the runtime query that provides its options.
+- For each filter, name the raw value used in `filter(...)`.
+- For each card, table, KPI, and trend, name the generated field or metric dimension that can receive that filter.
+- If a filter only applies to one section, keep it section-scoped or omit it from the global filter bar.
+- KPI/detail pairs that describe the same concept should use the same relevant filters.
+
 Filter state rules:
 
 - Default every filter to "all" or empty, and run the unfiltered query.
@@ -435,6 +465,8 @@ For categorical filters, query actual option values instead of inventing them:
 - Keep labels separate from values. For entities with IDs and names, display the name but filter by the stable ID.
 - Prefer querying options from the same semantic object used by the charts so the option list stays compatible with the filter.
 - Use a searchable picker/combobox for long runtime option lists; plain `<select>` is only reasonable for short, stable lists.
+
+For filter implementation details, including stale option reset and searchable runtime filters, see `references/filter-ui-patterns.md`.
 
 Date ranges should use ISO `YYYY-MM-DD` strings for query values. Never use `type="date"`.
 
@@ -507,6 +539,7 @@ const metricFilters = useMemo(
 ## Result Shape And Charts
 
 - Prefer keyed `data.rows`.
+- Never treat `data.rows` as positional arrays. Do not use `row[0]`, `row[1]`, `DisplayRow`, or tuple casts for `useMetabaseQuery` row objects.
 - Inspect `data.columns` before mapping low-level `rawRows`.
 - Runtime row objects are keyed by returned Metabase column names, usually `column.name` such as `total_amount` or `average_score`. Do not assume generated schema keys like `totalAmount` or `averageScore` are runtime row keys.
 - Treat row values as nullable. Guard before calling number/string methods such as `toFixed`, `toLocaleString`, or string transforms.
@@ -546,6 +579,14 @@ Avoid manual classification when the semantic layer already has the concept. Pre
 
 If no curated schema entry supports the intended UI, leave the section out or ask for semantic-layer curation. Do not keep mock data or placeholder analytics in the finished app.
 
+## Final Checks
+
+- Run `npm run typecheck`.
+- Verify every rendered value can be traced to a returned row property, schema field, metric, or deterministic transform.
+- Search touched files for `row[0]`, `row[1]`, `as unknown as`, and `DisplayRow`. If positional row access remains around `useMetabaseQuery` rows, fix the typed row mapping before building.
+- Verify `data_app.yml` / `data_app.yaml` points at the built bundle path and that the bundle path is tracked by git.
+- If adding runtime categorical filters, verify "All" maps to no filter and selected values come from runtime query results.
+
 ## Common Mistakes
 
 - Creating or searching for Metabase content during app building.
@@ -555,11 +596,15 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Inventing ad hoc measure objects such as `{ name: "count" }` or `{ name: "sum", field: fieldId }`.
 - Passing raw strings for metric dimensions or table fields.
 - Adding lookup helpers instead of using keyed generated schema objects.
+- Inventing SDK component prop names instead of using `questionId` for saved questions or `query` for generated table/metric queries.
 - Mixing fields, dimensions, segments, or measures from unrelated tables/metrics.
 - Adding a filter UI that sends empty values instead of omitting the filter.
 - Hardcoding categorical filter values like channels, countries, statuses, regions, or segments instead of querying the runtime values from Metabase.
 - Displaying entity names but filtering by those names when a stable ID is available.
+- Wiring free-text search directly to an exact id filter such as `franchise_id = value`.
 - Applying a dashboard-level filter to only one KPI while related charts and tables ignore it.
+- Letting a KPI and its detail table use different date or category filters without explaining the difference.
+- Charting opaque IDs such as `franchise_id` when a user-facing name is available.
 - Rendering a very long categorical list in a plain `<select>` instead of using a searchable control.
 - Disabling a whole categorical filter select when options are empty, which also prevents users from returning to "All".
 - Using native `<input type="date">` and shipping browser-controlled `mm/dd/yyyy` placeholders or unthemed calendar popovers.
@@ -567,6 +612,7 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Letting a `null` bucket become the latest time-series point.
 - Hardcoding business values, labels, timestamps, or rankings.
 - Creating chart-ready arrays by hand instead of deriving them from queried `data.rows`.
+- Casting typed SDK rows to generic tuple rows such as `[string, number]`.
 - Rendering fields that are not present in the schema or returned query result.
 - Rendering `No data` while the SDK is still authenticating or loading.
 - Creating nested `MetabaseProvider` instances instead of sharing one provider at the app boundary.
