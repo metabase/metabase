@@ -200,19 +200,19 @@ describe("issue 8030 + 32444", () => {
 
         H.saveDashboard();
 
-        cy.wait("@getCardQuery");
-
-        // Reset the intercept after save so we only count filter-triggered queries.
-        cy.intercept(
-          "POST",
-          `/api/dashboard/${dashboard.id}/dashcard/*/card/*/query`,
-        ).as("getCardQueryAfterFilter");
+        // Saving exits edit mode and reloads both cards (the filter has no value
+        // yet), firing two more card queries (total 4). Wait for both to land
+        // before applying the filter. The previous "reset the intercept after
+        // save" pattern was racy: a late save-triggered query could bleed onto a
+        // freshly registered alias and be miscounted as filter-triggered, so the
+        // post-filter count intermittently saw 2 instead of 1 (metabase#32444).
+        cy.get("@getCardQuery.all").should("have.length", 4);
 
         addFilterValue("Aerodynamic Bronze Hat");
 
-        cy.wait("@getCardQueryAfterFilter");
-        // Only the card connected to the filter should re-execute.
-        cy.get("@getCardQueryAfterFilter.all").should("have.length", 1);
+        // Only the card connected to the filter should re-execute; the
+        // disconnected card must not — so exactly one more query fires (total 5).
+        cy.get("@getCardQuery.all").should("have.length", 5);
       });
     });
   });
