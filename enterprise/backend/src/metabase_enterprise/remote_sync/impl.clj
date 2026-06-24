@@ -731,18 +731,22 @@
                        (not (t2/exists? :model/RemoteSyncObject :model_type mt :model_id id)))))
         (export-closure model-type model-id)))
 
-(defn- ->chunks
-  "Split `rows` (maps with :model_type/:model_id) into `[model-type rows]` chunks, one extract-query's worth
-  each (grouped by model, capped at `content-hash-batch-size`)."
+(defn- resize-chunk [[model-type rows]]
+  (map (fn [chunk-rows] [model-type chunk-rows])
+       (partition-all content-hash-batch-size rows)))
+
+(defn- by-model-type [rows]
+  (group-by :model_type rows))
+
+(defn- ->sized-chunks
+  "Split `rows` (maps with :model_type/:model_id) into `[model-type rows]` chunks — grouped by model, each
+  capped at `content-hash-batch-size` (one extract-query's worth)."
   [rows]
-  (mapcat (fn [[model-type model-rows]]
-            (map (fn [chunk-rows] [model-type chunk-rows])
-                 (partition-all content-hash-batch-size model-rows)))
-          (group-by :model_type rows)))
+  (mapcat resize-chunk (by-model-type rows)))
 
 (defn- extract-chunk
-  "Extract one chunk's entities in a single query, returning `[row entity]` pairs (rows whose entity is gone
-  are omitted)."
+  "Extract one chunk's entities in a single query, returning `[row entity]` pairs (rows whose entity is gone are
+  omitted)."
   [[model-type rows]]
   (let [id->row (u/index-by :model_id rows)
         opts    {:where [:in :id (mapv :model_id rows)] :skip-archived true}]
@@ -752,31 +756,47 @@
                        [row (serdes/extract-one model-type opts instance)])))
           (serdes/extract-query model-type opts))))
 
+(defn- path-free?
+  "True if the target path is free for an entity: its existing repo file is absent, or holds that same entity.
+  `info` is `{:eid :file-exists? :file-eid}` — `:file-eid` is the entity_id of the file already at the path
+  (nil if none, or unreadable, which counts as occupied)."
+  [{:keys [eid file-exists? file-eid]}]
+  (or (not file-exists?) (= eid file-eid)))
+
+(defn- repo-file-info
+  "Read the existing repo file at `path` and report it as path-free? info: `{:eid :file-exists? :file-eid}`."
+  [snapshot path eid]
+  (let [content (source.p/read-file snapshot path)]
+    {:eid          eid
+     :file-exists? (boolean content)
+     :file-eid     (when content (try (:entity_id (yaml/parse-string content))
+                                      (catch Exception _ nil)))}))
+
+(defn- dep-chunk-writes
+  "Write-decisions ({:model_type :model_id :file_path}) for one chunk of dependency rows, or
+  `:remote-sync/unsyncable-record` if any target path collides with a different entity."
+  [snapshot opts chunk]
+  (reduce (fn [writes [row entity]]
+            (let [path (source/entity->path opts entity)]
+              (if (path-free? (repo-file-info snapshot path (:entity_id entity)))
+                (conj writes (assoc row :file_path path))
+                (reduced :remote-sync/unsyncable-record))))
+          []
+          (extract-chunk chunk)))
+
 (defn- dep-writes
-  "Validate the untracked dependency entities `dep-ids` (a set of `[model-type id]`): return `[]` (none), a
-  vector of `{:model_type :model_id :file_path}` write-decisions, or `:remote-sync/unsyncable-record` if any
-  target path collides with a different entity."
+  "Validate the untracked dependency entities `dep-ids` (a set of `[model-type id]`) one chunk at a time: the
+  `{:model_type :model_id :file_path}` write-decisions, or `:remote-sync/unsyncable-record` at the first chunk
+  whose target path collides with a different entity."
   [snapshot opts dep-ids]
-  (if (empty? dep-ids)
-    []
-    (let [dep-rows  (mapv (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)
-          decisions (into []
-                          (comp (mapcat extract-chunk)
-                                (map (fn [[row entity]]
-                                       (assoc row
-                                              :file_path (source/entity->path opts entity)
-                                              :eid       (:entity_id entity)))))
-                          (->chunks dep-rows))]
-      ;; keep going only if every dependency's target path is free. A present file whose entity_id can't be
-      ;; read counts as occupied — don't clobber it.
-      (if (every? (fn [{:keys [file_path eid]}]
-                    (if-let [content (source.p/read-file snapshot file_path)]
-                      (= eid (try (:entity_id (yaml/parse-string content))
-                                  (catch Exception _ nil)))
-                      true))
-                  decisions)
-        (mapv #(dissoc % :eid) decisions)
-        :remote-sync/unsyncable-record))))
+  (let [dep-rows (mapv (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)]
+    (reduce (fn [writes chunk]
+              (let [chunk-writes (dep-chunk-writes snapshot opts chunk)]
+                (if (= :remote-sync/unsyncable-record chunk-writes)
+                  (reduced :remote-sync/unsyncable-record)
+                  (into writes chunk-writes))))
+            []
+            (->sized-chunks dep-rows))))
 
 (defn- incremental-updates-for-row
   "Decide a dirty `row`'s contribution to an incremental plan, given its precomputed `info`
@@ -812,8 +832,7 @@
         ;; create: brand-new file, no old path to delete.
         ;; Target must be free or same entity id
         (and (= "create" status)
-             (or (not (:file-exists? info))
-                 (= (:eid info) (:file-eid info))))
+             (path-free? info))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
          :writes [(write)]}
 
@@ -831,8 +850,7 @@
         (and (= "update" status)
              (not (str/blank? file_path))
              (not= file_path (:new-path info))
-             (or (not (:file-exists? info))
-                 (= (:eid info) (:file-eid info))))
+             (path-free? info))
         {:pull (untracked-content-deps (:model_type row) (:model_id row))
          :writes [(write)]
          :delete-paths [file_path]}
@@ -870,7 +888,7 @@
                                                     :file-exists? (boolean content)
                                                     ;; parse errors on the existing repo file invalidate the batch
                                                     :file-eid     (when content (:entity_id (yaml/parse-string content)))}]))))
-                         (->chunks cu-rows))
+                         (->sized-chunks cu-rows))
                    (catch Exception _ ::extract-error))
         plan     (if (= id->info ::extract-error)
                    :remote-sync/unsyncable-batch
@@ -914,7 +932,7 @@
     (try
       ;; stream one chunk at a time: render each entity's content, stage it, drop it — only the chunk's
       ;; entities and the light `synced` metadata are ever held
-      (doseq [chunk         (->chunks writes)
+      (doseq [chunk         (->sized-chunks writes)
               [wrow entity] (extract-chunk chunk)]
         (let [path    (or (:file_path wrow) (source/entity->path opts entity))
               content (source/entity->content entity)]
