@@ -226,6 +226,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
     it("should filter by location", () => {
       setupEntities();
       H.waitForBackfillComplete();
+      waitForUnreferencedEntities();
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({
         visibleEntities: [
@@ -1096,6 +1097,27 @@ function createDashboardWithParameterWithCardSource({
         },
       }),
     ],
+  });
+}
+
+// Backfill completion does not guarantee the unreferenced-entities analysis
+// has materialized every created entity yet, so poll that endpoint until all
+// of them are present before asserting on the UI (mirrors the breaking-deps
+// guard in dependency-broken-list.cy.spec.ts).
+function waitForUnreferencedEntities() {
+  H.waitForUnreferencedEntities((nodes) => {
+    const names = new Set(
+      nodes.map((node) => {
+        if ("display_name" in node.data) {
+          return node.data.display_name;
+        }
+        if ("name" in node.data) {
+          return node.data.name;
+        }
+        return undefined;
+      }),
+    );
+    return ENTITY_NAMES.every((name) => names.has(name));
   });
 }
 
