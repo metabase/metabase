@@ -206,9 +206,7 @@
         (is (t2/exists? :model/Collection :id (:id examples)))))))
 
 (deftest replace-sample-database-survives-dangling-visualizer-ref-test
-  (testing "A sample-DB dashcard whose visualizer_settings reference a now-deleted Card must not block the engine
-           swap. Loading such a dashcard fires the DashboardCard after-select hook, which resolves visualizer FK
-           refs and hard-throws on a dangling one; the deletion path must not trip that hook."
+  (testing "The engine swap completes when a sample dashcard has a dangling visualizer ref"
     (mt/with-temp
       [:model/Database  old-sample  {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}
        :model/Card      sample-card {:database_id (:id old-sample)}

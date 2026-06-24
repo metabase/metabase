@@ -1823,8 +1823,8 @@
 
 (defn import-visualizer-settings-lenient
   "Like [[import-visualizer-settings]], but resolves card references leniently: a dangling reference is
-  left in its portable entity-id form instead of throwing. For read paths (the DashboardCard after-select
-  hook) where a deleted source Card must render as a broken section rather than break the whole read."
+  left in its portable entity-id form, instead of throwing. Use for paths where a deleted source Card
+  should be treated as a broken section rather than break the whole read."
   [settings]
   (binding [resolve/*import-resolver* @(requiring-resolve 'metabase.models.serialization.resolve.db/lenient-import-resolver)]
     (import-visualizer-settings settings)))
