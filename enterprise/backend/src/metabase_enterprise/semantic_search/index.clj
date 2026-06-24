@@ -1116,7 +1116,11 @@
     (if (str/blank? search-string)
       {:results [] :raw-count 0}
       (do
+        ;; `:vector-search-allow-missing-index?` is a deliberate opt-out for callers that want the inner
+        ;; query to run without the HNSW index (e.g. the strategy matrix test probing the exact seq-scan
+        ;; path); production traffic leaves it unset and gets the fail-fast.
         (when (and (contains? search.config/hnsw-index-backed-strategies (vector-search-strategy search-context))
+                   (not (:vector-search-allow-missing-index? search-context))
                    (not (semantic.util/index-exists? db (hnsw-index-name index))))
           (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no HNSW index exists. "
                                "Set the semantic-search-vector-strategy setting to an index-backed strategy "

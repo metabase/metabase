@@ -293,7 +293,10 @@
   "Per-variant search-context overrides."
   [variant]
   (case variant
-    :no-index    {:vector-search-strategy :hnsw}
+    ;; the :hnsw query shape run before build-hnsw-index!, to measure exact pre-index retrieval. Opt out of
+    ;; the missing-index fail-fast, which production traffic gets but this baseline deliberately bypasses.
+    :no-index    {:vector-search-strategy             :hnsw
+                  :vector-search-allow-missing-index? true}
     :brute-force {:vector-search-strategy :brute-force}
     ;; force-index because the planner would otherwise always seq-scan a 300-row table, making every
     ;; variant silently exact
