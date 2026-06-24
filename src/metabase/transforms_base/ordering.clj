@@ -77,6 +77,18 @@
        (and (not (:source transform)) (:id transform))
        (assoc :source (t2/select-one-fn :source [:model/Transform :id :source] (:id transform)))))))
 
+(defn references-card-or-snippet?
+  "True if `transform`'s source query reads through a saved card or native snippet."
+  [transform]
+  (let [query (:query (or (:source transform)
+                          (t2/select-one-fn :source [:model/Transform :id :source] (:id transform))))]
+    (boolean
+     (when query
+       (try
+         (or (seq (lib/all-source-card-ids query))
+             (seq (lib/all-template-tag-snippet-ids query)))
+         (catch Throwable _ false))))))
+
 (defn safe-table-dependencies
   "Like `stored-or-live-deps`, but returns `#{}` if the computation throws. Used by cycle
   detection where a single broken transform must not block the whole check. Callers that need
@@ -145,7 +157,7 @@
        :not-found    #{ids in start-ids that don't refer to any transform in all-transforms}
        :failed       #{ids whose table-dependencies threw}
        :uncached     {transform-id -> raw-deps} for visited transforms whose `:table_dependencies`
-                     column was absent and had to be computed live}
+                     column was absent, computed live, and safe to cache}
 
   `:dependencies` is restricted to the transitive closure reachable from `start-ids`. `:uncached`
   lets the caller persist freshly computed deps so later reads hit the cache instead.
@@ -182,7 +194,10 @@
             (recur (assoc visited id resolved-ids)
                    not-found
                    (cond-> failed fail? (conj id))
-                   (cond-> uncached (and miss? (not fail?)) (assoc id raw-deps))
+                   ;; Only cache transforms that don't read through a card/snippet; those pass through
+                   ;; since their deps can change without the transform doing.
+                   (cond-> uncached (and miss? (not fail?) (not (references-card-or-snippet? transform)))
+                           (assoc id raw-deps))
                    (into (rest queue) resolved-ids))))
         {:dependencies visited
          :not-found    not-found

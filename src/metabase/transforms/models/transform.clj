@@ -161,9 +161,11 @@
     (cond-> transform
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
-             :source_database_id (or source_database_id (transforms-base.i/source-db-id transform))
-             ;; invalidate table dependencies on update, so they get recomputed on next miss
-             :table_dependencies nil)
+             :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
+
+      ;; Invalidate cached deps when the source changes
+      (:source (t2/changes transform))
+      (assoc :table_dependencies nil)
 
       target-changed?
       (assoc :target_db_id target-db-id)
