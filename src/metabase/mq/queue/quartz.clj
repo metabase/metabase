@@ -37,7 +37,7 @@
    [metabase.util.log :as log])
   (:import
    (java.util Date)
-   (org.quartz JobExecutionContext Scheduler)))
+   (org.quartz JobDetail JobExecutionContext Scheduler)))
 
 (set! *warn-on-reflection* true)
 
@@ -119,24 +119,40 @@
   "Per-process cache of queues whose durable Quartz job has been created, keyed by
   `[queue exclusive?]`, so we don't re-issue `addJob` on every publish. Safe as a process-lifetime
   cache: production runs one persistent (JDBC) scheduler whose durable jobs survive restarts, and a
-  change to a queue's `:exclusive` flag re-ensures under the new key (replacing the job class)."
+  change to a queue's `:exclusive` flag re-ensures under the new key ([[ensure-queue-job!]] then
+  upgrades a concurrent job to exclusive, but never downgrades)."
   (atom #{}))
+
+(defn- exclusive-job?
+  "True if `job` is the `@DisallowConcurrentExecution` (exclusive) job class."
+  [^JobDetail job]
+  (= ExclusiveQueueMessageJob (.getJobClass job)))
 
 (defn- ensure-queue-job!
   "Idempotently creates `queue`'s durable job — a `@DisallowConcurrentExecution` job when
   `exclusive?`, otherwise a plain concurrent one. The job carries no payload (messages are triggers
   on it), so it is durable (persists across the gaps between messages) and requests recovery
-  (re-fires interrupted work after a crash)."
+  (re-fires interrupted work after a crash).
+
+  When the job already exists, exclusivity is treated as *sticky*: a concurrent job is upgraded to
+  exclusive, but an exclusive job is never downgraded to concurrent. This keeps a node that
+  disagrees about a queue's `:exclusive` flag (e.g. mid rolling deploy, where nodes run different
+  code) from weakening another node's cluster-wide mutual-exclusion guarantee by flipping the
+  shared job class back and forth.
+  If we ever want to actually change a queue to be non-exclusive, we will need a way to handle that."
   [^Scheduler scheduler queue exclusive?]
   (when-not (contains? @ensured-jobs [queue exclusive?])
-    (.addJob scheduler
-             (jobs/build
-              (jobs/of-type (if exclusive? ExclusiveQueueMessageJob QueueMessageJob))
-              (jobs/with-identity (queue-job-key queue))
-              (jobs/store-durably)
-              (jobs/request-recovery)
-              (jobs/using-job-data {data-queue (name queue)}))
-             true)
+    (let [existing (.getJobDetail scheduler (queue-job-key queue))]
+      (when (or (nil? existing)
+                (and exclusive? (not (exclusive-job? existing))))
+        (.addJob scheduler
+                 (jobs/build
+                  (jobs/of-type (if exclusive? ExclusiveQueueMessageJob QueueMessageJob))
+                  (jobs/with-identity (queue-job-key queue))
+                  (jobs/store-durably)
+                  (jobs/request-recovery)
+                  (jobs/using-job-data {data-queue (name queue)}))
+                 true)))
     (swap! ensured-jobs conj [queue exclusive?])))
 
 (defrecord QuartzQueueBackend []
@@ -144,9 +160,17 @@
   (backend-id [_this] backend-id)
 
   (publish! [_this queue payload]
-    (when-let [scheduler (task/scheduler)]
-      (ensure-queue-job! scheduler queue (q.registry/exclusive? queue))
-      (schedule-message-trigger! scheduler queue payload 0 (Date.))))
+    ;; A nil scheduler (e.g. MB_DISABLE_SCHEDULER, or during shutdown) must be a hard failure, not a
+    ;; silent no-op: the transactional outbox relies on a thrown exception to keep its row for the
+    ;; recovery sweep, and the publish buffer relies on it to retry / loudly drop. Returning nil
+    ;; here would silently lose the message.
+    (if-let [scheduler (task/scheduler)]
+      (do
+        (ensure-queue-job! scheduler queue (q.registry/exclusive? queue))
+        (schedule-message-trigger! scheduler queue payload 0 (Date.)))
+      (throw (ex-info (format "Cannot publish to queue %s: the Quartz task scheduler is not running (is MB_DISABLE_SCHEDULER set?)."
+                              queue)
+                      {:queue queue :backend backend-id}))))
 
   ;; Push backend — Quartz drives everything below, so these poll-driver hooks are never invoked
   ;; (the poll loop is never started) and exist only to satisfy the protocol.

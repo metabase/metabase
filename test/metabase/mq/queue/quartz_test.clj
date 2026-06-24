@@ -18,6 +18,7 @@
   (:import
    (java.util Properties)
    (java.util.concurrent CountDownLatch CyclicBarrier TimeUnit)
+   (org.quartz JobDetail Scheduler)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -168,3 +169,43 @@
   (testing "a non-exclusive queue can run batches concurrently (proves the probe can observe overlap)"
     (is (true? (run-concurrency-probe! (keyword "queue" (str "quartz-conc-" (random-uuid))) false))
         "the two batches ran at the same time")))
+
+(deftest quartz-publish-without-scheduler-throws-test
+  (testing "publishing with no running scheduler throws instead of silently dropping the message"
+    ;; A nil scheduler (e.g. MB_DISABLE_SCHEDULER) must NOT be a silent no-op: the transactional
+    ;; outbox relies on a thrown failure to keep the row for the recovery sweep, and the publish
+    ;; buffer relies on it to retry/loudly drop rather than silently lose the message.
+    (binding [task.impl/*quartz-scheduler* (atom nil)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"scheduler is not running"
+           (publish! (keyword "queue" (str "quartz-nosched-" (random-uuid))) "x"))))))
+
+(deftest quartz-exclusive-job-not-downgraded-test
+  (testing "a node that disagrees about :exclusive can't downgrade an existing exclusive job"
+    ;; Simulates three nodes (the per-process `ensured-jobs` cache is reset between them) publishing
+    ;; to the same queue with different views of `:exclusive`. Exclusivity must be sticky: once any
+    ;; node makes the queue's job exclusive, a node that thinks it's concurrent must not weaken it.
+    (do-with-multithread-scheduler!
+     1
+     (fn []
+       (let [^Scheduler scheduler (task.impl/scheduler)
+             queue        (keyword "queue" (str "quartz-nodowngrade-" (random-uuid)))
+             jk           (#'q.quartz/queue-job-key queue)
+             reset-cache! #(reset! @#'q.quartz/ensured-jobs #{})
+             job-class    (fn [] (when-let [^JobDetail jd (.getJobDetail scheduler jk)]
+                                   (.getSimpleName (.getJobClass jd))))]
+         (try
+           ;; node A: concurrent — creates a plain job
+           (reset-cache!)
+           (#'q.quartz/ensure-queue-job! scheduler queue false)
+           (is (= "QueueMessageJob" (job-class)))
+           ;; node B: exclusive — upgrades to the DisallowConcurrentExecution class
+           (reset-cache!)
+           (#'q.quartz/ensure-queue-job! scheduler queue true)
+           (is (= "ExclusiveQueueMessageJob" (job-class)))
+           ;; node C: concurrent again — must NOT downgrade
+           (reset-cache!)
+           (#'q.quartz/ensure-queue-job! scheduler queue false)
+           (is (= "ExclusiveQueueMessageJob" (job-class))
+               "exclusive is sticky; a disagreeing node cannot downgrade it back to concurrent")
+           (finally (.deleteJob scheduler jk))))))))

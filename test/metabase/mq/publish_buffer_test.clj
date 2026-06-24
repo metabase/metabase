@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.publish-buffer :as publish-buffer]
-   [metabase.mq.transport :as transport]))
+   [metabase.mq.transport :as transport]
+   [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]))
 
 (set! *warn-on-reflection* true)
 
@@ -12,17 +13,19 @@
           call-count (atom 0)]
       (binding [publish-buffer/*publish-buffer* (atom {})
                 publish-buffer/*publish-buffer-ms* 0
-                publish-buffer/*publish-buffer-max-ms* 0]
+                publish-buffer/*publish-buffer-max-ms* 0
+                ;; zero backoff so the retry is eligible on the immediately-following flush
+                publish-buffer/*publish-buffer-retry-base-ms* 0]
         ;; Directly populate the buffer with an entry past its deadline
         (reset! publish-buffer/*publish-buffer*
                 {:queue/test {:messages ["msg1" "msg2"]
                               :deadline-ms 1
                               :created-ms 1}})
-        (with-redefs [transport/publish! (fn [channel messages]
-                                           (swap! call-count inc)
-                                           (if (= 1 @call-count)
-                                             (throw (ex-info "publish failed" {}))
-                                             (swap! published conj {:channel channel :messages messages})))]
+        (with-dynamic-fn-redefs [transport/publish! (fn [channel messages]
+                                                      (swap! call-count inc)
+                                                      (if (= 1 @call-count)
+                                                        (throw (ex-info "publish failed" {}))
+                                                        (swap! published conj {:channel channel :messages messages})))]
           ;; First flush — publish throws, messages should be re-buffered
           (publish-buffer/flush-publish-buffer!)
           (testing "Messages are back in the buffer after failure"
@@ -40,9 +43,11 @@
     (binding [publish-buffer/*publish-buffer*             (atom {})
               publish-buffer/*publish-buffer-ms*          0
               publish-buffer/*publish-buffer-max-ms*      0
-              publish-buffer/*publish-buffer-max-retries* 3]
-      (with-redefs [transport/publish! (fn [_channel _messages]
-                                         (throw (ex-info "always fails" {})))]
+              publish-buffer/*publish-buffer-max-retries* 3
+              ;; zero backoff so each retry is eligible on the immediately-following flush
+              publish-buffer/*publish-buffer-retry-base-ms* 0]
+      (with-dynamic-fn-redefs [transport/publish! (fn [_channel _messages]
+                                                    (throw (ex-info "always fails" {})))]
         ;; Populate buffer with messages past their deadline
         (reset! publish-buffer/*publish-buffer*
                 {:queue/test {:messages   ["msg1" "msg2"]
@@ -62,6 +67,37 @@
         (is (empty? @publish-buffer/*publish-buffer*)
             "Messages should be dropped after reaching max retries")))))
 
+(deftest flush-retry-backoff-grows-exponentially-test
+  (testing "the backoff helper doubles each attempt and is capped"
+    (binding [publish-buffer/*publish-buffer-retry-base-ms* 100
+              publish-buffer/*publish-buffer-retry-max-ms*  5000]
+      (is (= [100 200 400 800 1600 3200 5000 5000]
+             (map #'publish-buffer/flush-retry-backoff-ms (range 1 9))))))
+  (testing "each failed flush schedules its retry farther out than the last (exponential backoff)"
+    (binding [publish-buffer/*publish-buffer*               (atom {})
+              publish-buffer/*publish-buffer-ms*            0
+              publish-buffer/*publish-buffer-max-ms*        0
+              publish-buffer/*publish-buffer-retry-base-ms* 1000
+              publish-buffer/*publish-buffer-retry-max-ms*  100000]
+      (with-dynamic-fn-redefs [transport/publish! (fn [_channel _messages] (throw (ex-info "always fails" {})))]
+        (reset! publish-buffer/*publish-buffer*
+                {:queue/test {:messages ["m"] :deadline-ms 1 :created-ms 1 :retries 0}})
+        (let [scheduled-backoff!
+              (fn []
+                ;; make the entry due now, flush once (which fails), and return how far out the next
+                ;; retry was scheduled relative to the moment of the flush
+                (swap! publish-buffer/*publish-buffer* update :queue/test assoc :deadline-ms 1)
+                (let [t0 (System/currentTimeMillis)]
+                  (publish-buffer/flush-publish-buffer!)
+                  (- (long (get-in @publish-buffer/*publish-buffer* [:queue/test :deadline-ms])) t0)))
+              d1 (scheduled-backoff!)    ; retries 1 -> ~1000ms
+              d2 (scheduled-backoff!)    ; retries 2 -> ~2000ms
+              d3 (scheduled-backoff!)]   ; retries 3 -> ~4000ms
+          (is (<= 1000 d1 1200) "first retry waits ~base")
+          (is (<= 2000 d2 2200) "second retry waits ~2x base")
+          (is (<= 4000 d3 4200) "third retry waits ~4x base")
+          (is (= 3 (get-in @publish-buffer/*publish-buffer* [:queue/test :retries]))))))))
+
 (deftest flush-re-buffer-merges-with-new-messages-test
   (testing "Re-buffered messages merge with new messages that arrived during flush"
     (binding [publish-buffer/*publish-buffer* (atom {})
@@ -72,14 +108,14 @@
               {:queue/test {:messages ["old1" "old2"]
                             :deadline-ms 1
                             :created-ms 1}})
-      (with-redefs [transport/publish! (fn [_channel _messages]
-                                         ;; Simulate new messages arriving during flush
-                                         (swap! publish-buffer/*publish-buffer*
-                                                assoc :queue/test
-                                                {:messages ["new1"]
-                                                 :deadline-ms (+ (System/currentTimeMillis) 100)
-                                                 :created-ms (System/currentTimeMillis)})
-                                         (throw (ex-info "publish failed" {})))]
+      (with-dynamic-fn-redefs [transport/publish! (fn [_channel _messages]
+                                                    ;; Simulate new messages arriving during flush
+                                                    (swap! publish-buffer/*publish-buffer*
+                                                           assoc :queue/test
+                                                           {:messages ["new1"]
+                                                            :deadline-ms (+ (System/currentTimeMillis) 100)
+                                                            :created-ms (System/currentTimeMillis)})
+                                                    (throw (ex-info "publish failed" {})))]
         (publish-buffer/flush-publish-buffer!)
         (testing "Re-buffered (older) messages are prepended so publish order is preserved across retries"
           (let [messages (get-in @publish-buffer/*publish-buffer* [:queue/test :messages])]

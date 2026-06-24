@@ -24,6 +24,21 @@
   "Maximum number of flush attempts before messages are dropped. 0 = unlimited retries."
   10)
 
+(def ^:dynamic *publish-buffer-retry-base-ms*
+  "Base delay for the exponential backoff between failed flush attempts: the first retry waits this
+   long, and each subsequent retry doubles (capped at `*publish-buffer-retry-max-ms*`)."
+  100)
+
+(def ^:dynamic *publish-buffer-retry-max-ms*
+  "Upper bound on the exponential flush-retry backoff, so a permanently-failing backend doesn't push
+   the next retry arbitrarily far out."
+  30000)
+
+(defn- flush-retry-backoff-ms
+  [retries]
+  (min *publish-buffer-retry-max-ms*
+       (long (* *publish-buffer-retry-base-ms* (Math/pow 2 (dec retries))))))
+
 (def ^:dynamic *publish-buffer*
   "Global buffer for buffering publishes.
    channel → {:messages [...] :deadline-ms long :created-ms long :retries int}"
@@ -76,11 +91,13 @@
      (let [drained (atom nil)]
        (swap! *publish-buffer*
               (fn [buf]
-                (if-let [{:keys [deadline-ms created-ms] :as entry} (get buf channel)]
-                  (let [now (System/currentTimeMillis)]
+                (if-let [{:keys [deadline-ms created-ms retries] :as entry} (get buf channel)]
+                  (let [now       (System/currentTimeMillis)
+                        retrying? (pos? (or retries 0))]
                     (if (or force?
                             (and (pos? deadline-ms) (>= now deadline-ms))
-                            (and (pos? *publish-buffer-max-ms*) (>= now (+ created-ms *publish-buffer-max-ms*))))
+                            (and (not retrying?)
+                                 (pos? *publish-buffer-max-ms*) (>= now (+ created-ms *publish-buffer-max-ms*))))
                       (do (reset! drained entry) (dissoc buf channel))
                       buf))
                   buf)))
@@ -92,10 +109,11 @@
                   (if (and (pos? *publish-buffer-max-retries*) (>= retries *publish-buffer-max-retries*))
                     (log/warnf "Dropping %d messages for %s after %d flush failures: %s"
                                (count messages) channel retries (ex-message e))
-                    (do
-                      (log/error e "Error flushing publish buffer, re-buffering"
-                                 {:channel channel :retries retries})
-                      ;; Put messages back into the buffer for retry on next flush cycle
+                    (let [backoff  (flush-retry-backoff-ms retries)
+                          deadline (+ (System/currentTimeMillis) backoff)]
+                      (log/errorf e "Error flushing publish buffer for %s, retrying in %dms (attempt %d)"
+                                  channel backoff retries)
+                      ;; Put messages back into the buffer for a later flush cycle.
                       (swap! *publish-buffer*
                              (fn [buf]
                                (update buf channel
@@ -106,9 +124,10 @@
                                                ;; are published before messages that arrived during the
                                                ;; flush — preserves publish order across retries.
                                                (update :messages #(into (vec messages) %))
+                                               (assoc :deadline-ms deadline)
                                                (update :retries (fnil max 0) retries))
                                            (assoc entry
-                                                  :deadline-ms (+ (System/currentTimeMillis) *publish-buffer-ms*)
+                                                  :deadline-ms deadline
                                                   :retries retries))))))))))))))))
 
 (defonce ^:private publish-buffer-executor (atom nil))
