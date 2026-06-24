@@ -397,6 +397,19 @@
   (transduce (map count) + 0 (concat (vals (:by-entity-id imported-data))
                                      (vals (:by-path imported-data)))))
 
+(defn- fold-data-app-changes
+  "Fold the count of data apps changed by a pull into its `:outcome`. Data apps
+  live under `data_apps/` — outside serdes — and are materialized separately (see
+  [[materialize-data-apps!]]), so they're invisible to [[pulled-change-count]].
+  Without this, a pull whose only changes are data apps reports `pull-skipped` /
+  `count 0`. Caller guarantees `da-changed` is positive."
+  [outcome da-changed]
+  (case (:kind outcome)
+    "pull-skipped" {:kind "pulled" :count da-changed :branch (settings/remote-sync-branch)}
+    "pulled"       (update outcome :count (fnil + 0) da-changed)
+    "merged"       (update outcome :pulled (fnil + 0) da-changed)
+    outcome))
+
 (defn- incremental-import-plan
   "What an incremental load would touch, or [[incremental-not-possible]] if the change must fall back to a full
   import. On success returns `{:ingestable <ingestable-or-nil> :deleted-rsos <RemoteSyncObject rows>}`. Falls back
@@ -667,10 +680,14 @@
                            :branch (settings/remote-sync-branch)}}))]
         ;; Data apps ride the pull: re-materialize from the real source snapshot
         ;; (the repo file tree under `data_apps/`), not the synthetic merged
-        ;; snapshot `load-snapshot!` sees.
-        (when (= :success (:status result))
-          (materialize-data-apps! snapshot))
-        result)
+        ;; snapshot `load-snapshot!` sees. They're counted outside serdes, so fold
+        ;; their change count into the outcome — otherwise a data-app-only pull
+        ;; would report `pull-skipped` / `count 0`.
+        (if (= :success (:status result))
+          (let [da-changed (:changed (materialize-data-apps! snapshot) 0)]
+            (cond-> result
+              (pos? da-changed) (update :outcome fold-data-app-changes da-changed)))
+          result))
       (catch Exception e
         ;; A cancellation isn't a failure: log it and return nil. Otherwise log the error, count it, and
         ;; return a user-friendly :error result.

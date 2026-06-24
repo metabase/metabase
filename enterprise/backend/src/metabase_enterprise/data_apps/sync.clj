@@ -79,11 +79,27 @@
     (t2/update! :model/DataApp :name slug row)
     (t2/insert! :model/DataApp (assoc row :name slug))))
 
+(defn- app-content-changed?
+  "Whether the just-synced content differs from the `existing` row (nil = a new
+   app). Compares only content-bearing fields — a `last_synced_sha` /
+   `last_synced_at` bump on an otherwise-identical app is NOT a change, so callers
+   can count real changes (e.g. for the remote-sync pull summary)."
+  [existing {:keys [display_name bundle_path bundle_hash allowed_hosts]}]
+  (or (nil? existing)
+      (some? (:sync_error existing))
+      (not= (:display_name existing) display_name)
+      (not= (:bundle_path existing) bundle_path)
+      (not= (:bundle_hash existing) bundle_hash)
+      (not= (vec (or (:allowed_hosts existing) []))
+            (vec (or allowed_hosts [])))))
+
 (defn- sync-app!
   "Materialize one app. On bundle failure, the row's metadata is still upserted
    with `sync_error` set so the app appears in the list with its failure; the
-   previously cached bundle (if any) is kept."
-  [{:keys [slug display_name bundle sha read-file allowed_hosts]}]
+   previously cached bundle (if any) is kept. `existing` is the app's pre-sync row
+   (or nil); returns true when this sync actually changed the app's content (a new
+   app, differing bundle/metadata, or a new failure) so callers can count changes."
+  [existing {:keys [slug display_name bundle sha read-file allowed_hosts]}]
   (try
     (let [content (read-file bundle)
           _       (when-not content
@@ -94,20 +110,24 @@
         (throw (ex-info (tru "Bundle for \"{0}\" must be less than {1} MiB."
                              slug (quot max-bundle-bytes (* 1024 1024)))
                         {:status-code 413})))
-      (upsert-by-name! slug {:display_name    display_name
-                             :allowed_hosts   allowed_hosts
-                             :bundle_path     bundle
-                             :bundle          bytes
-                             :bundle_hash     (bytes-hash bytes)
-                             :last_synced_sha sha
-                             :last_synced_at  :%now
-                             :sync_error      nil}))
+      (let [fields {:display_name  display_name
+                    :allowed_hosts allowed_hosts
+                    :bundle_path   bundle
+                    :bundle_hash   (bytes-hash bytes)}]
+        (upsert-by-name! slug (assoc fields
+                                     :bundle          bytes
+                                     :last_synced_sha sha
+                                     :last_synced_at  :%now
+                                     :sync_error      nil))
+        (app-content-changed? existing fields)))
     (catch Throwable e
       (upsert-by-name! slug {:display_name  display_name
                              :allowed_hosts allowed_hosts
                              :bundle_path   bundle
                              :sync_error    (ex-message e)})
-      (log/warnf e "[data-app] failed to sync app %s" slug))))
+      (log/warnf e "[data-app] failed to sync app %s" slug)
+      ;; a failing app counts as a change unless it was already failing identically
+      (or (nil? existing) (not= (:sync_error existing) (ex-message e))))))
 
 (defn import-from-snapshot!
   "Materialize data apps from a synced repo `snapshot`:
@@ -118,38 +138,47 @@
 
    Discovers every `data_apps/<dir>/data_app.yml`, upserts a row per app, and
    prunes rows whose directory is gone — all in one transaction. Returns
-   `{:synced <n>, :sha <sha>, :config-errors [<message> ...]}`. A malformed
+   `{:synced <n>, :changed <n>, :sha <sha>, :config-errors [<message> ...]}`,
+   where `:changed` is how many apps this sync actually created/updated/removed
+   (a `last_synced_sha` bump on an unchanged app does not count). A malformed
    `data_app.yml` is isolated (collected into `:config-errors`, that app skipped)
    rather than aborting the others; per-app bundle failures are recorded on the
    row. Throws only on duplicate slugs, which make app identity ambiguous."
   [{:keys [read-file list-files sha]}]
   ;; realize discovery once (it calls read-file/parse per config); `results` is
   ;; then walked several times below
-  (let [results (vec (discover-app-configs list-files read-file))
-        good    (filter :slug results)
-        errors  (vec (keep :config-error results))
-        slugs   (map :slug good)]
+  (let [results  (vec (discover-app-configs list-files read-file))
+        good     (filter :slug results)
+        errors   (vec (keep :config-error results))
+        slugs    (map :slug good)
+        ;; pre-sync rows, so we can tell a real change from a sha/timestamp bump
+        existing (into {} (map (juxt :name identity))
+                       (t2/select [:model/DataApp :name :display_name :allowed_hosts
+                                   :bundle_path :bundle_hash :sync_error]))]
     (when (not= (count slugs) (count (distinct slugs)))
       (throw (ex-info (tru "Two data apps in the repository share a slug.")
                       {:status-code 400})))
-    (t2/with-transaction [_conn]
-      (doseq [{:keys [slug display_name bundle allowed_hosts]} good]
-        (sync-app! {:slug slug, :display_name display_name, :bundle bundle
-                    :allowed_hosts allowed_hosts
-                    :sha sha, :read-file read-file}))
-      ;; Prune apps whose directory is gone — but only when every config parsed.
-      ;; With an unparsed config we can't tell a removed app from one we failed to
-      ;; read this sync, so we leave existing rows alone rather than risk deleting
-      ;; a still-present app.
-      (when (empty? errors)
-        (let [orphans (set/difference (set (t2/select-fn-set :name :model/DataApp))
-                                      (set slugs))]
-          (when (seq orphans)
-            (t2/delete! :model/DataApp :name [:in orphans])
-            (log/infof "[data-app] pruned %d app(s) removed from the repo: %s"
-                       (count orphans) (str/join ", " orphans))))))
-    (log/infof "[data-app] synced sha=%s apps=%d errors=%d" sha (count good) (count errors))
-    {:synced (count good), :sha sha, :config-errors errors}))
+    (let [changed
+          (t2/with-transaction [_conn]
+            (let [upserted (reduce (fn [n cfg]
+                                     (cond-> n
+                                       (sync-app! (get existing (:slug cfg))
+                                                  (assoc cfg :sha sha :read-file read-file))
+                                       inc))
+                                   0 good)
+                  ;; Prune apps whose directory is gone — but only when every config
+                  ;; parsed. With an unparsed config we can't tell a removed app from
+                  ;; one we failed to read this sync, so we leave existing rows alone.
+                  orphans  (when (empty? errors)
+                             (set/difference (set (keys existing)) (set slugs)))]
+              (when (seq orphans)
+                (t2/delete! :model/DataApp :name [:in orphans])
+                (log/infof "[data-app] pruned %d app(s) removed from the repo: %s"
+                           (count orphans) (str/join ", " orphans)))
+              (+ upserted (count orphans))))]
+      (log/infof "[data-app] synced sha=%s apps=%d changed=%d errors=%d"
+                 sha (count good) changed (count errors))
+      {:synced (count good), :changed changed, :sha sha, :config-errors errors})))
 
 (defn sync-from-snapshot!
   "Entry point for the remote-sync import pipeline. Materializes data apps from
