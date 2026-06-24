@@ -862,13 +862,16 @@
     (catch Exception _
       :remote-sync/unsyncable-record)))
 
-(defn- incremental-plan
-  "Validate `dirty-rows` and build a content-free incremental plan —
-  `{:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}` — or
-  `:remote-sync/unsyncable-batch` if any row can't go incrementally (forcing a full export). Computes target
-  paths but renders no YAML; the execute pass serializes the content. A `:writes` entry with no `:id` is an
-  untracked dependency (written, not tracked)."
-  [snapshot dirty-rows]
+(defn- incremental-export-plan
+  "Validate `rsos` (`RemoteSyncObject`s) and build an incremental export plan.
+
+  `snapshot` is the git repo to test existing paths against
+  `rsos` are the `RemoteSyncObject`s to export
+
+  returns:
+    - `:remote-sync/unsyncable-batch` when at least one rso cannot be exported incrementally
+    - `{:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}` for a plan."
+  [snapshot rows]
   (let [opts (serdes/storage-base-context)
         ;; Batch-extract the create/update rows on entity-id models in one query per model/chunk (rather than
         ;; a read per row), computing each row's target path + existing-repo-file info up front. removed/delete
@@ -876,7 +879,7 @@
         ;; info entry and is treated as unsyncable. An extraction error sends the whole batch to a full export.
         cu-rows  (filterv #(and (#{"create" "update"} (:status %))
                                 (= :entity-id (:identity (spec/spec-for-model-type (:model_type %)))))
-                          dirty-rows)
+                          rows)
         id->info (try
                    (into {}
                          (comp (mapcat extract-chunk)
@@ -892,7 +895,7 @@
                    (catch Exception _ ::extract-error))
         plan     (if (= id->info ::extract-error)
                    :remote-sync/unsyncable-batch
-                   (->> dirty-rows
+                   (->> rows
                         (map #(incremental-updates-for-row % (id->info (:id %))))
                         (reduce (fn [plan updates]
                                   (if (= updates :remote-sync/unsyncable-record)
@@ -1055,7 +1058,7 @@
                                              (source.p/list-files snapshot)))
               dirty-rows     (delay (remote-sync.object/dirty-rows))
               plan           (delay (when (seq @dirty-rows)
-                                      (incremental-plan snapshot @dirty-rows)))]
+                                      (incremental-export-plan snapshot @dirty-rows)))]
           (cond
             ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
             force?
