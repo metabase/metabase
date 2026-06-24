@@ -2,10 +2,9 @@
   "Shared low-level execution seams for transform test runs.
 
   These helpers sit directly above `driver/run-transform!` and the read-back QP
-  query. Factored out of `test-run.core` (the single-transform orchestrator) so
-  the chained orchestrator (`test-run.chain`) can reuse them without duplication. They carry no orchestration logic — no seeding, no
-  cleanup, no diffing — only the mechanical translation between a resolved
-  artifact and a `run-transform!` call, plus reading the result back.
+  query. They carry no orchestration logic — no seeding, no cleanup, no diffing —
+  only the mechanical translation between a resolved artifact and a
+  `run-transform!` call, plus reading the result back.
 
   All functions assume they are called inside `driver.conn/with-transform-connection`
   (which binds `*connection-type* :transform` so conn-specs resolve write-data

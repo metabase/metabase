@@ -3,42 +3,10 @@
 
   Entry point: [[diff]].
 
-  ## Inputs
+  Both sides are canonicalized to a common form before comparison; see
+  `canonicalize-cell` for the type↔canonical mapping.
 
-  - `actual-cols`  — QP `[:data :cols]` shape: `[{:name <str> :base_type <kw> ...} ...]`
-  - `actual-rows`  — QP row vectors; temporal values are ISO-8601 Z strings:
-                     `\"2024-03-15T00:00:00Z\"`, `\"2024-01-15T10:30:00Z\"` etc.
-  - `expected`     — output of [[metabase.transforms.test-run.fixtures/parse-fixture]]:
-                     `{:columns [{:name <str> :base-type <kw> :nullable? <bool>} ...]
-                       :rows    [[v1 v2 ...] ...]}`
-                     Row values are Java time objects (LocalDate/LocalDateTime/OffsetDateTime),
-                     BigInteger (integers), Double/Number (floats), Boolean, String, or nil.
-  - `opts`         — options map (all optional):
-                     `:ignore-columns` — `#{\"col-name\" ...}`; columns excluded from comparison.
-                       Unknown column names → throws ExceptionInfo with `::unknown-ignore-columns`.
-
-  ## Canonicalization
-
-  Both actual and expected cells are canonicalized to the same Clojure value type before
-  comparing. The canonical form per column type:
-
-  | Column base_type                             | Canonical form                        |
-  |----------------------------------------------|---------------------------------------|
-  | :type/Date                                   | String `\"YYYY-MM-DDTHH:MM:SSZ\"`       |
-  | :type/DateTime                               | String `\"YYYY-MM-DDTHH:MM:SSZ\"`       |
-  | :type/DateTimeWithTZ, :type/DateTimeWithLocalTZ | String `\"YYYY-MM-DDTHH:MM:SSZ\"` (UTC) |
-  | :type/Integer, :type/BigInteger              | java.math.BigDecimal                  |
-  | :type/Float, :type/Decimal                   | java.math.BigDecimal                  |
-  | :type/Boolean                                | Boolean                               |
-  | :type/Text, others                           | String (identity for strings; nil)    |
-  | nil (SQL NULL)                               | nil                                   |
-
-  ## Float equality
-
-  EXACT, always — both sides convert to `BigDecimal` and compare scale-independently
-  (`3.5` == `3.50`; int/long/BigInteger widen safely). No approximate-equality
-  option: passing `:float-tolerance` throws (fail closed). For noisy columns use
-  `:ignore-columns`.
+  Float comparison is exact (no tolerance option); use `:ignore-columns` for noisy columns.
 
   ## Multiset semantics
 
@@ -180,7 +148,23 @@
 
 (defn- canonicalize-cell
   "Canonicalize a cell value given the column `base-type`.
-  Returns a JSON-serializable Clojure value."
+  Returns a JSON-serializable Clojure value.
+
+  The canonical form per column type:
+
+  | Column base_type                             | Canonical form                        |
+  |----------------------------------------------|---------------------------------------|
+  | :type/Date                                   | String `\"YYYY-MM-DDTHH:MM:SSZ\"`       |
+  | :type/DateTime                               | String `\"YYYY-MM-DDTHH:MM:SSZ\"`       |
+  | :type/DateTimeWithTZ, :type/DateTimeWithLocalTZ | String `\"YYYY-MM-DDTHH:MM:SSZ\"` (UTC) |
+  | :type/Integer, :type/BigInteger              | java.math.BigDecimal                  |
+  | :type/Float, :type/Decimal                   | java.math.BigDecimal                  |
+  | :type/Boolean                                | Boolean                               |
+  | :type/Text, others                           | String (identity for strings; nil)    |
+  | nil (SQL NULL)                               | nil                                   |
+
+  Float comparison uses BigDecimal and is scale-independent (`3.5` == `3.50`;
+  int/long/BigInteger widen safely). No approximate-equality option: see [[cells-equal?]]."
   [base-type v]
   (cond
     (nil? v)
@@ -207,8 +191,8 @@
     (if (string? v) v (str v))))
 
 (defn- cells-equal?
-  "Compare two canonicalized cell values. Exact, always — see the namespace
-  docstring's Float equality section for why there is no approximate option."
+  "Compare two canonicalized cell values. Exact, always — see [[canonicalize-cell]]
+  for why there is no approximate option (BigDecimal comparison, scale-independent)."
   [canonical-actual canonical-expected]
   (cond
     (and (nil? canonical-actual) (nil? canonical-expected))

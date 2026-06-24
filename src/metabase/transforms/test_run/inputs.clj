@@ -85,8 +85,7 @@
   - `{:transform <id>}`           — throws `::transform-dep-not-supported`
     (the target table of another transform does not yet exist as a synced Table).
 
-  Throws `ex-info` with a typed `:error-type` for any resolution failure.
-  Callers should NOT catch this; let it propagate to `required-input-tables`."
+  Throws `ex-info` with typed `:error-type` on any resolution failure."
   [{dep-table :table dep-transform :transform :keys [table-ref]}]
   (cond
     dep-transform

@@ -24,8 +24,7 @@
 ;;; ------------------------------------------------- Query Dependencies -------------------------------------------------
 
 (defn query-table-dependencies
-  "Compute table dependencies for a query transform.
-  This is the base implementation - callers may wrap with additional error handling."
+  "Compute table dependencies for a query transform."
   [{:keys [source]}]
   (let [query (-> (:query source)
                   transforms-base.u/massage-sql-query

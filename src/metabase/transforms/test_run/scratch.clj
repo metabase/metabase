@@ -23,9 +23,6 @@
   The `_test_` segment cannot appear in a hex-only name, so there is zero risk
   that a janitor call drops a live production transform's temp table.
 
-  Length: comfortably under both the Postgres (63) and MySQL (64) identifier
-  limits even for a 10-digit table-id (pinned by a worst-case-length test).
-
   ## Caller contract (connection context)
 
   Functions in this namespace do NOT bind `driver.conn/with-transform-connection`.
@@ -268,16 +265,14 @@
   Idempotent: `driver/drop-table!` uses `DROP TABLE IF EXISTS` — dropping an
   already-absent table returns `[0]` without error.
 
-  IMPORTANT: `driver/drop-table!` takes the table NAME (a schema-qualified keyword
-  such as `(keyword schema table-name)`), NOT the full table-schema map.  Passing
-  the schema map (as used by `create-table-from-schema!`) is a common mistake and
-  will cause a ClassCastException.
-
   Returns nil always."
   [db-id db mapping output-spec]
   (let [drv  (keyword (:engine db))
         drop (fn [schema table-name]
                (try
+                 ;; drop-table! takes the table NAME as a schema-qualified keyword
+                 ;; (keyword schema table-name) — NOT the full table-schema map used
+                 ;; by create-table-from-schema!. Passing the map causes ClassCastException.
                  (driver/drop-table! drv db-id (keyword schema table-name))
                  (catch Exception e
                    (log/warn e "Failed to drop scratch table during cleanup!"

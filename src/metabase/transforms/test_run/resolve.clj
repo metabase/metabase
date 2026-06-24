@@ -12,11 +12,6 @@
    :parser-backend <keyword>}     ; the parser backend pinned for this run
   ```
 
-  The `:compiled` map is `qp.compile/compile`'s output carried **intact** — the
-  same `{:query <sql-string> :params <vec> :lib/type ...}` shape the production
-  execute path consumes. The orchestrator passes `:compiled` to `driver/run-transform!`
-  verbatim.
-
   ## Two compile paths
 
   Native-SQL transforms are rewritten by string replacement; MBQL transforms are
@@ -67,14 +62,15 @@
   For each real table we register TWO keys, both pointing at the scratch target:
   a bare `{:table <name>}` key (matches unqualified `FROM orders`) and a
   schema-qualified `{:schema :table}` key (matches `FROM public.orders` and
-  quoted `\"public\".\"orders\"`). On the sqlglot backend an unused key is a
-  no-op, so registering both is safe and covers every qualification form a native
-  transform might use."
+  quoted `\"public\".\"orders\"`)."
   [mapping]
   {:tables
    (reduce-kv
     (fn [acc {real-schema :schema real-table :table} scratch-spec]
       (let [target {:schema (:schema scratch-spec) :table (:table scratch-spec)}]
+        ;; Register both bare and qualified forms: on the sqlglot backend an unused
+        ;; key is a no-op, so registering both is safe and covers every qualification
+        ;; form a native transform might use.
         (cond-> (assoc acc {:table real-table} target)
           real-schema (assoc {:schema real-schema :table real-table} target))))
     {}
@@ -130,6 +126,10 @@
   "Build `{table-id → {:name :schema}}` from the scratch `mapping` and the
   required `input-tables` (which carry both `:id` and the real `:schema`/`:name`).
   Keyed by table id so the override matches on `(:id t)`, not name/schema pairs."
+  ;; V1 limitation: MBQL nodes reading an upstream scratch output lack a synced
+  ;; Table id (the upstream output was never materialized), so id->override cannot
+  ;; build an entry for it. The verify guards catch the dangling ref and throw
+  ;; ::cannot-test-run. Native chains do not have this issue.
   [input-tables mapping]
   (into {}
         (keep (fn [{:keys [id schema name]}]
@@ -210,7 +210,7 @@
 (defn verify
   "Run the three verify guards against `final-sql`. Returns `final-sql` on success;
   throws the typed `::cannot-test-run` error (naming the guard + offending
-  refs/token) on any failure. Pure with respect to the database — parses only.
+  refs/token) on any failure.
 
   - `driver`  — driver keyword (for default-schema + parsing).
   - `mapping` — `{real-spec → scratch-spec}` from `seed!`.
@@ -321,6 +321,8 @@
     ;; Verify (both paths, defense-in-depth) — throws on any guard failure.
     (verify driver mapping (:query compiled))
     (log/debug "Resolved test transform" {:driver driver :parser-backend backend :native? native?})
+    ;; :compiled is qp.compile/compile's output, passed verbatim to driver/run-transform!
+    ;; by the orchestrator — never deconstructed or rebuilt here.
     {:driver         driver
      :compiled       compiled
      :target         output-target

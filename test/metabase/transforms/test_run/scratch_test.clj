@@ -1,5 +1,5 @@
 (ns metabase.transforms.test-run.scratch-test
-  "Tests for scratch table seeding + cleanup (Step 3).
+  "Tests for scratch table seeding + cleanup.
 
   Integration tests run under the :postgres gate only — they require a real
   Postgres connection to test DDL round-trips.  Pure tests (naming, parsing,
@@ -179,7 +179,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (def ^:private sample-fixture
-  "A Step-1-shaped fixture with multiple types."
+  "A fixture map with multiple column types."
   {:columns [{:name "id"     :base-type :type/Integer  :nullable? false}
              {:name "label"  :base-type :type/Text     :nullable? true}
              {:name "score"  :base-type :type/Float    :nullable? true}
@@ -189,7 +189,7 @@
              [3 nil     1.0  nil]]})
 
 (def ^:private sample-table-info
-  "A Step-2-shaped table-info for a fake input table."
+  "A table-info map for a fake input table."
   {:id      99999
    :schema  "public"
    :name    "orders"
@@ -464,12 +464,12 @@
                 (catch Exception _)))))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Integration: mapping spec shape (for Step 4 consumption)
+;;; Integration: mapping spec shape
 ;;; ---------------------------------------------------------------------------
 
 (deftest mapping-spec-shape-test
   (mt/test-drivers #{:postgres}
-    (testing "seed! mapping values are {:schema <string> :table <string>} maps matching step-4 normalization"
+    (testing "seed! mapping values are {:schema <string> :table <string>} maps matching verify normalization"
       (let [nonce   (scratch/new-nonce)
             db-id   (mt/id)
             db      (mt/db)

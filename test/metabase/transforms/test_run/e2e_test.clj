@@ -1,5 +1,5 @@
 (ns ^:mb/driver-tests metabase.transforms.test-run.e2e-test
-  "End-to-end test for the transform test-run endpoint (Step 8).
+  "End-to-end test for the transform test-run endpoint.
 
   Exercises one realistic scenario through the full HTTP stack:
 

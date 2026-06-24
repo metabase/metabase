@@ -3,25 +3,6 @@
 
   Entry point: [[run-test!]].
 
-  ## Flow
-
-  ```
-  fixtures-by-table-id
-       ↓
-  [1] required-input-tables (strict, fail closed on any resolution failure)
-  [2] match-fixtures (every required table must have a fixture; no unknown keys)
-  [3] parse each fixture CSV against its table's column schema
-  [4] generate nonce; seed scratch input tables; build output target
-  [5] resolve-test-transform → {:driver :compiled :target :parser-backend}
-  [6] belt-and-braces DDL guard (all DDL targets satisfy test-table-name?)
-  [7] execute via driver/run-transform! under with-transform-connection +
-      *query-timeout-ms* binding
-  [8] read back output via QP native SELECT *
-  [9] parse expected CSV against actual output column types
-  [10] diff/diff
-  finally: cleanup! always (all paths, including exceptions and timeout)
-  ```
-
   ## Error handling
 
   `run-test!` propagates typed `ex-info` for error cases — it does NOT catch them
@@ -30,29 +11,8 @@
   `test-run-error-http-status` is the authoritative error→HTTP map. (Keeping the
   mapping in one place, rather than copied here, is deliberate.)
 
-  ## Timeout
-
-  `*query-timeout-ms*` is bound to `test-run-timeout-ms` (from opts, defaulting
-  to [[default-test-run-timeout-ms]]) before calling `driver/run-transform!`. The
-  JDBC layer enforces the statement timeout; on expiry the driver throws an
-  exception that propagates through `run-transform!` into the `try/finally`, and
-  `finally` still drops all scratch tables. See [[default-test-run-timeout-ms]]
-  for the default value and rationale.
-
-  ## No TransformRun row
-
-  `driver/run-transform!` is the seam below the TransformRun/event/sync layer,
-  so a test run creates no TransformRun row (asserted in the test suite).
-
-  ## Scratch table safety
-
-  Immediately before calling the seam, the orchestrator asserts that every DDL
-  target (all scratch input tables + the output table) satisfies
-  `scratch/test-table-name?`. This is the last line of defense against
-  misconfiguration routing a CTAS at a real production table. The assert
-  (`execute/assert-all-test-tables!`) throws
-  `:metabase.transforms.test-run.execute/pre-execution-guard-failed` rather than
-  proceeding."
+  Cleanup (drop all scratch tables) runs in `finally`, guaranteeing it executes
+  regardless of success, failure, or timeout."
   (:require
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -115,11 +75,11 @@
   [transform fixtures-by-table-id expected-csv-file opts]
   (let [timeout-ms    (get opts :timeout-ms default-test-run-timeout-ms)
         ignore-cols   (get opts :ignore-columns #{})
-        ;; Step 1: resolve required tables (strict, fail-closed).
+        ;; Resolve required tables — strict, fail-closed.
         required-tables (inputs/required-input-tables transform)
-        ;; Step 2: match fixtures — every required table must have a fixture, no extras.
+        ;; Match fixtures — every required table must have a fixture, no extras.
         match-plan    (inputs/match-fixtures required-tables (set (keys fixtures-by-table-id)))
-        ;; Step 3: parse each fixture CSV against its table's column schema.
+        ;; Parse each fixture CSV against its table's column schema.
         seed-inputs   (mapv (fn [{:keys [table-info fixture-key]}]
                               {:table-info table-info
                                :fixture    (fixtures/parse-fixture
@@ -148,34 +108,36 @@
         (let [;; Derive the driver early so we can thread the catalog through scratch specs.
               drv-early    (keyword (:engine db))
               catalog      (driver.sql/db-slot-value drv-early db)
-              ;; Step 4: seed scratch input tables.
               output-spec  (scratch/scratch-output-target output-schema nonce "out" catalog)
               _            (reset! output-spec* output-spec)
               mapping      (scratch/seed! db-id db output-schema seed-inputs nonce)
               _            (reset! mapping* mapping)
-              ;; Step 5: compile + rewrite/override + verify.
+              ;; Compile + rewrite/override + verify.
               artifact     (resolve/resolve-test-transform transform mapping output-spec
                                                            {:db           db
                                                             :input-tables required-tables})
               drv          (:driver artifact)
               compiled     (:compiled artifact)
-              ;; Step 6: belt-and-braces DDL guard.
+              ;; Belt-and-braces DDL guard — asserts every DDL target satisfies
+              ;; scratch/test-table-name?, the last defense against CTAS routing at a real
+              ;; production table. Throws ::pre-execution-guard-failed on violation.
               all-scratch-names
               (concat (map :table (vals mapping))
                       [(:table output-spec)])
               _            (execute/assert-all-test-tables! all-scratch-names)
-              ;; Step 7: execute via driver/run-transform! under the canonical bindings.
+              ;; Execute via driver/run-transform! under the canonical bindings.
+              ;; The JDBC layer enforces *query-timeout-ms*; on expiry the driver throws
+              ;; an exception that propagates through run-transform! into the try/finally,
+              ;; and finally still drops all scratch tables.
               transform-details (execute/build-transform-details compiled output-spec db-id db drv)
               _            (binding [driver.settings/*query-timeout-ms* timeout-ms]
                              (driver/run-transform! drv transform-details {:overwrite? true}))
-              ;; Step 8: read back the scratch output.
               qp-result    (execute/read-back-output db-id drv output-spec)
               actual-cols  (get-in qp-result [:data :cols])
               actual-rows  (get-in qp-result [:data :rows])
-              ;; Step 9: parse expected CSV against actual output column types.
+              ;; Parse expected CSV against the actual output column types.
               expected-schema   (execute/actual->schema actual-cols)
               expected-fixture  (fixtures/parse-fixture expected-csv-file expected-schema)
-              ;; Step 10: diff.
               report       (diff/diff actual-cols actual-rows expected-fixture
                                       {:ignore-columns ignore-cols})]
           {:status         (:status report)

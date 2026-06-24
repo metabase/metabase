@@ -1,5 +1,5 @@
 (ns metabase.transforms.test-run.core-test
-  "Integration tests for the test-run orchestrator (Step 6).
+  "Integration tests for the test-run orchestrator.
 
   All integration tests run under the :postgres gate (real DDL required).
 
@@ -9,24 +9,7 @@
   1. The functional result (:passed / :failed / typed error).
   2. The cleanup invariant: zero mb_transform_temp_table_test_* tables remain
      in the schema after every case — including error and timeout paths.
-  3. No TransformRun row was created.
-
-  ## Fixture CSV constraint
-
-  The real `orders` table in test-data has exactly these 9 columns (position order):
-    id(Int), user_id(Int), product_id(Int), subtotal(Float), tax(Float),
-    total(Float), discount(Float?), created_at(DateTimeWithLocalTZ), quantity(Int)
-
-  parse-fixture does an EXACT header match (case-sensitive) against the real table
-  schema. Every fixture CSV for orders MUST include ALL 9 columns. NULLs are
-  represented as empty cells (not the string 'nil').
-
-  ## Native-transform construction
-
-  Native transforms MUST be built via lib/native-query — not a raw legacy
-  {:type :native :native {:query ...}} map. native-query-transform? returns
-  false for the legacy shape and the transform silently takes the MBQL branch.
-  See Step 4 log entry."
+  3. No TransformRun row was created."
   (:require
    [clojure.test :refer :all]
    [metabase.driver.connection :as driver.conn]

@@ -3,8 +3,7 @@
 
   Test strategy / layering:
   - The native rewrite (`rewrite-native-sql`) and the three-guard `verify` are
-    pure with respect to the database (they only parse). The Step 0b SQL-shape
-    catalogue (rewrite-correct cases 1-8, must-fail cases 9-15) is therefore
+    pure with respect to the database (they only parse). They are therefore
     tested directly against those two functions — no DB needed.
   - `resolve-test-transform` end-to-end (compile + rewrite/override + verify)
     needs a real metadata provider, so those tests run gated under postgres with
@@ -386,7 +385,7 @@
 
 (deftest resolve-mbql-incomplete-mapping-fails-closed-test
   (testing "MBQL with an incomplete override map (a joined table left unmapped) fails closed
-            via guards 2+3 — proven in Step 0b2"
+            via guards 2+3"
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
         (let [mp        (mt/metadata-provider)

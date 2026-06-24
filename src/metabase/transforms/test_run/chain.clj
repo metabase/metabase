@@ -8,24 +8,6 @@
   transforms plus a single *target*; every node between them runs, fed by fixtures
   at the slice's leaves, and the target's output is diffed against an expected CSV.
 
-  ## Flow
-
-  ```
-  [1] resolve-subgraph → slice + topo order + leaf-deps           (subgraph ns)
-  [2] resolve leaf-deps → leaf table-infos (fail closed); match fixtures
-  [3] parse each leaf fixture against its table's column schema
-  [4] seed scratch tables for the leaves → mapping {leaf-real → leaf-scratch}
-  [5] for each transform node in topo order:
-        • build a per-node scratch output target (suffix out_<id>)
-        • resolve-test-transform under the ACCUMULATED mapping (native rewrite
-          or MBQL override) + 3-guard verify
-        • DDL guard, then driver/run-transform! → writes the node's scratch output
-        • register {node-real-output → node-scratch-output} into the mapping
-  [6] read back the TARGET node's scratch output
-  [7] parse expected CSV against actual output column types; diff/diff
-  finally: cleanup ALL scratch tables (leaves + one output per node)
-  ```
-
   The accumulating mapping is the heart of the chain: topo order guarantees an
   upstream output is registered before any downstream node resolves, so a
   downstream node's reference to an upstream output table is transparently
@@ -39,10 +21,8 @@
     output (a never-run sibling) has no synced Table to derive a fixture schema
     from; `inputs/resolve-table-dep` fails closed on it
     (`::transform-dep-not-supported`).
-  - **MBQL nodes reading upstream outputs** are not supported (the MBQL override
-    keys by synced table id, which an unmaterialized upstream output lacks); such a
-    node fails closed in `resolve`'s verify guards. Native chains are the clean v1
-    path.
+  - **MBQL nodes reading upstream outputs** are not supported and fail at
+    `resolve` time with `::cannot-test-run`. Native chains are the clean v1 path.
 
   Error taxonomy mirrors `core`/`inputs`/`resolve`: typed `ex-info` propagated to
   the API layer, which maps `:error-type` to an HTTP status."
@@ -181,7 +161,7 @@
         target         (or (id->transform target-id)
                            (throw (ex-info (str "Target transform " target-id " not found.")
                                            {:error-type ::target-not-found :target-id target-id})))
-        ;; Step 1: resolve the sub-graph (slice + topo order + leaf deps).
+        ;; Resolve the sub-graph — slice + topo order + leaf deps.
         {:keys [slice order leaf-deps]} (subgraph/resolve-subgraph target-id source-ids all-transforms)
         db-id          (node-db-id target)
         _              (when-not db-id
@@ -191,10 +171,10 @@
         db             (t2/select-one :model/Database :id db-id)
         drv            (keyword (:engine db))
         schema         (or (-> target :target :schema) "public")
-        ;; Step 2: resolve leaves → table-infos (fail closed); match fixtures.
+        ;; Resolve leaves → table-infos (fail closed); match fixtures.
         leaves         (leaf-table-infos leaf-deps)
         _              (inputs/match-fixtures leaves (set (keys fixtures-by-table-id)))
-        ;; Step 3: parse each leaf fixture against its table's column schema.
+        ;; Parse each leaf fixture against its table's column schema.
         seed-inputs    (mapv (fn [{:keys [id columns] :as table-info}]
                                {:table-info table-info
                                 :fixture    (fixtures/parse-fixture
@@ -205,10 +185,10 @@
         outputs*       (atom {})
         backend*       (atom nil)]
     (driver.conn/with-transform-connection
-      ;; Step 4: seed scratch leaf tables once.
+      ;; Seed scratch leaf tables once.
       (try
         (reset! mapping* (scratch/seed! db-id db schema seed-inputs nonce))
-        ;; Step 5: run each node in topological order, accumulating the mapping.
+        ;; Run each node in topological order, accumulating the mapping.
         (doseq [node-id order]
           (let [node     (id->transform node-id)
                 artifact (run-node! {:transform    node
@@ -225,12 +205,12 @@
             (reset! backend* (:parser-backend artifact))
             ;; Register this node's real output → its scratch output for downstream nodes.
             (swap! mapping* assoc (node-real-output-spec node) out-spec)))
-        ;; Step 6: read back the TARGET node's scratch output.
+        ;; Read back the TARGET node's scratch output.
         (let [target-out  (get @outputs* target-id)
               qp-result   (execute/read-back-output db-id drv target-out)
               actual-cols (get-in qp-result [:data :cols])
               actual-rows (get-in qp-result [:data :rows])
-              ;; Step 7: parse expected CSV against actual output column types; diff.
+              ;; Parse expected CSV against actual output column types; diff.
               expected    (fixtures/parse-fixture expected-csv-file (execute/actual->schema actual-cols))
               report      (diff/diff actual-cols actual-rows expected {:ignore-columns ignore-cols})]
           {:status         (:status report)

@@ -1,18 +1,18 @@
 (ns metabase.transforms.test-run.diff-test
   "Tests for the diff engine. All tests are pure/driver-free — no Postgres, no app DB.
 
-  QP actual-rows contain temporals as ISO-8601 Z strings (per Step 0a):
+  QP actual-rows contain temporals as ISO-8601 Z strings:
     :type/Date      → \"2024-03-15T00:00:00Z\"
     :type/DateTime  → \"2024-01-15T10:30:00Z\"
     :type/DateTimeWithLocalTZ → \"2024-03-15T12:00:00Z\"
 
-  Step-1 parse-fixture produces Java time objects for expected rows:
+  parse-fixture produces Java time objects for expected rows:
     :type/Date      → LocalDate
     :type/DateTime  → LocalDateTime
     :type/DateTimeWithTZ → OffsetDateTime
 
   Integer columns: actual values are java.lang.Integer or java.lang.Long.
-  Integer expected values (from Step 1 int parser): java.math.BigInteger.
+  Integer expected values (from the int parser): java.math.BigInteger.
 
   The diff engine must canonicalize both sides before comparing."
   (:require
@@ -119,13 +119,13 @@
       (is (= 1 (count (:extra-rows report)))))))
 
 ;; ---------------------------------------------------------------------------
-;; 4. Temporal gauntlet — the core of Step 5's trust-eroder defence
+;; 4. Temporal gauntlet — canonicalization of QP temporal strings vs Java time objects
 ;; ---------------------------------------------------------------------------
 
 (deftest date-column-qp-string-vs-localdate-test
   (testing "QP :type/Date returns midnight-UTC string; expected CSV parses to LocalDate → EQUAL"
-    ;; QP actual: "2024-03-15T00:00:00Z" (the Step-0a SURPRISE 3 behaviour)
-    ;; Step-1 parse-fixture(:type/Date) produces: LocalDate/of 2024 3 15
+    ;; QP actual: "2024-03-15T00:00:00Z"
+    ;; parse-fixture(:type/Date) produces: LocalDate/of 2024 3 15
     (let [actual-cols [(col "d" :type/Date)]
           actual-rows [["2024-03-15T00:00:00Z"]]
           expected    (fixture [(schema-col "d" :type/Date)]
@@ -136,7 +136,7 @@
 (deftest datetime-column-qp-string-vs-localdatetime-test
   (testing "QP :type/DateTime returns Z-suffixed string; expected parses to LocalDateTime → EQUAL"
     ;; QP actual: "2024-01-15T10:30:00Z"
-    ;; Step-1 parse-fixture(:type/DateTime): LocalDateTime/of 2024 1 15 10 30 0
+    ;; parse-fixture(:type/DateTime): LocalDateTime/of 2024 1 15 10 30 0
     (let [actual-cols [(col "dt" :type/DateTime)]
           actual-rows [["2024-01-15T10:30:00Z"]]
           expected    (fixture [(schema-col "dt" :type/DateTime)]
@@ -198,7 +198,7 @@
     (let [actual-cols [(col "amount" :type/Float)]
           ;; QP returns a Double
           actual-rows [[3.5]]
-          ;; Step-1 parse-fixture(:type/Float) returns a Java Number (Double via NumberFormat)
+          ;; parse-fixture(:type/Float) returns a Java Number (Double via NumberFormat)
           expected    (fixture [(schema-col "amount" :type/Float)]
                                [[3.50]])
           report      (diff/diff actual-cols actual-rows expected {})]
@@ -209,7 +209,7 @@
     (let [actual-cols [(col "n" :type/Integer)]
           ;; QP may return Integer or Long
           actual-rows [[(int 42)] [(long 99)]]
-          ;; Step-1 parse-fixture(:type/Integer) returns BigInteger
+          ;; parse-fixture(:type/Integer) returns BigInteger
           expected    (fixture [(schema-col "n" :type/Integer)]
                                [[(BigInteger/valueOf 42)] [(BigInteger/valueOf 99)]])
           report      (diff/diff actual-cols actual-rows expected {})]
@@ -268,7 +268,7 @@
       (is (= [["3.0"]]  (:extra-rows report))))))
 
 ;; ---------------------------------------------------------------------------
-;; 6. NULL vs empty-string (Step 1 rule: blank → nil)
+;; 6. NULL vs empty-string (blank → nil)
 ;; ---------------------------------------------------------------------------
 
 (deftest null-vs-nil-passes-test

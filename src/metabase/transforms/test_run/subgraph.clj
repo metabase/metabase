@@ -12,15 +12,8 @@
   node *between* a source and the target is auto-included. A node's input table is
   a **leaf** (needs a fixture) iff no node *in the slice* produces it — this covers
   both raw warehouse tables and *sibling* outputs (a node feeding the slice that
-  the user did not select as a source). Selecting only the target reduces to Phase
-  1 single-transform testing.
-
-  ## Reuse
-
-  Builds entirely on `transforms-base.ordering`: `transform-ordering` for the
-  target's upstream dependency closure, and `dependency-producer-map` to classify
-  each node's raw inputs as produced-internally vs. boundary leaves. This is new
-  *traversal*, not new graph code."
+  the user did not select as a source). Selecting only the target reduces to
+  single-transform testing."
   (:require
    [clojure.set :as set]
    [metabase.transforms-base.interface :as transforms-base.i]

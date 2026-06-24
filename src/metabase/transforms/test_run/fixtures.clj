@@ -20,12 +20,9 @@
 
   Column names are matched **exactly** (byte-for-byte) against the `:name`
   fields in `target-schema`.  No case-folding, no trimming, no normalization.
-  The rationale: `driver/insert-from-source!` passes column names verbatim to the
-  database, and real table column names are case-preserving; folding here could
-  silently map the wrong CSV column onto the wrong DB column.  If the CSV header
-  and the schema names differ only in case, a `::header-mismatch` error is thrown
-  (the caller can inspect `:missing-columns` / `:extra-columns` in ex-data to
-  diagnose).
+  If the CSV header and the schema names differ only in case, a `::header-mismatch`
+  error is thrown (the caller can inspect `:missing-columns` / `:extra-columns`
+  in ex-data to diagnose).
 
   ## Output shape
 
@@ -263,6 +260,10 @@
       ;; --- Inference path ---------------------------------------------------
       (parse-with-inference (vec header) (vec data-rows))
       ;; --- Schema-driven path -----------------------------------------------
+      ;; Header matching is case-sensitive and exact: driver/insert-from-source! passes
+      ;; column names verbatim to the database, and real table column names are
+      ;; case-preserving; folding here could silently map the wrong CSV column onto the
+      ;; wrong DB column.
       (let [schema-names (set (map :name target-schema))
             csv-names    (set header)
             missing      (set/difference schema-names csv-names)

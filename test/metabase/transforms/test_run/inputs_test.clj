@@ -98,7 +98,7 @@
             (is (= "orders" (:name tbl)))))))))
 
 (deftest required-input-tables-columns-shape-test
-  (testing "Each table-info carries Step-1-shaped column schema"
+  (testing "Each table-info carries a column schema"
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
         (let [xf     (make-mbql-transform (mt/id) (mt/id :orders))
