@@ -181,6 +181,16 @@ describe("scenarios > dependencies > unreferenced list", () => {
     it("should filter entities by type", () => {
       setupEntities();
       H.waitForBackfillComplete();
+      // The writable-Postgres table reaches the dependency graph via the async
+      // DB-sync path, which can lag behind the startup backfill flag. Wait until
+      // it has been analyzed before visiting so the list is fully populated.
+      H.waitForUnreferencedEntities((nodes) =>
+        nodes.some(
+          (node) =>
+            node.type === "table" &&
+            node.data.display_name === TABLE_DISPLAY_NAME,
+        ),
+      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({ visibleEntities: ENTITY_NAMES });
 
