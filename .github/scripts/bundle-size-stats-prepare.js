@@ -1,12 +1,12 @@
 /* eslint-disable import/no-commonjs */
 // Prepares the rows the bundle-size stats logger uploads to stats.metabase.com.
 //
-// For each measured (bundle, kind) it computes the delta — raw and gzipped bytes
-// plus percent — against the previously *plotted* data point (restored from a
-// rolling cache), so the deltas can be charted directly. It also decides whether
-// this commit is worth recording at all: a point is kept only when something
-// moved by at least MIN_DELTA_PERCENT (gzipped), keeping the time series to
-// commits that actually changed a bundle.
+// For each measured (bundle, kind) it computes the delta — raw, gzipped and
+// brotli (as-served) bytes plus percent — against the previously *plotted* data
+// point (restored from a rolling cache), so the deltas can be charted directly.
+// It also decides whether this commit is worth recording at all: a point is kept
+// when the as-served size moved by at least MIN_DELTA_PERCENT, when a new
+// bundle/kind appears, or when the build is a tagged release (always kept).
 const fs = require("fs");
 const path = require("path");
 
@@ -48,18 +48,21 @@ const version = rawVersion === "vUNKNOWN" ? "" : rawVersion;
 const deltaPercent = (current, base) =>
   base ? Math.round(((current - base) * 10000) / base) / 100 : "";
 
-let maxGzipDeltaPercent = 0;
+// The threshold tracks the as-served size: brotli where the build ships .br,
+// otherwise gzip (brotli is null when nothing in the bundle shipped a .br).
+let maxServedDeltaPercent = 0;
 let hasNewSeries = false;
 
 const rows = measurements.map(measurement => {
   const base = previousOf(measurement.bundle, measurement.kind);
+  const hasBrotli = measurement.brotliBytes != null && base?.brotliBytes != null;
+  const gzipDeltaPercent = deltaPercent(measurement.gzipBytes, base?.gzipBytes);
+  const brotliDeltaPercent = hasBrotli ? deltaPercent(measurement.brotliBytes, base.brotliBytes) : "";
   if (!base) {
     hasNewSeries = true;
   } else {
-    maxGzipDeltaPercent = Math.max(
-      maxGzipDeltaPercent,
-      Math.abs(deltaPercent(measurement.gzipBytes, base.gzipBytes)),
-    );
+    const servedDeltaPercent = hasBrotli ? brotliDeltaPercent : gzipDeltaPercent;
+    maxServedDeltaPercent = Math.max(maxServedDeltaPercent, Math.abs(servedDeltaPercent));
   }
   return {
     "Date": date,
@@ -73,13 +76,17 @@ const rows = measurements.map(measurement => {
     "File count": measurement.fileCount,
     "Raw bytes delta": base ? measurement.rawBytes - base.rawBytes : "",
     "Gzip bytes delta": base ? measurement.gzipBytes - base.gzipBytes : "",
+    "Brotli bytes delta": hasBrotli ? measurement.brotliBytes - base.brotliBytes : "",
     "Raw delta %": deltaPercent(measurement.rawBytes, base?.rawBytes),
-    "Gzip delta %": deltaPercent(measurement.gzipBytes, base?.gzipBytes),
+    "Gzip delta %": gzipDeltaPercent,
+    "Brotli delta %": brotliDeltaPercent,
   };
 });
 
+// Always keep a point for a tagged release, even when nothing moved.
+const isRelease = version !== "";
 const firstPoint = previous.length === 0;
-const significant = firstPoint || hasNewSeries || maxGzipDeltaPercent >= threshold;
+const significant = firstPoint || hasNewSeries || isRelease || maxServedDeltaPercent >= threshold;
 
 writeJson(env.ROWS_OUT, rows);
 
@@ -88,15 +95,23 @@ writeJson(env.ROWS_OUT, rows);
 // reference always stays the last *plotted* point (cumulative drift is caught).
 writeJson(
   env.CACHE_OUT,
-  measurements.map(({ bundle, kind, rawBytes, gzipBytes }) => ({ bundle, kind, rawBytes, gzipBytes })),
+  measurements.map(({ bundle, kind, rawBytes, gzipBytes, brotliBytes }) => ({
+    bundle,
+    kind,
+    rawBytes,
+    gzipBytes,
+    brotliBytes,
+  })),
 );
 
 const reason = firstPoint
   ? "first point"
   : hasNewSeries
     ? "new bundle/kind series"
-    : `max gzip Δ ${maxGzipDeltaPercent.toFixed(2)}% (threshold ${threshold}%)`;
+    : isRelease
+      ? `release ${version}`
+      : `max served Δ ${maxServedDeltaPercent.toFixed(2)}% (threshold ${threshold}%)`;
 console.log(`${significant ? "RECORD" : "SKIP"} — ${reason}`);
 
 setOutput("significant", significant ? "true" : "false");
-setOutput("max_delta_percent", firstPoint || hasNewSeries ? "" : maxGzipDeltaPercent.toFixed(2));
+setOutput("max_delta_percent", firstPoint || hasNewSeries ? "" : maxServedDeltaPercent.toFixed(2));

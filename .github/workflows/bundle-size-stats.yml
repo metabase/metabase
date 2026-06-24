@@ -8,7 +8,9 @@ on:
   workflow_run:
     workflows: ["Build Uberjar"]
     types: [completed]
-    branches: [master]
+    # release-* builds carry a real version tag and are always recorded; master
+    # builds are recorded only when a bundle's as-served size actually moved.
+    branches: [master, "release-*"]
 
 concurrency:
   group: bundle-size-stats-${{ github.event.workflow_run.head_sha }}
