@@ -18,8 +18,8 @@
   (:refer-clojure :exclude [run!])
   (:require
    [clojure.pprint :as pprint]
-   [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
-   [metabase-enterprise.semantic-layer.representation :as rep]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
+   [metabase-enterprise.data-complexity-score.representation :as rep]
    [metabase.util.json :as json]))
 
 ;;; -------------------------------- math --------------------------------
@@ -178,7 +178,6 @@
                 :embeddings embeddings
                 :histogram hist
                 :top-clusters top-detail}]
-
     ;; Print summary
     (println "\n--- Cluster size distribution ---")
     (doseq [[sz freq] (:size-freq hist)]
@@ -194,7 +193,6 @@
                          (:max pairwise-similarity))))
       (let [display (if (<= size 20) members (concat (take 10 members) ["..."]))]
         (println "    members:" (vec display))))
-
     ;; Write full output
     (when output
       (spit output (with-out-str (pprint/pprint result)))
