@@ -65,8 +65,10 @@
 
 ;; Postgres connection properties pgjdbc recognizes on the classpath; read at runtime so it tracks the
 ;; driver version. Anything on the URL that's neither a tunable pool knob nor one of these is a typo.
+;; NB: explicit fn rather than the 1.12 `PGProperty/.getName` method value — eastwood's analyzer can't
+;; parse the latter yet.
 (def ^:private known-connection-params
-  (into #{} (map PGProperty/.getName) (PGProperty/values)))
+  (into #{} (map #(.getName ^PGProperty %)) (PGProperty/values)))
 
 (defn- url-decode ^String [^String s]
   (URLDecoder/decode s StandardCharsets/UTF_8))
