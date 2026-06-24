@@ -13,17 +13,17 @@
 }
 
 .item:hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 .item[data-selected] {
-  background-color: var(--mb-color-background-selected);
+  background-color: var(--mb-color-background_surface-selected);
   border-radius: 0.5rem;
   color: var(--mb-color-text-brand);
 }
 
 .item[data-selected]:hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 .itemIcon {

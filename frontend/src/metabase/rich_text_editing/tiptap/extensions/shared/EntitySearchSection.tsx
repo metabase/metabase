@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
-import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
+import type { MenuItem } from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import {
   CreateNewQuestionFooter,
   MenuItemComponent,
   SearchResultsFooter,
-} from "metabase/documents/components/Editor/shared/MenuComponents";
+} from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import type {
   SuggestionPickerModalType,
   SuggestionPickerViewMode,

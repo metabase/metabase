@@ -65,7 +65,6 @@ const elements = [
   createElement({ type: "shared", name: "data-studio" }),
   createElement({ type: "shared", name: "databases" }),
   createElement({ type: "shared", name: "detail-view" }),
-  createElement({ type: "shared", name: "documents" }),
   createElement({
     type: "shared",
     name: "embed",
@@ -155,6 +154,7 @@ const elements = [
   // feature
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
+  createElement({ type: "feature", name: "documents" }),
   createElement({
     type: "feature",
     name: "enterprise",
@@ -175,6 +175,8 @@ const elements = [
     "frontend/src/metabase/app-main.js",
     "frontend/src/metabase/app-embed.ts",
     "frontend/src/metabase/app-embed-mcp.tsx",
+    "frontend/src/metabase/app-embed-mcp-public-path.ts",
+    "frontend/src/metabase/app-embed-mcp-public-path.unit.spec.ts",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",

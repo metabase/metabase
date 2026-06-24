@@ -16,15 +16,13 @@ const isBundleWanted = bundle => !bundleFilter || bundleFilter.has(bundle);
 const SDK_ROOT = "resources/frontend_client/app/embedding-sdk";
 
 /**
- * Async SDK chunks are unreachable today: the bootstrap manifest lists only the
- * chunked entry's INITIAL chunks and output.publicPath is "", so import() chunks
- * are emitted but never fetched. So they're excluded from "total" (which equals
- * "initial"). There's no reliable way to detect loadability from the build
- * artifacts, so this is a manual flag: flip it to true in the same change that
- * lands the publicPath fix, and "total" will include the lazy chunks while
- * "initial" stays the eager first-load set.
+ * Async SDK chunks are reachable now that the runtime publicPath is set, so the
+ * bootstrap can fetch import() chunks on demand. "total" therefore includes the
+ * lazy chunks while "initial" stays the eager first-load set. There's no reliable
+ * way to detect loadability from the build artifacts, so this stays a manual flag:
+ * it was flipped to true alongside the publicPath fix.
  */
-const SDK_ASYNC_CHUNKS_LOADABLE = false;
+const SDK_ASYNC_CHUNKS_LOADABLE = true;
 
 // The chunk runtime is inlined into the bootstrap, never sent as a standalone file.
 const SDK_RUNTIME_RE = /embedding-sdk-chunk-runtime\./;

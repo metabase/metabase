@@ -4,8 +4,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   ;; loaded for its :event/semantic-search-hnsw-enabled handler, which the setter test exercises
+   [metabase-enterprise.semantic-search.events]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.spec-trace-test-util :as spec-trace]
@@ -79,24 +82,71 @@
   (testing "valid strategies round-trip"
     (doseq [strategy [:hnsw :brute-force]]
       (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy strategy]
-        (is (= strategy (semantic.settings/semantic-search-vector-strategy)))))))
+        (is (= strategy (semantic.settings/semantic-search-vector-strategy))))))
+  (testing "the setter kicks off the background build job only on the transition into :hnsw"
+    ;; This asserts *when* the build is triggered (the transition gating), not what the build does -- the
+    ;; build itself is covered by pgvector-api-test/ensure-active-hnsw-index!-test. The setter publishes
+    ;; :event/semantic-search-hnsw-enabled, whose handler (semantic-search.events) calls the async build; we
+    ;; spy on that build so the trigger is verified deterministically without spawning a real future.
+    (mt/with-premium-features #{:semantic-search}
+      (let [triggers (atom 0)]
+        (mt/with-dynamic-fn-redefs [semantic.core/build-hnsw-index-async! (fn [] (swap! triggers inc))]
+          (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy :brute-force]
+            (semantic.settings/semantic-search-vector-strategy! :hnsw)
+            (is (= 1 @triggers) "transitioning :brute-force -> :hnsw kicks off a build")
+            (semantic.settings/semantic-search-vector-strategy! :hnsw)
+            (is (= 1 @triggers) "setting :hnsw again when already :hnsw does not re-trigger")
+            (semantic.settings/semantic-search-vector-strategy! :brute-force)
+            (is (= 1 @triggers) "switching away from :hnsw does not trigger")
+            (semantic.settings/semantic-search-vector-strategy! :hnsw)
+            (is (= 2 @triggers) "transitioning back into :hnsw triggers again")))))))
 
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
-    (with-open [index-ref (semantic.tu/open-temp-index!)]
-      ;; open-temp-index-table! creates the temp table, so drop it in order to test create!.
+    (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+      ;; open-temp-index! creates the temp table, so drop it in order to test create!.
       (semantic.index/drop-index-table! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index)
       (testing "index table is not present before create!"
         (is (not (semantic.tu/table-exists-in-db? (:table-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref))))
         (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-native-index-name @index-ref)))))
-      (testing "index table is present after create!"
-        (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index {:force-reset? false})
+      (testing "under the default :brute-force strategy, create! builds the table and FTS indexes but not the HNSW index"
+        (mt/with-dynamic-fn-redefs [semantic.settings/semantic-search-vector-strategy (constantly :brute-force)]
+          (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index {:force-reset? true}))
         (is (semantic.tu/table-exists-in-db? (:table-name @index-ref)))
-        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref)))
+        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
         (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-index-name @index-ref)))
-        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-native-index-name @index-ref)))))))
+        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/fts-native-index-name @index-ref))))
+      (testing "when configured for the :hnsw strategy, create! also builds the HNSW index"
+        (mt/with-dynamic-fn-redefs [semantic.settings/semantic-search-vector-strategy (constantly :hnsw)]
+          (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index {:force-reset? true}))
+        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref)))))))
+
+(deftest create-hnsw-index-if-not-exists!-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+      (testing "HNSW index is absent until built explicitly"
+        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
+        (semantic.index/create-hnsw-index-if-not-exists! (semantic.env/get-pgvector-datasource!) @index-ref)
+        (is (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
+      (testing "is idempotent: a second call does no work (reuses the existing index, no rebuild)"
+        (let [before (semantic.tu/index-relfilenode (semantic.index/hnsw-index-name @index-ref))]
+          (is (some? before) "the index exists before the second call")
+          (semantic.index/create-hnsw-index-if-not-exists! (semantic.env/get-pgvector-datasource!) @index-ref)
+          (is (= before (semantic.tu/index-relfilenode (semantic.index/hnsw-index-name @index-ref)))
+              "relfilenode is unchanged, so the index was not dropped, rebuilt, or reindexed"))))))
+
+(deftest query-index-hnsw-without-index-throws-test
+  (testing "a query using the :hnsw strategy fails fast when no HNSW index exists, rather than silently scanning"
+    (mt/with-premium-features #{:semantic-search}
+      (with-open [index-ref (semantic.tu/open-temp-index! :hnsw? false)]
+        (is (not (semantic.tu/table-has-index? (:table-name @index-ref) (semantic.index/hnsw-index-name @index-ref))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"no HNSW index exists"
+             (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
+                                         @index-ref
+                                         {:search-string "puppy" :vector-search-strategy :hnsw})))))))
 
 (deftest drop-index-table!-test
   (mt/with-premium-features #{:semantic-search}
@@ -742,3 +792,15 @@
                      (-> (semantic.tu/query-index {:search-string "Antarctic wildlife"})
                          first
                          (select-keys [:id :name :model])))))))))))
+
+(deftest search-filters-models-test
+  (testing "the models predicate distinguishes an empty applicable-model set from an absent one"
+    (let [conds (fn [ctx] (tree-seq coll? seq (#'semantic.index/search-filters ctx)))]
+      (testing "a non-empty set filters to those models"
+        (is (some #{[:in :model #{"card"}]} (conds {:models #{"card"}}))))
+      (testing "an empty (but present) set matches nothing, rather than omitting the predicate (all models)"
+        (is (some #{[:= [:inline 1] [:inline 0]]} (conds {:models #{} :curated? true}))))
+      (testing "an absent :models adds no model predicate"
+        (let [flat (conds {:archived? false})]
+          (is (not-any? #(and (vector? %) (= [:in :model] (subvec % 0 (min 2 (count %))))) flat))
+          (is (not-any? #{[:= [:inline 1] [:inline 0]]} flat)))))))

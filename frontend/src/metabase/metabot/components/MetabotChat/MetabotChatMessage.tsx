@@ -292,7 +292,7 @@ const AgentTurnAlert = ({
     bd="1px solid var(--mb-color-border-neutral)"
     bdrs="sm"
     data-testid="metabot-chat-message-turn-alert"
-    bg="background-primary"
+    bg="background_page-primary"
   >
     <Flex align="center" gap="sm">
       <Icon

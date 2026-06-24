@@ -8,7 +8,7 @@
 
 .embedCodeContainer {
   position: relative;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   border-radius: 4px;
   padding: 0.5rem;
 }
