@@ -436,55 +436,61 @@
                   :database-partitioned true}))))
      table-rows)))
 
+(defn- describe-joined-table
+  "Build the field descriptions for a single table from its joined `COLUMNS`/`COLUMN_FIELD_PATHS` rows (see
+  [[describe-dataset-fields-reducible]]). Each top-level column appears once per nested leaf, or once with a `nil`
+  `:field_path` when it has none, so de-dup the columns by `:ordinal_position` and build the nested-field lookup from
+  the rows that carry a `:field_path` (whose leaf type is in `:nested_data_type`)."
+  [dataset-id table-rows]
+  (let [table-name    (:table_name (first table-rows))
+        nested-lookup (nested-rows->table-lookup
+                       dataset-id
+                       (eduction (filter :field_path)
+                                 (map #(assoc % :data_type (:nested_data_type %)))
+                                 table-rows))
+        columns       (into [] (m/distinct-by :ordinal_position) table-rows)]
+    (sort-by (juxt :table-name :database-position :name)
+             (describe-dataset-rows nested-lookup dataset-id table-name columns))))
+
 (defn- describe-dataset-fields-reducible
   "Reducibly describe the fields (including nested STRUCT fields) of `table-names` within `dataset-id`.
 
-  Runs two `INFORMATION_SCHEMA` queries: `COLUMNS` (top-level fields) and `COLUMN_FIELD_PATHS` (nested STRUCT leaves).
-  The COLUMNS side is small (a handful per table), so we realize it grouped by table. The nested side is the one that
-  explodes for wide, deeply-nested datasets (e.g. GA4/Firebase exports: hundreds of daily `events_*` tables, each with
-  hundreds of nested STRUCT leaves), so we keep it streamed and consume it one table-group at a time. Each table is
-  emitted exactly once with all of its fields contiguous (the sync groups fields with `partition-by` on
-  `[table-name table-schema]`). Both queries are single-pass live results, so the returned reducible is
+  Runs a single `INFORMATION_SCHEMA` query that LEFT JOINs `COLUMNS` (top-level fields) to `COLUMN_FIELD_PATHS` (nested
+  STRUCT leaves) on `(table_name, column_name)`. A non-nested column yields one row with a `nil` `:field_path`; a STRUCT
+  column yields one row per nested leaf. Ordering by `table_name` keeps each table's rows contiguous, so we consume the
+  live result with a `partition-by` transducer and reconstruct one table at a time (see [[describe-joined-table]]) --
+  never realizing more than a single table's rows. This matters for wide and/or deeply-nested datasets (e.g.
+  GA4/Firebase exports, or schemas with thousands of columns per table) where realizing a whole batch's columns would
+  spike memory. Each table is emitted exactly once with its fields contiguous (the sync groups fields with `partition-by`
+  on `[table-name table-schema]`). The query is a single-pass live result, so the returned reducible is
   single-consumption."
   [driver database project-id dataset-id table-names]
   (assert (seq table-names))
-  (let [columns-reducible (try (query-honeysql driver database
-                                               {:select   [:table_name :column_name :data_type :ordinal_position
-                                                           [[:= :is_partitioning_column "YES"] :partitioned]]
-                                                :from     [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
-                                                :where    [:in :table_name table-names]
-                                                :order-by [:table_name]})
-                               (catch Throwable e
-                                 (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))
-        nested-reducible  (try (query-honeysql driver database
-                                               {:select   [:table_name :column_name :data_type :field_path]
-                                                :from     [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]
-                                                :where    [:and
-                                                           [:in :table_name table-names]
-                                                           ;; we're only interested in nested fields
-                                                           [:> [:strpos :field_path "."] 0]]
-                                                :order-by [:table_name]})
-                               (catch Throwable e
-                                 (log/warnf e "error in get-nested-columns-for-tables for dataset: %s" dataset-id)))
-        columns-by-table  (group-by :table_name columns-reducible)
-        nested-tables     (volatile! #{})
-        describe-table    (fn [table-name table-nested-rows]
-                            (sort-by (juxt :table-name :database-position :name)
-                                     (describe-dataset-rows (nested-rows->table-lookup dataset-id table-nested-rows)
-                                                            dataset-id table-name (columns-by-table table-name))))]
+  (let [rows (try
+               (query-honeysql driver database
+                               {:select    [[:c.table_name :table_name]
+                                            [:c.column_name :column_name]
+                                            [:c.data_type :data_type]
+                                            [:c.ordinal_position :ordinal_position]
+                                            [[:= :c.is_partitioning_column "YES"] :partitioned]
+                                            [:p.data_type :nested_data_type]
+                                            [:p.field_path :field_path]]
+                                :from      [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
+                                :left-join [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :p]
+                                            [:and
+                                             [:= :c.table_name :p.table_name]
+                                             [:= :c.column_name :p.column_name]
+                                             ;; only nested leaves -- the top-level entry (field_path = column_name) has
+                                             ;; no `.` and is described from the `COLUMNS` side
+                                             [:> [:strpos :p.field_path "."] 0]]]
+                                :where     [:in :c.table_name table-names]
+                                :order-by  [:c.table_name]})
+               (catch Throwable e
+                 (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))]
     (eduction
-     cat
-     [;; tables with nested fields: emit columns + nested STRUCT leaves
-      (eduction (partition-by :table_name)
-                (mapcat (fn [table-nested-rows]
-                          (let [table-name (:table_name (first table-nested-rows))]
-                            (vswap! nested-tables conj table-name)
-                            (describe-table table-name table-nested-rows))))
-                nested-reducible)
-      ;; remaining tables (no nested fields): emit columns only
-      (eduction (remove (fn [[table-name]] (contains? @nested-tables table-name)))
-                (mapcat (fn [[table-name]] (describe-table table-name nil)))
-                columns-by-table)])))
+     (partition-by :table_name)
+     (mapcat #(describe-joined-table dataset-id %))
+     rows)))
 
 ;; we redef this in a test, don't make `^:const`!
 (def ^:private num-table-partitions
