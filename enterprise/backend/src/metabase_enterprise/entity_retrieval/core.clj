@@ -1,15 +1,15 @@
-(ns metabase-enterprise.curated-search.core
+(ns metabase-enterprise.entity-retrieval.core
   "Enterprise implementation of the library entity index: pgvector-backed similarity search over the
   per-value `library_entity_index` documents, and the write-path nudge that keeps the index fresh.
 
-  OSS shims live in [[metabase.curated-search.mirror]]; the background sync they nudge is the
-  [[metabase-enterprise.curated-search.task.sync]] Quartz job."
+  OSS shims live in [[metabase.entity-retrieval.mirror]]; the background sync they nudge is the
+  [[metabase-enterprise.entity-retrieval.task.sync]] Quartz job."
   (:require
    [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.curated-search.index-table :as index-table]
+   [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -23,8 +23,8 @@
 
 (def sync-job-key
   "Quartz job key of the background sync; [[request-sync!]] triggers it and
-  [[metabase-enterprise.curated-search.task.sync]] schedules it."
-  (jobs/key "metabase-enterprise.curated-search.sync.job"))
+  [[metabase-enterprise.entity-retrieval.task.sync]] schedules it."
+  (jobs/key "metabase-enterprise.entity-retrieval.sync.job"))
 
 (defn pgvector-configured?
   "True when a pgvector store is configured (read once at boot from MB_PGVECTOR_DB_URL).
@@ -34,7 +34,7 @@
   (string? (not-empty semantic.db.datasource/db-url)))
 
 (defn available?
-  "Whether the curated search mirror can run right now: a pgvector store is configured and the license
+  "Whether the entity-retrieval mirror can run right now: a pgvector store is configured and the license
   includes semantic search.
   The feature check can flip at runtime (token entered post-boot), so callers re-evaluate per use."
   []

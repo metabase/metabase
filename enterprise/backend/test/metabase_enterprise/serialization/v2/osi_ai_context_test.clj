@@ -4,7 +4,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase-enterprise.curated-search.test-util :as cs.tu]
+   [metabase-enterprise.entity-retrieval.test-util :as cs.tu]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]

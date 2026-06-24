@@ -1,9 +1,9 @@
-(ns metabase-enterprise.curated-search.reconcile-test
+(ns metabase-enterprise.entity-retrieval.reconcile-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.curated-search.index-table :as index-table]
-   [metabase-enterprise.curated-search.reconcile :as reconcile]
-   [metabase-enterprise.curated-search.test-util :as tu]
+   [metabase-enterprise.entity-retrieval.index-table :as index-table]
+   [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
+   [metabase-enterprise.entity-retrieval.test-util :as tu]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.metabot.tools.search :as tools.search]

@@ -1,20 +1,20 @@
-(ns metabase.curated-search.core
-  "Public API of the `curated-search` module.
+(ns metabase.entity-retrieval.core
+  "Public API of the `entity-retrieval` module.
 
   The library entity index is a pgvector index of every library entity's name/description plus its OSI
-  `ai_context` synonyms/examples (see [[metabase.curated-search.models.osi-ai-context]]).
+  `ai_context` synonyms/examples (see [[metabase.osi.models.osi-ai-context]]).
   [[search]] matches a natural-language request against it by vector similarity (enterprise; returns []
   in OSS). [[ai-context-instructions]] reads curator instructions live from the appdb."
   (:require
    [clojure.string :as str]
-   [metabase.curated-search.mirror]
+   [metabase.entity-retrieval.mirror]
    [potemkin :as p]
    [toucan2.core :as t2]))
 
-(comment metabase.curated-search.mirror/keep-me)
+(comment metabase.entity-retrieval.mirror/keep-me)
 
 (p/import-vars
- [metabase.curated-search.mirror
+ [metabase.entity-retrieval.mirror
   search])
 
 (defn ai-context-instructions

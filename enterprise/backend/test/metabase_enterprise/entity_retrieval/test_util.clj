@@ -1,5 +1,5 @@
-(ns metabase-enterprise.curated-search.test-util
-  "Shared helpers for the library-entity-index (curated-search) tests."
+(ns metabase-enterprise.entity-retrieval.test-util
+  "Shared helpers for the library-entity-index (entity-retrieval) tests."
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

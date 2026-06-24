@@ -1,9 +1,9 @@
-(ns metabase.metabot.tools.curated-search-test
+(ns metabase.metabot.tools.entity-retrieval-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.curated-search.core :as cs.core]
-   [metabase.metabot.tools.curated-search :as curated-search]
+   [metabase.entity-retrieval.core :as cs.core]
+   [metabase.metabot.tools.entity-retrieval :as entity-retrieval]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]))
 
@@ -19,18 +19,18 @@
                                    :data        []
                                    :total_count 0
                                    :weak_match  false}}
-              (curated-search/retrieve-library-entities-tool
+              (entity-retrieval/retrieve-library-entities-tool
                {:user_search_prompt "revenue per region"}))))))
 
 (deftest similarity-helper-test
-  (let [similarity (var-get #'curated-search/similarity)]
+  (let [similarity (var-get #'entity-retrieval/similarity)]
     (testing "similarity is pulled from the :similarity score factor"
       (is (= 0.8 (similarity {:scores [{:name :similarity :score 0.8}]})))
       (is (= 0.0 (similarity {:scores []}))))))
 
 (deftest build-matches-permission-filters-before-take-test
   (testing "hydration permission-filters the whole candidate set before take-n, so an unreadable top hit doesn't crowd out readable matches just past the cut"
-    (let [build-matches (var-get #'curated-search/build-matches)
+    (let [build-matches (var-get #'entity-retrieval/build-matches)
           ;; three distinct entities, best-first
           raw (vec (for [id [1 2 3]]
                      {:entity       {:model "table" :id id}
@@ -49,7 +49,7 @@
 
 (deftest match->xml-locale-independent-test
   (testing "score/similarity render with a '.' decimal separator even under a comma-decimal default locale"
-    (let [match->xml (var-get #'curated-search/match->xml)
+    (let [match->xml (var-get #'entity-retrieval/match->xml)
           orig       (java.util.Locale/getDefault)]
       (try
         (java.util.Locale/setDefault (java.util.Locale/forLanguageTag "de-DE"))
@@ -62,7 +62,7 @@
           (java.util.Locale/setDefault orig))))))
 
 (deftest dedupe-by-entity-test
-  (let [dedupe (var-get #'curated-search/dedupe-by-entity)
+  (let [dedupe (var-get #'entity-retrieval/dedupe-by-entity)
         results [{:entity {:model "metric" :id 9} :score {:total_score 0.95}}   ; entity 9, best
                  {:entity {:model "metric" :id 9} :score {:total_score 0.80}}   ; entity 9 again (sibling doc)
                  {:entity {:model "table" :id 1} :score {:total_score 0.70}}]]
@@ -81,7 +81,7 @@
         (is (= 2 (count out)))))))
 
 (deftest format-output-test
-  (let [format-output (var-get #'curated-search/format-output)
+  (let [format-output (var-get #'entity-retrieval/format-output)
         ;; matches as produced by build-matches: :entity is already a full search-result record.
         matches [{:doc_type           "synonym"
                   :matched_text       "monthly revenue by region"
@@ -112,7 +112,7 @@
       (is (not (str/starts-with? out "<note>"))))))
 
 (deftest xml-escaping-test
-  (let [format-output (var-get #'curated-search/format-output)
+  (let [format-output (var-get #'entity-retrieval/format-output)
         matches [{:doc_type           "synonym"
                   :matched_text       "P&L by quarter <2026>"
                   :usage_instructions "Profit & loss; values < 0 are losses."
@@ -125,7 +125,7 @@
       (is (str/includes? out "<usage_instructions>Profit &amp; loss; values &lt; 0 are losses.</usage_instructions>")))))
 
 (deftest weak-match-note-test
-  (let [format-output (var-get #'curated-search/format-output)
+  (let [format-output (var-get #'entity-retrieval/format-output)
         matches [{:doc_type "name" :matched_text "MISC"
                   :usage_instructions "" :similarity 0.20 :weak? true
                   :score {:total_score 0.20}
@@ -137,7 +137,7 @@
       (is (str/includes? out "confidence=\"weak\"")))))
 
 (deftest flatten-data-test
-  (let [flatten-data (var-get #'curated-search/flatten-data)
+  (let [flatten-data (var-get #'entity-retrieval/flatten-data)
         matches [{:doc_type "synonym" :matched_text "p1" :usage_instructions "u1"
                   :score {:total_score 0.9} :similarity 0.7 :weak? false
                   :entity {:type "metric" :id 9 :name "Revenue"}}

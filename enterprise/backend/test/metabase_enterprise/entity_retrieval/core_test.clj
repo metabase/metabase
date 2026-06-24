@@ -1,14 +1,14 @@
-(ns metabase-enterprise.curated-search.core-test
+(ns metabase-enterprise.entity-retrieval.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.curated-search.core :as curated-search.core]
-   [metabase-enterprise.curated-search.index-table :as index-table]
-   [metabase-enterprise.curated-search.reconcile :as reconcile]
+   [metabase-enterprise.entity-retrieval.core :as entity-retrieval.core]
+   [metabase-enterprise.entity-retrieval.index-table :as index-table]
+   [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.curated-search.mirror :as mirror]
-   [metabase.metabot.tools.curated-search :as tools.curated-search]
+   [metabase.entity-retrieval.mirror :as mirror]
+   [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
@@ -18,7 +18,7 @@
 (defn- approx [target] #(< (abs (- (double %) (double target))) 1e-9))
 
 (deftest score-shape-matches-regular-search-test
-  (let [score (var-get #'curated-search.core/score)]
+  (let [score (var-get #'entity-retrieval.core/score)]
     (testing "weighted-scorer breakdown: similarity factor + doc_type bump + total_score"
       (is (=? {:scores [{:name :similarity :score (approx 0.8) :weight 1.0 :contribution (approx 0.8)}
                         {:name :doc-type :score 1.0 :weight (approx 0.02) :contribution (approx 0.02)}]
@@ -49,17 +49,17 @@
         (let [triggered (atom [])]
           (mt/with-dynamic-fn-redefs [task/trigger-now! (fn [job-key] (swap! triggered conj job-key))]
             (mirror/request-sync!)
-            (is (= [curated-search.core/sync-job-key] @triggered))))))))
+            (is (= [entity-retrieval.core/sync-job-key] @triggered))))))))
 
 (deftest pgvector-configured-decoupled-from-feature-test
   (testing "scheduling gates on pgvector config, independent of the feature flag, so a license enabled after boot still gets the periodic sync"
     ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
     (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
       (mt/with-premium-features #{}
-        (is (true? (curated-search.core/pgvector-configured?)))
-        (is (false? (curated-search.core/available?))))
+        (is (true? (entity-retrieval.core/pgvector-configured?)))
+        (is (false? (entity-retrieval.core/available?))))
       (mt/with-premium-features #{:semantic-search}
-        (is (true? (curated-search.core/available?)))))))
+        (is (true? (entity-retrieval.core/available?)))))))
 
 (deftest ^:sequential ranks-by-similarity-test
   (testing "search ranks library documents by cosine similarity, nearest first"
@@ -115,7 +115,7 @@
               ;; bind a user: the tool's hydration permission-filters via mi/can-read?, which needs
               ;; *current-user-id* (a superuser can read the test tables).
               search! #(mt/with-test-user :crowberto
-                         (get-in (tools.curated-search/retrieve-library-entities-tool {:user_search_prompt q})
+                         (get-in (tools.entity-retrieval/retrieve-library-entities-tool {:user_search_prompt q})
                                  [:structured-output :data]))]
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]

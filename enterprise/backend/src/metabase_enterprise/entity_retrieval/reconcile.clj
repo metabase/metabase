@@ -1,4 +1,4 @@
-(ns metabase-enterprise.curated-search.reconcile
+(ns metabase-enterprise.entity-retrieval.reconcile
   "Reconciles the pgvector `library_entity_index` with the authoritative appdb.
 
   The index holds one embedded document per library-entity value — the entity's name, its description, and
@@ -15,7 +15,7 @@
   Re-deriving from the appdb every run self-heals any missed write (pgvector downtime, a crashed node, an
   import that bypassed the model hooks).
 
-  Runs from the [[metabase-enterprise.curated-search.task.sync]] Quartz job; callers pass the datasource
+  Runs from the [[metabase-enterprise.entity-retrieval.task.sync]] Quartz job; callers pass the datasource
   and embedding model, so this namespace reads no settings."
   (:require
    [buddy.core.hash :as buddy-hash]
@@ -23,7 +23,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase-enterprise.curated-search.index-table :as index-table]
+   [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.collections.core :as collections]
    [metabase.util :as u]

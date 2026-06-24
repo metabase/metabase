@@ -1,31 +1,30 @@
-(ns metabase.curated-search.models.osi-ai-context-test
+(ns metabase.osi.models.osi-ai-context-test
   (:require
    [clojure.test :refer :all]
-   [metabase.curated-search.mirror :as mirror]
+   [metabase.entity-retrieval.mirror :as mirror]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private table-entity {:model "table" :id 42})
+(def ^:private entity {:entity_type "table" :entity_local_id 42})
 (def ^:private ai-context {:instructions "Use for total revenue; group by month."
                            :synonyms     ["sales" "turnover"]
                            :examples     ["monthly revenue by region"]})
 
 (deftest entity-and-ai-context-roundtrip-test
-  (testing "entity and ai_context are keywordized JSON objects and timestamps are populated"
-    (mt/with-temp [:model/OsiAiContext {:keys [id]}
-                   {:entity table-entity :ai_context ai-context}]
-      (is (=? {:entity     table-entity
-               :ai_context ai-context
-               :created_at some?
-               :updated_at some?}
+  (testing "ai_context is a keywordized JSON object and timestamps are populated"
+    (mt/with-temp [:model/OsiAiContext {:keys [id]} (assoc entity :ai_context ai-context)]
+      (is (=? {:entity_type     "table"
+               :entity_local_id 42
+               :ai_context      ai-context
+               :created_at      some?
+               :updated_at      some?}
               (t2/select-one :model/OsiAiContext :id id))))))
 
 (deftest ai-context-minimal-test
   (testing "ai_context can be a minimal blob (just instructions, no synonyms/examples)"
-    (mt/with-temp [:model/OsiAiContext {:keys [id]}
-                   {:entity table-entity :ai_context {:instructions "Just this."}}]
+    (mt/with-temp [:model/OsiAiContext {:keys [id]} (assoc entity :ai_context {:instructions "Just this."})]
       (is (= {:instructions "Just this."}
              (t2/select-one-fn :ai_context :model/OsiAiContext :id id))))))
 
@@ -33,8 +32,7 @@
   (testing "insert, update and delete each request a background sync — and do nothing else"
     (let [nudges (atom 0)]
       (mt/with-dynamic-fn-redefs [mirror/request-sync! (fn [] (swap! nudges inc) nil)]
-        (mt/with-temp [:model/OsiAiContext {:keys [id]}
-                       {:entity table-entity :ai_context ai-context}]
+        (mt/with-temp [:model/OsiAiContext {:keys [id]} (assoc entity :ai_context ai-context)]
           (is (= 1 @nudges) "insert nudges once")
           (t2/update! :model/OsiAiContext id {:ai_context {:instructions "changed"}})
           (is (= 2 @nudges) "update nudges once")
@@ -45,8 +43,7 @@
   (testing "insert/update/delete succeed even though the mirror is unavailable in tests"
     ;; The hooks call the OSS defenterprise shim, which no-ops without an enterprise license. They must
     ;; never throw or fail the authoritative write.
-    (mt/with-temp [:model/OsiAiContext {:keys [id]}
-                   {:entity table-entity :ai_context ai-context}]
+    (mt/with-temp [:model/OsiAiContext {:keys [id]} (assoc entity :ai_context ai-context)]
       (testing "update"
         (is (pos? (t2/update! :model/OsiAiContext id {:ai_context {:instructions "u"}})))
         (is (= {:instructions "u"} (t2/select-one-fn :ai_context :model/OsiAiContext :id id))))

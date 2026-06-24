@@ -1,4 +1,4 @@
-(ns metabase.curated-search.models.osi-ai-context
+(ns metabase.osi.models.osi-ai-context
   "The `osi_ai_context` appdb table: one row per library entity holding OSI `ai_context` metadata
   (`{instructions, synonyms[], examples[]}`) for the entity identified by `entity_type`/`entity_local_id`.
 
@@ -8,7 +8,7 @@
   Writes here only nudge the index's background sync ([[mirror/request-sync!]]); they never touch
   the embedding service or the pgvector store themselves."
   (:require
-   [metabase.curated-search.mirror :as mirror]
+   [metabase.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]

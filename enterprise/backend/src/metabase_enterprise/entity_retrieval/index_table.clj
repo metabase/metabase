@@ -1,4 +1,4 @@
-(ns metabase-enterprise.curated-search.index-table
+(ns metabase-enterprise.entity-retrieval.index-table
   "Lifecycle of the pgvector tables backing the library entity index.
 
   Two tables live in the pgvector store:

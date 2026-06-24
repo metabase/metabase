@@ -1,4 +1,4 @@
-(ns metabase.metabot.tools.curated-search
+(ns metabase.metabot.tools.entity-retrieval
   "Metabot `retrieve_library_entities` tool, backed by the library entity index.
 
   Matches the user's request by vector similarity against the per-value documents of every library entity
@@ -11,12 +11,12 @@
   Each match's raw cosine `similarity` is surfaced and low-confidence ones flagged, so a library miss
   reads as a miss rather than a confident-but-wrong hit.
 
-  The var/namespace name (`curated-search`) is retained deliberately — the module is a home for
+  The var/namespace name (`entity-retrieval`) is retained deliberately — the module is a home for
   information retrieval generally, not 1:1 with this index or tool.
-  Runs in the enterprise pgvector store via [[metabase.curated-search.core]]."
+  Runs in the enterprise pgvector store via [[metabase.entity-retrieval.core]]."
   (:require
    [clojure.string :as str]
-   [metabase.curated-search.core :as curated-search]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -51,7 +51,7 @@
 (def ^:private limit-desc
   (str "Maximum number of distinct library entities (default " default-limit ", max " max-limit ")."))
 
-(def ^:private curated-search-schema
+(def ^:private entity-retrieval-schema
   [:map {:closed true}
    [:user_search_prompt [:string {:description user-search-prompt-desc}]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-limit :description limit-desc}]]]])
@@ -89,7 +89,7 @@
   return the top `n` the current user can read.
   Each match: `{:doc_type :matched_text :usage_instructions :score :similarity :weak? :entity hydrated-hit}`."
   [user-search-prompt n]
-  (let [raw      (curated-search/search
+  (let [raw      (entity-retrieval/search
                   user-search-prompt (min over-fetch-cap (* over-fetch-factor n)))
         deduped  (dedupe-by-entity raw)
         refs     (distinct (map :entity deduped))
@@ -99,7 +99,7 @@
         ;; just past the cut.
         by-key   (u/index-by (juxt :type :id) (tools.search/entity-refs->search-results refs))
         ;; instructions aren't stored in the index — read the current text from osi_ai_context per request.
-        instrs   (curated-search/ai-context-instructions refs)]
+        instrs   (entity-retrieval/ai-context-instructions refs)]
     (->> (for [{:keys [doc_type doc_text entity score]} deduped
                ;; hydrated records use the agent-facing entity type, so normalize the ref's model to match
                ;; (plain "card" refs hydrate as "question")
@@ -170,7 +170,7 @@
   entity, then `read_resource` that entity to confirm its fields and sample values before building. If the
   top match is flagged low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library
   clearly matches — prefer asking the user to clarify or narrow the request."
-  [{:keys [user_search_prompt limit]} :- curated-search-schema]
+  [{:keys [user_search_prompt limit]} :- entity-retrieval-schema]
   (try
     (let [n       (min max-limit (or limit default-limit))
           matches (build-matches user_search_prompt n)]
