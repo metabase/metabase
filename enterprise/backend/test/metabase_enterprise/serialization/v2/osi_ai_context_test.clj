@@ -4,6 +4,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.curated-search.test-util :as cs.tu]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
@@ -62,6 +63,33 @@
                 ;; load-metabase! re-inserts under a new id that with-temp can't reap; clean it up so the
                 ;; row doesn't leak into other tests' view of the (small, fully-scanned) table.
                 (t2/delete! :model/OsiAiContext :entity_id sli-eid)))))))))
+
+(deftest measure-segment-entity-round-trip-test
+  (testing "measure and segment entity refs export as the entity's entity_id and import back"
+    (let [orders (mt/id :orders)
+          total  (mt/id :orders :total)]
+      (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
+                     {:name "M" :table_id orders :creator_id (mt/user->id :crowberto)
+                      :definition (cs.tu/measure-definition orders total)}
+                     :model/Segment {segment-id :id segment-eid :entity_id}
+                     {:name "S" :table_id orders :definition (cs.tu/segment-definition orders total 100)}]
+        (doseq [[entity-model id eid serdes-model] [["measure" measure-id measure-eid "Measure"]
+                                                    ["segment" segment-id segment-eid "Segment"]]]
+          (testing entity-model
+            (mt/with-temp [:model/OsiAiContext {sli-id :id sli-eid :entity_id}
+                           {:ai_context {:synonyms [entity-model]} :entity {:model entity-model :id id}}]
+              (let [extracted (ts/extract-one "OsiAiContext" sli-id)]
+                (testing "the entity ref is exported as a portable entity_id reference"
+                  (is (=? {:entity {:model entity-model :id eid}} extracted)))
+                (testing "dependencies cover the referenced entity (not a Card)"
+                  (is (= #{[{:model serdes-model :id eid}]}
+                         (serdes/dependencies extracted))))
+                (testing "importing resolves the ref back to the local id"
+                  (t2/delete! :model/OsiAiContext :id sli-id)
+                  (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+                  (is (= {:model entity-model :id id}
+                         (t2/select-one-fn :entity :model/OsiAiContext :entity_id sli-eid)))
+                  (t2/delete! :model/OsiAiContext :entity_id sli-eid))))))))))
 
 (deftest unmapped-entity-model-passes-through-test
   (testing "an unrecognized entity model exports as-is (raw id, no deps) instead of aborting the export"

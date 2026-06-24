@@ -163,8 +163,9 @@
    :instructions    (:instructions doc)
    :doc_embedding   [:raw (index-table/format-embedding embedding)]})
 
-(defn- insert-batch!
-  "Embed one batch of new docs and insert them. Returns the number inserted."
+(defn insert-batch!
+  "Embed one batch of new docs and insert them. Returns the number inserted.
+  Public only as a test seam for simulating embed/insert failure."
   [pgvector embedding-model docs]
   (let [embeddings (embedding/get-embeddings-batch embedding-model (map :doc_text docs)
                                                    {:type :index :record-tokens? true})
@@ -191,13 +192,19 @@
                        (sql.helpers/where [:in :doc_id (vec doc-ids)])
                        (sql/format {:quoted true})))))
 
+(defn- entity-class
+  "Equivalence class of a row's entity, used to match orphans to failed inserts.
+  Collapses a Card's interchangeable type labels (metric/model) so a type flip still matches the same
+  entity; table/measure/segment stay distinct, so a same-id entity of another type is never confused."
+  [{:keys [entity_type entity_local_id]}]
+  [(if (#{"metric" "model"} entity_type) :card entity_type) entity_local_id])
+
 (defn- reconcile-against-appdb!
   "The diff body — assumes the reconcile advisory lock is held. See the namespace docstring."
   [pgvector embedding-model]
   (let [desired       (desired-docs)
         desired-ids   (set (map :doc_id desired))
         stored        (stored-docs pgvector)
-        entity-key    (juxt :entity_type :entity_local_id)
         to-insert     (remove #(contains? stored (:doc_id %)) desired)
         ;; instructions drift on an existing row: blank and nil are equivalent (no-op).
         norm          #(when-not (str/blank? %) %)
@@ -206,7 +213,7 @@
                                                  (norm (:instructions (get stored (:doc_id d)))))))
                               desired)
         orphans       (remove desired-ids (keys stored))
-        ;; entities whose insert failed this run — their orphans are spared (see below).
+        ;; entity classes whose insert failed this run — their orphans are spared (see below).
         failed        (volatile! #{})
         inserted      (transduce
                        (partition-all embed-batch-size)
@@ -215,7 +222,7 @@
                           (+ n (try
                                  (insert-batch! pgvector embedding-model batch)
                                  (catch Exception e
-                                   (vswap! failed into (map entity-key batch))
+                                   (vswap! failed into (map entity-class batch))
                                    (log/error e "library entity index: failed to insert batch of"
                                               (count batch) "docs; will retry next run")
                                    0)))))
@@ -223,8 +230,8 @@
                        to-insert)
         ;; An orphan is often the stale half of an edited value (e.g. a renamed name's old doc).
         ;; Deleting it while its replacement failed to embed would drop that entity from search until the
-        ;; next run, so spare orphans belonging to a failed entity; every other entity's orphans GC normally.
-        to-delete     (remove #(contains? @failed (entity-key (get stored %))) orphans)]
+        ;; next run, so spare orphans whose entity class had a failed insert; every other orphan GCs normally.
+        to-delete     (remove #(contains? @failed (entity-class (get stored %))) orphans)]
     (doseq [d to-update] (update-instructions! pgvector d))
     (delete-rows! pgvector to-delete)
     {:inserted  inserted

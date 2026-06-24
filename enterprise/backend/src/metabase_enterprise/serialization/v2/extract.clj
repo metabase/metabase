@@ -44,7 +44,7 @@
     (not (:no-custom-viz-plugins opts))
     (conj "CustomVizPlugin")
 
-    (not (:no-curated-search opts))
+    (not (:no-osi-ai-context opts))
     (conj "OsiAiContext")))
 
 (defn make-targets-of-type

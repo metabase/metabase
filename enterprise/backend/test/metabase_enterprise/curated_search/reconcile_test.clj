@@ -3,10 +3,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.curated-search.index-table :as index-table]
    [metabase-enterprise.curated-search.reconcile :as reconcile]
+   [metabase-enterprise.curated-search.test-util :as tu]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]
@@ -26,6 +25,17 @@
                        (reconcile/doc-id "metric" 9 "synonym" "Revenue")
                        (reconcile/doc-id "metric" 9 "name"    "Sales")]]
         (is (not= d variant) (pr-str variant))))))
+
+(deftest entity-class-test
+  (let [entity-class (var-get #'reconcile/entity-class)]
+    (testing "a Card's metric/model labels collapse to one class, so a type flip still matches"
+      (is (= (entity-class {:entity_type "metric" :entity_local_id 5})
+             (entity-class {:entity_type "model" :entity_local_id 5}))))
+    (testing "a same-id entity of another type is a distinct class (no false-positive sparing)"
+      (is (not= (entity-class {:entity_type "table" :entity_local_id 5})
+                (entity-class {:entity_type "metric" :entity_local_id 5})))
+      (is (not= (entity-class {:entity_type "measure" :entity_local_id 5})
+                (entity-class {:entity_type "segment" :entity_local_id 5}))))))
 
 (deftest format-embedding-rejects-invalid-values-test
   (testing "non-numbers, NaN and infinities are rejected before they reach a raw SQL literal"
@@ -150,16 +160,6 @@
               (testing "the rebuild heals the meta row, so it doesn't recur on the next sync"
                 (is (= :ok (index-table/ensure-tables! ds new-model)))))))))))
 
-(defn- measure-definition [table-id field-id]
-  (let [mp (mt/metadata-provider)]
-    (lib/aggregate (lib/query mp (lib.metadata/table mp table-id))
-                   (lib/sum (lib.metadata/field mp field-id)))))
-
-(defn- segment-definition [table-id field-id value]
-  (let [mp (mt/metadata-provider)]
-    (lib/filter (lib/query mp (lib.metadata/table mp table-id))
-                (lib/> (lib.metadata/field mp field-id) value))))
-
 (deftest ^:sequential measures-and-segments-indexed-and-hydrated-test
   (testing "measures/segments on a published library table are indexed and hydrate with parent-table context"
     (mt/with-premium-features #{:library :semantic-search}
@@ -171,10 +171,10 @@
                          :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
                          :model/Measure {measure-id :id} {:name "Order Revenue" :description "sum of order totals"
                                                           :table_id orders :creator_id (mt/user->id :crowberto)
-                                                          :definition (measure-definition orders total)}
+                                                          :definition (tu/measure-definition orders total)}
                          :model/Segment {segment-id :id} {:name "Big Orders" :description "totals over 100"
                                                           :table_id orders
-                                                          :definition (segment-definition orders total 100)}]
+                                                          :definition (tu/segment-definition orders total 100)}]
             ;; publish the (real, fielded) orders table into the library for the duration of the test
             (mt/with-temp-vals-in-db :model/Table orders {:collection_id data-id :is_published true}
               (reconcile/reconcile! ds model)
@@ -194,3 +194,28 @@
                     (is (=? {:type "segment" :id segment-id :name "Big Orders"
                              :database_id (mt/id) :base_table_id orders}
                             (get by-key ["segment" segment-id])))))))))))))
+
+(deftest ^:sequential failed-insert-spares-only-that-entitys-orphans-test
+  (testing "a failed insert spares that entity's orphans; an unrelated entity's orphans still GC"
+    (mt/with-premium-features #{:library :semantic-search}
+      (with-isolated-index [ds]
+        (let [model semantic.tu/mock-embedding-model]
+          (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
+                         :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
+                         :model/Database   {db-id :id}    {}
+                         :model/Table {edited :id}  {:db_id db-id :collection_id data-id :is_published true
+                                                     :active true :name "a" :display_name "Edited Orig"}
+                         :model/Table {leaving :id} {:db_id db-id :collection_id data-id :is_published true
+                                                     :active true :name "b" :display_name "Leaving"}]
+            (reconcile/reconcile! ds model)
+            ;; `edited` is renamed (old name doc -> orphan, new name doc -> to-insert);
+            ;; `leaving` is unpublished (its docs -> orphans, with nothing in to-insert).
+            (t2/update! :model/Table edited {:display_name "Edited New"})
+            (t2/update! :model/Table leaving {:is_published false})
+            ;; force the insert of the only to-insert batch (edited's new name doc) to fail.
+            (mt/with-dynamic-fn-redefs [reconcile/insert-batch! (fn [& _] (throw (ex-info "boom" {})))]
+              (reconcile/reconcile! ds model))
+            (testing "the edited entity's stale orphan is retained (its replacement insert failed)"
+              (is (= #{"Edited Orig"} (set (map :doc_text (docs-for ds "table" edited))))))
+            (testing "the entity that left the library is still GC'd (no failed insert of its own)"
+              (is (empty? (docs-for ds "table" leaving))))))))))

@@ -53,13 +53,14 @@
 ;;; `[db schema table]` path) and reverse it on import, mirroring `serdes/export-viz-link-card`.
 
 (def ^:private entity-model->toucan
-  "Toucan model for each entity ref `:model` string. Tables get the table-fk treatment instead.
-  All the card flavors are Cards (the `:model` string mirrors the `read_resource` resource type the
-  agent uses to fetch the entity, not the underlying table)."
+  "Toucan model each entity ref `:model` string resolves to. Tables get the table-fk treatment instead.
+  The card flavors (the `:model` mirrors the agent's `read_resource` resource type) all map to Card."
   {"card"     :model/Card
    "model"    :model/Card
    "metric"   :model/Card
-   "question" :model/Card})
+   "question" :model/Card
+   "measure"  :model/Measure
+   "segment"  :model/Segment})
 
 (defn- export-entity-ref [{:keys [model id] :as entity}]
   (cond
@@ -110,8 +111,9 @@
 (defmethod serdes/dependencies "OsiAiContext"
   [{{:keys [model id]} :entity}]
   ;; A referenced Table is synthesized on import if missing, so (like link cards) we depend on its Database,
-  ;; not the Table itself. Card refs depend on the Card directly.
+  ;; not the Table itself.
+  ;; Card/measure/segment refs depend on that entity directly (its serdes model = the toucan model name).
   (cond
     (= model "table")            #{[{:model "Database" :id (first id)}]}
-    (entity-model->toucan model) #{[{:model "Card" :id id}]}
+    (entity-model->toucan model) #{[{:model (name (entity-model->toucan model)) :id id}]}
     :else                        #{}))
