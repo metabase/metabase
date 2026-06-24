@@ -1,10 +1,15 @@
 (ns metabase-enterprise.semantic-search.settings
   (:require
+   [metabase.events.core :as events]
    [metabase.llm.settings :as llm-settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
+
+;; Topic for the just-in-time HNSW build, handled in metabase-enterprise.semantic-search.events. Declared
+;; here, not there, so it's valid wherever the setter runs regardless of handler-namespace load order.
+(derive :event/semantic-search-hnsw-enabled :metabase/event)
 
 (def ^:private valid-embedding-providers
   "The set of valid embedding provider names."
@@ -137,12 +142,9 @@
                                     {:invalid-value new-value
                                      :valid-values  valid-vector-search-strategies})))
                   (setting/set-value-of-type! :keyword :semantic-search-vector-strategy kw)
-                  ;; The HNSW index is only built when configured: on the transition into :hnsw, build it in
-                  ;; the background so this setter returns promptly. Gated on the transition (not every set) so
-                  ;; we don't kick off redundant builds. requiring-resolve avoids a require cycle
-                  ;; (core/pgvector-api/index all require this namespace).
+                  ;; Gated on the transition (not every set) so re-setting :hnsw doesn't rebuild the index.
                   (when (and (= kw :hnsw) (not= old :hnsw))
-                    ((requiring-resolve 'metabase-enterprise.semantic-search.core/build-hnsw-index-async!))))))
+                    (events/publish-event! :event/semantic-search-hnsw-enabled {})))))
 
 (defsetting semantic-search-min-results-threshold
   (deferred-tru "Minimum number of semantic search results required before falling back to other engines.")

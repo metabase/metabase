@@ -47,11 +47,10 @@
    (semantic.settings/semantic-search-enabled)))
 
 (defn build-hnsw-index-async!
-  "Build the HNSW index on the active semantic search index in the background.
+  "Build the HNSW index on the active semantic search index in the background, returning promptly.
 
-  Invoked (via `requiring-resolve`) by the `semantic-search-vector-strategy` setter when an instance is
-  configured to the `:hnsw` strategy, so the settings call returns without waiting for the index build.
-  No-ops when semantic search isn't available on this instance."
+  No-ops when semantic search isn't available on this instance. Backs the just-in-time HNSW build, which
+  runs only when an instance is configured to the `:hnsw` vector-search strategy."
   []
   (when (semantic.util/semantic-search-available?)
     (future

@@ -3,8 +3,10 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.indexer :as semantic-search.indexer]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.search.engine :as search.engine]
    [metabase.task.core :as task]
@@ -66,4 +68,8 @@
                         (simple/schedule
                          (simple/with-interval-in-milliseconds (.toMillis run-frequency))
                          (simple/repeat-forever))))]
-      (task/schedule-task! job trigger))))
+      (task/schedule-task! job trigger))
+    ;; Safety net: an instance that booted already configured for :hnsw (strategy set via env var, or set
+    ;; before an active index existed) never saw the setter's transition event, so build the index now.
+    (when (= :hnsw (semantic.settings/semantic-search-vector-strategy))
+      (semantic.core/build-hnsw-index-async!))))

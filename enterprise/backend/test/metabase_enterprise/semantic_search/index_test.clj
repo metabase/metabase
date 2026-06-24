@@ -7,6 +7,8 @@
    [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   ;; loaded for its :event/semantic-search-hnsw-enabled handler, which the setter test exercises
+   [metabase-enterprise.semantic-search.events]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.spec-trace-test-util :as spec-trace]
@@ -83,8 +85,9 @@
         (is (= strategy (semantic.settings/semantic-search-vector-strategy))))))
   (testing "the setter kicks off the background build job only on the transition into :hnsw"
     ;; This asserts *when* the build is triggered (the transition gating), not what the build does -- the
-    ;; build itself is covered by pgvector-api-test/ensure-active-hnsw-index!-test. We spy on the async build
-    ;; so the trigger is verified deterministically without spawning a real future.
+    ;; build itself is covered by pgvector-api-test/ensure-active-hnsw-index!-test. The setter publishes
+    ;; :event/semantic-search-hnsw-enabled, whose handler (semantic-search.events) calls the async build; we
+    ;; spy on that build so the trigger is verified deterministically without spawning a real future.
     (mt/with-premium-features #{:semantic-search}
       (let [triggers (atom 0)]
         (mt/with-dynamic-fn-redefs [semantic.core/build-hnsw-index-async! (fn [] (swap! triggers inc))]
