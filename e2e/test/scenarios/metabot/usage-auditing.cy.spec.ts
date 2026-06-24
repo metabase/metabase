@@ -333,16 +333,33 @@ function clickLastTimeseriesChartDot(title: string): void {
 }
 
 function clickRowChartBarForLabel(title: string, label: string): void {
+  // Row charts measure their size asynchronously (ExplicitSize, throttled), so
+  // they first render with zero-width bars before re-laying out at the final
+  // geometry. Waiting on the <svg> alone (assertChartRendered) isn't enough: a
+  // pixel coordinate computed before the bars settle lands on empty SVG, the
+  // bar's onClick never fires, and the drill-through request never occurs.
+  // Wait for measured bars, then click the bar element vertically aligned with
+  // the label — letting Cypress's actionability checks handle stability —
+  // instead of a guessed pixel offset.
+  assertChartRendered(title);
   getChartCard(title).within(() => {
-    cy.findByTestId("row-chart-container").then(($container) => {
-      cy.findByText(label).then(($label) => {
-        const containerRect = $container[0].getBoundingClientRect();
-        const labelRect = $label[0].getBoundingClientRect();
-        const x = labelRect.right - containerRect.left + 30;
-        const y = labelRect.top - containerRect.top + labelRect.height / 2;
+    cy.findAllByRole("graphics-symbol").should("have.length.greaterThan", 0);
+    cy.findByText(label).then(($label) => {
+      const labelRect = $label[0].getBoundingClientRect();
+      const labelCenterY = labelRect.top + labelRect.height / 2;
 
-        cy.wrap($container).realClick({ x, y, scrollBehavior: false });
-      });
+      cy.findAllByRole("graphics-symbol")
+        .filter((_index, bar) => {
+          const barRect = bar.getBoundingClientRect();
+          return (
+            barRect.width > 0 &&
+            barRect.top <= labelCenterY &&
+            labelCenterY <= barRect.bottom
+          );
+        })
+        .should("have.length.greaterThan", 0)
+        .first()
+        .click();
     });
   });
 }
