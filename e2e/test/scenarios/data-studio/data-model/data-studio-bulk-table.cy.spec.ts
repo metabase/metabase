@@ -47,6 +47,11 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
   it("syncing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
     H.activateToken("pro-self-hosted");
+    // Re-authenticate after restoring the writable-DB snapshot, like the
+    // sibling tests do — otherwise visiting Data Studio can land in an
+    // unauthenticated state and the TablePicker never issues the schema
+    // request, making `cy.wait("@getSchema")` time out.
+    cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
     cy.wait("@getSchema").then(({ response }) => {
