@@ -352,11 +352,6 @@
 
 ;;; ------------------------------------------- Incremental Import Fast-Path -------------------------------------------
 
-(def ^:private incremental-not-possible
-  "Sentinel returned by [[incremental-load-snapshot!]] when a change can't be applied incrementally and the
-  caller must run the full [[load-snapshot!]] instead."
-  :remote-sync/incremental-import-not-possible)
-
 (def ^:private full-import-models
   "Models whose change forces a full import on the incremental fast-path: Collection (a rename moves every
   descendant's file, a delete cascades to its contents) and the feature models (their presence drives the
@@ -404,16 +399,16 @@
         all-models (into add-models (map :model_type) deleted-rsos)]
     (cond
       (nil? changed) ;; first import, or diffing not possible (force-push/rebase, non-diffable source)
-      incremental-not-possible
+      :remote-sync/incremental-not-possible
 
       (some nil? deleted-rsos) ;; some deleted file not present in appdb
-      incremental-not-possible
+      :remote-sync/incremental-not-possible
 
       (some full-import-models all-models) ;; anything not incrementally importable by model type?
-      incremental-not-possible
+      :remote-sync/incremental-not-possible
 
       (some #(not= :entity-id (:identity (spec/spec-for-model-type %))) all-models) ;; anything not entity-id model?
-      incremental-not-possible
+      :remote-sync/incremental-not-possible
 
       :else
       {:ingestable ingestable :deleted-rsos deleted-rsos})))
@@ -616,7 +611,9 @@
           ;; Incremental fast-path: not forced, no local drift, and the change is incrementally loadable.
           ;; Touches only changed files, so it can't wholesale-delete unsynced transforms — no conflict scan,
           ;; and only the cheap O(changes) diff is computed (never the full-tree get-conflicts read).
-          (and (not force?) (not (remote-sync.object/dirty?)) (not= incremental-not-possible @incremental-plan))
+          (and (not force?)
+               (not (remote-sync.object/dirty?))
+               (not= :remote-sync/incremental-not-possible @incremental-plan))
           (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
 
           (seq @blocking-conflicts)
@@ -783,26 +780,26 @@
 
 (defn- dep-chunk-writes
   "Write-decisions ({:model_type :model_id :file_path}) for one chunk of dependency rows, or
-  `:remote-sync/unsyncable` if any target path collides with a different entity."
+  `:remote-sync/incremental-not-possible` if any target path collides with a different entity."
   [snapshot opts chunk]
   (reduce (fn [writes [row entity]]
             (let [path (source/entity->path opts entity)]
               (if (path-free? (repo-file-info snapshot path (:entity_id entity)))
                 (conj writes (assoc row :file_path path))
-                (reduced :remote-sync/unsyncable))))
+                (reduced :remote-sync/incremental-not-possible))))
           []
           (extract-chunk chunk)))
 
 (defn- dep-writes
   "Validate the untracked dependency entities `dep-ids` (a set of `[model-type id]`) one chunk at a time: the
-  `{:model_type :model_id :file_path}` write-decisions, or `:remote-sync/unsyncable` at the first chunk
+  `{:model_type :model_id :file_path}` write-decisions, or `:remote-sync/incremental-not-possible` at the first chunk
   whose target path collides with a different entity."
   [snapshot opts dep-ids]
   (let [dep-rows (mapv (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)]
     (reduce (fn [writes chunk]
               (let [chunk-writes (dep-chunk-writes snapshot opts chunk)]
-                (if (= :remote-sync/unsyncable chunk-writes)
-                  (reduced :remote-sync/unsyncable)
+                (if (= :remote-sync/incremental-not-possible chunk-writes)
+                  (reduced :remote-sync/incremental-not-possible)
                   (into writes chunk-writes))))
             []
             (->sized-chunks dep-rows))))
@@ -811,21 +808,21 @@
   "Decide a `row`'s contribution to an incremental plan.
 
   Return:
-    - `:remote-sync/unsyncable` OR
+    - `:remote-sync/incremental-not-possible` OR
     - {:writes :delete-paths :removed-ids :pull}"
   [{:keys [id model_type model_id status file_path]} file-info]
   (try
     (cond
       (not= :entity-id ;; only entity-id models can be synced incrementally
             (:identity (spec/spec-for-model-type model_type)))
-      :remote-sync/unsyncable
+      :remote-sync/incremental-not-possible
 
       (not (#{"create" "update" "removed" "delete"} status))
-      :remote-sync/unsyncable
+      :remote-sync/incremental-not-possible
 
       (and (#{"removed" "delete"} status) ;; removed/delete with no stored path needs a full export
            (str/blank? file_path))
-      :remote-sync/unsyncable
+      :remote-sync/incremental-not-possible
 
       (#{"removed" "delete"} status)
       {:delete-paths [file_path]
@@ -833,7 +830,7 @@
 
       ;; past here, we're seeing create and update statuses
       (not file-info) ;; entity no longer exists
-      :remote-sync/unsyncable
+      :remote-sync/incremental-not-possible
 
       ;; create: brand-new file, no old path to delete.
       ;; Target must be free or same entity id
@@ -873,27 +870,27 @@
       ;; any other create/update case (e.g. the target path is occupied by a different entity) needs
       ;; a full export
       :else
-      :remote-sync/unsyncable)
+      :remote-sync/incremental-not-possible)
     (catch Exception _
-      :remote-sync/unsyncable)))
+      :remote-sync/incremental-not-possible)))
 
 (defn- chunk->plan
   "Plan fragment for one chunk of create/update rows.
 
   Returns:
-   - :remote-sync/unsyncable when the chunk can't be synced
+   - :remote-sync/incremental-not-possible when the chunk can't be synced
    - {:writes :delete-paths :removed-ids :pull}"
   [snapshot opts chunk]
   (let [rows  (second chunk)
         found (extract-chunk chunk)]
     (if (< (count found) (count rows))
-      :remote-sync/unsyncable                 ; extract-chunk omits gone entities; some row is unsyncable
+      :remote-sync/incremental-not-possible                 ; extract-chunk omits gone entities; some row is unsyncable
       (reduce (fn [frag [row entity]]
                 (let [new-path (source/entity->path opts entity)
                       info     (assoc (repo-file-info snapshot new-path (:entity_id entity)) :new-path new-path)
                       updates  (row->incremental-export-plan row info)]
-                  (if (= updates :remote-sync/unsyncable)
-                    (reduced :remote-sync/unsyncable)
+                  (if (= updates :remote-sync/incremental-not-possible)
+                    (reduced :remote-sync/incremental-not-possible)
                     (merge-with into frag updates))))
               {:writes [] :delete-paths [] :removed-ids [] :pull #{}}
               found))))
@@ -904,13 +901,13 @@
   `snapshot` is the git repo to test existing paths against; `rows` are the RemoteSyncObjects to export.
 
   Returns `{:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}`, or
-  `:remote-sync/unsyncable` when any row can't be exported incrementally."
+  `:remote-sync/incremental-not-possible` when any row can't be exported incrementally."
   [snapshot rows]
   (let [opts          (serdes/storage-base-context)
         init          {:writes [] :delete-paths [] :removed-ids [] :pull #{}}
         merge-or-bail (fn [plan frag]
-                        (if (= :remote-sync/unsyncable frag)
-                          (reduced :remote-sync/unsyncable)
+                        (if (= :remote-sync/incremental-not-possible frag)
+                          (reduced :remote-sync/incremental-not-possible)
                           (merge-with into plan frag)))
         ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
         ;; (removed/delete, non-entity-id, bad status) is decided with no entity
@@ -927,14 +924,14 @@
                         (try
                           (reduce (fn [plan chunk] (merge-or-bail plan (chunk->plan snapshot opts chunk)))
                                   plan (->sized-chunks cu-rows))
-                          (catch Exception _ :remote-sync/unsyncable)))
+                          (catch Exception _ :remote-sync/incremental-not-possible)))
         deps          (delay (dep-writes snapshot opts (:pull plan)))]
     (cond
-      (= plan :remote-sync/unsyncable)
-      :remote-sync/unsyncable
+      (= plan :remote-sync/incremental-not-possible)
+      :remote-sync/incremental-not-possible
 
-      (= :remote-sync/unsyncable @deps)
-      :remote-sync/unsyncable
+      (= :remote-sync/incremental-not-possible @deps)
+      :remote-sync/incremental-not-possible
 
       :else
       (-> plan (update :writes into @deps) (dissoc :pull)))))
@@ -1114,7 +1111,7 @@
                :outcome {:kind "push-skipped"}})
 
             ;; A dirty row can't be applied incrementally → full re-serialize.
-            (= @plan :remote-sync/unsyncable)
+            (= @plan :remote-sync/incremental-not-possible)
             (full-export! snapshot task-id message sync-timestamp)
 
             ;; Incremental fast-path: write only the changed entities, deleting their old paths plus files left behind
