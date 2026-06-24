@@ -226,6 +226,21 @@ describe("scenarios > dependencies > unreferenced list", () => {
     it("should filter by location", () => {
       setupEntities();
       H.waitForBackfillComplete();
+      // The dependency graph is calculated asynchronously, so wait until the
+      // entities asserted below are present in the unreferenced set before
+      // visiting — otherwise the list can render before the async calc surfaces
+      // them and the first assertion flakes.
+      H.waitForUnreferencedEntities((entities) =>
+        [
+          MODEL_FOR_MODEL_DATA_SOURCE,
+          MODEL_FOR_METRIC_DATA_SOURCE,
+          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        ].every((name) =>
+          entities.some(
+            (entity) => "name" in entity.data && entity.data.name === name,
+          ),
+        ),
+      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({
         visibleEntities: [
