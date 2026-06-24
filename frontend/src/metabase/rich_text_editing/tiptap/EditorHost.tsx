@@ -54,11 +54,6 @@ type Selector<T> = (state: State) => T;
  */
 type DispatchableAction = any;
 
-// Action/thunk creators return the redux action or thunk to be dispatched.
-// Typed as `any` (see DispatchableAction) so they satisfy the app's overloaded
-// `dispatch` (which accepts both plain actions and thunks) without coupling this
-// primitive to the host's concrete action types.
-
 /** Document state read by most extensions, regardless of which are enabled. */
 export interface EditorDocumentHost {
   selectors: {
@@ -117,7 +112,7 @@ export interface EditorCommentsHost {
   ) => number;
 }
 
-/** Viewport-aware lazy loading: hosts with a scroll container (documents) defer
+/** Viewport-aware lazy loading: hosts with a scroll container defer
  *  data fetching until a node is near the viewport. The default host reports
  *  everything as visible so other editors load eagerly. */
 export interface EditorViewportHost {
@@ -148,13 +143,9 @@ export interface EditorAnalyticsHost {
 }
 
 /**
- * The capabilities the editor extensions need, injected by the host (e.g.
- * documents) so `rich_text_editing` stays a document-agnostic editor primitive.
+ * The capabilities the editor extensions need, injected by the host so `rich_text_editing` stays an agnostic editor primitive.
  * Consumers that do not configure a host (e.g. the comments editor) get
  * {@link DEFAULT_EDITOR_HOST}.
- *
- * An intersection of per-concern slices, so a host implements only the slices
- * for the extensions it enables.
  */
 export type EditorHost = EditorDocumentHost &
   EditorCardHost &
