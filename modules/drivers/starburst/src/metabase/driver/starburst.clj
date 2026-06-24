@@ -1004,3 +1004,9 @@
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
+;; starburst returns line numbers in error messages which will be off by 1 if
+;; the remark is prepended (#64133)
+(defmethod sql-jdbc.execute/inject-remark :starburst
+  [_ sql remark]
+  (str sql "\n\n-- " remark))

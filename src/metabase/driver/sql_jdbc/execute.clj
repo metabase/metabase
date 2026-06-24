@@ -764,8 +764,18 @@
    (let [row-thunk (row-thunk driver rs rsmeta)]
      (driver-api/reducible-rows row-thunk canceled-chan))))
 
-(defn- inject-remark [sql remark]
-  (str sql "\n\n-- " remark))
+(defmulti inject-remark
+  "Injects the remark into the SQL query text."
+  {:added "0.48.0", :arglists '([driver sql remark])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+;  Combines the original SQL query with query remarks. Most databases using sql-jdbc based drivers support prepending the
+;  remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
+;  be overridden.
+(defmethod inject-remark :default
+  [_ sql remark]
+  (str "-- " remark "\n" sql))
 
 (mu/defn- download? :- :boolean
   [context :- [:maybe ::lib.schema.info/context]]
@@ -784,7 +794,7 @@
     (let [database (driver-api/database (driver-api/metadata-provider))
           sql      (if (get-in (driver.conn/effective-details database) [:include-user-id-and-hash] true)
                      (->> (driver-api/query->remark driver outer-query)
-                          (inject-remark sql))
+                          (inject-remark driver sql))
                      sql)
           max-rows (driver-api/determine-query-max-rows outer-query)]
       (do-with-connection-with-options
