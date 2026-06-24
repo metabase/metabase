@@ -5,7 +5,7 @@ import EmptyStateIcon from "assets/img/empty-states/collection.svg";
 import {
   isLibraryCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
@@ -49,7 +49,7 @@ const CollectionEmptyState = ({
 const TrashEmptyState = () => {
   return (
     <EmptyStateWrapper>
-      <Icon name="trash" size={80} c="background-brand" />
+      <Icon name="trash" size={80} c="background_surface-brand-subtle" />
       <EmptyStateTitle>{t`Nothing here`}</EmptyStateTitle>
       <EmptyStateSubtitle>
         {t`Deleted items will appear here.`}

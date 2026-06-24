@@ -180,7 +180,7 @@ function NewTransformPageBody({
         />
         <Box
           w="100%"
-          bg="background-primary"
+          bg="background_page-primary"
           bdrs="md"
           bd="1px solid var(--mb-color-border-neutral)"
           flex={1}

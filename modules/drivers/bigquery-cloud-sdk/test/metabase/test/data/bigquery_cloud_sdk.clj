@@ -94,6 +94,9 @@
          :dataset-filters-patterns (test-dataset-id db-def)
          :include-user-id-and-hash true))
 
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :test/dynamic-dataset-loading]
+  [_driver _feature _database] false)
+
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
 (mu/defmethod sql.tx/qualified-name-components :bigquery-cloud-sdk

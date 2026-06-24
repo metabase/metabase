@@ -83,7 +83,7 @@ export function ArchivedSnippetsPage() {
         py={0}
       />
       <Stack
-        bg="background-secondary"
+        bg="background_page-secondary"
         data-testid="archived-snippets-page"
         pb="2rem"
         px="3.5rem"

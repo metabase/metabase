@@ -9,7 +9,7 @@ export function TagList({ tags }: TagListProps) {
   return (
     <Group gap="sm">
       {tags.map((tag) => (
-        <Pill key={tag.id} c="text-primary" bg="background-secondary">
+        <Pill key={tag.id} c="text-primary" bg="background_page-secondary">
           {tag.name}
         </Pill>
       ))}

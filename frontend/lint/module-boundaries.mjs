@@ -53,7 +53,7 @@ const elements = [
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
   createElement({ type: "feature", name: "browse" }),
-  createElement({ type: "shared", name: "collections" }),
+  createElement({ type: "feature", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
   createElement({ type: "shared", name: "common" }),
   createElement({
@@ -65,7 +65,6 @@ const elements = [
   createElement({ type: "shared", name: "data-studio" }),
   createElement({ type: "shared", name: "databases" }),
   createElement({ type: "shared", name: "detail-view" }),
-  createElement({ type: "shared", name: "documents" }),
   createElement({
     type: "shared",
     name: "embed",
@@ -155,6 +154,7 @@ const elements = [
   // feature
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
+  createElement({ type: "feature", name: "documents" }),
   createElement({
     type: "feature",
     name: "enterprise",

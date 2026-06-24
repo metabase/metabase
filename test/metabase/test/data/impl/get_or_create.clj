@@ -445,8 +445,12 @@
     (load-dataset-data-if-needed! driver database-definition)
     (create-and-sync-Database! driver database-definition)
     (catch Throwable e
-      (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
-      (tx/destroy-db! driver database-definition)
+      ;; Destroying the DB when there's a failure loading and syncing is fine
+      ;; for most DBs, but for cloud databases it makes things worse.
+      (when (driver/database-supports? driver :test/dynamic-dataset-loading nil)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
+        (tx/destroy-db! driver database-definition))
       (throw e))))
 
 (defn- create-database-with-bound-settings! [driver dbdef]

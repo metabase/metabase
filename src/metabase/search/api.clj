@@ -16,11 +16,13 @@
    [metabase.search.task.search-index :as task.search-index]
    [metabase.task.core :as task]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response]))
+   [ring.util.response :as response]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -157,6 +159,93 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
+(def ^:private search-request-schema
+  "Query-parameter schema shared by `GET /api/search` and `GET /api/search/debug`."
+  [:map
+   [:q                                   {:optional true} [:maybe :string]]
+   ;; no `:optional true`: default-value-transformer skips defaults for absent optional keys, so it's
+   ;; what makes `:default :api` actually apply when the param is omitted
+   [:context                             {:default :api} search.config/Context]
+   [:archived                            {:default false} [:maybe :boolean]]
+   [:collection                          {:optional true} [:maybe ms/PositiveInt]]
+   [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]
+   [:models                              {:optional true} [:maybe (ms/QueryVectorOf search/SearchableModel)]]
+   [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
+   [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
+   [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+   [:display_type                        {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
+   [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
+   [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+   [:model_ancestors                     {:default false} [:maybe :boolean]]
+   [:search_engine                       {:optional true} [:maybe string?]]
+   [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
+   [:search_native_query                 {:optional true} [:maybe :boolean]]
+   [:verified                            {:optional true} [:maybe true?]]
+   [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+   [:calculate_available_models          {:optional true} [:maybe true?]]
+   [:include_dashboard_questions         {:default false} [:maybe :boolean]]
+   [:include_metadata                    {:default false} [:maybe :boolean]]
+   [:non_temporal_dim_ids                {:optional true} [:maybe ms/NonBlankString]]
+   [:has_temporal_dim                    {:optional true} [:maybe :boolean]]])
+
+(def ^:private search-debug-request-schema
+  (conj search-request-schema
+        [:expected_result_type                   search/SearchableModel]
+        [:expected_result_id                     ms/PositiveInt]
+        [:for_user_id          {:optional true} [:maybe ms/PositiveInt]]))
+
+(defn- params->search-context
+  "Build a search context from the raw `GET /api/search` query params. Shared by the search and debug endpoints."
+  [{:keys                               [q context archived models verified ids]
+    calculate-available-models          :calculate_available_models
+    collection                          :collection
+    created-at                          :created_at
+    created-by                          :created_by
+    filter-items-in-personal-collection :filter_items_in_personal_collection
+    display-type                        :display_type
+    include-dashboard-questions         :include_dashboard_questions
+    last-edited-at                      :last_edited_at
+    last-edited-by                      :last_edited_by
+    model-ancestors                     :model_ancestors
+    search-engine                       :search_engine
+    vector-search-strategy              :vector_search_strategy
+    search-native-query                 :search_native_query
+    table-db-id                         :table_db_id
+    include-metadata                    :include_metadata
+    non-temporal-dim-ids                :non_temporal_dim_ids
+    has-temporal-dim                    :has_temporal_dim}]
+  (search/search-context
+   {:archived                            archived
+    :collection                          collection
+    :context                             context
+    :created-at                          created-at
+    :created-by                          (set created-by)
+    :current-user-id                     api/*current-user-id*
+    :is-impersonated-user?               (perms/impersonated-user?)
+    :is-sandboxed-user?                  (perms/sandboxed-user?)
+    :is-superuser?                       api/*is-superuser?*
+    :current-user-perms                  @api/*current-user-permissions-set*
+    :filter-items-in-personal-collection filter-items-in-personal-collection
+    :last-edited-at                      last-edited-at
+    :last-edited-by                      (set last-edited-by)
+    :limit                               (request/limit)
+    :model-ancestors?                    model-ancestors
+    :models                              (not-empty (set models))
+    :offset                              (request/offset)
+    :search-engine                       search-engine
+    :vector-search-strategy              vector-search-strategy
+    :search-native-query                 search-native-query
+    :search-string                       (some-> q str/trim not-empty)
+    :table-db-id                         table-db-id
+    :verified                            verified
+    :ids                                 (set ids)
+    :calculate-available-models?         calculate-available-models
+    :include-dashboard-questions?        include-dashboard-questions
+    :include-metadata?                   include-metadata
+    :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
+    :has-temporal-dim                    has-temporal-dim
+    :display-type                        (set display-type)}))
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
@@ -191,84 +280,10 @@
 
   A search query that has both filters applied will only return models and cards."
   [_route-params
-   {:keys                               [q context archived models verified ids]
-    calculate-available-models          :calculate_available_models
-    collection                          :collection
-    created-at                          :created_at
-    created-by                          :created_by
-    filter-items-in-personal-collection :filter_items_in_personal_collection
-    display-type                        :display_type
-    include-dashboard-questions         :include_dashboard_questions
-    last-edited-at                      :last_edited_at
-    last-edited-by                      :last_edited_by
-    model-ancestors                     :model_ancestors
-    search-engine                       :search_engine
-    vector-search-strategy              :vector_search_strategy
-    search-native-query                 :search_native_query
-    table-db-id                         :table_db_id
-    include-metadata                    :include_metadata
-    non-temporal-dim-ids                :non_temporal_dim_ids
-    has-temporal-dim                    :has_temporal_dim}
-   :- [:map
-       [:q                                   {:optional true} [:maybe :string]]
-       ;; no `:optional true`: default-value-transformer skips defaults for absent optional keys, so it's
-       ;; what makes `:default :api` actually apply when the param is omitted
-       [:context                             {:default :api} search.config/Context]
-       [:archived                            {:default false} [:maybe :boolean]]
-       [:collection                          {:optional true} [:maybe ms/PositiveInt]]
-       [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]
-       [:models                              {:optional true} [:maybe (ms/QueryVectorOf search/SearchableModel)]]
-       [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
-       [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
-       [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-       [:display_type                        {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
-       [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
-       [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-       [:model_ancestors                     {:default false} [:maybe :boolean]]
-       [:search_engine                       {:optional true} [:maybe string?]]
-       [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
-       [:search_native_query                 {:optional true} [:maybe :boolean]]
-       [:verified                            {:optional true} [:maybe true?]]
-       [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-       [:calculate_available_models          {:optional true} [:maybe true?]]
-       [:include_dashboard_questions         {:default false} [:maybe :boolean]]
-       [:include_metadata                    {:default false} [:maybe :boolean]]
-       [:non_temporal_dim_ids                {:optional true} [:maybe ms/NonBlankString]]
-       [:has_temporal_dim                    {:optional true} [:maybe :boolean]]]]
+   query-params :- search-request-schema]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
-    (u/prog1 (search/search
-              (search/search-context
-               {:archived                            archived
-                :collection                          collection
-                :context                             context
-                :created-at                          created-at
-                :created-by                          (set created-by)
-                :current-user-id                     api/*current-user-id*
-                :is-impersonated-user?               (perms/impersonated-user?)
-                :is-sandboxed-user?                  (perms/sandboxed-user?)
-                :is-superuser?                       api/*is-superuser?*
-                :current-user-perms                  @api/*current-user-permissions-set*
-                :filter-items-in-personal-collection filter-items-in-personal-collection
-                :last-edited-at                      last-edited-at
-                :last-edited-by                      (set last-edited-by)
-                :limit                               (request/limit)
-                :model-ancestors?                    model-ancestors
-                :models                              (not-empty (set models))
-                :offset                              (request/offset)
-                :search-engine                       search-engine
-                :vector-search-strategy              vector-search-strategy
-                :search-native-query                 search-native-query
-                :search-string                       (some-> q str/trim not-empty)
-                :table-db-id                         table-db-id
-                :verified                            verified
-                :ids                                 (set ids)
-                :calculate-available-models?         calculate-available-models
-                :include-dashboard-questions?        include-dashboard-questions
-                :include-metadata?                   include-metadata
-                :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
-                :has-temporal-dim                    has-temporal-dim
-                :display-type                        (set display-type)}))
+    (u/prog1 (search/search (params->search-context query-params))
       (analytics/inc! :metabase-search/response-ok)
       (analytics/observe! :metabase-search/response-results (:total <>)))
     (catch Exception e
@@ -276,6 +291,35 @@
         (when (or (not status-code) (= 5 (quot status-code 100)))
           (analytics/inc! :metabase-search/response-error)))
       (throw e))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/debug"
+  "Superuser-only. Explain why `expected_result_id` / `expected_result_type` does not appear in the results of
+  the given search query. Accepts every `GET /api/search` parameter plus the two expected-result parameters, and
+  returns `{:type ..., :details ...}` for the first stage that drops the item: `not-searchable`,
+  `missing-from-index`, `not-permitted`, `filtered`, `not-matching`, or the terminal `matched` / `ranked-out`.
+
+  - `for_user_id`: diagnose from another user's perspective (defaults to you). Permission and visibility checks run
+    as that user, so a `not-permitted` result means *they* can't see the item.
+
+  Not supported for `indexed-entity` (its id is compound)."
+  [_route-params
+   {expected-result-type :expected_result_type
+    expected-result-id   :expected_result_id
+    for-user-id          :for_user_id
+    :as                  query-params} :- search-debug-request-schema]
+  (api/check-superuser)
+  (api/check-valid-page-params (request/limit) (request/offset))
+  (when (= "indexed-entity" expected-result-type)
+    (throw (ex-info (tru "Search debug is not supported for the indexed-entity model.") {:status-code 400})))
+  (letfn [(diagnose [] (search/diagnose (params->search-context query-params)
+                                        expected-result-type expected-result-id))]
+    (if (and for-user-id (not= for-user-id api/*current-user-id*))
+      ;; Build the context and run every permission/visibility check from the target user's perspective.
+      (do (api/check-404 (t2/exists? :model/User :id for-user-id))
+          (request/with-current-user for-user-id (diagnose)))
+      (diagnose))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/search` routes."

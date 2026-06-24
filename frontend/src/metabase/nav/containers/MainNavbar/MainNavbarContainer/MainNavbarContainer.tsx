@@ -9,15 +9,15 @@ import {
   useListDatabasesQuery,
   useReorderBookmarksMutation,
 } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import type { CollectionTreeItem } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import CreateCollectionModal from "metabase/common/collections/containers/CreateCollectionModal";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
   currentUserPersonalCollections,
   getCollectionIcon,
   nonPersonalOrArchivedCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { logout } from "metabase/redux/auth";
