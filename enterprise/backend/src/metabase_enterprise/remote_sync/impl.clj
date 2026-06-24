@@ -779,18 +779,21 @@
   [{:keys [eid file-exists? file-eid]}]
   (or (not file-exists?) (= eid file-eid)))
 
-(defn- repo-file-info
-  "Read the existing repo file at `path` and report it as path-free? info: `{:eid :file-exists? :file-eid}`."
+(defn- entity-path-info
+  "Info for deciding where an entity goes: `{:eid :new-path :file-exists? :file-eid}` — the entity's id, its
+  target `path`, and whether a file is already there (`:file-eid` is that file's entity_id, nil if absent or
+  unreadable)."
   [snapshot path eid]
   (let [content (source.p/read-file snapshot path)]
     {:eid          eid
+     :new-path     path
      :file-exists? (boolean content)
      :file-eid     (when content (try (:entity_id (yaml/parse-string content))
                                       (catch Exception _ nil)))}))
 
 (defn- dependency->incremental-export-plan [snapshot opts [row entity]]
   (let [path (source/entity->path opts entity)]
-    (if (path-free? (repo-file-info snapshot path (:entity_id entity)))
+    (if (path-free? (entity-path-info snapshot path (:entity_id entity)))
       {:writes [(assoc row :file_path path)]}
       :remote-sync/incremental-not-possible)))
 
@@ -890,22 +893,13 @@
    - :remote-sync/incremental-not-possible when the chunk can't be synced
    - {:writes :delete-paths :removed-ids :pull}"
   [snapshot opts chunk]
-  ;; extracting/serializing an entity or reading the existing repo file can throw — treat any such failure
-  ;; as a chunk that can't go incrementally, so the batch falls back to a full export
-  (try
-    (let [rows  (:rows chunk)
-          found (extract-chunk chunk)]
-      (if (< (count found) (count rows))
-        :remote-sync/incremental-not-possible               ; extract-chunk omits gone entities; some row is unsyncable
-        (reduce (fn [frag [row entity]]
-                  (let [new-path (source/entity->path opts entity)
-                        info     (assoc (repo-file-info snapshot new-path (:entity_id entity)) :new-path new-path)
-                        updates  (row->incremental-export-plan row info)]
-                    (merge-incremental-export-plans-reducer frag updates)))
-                {:writes [] :delete-paths [] :removed-ids [] :pull #{}}
-                found)))
-    (catch Exception _
-      :remote-sync/incremental-not-possible)))
+  (let [found (extract-chunk chunk)]
+    (if (< (count found) (count (:rows chunk)))
+      :remote-sync/incremental-not-possible ; extract-chunk omits gone entities; some row is unsyncable
+      (->> found
+           (map (fn [[row entity]]
+                  (row->incremental-export-plan row (entity-path-info snapshot (source/entity->path opts entity) (:entity_id entity)))))
+           (reduce merge-incremental-export-plans-reducer {})))))
 
 (defn- incremental-export-plan
   "Validate `rows` (`RemoteSyncObject`s) and build an incremental export plan, one chunk at a time.
@@ -999,9 +993,11 @@
       (t2/delete! :model/RemoteSyncObject :id [:in gone]))))
 
 (defn- full-export!
-  "Re-serialize and commit the entire remote-synced set, then reconcile every RemoteSyncObject row to synced
-  (recording file_path/content_hash for the exported entities) and drop tracking rows for entity-id entities
-  that left the set. Throws if there is no remote-syncable content. Returns {:status :success}."
+  "Re-serialize and commit the entire remote-synced set, then reconcile every RemoteSyncObject.
+
+  Returns:
+   - {:status :success}
+   or throws"
   [snapshot task-id message sync-timestamp]
   (let [targets (spec/export-targets)]
     (when (empty? targets)
@@ -1048,9 +1044,8 @@
     against any path that mutates the setting between scheduling and the work running).
 
   Takes the incremental fast-path when every pending change can be applied incrementally (see
-  `incremental-plan` — creates, in-place updates, renames, and deletes of entity-id models). Otherwise does a
-  full export: re-serializes the entire synced set, writes it, marks all RemoteSyncObject rows synced,
-  and records each entity's `file_path` so future renames/deletes can go incremental.
+  `incremental-export-plan). Otherwise does a full export: re-serializes the entire synced set, writes it, marks all
+  RemoteSyncObject rows synced, and records each entity's `file_path` so future renames/deletes can go incremental.
 
   Behavior when the remote branch has advanced beyond the last sync:
   - `force?`           -> overwrite the remote wholesale (full re-serialize).
