@@ -9,7 +9,7 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 
 **Data apps are served from Git, not uploaded.** A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<app>/` inside that repo — its source, a `data_app.yml` (name/slug/path), and the committed built bundle at the `path` its `data_app.yml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes one app per directory and serves it at `/data-app/<slug>`. So this skill always scaffolds **into the connected repo's `data_apps/<app>/` directory**, never as a standalone project.
 
-**The scaffold itself lives in a separate GitHub repo: [`metabase/data-app-template`](https://github.com/metabase/data-app-template).** This skill copies that template into the app directory and then guides the agent through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/index.tsx`, or `src/dev.tsx` by hand, stop — copy the template instead.
+**The scaffold ships inside this skill at `./template/`** — a Vite + React + TypeScript project that was installed alongside the skill. Step 3 just copies it into the app directory; the skill then guides you through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/index.tsx`, or `src/dev.tsx` by hand, stop — copy the template instead.
 
 ## When to invoke this skill
 
@@ -51,13 +51,16 @@ Never overwrite existing files without explicit confirmation.
 
 ## Step 3 — Copy the template into the app directory
 
-Copy [`metabase/data-app-template`](https://github.com/metabase/data-app-template) into the app directory with **`degit` — files only, no nested `.git`, no separate remote** — so the app becomes part of the remote-sync repo:
+The template ships **inside this skill** at `./template/` (installed alongside the skill via `skills add metabase/metabase/skills#release-x.<major>.x`). Copy it into the app directory:
 
 ```bash
-npx degit metabase/data-app-template <repo>/data_apps/<slug>
+APP_DIR="<repo>/data_apps/<slug>"
+# `<skill-dir>` = the directory this SKILL.md was loaded from
+# (e.g. `.claude/skills/create-data-app`); the template is its `template/` subfolder.
+cp -R "<skill-dir>/template/." "$APP_DIR/"
 ```
 
-Do **not** use `gh repo create --template` or `git clone` here — a data app is a *subdirectory* of the remote-sync repo, not its own repository. Everything below runs **inside `<repo>/data_apps/<slug>/`**.
+A data app is a *subdirectory* of the remote-sync repo, not its own repository — so this is a plain copy, never a nested `git clone` / `git init`. Everything below runs **inside `$APP_DIR`**.
 
 ## Step 4 — Customize
 
