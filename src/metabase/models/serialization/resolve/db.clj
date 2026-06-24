@@ -6,6 +6,7 @@
   (:require
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -165,7 +166,9 @@
   "A stateless database-backed import resolver that returns nil for an unresolvable FK instead of throwing."
   (reify resolve/SerdesImportResolver
     (resolve/import-fk       [_ eid model]            (try (resolve/import-fk default-import-resolver eid model)
-                                                           (catch ExceptionInfo _ nil)))
+                                                           (catch ExceptionInfo e
+                                                             (log/warn e "Failed to import FK")
+                                                             nil)))
     (resolve/import-fk-keyed [_ portable model field] (resolve/import-fk-keyed default-import-resolver portable model field))
     (resolve/import-user     [_ email]                (resolve/import-user default-import-resolver email))
     (resolve/import-table-fk [_ path]                 (resolve/import-table-fk default-import-resolver path))
