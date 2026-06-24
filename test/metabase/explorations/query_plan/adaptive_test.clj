@@ -63,12 +63,12 @@
 
 (deftest depth-1-matrix-parity-test
   (testing "the adaptive planner's output is identical to the mechanical planner's"
-    (let [groups [{:group-id 1
+    (let [groups [{:group-id 1 :type "metric"
                    :metrics  [(metric-with-dims 10 {"a" (text-dim "a" 8)            ; default
                                                     "b" (text-dim "b" 500)          ; top-n-other
                                                     "d" (datetime-dim "d")          ; temporal patterns
                                                     "n" (numeric-dim "n")} true)]}  ; metric temporal → facet
-                  {:group-id 2
+                  {:group-id 2 :type "metric"
                    :metrics  [(metric-with-dims 20 {"x" (text-dim "x" 12)})
                               (metric-with-dims 21 {"y" (text-dim "y" 30)})]}]]
       (is (= (plan-via qp.mech/planner groups)
@@ -76,7 +76,7 @@
 
 (deftest skip-when-empty-test
   (testing "no applicable pairs → :skip-not-applicable (matches mechanical's soft exit)"
-    (let [groups [{:group-id 1 :metrics [(metric-with-dims 1 {})]}]]
+    (let [groups [{:group-id 1 :type "metric" :metrics [(metric-with-dims 1 {})]}]]
       (is (= :skip-not-applicable
              (:outcome (planner/plan! qp.adaptive/planner {:metric-dim-ctx {:groups groups}})))))))
 
@@ -618,12 +618,12 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest anchor-type-test
-  (testing "explicit :type wins"
-    (is (= :metric    (qp.adaptive/anchor-type {:type "metric"    :metrics [1 2]})))
-    (is (= :dimension (qp.adaptive/anchor-type {:type "dimension" :metrics [1]}))))
-  (testing "missing :type is inferred from metric count (>1 metric ⇒ dimension-anchored)"
-    (is (= :metric    (qp.adaptive/anchor-type {:metrics [1]})))
-    (is (= :dimension (qp.adaptive/anchor-type {:metrics [1 2 3]})))))
+  (testing "anchor type is read from the persisted :type"
+    (is (= :metric    (qp.adaptive/anchor-type {:type "metric"})))
+    (is (= :dimension (qp.adaptive/anchor-type {:type "dimension"}))))
+  (testing "a missing / unrecognized :type throws (legacy type-less groups unsupported)"
+    (is (thrown? clojure.lang.ExceptionInfo (qp.adaptive/anchor-type {:type nil})))
+    (is (thrown? clojure.lang.ExceptionInfo (qp.adaptive/anchor-type {})))))
 
 (deftest config-centralized-test
   (testing "all tunables live in one config map"

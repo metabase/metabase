@@ -149,12 +149,13 @@
   (let [enriched-groups (enrich-group-dimensions groups card-dim-by-id)
         ;; Label queries first so group-tree can name metric-anchored leaves "By <dimension>".
         labeled         (attach-query-dimension-labels thread enriched-groups card-dim-by-id)
-        ;; group-tree reads the *unsuffixed* names (its leaf-name fallback), so compute it
-        ;; before appending the drill context to each query's title.
+        ;; Build the tree BEFORE suffixing the query names. group-tree's leaf naming reads
+        ;; the query `:name` and then appends the drill suffix itself (in `leaf-node`); if we
+        ;; suffixed the query names first, the leaf would get the suffix twice. So: tree from
+        ;; the bare names here, then suffix the query `:name`s (the chart titles) below.
         tree            (explorations.groups/group-tree
                          enriched-groups (:queries labeled) card-name-by-id)
-        dim-labels      (into {} (map (juxt :dimension_id (some-fn :display_name :dimension_id)))
-                              (mapcat :dimensions enriched-groups))]
+        dim-labels      (explorations.groups/dimension-id->display-label (mapcat :dimensions enriched-groups))]
     (-> labeled
         (update :queries
                 (fn [qs]

@@ -25,24 +25,26 @@
   (not-empty (get-in query [:params :filter_path])))
 
 (defn filter-path-key
-  "A short stable encoding of a query's filter path, or nil when undrilled. Lets the
-   read tree separate adaptive-loop survivors that share a `(card, dim)` but drill to
-   different filter paths (`State = TX ∧ Source = Google` vs `… ∧ Twitter`); survivors
-   on the *same* path (a drill's temporal variants) collapse to the same key. Undrilled
-   queries return nil so their `leaf-id` is unchanged."
+  "The grouping key for a query's filter path — the vector of `[dimension_id value]`
+   steps, or nil when undrilled. Lets the read tree separate adaptive-loop survivors
+   that share a `(card, dim)` but drill to different filter paths
+   (`State = TX ∧ Source = Google` vs `… ∧ Twitter`); survivors on the *same* path
+   (a drill's temporal variants) collapse to the same key. Undrilled queries return
+   nil so their `leaf-id` is unchanged. A plain value — used directly as a `group-by`
+   key; it is hashed into a token only inside `leaf-id`, where a string id is needed."
   [query]
-  (when-let [fp (filter-path query)]
-    (Integer/toHexString (hash (mapv (juxt :dimension_id :value) fp)))))
+  (some->> (filter-path query) (mapv (juxt :dimension_id :value))))
 
-(defn leaf-id
-  "Stable leaf id derived from `[group-id card-id dim-id]`, plus an optional
-   `filter-path-key` so drilled survivors at the same `(card, dim)` get distinct leaves.
-   Treated as opaque by the FE; the group-id component keeps it unique when the same
-   (card, dim) appears in two groups. Public so deep-link builders (see
-   [[chart-page-url]]) use the same scheme the read tree emits and routes on."
+(defn- leaf-id
+  "Stable, opaque leaf id derived from `[group-id card-id dim-id]`, plus an optional
+   `fp-key` (a query's `filter-path-key`) so drilled survivors at the same
+   `(card, dim)` get distinct leaves. The group-id component keeps it unique when the
+   same (card, dim) appears in two groups. Opaque to the FE; the public deep-link
+   surface is [[chart-page-url]]."
   ([group-id card-id dim-id] (leaf-id group-id card-id dim-id nil))
   ([group-id card-id dim-id fp-key]
-   (str "auto:" group-id ":" card-id ":" dim-id (when fp-key (str ":" fp-key)))))
+   (str "auto:" group-id ":" card-id ":" dim-id
+        (when fp-key (str ":" (Integer/toHexString (hash fp-key)))))))
 
 (defn chart-page-url
   "Relative URL of a chart's leaf page in the exploration detail view, scoped to the group
@@ -64,11 +66,12 @@
   (let [base (some #(when (nil? (:segment_id %)) %) queries)]
     (or (:name base) (:name (first queries)))))
 
-(defn- dim-label-by-id
-  "Map a group's dimension ids to their display labels, for resolving filter-path steps."
-  [group]
-  (into {} (map (juxt :dimension_id (some-fn :display_name :dimension_id)))
-        (:dimensions group)))
+(defn dimension-id->display-label
+  "Map `dimension_id` → display label (display name, falling back to the raw id) for a
+   seq of dimension snapshots. Shared by the read-tree leaf naming and the API
+   query-title suffixing so the fallback lives in exactly one place."
+  [dims]
+  (into {} (map (juxt :dimension_id (some-fn :display_name :dimension_id))) dims))
 
 (defn filter-path-suffix
   "A human label for a query's filter path — e.g. `\" (State = TX, Source = Google)\"` — or
@@ -218,7 +221,7 @@
         rows-by-group (group-by :group_id queries)
         depth-first   (mapcat
                        (fn [group]
-                         (let [labels (dim-label-by-id group)
+                         (let [labels (dimension-id->display-label (:dimensions group))
                                leaves (->> (get rows-by-group (:id group) [])
                                            (group-by (juxt :card_id :dimension_id filter-path-key))
                                            (map (fn [[k qs]] (leaf-node group k qs card-name-by-id labels)))

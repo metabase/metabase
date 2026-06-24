@@ -43,6 +43,16 @@
     (dim-type-isa? dim :type/Number)     [:binning {:strategy :default}]
     :else                                nil))
 
+(defn categorical-dim?
+  "True when `dim` breaks out into discrete categories — i.e. it is neither
+  temporal nor numeric (the two type families [[default-bucket-for-dim]] would
+  bucket). String / boolean / enum / categorical-semantic dims. Asks the type
+  question directly (via `lib-metric/type-isa?`) rather than inferring it from
+  whether a default bucket exists."
+  [dim]
+  (not (or (dim-type-isa? dim :type/Temporal)
+           (dim-type-isa? dim :type/Number))))
+
 (def default-binning-max-bins
   "Upper bound on how many bars Metabase's `:default` binning strategy
   produces on the chart. The actual number depends on the column's min/max

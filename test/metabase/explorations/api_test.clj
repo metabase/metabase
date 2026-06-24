@@ -1532,7 +1532,7 @@
            (explorations.groups/chart-page-url 7 9 42 "orders.created_at")))
     (testing "the encoded segment decodes back to the FE-routed leaf id"
       (is (= "auto:9:42:orders.created_at"
-             (explorations.groups/leaf-id 9 42 "orders.created_at"))))))
+             (#'explorations.groups/leaf-id 9 42 "orders.created_at"))))))
 
 (deftest ^:parallel append-chart-nodes-test
   (testing "append-chart-nodes appends a single resizeNode-wrapped cardEmbed (no link paragraph) carrying the chart-href on the node — the FE turns the card title into a link to that URL"

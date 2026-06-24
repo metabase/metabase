@@ -27,14 +27,13 @@
 
 (defn anchor-type
   "Whether `group` (a `metric-and-dim-context` group entry) is anchored on its
-  metric or its dimension. Prefers the persisted `:type`; legacy groups without
-  one are inferred — a dimension-anchored group is the only shape with more than
-  one metric (mirrors `explorations.groups/dimension-anchored?`)."
-  [{:keys [type metrics]}]
-  (case (some-> type name)
+  metric or its dimension, read from the persisted `:type`."
+  [{:keys [type]}]
+  (case type
     "dimension" :dimension
     "metric"    :metric
-    (if (> (count metrics) 1) :dimension :metric)))
+    (throw (ex-info "Exploration group has no recognized anchor :type"
+                    {:type type}))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Candidate categorical dimensions
@@ -43,17 +42,16 @@
 (defn candidate-categorical-dims
   "Categorical dimensions the loop may split `metric-ctx`'s subject metric on:
   the metric's applicable dims (already resolved against the Card via
-  `qp.context` `applicability`) that have **no default bucket**
-  (`default-bucket-for-dim` = nil — i.e. not temporal, not binnable-numeric).
-  No cardinality cap — head-concentrated high-cardinality categoricals are
-  exactly the splits we want; the long tail is handled by the split-gain scorer
-  and min-support, not by exclusion.
+  `qp.context` `applicability`) that are categorical — neither temporal nor
+  numeric (`qp.mbql/categorical-dim?`). No cardinality cap — head-concentrated
+  high-cardinality categoricals are exactly the splits we want; the long tail is
+  handled by the split-gain scorer and min-support, not by exclusion.
 
   Returns a vector of `{:dimension-id :target :dim}`."
   [metric-ctx]
   (into []
         (keep (fn [[dim-id {:keys [target dim]}]]
-                (when (nil? (qp.mbql/default-bucket-for-dim dim))
+                (when (qp.mbql/categorical-dim? dim)
                   {:dimension-id dim-id :target target :dim dim})))
         (:applicability metric-ctx)))
 
@@ -61,11 +59,11 @@
 ;;; Centralized, tunable configuration
 ;;;
 ;;; One map of plain constants — algorithm knobs, not per-instance operational
-;;; settings. Grown per slice; tuned once on saasy (Issue 8) and then frozen.
+;;; settings (tuned on real datasets, then frozen); not `defsetting`s.
 ;;; ---------------------------------------------------------------------------
 
 (def config
-  "Tunable parameters of the adaptive search (grown per slice).
+  "Tunable parameters of the adaptive search.
 
   - `:min-split-gain` — the `split-gain` floor justifying a descent, tuned for
     the per-df effect-size scale (`sqrt(ε²/(k−1))`, ~Cramér's V): real effects
@@ -162,7 +160,7 @@
                                  cells)]
      (if (empty? eligible)
        []
-       (let [mean (/ (reduce + 0.0 (map :metric eligible)) (clojure.core/count eligible))]
+       (let [mean (/ (reduce + 0.0 (map :metric eligible)) (count eligible))]
          (->> eligible
               (sort-by (juxt #(- (Math/abs (double (- (:metric %) mean))))
                              #(str (:value %))))
@@ -308,7 +306,7 @@
   (let [cells (filterv (fn [{:keys [metric count]}]
                          (and (number? metric) (number? count) (pos? count)))
                        cells)
-        k     (clojure.core/count cells)]
+        k     (count cells)]
     (if (<= k 1)
       0.0
       (let [supports   (mapv (comp double :count) cells)
@@ -441,7 +439,7 @@
   distinct `:lib/uuid`s."
   [query]
   (when-let [agg (first (lib/aggregations query))]
-    (when (and (#{:sum :avg} (first agg)) (= 3 (clojure.core/count agg)))
+    (when (and (#{:sum :avg} (first agg)) (= 3 (count agg)))
       (when-let [col (lib/find-matching-column (nth agg 2) (lib/visible-columns query))]
         (if (= :sum (first agg))
           {:aggs [(lib/avg col) (lib/var col)] :mean? true}
@@ -499,14 +497,15 @@
 ;;; Survivor emission (rich rendering via the construction catalog)
 ;;; ---------------------------------------------------------------------------
 
-(defn- emit-survivor
-  "Emit a survivor for `(metric-ctx, dim)` at `filter-path` as plan items via the
+(defn- survivor-items
+  "Build the plan items for a survivor `(metric-ctx, dim)` at `filter-path` via the
   shared `items-for-pair` construction catalog (rich variant set — `default` /
   `top-n-other` / temporal patterns / `time-facet` / transforms where eligible),
-  stamped with `group-id` and the accumulating filter path. The path is stored as
-  `{:dimension_id :value}` pairs in `:params` — the runner resolves each
-  dimension_id's target from the metric's mappings and applies it (so the
-  persisted query carries its filters)."
+  stamped with `group-id` and the accumulating filter path. **Returns** the items;
+  it does not insert anything — the caller collects them and the orchestrator
+  materializes them into rows. The path is stored as `{:dimension_id :value}` pairs
+  in `:params`; the runner resolves each dimension_id's target from the metric's
+  mappings and applies it (so the persisted query carries its filters)."
   [group-id metric-ctx dim filter-path]
   (let [stored-path (mapv (fn [{:keys [dimension-id value]}]
                             {:dimension_id dimension-id :value value})
@@ -535,24 +534,6 @@
                     (number? (:variance c))   (update :variance   #(/ (double %) (* scale scale)))))
           cells)))
 
-(defn- applicable-dims
-  "All of `metric-ctx`'s applicable dims as `{:dimension-id :target :dim}`."
-  [metric-ctx]
-  (into [] (map (fn [[dim-id {:keys [target dim]}]]
-                  {:dimension-id dim-id :target target :dim dim}))
-        (:applicability metric-ctx)))
-
-(defn- fallback-dim
-  "When a metric has no candidate categorical dim, guarantee output by surfacing
-  its best available applicable dim — preferring a temporal one (→ metric over
-  time). Returns a `{:dimension-id :target :dim}` candidate or nil when the
-  metric has no applicable dim at all (then it can't be charted by breakout, and
-  is skipped, as the mechanical planner also does)."
-  [metric-ctx]
-  (let [dims (applicable-dims metric-ctx)]
-    (or (first (filter #(qp.mbql/dim-type-isa? (:dim %) :type/Temporal) dims))
-        (first dims))))
-
 (defn- remaining-candidates
   "Candidate categorical dims for `metric-ctx` not already consumed by the
   `filter-path` (you cannot re-split on a dim you have already filtered) and not a
@@ -568,11 +549,12 @@
 
 (defn- measure-node
   "Build and measure the node `(metric-ctx, filter-path)` at `depth`: measure each
-  candidate split (or the single `forced` one), pick the best by **split-gain**,
-  and fall back to a guaranteed split when nothing categorical is measurable. Rate
-  cells are de-scaled to proportions once per node (the metric's kind/scale are
+  candidate split (or the single `forced` one) and pick the best by **split-gain**.
+  Rate cells are de-scaled to proportions once per node (the metric's kind/scale are
   constant across its candidates). Returns `{:node {...} :cost <executions>}`
-  (cost = candidates measured) or nil when the metric can't be charted at all."
+  (cost = candidates measured), or nil when there is no categorical split to descend
+  — the metric is still surfaced by the depth-1 matrix, so there is nothing to
+  guarantee here."
   [group-id metric-ctx filter-path depth forced]
   (let [aggs       (metric-aggregations metric-ctx)
         kind       (metric-kind aggs)
@@ -590,14 +572,7 @@
                      (remove #(leakage-artifact? (:cells %) kind) measured))
         chosen     (cond forced        (first measured)
                          (seq eligible) (select-split eligible)
-                         :else          nil)
-        [chosen extra-cost]
-        ;; Fall back to a guaranteed split only when there were no categorical
-        ;; candidates at all (so the metric still surfaces something).
-        (cond chosen        [chosen 0]
-              (seq measured) [nil 0]
-              :else          (when-let [fb (fallback-dim metric-ctx)]
-                               [(measure fb) 1]))]
+                         :else          nil)]
     (when chosen
       {:node {:group-id     group-id
               :metric-ctx   metric-ctx
@@ -606,7 +581,7 @@
               :chosen       chosen
               :gain         (double (:gain chosen))
               :descend-gain (double (descend-gain (:cells chosen) kind))}
-       :cost (+ (count measured) extra-cost)})))
+       :cost (count measured)})))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Governed best-first search
@@ -678,8 +653,8 @@
               ;; depth-1 charts are owned by the full-matrix pass in `plan-group`,
               ;; so a root (empty path) is expand-only — no double-emit, no dedup.
               items+  (if (seq (:filter-path node))
-                        (into items (emit-survivor (:group-id node) (:metric-ctx node)
-                                                   (:dim (:chosen node)) (:filter-path node)))
+                        (into items (survivor-items (:group-id node) (:metric-ctx node)
+                                                    (:dim (:chosen node)) (:filter-path node)))
                         items)
               b-id    (branch-id node)
               expand? (and (>= (:descend-gain node) min-split-gain)
