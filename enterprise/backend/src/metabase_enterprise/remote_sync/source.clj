@@ -40,7 +40,7 @@
   (apply-changes! [_ _message _upserts _delete-paths]
     (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
 
-  (open-commit [_ _opts]
+  (open-commit [_]
     (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
 
   (version [_]
@@ -174,7 +174,7 @@
       (read-file [_ path] (get by-path path))
       (write-files! [_ _ _] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (apply-changes! [_ _ _ _] (throw (ex-info "in-memory merge snapshot is read-only" {})))
-      (open-commit [_ _] (throw (ex-info "in-memory merge snapshot is read-only" {})))
+      (open-commit [_] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (version [_] nil))))
 
 (defn preview-merge

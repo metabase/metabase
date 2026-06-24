@@ -228,19 +228,21 @@ width: fixed
                    (into files (map (juxt :path :content)) write-entries))))))
     "apply-changes-version")
 
-  (open-commit [_this {:keys [replace?]}]
-    (let [upserts (atom [])
-          deletes (atom #{})]
+  (open-commit [_this]
+    (let [upserts      (atom [])
+          deletes      (atom #{})
+          replace-all? (atom false)]
       (reify source.p/CommitBuilder
         (stage-upsert! [_ file-spec] (swap! upserts conj file-spec) nil)
         (stage-delete! [_ path] (swap! deletes conj path) nil)
+        (replace-all! [_] (reset! replace-all? true) nil)
         (finish-commit! [_ _message]
           (case fail-mode
             :write-files-error   (throw (Exception. "Failed to write files"))
             :store-error         (throw (Exception. "Store failed"))
             :apply-changes-error (throw (Exception. "Failed to apply changes"))
             :network-error       (throw (java.net.UnknownHostException. "Remote host not found"))
-            (let [managed (if replace? (set managed-dirs) #{})]
+            (let [managed (if @replace-all? (set managed-dirs) #{})]
               (swap! files-atom update branch
                      (fn [current]
                        (as-> (or current {}) files
@@ -250,7 +252,7 @@ width: fixed
                          (into files (comp (remove #(str/blank? (:path %))) (map (juxt :path :content)))
                                @upserts))))))
           ;; version string discriminates the path the way the old write-files!/apply-changes! did
-          (if replace? "write-files-version" "apply-changes-version"))
+          (if @replace-all? "write-files-version" "apply-changes-version"))
         (abort-commit! [_] nil))))
 
   (version [_this]
@@ -361,14 +363,16 @@ width: fixed
                                                     upserts))]
                             (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
                             new-version))
-                        (open-commit [_ {:keys [replace?]}]
+                        (open-commit [_]
                           (let [staged-upserts (atom [])
-                                staged-deletes (atom #{})]
+                                staged-deletes (atom #{})
+                                replace-all?   (atom false)]
                             (reify source.p/CommitBuilder
                               (stage-upsert! [_ file-spec] (swap! staged-upserts conj file-spec) nil)
                               (stage-delete! [_ path] (swap! staged-deletes conj path) nil)
+                              (replace-all! [_] (reset! replace-all? true) nil)
                               (finish-commit! [_ _message]
-                                (let [replace-dirs (if replace? managed #{}) ; `managed` = (set managed-dirs)
+                                (let [replace-dirs (if @replace-all? managed #{}) ; `managed` = (set managed-dirs)
                                       n            (:counter (swap! state update :counter inc))
                                       new-version (str "written-" n)
                                       tree        (as-> (get-in @state [:trees version] {}) t

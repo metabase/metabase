@@ -77,9 +77,8 @@
 
     Returns the version of the written files.")
 
-  (open-commit [snapshot opts]
-    "Begin building one commit incrementally; returns a CommitBuilder. `opts` may set `:replace?` to clear the
-    managed dirs first (a wholesale replace).")
+  (open-commit [snapshot]
+    "Begin building one commit incrementally; returns a CommitBuilder.")
 
   (version [snapshot]
     "Gets a version identifier for the current state of the snapshot.
@@ -95,6 +94,8 @@
     "Stage one file (a `{:path :content}` map) into the commit. Returns nil.")
   (stage-delete! [commit path]
     "Stage removal of `path` from the commit. Returns nil.")
+  (replace-all! [commit]
+    "Clear the snapshot's managed dirs, so the staged files replace them wholesale. Returns nil.")
   (finish-commit! [commit message]
     "Write the staged tree, commit with `message`, push, and release resources. Returns the new version.")
   (abort-commit! [commit]

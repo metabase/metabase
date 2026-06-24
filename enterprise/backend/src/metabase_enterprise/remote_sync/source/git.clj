@@ -314,6 +314,11 @@
     (.add ^DirCacheEditor editor (DirCacheEditor$DeletePath. ^String path))
     nil)
 
+  (replace-all! [_]
+    (doseq [^String dir (:managed-dirs snapshot)]
+      (.add ^DirCacheEditor editor (DirCacheEditor$DeleteTree. dir)))
+    nil)
+
   (finish-commit! [_ message]
     (.finish ^DirCacheEditor editor)
     (let [^Git git   (:git snapshot)
@@ -341,9 +346,8 @@
     nil))
 
 (defn- open-commit*
-  "Begin a GitCommit against `snapshot`, seeding the in-core index from the parent tree. When `:replace?` is
-  set, first clears the snapshot's managed dirs (a wholesale replace)."
-  [{:keys [^Git git ^String version managed-dirs] :as snapshot} {:keys [replace?]}]
+  "Begin a GitCommit against `snapshot`, seeding the in-core index from the parent tree."
+  [{:keys [^Git git ^String version] :as snapshot}]
   (let [repo      (.getRepository git)
         parent-id (.resolve repo version)
         inserter  (.newObjectInserter repo)
@@ -355,16 +359,12 @@
         (.addTree builder (byte-array 0) DirCacheEntry/STAGE_0 reader
                   (.getTree (.parseCommit rev-walk parent-id))))
       (.finish builder))
-    (let [^DirCacheEditor editor (.editor index)]
-      (when replace?
-        (doseq [^String dir managed-dirs]
-          (.add editor (DirCacheEditor$DeleteTree. dir))))
-      (->GitCommit snapshot inserter reader rev-walk index editor parent-id))))
+    (->GitCommit snapshot inserter reader rev-walk index (.editor index) parent-id)))
 
 (defn- with-staged
   "Open a commit on `snapshot`, run `stage!` (given the CommitBuilder), and finish — or abort on any throw."
-  [snapshot opts ^String message stage!]
-  (let [c (open-commit* snapshot opts)]
+  [snapshot ^String message stage!]
+  (let [c (open-commit* snapshot)]
     (try
       (stage! c)
       (source.p/finish-commit! c message)
@@ -376,13 +376,15 @@
   "Full export: replace every managed dir wholesale with `files` (managed-dir files not in `files` are
   removed), preserving everything outside the managed dirs."
   [snapshot ^String message files]
-  (with-staged snapshot {:replace? true} message
-    (fn [c] (doseq [f files] (source.p/stage-upsert! c f)))))
+  (with-staged snapshot message
+    (fn [c]
+      (source.p/replace-all! c)
+      (doseq [f files] (source.p/stage-upsert! c f)))))
 
 (defn- apply-changes!
   "Incremental patch: write `upserts`, remove `delete-paths`, and preserve every other file."
   [snapshot ^String message upserts delete-paths]
-  (with-staged snapshot {:replace? false} message
+  (with-staged snapshot message
     (fn [c]
       (doseq [u upserts] (source.p/stage-upsert! c u))
       (doseq [p delete-paths] (source.p/stage-delete! c p)))))
@@ -470,8 +472,8 @@
   (apply-changes! [this message upserts delete-paths]
     (apply-changes! this message upserts delete-paths))
 
-  (open-commit [this opts]
-    (open-commit* this opts))
+  (open-commit [this]
+    (open-commit* this))
 
   (version [this]
     (:version this))

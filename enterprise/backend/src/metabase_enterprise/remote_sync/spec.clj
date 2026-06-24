@@ -1157,10 +1157,9 @@
                 (u/traverse collection-ids #(serdes/descendants (first %) (second %) opts))
                 (u/traverse collection-ids #(serdes/required (first %) (second %))))))
 
-(defn export-targets
-  "Resolves what a full export would serialize: a map of {model-name [id ...]} (the export root targets plus
-  their transitive `serdes/descendants`/`required` closure), or `{}` when there is no remote-syncable
-  content."
+(defn exportable-entities
+  "What a full export would serialize: a map of {model-name [id ...]} — the export roots plus their transitive
+  `serdes/descendants`/`required` closure — or `{}` when there is no remote-syncable content."
   []
   (let [root-targets (into []
                            (mapcat query-export-roots)
@@ -1187,7 +1186,7 @@
                    (serdes/extract-all model {:where [:in :id ids]
                                               :skip-archived true})))
             cat
-            (export-targets)))
+            (exportable-entities)))
 
 (defn extract-entities-for-rows
   "Serializes the entities named by `rows`, grouped by model type. Each row is a map with a

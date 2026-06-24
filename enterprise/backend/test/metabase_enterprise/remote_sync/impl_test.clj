@@ -1674,10 +1674,11 @@ serdes/meta:
     (read-file [_ _] nil)
     (write-files! [_ _ _] version)
     (apply-changes! [_ _ _ _] version)
-    (open-commit [_ _]
+    (open-commit [_]
       (reify source.p/CommitBuilder
         (stage-upsert! [_ _] nil)
         (stage-delete! [_ _] nil)
+        (replace-all! [_] nil)
         (finish-commit! [_ _] "written-version")
         (abort-commit! [_] nil)))))
 
@@ -1793,7 +1794,7 @@ serdes/meta:
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (let [merged? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
-                      spec/export-targets              (constantly {"Card" [999999999]})  ; absent id -> empty extraction; routing is what's under test
+                      spec/exportable-entities         (constantly {"Card" [999999999]})  ; absent id -> empty extraction; routing is what's under test
                       source/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :force? true

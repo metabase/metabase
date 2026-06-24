@@ -30,7 +30,7 @@
     (reset! written-files {:message message :files (vec upserts)})
     "mock-written-version")
 
-  (open-commit [_ _opts]
+  (open-commit [_]
     (throw (UnsupportedOperationException. "open-commit not implemented in this test mock")))
 
   (version [_]
@@ -80,7 +80,7 @@
       (apply-changes! [_ message upserts _delete-paths]
         (reset! written {:message message :files (vec upserts)})
         "merged-version")
-      (open-commit [_ _opts]
+      (open-commit [_]
         (throw (UnsupportedOperationException. "open-commit not implemented in this test mock")))
       (version [_] "remote-tip"))))
 
