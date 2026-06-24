@@ -193,30 +193,52 @@
       500 (tru "OpenAI API is not working but not saying why")
       (tru "OpenAI API error (HTTP {0})" status))))
 
+(def ^:private supported-models
+  "OpenAI chat models offered in the Metabot model picker.
+  `list-models` returns the intersection of this set with the account's `/v1/models` catalog."
+  #{"gpt-5.5"
+    "gpt-5.5-pro"
+    "gpt-5.4"
+    "gpt-5.4-pro"
+    "gpt-5.4-mini"
+    "gpt-4.1"
+    "gpt-4.1-mini"})
+
+(defn- supported-model?
+  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
+  [{:keys [id]}]
+  (contains? supported-models id))
+
+(defn- list-all-models
+  "Fetch the full OpenAI model catalog (`GET /v1/models`)."
+  [{:keys [credentials ai-proxy?]}]
+  (when (and credentials (str/blank? (:api-key credentials)))
+    (throw (core/missing-api-key-ex "OpenAI")))
+  (try
+    (let [auth (core/resolve-auth "openai" "OpenAI"
+                                  (when-let [k (or (not-empty (:api-key credentials))
+                                                   (not-empty (llm/llm-openai-api-key)))]
+                                    {:url     (llm/llm-openai-api-base-url)
+                                     :headers {"Authorization" (str "Bearer " k)}})
+                                  ai-proxy?)
+          res  (core/request auth {:method  :get
+                                   :url     "/v1/models"
+                                   :as      :json
+                                   :headers {"Content-Type" "application/json"}})]
+      (get-in res [:body :data]))
+    (catch Exception e
+      (core/rethrow-api-error! "openai" openai-error-msg e))))
+
 (defn list-models
-  "List available OpenAI models.
+  "List the OpenAI chat models supported by this adapter (see [[supported-models]]).
   No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy?]}]
-   (when (and credentials (str/blank? (:api-key credentials)))
-     (throw (core/missing-api-key-ex "OpenAI")))
-   (try
-     (let [auth (core/resolve-auth "openai" "OpenAI"
-                                   (when-let [k (or (not-empty (:api-key credentials))
-                                                    (not-empty (llm/llm-openai-api-key)))]
-                                     {:url     (llm/llm-openai-api-base-url)
-                                      :headers {"Authorization" (str "Bearer " k)}})
-                                   ai-proxy?)
-           res  (core/request auth {:method  :get
-                                    :url     "/v1/models"
-                                    :as      :json
-                                    :headers {"Content-Type" "application/json"}})]
-       {:models (mapv (fn [model]
-                        {:id           (:id model)
-                         :display_name (:id model)})
-                      (reverse (sort-by :created (get-in res [:body :data]))))})
-     (catch Exception e
-       (core/rethrow-api-error! "openai" openai-error-msg e)))))
+  ([opts]
+   {:models (->> (list-all-models opts)
+                 (filter supported-model?)
+                 (sort-by :id)
+                 (mapv (fn [{:keys [id]}]
+                         {:id id :display_name id})))}))
 
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.

@@ -255,6 +255,34 @@
              [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; list-models filtering tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel supported-model?-test
+  (testing "whitelisted models are supported"
+    (doseq [id ["gpt-5.5" "gpt-5.4-mini" "gpt-4.1"]]
+      (is (true? (#'openai/supported-model? {:id id})) id)))
+  (testing "non-white-listed models are not supported"
+    (doseq [id ["gpt-4o" "o3" "text-embedding-3-small"]]
+      (is (false? (#'openai/supported-model? {:id id})) id))))
+
+(deftest list-models-filters-catalog-to-whitelist-test
+  (testing "list-models keeps only whitelisted models sorted by id"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
+      (with-redefs [http/request (fn [_]
+                                   {:status 200
+                                    :body   {:data [{:id "gpt-5-mini"             :created 30}
+                                                    {:id "gpt-5.4"                :created 25}
+                                                    {:id "gpt-4.1"                :created 20}
+                                                    {:id "gpt-4o-mini"            :created 18}
+                                                    {:id "o3"                     :created 15}
+                                                    {:id "text-embedding-3-small" :created 8}
+                                                    {:id "whisper-1"              :created 7}]}})]
+        (is (= [{:id "gpt-4.1" :display_name "gpt-4.1"}
+                {:id "gpt-5.4" :display_name "gpt-5.4"}]
+               (:models (openai/list-models))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; temperature support tests
 ;;; ──────────────────────────────────────────────────────────────────
 
