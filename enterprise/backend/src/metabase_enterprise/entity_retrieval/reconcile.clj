@@ -161,8 +161,10 @@
   Its own fn so the failed-insert test can mock it to simulate an embed/insert failure."
   [pgvector embedding-model docs]
   (let [text->embedding (volatile! {})]
+    ;; the callback must be purely side-effecting: process-embeddings-streaming merges callback *return*
+    ;; values with `merge-with +` across sub-batches, which would try to add embedding vectors.
     (embedding/process-embeddings-streaming embedding-model (map :doc_text docs)
-                                            #(vswap! text->embedding merge %)
+                                            (fn [m] (vswap! text->embedding merge m) nil)
                                             :type :index :record-tokens? true)
     (let [records (map #(doc->record % (@text->embedding (:doc_text %))) docs)]
       (jdbc/execute! pgvector
