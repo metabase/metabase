@@ -258,7 +258,7 @@
 
 (defmethod driver/describe-database* :bigquery-cloud-sdk
   [driver database]
-  {:tables (into #{} (describe-database-tables driver database))})
+  {:tables (describe-database-tables driver database)})
 
 (defn- database-type->base-type
   [database-type]
@@ -466,7 +466,7 @@
         ;; Lazy per-table groups of `COLUMN_FIELD_PATHS` rows, ordered by `table_name`. We advance through them in
         ;; lockstep with the per-table `COLUMNS` groups below, keeping only the current table's group realized.
         group-table       (fn [group] (:table_name (first group)))
-        nested-groups     (volatile! (partition-by :table_name nested-reducible))
+        nested-groups     (volatile! (partition-by :table_name (into [] nested-reducible)))
         lookup-for-table  (fn [table-name]
                             (let [remaining  (drop-while #(neg? (compare (group-table %) table-name)) @nested-groups)
                                   this-table (when (= table-name (group-table (first remaining)))
