@@ -232,20 +232,31 @@
     (vec (mapcat (partial fan-segments metric)
                  (concat base patterns facet top-n-other transforms)))))
 
+(defn group-matrix-items
+  "Plan items for one group's full depth-1 matrix: `items-for-pair` for every
+  applicable `(metric, selected dim)` pair, stamped with the group id. Metrics are
+  only crossed with dimensions that co-occur in the same group (the group-scoped
+  `:applicability` enforces this).
+
+  The shared source of truth for \"the full selected matrix.\" The mechanical
+  planner emits exactly this; the adaptive planner prepends it so every selected
+  pair is surfaced at depth 1 regardless of split gain, with its gain-gated descent
+  layered on top (see `query-plan.adaptive/plan-group`)."
+  [group]
+  (vec
+   (for [metric            (:metrics group)
+         [_ {:keys [dim]}] (:applicability metric)
+         item              (items-for-pair metric dim)]
+     (assoc item :group_id (:group-id group)))))
+
 (defn- run-plan!
-  "Walk each group's metric × dim matrix and emit plan items per `items-for-pair`,
-  stamping every item with its group's id. Metrics are only crossed with dimensions
-  that co-occur in the same group (the group-scoped `:applicability` enforces this).
-  Wrapped by `MechanicalPlanner` below — only consults `:metric-dim-ctx`; the thread
-  prompt is ignored because the strategy is purely structural."
+  "Walk each group's metric × dim matrix and emit plan items per
+  [[group-matrix-items]], stamping every item with its group's id. Wrapped by
+  `MechanicalPlanner` below — only consults `:metric-dim-ctx`; the thread prompt is
+  ignored because the strategy is purely structural."
   [{:keys [metric-dim-ctx]}]
   (let [{:keys [groups]} metric-dim-ctx
-        items (vec
-               (for [group           groups
-                     metric          (:metrics group)
-                     [_ {:keys [dim]}] (:applicability metric)
-                     item            (items-for-pair metric dim)]
-                 (assoc item :group_id (:group-id group))))]
+        items (vec (mapcat group-matrix-items groups))]
     (if (empty? items)
       {:outcome    :skip-not-applicable
        :transcript {:reason   "no applicable (metric, dimension) pairs"

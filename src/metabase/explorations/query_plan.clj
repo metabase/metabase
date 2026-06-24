@@ -17,6 +17,7 @@
   (:require
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.explorations.ai-summary :as ai-summary]
+   [metabase.explorations.query-plan.adaptive :as qp.adaptive]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.llm :as qp.llm]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
@@ -42,10 +43,12 @@
     - a `QueryPlanner` instance the caller should dispatch through, or
     - `{:skip <reason-keyword>}` when the caller should skip entirely.
 
-  Setting `explorations-query-planner` (`:auto` / `:llm` / `:mechanical`):
+  Setting `explorations-query-planner` (`:auto` / `:llm` / `:mechanical` /
+  `:adaptive`):
    - `:auto`       — LLM when configured, otherwise mechanical (never skips).
    - `:llm`        — LLM if configured; if not, returns `{:skip :skip-no-llm}`.
    - `:mechanical` — always the mechanical planner.
+   - `:adaptive`   — the greedy best-first loop (no LLM dependency).
 
   Public so tests can `with-redefs` it to inject a stub planner. The `!`
   suffix marks that it inspects mutable global state (the setting + the
@@ -56,7 +59,8 @@
     (case choice
       :auto       (if llm? qp.llm/planner qp.mechanical/planner)
       :llm        (if llm? qp.llm/planner {:skip :skip-no-llm})
-      :mechanical qp.mechanical/planner)))
+      :mechanical qp.mechanical/planner
+      :adaptive   qp.adaptive/planner)))
 
 ;; ---------------------------------------------------------------------------
 ;; Plan materialization (planner-agnostic)

@@ -6,6 +6,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.explorations.query-plan :as query-plan]
+   [metabase.explorations.query-plan.adaptive :as qp.adaptive]
    [metabase.explorations.query-plan.llm :as qp.llm]
    [metabase.explorations.query-plan.mechanical :as qp.mech]
    [metabase.explorations.query-plan.planner :as planner]
@@ -40,15 +41,22 @@
       (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)]
         (is (identical? qp.mech/planner (query-plan/pick-planner!))))
       (with-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
-        (is (identical? qp.mech/planner (query-plan/pick-planner!)))))))
+        (is (identical? qp.mech/planner (query-plan/pick-planner!))))))
+  (testing ":adaptive always picks adaptive (no LLM dependency)"
+    (mt/with-temporary-setting-values [explorations-query-planner :adaptive]
+      (with-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
+        (is (identical? qp.adaptive/planner (query-plan/pick-planner!)))
+        (is (= :adaptive (planner/planner-name (query-plan/pick-planner!))))))))
 
 (deftest planner-protocol-implementations-test
   (testing "Every planner singleton satisfies the QueryPlanner protocol"
     (is (satisfies? planner/QueryPlanner qp.llm/planner))
-    (is (satisfies? planner/QueryPlanner qp.mech/planner)))
+    (is (satisfies? planner/QueryPlanner qp.mech/planner))
+    (is (satisfies? planner/QueryPlanner qp.adaptive/planner)))
   (testing "Each planner names itself"
     (is (= :llm        (planner/planner-name qp.llm/planner)))
-    (is (= :mechanical (planner/planner-name qp.mech/planner)))))
+    (is (= :mechanical (planner/planner-name qp.mech/planner)))
+    (is (= :adaptive   (planner/planner-name qp.adaptive/planner)))))
 
 (deftest planner-setting-default-test
   (testing "explorations-query-planner defaults to :mechanical"
