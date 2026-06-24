@@ -50,8 +50,8 @@
 
 (defn- metric-ctx
   "A metric-context entry: `:applicability` keyed by dim-id with `{:target :dim}`.
-  `dims` is a seq of dim snapshots (no card/mp, so metric-kind defaults to additive
-  and the definitional-axis guard is inert — descent runs on the canned cells)."
+  `dims` is a seq of dim snapshots (no card/mp, so the definitional-axis guard is
+  inert — descent runs purely on the canned measurement cells)."
   [metric-id dims]
   {:metric-id     metric-id
    :applicability (into {} (for [d dims]
@@ -89,7 +89,7 @@
                                "region"  (text-dim "region")
                                "created" (datetime-dim "created")
                                "amount"  (numeric-dim "amount")})]
-    (testing "only categorical (default-bucket-nil) dims are candidates; temporal/numeric excluded"
+    (testing "only categorical dims are candidates; temporal/numeric excluded"
       (is (= #{"plan" "region"}
              (set (map :dimension-id (qp.adaptive/candidate-categorical-dims m))))))
     (testing "each candidate carries its resolved target and dim snapshot"
@@ -133,20 +133,7 @@
       (is (= [] (:cells (#'qp.adaptive/measure-split* mp {:dataset_query nil} target dim [])))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Issue 2 — metric-kind classification
-;;; ---------------------------------------------------------------------------
-
-(deftest metric-kind-test
-  (testing "a share / ratio aggregation is a rate"
-    (is (= :rate (qp.adaptive/metric-kind [[:share [:= [:field 1 nil] "x"]]])))
-    (is (= :rate (qp.adaptive/metric-kind [[:/ [:count-where [:= [:field 1 nil] "x"]] [:count]]]))))
-  (testing "sum / count / avg are additive; absent / undetectable defaults to additive"
-    (is (= :additive (qp.adaptive/metric-kind [[:sum [:field 1 nil]]])))
-    (is (= :additive (qp.adaptive/metric-kind [[:count]])))
-    (is (= :additive (qp.adaptive/metric-kind nil)))))
-
-;;; ---------------------------------------------------------------------------
-;;; Issue 2 — select-split (highest gain, deterministic tie-break)
+;;; select-split (highest gain, deterministic tie-break)
 ;;; ---------------------------------------------------------------------------
 
 (deftest select-split-test
@@ -189,29 +176,29 @@
 
 (deftest split-gain-degenerate-test
   (testing "k ≤ 1 → 0 (no split to differentiate)"
-    (is (= 0.0 (qp.adaptive/split-gain [] :additive)))
-    (is (= 0.0 (qp.adaptive/split-gain [{:value "a" :metric 100 :count 500}] :additive)))
-    (is (= 0.0 (qp.adaptive/split-gain [{:value "a" :metric 0.5 :count 500}] :rate))))
+    (is (= 0.0 (qp.adaptive/split-gain [])))
+    (is (= 0.0 (qp.adaptive/split-gain [{:value "a" :metric 100 :count 500}])))
+    (is (= 0.0 (qp.adaptive/split-gain [{:value "a" :metric 0.5 :count 500}]))))
   (testing "a flat split (all cells equal) → ~0"
     (is (> 1e-9 (qp.adaptive/split-gain [{:value "a" :metric 100 :count 500}
-                                         {:value "b" :metric 100 :count 500}] :additive)))
+                                         {:value "b" :metric 100 :count 500}])))
     (is (> 1e-9 (qp.adaptive/split-gain [{:value "a" :metric 0.5 :count 500}
-                                         {:value "b" :metric 0.5 :count 500}] :rate))))
+                                         {:value "b" :metric 0.5 :count 500}]))))
   (testing "non-numeric / zero-support cells are dropped (degenerate → 0)"
     (is (= 0.0 (qp.adaptive/split-gain [{:value "a" :metric nil :count 500}
-                                        {:value "b" :metric 0.5 :count 0}] :rate)))))
+                                        {:value "b" :metric 0.5 :count 0}])))))
 
 (deftest split-gain-strength-test
   (testing "a strong split scores well above a weak one"
     (let [strong (qp.adaptive/split-gain [{:value "a" :metric 1000 :count 500}
-                                          {:value "b" :metric 10   :count 500}] :additive)
+                                          {:value "b" :metric 10   :count 500}])
           weak   (qp.adaptive/split-gain [{:value "a" :metric 110 :count 500}
-                                          {:value "b" :metric 100 :count 500}] :additive)]
+                                          {:value "b" :metric 100 :count 500}])]
       (is (> strong weak))
       (is (> strong 0.1))))
   (testing "rate effect size is bounded in [0,1] and ranks a strong split high"
     (let [strong (qp.adaptive/split-gain [{:value "a" :metric 0.9 :count 500}
-                                          {:value "b" :metric 0.1 :count 500}] :rate)]
+                                          {:value "b" :metric 0.1 :count 500}])]
       (is (<= 0.0 strong 1.0))
       (is (> strong 0.5)))))
 
@@ -219,25 +206,25 @@
   (testing "a small-n outlier barely moves a rate gain (support-weighting)"
     (let [outlier (qp.adaptive/split-gain [{:value "a"   :metric 0.5 :count 100000}
                                            {:value "b"   :metric 0.5 :count 100000}
-                                           {:value "out" :metric 1.0 :count 3}] :rate)
+                                           {:value "out" :metric 1.0 :count 3}])
           genuine (qp.adaptive/split-gain [{:value "a" :metric 0.55 :count 5000}
-                                           {:value "b" :metric 0.45 :count 5000}] :rate)]
+                                           {:value "b" :metric 0.45 :count 5000}])]
       (is (> 0.01 outlier))
       (is (> genuine (* 10 outlier)))))
   (testing "a large-n modest rate effect outranks a small-n wild one"
     (let [modest-large (qp.adaptive/split-gain [{:value "a" :metric 0.55 :count 5000}
-                                                {:value "b" :metric 0.45 :count 5000}] :rate)
+                                                {:value "b" :metric 0.45 :count 5000}])
           wild-small   (qp.adaptive/split-gain [{:value "a" :metric 0.50 :count 9970}
-                                                {:value "b" :metric 1.00 :count 30}] :rate)]
+                                                {:value "b" :metric 1.00 :count 30}])]
       (is (> modest-large wild-small)))))
 
 (deftest split-gain-rate-fallback-test
   (testing "a rate metric whose cells aren't proportions (mis-scaled) degrades to the
             scale-free form instead of NaN, preserving a sane ranking"
     (let [strong (qp.adaptive/split-gain [{:value "a" :metric 90 :count 500}
-                                          {:value "b" :metric 10 :count 500}] :rate)
+                                          {:value "b" :metric 10 :count 500}])
           weak   (qp.adaptive/split-gain [{:value "a" :metric 52 :count 500}
-                                          {:value "b" :metric 48 :count 500}] :rate)]
+                                          {:value "b" :metric 48 :count 500}])]
       (is (not (Double/isNaN strong)))
       (is (> strong weak)))))
 
@@ -255,9 +242,9 @@
                    {:value "Firefox" :metric 0.7831441680753441 :count 25078}
                    {:value "Other"   :metric 0.7756410256410257 :count 5655}
                    {:value "Safari"  :metric 0.7170979198376457 :count 58765}]
-          g-os      (qp.adaptive/split-gain os :rate)
-          g-browser (qp.adaptive/split-gain browser :rate)
-          g-step    (qp.adaptive/split-gain [] :rate)]
+          g-os      (qp.adaptive/split-gain os)
+          g-browser (qp.adaptive/split-gain browser)
+          g-step    (qp.adaptive/split-gain [])]
       (is (< 0.019 g-os 0.021)                "OS per-df gain matches the validated ~0.020")
       (is (> g-os qp.adaptive/min-split-gain) "OS clears the descent floor (a real effect)")
       (is (< g-os g-browser)                  "OS ranks below Browser")
@@ -272,16 +259,16 @@
                                       :metric (+ 0.73 (* 0.002 (- (mod i 5) 2)))
                                       :count  300})
                              (range 40))
-          g-real  (qp.adaptive/split-gain real-low-k :rate)
-          g-noise (qp.adaptive/split-gain noise-high-k :rate)]
+          g-real  (qp.adaptive/split-gain real-low-k)
+          g-noise (qp.adaptive/split-gain noise-high-k)]
       (is (> g-real g-noise)             "the genuine k=2 effect outranks the k=40 noise")
       (is (> 0.001 g-noise)              "the high-cardinality noise split collapses to ~0")
       (is (< g-noise qp.adaptive/min-split-gain) "and falls below the descent floor")))
   (testing "adding null groups does not manufacture gain under the null"
     (let [base   [{:value "a" :metric 0.50 :count 1000} {:value "b" :metric 0.50 :count 1000}]
           padded (into base (for [i (range 30)] {:value (str "z" i) :metric 0.50 :count 1000}))]
-      (is (> 1e-9 (qp.adaptive/split-gain base :rate)))
-      (is (> 1e-9 (qp.adaptive/split-gain padded :rate)))))
+      (is (> 1e-9 (qp.adaptive/split-gain base)))
+      (is (> 1e-9 (qp.adaptive/split-gain padded)))))
   (testing "a granular dimension that merely NESTS a coarse one's signal loses to the
             coarse dimension — the per-df normalization is what flips this"
     (let [region  [{:value "Europe"   :metric 0.60 :count 8000}
@@ -290,8 +277,8 @@
                    {:value "MEA"      :metric 0.80 :count 8000}]
           country (vec (for [{:keys [value metric]} region, c (range 4)]
                          {:value (str value "-" c) :metric metric :count 2000}))
-          g-region  (qp.adaptive/split-gain region :rate)
-          g-country (qp.adaptive/split-gain country :rate)]
+          g-region  (qp.adaptive/split-gain region)
+          g-country (qp.adaptive/split-gain country)]
       (is (> g-region g-country)              "Region (k=4) outranks Country (k=16) nesting it")
       (is (> g-region qp.adaptive/min-split-gain)))))
 
@@ -302,21 +289,21 @@
           ss-b 1.0e7, ss-w 4.0e5, n 1000.0, k 2
           eps2     (/ (- ss-b (* (dec k) (/ ss-w (- n k)))) (+ ss-b ss-w))
           expected (Math/sqrt (/ eps2 (double (dec k))))
-          gain (qp.adaptive/split-gain cells :additive)]
+          gain (qp.adaptive/split-gain cells)]
       (is (<= 0.0 gain 1.0) "the gain is bounded in [0,1]")
       (is (< (Math/abs (double (- gain expected))) 1e-9) "gain matches sqrt(ε²/(k−1))")))
   (testing "a null / missing per-group variance contributes 0 to SS_within"
     (let [cells [{:value "a" :metric 10 :count 100 :variance 0.0}
                  {:value "b" :metric 20 :count 1   :variance nil}]]
-      (is (number? (qp.adaptive/split-gain cells :additive)))
-      (is (<= 0.0 (qp.adaptive/split-gain cells :additive) 1.0))))
+      (is (number? (qp.adaptive/split-gain cells)))
+      (is (<= 0.0 (qp.adaptive/split-gain cells) 1.0))))
   (testing "for sum metrics, SS_between is taken around the measured :group-mean"
     (let [flat-means [{:value "a" :metric 1000 :group-mean 50 :count 20  :variance 100}
                       {:value "b" :metric 5000 :group-mean 50 :count 100 :variance 100}]
           real-split [{:value "a" :metric 1000 :group-mean 50 :count 20  :variance 100}
                       {:value "b" :metric 5000 :group-mean 90 :count 100 :variance 100}]
-          g-flat (qp.adaptive/split-gain flat-means :additive)
-          g-real (qp.adaptive/split-gain real-split :additive)]
+          g-flat (qp.adaptive/split-gain flat-means)
+          g-real (qp.adaptive/split-gain real-split)]
       (is (> 1e-9 g-flat) "equal group means ⇒ ~0 gain despite very different totals")
       (is (> g-real 0.1)  "a real difference in per-row means scores well")
       (is (<= 0.0 g-real 1.0)))))
@@ -329,9 +316,9 @@
           flat     [{:value "A" :metric -5 :count 500 :variance 450}
                     {:value "B" :metric -4 :count 500 :variance 450}
                     {:value "C" :metric -5 :count 500 :variance 450}]
-          eta2-straddle (qp.adaptive/split-gain straddle :additive)
-          eta2-flat     (qp.adaptive/split-gain flat :additive)
-          nwv-straddle  (qp.adaptive/split-gain (mapv #(dissoc % :variance) straddle) :additive)]
+          eta2-straddle (qp.adaptive/split-gain straddle)
+          eta2-flat     (qp.adaptive/split-gain flat)
+          nwv-straddle  (qp.adaptive/split-gain (mapv #(dissoc % :variance) straddle))]
       (is (<= 0.0 eta2-straddle 1.0)  "η² is finite and bounded across zero")
       (is (> eta2-straddle eta2-flat) "a real straddle outranks a flat split")
       (is (> nwv-straddle 1.0)        "the NWV fallback would blow past 1 on the same cells"))))
@@ -345,8 +332,8 @@
           measured   (mapv (fn [{:keys [metric] :as c}]
                              (assoc c :variance (* metric (- 1.0 metric))))
                            rate-cells)
-          analytic-phi2 (qp.adaptive/split-gain rate-cells :rate)
-          measured-eta2 (qp.adaptive/split-gain measured :additive)]
+          analytic-phi2 (qp.adaptive/split-gain rate-cells)
+          measured-eta2 (qp.adaptive/split-gain measured)]
       (is (< (Math/abs (double (- analytic-phi2 measured-eta2))) 1e-12)
           "φ² (analytic Bernoulli within-variance) == η² (measured within-variance)"))))
 
@@ -357,25 +344,14 @@
           add-cells  [{:value "a" :metric 1000 :count 500} {:value "b" :metric 10 :count 500}]
           eps2       (/ (- 160.0 (/ 90.0 998.0)) 250.0)
           expected   (Math/sqrt eps2)]
-      (is (< (Math/abs (double (- (qp.adaptive/split-gain rate-cells :rate) expected))) 1e-9)
+      (is (< (Math/abs (double (- (qp.adaptive/split-gain rate-cells) expected))) 1e-9)
           "rate fast-path returns sqrt(analytic ε²) ≈ 0.800")
-      (is (> (qp.adaptive/split-gain add-cells :additive) 0.1)
+      (is (> (qp.adaptive/split-gain add-cells) 0.1)
           "additive NWV fallback still ranks a strong split well"))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Issue 5 — rate-scale + definitional-axis exclusion
+;;; definitional-axis exclusion
 ;;; ---------------------------------------------------------------------------
-
-(deftest rate-scale-test
-  (testing "a ×100 percentage wrapper yields scale 100"
-    (is (== 100.0 (qp.adaptive/rate-scale
-                   [[:* {} [:/ {} [:count-where {} [:= {} [:field {} 1] "a"]]
-                            [:count-where {} [:= {} [:field {} 1] "b"]]] 100]]))))
-  (testing "a bare share / ratio is already a proportion (scale 1)"
-    (is (== 1.0 (qp.adaptive/rate-scale [[:share {} [:= {} [:field {} 1] "x"]]])))
-    (is (== 1.0 (qp.adaptive/rate-scale [[:/ {} [:count-where {}] [:count {}]]]))))
-  (testing "no aggregations → scale 1"
-    (is (== 1.0 (qp.adaptive/rate-scale nil)))))
 
 (deftest definitional-dim-test
   (let [agg      [[:share {:lib/uuid "u"} [:= {:lib/uuid "v"} [:field {:base-type :type/Text} 2342] "detractor"]]]
@@ -400,10 +376,10 @@
   (testing "max(absolute floor, ceil(fraction * parent-support))"
     (is (= 50 (qp.adaptive/min-support-threshold 1000)) "floor dominates on small parents")
     (is (= 100 (qp.adaptive/min-support-threshold 10000)) "fraction dominates on big parents"))
-  (testing "rate metrics get a raised absolute floor (a proportion needs a real denominator)"
-    (is (= 200 (qp.adaptive/min-support-threshold 1000 :rate)) "rate floor dominates")
-    (is (= 50  (qp.adaptive/min-support-threshold 1000 :additive)) "additive floor unchanged")
-    (is (= 300 (qp.adaptive/min-support-threshold 30000 :rate)) "fraction still dominates a huge parent")))
+  (testing "proportion splits get a raised absolute floor (a proportion needs a real denominator)"
+    (is (= 200 (qp.adaptive/min-support-threshold 1000 true)) "proportion floor dominates")
+    (is (= 50  (qp.adaptive/min-support-threshold 1000 false)) "non-proportion floor unchanged")
+    (is (= 300 (qp.adaptive/min-support-threshold 30000 true)) "fraction still dominates a huge parent")))
 
 (deftest select-child-values-test
   (let [cells [{:value "a" :metric 100 :count 200}
@@ -429,15 +405,15 @@
                  {:value "pricing"       :metric 0.327 :count 1351}
                  {:value "value"         :metric 0.0   :count 591}
                  {:value "documentation" :metric 0.0   :count 972}]]
-      (is (= ["pricing"] (qp.adaptive/select-child-values cells 2 :rate)))))
+      (is (= ["pricing"] (qp.adaptive/select-child-values cells 2)))))
   (testing "a strong-but-real cell (0.95, outside the saturation epsilon) is still descended"
     (let [cells [{:value "cluster" :metric 0.95 :count 500}
                  {:value "rest"    :metric 0.30 :count 500}]]
-      (is (= #{"cluster" "rest"} (set (qp.adaptive/select-child-values cells 2 :rate))))))
-  (testing "additive metrics have no intrinsic extreme — saturation does not apply"
-    (let [cells [{:value "a" :metric 1.0 :count 500}
-                 {:value "b" :metric 0.0 :count 500}]]
-      (is (= #{"a" "b"} (set (qp.adaptive/select-child-values cells 2 :additive)))))))
+      (is (= #{"cluster" "rest"} (set (qp.adaptive/select-child-values cells 2))))))
+  (testing "a non-proportion metric (values outside [0,1]) has no intrinsic extreme — saturation does not apply"
+    (let [cells [{:value "a" :metric 1000 :count 500}
+                 {:value "b" :metric 200  :count 500}]]
+      (is (= #{"a" "b"} (set (qp.adaptive/select-child-values cells 2)))))))
 
 (deftest descend-gain-test
   (testing "descend-gain is the split gain over only the NON-saturated cells"
@@ -445,21 +421,21 @@
                  {:value "mysql"     :metric 1.0   :count 748}
                  {:value "pricing"   :metric 0.327 :count 1351}
                  {:value "value"     :metric 0.0   :count 591}]]
-      (is (> (qp.adaptive/split-gain cells :rate) qp.adaptive/min-split-gain)
+      (is (> (qp.adaptive/split-gain cells) qp.adaptive/min-split-gain)
           "the FULL split gain is high (the saturated cells make it look differentiating)")
-      (is (< (#'qp.adaptive/descend-gain cells :rate) qp.adaptive/min-split-gain)
+      (is (< (#'qp.adaptive/descend-gain cells) qp.adaptive/min-split-gain)
           "but descend-gain collapses below the floor — no real driver to drill")))
   (testing "a genuine split keeps its gain — saturated cells removed, the real tails remain"
     (let [cells [{:value "A" :metric 0.7 :count 500}
                  {:value "B" :metric 0.1 :count 500}
                  {:value "C" :metric 1.0 :count 500}]]
-      (is (>= (#'qp.adaptive/descend-gain cells :rate) qp.adaptive/min-split-gain)
+      (is (>= (#'qp.adaptive/descend-gain cells) qp.adaptive/min-split-gain)
           "the non-saturated {A,B} split still differentiates → descend")))
   (testing "additive metrics: nothing is saturated, descend-gain == full split gain"
     (let [cells [{:value "a" :metric 1000 :count 500}
                  {:value "b" :metric 10   :count 500}]]
-      (is (== (#'qp.adaptive/descend-gain cells :additive)
-              (qp.adaptive/split-gain cells :additive))))))
+      (is (== (#'qp.adaptive/descend-gain cells)
+              (qp.adaptive/split-gain cells))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Issue 5 — plan! orchestration: depth-1 matrix + drilled descent (canned cells)
@@ -547,71 +523,72 @@
 
 (deftest leakage-artifact-test
   (testing "the artifact (null-bucket-dominant + non-null saturated at 1.0) is flagged"
-    (is (true? (qp.adaptive/leakage-artifact? region-263-artifact :rate))))
+    (is (true? (qp.adaptive/leakage-artifact? region-263-artifact))))
   (testing "it ranks above the funnel-native dim by split-gain — so it must be excluded BEFORE ranking"
-    (is (> (qp.adaptive/split-gain region-263-artifact :rate)
-           (qp.adaptive/split-gain region-263-funnel-native :rate))))
+    (is (> (qp.adaptive/split-gain region-263-artifact)
+           (qp.adaptive/split-gain region-263-funnel-native))))
   (testing "the funnel-native Region (real values, no dominant null) is NOT flagged"
-    (is (false? (qp.adaptive/leakage-artifact? region-263-funnel-native :rate))))
-  (testing "scoped to rate metrics — an additive metric is never flagged"
-    (is (false? (qp.adaptive/leakage-artifact? region-263-artifact :additive)))))
+    (is (false? (qp.adaptive/leakage-artifact? region-263-funnel-native))))
+  (testing "a non-proportion metric (values outside [0,1]) is never flagged — no extreme to saturate against"
+    (is (false? (qp.adaptive/leakage-artifact?
+                 [{:value nil :metric 7300 :count 250000}
+                  {:value "a" :metric 10000 :count 3000}])))))
 
 (deftest leakage-artifact-false-positive-guard-test
   (testing "a genuinely rare-but-real minority bucket (intermediate rate) is NOT excluded"
     (is (false? (qp.adaptive/leakage-artifact?
                  [{:value nil :metric 0.73 :count 250000}
-                  {:value "VIP" :metric 0.92 :count 3000}] :rate))))
+                  {:value "VIP" :metric 0.92 :count 3000}]))))
   (testing "null bucket not dominant → not an artifact"
     (is (false? (qp.adaptive/leakage-artifact?
                  [{:value nil :metric 0.5 :count 4000}
-                  {:value "a" :metric 1.0 :count 6000}] :rate))))
+                  {:value "a" :metric 1.0 :count 6000}]))))
   (testing "no null bucket at all → not an artifact"
     (is (false? (qp.adaptive/leakage-artifact?
                  [{:value "a" :metric 1.0 :count 100}
-                  {:value "b" :metric 1.0 :count 100}] :rate))))
+                  {:value "b" :metric 1.0 :count 100}]))))
   (testing "non-null saturated at the LOW extreme also counts (present ⟹ never converts)"
     (is (true? (qp.adaptive/leakage-artifact?
                 [{:value nil :metric 0.27 :count 250000}
                  {:value "a" :metric 0.0 :count 3000}
-                 {:value "b" :metric 0.0 :count 3000}] :rate))))
+                 {:value "b" :metric 0.0 :count 3000}]))))
   (testing "non-null split across BOTH extremes is a real differentiator, not an artifact"
     (is (false? (qp.adaptive/leakage-artifact?
                  [{:value nil :metric 0.5 :count 250000}
                   {:value "a" :metric 0.0 :count 3000}
-                  {:value "b" :metric 1.0 :count 3000}] :rate))))
+                  {:value "b" :metric 1.0 :count 3000}]))))
   (testing "a blank-string bucket is treated as null"
     (is (true? (qp.adaptive/leakage-artifact?
                 [{:value "" :metric 0.73 :count 250000}
-                 {:value "a" :metric 1.0 :count 3000}] :rate)))))
+                 {:value "a" :metric 1.0 :count 3000}])))))
 
 (deftest leakage-artifact-excluded-from-root-split-test
   (testing "a leakage-artifact dim that ranks #1 by gain never roots the search; a real
             funnel-native dim roots and is descended, and the artifact is in no filter path"
-    (with-redefs [qp.adaptive/metric-kind (constantly :rate)]
-      (let [group {:group-id 1 :type "metric"
-                   :metrics [(metric-ctx 10 [(text-dim "region" 5) (text-dim "browser" 5) (text-dim "plan" 5)])]}
-            measure (fn [_ _ c]
-                      (case (:dimension-id c)
-                        "region"  {:cells [{:value nil    :metric 0.731 :count 250000}
-                                           {:value "APAC" :metric 1.0   :count 3000}
-                                           {:value "EU"   :metric 1.0   :count 3000}]}
-                        "browser" {:cells [{:value "Chrome"  :metric 0.768671536988439  :count 169844}
-                                           {:value "Edge"    :metric 0.7780556423882463 :count 19457}
-                                           {:value "Firefox" :metric 0.7831441680753441 :count 25078}
-                                           {:value "Safari"  :metric 0.7170979198376457 :count 58765}]}
-                        "plan"    {:cells [{:value "Pro"  :metric 0.74 :count 50000}
-                                           {:value "Free" :metric 0.72 :count 50000}]}))
-            {:keys [outcome plan]} (plan-with-measure! [group] measure)
-            drilled (filter #(seq (get-in % [:params :filter_path])) plan)]
-        (is (= :ok outcome))
-        (is (seq drilled) "the real split descended (the guard didn't starve the search)")
-        (testing "the artifact 'region' never roots — every descent path starts with browser"
-          (is (every? #(= "browser" (-> % (get-in [:params :filter_path]) first :dimension_id))
-                      drilled)))
-        (testing "the artifact 'region' is descended into nowhere — it is in no filter path"
-          (is (not-any? (fn [item] (some #(= "region" (:dimension_id %))
-                                         (get-in item [:params :filter_path])))
-                        plan)))))))
+    (let [group {:group-id 1 :type "metric"
+                 :metrics [(metric-ctx 10 [(text-dim "region" 5) (text-dim "browser" 5) (text-dim "plan" 5)])]}
+          measure (fn [_ _ c]
+                    (case (:dimension-id c)
+                      "region"  {:cells [{:value nil    :metric 0.731 :count 250000}
+                                         {:value "APAC" :metric 1.0   :count 3000}
+                                         {:value "EU"   :metric 1.0   :count 3000}]}
+                      "browser" {:cells [{:value "Chrome"  :metric 0.768671536988439  :count 169844}
+                                         {:value "Edge"    :metric 0.7780556423882463 :count 19457}
+                                         {:value "Firefox" :metric 0.7831441680753441 :count 25078}
+                                         {:value "Safari"  :metric 0.7170979198376457 :count 58765}]}
+                      "plan"    {:cells [{:value "Pro"  :metric 0.74 :count 50000}
+                                         {:value "Free" :metric 0.72 :count 50000}]}))
+          {:keys [outcome plan]} (plan-with-measure! [group] measure)
+          drilled (filter #(seq (get-in % [:params :filter_path])) plan)]
+      (is (= :ok outcome))
+      (is (seq drilled) "the real split descended (the guard didn't starve the search)")
+      (testing "the artifact 'region' never roots — every descent path starts with browser"
+        (is (every? #(= "browser" (-> % (get-in [:params :filter_path]) first :dimension_id))
+                    drilled)))
+      (testing "the artifact 'region' is descended into nowhere — it is in no filter path"
+        (is (not-any? (fn [item] (some #(= "region" (:dimension_id %))
+                                       (get-in item [:params :filter_path])))
+                      plan))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Issue 7 — anchors + governed best-first search

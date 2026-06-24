@@ -71,12 +71,12 @@
     splits; min-support is the real terminator. Does not suppress surfacing.
   - `:min-support-floor/-rate/-fraction` — descent-eligibility floor
     `max(floor, ceil(fraction · parent-support))`; the absolute floor is raised
-    for `:rate` metrics (a proportion needs a real denominator). Support weighting
-    in `split-gain`, not the floor, does the ranking — the floor is a hard gate
-    that keeps the search out of cells too small to measure.
+    for **proportion** splits (a proportion needs a real denominator). Support
+    weighting in `split-gain`, not the floor, does the ranking — the floor is a
+    hard gate that keeps the search out of cells too small to measure.
   - `:k-child-values` — children descended into per split (top-k by deviation).
-  - `:saturation-epsilon` — the loop does not descend into a `:rate` child cell
-    whose proportion sits within this of a `[0,1]` extreme (no residual variation
+  - `:saturation-epsilon` — the loop does not descend into a **proportion** child
+    cell whose value sits within this of a `[0,1]` extreme (no residual variation
     left to explain — any further split inside it is noise).
   - `:budget-alpha/min/max` — per-anchor measurement-execution budget is
     `clamp(alpha · seed-breadth, min, max)`, where seed-breadth is the candidate
@@ -87,8 +87,8 @@
     one, bounded enough that none consumes the whole budget.
   - `:max-depth` — depth backstop.
   - `:leakage-null-fraction` / `:leakage-saturation-epsilon` — the
-    [[leakage-artifact?]] candidate-eligibility guard. A `:rate` split is dropped
-    when a single `nil`/blank bucket holds ≥ `:leakage-null-fraction` of the support
+    [[leakage-artifact?]] candidate-eligibility guard. A **proportion** split is
+    dropped when a single `nil`/blank bucket holds ≥ `:leakage-null-fraction` of the support
     *and* every non-null bucket is within `:leakage-saturation-epsilon` of the same
     `[0,1]` extreme — the signature of a dimension populated only *because* the
     outcome occurred."
@@ -112,29 +112,47 @@
   (:min-split-gain config))
 
 ;;; ---------------------------------------------------------------------------
+;;; Proportion detection — read off the measured data
+;;; ---------------------------------------------------------------------------
+
+(defn- proportion-cells?
+  "True when every numeric cell metric sits in `[0,1]`, marking the split as a
+  **proportion**: within-group variance can be estimated analytically as `p(1−p)`,
+  cells at a `[0,1]` extreme count as saturated, and the leakage guard applies. This
+  is read straight from the measured values, so any metric whose breakout lands in
+  `[0,1]` gets the proportion treatment regardless of how it is defined.
+
+  A percentage expressed `×100` (values `0–100`) is *not* in `[0,1]` and so is
+  treated as a generic additive metric — a documented limitation: it loses the
+  proportion ranker, the saturation stop, and the leakage guard. Reading the
+  breakout column's `:type/Percentage` could recover that case later if needed."
+  [cells]
+  (let [ms (into [] (keep (fn [{:keys [metric]}] (when (number? metric) (double metric))) cells))]
+    (and (seq ms) (every? #(<= 0.0 % 1.0) ms))))
+
+;;; ---------------------------------------------------------------------------
 ;;; Descent governance — value selection by deviation, min-support gating
 ;;; ---------------------------------------------------------------------------
 
 (defn min-support-threshold
   "The descent-eligibility floor for a node with `parent-support` rows:
   `max(absolute-floor, ceil(fraction × parent-support))`. The absolute floor is
-  raised for `:rate` metrics (`:min-support-floor-rate`), which need a real
-  denominator before a proportion is trustworthy; `metric-kind` defaults to
-  `:additive`."
-  ([parent-support] (min-support-threshold parent-support :additive))
-  ([parent-support metric-kind]
-   (max (if (= metric-kind :rate)
+  raised for a **proportion** split (`:min-support-floor-rate`), which needs a real
+  denominator before its φ² is trustworthy."
+  ([parent-support] (min-support-threshold parent-support false))
+  ([parent-support proportion?]
+   (max (if proportion?
           (:min-support-floor-rate config)
           (:min-support-floor config))
         (long (Math/ceil (* (:min-support-fraction config) (double (or parent-support 0))))))))
 
 (defn- saturated?
-  "A `:rate` cell sitting within `:saturation-epsilon` of a `[0,1]` extreme (≈0 or
-  ≈1): the slice has no residual variation left to explain, so descending into it
-  only splits noise. Additive metrics have no intrinsic extreme and are never
-  saturated."
-  [metric metric-kind]
-  (and (= metric-kind :rate)
+  "A proportion cell sitting within `:saturation-epsilon` of a `[0,1]` extreme (≈0
+  or ≈1): the slice has no residual variation left to explain, so descending into it
+  only splits noise. Applies only when the split's cells are proportions
+  (`proportion?`); a metric with values outside `[0,1]` has no intrinsic extreme."
+  [metric proportion?]
+  (and proportion?
        (number? metric)
        (let [eps (:saturation-epsilon config)
              m   (double metric)]
@@ -144,65 +162,33 @@
   "Top-`k` child values to descend into, by **absolute deviation** of each child's
   metric from the mean of the (min-support-eligible) children — both tails, since
   a strongly-below child deviates as much as a strongly-above one. Cells below the
-  min-support threshold (raised for `:rate` metrics, see `min-support-threshold`;
-  `metric-kind` defaults to `:additive`), with a non-numeric metric, or — for rate
-  metrics — already saturated at a `[0,1]` extreme (no residual variation to drill,
-  see [[saturated?]]) are dropped first. Ties break by stringified value, so
-  selection is deterministic. Returns raw cell values (the breakout group values,
-  ready for equality/`is-null` inversion)."
-  ([cells k] (select-child-values cells k :additive))
-  ([cells k metric-kind]
-   (let [parent-support (reduce + 0 (keep :count cells))
-         threshold      (min-support-threshold parent-support metric-kind)
-         eligible       (filterv (fn [{:keys [count metric]}]
-                                   (and count (>= count threshold) (number? metric)
-                                        (not (saturated? metric metric-kind))))
-                                 cells)]
-     (if (empty? eligible)
-       []
-       (let [mean (/ (reduce + 0.0 (map :metric eligible)) (count eligible))]
-         (->> eligible
-              (sort-by (juxt #(- (Math/abs (double (- (:metric %) mean))))
-                             #(str (:value %))))
-              (take k)
-              (mapv :value)))))))
+  min-support threshold (raised when the cells are proportions, see
+  `min-support-threshold`), with a non-numeric metric, or — for a proportion split —
+  already saturated at a `[0,1]` extreme (no residual variation to drill, see
+  [[saturated?]]) are dropped first. Whether the split is a proportion is read from
+  the cells ([[proportion-cells?]]). Ties break by stringified value, so selection
+  is deterministic. Returns raw cell values (the breakout group values, ready for
+  equality/`is-null` inversion)."
+  [cells k]
+  (let [prop?          (proportion-cells? cells)
+        parent-support (reduce + 0 (keep :count cells))
+        threshold      (min-support-threshold parent-support prop?)
+        eligible       (filterv (fn [{:keys [count metric]}]
+                                  (and count (>= count threshold) (number? metric)
+                                       (not (saturated? metric prop?))))
+                                cells)]
+    (if (empty? eligible)
+      []
+      (let [mean (/ (reduce + 0.0 (map :metric eligible)) (count eligible))]
+        (->> eligible
+             (sort-by (juxt #(- (Math/abs (double (- (:metric %) mean))))
+                            #(str (:value %))))
+             (take k)
+             (mapv :value))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Metric classification — rate vs additive, sniffed from the aggregation
+;;; Metric aggregations — read via lib, for the definitional-axis guard
 ;;; ---------------------------------------------------------------------------
-
-(defn- aggregation-ops
-  "The set of operator keywords appearing anywhere in `aggregations` (a seq of lib
-  aggregation clauses), e.g. `#{:* :/ :count-where := :field}`."
-  [aggregations]
-  (into #{}
-        (comp (mapcat #(tree-seq vector? seq %))
-              (keep #(when (vector? %) (first %))))
-        aggregations))
-
-(defn metric-kind
-  "Whether the metric measures a **rate** — a proportion whose aggregation is a
-  `:share` or a ratio `:/` (e.g. `count-where`/`count`) — or an **additive**
-  scalar (sum/count/avg). Sniffed from the aggregation shape; `:additive` is the
-  default when no rate operator is present (also the safe fallback for an
-  undetectable / absent aggregation). Drives `split-gain`'s normalization: rates
-  get φ²/Cramér's V, everything else the scale-invariant weighted variance."
-  [aggregations]
-  (if (some #{:share :/} (aggregation-ops aggregations))
-    :rate
-    :additive))
-
-(defn rate-scale
-  "The constant a rate proportion is multiplied by in `aggregations` (e.g. a ×100
-  percentage wrapper, `[:* [:/ …] 100]`), so measurement cells can be de-scaled
-  back to `[0,1]` proportions before φ². `1.0` for a bare share / ratio.
-  Heuristic: the product of the literal multiplicands of any `:*` in the
-  aggregation (a mis-scaled rate is caught by `split-gain`'s [0,1] guard)."
-  [aggregations]
-  (transduce (comp (mapcat #(tree-seq vector? seq %))
-                   (filter #(and (vector? %) (= :* (first %))))
-                   (mapcat (fn [clause] (filter number? (drop 2 clause)))))
-             * 1.0 aggregations))
 
 (defn- metric-aggregations
   "The metric Card's top-level aggregation clauses (lib clause vectors), or nil
@@ -294,15 +280,17 @@
   - **measured variance** (cells carry `:variance` = per-group population variance
     σ²ᵢ) → ε² from `SS_within = Σ nᵢ σ²ᵢ`. The between term uses each cell's group
     **mean**: `:group-mean` when present (a `sum` cell value is a group *total*),
-    else `:metric` (`avg`/rate cells already are means).
-  - `:rate` **fast-path** (no `:variance`) — within-variance is analytic,
-    `SS_within = N·m̄(1−m̄) − SS_between`, feeding the same ε². If `m̄` isn't a
-    proportion (`m̄(1−m̄) ≤ 0`), falls through to the rate-free form below.
+    else `:metric` (`avg`/proportion cells already are means).
+  - **proportion** fast-path (no `:variance`, cells in `[0,1]` per
+    [[proportion-cells?]]) — within-variance is analytic, `SS_within = N·m̄(1−m̄) −
+    SS_between`, feeding the same ε². If `m̄` somehow isn't a proportion
+    (`m̄(1−m̄) ≤ 0`), falls through to the rate-free form below.
   - otherwise — rate-free [[norm-weighted-variance]] `SS_between / (N·m̄²)`.
 
-  `0.0` for a degenerate split (`k ≤ 1`, no support, or zero grand mean). Pure —
-  unit-testable with hand-built cells."
-  [cells metric-kind]
+  Whether the split is a proportion is read from the cells (see
+  [[proportion-cells?]]). `0.0` for a degenerate split (`k ≤ 1`, no support, or zero
+  grand mean). Pure — unit-testable with hand-built cells."
+  [cells]
   (let [cells (filterv (fn [{:keys [metric count]}]
                          (and (number? metric) (number? count) (pos? count)))
                        cells)
@@ -326,8 +314,8 @@
                                               supports cells))]
              (epsilon-squared ss-between ss-within n k))
 
-           ;; Rate fast-path: ε² with the within-variance solved analytically.
-           (= metric-kind :rate)
+           ;; Proportion fast-path: ε² with the within-variance solved analytically.
+           (proportion-cells? cells)
            (let [bernoulli (* n mean (- 1.0 mean))]
              (if (pos? bernoulli)
                (epsilon-squared ss-between (max 0.0 (- bernoulli ss-between)) n k)
@@ -358,10 +346,11 @@
   detractor rate by `comment_topic` — every topic 100%/0% detractor except a lone
   near-baseline `pricing` — collapses to ~0 here (one cell, no spread), so the loop
   surfaces the depth-1 chart but does not tunnel into it; `{A:0.7 B:0.1 C:1.0(sat)}`
-  keeps a strong `{A,B}` split and is descended. Additive metrics have no saturated
-  cells, so this equals the full split gain."
-  [cells metric-kind]
-  (split-gain (into [] (remove #(saturated? (:metric %) metric-kind)) cells) metric-kind))
+  keeps a strong `{A,B}` split and is descended. Non-proportion metrics have no
+  saturated cells, so this equals the full split gain."
+  [cells]
+  (let [prop? (proportion-cells? cells)]
+    (split-gain (into [] (remove #(saturated? (:metric %) prop?) cells)))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Candidate eligibility — leakage / artifact split exclusion
@@ -390,12 +379,12 @@
     ≈ 0.0). A real minority segment lands at an intermediate rate (0.92, 0.40) and
     so survives.
 
-  Scoped to `:rate` metrics, where 'saturated' is well-defined as the proportion's
-  extreme; additive metrics have no intrinsic max/min to saturate against and are
-  left untouched — a seam for declared provenance. Operates on the **de-scaled**
-  cells `split-gain` consumes."
-  [cells metric-kind]
-  (and (= metric-kind :rate)
+  Scoped to **proportion** splits (cells in `[0,1]`, see [[proportion-cells?]]),
+  where 'saturated' is well-defined as the proportion's extreme; a metric with
+  values outside `[0,1]` has no intrinsic max/min to saturate against and is left
+  untouched."
+  [cells]
+  (and (proportion-cells? cells)
        (let [cells (filterv (fn [{:keys [metric count]}]
                               (and (number? metric) (number? count) (pos? count)))
                             cells)
@@ -519,21 +508,6 @@
 ;;; Per-metric planning + descent
 ;;; ---------------------------------------------------------------------------
 
-(defn- descale-cells
-  "Divide each cell's `:metric` (and measured `:group-mean`) by `scale` (a no-op at
-  `scale = 1.0`), turning a ×100 percentage rate back into a `[0,1]` proportion so
-  `split-gain`'s φ² is valid. A `:variance` is divided by `scale²` to stay in the
-  de-scaled units (variance scales with the square). Deviation-based child selection
-  is scale-invariant, so this is safe to apply to all downstream cell uses."
-  [cells scale]
-  (if (== scale 1.0)
-    cells
-    (mapv (fn [c] (cond-> c
-                    (number? (:metric c))     (update :metric     #(/ (double %) scale))
-                    (number? (:group-mean c)) (update :group-mean #(/ (double %) scale))
-                    (number? (:variance c))   (update :variance   #(/ (double %) (* scale scale)))))
-          cells)))
-
 (defn- remaining-candidates
   "Candidate categorical dims for `metric-ctx` not already consumed by the
   `filter-path` (you cannot re-split on a dim you have already filtered) and not a
@@ -550,18 +524,13 @@
 (defn- measure-node
   "Build and measure the node `(metric-ctx, filter-path)` at `depth`: measure each
   candidate split (or the single `forced` one) and pick the best by **split-gain**.
-  Rate cells are de-scaled to proportions once per node (the metric's kind/scale are
-  constant across its candidates). Returns `{:node {...} :cost <executions>}`
-  (cost = candidates measured), or nil when there is no categorical split to descend
-  — the metric is still surfaced by the depth-1 matrix, so there is nothing to
-  guarantee here."
+  Returns `{:node {...} :cost <executions>}` (cost = candidates measured), or nil
+  when there is no categorical split to descend — the metric is still surfaced by
+  the depth-1 matrix, so there is nothing to guarantee here."
   [group-id metric-ctx filter-path depth forced]
-  (let [aggs       (metric-aggregations metric-ctx)
-        kind       (metric-kind aggs)
-        scale      (rate-scale aggs)
-        measure    (fn [c]
-                     (let [cells (descale-cells (:cells (*measure-split* metric-ctx filter-path c)) scale)]
-                       (assoc c :gain (split-gain cells kind) :cells cells
+  (let [measure    (fn [c]
+                     (let [cells (:cells (*measure-split* metric-ctx filter-path c))]
+                       (assoc c :gain (split-gain cells) :cells cells
                               :prior (interestingness/dimension-interestingness (:dim c)))))
         candidates (if forced [forced] (remaining-candidates metric-ctx filter-path))
         measured   (mapv measure candidates)
@@ -569,7 +538,7 @@
         ;; anchor dim (user-selected, kept by definition).
         eligible   (if forced
                      measured
-                     (remove #(leakage-artifact? (:cells %) kind) measured))
+                     (remove #(leakage-artifact? (:cells %)) measured))
         chosen     (cond forced        (first measured)
                          (seq eligible) (select-split eligible)
                          :else          nil)]
@@ -580,7 +549,7 @@
               :depth        depth
               :chosen       chosen
               :gain         (double (:gain chosen))
-              :descend-gain (double (descend-gain (:cells chosen) kind))}
+              :descend-gain (double (descend-gain (:cells chosen)))}
        :cost (count measured)})))
 
 ;;; ---------------------------------------------------------------------------
@@ -613,8 +582,7 @@
   remaining budget so we never measure past it. Returns `{:nodes [...] :cost n}`."
   [node remaining-budget]
   (let [{:keys [group-id metric-ctx filter-path depth chosen]} node
-        kind   (metric-kind (metric-aggregations metric-ctx))
-        values (select-child-values (:cells chosen) (:k-child-values config) kind)]
+        values (select-child-values (:cells chosen) (:k-child-values config))]
     (reduce (fn [{:keys [nodes cost] :as acc} value]
               (if (>= cost remaining-budget)
                 (reduced acc)
