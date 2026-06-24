@@ -66,20 +66,22 @@
 ;; Postgres connection properties pgjdbc recognizes on the classpath; read at runtime so it tracks the
 ;; driver version. Anything on the URL that's neither a tunable pool knob nor one of these is a typo.
 (def ^:private known-connection-params
-  (into #{} (map #(.getName ^PGProperty %)) (PGProperty/values)))
+  (into #{} (map PGProperty/.getName) (PGProperty/values)))
 
 (defn- url-decode ^String [^String s]
   (URLDecoder/decode s StandardCharsets/UTF_8))
 
 (defn- split-query
-  "Split a JDBC URL into [base pairs], where pairs is a seq of [decoded-key raw-value]."
+  "Split a JDBC URL into [base pairs], where pairs is a seq of raw [key value] strings.
+  Pairs are left verbatim so connection params pass through to pgjdbc exactly as written; only pool-knob
+  values are decoded, in parse-db-url."
   [^String url]
   (let [[base query] (str/split url #"\?" 2)]
     ;; split each pair on its first '=' only, so a value may itself contain '=' (e.g. options=-c foo=bar)
     [base (for [pair  (some-> query (str/split #"&"))
                 :when (seq pair)
                 :let  [[k v] (str/split pair #"=" 2)]]
-            [(url-decode k) (or v "")])]))
+            [k (or v "")])]))
 
 (defn- parse-db-url
   "Parse a pgvector JDBC URL into {:jdbc-url ... :pool-props ...}, or throw if it carries an unrecognized
