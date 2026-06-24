@@ -110,13 +110,20 @@ function measureApp() {
   }
   const stats = readStats("artifacts/stats-main.json");
   const initialAssets = entrypointJsAssets(stats, "app-main", "assets");
-  const reachableAssets = entrypointJsAssets(stats, "app-main", "reachableAssets");
-  if (!initialAssets || !reachableAssets) {
-    throw new Error('app: stats-main.json / "app-main" entrypoint (with reachableAssets) missing');
+  if (!initialAssets) {
+    throw new Error('app: stats-main.json / "app-main" entrypoint missing');
   }
+  const reachableAssets = entrypointJsAssets(stats, "app-main", "reachableAssets");
+  if (!reachableAssets) {
+    // Older stats (built before the chunk-graph enrichment) have no
+    // reachableAssets; fall back to the whole app/dist so a comparison against
+    // such a base ref still runs while it catches up.
+    console.warn("app: stats has no reachableAssets; app total falls back to the whole app/dist");
+  }
+  const totalFiles = reachableAssets ? assetFiles(dist, reachableAssets) : collectJsFiles(dist);
   return [
     { bundle: "app", kind: "initial", ...sizeOf(assetFiles(dist, initialAssets)) },
-    { bundle: "app", kind: "total", ...sizeOf(assetFiles(dist, reachableAssets)) },
+    { bundle: "app", kind: "total", ...sizeOf(totalFiles) },
   ];
 }
 
