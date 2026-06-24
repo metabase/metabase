@@ -12,6 +12,7 @@
   3. No TransformRun row was created."
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -174,6 +175,47 @@
                                                        transform {orders-id orders-f} expected-f {})]
                                         (is (= :passed (:status result))
                                             (str "Expected :passed; got: " (pr-str result)))))))))))
+
+;;; ===========================================================================
+;;; Target schema does not exist yet (never-run transform)
+;;; ===========================================================================
+
+(deftest seed-creates-missing-target-schema-test
+  (testing "a never-run transform whose target schema does not exist yet seeds successfully"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id        (mt/id)
+              ;; Mixed-case on purpose: a lowercased schema would mask whether the rewrite
+              ;; quotes scratch references (it must, or folding drivers miss the table).
+              fresh-schema (str "ttr_" (mt/random-name))
+              db           (t2/select-one :model/Database :id db-id)
+              mp           (mt/metadata-provider)
+              orders-id    (mt/id :orders)]
+          (try
+            ;; Precondition: the target schema genuinely does not exist before the run.
+            (is (not (driver/schema-exists? :postgres db-id fresh-schema))
+                "precondition: fresh schema must not exist yet")
+            (with-temp-csvs
+              [orders-f   orders-3-rows
+               expected-f "user_id,order_count\n1,2\n2,1\n"]
+              (let [transform (native-transform
+                               mp
+                               "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id ORDER BY user_id"
+                               fresh-schema)
+                    result    (test-run.core/run-test!
+                               transform {orders-id orders-f} expected-f {})]
+                (is (= :passed (:status result))
+                    (str "Expected :passed; got: " (pr-str result)))))
+            ;; seed! created the missing schema, and cleanup dropped every scratch table from it.
+            (is (driver/schema-exists? :postgres db-id fresh-schema)
+                "seed! should have created the missing target schema")
+            (is (zero? (count-test-scratch-tables db-id fresh-schema))
+                "no scratch tables should remain in the created schema")
+            (finally
+              ;; Drop the schema the test-run created (scratch tables were already cleaned up).
+              (driver/execute-raw-queries!
+               :postgres (driver/connection-spec :postgres db)
+               [[(str "DROP SCHEMA IF EXISTS \"" fresh-schema "\" CASCADE")]]))))))))
 
 ;;; ===========================================================================
 ;;; Failing diff

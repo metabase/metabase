@@ -216,6 +216,11 @@
         created (atom [])
         mapping (atom {})]
     (try
+      ;; Create the target schema if absent — some warehouses (e.g. BigQuery) don't
+      ;; auto-create it, so a never-run transform's target schema may not exist yet.
+      (when (and (not (str/blank? schema))
+                 (not (driver/schema-exists? drv db-id schema)))
+        (driver/create-schema-if-needed! drv (driver/connection-spec drv db) schema))
       (doseq [{:keys [table-info fixture]} seed-inputs]
         (let [real-spec    {:schema (:schema table-info) :table (:name table-info)}
               suffix       (str "in_" (:id table-info))

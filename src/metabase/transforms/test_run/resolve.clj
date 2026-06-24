@@ -25,6 +25,7 @@
   [[metabase.transforms.test-run.inputs]]."
   (:require
    [metabase.driver.sql.normalize :as sql.normalize]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
@@ -55,6 +56,13 @@
 ;;; Native path: build replacements + rewrite
 ;;; ---------------------------------------------------------------------------
 
+(defn- quote-identifier
+  "Render a bare identifier as a driver-quoted SQL identifier string. Quoting preserves
+  case so the rewritten scratch reference matches the quoted table that was created; an
+  unquoted reference would fold to a different case on folding drivers."
+  [driver ^String name-str]
+  (first (sql.qp/format-honeysql driver (keyword name-str))))
+
 (defn- mapping->replacements
   "Build a `sql-tools/replace-names` `:tables` replacements map from the scratch
   `mapping` (`{real-spec → scratch-spec}`, each spec `{:schema :table}`).
@@ -62,12 +70,15 @@
   For each real table we register TWO keys, both pointing at the scratch target:
   a bare `{:table <name>}` key (matches unqualified `FROM orders`) and a
   schema-qualified `{:schema :table}` key (matches `FROM public.orders` and
-  quoted `\"public\".\"orders\"`)."
-  [mapping]
+  quoted `\"public\".\"orders\"`).
+
+  Scratch-target `:schema`/`:table` values are driver-quoted via [[quote-identifier]]."
+  [driver mapping]
   {:tables
    (reduce-kv
     (fn [acc {real-schema :schema real-table :table} scratch-spec]
-      (let [target {:schema (:schema scratch-spec) :table (:table scratch-spec)}]
+      (let [target {:schema (quote-identifier driver (:schema scratch-spec))
+                    :table  (quote-identifier driver (:table scratch-spec))}]
         ;; Register both bare and qualified forms: on the sqlglot backend an unused
         ;; key is a no-op, so registering both is safe and covers every qualification
         ;; form a native transform might use.
@@ -86,7 +97,7 @@
   without a live compile."
   [driver sql mapping backend]
   (try
-    (sql-tools/replace-names driver sql (mapping->replacements mapping))
+    (sql-tools/replace-names driver sql (mapping->replacements driver mapping))
     (catch PolyglotException e
       ;; sqlglot fail-closed shape: PolyglotException, message starts "ParseError", ex-data nil.
       (cannot-test-run!

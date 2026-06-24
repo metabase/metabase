@@ -62,35 +62,36 @@
 
 (deftest case-1-unqualified-table-unqualified-columns-test
   (testing "case 1: unqualified table ref + unqualified columns"
-    ;; sqlglot qualifies the rewritten ref with the target scratch schema (public).
-    (is (= "SELECT id FROM public.scratch_orders"
+    ;; sqlglot qualifies the rewritten ref with the target scratch schema (public),
+    ;; driver-quoted so the reference is case-preserved and matches the created table.
+    (is (= "SELECT id FROM \"public\".\"scratch_orders\""
            (rewrite "SELECT id FROM orders" orders->scratch)))
     (is (string? (rewrite+verify "SELECT id FROM orders" orders->scratch)))))
 
 (deftest case-2-schema-qualified-table-alias-qualified-columns-test
   (testing "case 2: schema-qualified table ref, alias-qualified columns"
     (let [rw (rewrite "SELECT o.id, o.total FROM public.orders o" orders->scratch)]
-      (is (= "SELECT o.id, o.total FROM public.scratch_orders AS o" rw))
+      (is (= "SELECT o.id, o.total FROM \"public\".\"scratch_orders\" AS o" rw))
       (is (string? (resolve/verify :postgres orders->scratch rw))))))
 
 (deftest case-3-self-join-test
   (testing "case 3: self-join (two aliases, same table)"
     (let [rw (rewrite "SELECT a.id FROM orders a JOIN orders b ON a.id = b.id" orders->scratch)]
-      (is (re-find #"scratch_orders AS a" rw))
-      (is (re-find #"scratch_orders AS b" rw))
+      (is (re-find #"\"scratch_orders\" AS a" rw))
+      (is (re-find #"\"scratch_orders\" AS b" rw))
       (is (string? (resolve/verify :postgres orders->scratch rw))))))
 
 (deftest case-4-subquery-test
   (testing "case 4: subquery (table inside derived table)"
     (let [rw (rewrite "SELECT * FROM (SELECT * FROM orders) sub" orders->scratch)]
-      (is (re-find #"FROM public.scratch_orders" rw))
+      (is (re-find #"FROM \"public\".\"scratch_orders\"" rw))
       (is (string? (resolve/verify :postgres orders->scratch rw))))))
 
 (deftest case-5-cte-real-ref-non-shadowing-test
   (testing "case 5: CTE with a real-table ref inside, non-shadowing CTE name"
     (let [rw (rewrite "WITH recent AS (SELECT * FROM orders WHERE id > 1) SELECT * FROM recent"
                       orders->scratch)]
-      (is (re-find #"FROM public.scratch_orders" rw))
+      (is (re-find #"FROM \"public\".\"scratch_orders\"" rw))
       ;; verify: referenced-tables-raw excludes the CTE name `recent`, so only scratch_orders remains
       (is (string? (resolve/verify :postgres orders->scratch rw))))))
 
@@ -185,7 +186,7 @@
     ;; mapping references `customers` but the SQL only uses `orders`; sqlglot ignores
     ;; the unused `customers` key silently (allow-unused? is moot). The rewrite succeeds;
     ;; orders is rewritten, the unused customers key causes no error.
-    (is (= "SELECT id FROM public.scratch_orders"
+    (is (= "SELECT id FROM \"public\".\"scratch_orders\""
            (rewrite "SELECT id FROM orders" orders+customers->scratch)))))
 
 (deftest case-15-table-only-key-matches-loosely-on-sqlglot-test
@@ -194,7 +195,7 @@
     ;; key matches public.orders. We register both keys, so this is covered, but assert
     ;; the loose-match behavior explicitly with a bare-only mapping.
     (let [bare-only {{:table "orders"} {:schema "public" :table "scratch_orders"}}]
-      (is (= "SELECT id FROM public.scratch_orders"
+      (is (= "SELECT id FROM \"public\".\"scratch_orders\""
              (rewrite "SELECT id FROM public.orders" bare-only))))))
 
 ;;; ===========================================================================
