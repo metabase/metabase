@@ -52,6 +52,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.shared :as shared.params]
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru trun]]
@@ -1168,6 +1169,12 @@
     (.setNonStrokingColor cs Color/BLACK)
     (* vw scale)))
 
+(defn- include-branding?
+  "Whether the 'Made with Metabase' badge should be drawn. Branding in exports is included only for
+  instances that lack the `:whitelabel` feature -- i.e. OSS instances. Pro/EE instances get no badge."
+  []
+  (not (premium-features/enable-whitelabeling?)))
+
 (defn- draw-brand-badge!
   "Draw the 'Made with [logo] Metabase' badge, right-aligned to `right`, with the logo's top at
   `logo-top` (placed in the page's top common/margin band). The 'Made with' prefix is localized to the
@@ -1193,9 +1200,11 @@
   [^PDPageContentStream cs page-height content-w {:keys [dashboard-title tab-title param-table]}]
   (let [bold (font/face :bold)
         top  (- page-height common/margin)
-        ;; "Made with Metabase" badge, vector-drawn in the empty top common/margin band, right-aligned
-        _    (draw-brand-badge! cs (+ common/margin content-w)
-                                (common/v-center page-height common/margin brand-logo-pt))
+        ;; "Made with Metabase" badge, vector-drawn in the empty top common/margin band, right-aligned.
+        ;; Only OSS instances get the badge; Pro/EE (whitelabel feature) render no branding.
+        _    (when (include-branding?)
+               (draw-brand-badge! cs (+ common/margin content-w)
+                                  (common/v-center page-height common/margin brand-logo-pt)))
         ;; order: dashboard title, then the dashboard-wide parameter table, then the tab title
         y1   (if dashboard-title
                (do (draw-line! cs bold common/dashboard-title-pt
