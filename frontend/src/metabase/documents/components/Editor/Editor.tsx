@@ -41,6 +41,8 @@ import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/exte
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Center, Loader } from "metabase/ui";
 
+import { DocumentBlockShell } from "./DocumentBlockShell";
+import { DocumentEditorHostProvider } from "./DocumentEditorHost";
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";
 
@@ -115,6 +117,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
             width: 2,
             class: DropCursorS.dropCursor,
           },
+          blockShell: DocumentBlockShell,
         }),
         Image.configure({
           inline: false,
@@ -230,61 +233,63 @@ export const Editor: React.FC<EditorProps> = React.memo(
     }
 
     return (
-      <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
-        <Box
-          className={S.editorContent}
-          ref={editorContainerRef}
-          onClick={(e) => {
-            // Focus editor when clicking on empty space
-            const target = e.target;
-            if (!(target instanceof HTMLElement)) {
-              return;
-            }
+      <DocumentEditorHostProvider>
+        <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
+          <Box
+            className={S.editorContent}
+            ref={editorContainerRef}
+            onClick={(e) => {
+              // Focus editor when clicking on empty space
+              const target = e.target;
+              if (!(target instanceof HTMLElement)) {
+                return;
+              }
 
-            if (
-              target.classList.contains(S.editorContent) ||
-              target.classList.contains("ProseMirror")
-            ) {
-              const clickY = e.clientY;
-              const proseMirrorElement = target.querySelector(".ProseMirror");
+              if (
+                target.classList.contains(S.editorContent) ||
+                target.classList.contains("ProseMirror")
+              ) {
+                const clickY = e.clientY;
+                const proseMirrorElement = target.querySelector(".ProseMirror");
 
-              if (proseMirrorElement) {
-                const proseMirrorRect =
-                  proseMirrorElement.getBoundingClientRect();
-                const isClickBelowContent = clickY > proseMirrorRect.bottom;
+                if (proseMirrorElement) {
+                  const proseMirrorRect =
+                    proseMirrorElement.getBoundingClientRect();
+                  const isClickBelowContent = clickY > proseMirrorRect.bottom;
 
-                if (isClickBelowContent) {
-                  // Only move to end if clicking below the actual content
-                  editor.commands.focus("end");
+                  if (isClickBelowContent) {
+                    // Only move to end if clicking below the actual content
+                    editor.commands.focus("end");
+                  } else {
+                    // Just focus without changing cursor position for clicks in padding areas
+                    editor.commands.focus();
+                  }
                 } else {
-                  // Just focus without changing cursor position for clicks in padding areas
+                  // Fallback: just focus without position change
                   editor.commands.focus();
                 }
-              } else {
-                // Fallback: just focus without position change
-                editor.commands.focus();
               }
-            }
-          }}
-        >
-          <EditorContent data-testid="document-content" editor={editor} />
+            }}
+          >
+            <EditorContent data-testid="document-content" editor={editor} />
 
-          {editable && (
-            <EditorBubbleMenu
-              editor={editor}
-              disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
-              disallowedFullySelectedNodes={
-                BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES
-              }
-            />
-          )}
-          <Box pos="absolute" top={0} left={0} w="100%">
-            <Box className={S.editorContentInner} pos="relative">
-              <LinkHoverMenu editor={editor} editable={editable} />
+            {editable && (
+              <EditorBubbleMenu
+                editor={editor}
+                disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+                disallowedFullySelectedNodes={
+                  BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES
+                }
+              />
+            )}
+            <Box pos="absolute" top={0} left={0} w="100%">
+              <Box className={S.editorContentInner} pos="relative">
+                <LinkHoverMenu editor={editor} editable={editable} />
+              </Box>
             </Box>
           </Box>
         </Box>
-      </Box>
+      </DocumentEditorHostProvider>
     );
   },
 );
