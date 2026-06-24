@@ -705,6 +705,18 @@
   {:include-field-values false :include-database-secrets false
    :continue-on-error false :skip-archived true})
 
+(defn- merge-incremental-export-plans [a b]
+  (if (or (= :remote-sync/incremental-not-possible a)
+          (= :remote-sync/incremental-not-possible b))
+    :remote-sync/incremental-not-possible
+    (merge-with into a b)))
+
+(defn- merge-incremental-export-plans-reducer [a b]
+  (let [result (merge-incremental-export-plans a b)]
+    (if (= :remote-sync/incremental-not-possible result)
+      (reduced result)
+      result)))
+
 (defn- export-closure
   "All `{:model_type :model_id}` entities a full export would pull for the entity `[model-type model-id]`
   (its transitive `serdes/descendants` + `serdes/required`, including the entity itself)."
@@ -729,31 +741,35 @@
                        (not (t2/exists? :model/RemoteSyncObject :model_type model_type :model_id model_id)))))
         (export-closure model-type model-id)))
 
-(defn- resize-chunk [[model-type rows]]
-  (map (fn [chunk-rows] [model-type chunk-rows])
-       (partition-all content-hash-batch-size rows)))
+(defn- resize-chunk [{:keys [model_type rows]}]
+  (->> rows
+       (partition-all content-hash-batch-size)
+       (map (fn [chunk-rows] {:model_type model_type :rows chunk-rows}))))
 
 (defn- ->sized-chunks
   "Builds chunks of maximum size based on model type."
   [rows]
-  (mapcat resize-chunk (group-by :model_type rows)))
+  (->> rows
+       (group-by :model_type)
+       (map (fn [[model-type rows]] {:model_type model-type :rows rows}))
+       (mapcat resize-chunk)))
 
 (defn- extract-chunk
   "Extract one chunk's entities in a single query.
 
   Argument:
-    - [model-type [{:model_type .. :model_id ..}]]
+    - {:model_type .. :rows [{:model_type .. :model_id ..}]}
 
   Return:
     - [[row entity]] (if no entity, then omit)"
-  [[model-type rows]]
+  [{:keys [model_type rows]}]
   (let [id->row (u/index-by :model_id rows)
         opts    {:where [:in :id (mapv :model_id rows)] :skip-archived true}]
     ;; extract-one must run inside the extract-query reduction, while its ResultSet is open
     (into [] (keep (fn [instance]
                      (when-let [row (id->row (:id instance))]
-                       [row (serdes/extract-one model-type opts instance)])))
-          (serdes/extract-query model-type opts))))
+                       [row (serdes/extract-one model_type opts instance)])))
+          (serdes/extract-query model_type opts))))
 
 (defn- path-free?
   "Is this path free to write the entity with eid to?
@@ -775,30 +791,30 @@
      :file-eid     (when content (try (:entity_id (yaml/parse-string content))
                                       (catch Exception _ nil)))}))
 
-(defn- dep-chunk-writes
-  "Write-decisions ({:model_type :model_id :file_path}) for one chunk of dependency rows, or
+(defn- dependency->incremental-export-plan [snapshot opts [row entity]]
+  (let [path (source/entity->path opts entity)]
+    (if (path-free? (repo-file-info snapshot path (:entity_id entity)))
+      {:writes [(assoc row :file_path path)]}
+      :remote-sync/incremental-not-possible)))
+
+(defn- dependency-chunk->incremental-export-plan
+  "Plan fragment ({:writes [{:model_type :model_id :file_path}]}) for one chunk of dependency rows, or
   `:remote-sync/incremental-not-possible` if any target path collides with a different entity."
   [snapshot opts chunk]
-  (reduce (fn [writes [row entity]]
-            (let [path (source/entity->path opts entity)]
-              (if (path-free? (repo-file-info snapshot path (:entity_id entity)))
-                (conj writes (assoc row :file_path path))
-                (reduced :remote-sync/incremental-not-possible))))
-          []
-          (extract-chunk chunk)))
+  (->> chunk
+       (extract-chunk)
+       (map #(dependency->incremental-export-plan snapshot opts %))
+       (reduce merge-incremental-export-plans-reducer {})))
 
-(defn- dep-writes
+(defn- dependencies->incremental-export-plan
   "Validate the untracked dependency entities `dep-ids` (a set of `{:model_type :model_id}`) one chunk at a
-  time: the `{:model_type :model_id :file_path}` write-decisions, or `:remote-sync/incremental-not-possible`
-  at the first chunk whose target path collides with a different entity."
+  time, returning a plan `{:writes [{:model_type :model_id :file_path}]}`, or
+  `:remote-sync/incremental-not-possible` at the first chunk whose target path collides with a different entity."
   [snapshot opts dep-ids]
-  (reduce (fn [writes chunk]
-            (let [chunk-writes (dep-chunk-writes snapshot opts chunk)]
-              (if (= :remote-sync/incremental-not-possible chunk-writes)
-                (reduced :remote-sync/incremental-not-possible)
-                (into writes chunk-writes))))
-          []
-          (->sized-chunks dep-ids)))
+  (->> dep-ids
+       (->sized-chunks)
+       (map #(dependency-chunk->incremental-export-plan snapshot opts %))
+       (reduce merge-incremental-export-plans-reducer {})))
 
 (defn- row->incremental-export-plan
   "Decide a `row`'s contribution to an incremental plan.
@@ -877,60 +893,54 @@
    - :remote-sync/incremental-not-possible when the chunk can't be synced
    - {:writes :delete-paths :removed-ids :pull}"
   [snapshot opts chunk]
-  (let [rows  (second chunk)
-        found (extract-chunk chunk)]
-    (if (< (count found) (count rows))
-      :remote-sync/incremental-not-possible                 ; extract-chunk omits gone entities; some row is unsyncable
-      (reduce (fn [frag [row entity]]
-                (let [new-path (source/entity->path opts entity)
-                      info     (assoc (repo-file-info snapshot new-path (:entity_id entity)) :new-path new-path)
-                      updates  (row->incremental-export-plan row info)]
-                  (if (= updates :remote-sync/incremental-not-possible)
-                    (reduced :remote-sync/incremental-not-possible)
-                    (merge-with into frag updates))))
-              {:writes [] :delete-paths [] :removed-ids [] :pull #{}}
-              found))))
+  ;; extracting/serializing an entity or reading the existing repo file can throw — treat any such failure
+  ;; as a chunk that can't go incrementally, so the batch falls back to a full export
+  (try
+    (let [rows  (:rows chunk)
+          found (extract-chunk chunk)]
+      (if (< (count found) (count rows))
+        :remote-sync/incremental-not-possible               ; extract-chunk omits gone entities; some row is unsyncable
+        (reduce (fn [frag [row entity]]
+                  (let [new-path (source/entity->path opts entity)
+                        info     (assoc (repo-file-info snapshot new-path (:entity_id entity)) :new-path new-path)
+                        updates  (row->incremental-export-plan row info)]
+                    (merge-incremental-export-plans-reducer frag updates)))
+                {:writes [] :delete-paths [] :removed-ids [] :pull #{}}
+                found)))
+    (catch Exception _
+      :remote-sync/incremental-not-possible)))
 
 (defn- incremental-export-plan
   "Validate `rows` (`RemoteSyncObject`s) and build an incremental export plan, one chunk at a time.
 
-  `snapshot` is the git repo to test existing paths against; `rows` are the RemoteSyncObjects to export.
+  Arguments:
+    - `snapshot`: git repo to test existing paths against
+    - `rows`: RemoteSyncObjects to export.
 
-  Returns `{:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}`, or
-  `:remote-sync/incremental-not-possible` when any row can't be exported incrementally."
+  Return:
+    - `{:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}`, or
+    - `:remote-sync/incremental-not-possible` when any row can't be exported incrementally."
   [snapshot rows]
   (let [opts          (serdes/storage-base-context)
-        init          {:writes [] :delete-paths [] :removed-ids [] :pull #{}}
-        merge-or-bail (fn [plan frag]
-                        (if (= :remote-sync/incremental-not-possible frag)
-                          (reduced :remote-sync/incremental-not-possible)
-                          (merge-with into plan frag)))
         ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
         ;; (removed/delete, non-entity-id, bad status) is decided with no entity
-        {cu-rows true other-rows false}
-        (group-by #(boolean (and (#{"create" "update"} (:status %))
-                                 (= :entity-id (:identity (spec/spec-for-model-type (:model_type %))))))
-                  rows)
+        {cu-rows true other-rows false} (group-by #(boolean (and (#{"create" "update"} (:status %))
+                                                                 (= :entity-id (:identity (spec/spec-for-model-type (:model_type %))))))
+                                                  rows)
         ;; the no-extraction rows first (cheap)
-        plan          (reduce (fn [plan row] (merge-or-bail plan (row->incremental-export-plan row nil)))
-                              init other-rows)
-        ;; then the create/update rows, one chunk at a time; an extraction error → full export
-        plan          (if (keyword? plan)
-                        plan
-                        (try
-                          (reduce (fn [plan chunk] (merge-or-bail plan (chunk->plan snapshot opts chunk)))
-                                  plan (->sized-chunks cu-rows))
-                          (catch Exception _ :remote-sync/incremental-not-possible)))
-        deps          (delay (dep-writes snapshot opts (:pull plan)))]
-    (cond
-      (= plan :remote-sync/incremental-not-possible)
+        plan          (->> other-rows
+                           (map #(row->incremental-export-plan % nil))
+                           (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull #{}}))
+        plan          (->> cu-rows
+                           (->sized-chunks)
+                           (map #(chunk->plan snapshot opts %))
+                           (reduce merge-incremental-export-plans-reducer plan))
+        plan          (->> (:pull plan) ;; nil when plan is already :incremental-not-possible
+                           (dependencies->incremental-export-plan snapshot opts)
+                           (merge-incremental-export-plans plan))]
+    (if (= plan :remote-sync/incremental-not-possible)
       :remote-sync/incremental-not-possible
-
-      (= :remote-sync/incremental-not-possible @deps)
-      :remote-sync/incremental-not-possible
-
-      :else
-      (-> plan (update :writes into @deps) (dissoc :pull)))))
+      (dissoc plan :pull))))
 
 (defn- path-top-level-dir [^String path]
   (let [i (str/index-of path "/")]
