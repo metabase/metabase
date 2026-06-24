@@ -79,7 +79,7 @@ export const LimitPopover = ({
           <Radio value="custom" label={t`Set custom limit`} />
         </Stack>
       </Radio.Group>
-      <Box mt="sm" ml="1.25rem">
+      <Box mt="sm" ml="1.7rem">
         <LimitInput
           ref={inputRef}
           small
