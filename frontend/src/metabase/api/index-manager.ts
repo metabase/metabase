@@ -2,9 +2,9 @@ import type {
   CreateTableIndexRequest,
   ListTableIndexesRequest,
   ListTableIndexesResponse,
-  TableIndex,
   TableIndexEntry,
-  TableIndexId,
+  TableIndexRequest,
+  TableIndexRequestId,
   UpdateTableIndexRequest,
 } from "metabase-types/api";
 
@@ -31,14 +31,17 @@ export const indexManagerApi = Api.injectEndpoints({
         providesTags: (indexes = []) => provideTableIndexListTags(indexes),
       },
     ),
-    getTableIndex: builder.query<TableIndex, TableIndexId>({
+    getTableIndex: builder.query<TableIndexRequest, TableIndexRequestId>({
       query: (id) => ({
         method: "GET",
         url: `/api/indexes/request/${id}`,
       }),
       providesTags: (index) => (index ? provideTableIndexTags(index) : []),
     }),
-    createTableIndex: builder.mutation<TableIndex, CreateTableIndexRequest>({
+    createTableIndex: builder.mutation<
+      TableIndexRequest,
+      CreateTableIndexRequest
+    >({
       query: (body) => ({
         method: "POST",
         url: "/api/indexes/request",
@@ -47,7 +50,10 @@ export const indexManagerApi = Api.injectEndpoints({
       invalidatesTags: (_index, error) =>
         invalidateTags(error, [listTag("table-index")]),
     }),
-    updateTableIndex: builder.mutation<TableIndex, UpdateTableIndexRequest>({
+    updateTableIndex: builder.mutation<
+      TableIndexRequest,
+      UpdateTableIndexRequest
+    >({
       query: ({ id, structured }) => ({
         method: "PUT",
         url: `/api/indexes/request/${id}`,
@@ -59,7 +65,7 @@ export const indexManagerApi = Api.injectEndpoints({
           idTag("table-index", id),
         ]),
     }),
-    deleteTableIndex: builder.mutation<void, TableIndexId>({
+    deleteTableIndex: builder.mutation<void, TableIndexRequestId>({
       query: (id) => ({
         method: "DELETE",
         url: `/api/indexes/request/${id}`,

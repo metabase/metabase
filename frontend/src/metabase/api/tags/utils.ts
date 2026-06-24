@@ -47,8 +47,8 @@ import type {
   SearchResult,
   Segment,
   Table,
-  TableIndex,
   TableIndexEntry,
+  TableIndexRequest,
   TableRemapping,
   Task,
   TaskRun,
@@ -674,7 +674,7 @@ export function provideSubscriptionTags(
 }
 
 export function provideTableIndexTags(
-  index: TableIndex,
+  index: TableIndexRequest,
 ): TagDescription<TagType>[] {
   return [
     idTag("table-index", index.id),

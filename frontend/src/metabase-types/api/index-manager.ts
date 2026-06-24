@@ -1,7 +1,7 @@
 import type { TransformId } from "./transform";
 import type { UserId } from "./user";
 
-export type TableIndexId = number;
+export type TableIndexRequestId = number;
 
 export type IndexColumnDirection = "asc" | "desc";
 
@@ -83,21 +83,22 @@ export type StructuredIndex =
   | OrderByIndex
   | SkipIndex;
 
-export const TABLE_INDEX_STATUSES = [
+export const TABLE_INDEX_REQUEST_STATUSES = [
   "pending",
   "running",
   "succeeded",
   "failed",
   "dropped",
 ] as const;
-export type TableIndexStatus = (typeof TABLE_INDEX_STATUSES)[number];
+export type TableIndexRequestStatus =
+  (typeof TABLE_INDEX_REQUEST_STATUSES)[number];
 
-export type TableIndex = {
-  id: TableIndexId;
+export type TableIndexRequest = {
+  id: TableIndexRequestId;
   transform_id: TransformId;
   index_name: string;
   structured: StructuredIndex;
-  status: TableIndexStatus;
+  status: TableIndexRequestStatus;
   error_message: string | null;
   created_by: UserId | null;
   created_at: string;
@@ -117,7 +118,7 @@ export type TableIndexEntry = {
   is_valid: boolean;
   partial_predicate: string | null;
   access_method: string | null;
-  request?: TableIndex;
+  request?: TableIndexRequest;
 };
 
 export type ListTableIndexesRequest = {
@@ -134,6 +135,6 @@ export type CreateTableIndexRequest = {
 };
 
 export type UpdateTableIndexRequest = {
-  id: TableIndexId;
+  id: TableIndexRequestId;
   structured: StructuredIndex;
 };

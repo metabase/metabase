@@ -1,8 +1,8 @@
-import type { TableIndex, TableIndexEntry } from "metabase-types/api";
+import type { TableIndexEntry, TableIndexRequest } from "metabase-types/api";
 
-export const createMockTableIndex = (
-  opts?: Partial<TableIndex>,
-): TableIndex => ({
+export const createMockTableIndexRequest = (
+  opts?: Partial<TableIndexRequest>,
+): TableIndexRequest => ({
   id: 1,
   transform_id: 1,
   index_name: "btree",
@@ -34,6 +34,6 @@ export const createMockTableIndexEntry = (
   is_valid: true,
   partial_predicate: null,
   access_method: null,
-  request: createMockTableIndex(),
+  request: createMockTableIndexRequest(),
   ...opts,
 });
