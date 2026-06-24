@@ -8,6 +8,7 @@ export {
   max,
   median,
   min,
+  sort,
   sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -15,5 +16,7 @@ export {
 export type {
   MetabaseBreakout,
   MetabaseQueryOptions,
+  MetabaseSort,
+  SortDirection,
   UseMetabaseQueryResult,
 } from "./use-metabase-query";

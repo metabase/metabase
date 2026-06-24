@@ -10,7 +10,11 @@ import {
   isTableDimensionFilter,
 } from "./guards";
 import type { MetricQueryInput } from "./input-types";
-import { getMetricDimensionValues, normalizeBreakout } from "./input-utils";
+import {
+  getMetricDimensionValues,
+  normalizeBreakout,
+  normalizeSort,
+} from "./input-utils";
 
 export const validateMetricTableScopedInputs = (input: MetricQueryInput) =>
   validateTableScopedInputs({
@@ -18,6 +22,7 @@ export const validateMetricTableScopedInputs = (input: MetricQueryInput) =>
     breakouts: input.breakouts,
     filters: input.filters,
     measures: input.measures,
+    sorts: input.sorts,
     context: "Metric query",
   });
 
@@ -35,6 +40,14 @@ export function validateMetricGeneratedDimensions(input: MetricQueryInput) {
       validateMetricDimensionForTableField(input, field);
     }
   });
+
+  input.sorts?.forEach((sort) => {
+    const field = getTableFieldFromSort(sort);
+
+    if (field) {
+      validateMetricDimensionForTableField(input, field);
+    }
+  });
 }
 
 export function validateTableScopedInputs({
@@ -44,6 +57,7 @@ export function validateTableScopedInputs({
   filters,
   measures,
   breakouts,
+  sorts,
 }: {
   allowedTableIds: readonly number[] | null;
   context: string;
@@ -51,6 +65,7 @@ export function validateTableScopedInputs({
   filters?: readonly unknown[];
   measures?: readonly unknown[];
   breakouts?: readonly unknown[];
+  sorts?: readonly unknown[];
 }) {
   if (!allowedTableIds) {
     return;
@@ -115,12 +130,30 @@ export function validateTableScopedInputs({
       });
     }
   });
+
+  sorts?.forEach((sort) => {
+    const field = getTableFieldFromSort(sort);
+
+    if (field && typeof field.tableId === "number") {
+      validateGeneratedTableId({
+        tableId: field.tableId,
+        allowedTableIds,
+        context: `${context} sorts`,
+      });
+    }
+  });
 }
 
 function getTableFieldFromBreakout(breakout: unknown) {
   const { dimension } = normalizeBreakout(breakout);
 
   return isTableFieldSchema(dimension) ? dimension : null;
+}
+
+function getTableFieldFromSort(sort: unknown) {
+  const { column } = normalizeSort(sort);
+
+  return isTableFieldSchema(column) ? column : null;
 }
 
 export function validateMetricDimensionForTableField(

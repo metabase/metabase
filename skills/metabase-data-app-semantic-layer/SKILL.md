@@ -11,7 +11,7 @@ Keep the semantic layer and presentation layer separate.
 
 - All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
 - Do not discover data through MCP tools, create questions, create metrics, create tables, or edit the semantic layer while building the React UI.
-- Use `useMetabaseQuery`, `useMetabaseQueryObject`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react/data-app`.
+- Use `useMetabaseQuery`, `useMetabaseQueryObject`, `filter(...)`, `breakout(...)`, and `sort(...)` from `@metabase/embedding-sdk-react/data-app`.
 - Data apps must install the published data-app SDK tag: `npm install @metabase/embedding-sdk-react@63-data-apps`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
 - Never hand-write `DatasetQuery`/MBQL objects in app code. Do not pass inline query objects like `{ type: "query", query: { "source-table": table.id } }`, raw `source-table` clauses, raw field IDs, or table/metric IDs to `InteractiveQuestion`, `StaticQuestion`, `useMetabaseQuery`, or `useMetabaseQueryObject`. Build queries from generated schema objects instead.
@@ -125,6 +125,7 @@ Other useful filters:
 import {
   breakout,
   filter,
+  sort,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
@@ -142,6 +143,8 @@ const { data, isLoading, error } = useMetabaseQuery({
       bucket: "month",
     }),
   ],
+  sorts: [sort(primaryMetric.dimensions.sourceTable.createdAt, "asc")],
+  limit: 100,
 });
 ```
 
@@ -510,6 +513,48 @@ const metricFilters = useMemo(
   [dateRange],
 );
 ```
+
+## Sorting
+
+Add `sorts` to order rows. Works on table and metric queries, and on `useMetabaseQuery` and `useMetabaseQueryObject`.
+
+```ts
+const ordersTable = schema.tables.orders;
+type OrdersTable = typeof ordersTable;
+
+const { data } = useMetabaseQuery<OrdersTable>({
+  table: ordersTable,
+  aggregations: [ordersTable.measures.totalAmount],
+  breakouts: [breakout(ordersTable.fields.status)],
+  // Highest revenue first.
+  sorts: [sort(ordersTable.measures.totalAmount, "desc")],
+});
+```
+
+- `sort(column, direction?)` builds one sort entry; `direction` is `"asc"` (default) or `"desc"`.
+- Sort `column` can be a breakout dimension, a raw table field, a generated measure, or an aggregation helper such as `count()`, `sum(...)`, or `avg(...)`. Use the same generated schema objects you pass to `aggregations`/`breakouts`; do not pass raw column-name strings. The sort column should already be part of the query (a breakout, field, measure, or aggregation it returns).
+- Results are not ordered unless you sort. For time-series charts, add an ascending time sort: `sort(table.fields.createdAt, "asc")`.
+- Prefer sorting in the query over sorting `data.rows` in React, so charts stay ordered.
+
+## Limiting Rows
+
+Add `limit` to cap how many rows the query returns. Works on table and metric queries, and on `useMetabaseQuery` and `useMetabaseQueryObject`. It is independent of `sorts`, but pair the two for ranked "top N" lists.
+
+```ts
+const ordersTable = schema.tables.orders;
+type OrdersTable = typeof ordersTable;
+
+const { data } = useMetabaseQuery<OrdersTable>({
+  table: ordersTable,
+  aggregations: [ordersTable.measures.totalAmount],
+  breakouts: [breakout(ordersTable.fields.status)],
+  sorts: [sort(ordersTable.measures.totalAmount, "desc")],
+  limit: 5, // Top 5 by revenue.
+});
+```
+
+- `limit` is a whole, non-negative row count. When combined with `sorts`, it is applied after sorting.
+- Prefer limiting in the query over slicing `data.rows` in React, so the result set stays bounded.
 
 ## Result Shape And Charts
 

@@ -35,6 +35,7 @@ import type {
   MetricReference,
   NumericAggregationDimension,
   OrderableAggregationDimension,
+  SortDirection,
   TableQuery,
   UnaryFilterOperatorForDimension,
   UseMetabaseQuery,
@@ -52,6 +53,8 @@ export type {
   MetabaseMetricBreakout,
   MetabaseMetricDimensionFilter,
   MetabaseQueryOptions,
+  MetabaseSort,
+  SortDirection,
   UseMetabaseQueryResult,
 } from "./types";
 
@@ -218,6 +221,16 @@ export function breakout<TDimension>(
   options?: BreakoutOptionsArgument<TDimension>,
 ) {
   return { dimension, ...options };
+}
+
+/** @notExported sort */
+export function sort<TColumn>(column: TColumn): { column: TColumn };
+export function sort<TColumn>(
+  column: TColumn,
+  direction: SortDirection,
+): { column: TColumn; direction: SortDirection };
+export function sort<TColumn>(column: TColumn, direction?: SortDirection) {
+  return direction === undefined ? { column } : { column, direction };
 }
 
 const useMetabaseQueryImpl = <

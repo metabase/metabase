@@ -358,6 +358,26 @@ export type MetabaseMetricBreakout<TDimension = FieldSchema> =
 export type MetabaseMetricDimensionFilter =
   MetabaseDimensionFilterForDimension<FieldSchema>;
 
+export type SortDirection = "asc" | "desc";
+
+type SortableDimension<TEntity> = [DimensionValues<TEntity>] extends [never]
+  ? DimensionInput<TEntity>
+  : DimensionValues<TEntity>;
+
+type SortableColumn<TEntity> =
+  | SortableDimension<TEntity>
+  | AnyAggregation
+  | MeasureReference;
+
+/**
+ * @notExported SortableColumn
+ * @notExported SortDirection
+ */
+export type MetabaseSort<TEntity = unknown> = {
+  column: SortableColumn<TEntity>;
+  direction?: SortDirection;
+};
+
 export type QuestionQuery<TQuestion> = {
   questionId: SdkQuestionId;
   table?: never;
@@ -396,6 +416,10 @@ export type TableQuery<TTable> = TableReference<TTable> & {
   breakouts?: TTable extends TableSchema
     ? readonly MetabaseBreakout<TTable>[]
     : readonly MetabaseBreakout[];
+  sorts?: TTable extends TableSchema
+    ? readonly MetabaseSort<TTable>[]
+    : readonly MetabaseSort[];
+  limit?: number;
   enabled?: boolean;
 };
 
@@ -419,6 +443,10 @@ export type MetricQuery<TMetric> = {
   breakouts?: TMetric extends MetricReference
     ? readonly MetricBreakoutForMetric<TMetric>[]
     : readonly MetabaseBreakout[];
+  sorts?: TMetric extends MetricReference
+    ? readonly MetabaseSort<TMetric>[]
+    : readonly MetabaseSort[];
+  limit?: number;
   enabled?: boolean;
 };
 

@@ -27,6 +27,7 @@ import {
   createMetricMetadata,
   createTableMetadata,
 } from "./metadata";
+import { applyLimit, applySorts } from "./sorts";
 
 export function buildTableDatasetQueryFromInput(
   input: TableQueryInput,
@@ -72,7 +73,17 @@ export function buildTableDatasetQueryFromInput(
     return null;
   }
 
-  return Lib.toJsQuery(queryWithBreakouts);
+  libQuery = queryWithBreakouts;
+
+  const queryWithSorts = applySorts(libQuery, input.sorts);
+
+  if (!queryWithSorts) {
+    return null;
+  }
+
+  libQuery = applyLimit(queryWithSorts, input.limit);
+
+  return Lib.toJsQuery(libQuery);
 }
 
 export function buildMetricDatasetQueryFromInput(
@@ -123,5 +134,15 @@ export function buildMetricDatasetQueryFromInput(
     return null;
   }
 
-  return Lib.toJsQuery(queryWithBreakouts);
+  libQuery = queryWithBreakouts;
+
+  const queryWithSorts = applySorts(libQuery, input.sorts);
+
+  if (!queryWithSorts) {
+    return null;
+  }
+
+  libQuery = applyLimit(queryWithSorts, input.limit);
+
+  return Lib.toJsQuery(libQuery);
 }

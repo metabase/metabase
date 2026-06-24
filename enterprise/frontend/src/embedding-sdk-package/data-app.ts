@@ -19,12 +19,15 @@ export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export {
   breakout,
   filter,
+  sort,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "./hooks/public/use-metabase-query";
 export type {
   MetabaseBreakout,
   MetabaseQueryOptions,
+  MetabaseSort,
+  SortDirection,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
 export type { DatasetQuery } from "metabase-types/api";

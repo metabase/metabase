@@ -20,6 +20,7 @@ import {
   max,
   median,
   min,
+  sort,
   sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -527,6 +528,50 @@ const _invalidMetricAdHocMeasureQuery = {
   ],
 } satisfies MetabaseQueryOptions;
 
+const _validTableSortAndLimitQuery = {
+  table: TEST_SCHEMA.tables.orders,
+  aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],
+  breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+  sorts: [
+    sort(TEST_SCHEMA.tables.orders.fields.status),
+    sort(TEST_SCHEMA.tables.orders.fields.amount, "desc"),
+    sort(sum(TEST_SCHEMA.tables.orders.fields.amount), "desc"),
+    sort(count(), "desc"),
+    { column: TEST_SCHEMA.tables.orders.fields.status, direction: "asc" },
+  ],
+  limit: 5,
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidTableSortColumnQuery = {
+  table: TEST_SCHEMA.tables.orders,
+  // @ts-expect-error sort columns must belong to the table schema
+  sorts: [sort(TEST_SCHEMA.tables.products.fields.price)],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidTableSortDirectionQuery = {
+  table: TEST_SCHEMA.tables.orders,
+  // @ts-expect-error sort direction must be "asc" or "desc"
+  sorts: [sort(TEST_SCHEMA.tables.orders.fields.status, "ascending")],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _validMetricSortAndLimitQuery = {
+  metric: TEST_SCHEMA.metrics.orderCount,
+  breakouts: [
+    breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
+  ],
+  sorts: [
+    sort(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
+    sort(TEST_SCHEMA.metrics.orderCount.dimensions.orders.amount, "desc"),
+  ],
+  limit: 10,
+} satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
+
+const _invalidMetricSortColumnQuery = {
+  metric: TEST_SCHEMA.metrics.orderCount,
+  // @ts-expect-error metric sort dimensions must come from mapped tables
+  sorts: [sort(TEST_SCHEMA.tables.products.fields.price)],
+} satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
+
 describe("useMetabaseQuery", () => {
   const mbqlOptions = (options: Record<string, unknown> = {}) =>
     expect.objectContaining({
@@ -899,6 +944,97 @@ describe("useMetabaseQuery", () => {
             }),
           ],
         }),
+      );
+    });
+
+    it("sorts table queries by a breakout dimension and limits rows", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [count()],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+          sorts: [sort(TEST_SCHEMA.tables.orders.fields.status)],
+          limit: 5,
+        }),
+      ).toEqual(
+        queryObject({
+          aggregation: [["count", mbqlOptions()]],
+          breakout: [fieldRef(101)],
+          "order-by": [["asc", mbqlOptions(), fieldRef(101)]],
+          limit: 5,
+        }),
+      );
+    });
+
+    it("sorts table queries by an aggregation column descending", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [sum(TEST_SCHEMA.tables.orders.fields.amount)],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+          sorts: [sort(sum(TEST_SCHEMA.tables.orders.fields.amount), "desc")],
+        }),
+      ).toEqual(
+        queryObject({
+          aggregation: [["sum", mbqlOptions(), fieldRef(102)]],
+          breakout: [fieldRef(101)],
+          "order-by": [
+            [
+              "desc",
+              mbqlOptions(),
+              ["aggregation", mbqlOptions(), expect.any(String)],
+            ],
+          ],
+        }),
+      );
+    });
+
+    it("supports sort object literals and the default ascending direction", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          sorts: [{ column: TEST_SCHEMA.tables.orders.fields.amount }],
+        }),
+      ).toEqual(
+        queryObject({
+          "order-by": [["asc", mbqlOptions(), fieldRef(102)]],
+        }),
+      );
+    });
+
+    it("sorts metric queries by a breakout dimension and limits rows", () => {
+      expect(
+        createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          breakouts: [
+            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
+          ],
+          sorts: [
+            sort(
+              TEST_SCHEMA.metrics.orderCount.dimensions.orders.status,
+              "desc",
+            ),
+          ],
+          limit: 10,
+        }),
+      ).toEqual(
+        queryObject({
+          aggregation: [["metric", mbqlOptions(), 34]],
+          breakout: [fieldRef(101)],
+          "order-by": [["desc", mbqlOptions(), fieldRef(101)]],
+          limit: 10,
+        }),
+      );
+    });
+
+    it("throws when a sort column cannot be resolved", () => {
+      expect(() =>
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          sorts: [sort("nonexistent_column")],
+        }),
+      ).toThrow(
+        "Table query object creation requires a table reference with id and databaseId.",
       );
     });
 

@@ -48,6 +48,8 @@ export type TableQueryInput = {
   aggregations?: readonly unknown[];
   measures?: readonly unknown[];
   breakouts?: readonly unknown[];
+  sorts?: readonly unknown[];
+  limit?: number;
 
   enabled?: boolean;
 };
@@ -63,6 +65,8 @@ export type MetricQueryInput = {
   filters?: readonly unknown[];
   measures?: readonly unknown[];
   breakouts?: readonly unknown[];
+  sorts?: readonly unknown[];
+  limit?: number;
 
   enabled?: boolean;
 };

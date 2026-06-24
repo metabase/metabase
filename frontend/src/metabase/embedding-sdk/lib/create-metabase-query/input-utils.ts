@@ -4,6 +4,7 @@ import type {
   TableSchema,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { isNumber } from "metabase/utils/types";
+import type { OrderByDirection } from "metabase-lib";
 import { isObject } from "metabase-types/guards";
 
 import type {
@@ -105,6 +106,22 @@ function getBreakoutDimension(
 
   return null;
 }
+
+export const normalizeSort = (
+  sort: unknown,
+): { column: unknown; direction: OrderByDirection } => {
+  if (isObject(sort) && "column" in sort) {
+    return {
+      column: sort.column,
+      direction: normalizeSortDirection(sort.direction),
+    };
+  }
+
+  return { column: sort, direction: "asc" };
+};
+
+const normalizeSortDirection = (direction: unknown): OrderByDirection =>
+  direction === "desc" ? "desc" : "asc";
 
 function getBreakoutOptions(breakout: unknown): Record<string, unknown> {
   if (!isObject(breakout)) {
