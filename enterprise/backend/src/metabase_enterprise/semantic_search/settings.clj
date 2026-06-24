@@ -129,17 +129,19 @@
   :visibility :internal
   :doc        false
   :setter     (fn [new-value]
-                (let [kw (some-> new-value keyword)]
+                (let [kw  (some-> new-value keyword)
+                      old (setting/get-value-of-type :keyword :semantic-search-vector-strategy)]
                   (when (and kw (not (contains? valid-vector-search-strategies kw)))
                     (throw (ex-info (str "Invalid vector-search strategy: " (pr-str new-value)
                                          ". Valid strategies are: " (pr-str valid-vector-search-strategies))
                                     {:invalid-value new-value
                                      :valid-values  valid-vector-search-strategies})))
                   (setting/set-value-of-type! :keyword :semantic-search-vector-strategy kw)
-                  ;; The HNSW index is only built when configured: when switching to :hnsw, build it in the
-                  ;; background so this setter returns promptly. requiring-resolve avoids a require cycle
+                  ;; The HNSW index is only built when configured: on the transition into :hnsw, build it in
+                  ;; the background so this setter returns promptly. Gated on the transition (not every set) so
+                  ;; we don't kick off redundant builds. requiring-resolve avoids a require cycle
                   ;; (core/pgvector-api/index all require this namespace).
-                  (when (= kw :hnsw)
+                  (when (and (= kw :hnsw) (not= old :hnsw))
                     ((requiring-resolve 'metabase-enterprise.semantic-search.core/build-hnsw-index-async!))))))
 
 (defsetting semantic-search-min-results-threshold

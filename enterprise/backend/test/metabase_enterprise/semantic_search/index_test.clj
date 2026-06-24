@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
@@ -79,7 +80,23 @@
   (testing "valid strategies round-trip"
     (doseq [strategy [:hnsw :brute-force]]
       (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy strategy]
-        (is (= strategy (semantic.settings/semantic-search-vector-strategy)))))))
+        (is (= strategy (semantic.settings/semantic-search-vector-strategy))))))
+  (testing "the setter kicks off the background build job only on the transition into :hnsw"
+    ;; This asserts *when* the build is triggered (the transition gating), not what the build does -- the
+    ;; build itself is covered by pgvector-api-test/ensure-active-hnsw-index!-test. We spy on the async build
+    ;; so the trigger is verified deterministically without spawning a real future.
+    (mt/with-premium-features #{:semantic-search}
+      (let [triggers (atom 0)]
+        (mt/with-dynamic-fn-redefs [semantic.core/build-hnsw-index-async! (fn [] (swap! triggers inc))]
+          (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy :brute-force]
+            (semantic.settings/semantic-search-vector-strategy! :hnsw)
+            (is (= 1 @triggers) "transitioning :brute-force -> :hnsw kicks off a build")
+            (semantic.settings/semantic-search-vector-strategy! :hnsw)
+            (is (= 1 @triggers) "setting :hnsw again when already :hnsw does not re-trigger")
+            (semantic.settings/semantic-search-vector-strategy! :brute-force)
+            (is (= 1 @triggers) "switching away from :hnsw does not trigger")
+            (semantic.settings/semantic-search-vector-strategy! :hnsw)
+            (is (= 2 @triggers) "transitioning back into :hnsw triggers again")))))))
 
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
