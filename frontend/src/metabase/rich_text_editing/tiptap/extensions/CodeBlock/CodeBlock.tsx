@@ -113,37 +113,20 @@ export const CodeBlockNodeView = ({
   const BlockShell = extension.options.blockShell ?? DefaultBlockShell;
 
   return (
-    <>
-      <NodeViewWrapper
-        aria-expanded={isOpen}
-        className={cx(S.root, {
-          [S.open]: isOpen || isHovered,
-        })}
-        data-node-id={_id}
-        ref={setReferenceElement}
-        onMouseOver={() => setHovered(true)}
-        onMouseOut={() => setHovered(false)}
-      >
-        <pre>
-          <NodeViewContent<"code">
-            as="code"
-            className={
-              node.attrs.language
-                ? languageClassPrefix + node.attrs.language
-                : undefined
-            }
-          />
-        </pre>
-      </NodeViewWrapper>
-
-      {shouldShowMenus && document && (
-        <CommentsMenu
-          active={isOpen}
-          childTargetId={_id}
-          ref={commentsRefs.setFloating}
-          show={isOpen || hovered}
-          style={commentsFloatingStyles}
-          unresolvedCommentsCount={unresolvedCommentsCount}
+    <BlockShell
+      node={node}
+      editor={editor}
+      getPos={getPos}
+      hideMenus={extension.options.editorContext === "comments"}
+    >
+      <pre>
+        <NodeViewContent<"code">
+          as="code"
+          className={
+            node.attrs.language
+              ? languageClassPrefix + node.attrs.language
+              : undefined
+          }
         />
       </pre>
     </BlockShell>

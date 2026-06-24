@@ -7,11 +7,10 @@ import {
   useToggleReactionMutation,
   useUpdateCommentMutation,
 } from "metabase/api";
+import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import { getCommentNodeId } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
-import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
-import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import type {

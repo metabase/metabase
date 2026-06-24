@@ -8,8 +8,10 @@ import type {
   Dataset,
   Document,
   RawSeries,
+  StoredResultSort,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { EntityId } from "metabase-types/api/comments";
 
 /**
  * Result returned by the card-data hooks the host provides to the CardEmbed
@@ -46,6 +48,25 @@ export interface NodeViewportState {
   shouldLoadData: boolean;
 }
 
+/**
+ * What the surrounding surface lets the editor do. Hosts declare these instead
+ * of exposing a surface enum the editor has to branch on: a restricted surface
+ * (e.g. exploration) flips the relevant flag to false. Adding a new surface is
+ * "provide a host with these flags", not "find every `=== 'exploration'` check".
+ */
+export interface EditorCapabilities {
+  canEmbedCharts: boolean;
+  canUseMetabot: boolean;
+  canOpenCardInQueryBuilder: boolean;
+}
+
+/** Capabilities for an unrestricted surface (standalone documents, comments, …). */
+export const DEFAULT_EDITOR_CAPABILITIES: EditorCapabilities = {
+  canEmbedCharts: true,
+  canUseMetabot: true,
+  canOpenCardInQueryBuilder: true,
+};
+
 type Selector<T> = (state: State) => T;
 
 /**
@@ -67,6 +88,10 @@ export interface EditorHost {
     getHoveredChildTargetId: Selector<string | undefined>;
     getHasUnsavedChanges: Selector<boolean>;
   };
+  // What the surface allows. Static config provided by whichever host is mounted
+  // (a restricted surface like exploration flips flags to false). Extensions gate
+  // on these instead of branching on a surface enum.
+  capabilities: EditorCapabilities;
   // Action/thunk creators return the redux action or thunk to be dispatched.
   // Typed as `any` so they satisfy the app's overloaded `dispatch` (which
   // accepts both plain actions and thunks) without coupling this primitive to
@@ -80,6 +105,9 @@ export interface EditorHost {
     generateDraftCardId: () => number;
     loadMetadataForDocumentCard: (card: Card) => DispatchableAction;
     openVizSettingsSidebar: (payload: {
+      embedIndex: number;
+    }) => DispatchableAction;
+    openTimelineEventsSidebar: (payload: {
       embedIndex: number;
     }) => DispatchableAction;
     updateVizSettings: (payload: {
@@ -103,7 +131,13 @@ export interface EditorHost {
     url: string,
     document?: Document | null,
   ) => DispatchableAction;
-  useCardData: (props: { id: number; skip?: boolean }) => UseCardDataResult;
+  useCardData: (props: {
+    id: number;
+    skip?: boolean;
+    // Static-card mode (explorations): read from a cached stored_result snapshot.
+    storedResultId?: number;
+    storedResultSort?: StoredResultSort;
+  }) => UseCardDataResult;
   useExternalCardDataLoader: (
     cardId: number,
     opts?: { skip?: boolean },
@@ -117,6 +151,12 @@ export interface EditorHost {
   // reports everything as visible so other editors load eagerly.
   useNodeInViewport: (id?: string) => NodeViewportState;
   useReportPrefetchLoading: (id: string, isLoading: boolean) => void;
+  // Builds the comment-sidebar URL for a node. Centralised by the host so the
+  // editor doesn't import the `documents` useCommentUrl hook.
+  useCommentUrl: (opts: {
+    childTargetId: EntityId | null;
+    searchParams?: Record<string, string>;
+  }) => string;
   useDraftCardOperations: (
     draftCard: Card | null | undefined,
     card: Card | null | undefined,
@@ -143,11 +183,13 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
     getHoveredChildTargetId: () => undefined,
     getHasUnsavedChanges: () => false,
   },
+  capabilities: DEFAULT_EDITOR_CAPABILITIES,
   actions: {
     createDraftCard: () => ({ type: "@@editor-host/noop" }),
     generateDraftCardId: () => -1,
     loadMetadataForDocumentCard: () => ({ type: "@@editor-host/noop" }),
     openVizSettingsSidebar: () => ({ type: "@@editor-host/noop" }),
+    openTimelineEventsSidebar: () => ({ type: "@@editor-host/noop" }),
     updateVizSettings: () => ({ type: "@@editor-host/noop" }),
     updateMentionsCache: () => ({ type: "@@editor-host/noop" }),
   },
@@ -168,6 +210,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
     shouldLoadData: true,
   }),
   useReportPrefetchLoading: () => undefined,
+  useCommentUrl: () => "",
   useDraftCardOperations: () => ({ ensureDraftCard: () => -1 }),
 };
 

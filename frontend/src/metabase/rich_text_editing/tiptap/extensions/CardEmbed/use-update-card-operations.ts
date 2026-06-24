@@ -26,6 +26,7 @@ export const useUpdateCardOperations = ({
   embedIndex: number;
   cardId: number | null | undefined;
 }) => {
+  const host = useEditorHost();
   // The handlers this hook returns are only invoked from live-edit affordances, which a
   // cardEmbed without an `id` never has — but the hook itself still runs unconditionally
   // (rules of hooks). Treat a missing id as 0 so the downstream strict-typed helpers can

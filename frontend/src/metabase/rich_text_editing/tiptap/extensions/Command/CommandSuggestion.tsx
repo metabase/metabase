@@ -12,19 +12,6 @@ import {
 import { t } from "ttag";
 
 import {
-  CreateNewQuestionFooter,
-  MenuItemComponent,
-  SearchResultsFooter,
-} from "metabase/documents/components/Editor/shared/MenuComponents";
-import {
-  LoadingSuggestionPaper,
-  SuggestionPaper,
-} from "metabase/documents/components/Editor/shared/SuggestionPaper";
-import {
-  getCurrentDocument,
-  getDocumentHost,
-} from "metabase/documents/selectors";
-import {
   useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
@@ -117,8 +104,12 @@ export const CommandSuggestion = forwardRef<
   SuggestionRef,
   CommandSuggestionProps
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
-  const document = useSelector(getCurrentDocument);
-  const documentHost = useSelector(getDocumentHost);
+  const host = useEditorHost();
+  const document = useSelector(host.selectors.getCurrentDocument);
+  // The surface declares what the slash-command menu may offer (an exploration
+  // host disables Metabot/chart embeds); the editor gates on capabilities rather
+  // than knowing which surface it is.
+  const { capabilities } = host;
   const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
   const metabotName = useMetabotName();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -131,8 +122,8 @@ export const CommandSuggestion = forwardRef<
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(isMetabotEnabled, metabotName, documentHost),
-    [isMetabotEnabled, metabotName, documentHost],
+    () => getAllCommandSections(isMetabotEnabled, metabotName, capabilities),
+    [isMetabotEnabled, metabotName, capabilities],
   );
 
   const allCommandOptions = useMemo(
@@ -166,7 +157,7 @@ export const CommandSuggestion = forwardRef<
   });
 
   const areChartsAllowed =
-    !editor.isActive("supportingText") && documentHost !== "exploration";
+    !editor.isActive("supportingText") && capabilities.canEmbedCharts;
   const canBrowseAll = areChartsAllowed || viewMode === "linkTo";
 
   const canCreateNewQuestion =
