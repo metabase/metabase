@@ -175,6 +175,8 @@ const elements = [
     "frontend/src/metabase/app-main.js",
     "frontend/src/metabase/app-embed.ts",
     "frontend/src/metabase/app-embed-mcp.tsx",
+    "frontend/src/metabase/app-embed-mcp-public-path.ts",
+    "frontend/src/metabase/app-embed-mcp-public-path.unit.spec.ts",
     "frontend/src/metabase/app-public.ts",
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
