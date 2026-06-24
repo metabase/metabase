@@ -1403,6 +1403,9 @@
   Returns a RemoteSyncTask."
   [branch force? message & {:keys [on-success merge?]}]
   (guards/ensure-no-active-task!)
+  (when-not (settings/remote-sync-enabled)
+    (throw (ex-info "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
+                    {:status-code 400})))
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
         last-task-version      (remote-sync.task/last-version)

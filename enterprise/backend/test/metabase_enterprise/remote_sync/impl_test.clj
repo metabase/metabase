@@ -189,13 +189,13 @@
 
 ;; export! tests
 
-(deftest export!-with-no-source-configured-test
-  (testing "export! with no source configured throws"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Remote sync source is not enabled"
-                              (impl/export! nil task-id "Test commit")))))))
+(deftest async-export!-with-no-source-configured-test
+  (testing "async-export! throws at the API call (not inside the async task) when remote sync isn't configured"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                       remote-sync-url  nil]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Remote sync source is not enabled"
+                            (impl/async-export! "main" false "Test commit"))))))
 
 (deftest export!-with-no-remote-synced-collections-test
   (testing "export! is a no-op success when nothing is dirty (no remote-synced content to export)"
