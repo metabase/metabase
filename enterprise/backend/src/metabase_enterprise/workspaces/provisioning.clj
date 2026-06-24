@@ -262,6 +262,19 @@
                   {:output_namespace "" :database_details {} :status :unprovisioned})
       result)))
 
+(defn ignore-pending-database!
+  "Delete-path helper for a WorkspaceDatabase the admin chose to delete while it is
+  still `:provisioning`/`:deprovisioning`. Does NOT touch the warehouse — the row may
+  be in flight on another node — it only clears the row's app-DB `TableRemapping`
+  rows and forces it to `:unprovisioned` so it can be cascade-deleted. Any warehouse
+  schema/user is intentionally left in place."
+  [wsd]
+  (with-workspace-database-lock (:id wsd)
+    (let [db (t2/select-one :model/Database :id (:database_id wsd))]
+      (binding [t2.connection/*current-connectable* nil]
+        (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) (:output_namespace wsd)))
+      (t2/update! :model/WorkspaceDatabase {:id (:id wsd)} {:status :unprovisioned}))))
+
 (defn deprovision-workspace!
   "Flip every `:provisioned` WorkspaceDatabase under `workspace-id` to
   `:deprovisioning`, then deprovision each one synchronously (blocking).

@@ -12,6 +12,10 @@ export function setupListWorkspacesEndpoint(workspaces: Workspace[]) {
   fetchMock.get(BASE_URL, workspaces);
 }
 
+export function setupGetWorkspaceEndpoint(workspace: Workspace) {
+  fetchMock.get(`${BASE_URL}/${workspace.id}`, workspace);
+}
+
 export function setupCreateWorkspaceEndpoint(workspace: Workspace) {
   fetchMock.post(BASE_URL, workspace);
 }

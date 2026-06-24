@@ -46,6 +46,14 @@ export type OrphanedWorkspaceResource = {
   reason?: string | null;
 };
 
+export type DeleteWorkspaceRequest = {
+  id: WorkspaceId;
+  // When the workspace has databases still provisioning/deprovisioning, the
+  // backend refuses unless this is set — then it leaves those databases'
+  // warehouse resources in place and removes only the app-DB rows.
+  ignorePending?: boolean;
+};
+
 export type DeleteWorkspaceResponse = {
   id: WorkspaceId;
   deleted: boolean;

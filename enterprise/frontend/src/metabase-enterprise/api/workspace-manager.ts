@@ -1,5 +1,6 @@
 import type {
   CreateWorkspaceRequest,
+  DeleteWorkspaceRequest,
   DeleteWorkspaceResponse,
   UpdateWorkspaceRequest,
   Workspace,
@@ -23,6 +24,14 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (workspaces = []) => provideWorkspaceListTags(workspaces),
     }),
+    getWorkspace: builder.query<Workspace, WorkspaceId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/workspace-manager/${id}`,
+      }),
+      providesTags: (workspace) =>
+        workspace ? [idTag("workspace", workspace.id)] : [],
+    }),
     createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
       query: (body) => ({
         method: "POST",
@@ -41,12 +50,16 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
-    deleteWorkspace: builder.mutation<DeleteWorkspaceResponse, WorkspaceId>({
-      query: (id) => ({
+    deleteWorkspace: builder.mutation<
+      DeleteWorkspaceResponse,
+      DeleteWorkspaceRequest
+    >({
+      query: ({ id, ignorePending }) => ({
         method: "DELETE",
         url: `/api/ee/workspace-manager/${id}`,
+        params: ignorePending ? { "ignore-pending": true } : undefined,
       }),
-      invalidatesTags: (_, error, id) =>
+      invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
   }),
@@ -54,6 +67,7 @@ export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListWorkspacesQuery,
+  useGetWorkspaceQuery,
   useCreateWorkspaceMutation,
   useUpdateWorkspaceMutation,
   useDeleteWorkspaceMutation,
