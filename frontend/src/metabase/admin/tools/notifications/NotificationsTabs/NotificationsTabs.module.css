@@ -10,11 +10,11 @@
   gap: var(--mantine-spacing-sm);
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &[data-active="true"] {
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
     color: var(--mb-color-core-brand);
   }
 }

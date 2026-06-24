@@ -524,7 +524,7 @@ export const CardEmbedComponent = memo(
                           "&:focus": {
                             border: "1px solid var(--mb-color-border-neutral)",
                             backgroundColor:
-                              "var(--mb-color-background-primary)",
+                              "var(--mb-color-background_page-primary)",
                             padding: "0 0.25rem",
                           },
                         },

@@ -68,7 +68,7 @@ export function TransformsUpsellPage() {
             <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
           }
         />
-        <Center h="100%" bg="background-secondary">
+        <Center h="100%" bg="background_page-secondary">
           <LoadingAndErrorWrapper
             loading={isLoading}
             error={

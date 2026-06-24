@@ -140,7 +140,7 @@ type PaneHeaderTabsProps = {
 export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
   const { pathname } = useSelector(getLocation);
   const backgroundColor = withBackground
-    ? "background-secondary"
+    ? "background_page-secondary"
     : "transparent";
 
   return (
@@ -158,7 +158,7 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
             size="sm"
             radius="xl"
             c={selected ? "core-brand" : undefined}
-            bg={selected ? "background-selected" : backgroundColor}
+            bg={selected ? "background_surface-selected" : backgroundColor}
             bd="none"
             leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
             rightSection={isGated ? <UpsellGem.New size={14} /> : null}

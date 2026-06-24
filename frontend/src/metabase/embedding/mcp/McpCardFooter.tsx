@@ -30,7 +30,7 @@ export const McpCardFooter = ({
     h="50px"
     align="center"
     justify="space-between"
-    bg="background-secondary"
+    bg="background_page-secondary"
     style={footerStyle}
   >
     <Flex align="center" gap="xs">

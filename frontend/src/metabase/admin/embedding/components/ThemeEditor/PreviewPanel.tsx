@@ -25,7 +25,7 @@ export function PreviewPanel({ settings }: { settings: MetabaseTheme }) {
   const resource = selectedResource ?? defaultResource;
 
   return (
-    <Flex direction="column" flex={1} bg="background-secondary">
+    <Flex direction="column" flex={1} bg="background_page-secondary">
       <Box p="xl" pb="sm">
         <Flex align="center" justify="space-between" gap="md">
           <Text fw={700} fz="xl">{t`Theme preview`}</Text>

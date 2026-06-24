@@ -246,7 +246,7 @@ export function SearchScopeSelector() {
       align="center"
       px="md"
       py="sm"
-      bg="background-secondary"
+      bg="background_page-secondary"
       mb="xs"
       data-testid="search-scope-selector"
     >

@@ -108,7 +108,7 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
               pos="sticky"
               top={0}
               className={S.header}
-              bg="background-secondary"
+              bg="background_page-secondary"
             >
               <Text fw="bold">{t`Field Details`}</Text>
               <Button
