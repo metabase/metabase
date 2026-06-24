@@ -2,8 +2,8 @@ import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { listChannelSummaries } from "metabase/admin/tools/notifications/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { listChannelSummaries } from "metabase/monitor/tools/notifications/utils";
 import type { SelectionState, TreeTableColumnDef } from "metabase/ui";
 import {
   Badge,

@@ -4,6 +4,7 @@ import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
   useAdminListNotificationsQuery,
   useBulkNotificationActionMutation,
@@ -27,7 +28,6 @@ import type {
   UserId,
 } from "metabase-types/api";
 
-import { SettingsPageWrapper } from "../../../components/SettingsSection";
 import { ChangeOwnerModal } from "../ChangeOwnerModal";
 import { NotificationDetailSidebar } from "../NotificationDetailSidebar";
 import { SIDEBAR_WIDTH } from "../NotificationDetailSidebar/constants";

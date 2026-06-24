@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetTaskQuery, useListDatabasesQuery } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -25,7 +26,6 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { openSaveDialog } from "metabase/utils/dom";
 import type { Database } from "metabase-types/api";
 
-import { SettingsSection } from "../../../components/SettingsSection";
 import { formatTaskDetails, getFilename } from "../../utils";
 import { LogsViewer } from "../Logs/LogsViewer";
 import { TaskStatusBadge } from "../TaskStatusBadge";

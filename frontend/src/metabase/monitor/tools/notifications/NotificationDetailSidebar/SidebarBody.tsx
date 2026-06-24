@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { summarizeChannels } from "metabase/admin/tools/notifications/utils";
+import { summarizeChannels } from "metabase/monitor/tools/notifications/utils";
 import { Flex, Stack, Text } from "metabase/ui";
 
 import { trackAlertsManagementRunHistoryViewAllClicked } from "../analytics";

@@ -3,12 +3,12 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { TaskStatusBadge } from "metabase/admin/tools/components/TaskStatusBadge";
 import { DateTime } from "metabase/common/components/DateTime";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { TaskStatusBadge } from "metabase/monitor/tools/components/TaskStatusBadge";
 import { useDispatch } from "metabase/redux";
 import { Box, Ellipsified, Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";

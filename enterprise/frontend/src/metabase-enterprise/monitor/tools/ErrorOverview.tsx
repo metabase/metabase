@@ -8,10 +8,9 @@ import {
 import { useLazyGetCardQueryQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { fetchDataOrError } from "metabase/dashboard/utils";
-
-import AuditParameters from "../audit_app/components/AuditParameters";
-import AuditTable from "../audit_app/containers/AuditTable";
-import * as Queries from "../audit_app/lib/cards/queries";
+import AuditParameters from "metabase-enterprise/audit_app/components/AuditParameters";
+import AuditTable from "metabase-enterprise/audit_app/containers/AuditTable";
+import * as Queries from "metabase-enterprise/audit_app/lib/cards/queries";
 
 import { ErrorMode } from "./mode";
 

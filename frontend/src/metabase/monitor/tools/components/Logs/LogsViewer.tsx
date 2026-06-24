@@ -12,7 +12,7 @@ type LogsViewerProps = React.ComponentPropsWithoutRef<"div"> & {
   logs: Log[];
 };
 
-// TODO(egorgrushin): use it in frontend/src/metabase/admin/tools/components/Logs/Logs.tsx
+// TODO(egorgrushin): use it in frontend/src/metabase/monitor/tools/components/Logs/Logs.tsx
 export const LogsViewer = ({ logs, ...rest }: LogsViewerProps) => {
   const logText = useMemo(() => {
     const processUUIDs = getAllProcessUUIDs(logs);
