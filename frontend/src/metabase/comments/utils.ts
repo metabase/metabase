@@ -1,10 +1,7 @@
 import type { SkipToken } from "@reduxjs/toolkit/query";
 import dayjs from "dayjs";
-import { replace } from "react-router-redux";
-import type { LocationSensorState } from "react-use/lib/useLocation";
 
 import { skipToken } from "metabase/api";
-import type { DispatchFn } from "metabase/redux";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type {
   Comment,
@@ -103,24 +100,6 @@ export function formatCommentDate(dateOrString: string | Date) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
   }).format(date);
-}
-
-export function deleteNewFromSearch(search: string | undefined) {
-  const searchParams = new URLSearchParams(search);
-  searchParams.delete("new");
-  return searchParams.toString();
-}
-
-export function deleteNewParamFromURLIfNeeded(
-  location: LocationSensorState,
-  dispatch: DispatchFn,
-) {
-  dispatch(
-    replace({
-      pathname: location.pathname,
-      search: deleteNewFromSearch(location.search),
-    }),
-  );
 }
 
 export function getListCommentsQuery(

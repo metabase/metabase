@@ -281,7 +281,7 @@ export const getRoutes = (store: AppStore) => {
               <IndexRoute component={NewExplorationPage} />
               <Route path=":id" component={ExplorationPage} />
               <Route
-                path=":id/:entityType/:entityId(/comments)(/:childTargetId)"
+                path=":id/:entityType/:entityId"
                 component={ExplorationPage}
               />
             </Route>

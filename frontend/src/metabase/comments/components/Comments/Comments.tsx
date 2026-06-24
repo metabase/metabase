@@ -8,13 +8,13 @@ import noResultsSource from "assets/img/no_results.svg";
 import { useCreateCommentMutation, useListCommentsQuery } from "metabase/api";
 import { CommentEditor } from "metabase/comments/components";
 import { Discussions } from "metabase/comments/components/Discussions";
+import type { CommentExtraRenderer } from "metabase/comments/types";
 import {
-  deleteNewFromSearch,
-  deleteNewParamFromURLIfNeeded,
   getCommentNodeId,
   getCommentsCount,
   getListCommentsQuery,
 } from "metabase/comments/utils";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import {
@@ -29,6 +29,7 @@ import {
 } from "metabase/ui";
 import type {
   Comment,
+  CommentContext,
   CommentTarget,
   DocumentContent,
 } from "metabase-types/api";
@@ -38,12 +39,14 @@ import S from "./Comments.module.css";
 type SidesheetTab = "open" | "resolved";
 
 interface CommentsProps {
-  commentTarget?: CommentTarget;
-  childTargetId?: string;
+  commentTarget: CommentTarget;
+  childTargetId: string;
   onOpenComments?: () => void;
   onCloseComments?: () => void;
   title?: string;
   showCloseButton?: boolean;
+  context?: CommentContext;
+  renderExtra?: CommentExtraRenderer;
 }
 
 export const Comments = ({
@@ -53,22 +56,20 @@ export const Comments = ({
   onCloseComments,
   title,
   showCloseButton = true,
+  context,
+  renderExtra,
 }: CommentsProps) => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<SidesheetTab | null>("open");
   const [, setNewComment] = useState<DocumentContent>();
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(commentTarget),
-  );
+  const {
+    data: commentsData,
+    isLoading,
+    error,
+  } = useListCommentsQuery(getListCommentsQuery(commentTarget));
   const comments = commentsData?.comments;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-
-  // Check if we should auto-open the new comment form
-  const shouldAutoOpenNewComment = useMemo(() => {
-    const searchParams = new URLSearchParams(location.search);
-    return searchParams.get("new") === "true";
-  }, [location.search]);
 
   const targetComments = useMemo(() => {
     if (!comments) {
@@ -88,7 +89,7 @@ export const Comments = ({
     onCloseComments?.();
     // ModalRoute's onClose method doesn't preserve search query params
     // we need them for explorations, so manually preserve them
-    const { pathname = "", search } = location;
+    const { pathname = "" } = location;
     const existingCommentIndex = pathname.lastIndexOf("/comments/");
     const nextPathname =
       existingCommentIndex !== -1
@@ -97,18 +98,14 @@ export const Comments = ({
     dispatch(
       push({
         pathname: nextPathname,
-        search: `?${deleteNewFromSearch(search)}`,
+        search: location.search,
       }),
     );
   }, [onCloseComments, dispatch, location]);
 
   useEffect(() => {
-    if (childTargetId == null) {
-      closeSidebar();
-      return;
-    }
     onOpenComments?.();
-  }, [childTargetId, closeSidebar, onOpenComments]);
+  }, [onOpenComments]);
 
   const resolvedComments = useMemo(
     () =>
@@ -179,16 +176,13 @@ export const Comments = ({
   });
 
   const handleSubmit = async (doc: DocumentContent) => {
-    if (!childTargetId || !commentTarget) {
-      return;
-    }
-
     const { error } = await createComment({
       child_target_id: childTargetId,
       target_id: commentTarget.target_id,
       target_type: commentTarget.target_type,
       content: doc,
       parent_comment_id: null,
+      context,
     });
 
     if (error) {
@@ -197,13 +191,11 @@ export const Comments = ({
         iconColor: "warning",
         message: t`Failed to send comment`,
       });
-    } else {
-      deleteNewParamFromURLIfNeeded(location, dispatch);
     }
   };
 
-  if (!childTargetId || !commentTarget) {
-    return null;
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
@@ -250,6 +242,7 @@ export const Comments = ({
               enableHoverHighlight={childTargetId === "all"}
               targetId={commentTarget.target_id}
               targetType={commentTarget.target_type}
+              renderExtra={renderExtra}
             />
           )}
 
@@ -271,7 +264,7 @@ export const Comments = ({
           {childTargetId !== "all" && (
             <Box px="lg" py={activeComments.length === 0 ? "lg" : "xs"}>
               <CommentEditor
-                autoFocus={shouldAutoOpenNewComment}
+                autoFocus={activeComments.length === 0}
                 data-testid="new-thread-editor"
                 placeholder={t`Add a comment…`}
                 onChange={(document) => setNewComment(document)}
@@ -287,6 +280,7 @@ export const Comments = ({
             comments={resolvedComments}
             targetId={commentTarget.target_id}
             targetType={commentTarget.target_type}
+            renderExtra={renderExtra}
           />
         </Tabs.Panel>
       </Tabs>

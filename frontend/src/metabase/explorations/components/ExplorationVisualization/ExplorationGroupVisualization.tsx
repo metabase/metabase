@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -13,6 +13,7 @@ import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
 import type {
+  Comment,
   ExplorationId,
   ExplorationQuery,
   ExplorationQueryGroup,
@@ -26,7 +27,7 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 import { ActionToolbar, type CommentDrafts } from "./ActionToolbar";
 import { ExplorationChartError } from "./ExplorationChartError";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
-import S from "./ExplorationVisualization.module.css";
+import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
 import { type LegendItem, buildSeriesGroups } from "./utils";
 
@@ -67,22 +68,13 @@ export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
   return (
-    <Stack
-      flex={1}
-      h="100%"
-      mih={0}
-      py="3rem"
-      pr="3rem"
-      align="center"
-      style={{ overflowY: "auto" }}
-    >
+    <Stack flex={1} h="100%" py="3rem" pr="2.25rem" align="center">
       <Stack
         flex={1}
         w="100%"
         bg="background-primary"
         bd="1px solid border"
         bdrs="md"
-        p="lg"
       >
         <ErrorBoundary errorComponent={ErrorComponent}>
           <ExplorationGroupVisualizationBody {...props} />
@@ -202,13 +194,11 @@ function ExplorationGroupVisualizationChart({
   const datasets = datasetQueries.map((q) => q.data);
   const datasetError = datasetQueries.find((q) => q.error)?.error;
 
-  const { seriesGroups, layoutStrategy } = useMemo(() => {
+  const { seriesGroups } = useMemo(() => {
     const filteredDatasets = datasets.filter((d) => d !== undefined);
     if (filteredDatasets.length < datasets.length) {
       return {
         seriesGroups: undefined,
-        layoutStrategy: undefined,
-        chartsForDocumentEmbed: undefined,
       };
     }
     return buildSeriesGroups({
@@ -225,6 +215,34 @@ function ExplorationGroupVisualizationChart({
   const showTimelineDropdown = useMemo(() => {
     return seriesGroups?.some((group) => group.isTimeseries);
   }, [seriesGroups]);
+
+  const CommentTimelineBadge = useCallback(
+    (comment: Comment) => {
+      const timelineId = comment.context?.timeline_id;
+      if (typeof timelineId !== "number") {
+        return null;
+      }
+      const timeline = availableTimelines.find((t) => t.id === timelineId);
+      if (!timeline) {
+        return null;
+      }
+      return (
+        <Box
+          w="fit-content"
+          bd="0.5px solid border"
+          bdrs="lg"
+          py="xs"
+          px="sm"
+          bg="background-secondary"
+          c="text-secondary"
+          mt="xs"
+        >
+          {timeline.name}
+        </Box>
+      );
+    },
+    [availableTimelines],
+  );
 
   if (!seriesGroups) {
     if (datasetError) {
@@ -254,11 +272,12 @@ function ExplorationGroupVisualizationChart({
   }
 
   return (
-    <Group align="flex-start">
-      <Stack flex={1}>
+    <Group flex={1} align="stretch" gap={0}>
+      <Stack flex={1} p="lg" className={S.chartGridContainer}>
         <ExplorationVisualizationHeader
           name={groupName}
           explorationId={explorationId}
+          groupId={group.id}
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
           onSelectTimelineId={onSelectTimelineId}
@@ -266,35 +285,30 @@ function ExplorationGroupVisualizationChart({
           interestingTimelineIds={interestingTimelineIds}
           isCommentsSidebarOpen={isCommentsSidebarOpen}
         />
-        <Box
-          className={S.chartGrid}
-          data-chart-layout={layoutStrategy}
-          data-testid="exploration-chart-grid"
-        >
-          {seriesGroups.map(
-            ({ series, stackCount, chartLabel, legendItems }) =>
-              isCartesianChart(series[0].card.display) ? (
-                <ExplorationCartesianChart
-                  key={series[0].card.id}
-                  series={series}
-                  stackCount={stackCount}
-                  label={chartLabel}
-                />
-              ) : series[0].card.display === "table" ? (
-                <ExplorationHeatMap
-                  key={series[0].card.id}
-                  series={series}
-                  stackCount={stackCount}
-                  label={chartLabel}
-                />
-              ) : (
-                <ExplorationMap
-                  key={series[0].card.id}
-                  series={series}
-                  label={chartLabel}
-                  legendItems={legendItems}
-                />
-              ),
+        <Box className={S.chartGrid} data-testid="exploration-chart-grid">
+          {seriesGroups.map(({ series, stackCount, chartLabel, legendItems }) =>
+            isCartesianChart(series[0].card.display) ? (
+              <ExplorationCartesianChart
+                key={series[0].card.id}
+                series={series}
+                stackCount={stackCount}
+                label={chartLabel}
+              />
+            ) : series[0].card.display === "table" ? (
+              <ExplorationHeatMap
+                key={series[0].card.id}
+                series={series}
+                stackCount={stackCount}
+                label={chartLabel}
+              />
+            ) : (
+              <ExplorationMap
+                key={series[0].card.id}
+                series={series}
+                label={chartLabel}
+                legendItems={legendItems}
+              />
+            ),
           )}
         </Box>
         <ActionToolbar
@@ -302,10 +316,11 @@ function ExplorationGroupVisualizationChart({
           groupId={group.id}
           commentDrafts={commentDrafts}
           setCommentDrafts={setCommentDrafts}
+          selectedTimelineId={selectedTimelineId}
         />
       </Stack>
       {isCommentsSidebarOpen && (
-        <Box mt="-1.5rem" className={S.commentsSidebar}>
+        <Box w="23rem" className={S.commentsSidebar}>
           <Comments
             commentTarget={{
               target_id: explorationId,
@@ -313,6 +328,10 @@ function ExplorationGroupVisualizationChart({
             }}
             childTargetId={group.id}
             showCloseButton={false}
+            context={{
+              timeline_id: selectedTimelineId,
+            }}
+            renderExtra={CommentTimelineBadge}
           />
         </Box>
       )}
@@ -331,10 +350,6 @@ function ExplorationCartesianChart({
   stackCount,
   label,
 }: ExplorationCartesianChartProps) {
-  // The outer Stack is the grid item — height auto so it stretches to the
-  // cell. The label takes its natural height; the chart fills whatever is
-  // left via `flex={1}`. Without this, `h="100%"` on the chart plus a label
-  // above it would overflow the cell by the label's height.
   return (
     <Stack
       gap="sm"
@@ -359,10 +374,6 @@ function ExplorationHeatMap({
   stackCount,
   label,
 }: ExplorationHeatMapProps) {
-  // The pivoted heat-map renders one body row per segment series plus a
-  // header row. Size the table to exactly that height (rather than
-  // `h="100%"`) so a short table isn't stretched to fill — and leave empty
-  // space below — its grid cell.
   const tableHeight = HEADER_HEIGHT + (stackCount ?? 1) * ROW_HEIGHT;
   return (
     <Stack gap="sm">
@@ -381,9 +392,6 @@ interface ExplorationMapProps {
 }
 
 function ExplorationMap({ series, label, legendItems }: ExplorationMapProps) {
-  // The Stack is the grid item — height auto so it stretches to the cell.
-  // The label and (optional) legend take their natural height; the map
-  // boxes inside use `flex={1}` to share whatever vertical space is left.
   return (
     <Stack gap="md">
       {label && <Text size="lg">{label}</Text>}

@@ -879,8 +879,11 @@
              {:display                display
               :visualization-settings visualization_settings})
             exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
-            chart-href (explorations.groups/chart-page-url exp-id (:group_id primary-eq)
-                                                           (:card_id primary-eq) (:dimension_id primary-eq))
+            chart-href (explorations.groups/chart-page-url
+                        exp-id (:group_id primary-eq)
+                        (:card_id primary-eq)
+                        (:dimension_id primary-eq)
+                        (:query_type primary-eq))
             new-body (-> (:document doc)
                          (append-chart-nodes card-id stored-result-id chart-href)
                          documents/add-ids-to-nodes)]

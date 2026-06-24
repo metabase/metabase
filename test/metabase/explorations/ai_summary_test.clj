@@ -341,6 +341,6 @@
                   (is (= 1 (count cards)) "one Card is materialized for the static cardEmbed")
                   (is (= [(:id (first cards))] embed-ids)
                       "cardEmbed.attrs.id is the materialized card id")
-                  (is (= [(explorations.groups/chart-page-url (:id e) (:id grp) (:id card) "d1")]
+                  (is (= [(explorations.groups/chart-page-url (:id e) (:id grp) (:id card) "d1" "default")]
                          embed-hrefs)
                       "cardEmbed.attrs.chart_href deep-links back to the source chart's group page"))))))))))

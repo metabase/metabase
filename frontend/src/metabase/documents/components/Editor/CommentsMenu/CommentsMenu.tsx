@@ -38,7 +38,6 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
     const hasUnresolvedComments = unresolvedCommentsCount > 0;
     const commentUrl = useCommentUrl({
       childTargetId,
-      searchParams: hasUnresolvedComments ? undefined : { new: "true" },
     });
 
     return createPortal(
