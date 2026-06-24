@@ -612,3 +612,98 @@
           (is (not-any? (fn [item] (some #(= "region" (:dimension_id %))
                                          (get-in item [:params :filter_path])))
                         plan)))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Issue 7 — anchors + governed best-first search
+;;; ---------------------------------------------------------------------------
+
+(deftest anchor-type-test
+  (testing "explicit :type wins"
+    (is (= :metric    (qp.adaptive/anchor-type {:type "metric"    :metrics [1 2]})))
+    (is (= :dimension (qp.adaptive/anchor-type {:type "dimension" :metrics [1]}))))
+  (testing "missing :type is inferred from metric count (>1 metric ⇒ dimension-anchored)"
+    (is (= :metric    (qp.adaptive/anchor-type {:metrics [1]})))
+    (is (= :dimension (qp.adaptive/anchor-type {:metrics [1 2 3]})))))
+
+(deftest config-centralized-test
+  (testing "all tunables live in one config map"
+    (is (every? qp.adaptive/config
+                [:budget-alpha :budget-min :budget-max :branch-gamma :max-depth
+                 :min-support-floor :min-support-floor-rate :min-support-fraction
+                 :k-child-values :min-split-gain
+                 :leakage-null-fraction :leakage-saturation-epsilon
+                 :saturation-epsilon]))))
+
+(defn- n-dim-metric [metric-id n]
+  (metric-ctx metric-id (map #(text-dim (str "d" %) 5) (range n))))
+
+(def ^:private always-expand
+  "A measurement that always wants to descend: a high-gain split with two
+  strongly-deviating, min-support-eligible children."
+  (fn [_ _ _] {:cells [{:value "x" :metric 1000 :count 200}
+                       {:value "y" :metric 0    :count 200}]}))
+
+(deftest budget-bounds-executions-test
+  (testing "total measurement executions per anchor are bounded by the budget"
+    (let [calls   (atom 0)
+          measure (fn [a b c] (swap! calls inc) (always-expand a b c))
+          group   {:group-id 1 :type "metric" :metrics [(n-dim-metric 10 6)]}
+          ;; budget = clamp(5*6, 15, 90) = 30
+          {:keys [outcome]} (plan-with-measure! [group] measure)]
+      (is (= :ok outcome))
+      (is (<= @calls 36)
+          (str "executions (" @calls ") bounded by budget (30) + one node's overshoot"))
+      (is (< @calls 80)
+          "and far below the unbounded depth-5 k-2 tree (~120 executions)"))))
+
+(deftest per-branch-cap-prevents-tunneling-test
+  (testing "a single greedy branch cannot consume the whole budget — the other branch is still explored"
+    (with-redefs [qp.adaptive/config (assoc qp.adaptive/config
+                                            :budget-alpha 100 :budget-min 40 :budget-max 40
+                                            :branch-gamma 0.4 :max-depth 8)]
+      (let [measure (fn [_ filter-path _]
+                      (let [root-val (some-> filter-path first :value)
+                            cells    (if (= root-val "lo")
+                                       [{:value "hi" :metric 600  :count 300}
+                                        {:value "lo" :metric 400  :count 300}]
+                                       [{:value "hi" :metric 1000 :count 300}
+                                        {:value "lo" :metric 0    :count 300}])]
+                        {:cells cells}))
+            group   {:group-id 1 :type "metric" :metrics [(n-dim-metric 10 6)]}
+            {:keys [plan]} (plan-with-measure! [group] measure)
+            descended-past-1 (fn [pred]
+                               (some #(and (pred (-> % (get-in [:params :filter_path]) first :value))
+                                           (> (count (get-in % [:params :filter_path])) 1))
+                                     plan))]
+        (is (descended-past-1 #{"lo"})
+            "the lower-gain branch is still descended past depth 1 (the greedy hi branch hit its cap)")))))
+
+(deftest reproducibility-test
+  (testing "same data → same exploration (deterministic frontier order)"
+    (let [group {:group-id 1 :type "metric" :metrics [(n-dim-metric 10 4)]}
+          run   #(:plan (plan-with-measure! [group] always-expand))]
+      (is (= (run) (run)) "identical plan items, in identical order, across runs"))))
+
+(deftest min-support-terminates-before-budget-test
+  (testing "branches starve at min-support — high gain but no eligible children means no descent"
+    (let [calls   (atom 0)
+          measure (fn [_ _ _] (swap! calls inc)
+                    {:cells [{:value "x" :metric 1000 :count 5}
+                             {:value "y" :metric 0    :count 5}]})
+          group   {:group-id 1 :type "metric" :metrics [(n-dim-metric 10 6)]}
+          {:keys [plan]} (plan-with-measure! [group] measure)]
+      (is (every? #(empty? (get-in % [:params :filter_path])) plan)
+          "no survivor is drilled — children never clear min-support")
+      (is (<= @calls 6) "search stops after seeding (6 candidate measurements), well under budget"))))
+
+(deftest plan-dimension-anchor-test
+  (testing "a dimension-anchored group surfaces every metric through the forced anchor dim"
+    (let [x     (text-dim "plan" 5)
+          group {:group-id 2 :type "dimension"
+                 :dimensions [{:dimension-id "plan" :dim x}]
+                 :metrics [(metric-ctx 10 [x]) (metric-ctx 20 [x])]}
+          {:keys [outcome plan]} (plan-groups! [group] {})]
+      (is (= :ok outcome))
+      (is (= #{10 20} (set (map :metric_id plan))) "one survivor per metric")
+      (is (every? #(= "plan" (:dimension_id %)) plan) "all forced onto the anchor dim")
+      (is (every? #(= 2 (:group_id %)) plan)))))

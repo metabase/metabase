@@ -22,6 +22,21 @@
 (set! *warn-on-reflection* true)
 
 ;;; ---------------------------------------------------------------------------
+;;; Anchors — a group is anchored on a metric or a dimension
+;;; ---------------------------------------------------------------------------
+
+(defn anchor-type
+  "Whether `group` (a `metric-and-dim-context` group entry) is anchored on its
+  metric or its dimension. Prefers the persisted `:type`; legacy groups without
+  one are inferred — a dimension-anchored group is the only shape with more than
+  one metric (mirrors `explorations.groups/dimension-anchored?`)."
+  [{:keys [type metrics]}]
+  (case (some-> type name)
+    "dimension" :dimension
+    "metric"    :metric
+    (if (> (count metrics) 1) :dimension :metric)))
+
+;;; ---------------------------------------------------------------------------
 ;;; Candidate categorical dimensions
 ;;; ---------------------------------------------------------------------------
 
@@ -65,15 +80,25 @@
   - `:saturation-epsilon` — the loop does not descend into a `:rate` child cell
     whose proportion sits within this of a `[0,1]` extreme (no residual variation
     left to explain — any further split inside it is noise).
-  - `:max-depth` — depth backstop (a placeholder hard cap until the governed
-    best-first search lands).
+  - `:budget-alpha/min/max` — per-anchor measurement-execution budget is
+    `clamp(alpha · seed-breadth, min, max)`, where seed-breadth is the candidate
+    dims (metric anchor) or metrics (dimension anchor). A *backstop*, not the
+    search shaper — `min-support` is the real terminator.
+  - `:branch-gamma` — a single depth-1 branch may spend at most `⌈gamma·budget⌉`
+    (anti-tunneling); loose enough that an interesting branch out-spends a boring
+    one, bounded enough that none consumes the whole budget.
+  - `:max-depth` — depth backstop.
   - `:leakage-null-fraction` / `:leakage-saturation-epsilon` — the
     [[leakage-artifact?]] candidate-eligibility guard. A `:rate` split is dropped
     when a single `nil`/blank bucket holds ≥ `:leakage-null-fraction` of the support
     *and* every non-null bucket is within `:leakage-saturation-epsilon` of the same
     `[0,1]` extreme — the signature of a dimension populated only *because* the
     outcome occurred."
-  {:min-split-gain             0.01
+  {:budget-alpha               5
+   :budget-min                 15
+   :budget-max                 90
+   :branch-gamma               0.6
+   :min-split-gain             0.01
    :min-support-floor          50
    :min-support-floor-rate     200
    :min-support-fraction       0.01
@@ -583,52 +608,129 @@
               :descend-gain (double (descend-gain (:cells chosen) kind))}
        :cost (+ (count measured) extra-cost)})))
 
+;;; ---------------------------------------------------------------------------
+;;; Governed best-first search
+;;; ---------------------------------------------------------------------------
+
+(defn- node-key
+  "Total-order tiebreak key for the frontier — makes expansion order fully
+  deterministic when gains tie (same data → same exploration)."
+  [{:keys [depth filter-path metric-ctx chosen]}]
+  [depth (pr-str filter-path) (:metric-id metric-ctx) (str (:dimension-id chosen))])
+
+(defn- frontier-comparator
+  "Highest split-gain first; ties broken by `node-key` so the sorted-set is a
+  total order (distinct nodes never collide)."
+  [a b]
+  (compare [(- (:gain a)) (node-key a)]
+           [(- (:gain b)) (node-key b)]))
+
+(defn- branch-id
+  "The depth-1 ancestor a node belongs to (its first filter-path step under a
+  metric) — the unit the per-branch cap meters. Roots (empty path) belong to no
+  branch."
+  [{:keys [metric-ctx filter-path]}]
+  (when (seq filter-path)
+    [(:metric-id metric-ctx) (first filter-path)]))
+
 (defn- child-nodes
-  "Measure the child nodes of `node` — one per selected child value (top-k by
-  deviation), each extending the filter path with `dim = value`. Returns the
-  vector of measured child node maps."
-  [node]
+  "Measure the child nodes of `node` (one per selected child value), threading the
+  remaining budget so we never measure past it. Returns `{:nodes [...] :cost n}`."
+  [node remaining-budget]
   (let [{:keys [group-id metric-ctx filter-path depth chosen]} node
         kind   (metric-kind (metric-aggregations metric-ctx))
         values (select-child-values (:cells chosen) (:k-child-values config) kind)]
-    (into []
-          (keep (fn [value]
-                  (let [child-path (conj (vec filter-path)
-                                         {:dimension-id (:dimension-id chosen)
-                                          :target       (:target chosen)
-                                          :value        value})]
-                    (:node (measure-node group-id metric-ctx child-path (inc depth) nil)))))
-          values)))
+    (reduce (fn [{:keys [nodes cost] :as acc} value]
+              (if (>= cost remaining-budget)
+                (reduced acc)
+                (let [child-path (conj (vec filter-path)
+                                       {:dimension-id (:dimension-id chosen)
+                                        :target       (:target chosen)
+                                        :value        value})
+                      measured   (measure-node group-id metric-ctx child-path (inc depth) nil)]
+                  (if measured
+                    {:nodes (conj nodes (:node measured)) :cost (+ cost (:cost measured))}
+                    acc))))
+            {:nodes [] :cost 0}
+            values)))
 
-(defn- expand
-  "Drilled survivors at and below `node`'s children. A node is descended only when
-  its **non-saturated** split still differentiates (`:descend-gain` ≥ the floor) and
-  depth allows; each child is surfaced as a drilled survivor and recursively
-  expanded. The root (depth 0, empty path) is itself never emitted here — the
-  depth-1 matrix owns it; only its drilled children become survivors. Hard depth
-  cap is a placeholder for the governed best-first search (Issue 7)."
-  [node]
-  (let [{:keys [min-split-gain max-depth]} config]
-    (if (and (>= (:descend-gain node) min-split-gain)
-             (< (:depth node) max-depth))
-      (into []
-            (mapcat (fn [child]
-                      (into (emit-survivor (:group-id child) (:metric-ctx child)
-                                           (:dim (:chosen child)) (:filter-path child))
-                            (expand child))))
-            (child-nodes node))
-      [])))
+(defn- search
+  "Best-first search over a group's seed nodes, sharing one `budget` of measurement
+  executions. Pops the highest-gain node, surfaces it **only when it is drilled**
+  (non-empty filter path — depth-1 charts come from the matrix pass, not here), and
+  expands it (descend into top-k child values) when the split's **non-saturated**
+  cells still differentiate (`:descend-gain ≥ min-split-gain` — not the full `:gain`,
+  which can be inflated entirely by saturated cells), depth allows, the branch is
+  under its cap, and budget remains. Returns `{:items [...] :spent n}` where every
+  item is a drilled (depth > 1) survivor."
+  [seed-nodes seed-cost budget]
+  (let [{:keys [branch-gamma max-depth min-split-gain]} config
+        branch-cap (long (Math/ceil (* branch-gamma (double budget))))]
+    (loop [frontier (into (sorted-set-by frontier-comparator) seed-nodes)
+           spent    seed-cost
+           branch   {}
+           items    []]
+      (if (empty? frontier)
+        {:items items :spent spent}
+        (let [node    (first frontier)
+              rest-fr (disj frontier node)
+              ;; Surface only DRILLED (non-empty filter-path) survivors here; the
+              ;; depth-1 charts are owned by the full-matrix pass in `plan-group`,
+              ;; so a root (empty path) is expand-only — no double-emit, no dedup.
+              items+  (if (seq (:filter-path node))
+                        (into items (emit-survivor (:group-id node) (:metric-ctx node)
+                                                   (:dim (:chosen node)) (:filter-path node)))
+                        items)
+              b-id    (branch-id node)
+              expand? (and (>= (:descend-gain node) min-split-gain)
+                           (< (:depth node) max-depth)
+                           (< spent budget)
+                           (or (nil? b-id) (< (get branch b-id 0) branch-cap)))]
+          (if-not expand?
+            (recur rest-fr spent branch items+)
+            (let [{:keys [nodes cost]} (child-nodes node (- budget spent))
+                  ;; attribute each child's measurement cost to its branch
+                  branch' (reduce (fn [m c] (update m (branch-id c) (fnil + 0)
+                                                    (/ (double cost) (max 1 (count nodes)))))
+                                  branch nodes)]
+              (recur (into rest-fr nodes) (+ spent cost) branch' items+))))))))
 
-(defn- descend-group
-  "Drilled (depth > 1) survivors for one group: seed a root node per metric (free
-  first split) and expand it. Roots are expand-only; only their drilled children
-  surface here."
-  [group]
-  (into []
-        (mapcat (fn [metric-ctx]
-                  (when-let [{:keys [node]} (measure-node (:group-id group) metric-ctx [] 0 nil)]
-                    (expand node))))
-        (:metrics group)))
+;;; ---------------------------------------------------------------------------
+;;; Per-anchor seeding
+;;; ---------------------------------------------------------------------------
+
+(defn- anchor-budget
+  "Per-anchor measurement-execution budget: `clamp(alpha · seed-breadth, min,
+  max)`. Seed-breadth is the subject metric's candidate dims (metric anchor) or
+  the metric count (dimension anchor)."
+  [group anchor]
+  (let [{:keys [budget-alpha budget-min budget-max]} config
+        seed-breadth (case anchor
+                       :metric    (transduce (map (comp count candidate-categorical-dims))
+                                             max 1 (:metrics group))
+                       :dimension (count (:metrics group)))]
+    (-> (* budget-alpha (max 1 seed-breadth))
+        (max budget-min)
+        (min budget-max))))
+
+(defn- seed-nodes
+  "Measure the root node for each of the group's seeds. Metric anchor: one root per
+  metric, free choice of split. Dimension anchor: one root per metric, forced to
+  split on the anchor dim (falling back to free choice when the dim doesn't
+  resolve). Returns `{:nodes [...] :cost n}`."
+  [group anchor]
+  (let [anchor-id (-> group :dimensions first :dimension-id)
+        seed-of   (fn [metric-ctx]
+                    (let [forced (when (= anchor :dimension)
+                                   (when-let [appl (get-in metric-ctx [:applicability anchor-id])]
+                                     {:dimension-id anchor-id :target (:target appl) :dim (:dim appl)}))]
+                      (measure-node (:group-id group) metric-ctx [] 0 forced)))]
+    (reduce (fn [acc m]
+              (if-let [{:keys [node cost]} (seed-of m)]
+                (-> acc (update :nodes conj node) (update :cost + cost))
+                acc))
+            {:nodes [] :cost 0}
+            (:metrics group))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Planner
@@ -637,12 +739,15 @@
 (defn- plan-group
   "Plan one group: the **full depth-1 matrix** (every applicable selected pair,
   surfaced unconditionally via the shared `group-matrix-items`) **plus** the
-  gain-gated descent, which contributes only the drilled (depth > 1) survivors the
-  matrix can't express. Adaptive thus emits a strict superset of the mechanical
-  planner's output."
+  gain-gated, per-anchor best-first descent, which contributes only the drilled
+  (depth > 1) survivors the matrix can't express. Adaptive thus emits a strict
+  superset of the mechanical planner's output."
   [group]
-  (into (qp.mechanical/group-matrix-items group)
-        (descend-group group)))
+  (let [anchor (anchor-type group)
+        budget (anchor-budget group anchor)
+        {:keys [nodes cost]} (seed-nodes group anchor)]
+    (into (qp.mechanical/group-matrix-items group)
+          (:items (search nodes cost budget)))))
 
 (defn- run-plan!
   [{:keys [metric-dim-ctx]}]

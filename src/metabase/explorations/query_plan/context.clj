@@ -266,6 +266,7 @@
                           :numeric-max    (get-in dim [:fingerprint :type :type/Number :max])
                           :applicable-to  (vec (get applicable-to dim-id []))}))]
     {:group-id      (:id group)
+     :type          (:type group)
      :name          (explorations.groups/group-display-name
                      group (update-vals cards :name))
      :metrics       metrics
