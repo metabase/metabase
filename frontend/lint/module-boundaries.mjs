@@ -119,6 +119,7 @@ const elements = [
   createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
+  createElement({ type: "shared", name: "monitor" }),
   createElement({ type: "shared", name: "nav" }),
   createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),

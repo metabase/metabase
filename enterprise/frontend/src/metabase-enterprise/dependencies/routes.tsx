@@ -3,7 +3,8 @@ import { IndexRedirect, IndexRoute, Route } from "react-router";
 import {
   BrokenDependencyDiagnosticsPage,
   UnreferencedDependencyDiagnosticsPage,
-} from "./pages/DependencyDiagnosticsPage";
+} from "metabase-enterprise/monitor/pages/DependencyDiagnosticsPage";
+
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 
 export function getDataStudioDependencyRoutes() {
