@@ -14,6 +14,7 @@
    [metabase.config.core :as config]
    [metabase.util.format :as u.format]
    [metabase.util.log.capture]
+   [metabase.util.log.throttle]
    [metabase.util.performance :as perf]
    [net.cgrand.macrovich :as macros])
   (:import
@@ -313,6 +314,25 @@
   [& body]
   `(binding [clojure.tools.logging/*logger-factory* clojure.tools.logging.impl/disabled-logger-factory]
      ~@body))
+
+(defmacro throttle
+  "Evaluate `body` at most once per `interval-ms`, throttled per call site.
+
+  Intended to wrap a log call on a hot path so it can't flood the logs:
+
+    (log/throttle (* 60 1000)
+      (log/errorf e \"Couldn't do the thing: %s\" (ex-message e)))
+
+  The throttle key is this form's source location, so every `throttle` site throttles independently with
+  no manual key management. When throttled, `body` is skipped *entirely* — including the underlying logger
+  lookup. Returns the value of `body`, or
+  `nil` when throttled."
+  {:arglists '([interval-ms & body])}
+  [interval-ms & body]
+  (let [m (meta &form)
+        k (str *ns* \: (:line m) \: (:column m))]
+    `(when (metabase.util.log.throttle/allow? ~k ~interval-ms)
+       ~@body)))
 
 (defn- copy-ex-info
   "Copies an ExceptionInfo into a new ExceptionInfo with different ex-data & cause, but all other data the same"
