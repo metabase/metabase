@@ -49,12 +49,12 @@ This renders as:
 
 ## Lists
 
-To create a bulleted list, start each line with a dash (`-`) and a space.
+To create an unordered list, start each line with a dash (`-`) and a space.
 
 ```text
-- First item
-- Second item
-- Third item
+- Franz Kafka
+- Jorge Luis Borges
+- Ursula K. Le Guin
 ```
 
 To create a numbered list, start each line with a number, followed by a period and a space.
@@ -84,13 +84,13 @@ To add a link, put the link text in square brackets, followed by the URL in pare
 
 This renders as a clickable link: [the internet's finest webpage](https://www.metabase.com).
 
-Markdown links aren't the same as dashboard link cards, which are a separate dashboard feature for linking to other items in your Metabase. For more information, see [Link cards](../dashboards/introduction.md#link-cards).
+Markdown links aren't the same as [dashboard link cards](../dashboards/introduction.md#link-cards), which are a separate dashboard feature for linking to other items in your Metabase.
 
 ## Images and GIFs
 
 ![Cat GIF](images/markdown-cat.gif)
 
-To add an image, type an exclamation point (!), then a description of the image in square brackets, then the image URL in parentheses. That description is called alt text. It appears if the image can't load, and screen readers read it aloud.
+To add an image, type an exclamation point (`!`), then a description of the image in square brackets, then the image URL in parentheses. That description is called alt text. It appears if the image can't load, and screen readers read it aloud.
 
 ```text
 ![A cat wearing a tiny hat](https://example.com/cat-in-hat.png)
@@ -141,8 +141,6 @@ Section two.
 ## Markdown in documents
 
 In a [document](../documents/introduction.md), Metabase formats your text as you type instead of showing the raw Markdown. If something doesn't format the way you expect, try retyping the last character or two to trigger the conversion.
-
-A few other things to know:
 
 - Type `/` to open a menu of formatting options.
 - When you paste a URL, Metabase turns it into a clickable link automatically.
