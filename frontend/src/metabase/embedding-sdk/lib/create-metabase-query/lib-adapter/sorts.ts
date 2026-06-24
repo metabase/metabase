@@ -77,9 +77,13 @@ function getSortColumnName(column: unknown): string | null {
   return null;
 }
 
-export function applyLimit(query: Query, limit: unknown): Query {
-  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 0) {
+export function applyLimit(query: Query, limit: unknown): Query | null {
+  if (limit == null) {
     return query;
+  }
+
+  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 0) {
+    return null;
   }
 
   return Lib.limit(query, STAGE_INDEX, limit);

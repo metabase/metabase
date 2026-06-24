@@ -1038,6 +1038,26 @@ describe("useMetabaseQuery", () => {
       );
     });
 
+    it("throws on an invalid limit instead of running unbounded", () => {
+      expect(() =>
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          limit: -1,
+        }),
+      ).toThrow(
+        "Table query object creation requires a table reference with id and databaseId.",
+      );
+
+      expect(() =>
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          limit: 5.5,
+        }),
+      ).toThrow(
+        "Table query object creation requires a table reference with id and databaseId.",
+      );
+    });
+
     it("builds a complete dataset query from a generated metric schema", () => {
       expect(
         createMetabaseQuery({

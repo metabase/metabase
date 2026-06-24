@@ -81,9 +81,13 @@ export function buildTableDatasetQueryFromInput(
     return null;
   }
 
-  libQuery = applyLimit(queryWithSorts, input.limit);
+  const queryWithLimit = applyLimit(queryWithSorts, input.limit);
 
-  return Lib.toJsQuery(libQuery);
+  if (!queryWithLimit) {
+    return null;
+  }
+
+  return Lib.toJsQuery(queryWithLimit);
 }
 
 export function buildMetricDatasetQueryFromInput(
@@ -142,7 +146,11 @@ export function buildMetricDatasetQueryFromInput(
     return null;
   }
 
-  libQuery = applyLimit(queryWithSorts, input.limit);
+  const queryWithLimit = applyLimit(queryWithSorts, input.limit);
 
-  return Lib.toJsQuery(libQuery);
+  if (!queryWithLimit) {
+    return null;
+  }
+
+  return Lib.toJsQuery(queryWithLimit);
 }

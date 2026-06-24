@@ -132,15 +132,13 @@ export function validateTableScopedInputs({
   });
 
   sorts?.forEach((sort) => {
-    const field = getTableFieldFromSort(sort);
-
-    if (field && typeof field.tableId === "number") {
+    getSortColumnTableIds(sort).forEach((tableId) => {
       validateGeneratedTableId({
-        tableId: field.tableId,
+        tableId,
         allowedTableIds,
         context: `${context} sorts`,
       });
-    }
+    });
   });
 }
 
@@ -154,6 +152,28 @@ function getTableFieldFromSort(sort: unknown) {
   const { column } = normalizeSort(sort);
 
   return isTableFieldSchema(column) ? column : null;
+}
+
+function getSortColumnTableIds(sort: unknown): number[] {
+  const { column } = normalizeSort(sort);
+
+  if (isTableFieldSchema(column) && typeof column.tableId === "number") {
+    return [column.tableId];
+  }
+
+  if (isMeasureSchema(column) && typeof column.tableId === "number") {
+    return [column.tableId];
+  }
+
+  if (
+    isFieldAggregation(column) &&
+    isTableFieldSchema(column.dimension) &&
+    typeof column.dimension.tableId === "number"
+  ) {
+    return [column.dimension.tableId];
+  }
+
+  return [];
 }
 
 export function validateMetricDimensionForTableField(
