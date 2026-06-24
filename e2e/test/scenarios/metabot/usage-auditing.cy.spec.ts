@@ -243,16 +243,21 @@ function selectTenantFilter(tenantName: string, waitAlias = "@dataset"): void {
 }
 
 function openDateFilterDropdown(attemptsLeft = 3): void {
-  // The date filter is a Mantine `Select` whose combobox carries the testId.
-  // Its open click is intermittently dropped when the input is clicked shortly
-  // after a prior selection (a focus / controlled re-render race), so the
-  // dropdown never appears and `selectDropdown()` times out — and because the
-  // click is lost rather than slow, simply waiting longer doesn't help. Only
-  // re-issue the click while the combobox still reports it is collapsed, so an
-  // already-open dropdown is never toggled shut.
+  // The date filter is a Mantine `Select` wrapped in a `Popover` (unlike the
+  // sibling user/group/tenant selects). It re-renders while the six charts
+  // stream their `/api/dataset` results in, so an open click issued mid-render
+  // is occasionally dropped and the dropdown never appears — making the later
+  // `selectDropdown()` time out. Re-issue the click, but only while the combobox
+  // still reports it is collapsed (`aria-expanded`), so a successful open is
+  // never toggled shut. Each recursion re-queries the combobox, which gives
+  // React time to commit the previous click before we decide whether to retry.
+  //
+  // Note: don't assert `be.visible` on this combobox — Mantine renders the
+  // value over a clipped `<input>`, so Cypress always reports it as hidden
+  // ("clipped by a parent with overflow: hidden"); that's why every select here
+  // is driven with a bare `realClick()`.
   H.main()
     .findByTestId("conversation-filters-date-select")
-    .should("be.visible")
     .then(($select) => {
       if ($select.attr("aria-expanded") === "true") {
         return;
