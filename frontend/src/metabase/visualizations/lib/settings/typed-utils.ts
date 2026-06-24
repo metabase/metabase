@@ -60,9 +60,16 @@ const mergeTableColumns = (
         firstTableColumns.findIndex((col) => col.name === name) === -1,
     )
     .map(({ name }) => name);
+  const shouldRemoveSecondOnlyColumns =
+    addedColumns.length > 0 &&
+    removedColumns.length > 0 &&
+    secondTableColumns.length <= firstTableColumns.length;
 
   return [
-    ...secondTableColumns.filter(({ name }) => !removedColumns.includes(name)),
+    ...secondTableColumns.filter(
+      ({ name }) =>
+        !shouldRemoveSecondOnlyColumns || !removedColumns.includes(name),
+    ),
     ...addedColumns,
   ];
 };
