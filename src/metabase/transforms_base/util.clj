@@ -649,9 +649,8 @@
     (when-let [table (sync-target! target database)]
       (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
       (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
-    ;; Refresh warehouse stats (e.g. ANALYZE) before the run is observable, so a dependent transform doesn't
-    ;; query the freshly materialized table on stale stats and hit a bad plan. Best-effort: a stats failure
-    ;; shouldn't fail an otherwise-successful run.
+    ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
+    ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
     (try
       (driver/refresh-table-stats! (:engine database) database (:schema target) (:name target)
                                    (keyword (:type target)))
