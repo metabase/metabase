@@ -70,6 +70,9 @@
      [:collection_type :text]
      [:root_collection_type :text]
      [:data_layer :text]
+     [:data_authority :text]
+     ;; Precomputed "verified or curated content" flag — see metabase.collections.curation/curated?
+     [:curated :boolean]
      [:dashboardcard_count :int]
      [:view_count :int]
      [:created_at :timestamp-with-time-zone [:default [:raw "CURRENT_TIMESTAMP"]] :not-null]
@@ -155,7 +158,7 @@
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
                      pinned dashboardcard_count view_count last_viewed_at collection_type root_collection_type
-                     data_layer] :as doc}]
+                     data_layer data_authority curated] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
@@ -173,6 +176,8 @@
    :collection_type     collection_type
    :root_collection_type root_collection_type
    :data_layer          data_layer
+   :data_authority      data_authority
+   :curated             (some-> curated to-boolean)
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
    :model_created_at    (some-> created_at to-instant)
@@ -288,7 +293,10 @@
   (let [table-name (or table-name (model-table-name embedding-model))]
     {:embedding-model embedding-model
      :table-name table-name
-     :version 4}))
+     ;; Must equal db.migration.impl/dynamic-schema-version — a freshly created index already has the
+     ;; latest schema, so recording an older version would mark it stale on creation. Kept as a literal
+     ;; (not a require) to avoid an index → impl → index-metadata → index cycle; bump both together.
+     :version 5}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -543,14 +551,21 @@
   "Ordered `[filter-key where-condition]` pairs for the structural filters implied by `search-context`. The
   search query ANDs these together (see [[search-filters]]); the search debug API uses the keys to attribute
   which specific filter excludes a given row."
-  [{:keys [archived? verified models created-at created-by last-edited-at last-edited-by
+  [{:keys [archived? verified curated? models created-at created-by last-edited-at last-edited-by
            table-db-id ids display-type] :as search-context}]
   (keep
    (fn [[k clause]] (when clause [k clause]))
    [[:personal-collection (personal-collection-filter search-context)]
     [:archived?           (when (some? archived?) [:= :archived archived?])]
     [:verified            (when (some? verified) [:= :verified verified])]
-    [:models              (when (seq models) [:in :model models])]
+    ;; "Verified or curated content" — precomputed flag (collections.curation/curated?)
+    [:curated             (when (some? curated?) [:= :curated curated?])]
+    ;; search.impl sets :models to the applicable models; an empty (but present) set means filters left no
+    ;; applicable model (e.g. curated + non-curatable entity-types), so match nothing rather than omitting the
+    ;; predicate (= all models)
+    [:models              (cond
+                            (seq models)   [:in :model models]
+                            (some? models) [:= [:inline 1] [:inline 0]])]
     [:created-by          (when (seq created-by) [:in :creator_id created-by])]
     [:last-edited-by      (when (seq last-edited-by) [:in :last_editor_id last-edited-by])]
     [:table-db-id         (when table-db-id [:= :database_id table-db-id])]
@@ -590,6 +605,8 @@
    [:collection_type :collection_type]
    [:root_collection_type :root_collection_type]
    [:data_layer :data_layer]
+   [:data_authority :data_authority]
+   [:curated :curated]
    [:dashboardcard_count :dashboardcard_count]
    [:view_count :view_count]
    [:model_created_at :model_created_at]
