@@ -101,3 +101,44 @@
          clojure.lang.ExceptionInfo
          #"Invalid value for pgvector pool parameter maxPoolSize"
          (parse-db-url (str base-url "?maxPoolSize=lots"))))))
+
+(deftest pool-props-applied-by-c3p0-test
+  (testing "c3p0 actually understands and applies every pool property name we set"
+    ;; We hand c3p0 a Properties map; like pgjdbc, c3p0 silently ignores names it doesn't recognize, so a
+    ;; typo in our prop map would quietly fall back to a c3p0 default. Read the effective config back from
+    ;; the pool to prove each name took effect. The values below all differ from c3p0's own defaults, so a
+    ;; dropped property would surface as a mismatch.
+    (when semantic.db.datasource/db-url
+      (let [overrides (str "minPoolSize=2&initialPoolSize=2&maxPoolSize=9&checkoutTimeout=4321"
+                           "&unreturnedConnectionTimeout=77&debugUnreturnedConnectionStackTraces=true"
+                           "&testConnectionOnCheckout=true")
+            url       (str semantic.db.datasource/db-url
+                           (if (re-find #"\?" semantic.db.datasource/db-url) "&" "?")
+                           overrides)]
+        (with-redefs [semantic.db.datasource/db-url      url
+                      semantic.db.datasource/data-source (atom nil)]
+          (try
+            (semantic.db.datasource/init-db!)
+            (let [cpds  (.getConnectionPoolDataSource
+                         ^PoolBackedDataSource @semantic.db.datasource/data-source)
+                  props (bean cpds)]
+              (is (=? {;; tunable knobs supplied on the URL
+                       :maxPoolSize                          9
+                       :minPoolSize                          2
+                       :initialPoolSize                      2
+                       :checkoutTimeout                      4321
+                       :unreturnedConnectionTimeout          77
+                       :debugUnreturnedConnectionStackTraces true
+                       :testConnectionOnCheckout             true
+                       ;; fixed props we always set
+                       :idleConnectionTestPeriod             60
+                       :maxIdleTimeExcessConnections         600
+                       :maxConnectionAge                     1800
+                       :acquireIncrement                     1}
+                      (select-keys props [:maxPoolSize :minPoolSize :initialPoolSize :checkoutTimeout
+                                          :unreturnedConnectionTimeout :debugUnreturnedConnectionStackTraces
+                                          :testConnectionOnCheckout :idleConnectionTestPeriod
+                                          :maxIdleTimeExcessConnections :maxConnectionAge
+                                          :acquireIncrement]))))
+            (finally
+              (semantic.db.datasource/shutdown-db!))))))))
