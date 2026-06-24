@@ -44,37 +44,43 @@
     ;;                 events (extra universe repeat).
     (let [result (#'cli/run-cli {:representation-dir representation-fixture-dir})]
       (testing "library score matches the hand-derived total"
-        ;;  size  = 60 (entity) + 3 (field) = 63
-        ;;  amb   = 100 (collisions) + 50 (synonyms) + 2 (repeated-measures) = 152
-        ;;  total = 215
-        (is (= {:score      215
-                :components {:size      {:score      63
-                                         :components {:entity-count {:measurement 6.0 :score 60}
-                                                      :field-count  {:measurement 3.0 :score 3}}}
-                             :ambiguity {:score      152
-                                         :components {:name-collisions   {:measurement 1.0 :score 100}
-                                                      :synonym-pairs     {:measurement 1.0 :score 50}
-                                                      :repeated-measures {:measurement 1.0 :score 2}}}}}
-               (:library result))))
+        ;;  size  = 60 (entity) + 3 (field) + 0 (collection-tree-size: no count offline) = 63
+        ;;  amb   = 100 (collisions) + 50 (synonyms) + 2 (repeated-measures)
+        ;;          + 0 (field-level-collisions: representation entities carry no :fields) = 152
+        ;;  total = 215  (:metadata is descriptive-only, excluded)
+        (is (=? {:score      215
+                 :components {:size      {:score      63
+                                          :components {:entity-count         {:measurement 6.0 :score 60}
+                                                       :field-count          {:measurement 3.0 :score 3}
+                                                       :collection-tree-size {:measurement 0.0 :score 0}}}
+                              :ambiguity {:score      152
+                                          :components {:name-collisions        {:measurement 1.0 :score 100}
+                                                       :synonym-pairs          {:measurement 1.0 :score 50}
+                                                       :repeated-measures      {:measurement 1.0 :score 2}
+                                                       :field-level-collisions {:measurement 0.0 :score 0}}}}}
+                (:library result))))
       (testing "universe score matches the hand-derived total"
-        ;;  size  = 100 (entity) + 5 (field) = 105
-        ;;  amb   = 200 (collisions) + 100 (synonyms) + 4 (repeated-measures) = 304
+        ;;  size  = 100 (entity) + 5 (field) + 0 (collection-tree-size) = 105
+        ;;  amb   = 200 (collisions) + 100 (synonyms) + 4 (repeated-measures) + 0 (field-level) = 304
         ;;  total = 409
-        (is (= {:score      409
-                :components {:size      {:score      105
-                                         :components {:entity-count {:measurement 10.0 :score 100}
-                                                      :field-count  {:measurement 5.0  :score 5}}}
-                             :ambiguity {:score      304
-                                         :components {:name-collisions   {:measurement 2.0  :score 200}
-                                                      :synonym-pairs     {:measurement 2.0  :score 100}
-                                                      :repeated-measures {:measurement 2.0  :score 4}}}}}
-               (:universe result))))
-      (testing "meta has formula-version + format-version + threshold + weights but no :embedding-model (offline mode)"
-        ;; Literal 1/1 here is intentional — flags accidental version bumps that would invalidate the
+        (is (=? {:score      409
+                 :components {:size      {:score      105
+                                          :components {:entity-count         {:measurement 10.0 :score 100}
+                                                       :field-count          {:measurement 5.0  :score 5}
+                                                       :collection-tree-size {:measurement 0.0  :score 0}}}
+                              :ambiguity {:score      304
+                                          :components {:name-collisions        {:measurement 2.0  :score 200}
+                                                       :synonym-pairs          {:measurement 2.0  :score 100}
+                                                       :repeated-measures      {:measurement 2.0  :score 4}
+                                                       :field-level-collisions {:measurement 0.0  :score 0}}}}}
+                (:universe result))))
+      (testing "meta has formula-version + format-version + threshold + level + weights but no :embedding-model (offline mode)"
+        ;; Literal 2/2 here is intentional — flags accidental version bumps that would invalidate the
         ;; emitted fingerprint without an explicit code-change reviewer call.
-        (is (= {:formula-version   1
-                :format-version    1
+        (is (= {:formula-version   2
+                :format-version    2
                 :synonym-threshold 0.8
+                :level             2
                 :weights           complexity/weights
                 :metabot-source    :universe-fallback}
                (:meta result)))))))
