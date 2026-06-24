@@ -78,10 +78,16 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
         `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
         "&response_type=code&state=test-state";
 
-      // Stub a 204 so the browser does not follow the real 302 to the external redirect_uri,
-      // which would break Cypress with a cross-origin navigation.
+      // Stub a same-origin HTML response so the browser navigates to it (firing a `load` event
+      // Cypress can wait on) instead of following the real 302 to the external redirect_uri, which
+      // would break Cypress with a cross-origin navigation. A 204 would leave the browser on the
+      // current page with no `load` event, so `cy.wait` would hang until the page-load timeout.
       cy.intercept("POST", "/oauth/authorize/decision", (req) => {
-        req.reply({ statusCode: 204, body: "" });
+        req.reply({
+          statusCode: 200,
+          headers: { "content-type": "text/html" },
+          body: "<html><body>ok</body></html>",
+        });
       }).as("decision");
 
       cy.visit(authorizeUrl);
