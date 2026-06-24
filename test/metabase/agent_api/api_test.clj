@@ -645,7 +645,8 @@
 (deftest create-question-explicit-null-collection-test
   (testing "An explicit null collection_id saves to the root collection, not the personal default"
     (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:query (orders-query :limit 10)})
+                                               {:source     {:type "table" :id (mt/id :orders)}
+                                                :operations [["limit" 10]]})
           create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
                                                {:name          "Agent Root Question"
                                                 :query         (:query construct-resp)
