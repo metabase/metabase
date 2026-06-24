@@ -22,42 +22,36 @@
 
 (def ^:private Failure
   "Sub-score that couldn't be computed; carries the failure message. A scored leaf whose computation
-  errored (only `:synonym-pairs` can) also carries `:score nil` and `:value nil` so the nil cascades
-  through its parent's rollup — see the cascade contract in `complexity/synonym-block`.
+  errored (only `:synonym-pairs` can) also carries `:score nil` so the nil cascades through its
+  parent's rollup — see the cascade contract in `complexity/synonym-block`.
   (Named `Failure` rather than `Error` to avoid shadowing `java.lang.Error`.)"
   [:map {:closed true}
    [:error string?]
-   [:score {:optional true} :nil]
-   [:value {:optional true} :nil]])
+   [:score {:optional true} :nil]])
 
 (def ^:private Leaf
-  "Computed (scored) leaf sub-score with a raw `:measurement` and its weighted `:score`."
+  "Computed (scored) leaf sub-score with a raw `:measurement` and its weighted `:score`. Both are
+  plain numbers — v2 measures include ratios and graph analytics, so scores can be fractional."
   [:map {:closed true}
    [:measurement  number?]
-   [:score        nat-int?]
+   [:score        number?]
    [:rating       [:maybe Rating]]
    [:rating_label [:maybe string?]]])
 
-(def ^:private Descriptive
-  "Descriptive (v2) leaf — carries a raw `:value` (number, structured map like
-  `:synonym-degree-summary`, or nil) and no `:score`/`:rating`. Not summed into the catalog total."
-  [:map {:closed true}
-   [:value [:maybe some?]]])
-
 (def ^:private Grouping
-  "Internal node whose `:score` (when present) is the rolled-up sum of its `:components` children. A
-  descriptive-only grouping (e.g. `:metadata`) has no scored descendants and so carries no `:score`."
+  "Internal node whose `:score` is the rolled-up sum of its `:components` children (possibly
+  fractional, or nil when an errored leaf cascaded up). `:score` is OPTIONAL because the level-0
+  empty catalog is `{:components {}}` with no `:score`."
   [:map {:closed true}
-   [:score        {:optional true} [:maybe nat-int?]]
+   [:score        {:optional true} [:maybe number?]]
    [:rating       [:maybe Rating]]
    [:rating_label [:maybe string?]]
    [:components   [:map-of :keyword [:ref ::node]]]])
 
 (def ^:private Node
-  "Recursive score node: a [[Failure]], a [[Leaf]], a [[Descriptive]] leaf, or a [[Grouping]] whose
-  children are themselves Nodes."
+  "Recursive score node: a [[Failure]], a [[Leaf]], or a [[Grouping]] whose children are themselves Nodes."
   [:schema
-   {:registry {::node [:or Failure Leaf Descriptive Grouping]}}
+   {:registry {::node [:or Failure Leaf Grouping]}}
    [:ref ::node]])
 
 (def ^:private EmbeddingModelMeta
