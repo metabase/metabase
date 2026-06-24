@@ -428,8 +428,6 @@ export const CardEmbedComponent = memo(
         dispatch(host.navigateToCard(chartHref, document));
         return;
       }
-      // exploration documents should have chart_href; if they don't, they still
-      // shouldn't open questions in the query builder
       if (!capabilities.canOpenCardInQueryBuilder) {
         return;
       }
