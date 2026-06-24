@@ -176,7 +176,13 @@ function getChartCard(title: string): Cypress.Chainable<JQuery<HTMLElement>> {
 
 function assertChartRendered(title: string): void {
   getChartCard(title).within(() => {
-    cy.findByTestId(/^(chart|row-chart)-container$/)
+    // Each chart's body only mounts once its own /api/dataset query resolves, and
+    // the page render is gated solely on the audit metadata (see visitUsageStatsPage),
+    // not on the per-chart dataset queries. A date-filter change re-queries every
+    // chart in parallel while callers only wait on a single @dataset alias, so under
+    // network throttling a given chart's round-trip can exceed the default 4s command
+    // timeout. Give the container a generous window to appear instead of racing it.
+    cy.findByTestId(/^(chart|row-chart)-container$/, { timeout: 30000 })
       .should("be.visible")
       .find("svg")
       .should("exist");
