@@ -258,6 +258,7 @@
   [& args]
   (->> (apply driver/describe-database args)
        :tables
+       (into [])
        (sort-by :name)))
 
 (deftest materialized-views-test

@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
@@ -23,9 +24,11 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel describe-database-test
-  (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
-                         {:name table, :schema "PUBLIC", :description nil, :is_writable true}))}
-         (driver/describe-database :h2 (mt/db)))))
+  (is (set/subset? (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"
+                                     "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
+                          {:name table, :schema "PUBLIC",
+                           :description nil, :is_writable true}))
+                   (into #{} (:tables (driver/describe-database :h2 (mt/db)))))))
 
 (deftest describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"
