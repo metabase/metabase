@@ -27,6 +27,14 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest h2-driver-registration-flag-test
+  (testing "H2 driver is registered and available by default"
+    (is (not (#'h2/h2-driver-disabled?)))
+    (is (driver/available? :h2)))
+  (testing "MB_DISABLE_H2_DRIVER=true marks the driver for skipped registration"
+    (mt/with-temp-env-var-value! [mb-disable-h2-driver "true"]
+      (is (#'h2/h2-driver-disabled?)))))
+
 (deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
     (is (= ["file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"}]

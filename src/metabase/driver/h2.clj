@@ -43,7 +43,15 @@
 ;; method impls live in this namespace
 (comment h2.actions/keep-me)
 
-(driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in :sql-mbql5})
+(defn- h2-driver-disabled?
+  "Whether to skip registering the H2 driver entirely. Lets Metabase Cloud drop H2 from the available-driver set (and
+  its attack surface) where H2 is never a legitimate data source, app DB, or Sample Database. Defaults to false so
+  self-hosted deployments, which may use H2 for the app DB or the bundled Sample Database, keep H2 registered."
+  []
+  (config/config-bool :mb-disable-h2-driver))
+
+(when-not (h2-driver-disabled?)
+  (driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in :sql-mbql5}))
 
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
