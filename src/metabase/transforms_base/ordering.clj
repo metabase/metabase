@@ -62,14 +62,23 @@
 
 ;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
 
+(defn stored-or-live-deps
+  "Dependencies of `transform`, preferring the precomputed `:table_dependencies` column and falling
+  back to a live `table-dependencies` call when it is absent (`nil`). An empty (but non-nil) stored
+  value is taken at face value as \"no dependencies\"."
+  [transform]
+  (if-some [deps (:table_dependencies transform)]
+    deps
+    (transforms-base.i/table-dependencies transform)))
+
 (defn safe-table-dependencies
-  "Like `table-dependencies`, but returns `#{}` if the computation throws. Used by cycle
+  "Like `stored-or-live-deps`, but returns `#{}` if the computation throws. Used by cycle
   detection where a single broken transform must not block the whole check. Callers that need
   to know *which* transforms failed should walk the graph themselves and capture the failure
   ids — see `transform-ordering`."
   [transform]
   (try
-    (transforms-base.i/table-dependencies transform)
+    (stored-or-live-deps transform)
     (catch Throwable _ #{})))
 
 (mu/defn- output-table-map
@@ -153,7 +162,7 @@
           :else
           (let [transform        (id->xf id)
                 [raw-deps fail?] (try
-                                   [(transforms-base.i/table-dependencies transform) false]
+                                   [(stored-or-live-deps transform) false]
                                    (catch Throwable _ [#{} true]))
                 resolved-ids     (into #{}
                                        (keep (fn [dep]
