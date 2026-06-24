@@ -415,6 +415,6 @@ is_sample: false
                 (let [files-after-export (get @(:files-atom mock-source) "main")]
                   (is (not (some #(str/includes? % "archived_snippet") (keys files-after-export)))
                       "Archived snippet file should be deleted after export")))
-              (testing "RemoteSyncObject entry is updated to synced after export"
-                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id snippet-id)))
-                    "RemoteSyncObject entry for archived snippet should have synced status")))))))))
+              (testing "the archived snippet's tracking row is dropped after export (it left the synced set)"
+                (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id snippet-id))
+                    "RemoteSyncObject entry for the archived snippet should be deleted")))))))))
