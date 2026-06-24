@@ -27,6 +27,10 @@ runs:
   steps:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+    - name: Resolve current job id
+      # Resolve JOB_ID early (before the long test step) so the ci-conductor
+      # reporter below can link failures to this exact job. Best-effort.
+      uses: ./.github/actions/resolve-job-id
     - name: Prepare front-end environment
       if: ${{ inputs.build-static-viz == 'true' }}
       uses: ./.github/actions/prepare-frontend
@@ -57,6 +61,21 @@ runs:
         list-suites: failed
         list-tests: failed
         fail-on-error: false
+    - name: Report failed tests to ci-conductor
+      # Parse the JUnit hawk wrote and POST failures to ci-conductor. Gated like
+      # the report above (run on anything that isn't a clean pass), and
+      # continue-on-error so it can never change the job outcome — Trunk
+      # Quarantine remains the sole arbiter. CI_CONDUCTOR_BASE_URL / _WEBHOOK_SECRET
+      # and the resolved JOB_ID arrive via the workflow/job env. See DEV-2224.
+      if: ${{ always() && steps.run-test.outcome != 'success' }}
+      shell: bash
+      continue-on-error: true
+      env:
+        REPO_ID: ${{ github.event.repository.id }}
+        COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+        CI_CONDUCTOR_TEST_SUITE: driver-${{ inputs.junit-name }}
+      run: node bin/ci-conductor/report-junit-failures.js
     - name: Upload Logs on Failure
       if: always() && steps.run-test.outcome != 'success'
       uses: actions/upload-artifact@v7

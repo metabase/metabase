@@ -11,6 +11,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
   cancel-in-progress: true
 
+# Exposed to the test jobs so they can report failures to ci-conductor
+# (secrets: inherit is already set on the backend call in run-tests.yml).
+# See DEV-2224.
+env:
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Rollout: log the payload instead of POSTing until we've confirmed env
+  # resolution and `node` availability on the runners. Remove to go live.
+  CI_CONDUCTOR_DRY_RUN: "true"
+
 jobs:
   be-linter-clj-kondo:
     if: ${{ !inputs.skip }}
@@ -179,6 +189,11 @@ jobs:
         env:
           MB_EDITION: ${{ matrix.job.edition }}
 
+      - name: Resolve current job id
+        # Resolve JOB_ID before the long test step so the ci-conductor reporter
+        # below can link failures to this exact job. Best-effort.
+        uses: ./.github/actions/resolve-job-id
+
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests
         run: >-
@@ -212,6 +227,20 @@ jobs:
           list-suites: failed
           list-tests: failed
           fail-on-error: false
+
+      - name: Report failed tests to ci-conductor
+        # Parse the JUnit hawk wrote and POST failures to ci-conductor. Runs on
+        # anything that isn't a clean pass; continue-on-error so it can never
+        # change the job outcome. CI_CONDUCTOR_BASE_URL / _WEBHOOK_SECRET and the
+        # resolved JOB_ID arrive via the workflow/job env. See DEV-2224.
+        if: ${{ always() && steps.run-java-tests.outcome != 'success' }}
+        continue-on-error: true
+        env:
+          REPO_ID: ${{ github.event.repository.id }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          CI_CONDUCTOR_TEST_SUITE: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
+        run: node bin/ci-conductor/report-junit-failures.js
 
       - name: Upload Logs on Failure
         if: always() && !success()
