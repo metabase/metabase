@@ -705,17 +705,14 @@
   {:include-field-values false :include-database-secrets false
    :continue-on-error false :skip-archived true})
 
-(defn- merge-incremental-export-plans [a b]
+(defn- merge-incremental-export-plans-reducer [a b]
   (if (or (= :remote-sync/incremental-not-possible a)
           (= :remote-sync/incremental-not-possible b))
-    :remote-sync/incremental-not-possible
+    (reduced :remote-sync/incremental-not-possible)
     (merge-with into a b)))
 
-(defn- merge-incremental-export-plans-reducer [a b]
-  (let [result (merge-incremental-export-plans a b)]
-    (if (= :remote-sync/incremental-not-possible result)
-      (reduced result)
-      result)))
+(defn- merge-incremental-export-plans [a b]
+  (unreduced (merge-incremental-export-plans-reducer a b)))
 
 (defn- export-closure
   "All `{:model_type :model_id}` entities a full export would pull for the entity `[model-type model-id]`
@@ -886,7 +883,7 @@
     (catch Exception _
       :remote-sync/incremental-not-possible)))
 
-(defn- chunk->plan
+(defn- chunk->incremental-export-plan
   "Plan fragment for one chunk of create/update rows.
 
   Returns:
@@ -933,7 +930,7 @@
                            (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull #{}}))
         plan          (->> cu-rows
                            (->sized-chunks)
-                           (map #(chunk->plan snapshot opts %))
+                           (map #(chunk->incremental-export-plan snapshot opts %))
                            (reduce merge-incremental-export-plans-reducer plan))
         plan          (->> (:pull plan) ;; nil when plan is already :incremental-not-possible
                            (dependencies->incremental-export-plan snapshot opts)
