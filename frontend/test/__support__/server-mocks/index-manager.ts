@@ -15,16 +15,24 @@ export function setupTableIndexEndpoints(
   });
 
   indexRequests.forEach((index) => {
-    fetchMock.get(`path:/api/indexes/${index.id}`, index, {
+    fetchMock.get(`path:/api/indexes/request/${index.id}`, index, {
       name: `getTableIndex-${index.id}`,
     });
-    fetchMock.delete(`path:/api/indexes/${index.id}`, 204, {
+    fetchMock.delete(`path:/api/indexes/request/${index.id}`, 204, {
       name: `deleteTableIndex-${index.id}`,
     });
+    fetchMock.put(
+      `path:/api/indexes/request/${index.id}`,
+      async (call) => {
+        const lastCall = fetchMock.callHistory.lastCall(call.url);
+        return { ...index, ...(await lastCall?.request?.json()) };
+      },
+      { name: `updateTableIndex-${index.id}` },
+    );
   });
 
   fetchMock.post(
-    `path:/api/indexes`,
+    `path:/api/indexes/request`,
     async (call) => {
       const lastCall = fetchMock.callHistory.lastCall(call.url);
       return createMockTableIndexRequest(await lastCall?.request?.json());
