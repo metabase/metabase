@@ -8,6 +8,7 @@
   (:require
    [clojure.string :as str]
    [metabase.curated-search.mirror]
+   [metabase.util :as u]
    [potemkin :as p]
    [toucan2.core :as t2]))
 
@@ -23,10 +24,10 @@
   Refs with no row, or with blank instructions, are omitted.
   Reading here (rather than storing in the index) means the agent always sees the current text."
   [entity-refs]
-  (let [wanted (set (map (juxt :model :id) entity-refs))]
-    (into {}
-          (keep (fn [{e :entity ac :ai_context}]
-                  (let [k [(:model e) (:id e)]]
-                    (when (and (wanted k) (not (str/blank? (:instructions ac))))
-                      [k (:instructions ac)]))))
-          (t2/select [:model/OsiAiContext :entity :ai_context]))))
+  (let [wanted  (into #{} (map (juxt :model :id)) entity-refs)
+        ref-key (fn [{e :entity}] [(:model e) (:id e)])]
+    (u/index-by ref-key (comp :instructions :ai_context)
+                (filter (fn [{ac :ai_context :as row}]
+                          (and (wanted (ref-key row))
+                               (not (str/blank? (:instructions ac)))))
+                        (t2/select [:model/OsiAiContext :entity :ai_context])))))

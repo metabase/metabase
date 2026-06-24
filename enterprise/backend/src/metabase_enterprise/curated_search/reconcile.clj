@@ -22,6 +22,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
    [metabase-enterprise.curated-search.index-table :as index-table]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.collections.core :as collections]
@@ -35,9 +36,9 @@
 
 (def ^:private embed-batch-size
   "Documents embedded per embedding-service request while backfilling new index rows.
-  Matches semantic-search's indexer batch default ([[metabase-enterprise.semantic-search.index/*batch-size*]]);
-  our docs are short (names, single synonyms/examples), so item count, not tokens, is the binding limit."
-  150)
+  Larger than semantic-search's indexer default (150): our docs are short (names, single
+  synonyms/examples), so item count, not the per-request token budget, is the binding constraint."
+  512)
 
 ;; Advisory lock serializing whole reconcile runs across cluster nodes (insert-vs-orphan-delete races).
 ;; Arbitrary app-wide-unique constant, distinct from index-table's ensure lock (20011) and
@@ -115,13 +116,12 @@
   "The full set of docs the index should hold, deduped by `doc_id` (identical values collapse to one)."
   []
   (let [ac-by-entity (ai-context-by-entity)]
-    ;; key by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice) collapses.
-    ;; a synonym equal to the name does NOT collapse — different doc_type, different doc_id.
-    (vals (into {}
-                (comp (mapcat (fn [{:keys [entity_type entity_local_id] :as ent}]
-                                (entity->docs ent (get ac-by-entity [entity_type entity_local_id]))))
-                      (map (juxt :doc_id identity)))
-                (library-entities)))))
+    ;; distinct-by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice)
+    ;; collapses; a synonym equal to the name does NOT collapse — different doc_type, different doc_id.
+    (into [] (comp (mapcat (fn [{:keys [entity_type entity_local_id] :as ent}]
+                             (entity->docs ent (get ac-by-entity [entity_type entity_local_id]))))
+                   (m/distinct-by :doc_id))
+          (library-entities))))
 
 ;;; ------------------------------------------------- Index writes -------------------------------------------------
 
@@ -142,9 +142,9 @@
    :doc_text        (:doc_text doc)
    :doc_embedding   [:raw (index-table/format-embedding embedding)]})
 
-(defn insert-batch!
-  "Embed one batch of new docs and insert them. Returns the number inserted.
-  Public only as a test seam for simulating embed/insert failure."
+(defn- insert-batch!
+  "Embed one batch of new docs and insert them, returning the number inserted.
+  Its own fn so the failed-insert test can mock it to simulate an embed/insert failure."
   [pgvector embedding-model docs]
   (let [embeddings (embedding/get-embeddings-batch embedding-model (map :doc_text docs)
                                                    {:type :index :record-tokens? true})
