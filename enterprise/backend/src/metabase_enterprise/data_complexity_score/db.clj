@@ -12,15 +12,19 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn active-field-counts-by-table
-  "Rows of `:table_id` and `:field_count` of active Fields for `table-ids`."
+(mu/defn active-fields-by-table
+  "Rows of `:table_id`, `:name`, `:semantic_type` and `:description` of the active Fields on `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/query {:select   [:table_id [:%count.* :field_count]]
-             :from     [:metabase_field]
-             :where    [:and
-                        [:= :active true]
-                        [:in :table_id table-ids]]
-             :group-by [:table_id]}))
+  (t2/query {:select [:table_id :name :semantic_type :description]
+             :from   [:metabase_field]
+             :where  [:and
+                      [:= :active true]
+                      [:in :table_id table-ids]]}))
+
+(mu/defn shared-collection-count :- :int
+  "The number of unarchived, non-personal Collections."
+  []
+  (t2/count :model/Collection :archived false :personal_owner_id nil))
 
 (mu/defn unarchived-measure-names
   "The Table ID and name of the unarchived Measures on the Tables with `table-ids`."
@@ -51,10 +55,10 @@
   (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
 
 (mu/defn universe-cards
-  "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with
+  "The ID, name, type, description, and Collection of the unarchived metric and model Cards outside the Database with
   `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Card :id :name :type :collection_id]
+  (t2/select [:model/Card :id :name :type :description :collection_id]
              :type        [:in ["metric" "model"]]
              :archived    false
              :database_id [:not= audit-database-id]))
@@ -62,7 +66,7 @@
 (mu/defn universe-tables
   "The scoring columns of the active Tables outside the Database with `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
+  (t2/select [:model/Table :id :name :description :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
              :active true
              :db_id  [:not= audit-database-id]))
 
