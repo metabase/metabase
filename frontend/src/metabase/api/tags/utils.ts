@@ -46,6 +46,7 @@ import type {
   SearchResult,
   Segment,
   Table,
+  TableIndex,
   TableRemapping,
   Task,
   TaskRun,
@@ -668,6 +669,21 @@ export function provideSubscriptionTags(
   subscription: DashboardSubscription,
 ): TagDescription<TagType>[] {
   return [idTag("subscription", subscription.id)];
+}
+
+export function provideTableIndexTags(
+  index: TableIndex,
+): TagDescription<TagType>[] {
+  return [
+    idTag("table-index", index.id),
+    idTag("transform", index.transform_id),
+  ];
+}
+
+export function provideTableIndexListTags(
+  indexes: TableIndex[],
+): TagDescription<TagType>[] {
+  return [listTag("table-index"), ...indexes.flatMap(provideTableIndexTags)];
 }
 
 export function provideTableListTags(
