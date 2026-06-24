@@ -1110,10 +1110,13 @@ describe("scenarios > dashboard", () => {
         cy.findByText(TARGET_TEXT).should("not.be.visible");
 
         cy.log("should scroll into view w/ scrollTo hash param");
+        // The auto-scroll runs in the dashcard's on-mount effect, but adding the
+        // #scrollTo hash to an already-loaded dashboard does not remount the
+        // dashcards (a hash-only change does not reload the SPA). Force a full
+        // reload of the #scrollTo URL so the dashcards remount and the scroll
+        // fires deterministically, then wait for the reloaded query to settle.
         cy.visit(`/dashboard/${dashboard.id}#scrollTo=${targetCard.id}`);
-        // wait for the dashboard to finish loading so the auto-scroll lands on a
-        // settled layout, then for the scroll to complete (hash cleared) before
-        // verifying visibility
+        cy.reload();
         cy.wait("@dashcardQuery");
         cy.location("hash").should("not.include", "scrollTo");
         cy.findByText(TARGET_TEXT).should("be.visible");
