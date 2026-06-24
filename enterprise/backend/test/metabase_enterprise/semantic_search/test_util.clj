@@ -514,6 +514,7 @@
         (-> result first vals first))
       (catch Exception _ false))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn index-relfilenode
   "Return the on-disk relfilenode for the index named `index-name`, or nil if it doesn't exist. A stable
   relfilenode across two `CREATE INDEX IF NOT EXISTS` calls proves the second did no work: had it dropped,
