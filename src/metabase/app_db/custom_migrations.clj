@@ -2326,3 +2326,19 @@
                              :where  [:and
                                       [:not= :embed_url nil]
                                       [:= :embedding_hostname nil]]})))
+
+(define-migration BackfillTransformTableDependencies
+  ;; Populate transform.table_dependencies for existing rows so the ordering read paths don't have to
+  ;; invoke the SQL parser. Rows whose extraction fails are left null so read paths fall back to a live
+  ;; computation.
+  (doseq [ns-sym '[metabase.transforms-base.ordering
+                   metabase-enterprise.transforms-python.base]]
+    ;; Force-load the table-dependencies multimethod impls so dispatch doesn't fall through to the no-op
+    ;; :default. The python impl is enterprise-only and absent in OSS builds.
+    (try (require ns-sym) (catch Throwable _)))
+  (let [compute (requiring-resolve 'metabase.transforms.models.transform/compute-table-dependencies)]
+    (doseq [transform (t2/select :model/Transform :table_dependencies nil)]
+      (when-let [deps (compute transform)]
+        (t2/query {:update :transform
+                   :set    {:table_dependencies (json/encode deps)}
+                   :where  [:= :id (:id transform)]})))))
