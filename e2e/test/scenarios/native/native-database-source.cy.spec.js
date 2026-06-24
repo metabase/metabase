@@ -119,6 +119,8 @@ describe(
       H.startNewAction();
       assertNoDatabaseSelected();
 
+      cy.log("Wait for the picker to finish loading before selecting");
+      waitForDatabasePicker();
       selectDatabase("Sample Database");
       cy.get("@persistDatabase").should("be.null");
 
@@ -127,6 +129,7 @@ describe(
       cy.log(
         "Persisting a database for a native model should not affect actions",
       );
+      waitForDatabasePicker();
       selectDatabase(postgresName);
       cy.wait("@persistDatabase");
 
@@ -375,6 +378,16 @@ function assertNoDatabaseSelected() {
     "contain",
     "Select a database",
   );
+}
+
+// The database picker list is rebuilt from query metadata, which streams in
+// asynchronously. While it settles, the picker's virtualized rows re-render and
+// the option being clicked can detach from the DOM mid-click. Anchor on the
+// fully populated list before selecting so the click lands on a stable node.
+function waitForDatabasePicker() {
+  H.popover()
+    .should("contain", "Sample Database")
+    .and("contain", postgresName);
 }
 
 function selectDatabase(database) {
