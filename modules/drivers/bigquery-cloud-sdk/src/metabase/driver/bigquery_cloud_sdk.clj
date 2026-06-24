@@ -579,9 +579,14 @@
   cap to leave headroom for JVM object expansion when the page is parsed."
   (* 4 1024 1024))
 
-(def ^:private sample-probe-rows
-  "Rows to request for the first (probe) page, before we've measured the table's real row size. Small enough to stay
-  within the budget even for heavy rows, but not 1 -- a handful averages out per-row size variance."
+(def ^:private initial-page-rows
+  "Rows to request for the *first* result page of every BigQuery fetch -- both `tabledata.list` sampling and regular
+  `getQueryResults` query execution (unless [[*page-size*]] is explicitly set). It's a small probe: the library
+  otherwise requests an unbounded first page, so a wide/large result (e.g. the `INFORMATION_SCHEMA.COLUMNS` sweep in
+  `describe-fields` over a 1000-column dataset, or a heavy sample) materializes hundreds of thousands of `FieldValue`s
+  at once and can OOM sync. After this probe, [[adaptive-sample-next-page]]/[[adaptive-query-next-page]] grow each
+  subsequent page from the *measured* bytes/row toward [[*page-byte-budget*]]. Small enough to stay within budget even
+  for heavy rows, but not 1 -- a handful averages out per-row size variance."
   10)
 
 (def ^:private sample-cell-overhead-bytes
@@ -664,7 +669,7 @@
         field-idxs     (mapv :database_position fields)
         all-parsers    (get-field-parsers schema)
         parsers        (mapv all-parsers field-idxs)
-        probe          (list-sample-page bq-table (min (long sample-probe-rows) table-rows-sample/max-sample-rows) nil)]
+        probe          (list-sample-page bq-table (min (long initial-page-rows) table-rows-sample/max-sample-rows) nil)]
     (transduce
      (comp (take table-rows-sample/max-sample-rows)
            (map (partial extract-fingerprint field-idxs parsers)))
@@ -726,8 +731,8 @@
 ;;; 2. The "lazy" iteration of `TableResult` done by the QP. Any exceptions, or `cancel-chan` checking will be done in the context of the pipeline, solely around the code in `reducible-bigquery-results`.
 
 (def ^:private ^:dynamic ^Long *page-size*
-  "Maximum number of rows to return per page in a query. Leave unset (i.e. falling to the library default) by default,
-  but override for testing."
+  "Maximum number of rows to return per page in a query. Leave unset (falls back to [[initial-page-rows]] for the first
+  page, then adaptive sizing) by default, but override for testing."
   nil)
 
 (defn- throw-invalid-query [e sql parameters]
@@ -896,7 +901,7 @@
                            (driver-api/the-classloader)
                            (try
                              (*page-callback*)
-                             (let [result-options (if *page-size* [(BigQuery$QueryResultsOption/pageSize *page-size*)] [])
+                             (let [result-options [(BigQuery$QueryResultsOption/pageSize (or *page-size* initial-page-rows))]
                                    result         (.getQueryResults job (u/varargs BigQuery$QueryResultsOption result-options))]
                                (if result
                                  (deliver result-promise [:ready result])
