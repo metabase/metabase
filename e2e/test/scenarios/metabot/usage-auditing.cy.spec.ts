@@ -339,22 +339,26 @@ function clickLastTimeseriesChartDot(title: string): void {
 }
 
 function clickRowChartBarForLabel(title: string, label: string): void {
-  // Anchor on the chart being fully rendered before measuring + drilling: the page
-  // only waits for the audit metadata, so the chart's dataset query + ECharts render
-  // can still be in flight. Without this, getBoundingClientRect() is captured against
-  // an unrendered chart and the coordinate click lands off the bar, so the drill-through
-  // never fires and the follow-up cy.wait("@conversations") times out.
+  // Anchor on the chart being fully rendered, then drill by clicking the bar
+  // element itself rather than coordinate-clicking the container. The page only
+  // waits for the audit metadata, so the chart's dataset query + render can still
+  // be in flight; and a fixed offset from the axis label is fragile — it lands off
+  // the bar when the bar is short or after a responsive relayout shifts the chart,
+  // so the drill-through never fires and the follow-up cy.wait("@conversations")
+  // times out. Clicking the bar that lines up with the label hits its center and
+  // is re-resolved at click time, so it can't miss.
   assertChartRendered(title);
   getChartCard(title).within(() => {
-    cy.findByTestId("row-chart-container").then(($container) => {
-      cy.findByText(label).then(($label) => {
-        const containerRect = $container[0].getBoundingClientRect();
-        const labelRect = $label[0].getBoundingClientRect();
-        const x = labelRect.right - containerRect.left + 30;
-        const y = labelRect.top - containerRect.top + labelRect.height / 2;
-
-        cy.wrap($container).realClick({ x, y, scrollBehavior: false });
-      });
+    cy.findByText(label).then(([labelEl]) => {
+      cy.get('[aria-roledescription="bar"]')
+        .filter((_index, barEl) => {
+          const labelRect = labelEl.getBoundingClientRect();
+          const labelMidY = labelRect.top + labelRect.height / 2;
+          const barRect = barEl.getBoundingClientRect();
+          return barRect.top <= labelMidY && labelMidY <= barRect.bottom;
+        })
+        .should("have.length", 1)
+        .realClick({ scrollBehavior: false });
     });
   });
 }
