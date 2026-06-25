@@ -358,9 +358,7 @@
     :refs       list of `{:id :name :description :related_by}` of related tables that were *not* expanded into
                 `:tables`, capped at [[max-related-table-truncated-refs]] (ids/names only, no column fetch). Tables
                 already present in `:tables` are excluded so the roster only surfaces tables the LLM hasn't already
-                seen in full.
-    :refs-total total number of FK-related tables excluded from `:tables` (the population `:refs` is drawn from),
-                before capping."
+                seen in full."
   [query with-fields? field-values-fn]
   (let [fk-groups (fk-related-table-groups query)
         total     (count fk-groups)]
@@ -389,28 +387,25 @@
                            :name        (:name table)
                            :description (:description table)
                            :related_by  (:name (lib.metadata/field query fk-field-id))}))
-                      (take max-related-table-truncated-refs excluded-groups))
-         :refs-total (count excluded-groups)}))))
+                      (take max-related-table-truncated-refs excluded-groups))}))))
 
 (defn- related-tables-result
   "Convert the map returned by [[related-tables]] into the entity-detail result.
 
   - `:related_tables` list of related tables with full details
-  - `:related_tables_truncated` (optional) true when `:related_tables` was truncated by [[max-related-tables]]
-  - `:related_tables_total` (optional) count of total related tables, before truncation. Only present when truncation
-     occurred.
+  - `:related_tables_total` (optional) count of total related tables, before truncation. Only present when
+     truncation occurred, so callers can infer that `:related_tables` was truncated by comparing it against the
+     length of `:related_tables`.
   - `:related_table_refs` (optional) list of id/name/description for related tables *not* expanded into
      `:related_tables`. Only present when truncation occurred, so the LLM knows more related tables exist and can
-     look them up individually."
+     look them up individually. This list may itself be capped at [[max-related-table-truncated-refs]]; callers
+     infer that by comparing `:related_tables_total` against the lengths of `:related_tables` and
+     `:related_table_refs`."
   [related]
-  (when-let [{:keys [tables total refs refs-total]} related]
-    (let [truncated?      (> total (count tables))
-          refs-truncated? (> refs-total (count refs))]
-      (cond-> {:related_tables tables}
-        truncated?      (assoc :related_tables_truncated true
-                               :related_tables_total     total
-                               :related_table_refs        refs)
-        refs-truncated? (assoc :related_table_refs_truncated true)))))
+  (when-let [{:keys [tables total refs]} related]
+    (cond-> {:related_tables tables}
+      (> total (count tables)) (assoc :related_tables_total total
+                                      :related_table_refs   refs))))
 
 (defn- card-details
   "Get details for a card."

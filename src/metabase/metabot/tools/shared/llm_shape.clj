@@ -301,12 +301,18 @@
   exist and a list of their ids/names/description, so the LLM doesn't assume the detailed list is exhaustive and can
   look any of the others up individually.
 
+  `total` is the total number of FK-related tables before truncation (nil when nothing was truncated) and `refs` is
+  the (possibly itself truncated) list of related tables not expanded above.
+
   Returns nil when there is nothing to render."
-  [related-tables {:keys [truncated? total refs refs-truncated?]}]
-  (let [detailed (when (seq related-tables)
+  [related-tables {:keys [total refs]}]
+  (let [shown           (count related-tables)
+        truncated?      (and total (> total shown))
+        refs-truncated? (and total (> total (+ shown (count refs))))
+        detailed (when (seq related-tables)
                    (str/join "" (map related-table->xml related-tables)))
         note     (when truncated?
-                   (str "<related-tables-truncated shown=\"" (count related-tables) "\""
+                   (str "<related-tables-truncated shown=\"" shown "\""
                         (when total (str " total=\"" total "\"")) ">\n"
                         "Only the related tables above are shown with full column details; this entity "
                         "has more FK-related tables than are shown here.\n"
@@ -391,8 +397,8 @@
    without a separate `entity_details` call — it's the first slot of every portable FK in
    the representations-format `construct_notebook_query` tool."
   [{:keys [id name database_id database_name database_engine database_schema
-           description fields related_tables related_tables_truncated related_tables_total
-           related_table_refs related_table_refs_truncated measures segments]}]
+           description fields related_tables related_tables_total
+           related_table_refs measures segments]}]
   (let [fqn (fully-qualified-name database_schema name)]
     (render-llm-template
      :table
@@ -406,10 +412,8 @@
       :table_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
       :table_related_tables_xml (related-tables->xml related_tables
-                                                     {:truncated?      related_tables_truncated
-                                                      :total           related_tables_total
-                                                      :refs            related_table_refs
-                                                      :refs-truncated? related_table_refs_truncated})
+                                                     {:total related_tables_total
+                                                      :refs  related_table_refs})
       :table_measures_xml       (when (seq measures)
                                   (str/join "\n" (map measure->xml measures)))
       :table_segments_xml       (when (seq segments)
@@ -437,8 +441,8 @@
    representations form used elsewhere. Note: Python uses <metabase-model> tag but closes
    with </model>."
   [{:keys [id name description verified fields database_id database_name database_engine
-           related_tables related_tables_truncated related_tables_total related_table_refs
-           related_table_refs_truncated measures segments portable_entity_id query_json]}]
+           related_tables related_tables_total related_table_refs
+           measures segments portable_entity_id query_json]}]
   (let [fqn (model-fully-qualified-name id name)]
     (render-llm-template
      :model
@@ -455,10 +459,8 @@
       :model_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
       :model_related_tables_xml (related-tables->xml related_tables
-                                                     {:truncated?      related_tables_truncated
-                                                      :total           related_tables_total
-                                                      :refs            related_table_refs
-                                                      :refs-truncated? related_table_refs_truncated})
+                                                     {:total related_tables_total
+                                                      :refs  related_table_refs})
       :model_measures_xml       (when (seq measures)
                                   (str/join "\n" (map measure->xml measures)))
       :model_segments_xml       (when (seq segments)

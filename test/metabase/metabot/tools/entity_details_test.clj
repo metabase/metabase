@@ -552,7 +552,7 @@
                                                             :entity-id (mt/id :orders)})))]
           (testing "no truncation metadata when nothing was capped"
             (let [output (details)]
-              (is (nil? (:related_tables_truncated output)))
+              ;; truncation is inferred from the absence of :related_tables_total (only present once capped)
               (is (nil? (:related_tables_total output)))
               (is (nil? (:related_table_refs output)))))
           (testing "capping the detailed list reports truncation + a full roster of related tables"
@@ -560,8 +560,9 @@
               (fn []
                 (let [output (details)]
                   (is (= 1 (count (:related_tables output))))
-                  (is (true? (:related_tables_truncated output)))
+                  ;; :related_tables_total > (count :related_tables) signals the detailed list was truncated
                   (is (= 2 (:related_tables_total output)))
+                  (is (> (:related_tables_total output) (count (:related_tables output))))
                   (testing "roster lists only the related tables excluded from :related_tables, by id and name"
                     (is (= 1 (count (:related_table_refs output))))
                     (is (every? :id (:related_table_refs output)))
@@ -569,8 +570,10 @@
                     (testing "the expanded table is not repeated in the roster"
                       (let [shown-ids (into #{} (map :id) (:related_tables output))]
                         (is (not-any? (comp shown-ids :id) (:related_table_refs output))))))
-                  (testing "roster itself is not flagged truncated when it fits under its own cap"
-                    (is (nil? (:related_table_refs_truncated output)))))))))))))
+                  (testing "refs fits under its own cap: total accounts for the shown table plus the full refs list"
+                    (is (= (:related_tables_total output)
+                           (+ (count (:related_tables output))
+                              (count (:related_table_refs output)))))))))))))))
 
 (deftest related-table-refs-truncation-test
   (testing "the related-table roster is itself capped at `max-related-table-truncated-refs` and flags truncation"
@@ -585,4 +588,7 @@
                           (entity-details/get-table-details {:entity-type :table
                                                              :entity-id (mt/id :orders)}))]
               (is (= 1 (count (:related_table_refs output))))
-              (is (true? (:related_table_refs_truncated output))))))))))
+              ;; truncation is inferred: total exceeds the shown tables plus the listed refs
+              (is (> (:related_tables_total output)
+                     (+ (count (:related_tables output))
+                        (count (:related_table_refs output))))))))))))

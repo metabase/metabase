@@ -744,8 +744,7 @@
    :database_schema "public"
    :related_tables [{:id 20 :name "products" :fully_qualified_name "public.products"
                      :related_by "product_id" :fields []}]
-   :related_tables_truncated true
-   :related_tables_total 99
+   :related_tables_total 3
    :related_table_refs [{:id 20 :name "products" :related_by "product_id"}
                         {:id 21 :name "people" :related_by "user_id"}]})
 
@@ -756,7 +755,7 @@
           "the detailed related table is still rendered")
       (is (str/includes? xml "<related-tables-truncated")
           "a truncation marker tells the LLM the list is incomplete")
-      (is (str/includes? xml "total=\"99\""))
+      (is (str/includes? xml "total=\"3\""))
       (is (str/includes? xml "<related-table-ref id=\"20\" name=\"products\" related_by=\"product_id\"/>"))
       (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by=\"user_id\"/>")
           "the roster lists every related table by id/name so the LLM can look them up"))))
@@ -784,9 +783,9 @@
           "the description is truncated to the cap before the ellipsis"))))
 
 (deftest ^:parallel table->xml-related-tables-roster-truncation-test
-  (testing "when the roster itself is capped, the note says so"
+  (testing "when the refs is capped, the note says so"
     (let [xml (llm-shape/table->xml (assoc base-table-with-truncated-related
-                                           :related_table_refs_truncated true))]
+                                           :related_tables_total 99))]
       (is (str/includes? xml "itself truncated: 97 more related tables exist")
           "the note reports how many related tables were truncated (total 99 minus the 2 shown)"))))
 
