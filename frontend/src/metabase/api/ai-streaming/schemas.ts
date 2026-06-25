@@ -11,12 +11,12 @@ import type {
 export const toolInputAvailableSchema = Yup.object({
   toolCallId: Yup.string().required(),
   toolName: Yup.string().required(),
-  input: Yup.mixed(),
+  input: Yup.mixed().defined(),
 });
 
 export const toolOutputAvailableSchema = Yup.object({
   toolCallId: Yup.string().required(),
-  output: Yup.mixed(),
+  output: Yup.mixed().defined(),
 });
 
 export const toolOutputErrorSchema = Yup.object({
