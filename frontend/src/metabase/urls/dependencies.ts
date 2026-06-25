@@ -6,6 +6,8 @@ import type {
 } from "metabase-types/api";
 
 const GRAPH_URL = `/data-studio/dependencies`;
+// Dependency diagnostics live under the Monitor space, while the dependency
+// graph stays in Data Studio.
 const DIAGNOSTICS_URL = `/monitor/dependency-diagnostics`;
 
 export type DependencyGraphParams = {
