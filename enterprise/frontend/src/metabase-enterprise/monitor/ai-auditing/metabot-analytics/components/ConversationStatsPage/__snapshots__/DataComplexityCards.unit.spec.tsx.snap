@@ -968,7 +968,7 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
                     data-variant="filled"
                   >
                     <span>
-                      8
+                      7.5
                     </span>
                   </div>
                 </div>
