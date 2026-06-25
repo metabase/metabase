@@ -32,6 +32,7 @@ import type {
 
 import { IndexFormFields } from "./IndexFormFields";
 import {
+  INDEX_NAME_FIELD_NAME,
   type IndexFormValues,
   buildIndexValidationSchema,
   buildStructuredIndex,
@@ -122,6 +123,7 @@ function EditIndexForm({
             fields={method.fields}
             columnOptions={columnOptions}
             isLoadingColumns={isLoading}
+            disabledFieldNames={[INDEX_NAME_FIELD_NAME]}
           />
           <Group>
             <Box flex={1}>

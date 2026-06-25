@@ -14,6 +14,10 @@ import type {
 // member here.
 export type IndexFormValues = Record<string, IndexFieldValue>;
 
+// The descriptor `name` of the index-name field (driver.common/index-name-field).
+// Editing it would mean dropping and recreating the index, so it's locked on edit.
+export const INDEX_NAME_FIELD_NAME = "name";
+
 const COLUMN_DIRECTIONS: IndexColumnDirection[] = ["asc", "desc"];
 
 function isColumnDirection(value: unknown): value is IndexColumnDirection {
