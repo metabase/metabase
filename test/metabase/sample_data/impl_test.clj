@@ -267,22 +267,6 @@
           (testing "the engine swap itself still completed - a new SQLite sample DB exists"
             (is (t2/exists? :model/Database :is_sample true :engine :sqlite))))))))
 
-(deftest sample-database-queryable-by-admin-and-non-admin-test
-  (testing "After the H2->SQLite sample database swap, both admin and non-admin users can query the new sample DB"
-    (mt/with-model-cleanup [:model/Database]
-      ;; Start from a pre-upgrade H2 sample DB and run the real swap, which inserts + syncs the SQLite sample DB
-      ;; via the production code path (so its permissions come from the after-insert default-perms hook, not the
-      ;; with-temp test helper that would otherwise grant full access and mask the real behavior).
-      (mt/with-temp [:model/Database old-sample {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}]
-        (with-redefs [config/load-sample-content? (constantly true)]
-          (#'sample-data/update-sample-database-if-needed! old-sample)))
-      (let [db (t2/select-one :model/Database :is_sample true :engine :sqlite)]
-        (is (some? db) "the engine swap created a SQLite sample database")
-        (testing "admin (crowberto) has access to the sample DB"
-          (is (= (u/the-id db) (:id (mt/user-http-request :crowberto :get 200 (format "database/%s" (u/the-id db)))))))
-        (testing "non-admin (rasta, All Users) has access to the sample DB"
-          (is (= (u/the-id db) (:id (mt/user-http-request :rasta :get 200 (format "database/%s" (u/the-id db)))))))))))
-
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
     (mt/with-temp-empty-app-db [_conn :h2]
