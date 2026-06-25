@@ -11,7 +11,7 @@ export function getDataStudioDependencyRoutes() {
   return <IndexRoute component={DependencyGraphPage} />;
 }
 
-export function getDataStudioDependencyDiagnosticsRoutes() {
+export function getMonitorDependencyDiagnosticsRoutes() {
   return (
     <>
       <IndexRedirect to="broken" />

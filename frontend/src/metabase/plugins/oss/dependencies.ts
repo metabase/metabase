@@ -13,7 +13,7 @@ export type DependencyGraphPageContextType = {
 type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
-  getDataStudioDependencyDiagnosticsRoutes: () => ReactNode;
+  getMonitorDependencyDiagnosticsRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   useGetDependenciesCount: (args: GetDependencyGraphRequest) => {
@@ -25,7 +25,7 @@ type DependenciesPlugin = {
 const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
-  getDataStudioDependencyDiagnosticsRoutes: () => null,
+  getMonitorDependencyDiagnosticsRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   useGetDependenciesCount: () => ({

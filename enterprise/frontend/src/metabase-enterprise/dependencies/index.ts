@@ -4,8 +4,8 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { useGetDependenciesCount } from "./hooks/use-get-dependencies-count";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 import {
-  getDataStudioDependencyDiagnosticsRoutes,
   getDataStudioDependencyRoutes,
+  getMonitorDependencyDiagnosticsRoutes,
 } from "./routes";
 
 /**
@@ -16,8 +16,8 @@ export function initializePlugin() {
     PLUGIN_DEPENDENCIES.isEnabled = true;
     PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes =
       getDataStudioDependencyRoutes;
-    PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes =
-      getDataStudioDependencyDiagnosticsRoutes;
+    PLUGIN_DEPENDENCIES.getMonitorDependencyDiagnosticsRoutes =
+      getMonitorDependencyDiagnosticsRoutes;
     PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
     PLUGIN_DEPENDENCIES.useGetDependenciesCount = useGetDependenciesCount;
   }
