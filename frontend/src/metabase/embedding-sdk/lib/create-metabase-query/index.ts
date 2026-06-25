@@ -58,6 +58,7 @@ function buildValidatedTableQueryFromInput(
     allowedTableIds: [Number(tableId)],
     filters: input.filters,
     measures: input.aggregations ?? input.measures,
+    sorts: input.sorts,
     context: "Table query",
   });
 

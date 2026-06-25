@@ -554,6 +554,13 @@ const _invalidTableSortDirectionQuery = {
   sorts: [sort(TEST_SCHEMA.tables.orders.fields.status, "ascending")],
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
+const _invalidTableSortByMeasureQuery = {
+  table: TEST_SCHEMA.tables.orders,
+  aggregations: [TEST_SCHEMA.tables.orders.measures.revenue],
+  // @ts-expect-error sorting by a measure is unsupported; sort by a dimension
+  sorts: [sort(TEST_SCHEMA.tables.orders.measures.revenue, "desc")],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
 const _validMetricSortAndLimitQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   breakouts: [
@@ -1027,6 +1034,76 @@ describe("useMetabaseQuery", () => {
       );
     });
 
+    it("sorts a measure-backed table query by a breakout dimension", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [TEST_SCHEMA.tables.orders.measures.revenue],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+          sorts: [sort(TEST_SCHEMA.tables.orders.fields.status)],
+        }),
+      ).toEqual(
+        queryObject({
+          aggregation: [
+            ["measure", mbqlOptions({ "display-name": "Measure 21" }), 21],
+          ],
+          breakout: [fieldRef(101)],
+          "order-by": [["asc", mbqlOptions(), fieldRef(101)]],
+        }),
+      );
+    });
+
+    it("sorts a measure-backed metric query by a breakout dimension", () => {
+      expect(
+        createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          measures: [TEST_SCHEMA.tables.orders.measures.revenue],
+          breakouts: [
+            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
+          ],
+          sorts: [
+            sort(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
+          ],
+        }),
+      ).toEqual(
+        queryObject({
+          aggregation: [
+            ["metric", mbqlOptions(), 34],
+            ["measure", mbqlOptions({ "display-name": "Measure 21" }), 21],
+          ],
+          breakout: [fieldRef(101)],
+          "order-by": [["asc", mbqlOptions(), fieldRef(101)]],
+        }),
+      );
+    });
+
+    it("sorts by a bucketed breakout, preserving the temporal unit", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [count()],
+          breakouts: [
+            breakout(TEST_SCHEMA.tables.orders.fields.createdAt, {
+              bucket: "month",
+            }),
+          ],
+          sorts: [sort(TEST_SCHEMA.tables.orders.fields.createdAt, "desc")],
+        }),
+      ).toEqual(
+        queryObject({
+          aggregation: [["count", mbqlOptions()]],
+          breakout: [fieldRef(103, { "temporal-unit": "month" })],
+          "order-by": [
+            [
+              "desc",
+              mbqlOptions(),
+              fieldRef(103, { "temporal-unit": "month" }),
+            ],
+          ],
+        }),
+      );
+    });
+
     it("throws when a sort column cannot be resolved", () => {
       expect(() =>
         createMetabaseQuery({
@@ -1052,6 +1129,34 @@ describe("useMetabaseQuery", () => {
         createMetabaseQuery({
           table: TEST_SCHEMA.tables.orders,
           limit: 5.5,
+        }),
+      ).toThrow(
+        "Table query object creation requires a table reference with id and databaseId.",
+      );
+    });
+
+    it("rejects table sorts that reference a column from another table", () => {
+      expect(() =>
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          sorts: [sort(TEST_SCHEMA.tables.products.fields.price, "desc")],
+        }),
+      ).toThrow(
+        "Table query sorts must belong to one of the query's mapped tables.",
+      );
+    });
+
+    it("fails gracefully when sorting by a measure aggregation", () => {
+      // Ordering by a measure needs its column metadata, which the data-app
+      // metadata provider cannot compute. This must fail the build with a clear
+      // error instead of throwing a raw metabase-lib error.
+      expect(() =>
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [TEST_SCHEMA.tables.orders.measures.revenue],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+          // @ts-expect-error measure sorts are a type error; this guards the runtime path for untyped callers
+          sorts: [sort(TEST_SCHEMA.tables.orders.measures.revenue, "desc")],
         }),
       ).toThrow(
         "Table query object creation requires a table reference with id and databaseId.",

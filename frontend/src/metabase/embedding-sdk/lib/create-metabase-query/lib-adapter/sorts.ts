@@ -1,11 +1,16 @@
 import { isTableFieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import type { ColumnMetadata, Query } from "metabase-lib";
+import type { BreakoutClause, ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import { isObject } from "metabase-types/guards";
 
-import { getFieldId, normalizeSort } from "../input-utils";
+import type { ColumnReferenceInput } from "../input-types";
+import { normalizeSort } from "../input-utils";
+
+import { findLibColumn } from "./column";
 
 const STAGE_INDEX = 0;
+
+type Orderable = ColumnMetadata | BreakoutClause;
 
 export function applySorts(
   query: Query,
@@ -20,48 +25,67 @@ export function applySorts(
       return null;
     }
 
-    const libColumn = findOrderableColumn(nextQuery, column);
+    const orderable = findOrderable(nextQuery, column);
 
-    if (!libColumn) {
+    if (!orderable) {
       return null;
     }
 
-    nextQuery = Lib.orderBy(nextQuery, STAGE_INDEX, libColumn, direction);
+    nextQuery = Lib.orderBy(nextQuery, STAGE_INDEX, orderable, direction);
   }
 
   return nextQuery;
 }
 
-function findOrderableColumn(
-  query: Query,
-  column: unknown,
-): ColumnMetadata | null {
-  const orderableColumns = Lib.orderableColumns(query, STAGE_INDEX);
-
-  // Field references resolve by field id first: `orderableColumns` can include
-  // implicitly-joinable columns from other tables that share a name (`id`,
-  // `name`, ...), so a name-only match could pick the wrong column.
-  if (isTableFieldSchema(column)) {
-    const fieldId = getFieldId(column);
-
-    if (fieldId != null) {
-      const columnByFieldId = orderableColumns.find(
-        (orderableColumn) =>
-          Lib.fieldValuesSearchInfo(query, orderableColumn).fieldId === fieldId,
-      );
-
-      if (columnByFieldId) {
-        return columnByFieldId;
-      }
-    }
+// Resolves the sort target from clauses already present in the query rather than
+// from `Lib.orderableColumns`. `orderableColumns` eagerly computes metadata for
+// every column, including metric/measure aggregations — but the data-app's
+// synthetic metadata provider does not carry their inner definitions, so it
+// throws. Ordering by an existing breakout/aggregation clause avoids that and
+// keeps the order-by ref aligned with the breakout (temporal bucket, binning).
+function findOrderable(query: Query, column: unknown): Orderable | null {
+  if (typeof column === "string" || isTableFieldSchema(column)) {
+    return findDimensionOrderable(query, column);
   }
 
-  const name = getSortColumnName(column);
+  return findAggregationOrderable(query, column);
+}
+
+function findDimensionOrderable(
+  query: Query,
+  column: ColumnReferenceInput,
+): Orderable | null {
+  const name = typeof column === "string" ? column : column.name;
+
+  const breakoutClause = findClauseByName(
+    query,
+    Lib.breakouts(query, STAGE_INDEX),
+    name,
+  );
+
+  if (breakoutClause) {
+    return breakoutClause;
+  }
+
+  // Non-aggregated query: order by the raw field, resolved by field id.
+  return findLibColumn(query, column);
+}
+
+function findAggregationOrderable(
+  query: Query,
+  column: unknown,
+): Orderable | null {
+  const name = getAggregationColumnName(column);
 
   if (!name) {
     return null;
   }
 
+  // Ordering by an aggregation needs its column metadata. Computing it fails
+  // when the query contains a metric/measure whose definition the data-app
+  // metadata provider lacks, so guard it and fail the build (clear error)
+  // rather than crash.
+  const orderableColumns = getOrderableColumns(query);
   const lowerName = name.toLowerCase();
 
   return (
@@ -76,15 +100,31 @@ function findOrderableColumn(
   );
 }
 
-function getSortColumnName(column: unknown): string | null {
-  if (typeof column === "string") {
-    return column;
+function getOrderableColumns(query: Query): ColumnMetadata[] {
+  try {
+    return Lib.orderableColumns(query, STAGE_INDEX);
+  } catch {
+    return [];
   }
+}
 
-  if (isTableFieldSchema(column)) {
-    return column.name;
-  }
+function findClauseByName<TClause extends BreakoutClause>(
+  query: Query,
+  clauses: TClause[],
+  name: string,
+): TClause | null {
+  const lowerName = name.toLowerCase();
 
+  return (
+    clauses.find(
+      (clause) =>
+        Lib.displayInfo(query, STAGE_INDEX, clause).name?.toLowerCase() ===
+        lowerName,
+    ) ?? null
+  );
+}
+
+function getAggregationColumnName(column: unknown): string | null {
   if (isObject(column) && column.type === "count") {
     return "count";
   }
