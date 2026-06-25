@@ -3,7 +3,6 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useGetDependenciesCount } from "./hooks/use-get-dependencies-count";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
-<<<<<<< HEAD
 import { getDataStudioDependencyRoutes } from "./routes";
 
 /**

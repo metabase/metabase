@@ -22,10 +22,11 @@ const mockDependenciesFeature = (enabled: boolean) => {
 describe("metabase-enterprise/monitor/dependency-diagnostics initializePlugin", () => {
   afterEach(() => {
     jest.clearAllMocks();
+    // Restore PLUGIN_MONITOR to its OSS defaults so cases don't leak state.
     reinitialize();
   });
 
-  it("enables dependency diagnostics when the dependencies feature is present", () => {
+  it("enables the diagnostics routes when the dependencies feature is present", () => {
     mockDependenciesFeature(true);
 
     initializePlugin();
@@ -34,6 +35,7 @@ describe("metabase-enterprise/monitor/dependency-diagnostics initializePlugin", 
     expect(PLUGIN_MONITOR.getDependencyDiagnosticsRoutes).toBe(
       getDependencyDiagnosticsRoutes,
     );
+    // The real route function returns routes, not the OSS `() => null` default.
     expect(PLUGIN_MONITOR.getDependencyDiagnosticsRoutes()).not.toBeNull();
   });
 
@@ -46,7 +48,7 @@ describe("metabase-enterprise/monitor/dependency-diagnostics initializePlugin", 
     expect(PLUGIN_MONITOR.getDependencyDiagnosticsRoutes()).toBeNull();
   });
 
-  it("resets dependency diagnostics state on reinitialize()", () => {
+  it("resets the diagnostics state on reinitialize()", () => {
     mockDependenciesFeature(true);
     initializePlugin();
 
