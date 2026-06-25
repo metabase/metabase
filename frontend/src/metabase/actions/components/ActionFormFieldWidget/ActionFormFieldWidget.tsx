@@ -2,12 +2,14 @@ import type { FunctionComponent, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
+import { FormField } from "metabase/common/components/FormField";
 import { FormInput as FormInputWidget } from "metabase/common/components/FormInput";
 import { FormNumericInput as FormNumericInputWidget } from "metabase/common/components/FormNumericInput";
-import { FormSelect as FormSelectWidget } from "metabase/common/components/FormSelect";
 import { FormTextArea as FormTextAreaWidget } from "metabase/common/components/FormTextArea";
 import { FormToggle as FormBooleanWidget } from "metabase/common/components/FormToggle";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { FormRadioGroup, type FormRadioGroupProps } from "metabase/forms";
+import { FormSelect } from "metabase/forms/components/FormSelect";
 import { Radio, Stack } from "metabase/ui";
 import type { InputComponentType } from "metabase-types/api";
 
@@ -41,6 +43,44 @@ const VerticalRadio = (props: FormRadioProps) => {
     </FormRadioGroup>
   );
 };
+
+type FormSelectWidgetProps = ActionFormFieldProps & {
+  actions?: ReactNode;
+  disabled?: boolean;
+  nullable?: boolean;
+};
+
+const FormSelectWidget = forwardRef(function FormSelectWidget(
+  {
+    title,
+    description,
+    actions,
+    optional,
+    options = [],
+    type,
+    field,
+    ...props
+  }: FormSelectWidgetProps,
+  ref: Ref<HTMLInputElement>,
+) {
+  const id = useUniqueId();
+  const data = options.map((option) => ({
+    value: String(option.value),
+    label: String(option.name),
+  }));
+
+  return (
+    <FormField
+      title={title}
+      actions={actions}
+      description={description}
+      htmlFor={id}
+      optional={optional}
+    >
+      <FormSelect ref={ref} id={id} data={data} {...props} />
+    </FormField>
+  );
+});
 
 const WIDGETS: Record<InputComponentType, FunctionComponent<any>> = {
   text: FormInputWidget,
