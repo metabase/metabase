@@ -128,6 +128,7 @@
                             whether publishes are routed through the transactional
                             `queue_message_outbox` so a message is published iff the business
                             transaction that produced it commits.
+                            SEE PERFORMANCE NOTE BELOW
 
   Optional config keys:
     `:exclusive`          — when true, at most one batch for this queue is in-flight cluster-wide.
@@ -138,6 +139,13 @@
 
   These are all properties of the queue itself — they take effect at publish time, on every
   node, regardless of whether a listener is registered locally.
+
+  PERFORMANCE NOTE ON `:transactional`:
+  When messages are sent transactionally (required or try with an active transaction), the batched messages are
+  IMMEDIATELY sent as part of the transaction boundary. It does not use the sliding-time-window publish buffer
+  that non-transactional delivery can use to batch messages across transactions under high load.
+  If you are sending messages which have a risk of generating a storm of messages, consider using `:never` to
+  improve performance but at the expense of potentially losing messages.
 
   Examples:
 
