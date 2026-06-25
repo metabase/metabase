@@ -1931,6 +1931,7 @@
            metabase.sample-data.init}
    :uses #{config
            models
+           permissions
            plugins
            settings
            sync
@@ -1939,6 +1940,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
+                    :model/DataPermissions
                     :model/Field
                     :model/Table}}
 
