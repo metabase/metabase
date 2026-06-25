@@ -70,6 +70,8 @@ const getDefaultPluginCustomViz = () => ({
   // Must be functional in OSS — pure string check used by getSensibleVisualizations
   isCustomVizDisplay,
 
+  trackCustomVizSelected: () => {},
+
   /**
    *  Always false in OSS as there is no plugin to produce a mount handle.
    */
