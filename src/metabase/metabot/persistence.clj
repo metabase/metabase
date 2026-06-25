@@ -63,6 +63,7 @@
          (into []
                (keep (fn [part]
                        (case (:type part)
+                         :start {:type "step-start"}
                          :text {:type "text" :text (:text part)}
                          :tool-input
                          (let [output (get outputs (:id part))
@@ -87,12 +88,11 @@
 
 (defn parts->storable-content
   "Drop transient/lifecycle parts and convert what remains to the v2 at-rest
-  format. Stream metadata (`:start`/`:usage`/`:finish`/`:error`) and `state`
-  data parts (salvaged separately into `MetabotConversation.state`) carry no
-  history value."
+  format. Stream metadata (`:usage`/`:finish`/`:error`) and `state` data parts
+  (salvaged separately into `MetabotConversation.state`) carry no history value."
   [parts]
   (->> parts
-       (remove #(#{:start :usage :finish :error} (:type %)))
+       (remove #(#{:usage :finish :error} (:type %)))
        (filter streaming/persistable-data-part?)
        internal-parts->storable
        (schema.v2/check-message-data "metabot_message.data")))

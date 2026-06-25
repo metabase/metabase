@@ -180,6 +180,27 @@
             [{:type :tool-input :id "c1" :function "search" :arguments {}}
              {:type :tool-output :id "c1" :result nil}])))))
 
+(deftest ^:parallel parts->storable-content-emits-step-start-boundaries-test
+  (testing "each :start becomes a step-start boundary, in stream order"
+    (is (= [{:type "step-start"}
+            {:type "tool-search" :toolCallId "c1" :state "output-available"
+             :input {:q "x"} :output "rows"}
+            {:type "step-start"}
+            {:type "text" :text "done"}]
+           (metabot-persistence/parts->storable-content
+            [{:type :start :id "m1"}
+             {:type :tool-input :id "c1" :function "search" :arguments {:q "x"}}
+             {:type :tool-output :id "c1" :result "rows"}
+             {:type :start :id "m2"}
+             {:type :text :text "done"}]))))
+  (testing "step-start renders no chat message on read"
+    (is (= [{:role "agent" :type "text" :message "Hello"}]
+           (mapv #(select-keys % [:role :type :message])
+                 (metabot-persistence/message->chat-messages
+                  {:role :assistant
+                   :data [{:type "step-start"}
+                          {:type "text" :text "Hello"}]}))))))
+
 (deftest start-turn-persists-slack-metadata-on-rows-test
   (testing "start-turn! lands slack-team-id / channel-id / slack-thread-ts on the conversation row,
             and slack-msg-id / channel-id / user-id on the user message row, plus user-id on the
