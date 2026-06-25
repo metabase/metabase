@@ -104,7 +104,10 @@
              [:first_name    {:optional true} [:maybe :string]]
              [:invite_method {:optional true} :string]
              [:invite_target {:optional true}
-              [:map [:type [:enum "dashboard" "question"]] [:id pos-int?] [:name :string]]]
+              [:map
+               [:type [:enum "dashboard" "question"]]
+               [:id   ms/PositiveInt]
+               [:name ms/NonBlankString]]]
              [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]
    [:details {:optional true}
     [:map {:closed true}

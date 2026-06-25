@@ -40,20 +40,23 @@
   (let [{user-id :id from-setup :is_from_setup invite-target :invite_target} (:object event-info)]
     (case topic
       :event/user-invited
-      (let [redirect (or (when invite-target
-                           (case (:type invite-target)
-                             "dashboard" (urls/dashboard-path (:id invite-target))
-                             "question"  (urls/card-path (:id invite-target))))
-                         (when from-setup "/admin/databases/create"))
-            subject  (if invite-target
-                       (case (:type invite-target)
-                         "dashboard" (trs "You''re invited to view the dashboard {0}" (:name invite-target))
-                         "question"  (trs "You''re invited to view the question {0}" (:name invite-target)))
-                       (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs)))]
+      (let [dashboard? (= (:type invite-target) "dashboard")
+            redirect   (or (when invite-target
+                             (if dashboard?
+                               (urls/dashboard-path (:id invite-target))
+                               (urls/card-path (:id invite-target))))
+                           (when from-setup "/admin/databases/create"))
+            subject    (cond
+                         (and invite-target dashboard?)
+                         (trs "You''re invited to view the dashboard {0}" (:name invite-target))
+                         invite-target
+                         (trs "You''re invited to view the question {0}" (:name invite-target))
+                         :else
+                         (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs)))]
         (cond-> {:user_invited_email_subject subject
                  :user_invited_join_url      (join-url user-id redirect)}
           invite-target (assoc :invite_target_name         (:name invite-target)
-                               :invite_target_is_dashboard (= (:type invite-target) "dashboard"))))
+                               :invite_target_is_dashboard dashboard?)))
       :event/security-advisory-match
       (let [{:keys [severity match_status]} (:object event-info)]
         {:severity_label     (case severity
