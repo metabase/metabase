@@ -88,6 +88,7 @@ If no component exists:
 
 Minimum behavior:
 
+- Click or focus opens the option list immediately, even before the user types.
 - Search filters labels, not raw ids.
 - The `All` option is always available.
 - Selecting an option stores the raw `value`.
