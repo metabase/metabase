@@ -10,9 +10,9 @@ export const LogsContainer = styled(LoadingAndErrorWrapper)`
 `;
 
 export const LogsContent = styled.div`
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   font-family: "Lucida Console", Monaco, monospace;
   font-size: 14px;
   white-space: pre;

@@ -1,0 +1,25 @@
+.optionsRoot {
+  margin-left: var(--mantine-spacing-sm);
+  margin-right: var(--mantine-spacing-sm);
+}
+
+@media (--breakpoint-min-sm) {
+  .optionsRoot {
+    margin-left: 4rem;
+    margin-right: 4rem;
+  }
+}
+
+.educationalButton {
+  padding: 1em;
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background_page-tertiary);
+  color: var(--mb-color-core-brand);
+  font-weight: bold;
+  transition: all 0.3s;
+
+  &:hover {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-core-brand);
+  }
+}

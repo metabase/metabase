@@ -1,11 +1,9 @@
-.strategyOption label {
-  cursor: pointer;
+.option {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
 }
 
-.radioDescription {
-  font-size: var(--mantine-font-size-md);
-  line-height: 1.25rem;
-  color: var(--mb-color-text-secondary);
+.option[data-combobox-selected] {
+  background-color: var(--mb-color-background_surface-selected);
 }
 
 .form {

@@ -557,10 +557,20 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.editDashboard();
       H.getDashboardCard().realHover().icon("click").click();
+
+      // Wait for the click behavior sidebar to finish loading the target
+      // dashboard before saving. The `migrateDeletedTab` effect that falls the
+      // now-invalid tabId back to the first tab — which is what dirties the
+      // dashboard and triggers the save request — only runs once the target
+      // dashboard has loaded. Asserting the tab selector is absent passes
+      // trivially before that load, so we anchor on a positive signal first.
+      cy.get("aside")
+        .findByText("Pass values to this dashboard's filters (optional)")
+        .should("be.visible");
       cy.get("aside")
         .findByLabelText("Select a dashboard tab")
         .should("not.exist");
-      cy.button("Done").should("be.enabled").click();
+      cy.get("aside").button("Done").should("be.enabled").click();
       H.saveDashboard({ waitMs: 250 });
 
       clickLineChartPoint();
@@ -2167,7 +2177,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       // queryBuilderMain()
       //   .findByText("There was a problem with your question")
       //   .should("not.exist");
-      // queryBuilderMain().findByText("No results!").should("be.visible");
+      // queryBuilderMain().findByText("No results").should("be.visible");
 
       H.openNotebook();
       H.verifyNotebookQuery("Orders", [
@@ -2188,12 +2198,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           ],
           expressions: ["Net"],
           filters: [
+            "Product → Title is Doohickey",
             "Reviews - Product → Reviewer is Doohickey",
             "Product → Vendor is Doohickey",
-            "User → Longitude is equal to -80",
             "ID is 7021",
+            "User → Longitude is equal to -80",
             "Net is equal to -80",
-            "Product → Title is Doohickey",
           ],
           aggregations: ["Count", "Sum of Total"],
           breakouts: [

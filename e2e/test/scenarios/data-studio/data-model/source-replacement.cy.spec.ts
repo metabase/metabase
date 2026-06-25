@@ -827,6 +827,7 @@ function openReplacementModal(sourceTableLabel: string) {
   H.DataModel.TablePicker.getTable(sourceTableLabel).click();
   H.DataModel.TableSection.get().should("be.visible");
 
+  H.DataModel.TableSection.getActionsMenuButton().click();
   SourceReplacement.getFindAndReplaceButton().click();
   SourceReplacement.getModal()
     .findByText("Find and replace a data source")

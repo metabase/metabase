@@ -4,16 +4,17 @@ import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useToast } from "metabase/common/hooks";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import { isRootCollection } from "metabase/common/collections/utils";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PaneHeaderInput,
   type PaneHeaderProps,
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase/data-studio/common/components/PaneHeader";
-import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
+} from "metabase/common/data-studio/components/PaneHeader";
+import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import { useToast } from "metabase/common/hooks";
 import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
@@ -41,6 +42,11 @@ export function SnippetHeader({
     collectionId: snippet.collection_id,
   });
 
+  // Drop the root collection; the "SQL snippets" link already represents it.
+  const folderPath = path?.filter(
+    (collection) => !isRootCollection(collection),
+  );
+
   return (
     <PaneHeader
       title={
@@ -59,7 +65,7 @@ export function SnippetHeader({
           <Link key="snippet-root-collection" to={Urls.dataStudioLibrary()}>
             {t`SQL snippets`}
           </Link>
-          {path?.map((collection, i) => (
+          {folderPath?.map((collection, i) => (
             <Link
               key={collection.id}
               to={
@@ -68,7 +74,7 @@ export function SnippetHeader({
                   : Urls.dataStudioLibrary({
                       expandedIds: [
                         "root",
-                        ...path.slice(0, i + 1).map((c) => c.id),
+                        ...folderPath.slice(0, i + 1).map((c) => c.id),
                       ],
                     })
               }

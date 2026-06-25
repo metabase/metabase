@@ -13,6 +13,7 @@ import { createMemoryHistory } from "history";
 import { useCallback, useMemo, useState } from "react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
+import { createPortal } from "react-dom";
 import { Route, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
@@ -20,7 +21,7 @@ import _ from "underscore";
 import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { AppKBarProvider } from "metabase/AppKBarProvider";
 import { Api } from "metabase/api";
-import { PUT } from "metabase/api/legacy-client";
+import { useUpdateSettingMutation } from "metabase/api/settings";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
@@ -32,8 +33,9 @@ import { createMockState } from "metabase/redux/store/mocks";
 import { RouterProvider } from "metabase/router";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
-import { ThemeProvider, useMantineTheme } from "metabase/ui";
+import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
+import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import MetabaseSettings from "metabase/utils/settings";
 
@@ -239,6 +241,27 @@ const GlobalStylesForTest = () => {
   return <Global styles={[baseStyle, cssVariables]} />;
 };
 
+/**
+ * Wires `AppColorSchemeProvider` to the `updateSetting` RTK mutation. Kept as a
+ * child component so the hook runs inside the store provider rendered by
+ * `TestWrapper`.
+ */
+const TestColorSchemeProvider = ({ children }: React.PropsWithChildren) => {
+  const [updateSetting] = useUpdateSettingMutation();
+  const handleUpdateColorScheme = useCallback(
+    async (value: any) => {
+      await updateSetting({ key: "color-scheme", value }).unwrap();
+    },
+    [updateSetting],
+  );
+
+  return (
+    <AppColorSchemeProvider onUpdateColorScheme={handleUpdateColorScheme}>
+      {children}
+    </AppColorSchemeProvider>
+  );
+};
+
 export function TestWrapper({
   children,
   store,
@@ -262,10 +285,6 @@ export function TestWrapper({
   displayTheme?: "light" | "dark";
   withCssVariables?: boolean;
 }): JSX.Element {
-  const handleUpdateColorScheme = useCallback(async (value: any) => {
-    await PUT("/api/setting/:key")({ key: "color-scheme", value });
-  }, []);
-
   const [whitelabelColors, setWhitelabelColors] = useState(() =>
     MetabaseSettings.applicationColors(),
   );
@@ -278,25 +297,28 @@ export function TestWrapper({
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
-        <AppColorSchemeProvider onUpdateColorScheme={handleUpdateColorScheme}>
-          <ThemeProviderContext.Provider value={{ withCssVariables }}>
-            <ThemeProvider
-              theme={theme}
-              resolvedColorScheme={displayTheme ?? "light"}
-              whitelabelColors={whitelabelColors}
-              onUpdateWhitelabelColors={handleUpdateWhitelabelColors}
-            >
-              <GlobalStylesForTest />
+        <TestColorSchemeProvider>
+          <OverlayStackProvider>
+            <ThemeProviderContext.Provider value={{ withCssVariables }}>
+              <ThemeProvider
+                theme={theme}
+                resolvedColorScheme={displayTheme ?? "light"}
+                whitelabelColors={whitelabelColors}
+                onUpdateWhitelabelColors={handleUpdateWhitelabelColors}
+              >
+                <GlobalStylesForTest />
+                {createPortal(<PortalContainer />, document.body)}
 
-              <MaybeKBar hasKBar={withKBar}>
-                <MaybeRouter hasRouter={withRouter} history={history}>
-                  {children}
-                </MaybeRouter>
-              </MaybeKBar>
-              {withUndos && <UndoListing />}
-            </ThemeProvider>
-          </ThemeProviderContext.Provider>
-        </AppColorSchemeProvider>
+                <MaybeKBar hasKBar={withKBar}>
+                  <MaybeRouter hasRouter={withRouter} history={history}>
+                    {children}
+                  </MaybeRouter>
+                </MaybeKBar>
+                {withUndos && <UndoListing />}
+              </ThemeProvider>
+            </ThemeProviderContext.Provider>
+          </OverlayStackProvider>
+        </TestColorSchemeProvider>
       </MaybeDNDProvider>
     </MetabaseReduxProvider>
   );
@@ -475,9 +497,14 @@ const ThemeProviderWrapper = ({
   children,
   ...props
 }: React.PropsWithChildren) => (
-  <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
-    <ThemeProvider {...props}>{children}</ThemeProvider>
-  </ThemeProviderContext.Provider>
+  <OverlayStackProvider>
+    <ThemeProviderContext.Provider value={{ withCssVariables: false }}>
+      <ThemeProvider {...props}>
+        {createPortal(<PortalContainer />, document.body)}
+        {children}
+      </ThemeProvider>
+    </ThemeProviderContext.Provider>
+  </OverlayStackProvider>
 );
 
 export function renderWithTheme(children: React.ReactElement) {

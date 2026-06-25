@@ -2,12 +2,15 @@ import type {
   DatabaseId,
   InspectorCard,
   InspectorSource,
+  ListTransformJobRunsResponse,
   ListTransformRunsResponse,
   PythonTransformTableAliases,
   Transform,
   TransformJob,
+  TransformJobRun,
   TransformOwner,
   TransformRun,
+  TransformRunForJobRun,
   TransformSource,
   TransformTag,
   TransformTarget,
@@ -133,6 +136,51 @@ export function createMockListTransformRunsResponse(
     total: 0,
     limit: null,
     offset: null,
+    ...opts,
+  };
+}
+
+export function createMockTransformJobRun(
+  opts?: Partial<TransformJobRun>,
+): TransformJobRun {
+  return {
+    id: 1,
+    job_id: 1,
+    status: "succeeded",
+    run_method: "cron",
+    start_time: "2000-01-01T00:00:00Z",
+    end_time: "2000-01-01T00:00:00Z",
+    message: null,
+    is_active: false,
+    created_at: "2000-01-01T00:00:00Z",
+    updated_at: "2000-01-01T00:00:00Z",
+    ...opts,
+  };
+}
+
+export function createMockListTransformJobRunsResponse(
+  opts?: Partial<ListTransformJobRunsResponse>,
+): ListTransformJobRunsResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
+    ...opts,
+  };
+}
+
+export function createMockTransformRunForJobRun(
+  opts?: Partial<TransformRunForJobRun>,
+): TransformRunForJobRun {
+  return {
+    ...createMockTransformRun(),
+    transform_id: 1,
+    job_run_id: 1,
+    transform_name: "Transform",
+    transform_entity_id: null,
+    metered_as: null,
+    user_id: null,
     ...opts,
   };
 }

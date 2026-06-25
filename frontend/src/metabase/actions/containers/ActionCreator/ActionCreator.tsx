@@ -11,13 +11,13 @@ import {
   useUpdateActionMutation,
 } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { Modal } from "metabase/common/components/Modal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Modal } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -171,19 +171,21 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
       >
         {renderEditorBody({ isEditable })}
       </ActionCreatorView>
-      {isSaveModalShown && (
-        <Modal title={t`New Action`} onClose={handleCloseNewActionModal}>
-          <CreateActionForm
-            initialValues={{
-              name: action.name,
-              description: action.description,
-              model_id: model?.id(),
-            }}
-            onCreate={handleCreate}
-            onCancel={handleCloseNewActionModal}
-          />
-        </Modal>
-      )}
+      <Modal
+        opened={isSaveModalShown}
+        title={t`New Action`}
+        onClose={handleCloseNewActionModal}
+      >
+        <CreateActionForm
+          initialValues={{
+            name: action.name,
+            description: action.description,
+            model_id: model?.id(),
+          }}
+          onCreate={handleCreate}
+          onCancel={handleCloseNewActionModal}
+        />
+      </Modal>
 
       {route && (
         <LeaveRouteConfirmModal

@@ -1,21 +1,15 @@
-import { Button } from "metabase/common/components/Button";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
-import CS from "metabase/css/core/index.css";
-import { Flex } from "metabase/ui/components";
+import cx from "classnames";
+import { t } from "ttag";
 
-import {
-  CloseButton,
-  ObjectDetailHeaderWrapper,
-  ObjectIdLabel,
-} from "./ObjectDetailHeader.styled";
+import CS from "metabase/css/core/index.css";
+import { ActionIcon, Box, Flex, Icon, Menu, Text } from "metabase/ui";
+
+import S from "./ObjectDetailHeader.module.css";
 import type { ObjectId } from "./types";
+import type { ActionItem } from "./utils";
 
 export interface ObjectDetailHeaderProps {
-  actionItems: {
-    title: string;
-    icon: string;
-    action: () => void;
-  }[];
+  actionItems: ActionItem[];
   canZoom: boolean;
   objectName: string;
   objectId: ObjectId | null;
@@ -40,11 +34,16 @@ export function ObjectDetailHeader({
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
-    <ObjectDetailHeaderWrapper className={CS.Grid}>
+    <Box className={cx(CS.Grid, S.headerWrapper)}>
       <div className={CS.GridCell}>
         <h2 className={CS.p3}>
           {objectName}
-          {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
+          {objectId !== null && (
+            <Text component="span" c="text-secondary" ml="sm">
+              {" "}
+              {objectId}
+            </Text>
+          )}
         </h2>
       </div>
 
@@ -52,46 +51,61 @@ export function ObjectDetailHeader({
         <Flex align="center" gap="0.5rem" p="1rem">
           {canZoom && (
             <>
-              <Button
+              <ActionIcon
+                variant="viewHeader"
                 data-testid="view-previous-object-detail"
-                onlyIcon
-                borderless
                 disabled={!canZoomPreviousRow}
                 onClick={viewPreviousObjectDetail}
-                icon="chevronup"
-              />
-              <Button
+              >
+                <Icon name="chevronup" />
+              </ActionIcon>
+              <ActionIcon
+                variant="viewHeader"
                 data-testid="view-next-object-detail"
-                onlyIcon
-                borderless
                 disabled={!canZoomNextRow}
                 onClick={viewNextObjectDetail}
-                icon="chevrondown"
-              />
+              >
+                <Icon name="chevrondown" />
+              </ActionIcon>
             </>
           )}
 
           {actionItems.length > 0 && (
-            <EntityMenu
-              items={actionItems}
-              triggerIcon="ellipsis"
-              triggerProps={{
-                "data-testid": "actions-menu",
-              }}
-            />
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <ActionIcon
+                  aria-label={t`Actions`}
+                  data-testid="actions-menu"
+                  variant="subtle"
+                >
+                  <Icon name="ellipsis" />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {actionItems.map((item) => (
+                  <Menu.Item
+                    key={item.title}
+                    leftSection={<Icon name={item.icon} aria-hidden />}
+                    onClick={item.action}
+                  >
+                    {item.title}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
           )}
 
-          <CloseButton>
-            <Button
+          <Flex ml="md" pl="md" className={S.closeButton}>
+            <ActionIcon
+              variant="viewHeader"
               data-testid="object-detail-close-button"
-              onlyIcon
-              borderless
               onClick={closeObjectDetail}
-              icon="close"
-            />
-          </CloseButton>
+            >
+              <Icon name="close" />
+            </ActionIcon>
+          </Flex>
         </Flex>
       )}
-    </ObjectDetailHeaderWrapper>
+    </Box>
   );
 }

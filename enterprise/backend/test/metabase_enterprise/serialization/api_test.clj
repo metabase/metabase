@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.metadata-file-import :as metadata-file-import]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.models.serialization :as serdes]
@@ -237,6 +238,25 @@
                    "error_message"   nil}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
 
+(deftest export-log-captures-extract-warnings-test
+  (testing "export.log captures escape-analysis warnings emitted during the eager extract phase (GHY-3802)"
+    ;; A dashboard in the exported collection references a card living in a different collection. Escape analysis
+    ;; runs eagerly inside extract/extract (before storage streaming) and warns about the escaped card. That warning
+    ;; must still land in export.log even though extract happens outside the storage logging block.
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Collection    target       {:name "Target Collection"}
+                     :model/Collection    other        {:name "Other Collection"}
+                     :model/Card          outside-card {:collection_id (:id other) :name "OutsideCard"}
+                     :model/Dashboard     dash         {:collection_id (:id target) :name "DashWithOutsideCard"}
+                     :model/DashboardCard _            {:dashboard_id (:id dash) :card_id (:id outside-card)}]
+        (let [res (binding [api.serialization/*additive-logging* false]
+                    (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                          :collection (:id target) :data_model false :settings false))
+              log (read-export-log res)]
+          (is (some? log) "export.log should be present in the archive")
+          (is (re-find #"outside requested collections" log)
+              "export.log should contain the escape-analysis warning emitted during extract"))))))
+
 (deftest import-restores-entities-test
   (testing "Import restores deleted/renamed entities and updates search index"
     (with-serialization-test-data! [coll dash card]
@@ -411,6 +431,40 @@
                    "success"         true
                    "error_message"   nil}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
+
+(deftest export-eager-error-honors-full-stacktrace-test
+  (testing "a server-side failure during eager extraction setup (before streaming) honors full_stacktrace (GDGT-2491)"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-dynamic-fn-redefs [v2.extract/extract (fn [& _] (throw (ex-info "deliberate eager failure" {})))]
+          (testing "stripped one-liner by default"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :error]]
+              (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+                                    :collection coll-id :data_model false :settings false)
+              (let [errs (filter #(str/starts-with? (str (:message %)) "Error during serialization export")
+                                 (messages))]
+                (is (seq errs) "the eager failure is logged")
+                (is (every? (comp nil? :e) errs)
+                    "no throwable attached when full_stacktrace is off"))))
+          (testing "full trace when full_stacktrace=true"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :error]]
+              (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+                                    :collection coll-id :data_model false :settings false
+                                    :full_stacktrace true)
+              (is (some :e (messages))
+                  "the throwable is attached when full_stacktrace is on"))))))))
+
+(deftest export-eager-input-error-is-not-logged-test
+  (testing "a bad collection id fails eager extraction with a clean 4xx and is not logged as a server error (GDGT-2491)"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :error]]
+        ;; well-formed (21-char) but non-existent entity id: passes endpoint validation, then
+        ;; parse-target throws an ex-info carrying a :status-code, so it surfaces as a 4xx
+        (mt/user-http-request :crowberto :post 400 "ee/serialization/export"
+                              :collection "0123456789abcdef01234" :data_model false :settings false)
+        (is (empty? (filter #(str/starts-with? (str (:message %)) "Error during serialization export")
+                            (messages)))
+            "client input errors are not logged as server errors")))))
 
 (deftest serialization-permissions-test
   (testing "Only admins can export/import"

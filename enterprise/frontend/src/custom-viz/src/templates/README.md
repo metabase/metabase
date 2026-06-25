@@ -176,7 +176,7 @@ settings: {
 | `group`                        | Sub-heading within a section for grouping related settings.                          |
 | `index`                        | Display order within a group.                                                        |
 | `inline`                       | When `true`, renders the widget on the same line as `title` (useful for `"toggle"`). |
-| `widget`                       | Built-in widget name (see below).                                                    |
+| `widget`                       | Built-in widget name or a custom React component.                                    |
 | `getDefault(series, settings)` | Computes the default value when none is stored.                                      |
 | `getValue(series, settings)`   | Always-computed value — overrides stored value on every render.                      |
 | `getProps(series, settings)`   | Returns widget-specific props.                                                       |
@@ -201,6 +201,8 @@ settings: {
 | `"field"`            | `{ columns, options: { name, value }[], showColumnSetting? }`              | Single column picker     |
 | `"fields"`           | `{ columns, options: { name, value }[], addAnother?, showColumnSetting? }` | Multi-column picker      |
 
+You can also pass a **custom React component** as `widget`. Its props (minus the base props injected by Metabase) are returned by `getProps`.
+
 ---
 
 ## Using Images
@@ -208,9 +210,9 @@ settings: {
 A custom visualization is a single JS bundle — it cannot load separate image files
 from the Metabase instance. To use an image, **inline it into your bundle**:
 
-- Embed a raster image as a base64 `data:` URL (this is what the generated
-  `src/index.tsx` does), or
-- Draw it as inline `<svg>` (best for icons and simple graphics):
+- Draw it as inline `<svg>` (best for icons and simple graphics — this is what the
+  generated `src/index.tsx` does), or
+- Embed a raster image as a base64 `data:` URL:
 
 ```tsx
 const myImage = "data:image/png;base64,iVBORw0KGgo...";
@@ -243,7 +245,7 @@ The icon appears in the chart type picker and elsewhere in the Metabase UI.
 You can also use Metabase CSS variables inside inline SVG for more control:
 
 ```svg
-<path fill="var(--mb-color-brand)" .../>
+<path fill="var(--mb-color-core-brand)" .../>
 ```
 
 Keep the icon **simple and monochromatic** — avoid gradients and multiple colors.

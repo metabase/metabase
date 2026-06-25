@@ -5,15 +5,7 @@ import _ from "underscore";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName, RecentItem } from "metabase-types/api";
 
-import { BASIC_ACTION_ORDER } from "./hooks/useCommandPaletteBasicActions";
 import type { PaletteActionImpl } from "./types";
-
-const BASIC_ACTION_ORDER_BY_NAME = BASIC_ACTION_ORDER.reduce<
-  Record<string, number>
->((acc, actionName, index) => {
-  acc[actionName] = index;
-  return acc;
-}, {});
 
 export const processResults = (
   results: (string | PaletteActionImpl)[],
@@ -24,11 +16,7 @@ export const processResults = (
     "section",
   );
 
-  const actions = processSection(
-    t`Actions`,
-    groupedResults["basic"],
-    BASIC_ACTION_ORDER_BY_NAME,
-  );
+  const actions = processSection(t`Actions`, groupedResults["basic"]);
   const search = processSection(t`Results`, groupedResults["search"]);
   const recent = processSection(t`Recents`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
@@ -51,18 +39,8 @@ export const processResults = (
 export const processSection = (
   sectionName: string,
   items?: PaletteActionImpl[],
-  sortOrder?: Record<string, number>,
 ) => {
   if (items && items.length > 0) {
-    if (sortOrder) {
-      const sortedItems = [...items].sort((a, b) => {
-        const aOrder = sortOrder[a.id] ?? Number.MAX_SAFE_INTEGER;
-        const bOrder = sortOrder[b.id] ?? Number.MAX_SAFE_INTEGER;
-        return aOrder - bOrder;
-      });
-
-      return [sectionName, ...sortedItems];
-    }
     return [sectionName, ...items];
   } else {
     return [];
@@ -115,7 +93,7 @@ export const getCommandPaletteIcon = (
 ): { name: IconName; c: ColorName } => {
   const icon = {
     name: item.icon as IconName,
-    c: item.extra?.iconColor || "brand",
+    c: item.extra?.iconColor || "core-brand",
   };
 
   return icon;

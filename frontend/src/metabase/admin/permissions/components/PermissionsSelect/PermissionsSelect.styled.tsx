@@ -19,7 +19,7 @@ export const SelectedOption = styled(PermissionsSelectOption)`
   transition: color 200ms;
 
   &:hover {
-    color: var(--mb-color-filter);
+    color: var(--mb-color-core-filter);
   }
 `;
 
@@ -39,13 +39,13 @@ export const OptionsListItem = styled.li`
 `;
 
 export const ActionsList = styled(OptionsList)`
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const ToggleContainer = styled.div`
   display: flex;
   align-items: center;
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
   padding: 0.5rem 1rem;
   justify-content: flex-end;
 `;

@@ -14,8 +14,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import SearchApp from "metabase/search/containers/SearchApp";
-import type { SearchFilters } from "metabase/search/types";
+import type { SearchFilters } from "metabase/common/search/types";
+import { SearchApp } from "metabase/search/containers/SearchApp";
 import { checkNotNull } from "metabase/utils/types";
 import type { EnabledSearchModel, SearchResult } from "metabase-types/api";
 import {

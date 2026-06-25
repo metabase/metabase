@@ -1,0 +1,69 @@
+{{> metabase/channel/email/_dashsub_alert_header.hbs }}
+  <body style="padding: 0px; margin: 0px">
+    <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 48px; table-layout: fixed;">
+      <tr>
+        <td>
+          <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 40px; border: 1px solid rgba(7, 23, 34, 0.14)">
+            <div style="text-align: center; margin-bottom: 32px;">
+              <img style="max-height: 45px; max-width: 100%;" src="{{context.application_logo_url}}" alt="{{context.application_name}} logo"/>
+            </div>
+
+            <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 8px 0; color: #2F3C45;">
+              Transform jobs that failed in the last day
+            </h1>
+
+            <div style="text-align: center; margin-bottom: 32px; font-size: 15px; line-height: 165%; color: #656F76;">
+              {{payload.event_info.job_count}} job(s) failed {{payload.event_info.failure_count}} time(s) in the last 24 hours.
+            </div>
+
+            {{!-- One block per failing job --}}
+            {{#each payload.event_info.jobs}}
+            <div style="background-color: #FAFAFB; border-radius: 12px; padding: 24px; margin: 24px auto 24px auto;">
+              <a href="{{this.job_href}}" style="font-weight: 700; font-size: 0.875rem; color: {{../context.application_color}}; text-decoration: none;">
+                {{this.job_name}}
+              </a>
+              <div style="line-height: 20px; color: #656F76; font-weight: 400; margin-top: 8px;">
+                Failed {{this.failure_count}} time(s).
+              </div>
+              {{#if this.latest_error}}
+              <div style="line-height: 20px; color: #2F3C45; font-weight: 400; margin-top: 8px;">
+                Latest error:
+                <div style="padding-left: 1em; margin-top: 4px;">
+                  {{this.latest_error}}
+                </div>
+              </div>
+              {{/if}}
+              <div style="margin-top: 16px;">
+                <a href="{{this.job_href}}" style="display: inline-block; background-color: {{../context.application_color}}; color: #ffffff !important; font-weight: 700; font-size: 14px; border-radius: 8px; padding: 12px 16px; text-decoration: none;">
+                  View job
+                </a>
+              </div>
+            </div>
+            {{/each}}
+
+            <hr style="margin-top: 32px; margin-bottom: 32px;">
+            <div style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: #656F76; text-align: center;">
+              Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
+            </div>
+          </div>
+
+          <div style="margin-top: 40px;">
+            <div style="text-align: center; color: #92999E; font-size: 13px;">
+              Metabase, Inc.
+            </div>
+
+            <div style="text-align: center; color: #92999E; font-size: 13px;">
+              9740 Campo Rd., Suite 1029, Spring Valley, CA 91977
+            </div>
+
+            <div style="text-align: center; margin-top: 8px;">
+              <a href="https://www.metabase.com" style="color: #656F76 !important; font-size: 13px;">
+                www.metabase.com
+              </a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

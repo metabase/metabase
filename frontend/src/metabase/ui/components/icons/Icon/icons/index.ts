@@ -460,6 +460,8 @@ import slack_component from "./slack.svg?component";
 import slack_source from "./slack.svg?source";
 import slack_colorized_component from "./slack_colorized.svg?component";
 import slack_colorized_source from "./slack_colorized.svg?source";
+import sliders_component from "./sliders.svg?component";
+import sliders_source from "./sliders.svg?source";
 import smartscalar_component from "./smartscalar.svg?component";
 import smartscalar_source from "./smartscalar.svg?source";
 import smile_component from "./smile.svg?component";
@@ -532,6 +534,8 @@ import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
 import trash_filled_component from "./trash_filled.svg?component";
 import trash_filled_source from "./trash_filled.svg?source";
+import treemap_component from "./treemap.svg?component";
+import treemap_source from "./treemap.svg?source";
 import triangle_left_component from "./triangle_left.svg?component";
 import triangle_left_source from "./triangle_left.svg?source";
 import triangle_right_component from "./triangle_right.svg?component";
@@ -574,6 +578,8 @@ import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
 import webhook_source from "./webhook.svg?source";
+import workspace_component from "./workspace.svg?component";
+import workspace_source from "./workspace.svg?source";
 import zap_component from "./zap.svg?component";
 import zap_source from "./zap.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
@@ -1519,6 +1525,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: slack_colorized_component,
       source: slack_colorized_source,
     },
+    sliders: {
+      component: sliders_component,
+      source: sliders_source,
+    },
     smartscalar: {
       component: smartscalar_component,
       source: smartscalar_source,
@@ -1616,6 +1626,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     trash_filled: {
       component: trash_filled_component,
       source: trash_filled_source,
+    },
+    treemap: {
+      component: treemap_component,
+      source: treemap_source,
     },
     triangle_left: {
       component: triangle_left_component,
@@ -1716,6 +1730,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     webhook: {
       component: webhook_component,
       source: webhook_source,
+    },
+    workspace: {
+      component: workspace_component,
+      source: workspace_source,
     },
     "10k": {
       component: ten_thousand_component,

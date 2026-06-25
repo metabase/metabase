@@ -1,0 +1,11 @@
+.root button {
+  min-height: 1.5rem;
+}
+
+.root button:not(.selected):hover {
+  background-color: var(--mb-color-background_surface-hover);
+}
+
+.selected {
+  box-shadow: 0 1px 2px var(--mb-color-shadow);
+}

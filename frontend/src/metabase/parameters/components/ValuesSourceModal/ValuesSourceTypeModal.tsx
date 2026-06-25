@@ -8,11 +8,8 @@ import {
   useGetCardQuery,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
-import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
-import type { RadioOption } from "metabase/common/components/Radio";
-import { Radio } from "metabase/common/components/Radio";
 import type { SelectChangeEvent } from "metabase/common/components/Select";
 import { Option, Select } from "metabase/common/components/Select";
 import { SelectButton } from "metabase/common/components/SelectButton";
@@ -20,7 +17,7 @@ import { connect, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -103,7 +100,7 @@ const ValuesSourceTypeModal = ({
       footer={[
         <Button
           key="submit"
-          primary
+          variant="filled"
           disabled={!isValidSourceConfig(sourceType, sourceConfig)}
           onClick={onSubmit}
         >{t`Done`}</Button>,
@@ -153,6 +150,23 @@ interface SourceTypeOptionsProps {
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
 }
 
+type SourceTypeOption = {
+  name: string;
+  value: ValuesSourceType;
+};
+
+// Mantine's Radio.Group only handles string values, so the null source type
+// ("From connected fields") is mapped to a sentinel string.
+const CONNECTED_FIELDS_SENTINEL_VALUE = "connected-fields";
+
+const serializeSourceType = (sourceType: ValuesSourceType): string =>
+  sourceType ?? CONNECTED_FIELDS_SENTINEL_VALUE;
+
+const deserializeSourceType = (value: string): ValuesSourceType =>
+  value === CONNECTED_FIELDS_SENTINEL_VALUE
+    ? null
+    : (value as ValuesSourceType);
+
 const SourceTypeOptions = ({
   parameter,
   parameterValues = [],
@@ -178,12 +192,20 @@ const SourceTypeOptions = ({
   );
 
   return (
-    <Radio
-      value={sourceType}
-      options={sourceTypeOptions}
-      vertical
-      onChange={handleSourceTypeChange}
-    />
+    <Radio.Group
+      value={serializeSourceType(sourceType)}
+      onChange={(value) => handleSourceTypeChange(deserializeSourceType(value))}
+    >
+      <Stack gap="sm">
+        {sourceTypeOptions.map((option) => (
+          <Radio
+            key={serializeSourceType(option.value)}
+            value={serializeSourceType(option.value)}
+            label={option.name}
+          />
+        ))}
+      </Stack>
+    </Radio.Group>
   );
 };
 
@@ -606,9 +628,7 @@ const getLabelColumns = (query: Lib.Query) => {
  * if !hasFields(parameter) then exclude the option to set the source type to
  * "From connected fields" i.e. values_source_type=null
  */
-const getSourceTypeOptions = (
-  parameter: UiParameter,
-): RadioOption<ValuesSourceType>[] => {
+const getSourceTypeOptions = (parameter: UiParameter): SourceTypeOption[] => {
   return [
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]

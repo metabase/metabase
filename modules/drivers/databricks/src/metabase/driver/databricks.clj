@@ -44,18 +44,17 @@
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
+                              :database-routing                true
                               :describe-fields                 true
-                              :describe-fks                    true
                               :expression-aggregations         true
                               :expression-literals             true
                               :expressions                     true
+                              :multi-level-schema              true
                               :native-parameters               true
                               :nested-queries                  true
-                              :multi-level-schema              true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false
-                              :database-routing                true}]
+                              :test/jvm-timezone-setting       false}]
   (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks
@@ -134,20 +133,22 @@
 
 (defmethod driver/describe-database* :databricks
   [driver database]
-  (try
-    {:tables
-     (let [[inclusion-patterns
-            exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
-           included? (fn [schema]
-                       (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
-       (into
-        #{}
-        (filter (comp included? :schema))
-        (sql-jdbc.execute/reducible-query database (get-tables-sql driver (driver.conn/effective-details database)))))}
-    (catch Throwable e
-      (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
-                      {}
-                      e)))))
+  {:tables
+   (reify clojure.lang.IReduceInit
+     (reduce [_this rf init]
+       (try
+         (let [[inclusion-patterns
+                exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
+               included? (fn [schema]
+                           (sql-jdbc.describe-database/include-schema-logging-exclusion inclusion-patterns exclusion-patterns schema))]
+           (reduce rf init
+                   (eduction
+                    (filter (comp included? :schema))
+                    (sql-jdbc.execute/reducible-query database (get-tables-sql driver (driver.conn/effective-details database))))))
+         (catch Throwable e
+           (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
+                           {}
+                           e))))))})
 
 (defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
   (when schema-names

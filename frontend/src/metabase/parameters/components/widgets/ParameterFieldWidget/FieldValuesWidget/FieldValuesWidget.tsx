@@ -35,7 +35,7 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { connect, useDispatch } from "metabase/redux";
-import { addRemappings } from "metabase/redux/metadata";
+import { addRemappings } from "metabase/redux/remappings";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -92,7 +92,7 @@ function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
 }
 
 export interface IFieldValuesWidgetProps {
-  color?: "brand";
+  color?: "core-brand";
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
@@ -277,7 +277,11 @@ export const FieldValuesWidgetInner = forwardRef<
   // ? this may rely on field mutations
   const updateRemappings = (options: FieldValue[]) => {
     if (Field.remappedField(fields) != null) {
-      fields.forEach((field) => dispatch(addRemappings(field.id, options)));
+      fields.forEach((field) => {
+        if (typeof field.id === "number") {
+          dispatch(addRemappings(field.id, options));
+        }
+      });
     }
   };
 

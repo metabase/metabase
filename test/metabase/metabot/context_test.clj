@@ -8,8 +8,10 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.context :as context]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def ^:private users-native-query (lib/native-query meta/metadata-provider "SELECT * FROM users"))
 (def ^:private users-mbql-query (lib/query meta/metadata-provider (meta/table-metadata :users)))
@@ -241,8 +243,26 @@
           (is (= #{"question" "model" "dashboard" "table"}
                  (set (map :type recently-viewed)))))))))
 
+(deftest recent-views-disabled-by-setting-test
+  (testing "Omits recent views from context when metabot-recent-views-enabled? is false"
+    (mt/with-test-user :rasta
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (mt/with-temp [:model/Card  {card-id :id}  {:type "question" :name "my question"}
+                       :model/Table {table-id :id} {}]
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
+          (mt/with-temporary-setting-values [metabot-recent-views-enabled? false]
+            (let [ctx (context/create-context {})]
+              (is (not (contains? ctx :user_recently_viewed))))))))))
+
+(deftest recent-views-disabled-strips-preexisting-test
+  (testing "Disabling the setting strips a caller-supplied :user_recently_viewed already in the context"
+    (mt/with-temporary-setting-values [metabot-recent-views-enabled? false]
+      (is (not (contains? (#'context/add-recent-views {:user_recently_viewed [{:id 1 :name "stale"}]} {})
+                          :user_recently_viewed))))))
+
 (deftest recent-views-verified-content-filter-test
-  (testing "Recent views filtering by verified content"
+  (testing "Recent views filtering by curated content (verified is one curation signal)"
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Card      {vq1 :id}        {:type "question" :name "verified q1"}
                      :model/Card      {vq2 :id}        {:type "question" :name "verified q2"}
@@ -294,12 +314,12 @@
                 (is (contains? ks um*))
                 (is (contains? ks ud*))
                 (is (contains? ks table*)))))
-          (testing "use_verified_content=true with :content-verification feature -> filters"
+          (testing "use_verified_content=true -> filters recents to curated content"
             (mt/with-premium-features #{:content-verification}
               (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
                               :user_recently_viewed)
                     ks    (keys-of items)]
-                (is (contains? ks table*) "tables are not moderatable and pass through")
+                (is (not (contains? ks table*)) "a plain table is not curated, so it is filtered out")
                 (is (contains? ks vd*))
                 (is (not (contains? ks uq*)))
                 (is (not (contains? ks um*)))
@@ -309,14 +329,15 @@
                       "Should keep 5 items even though 3 unverified items were ahead of older verified items")
                   (is (contains? ks vm2*))
                   (is (contains? ks vm1*))))))
-          (testing "use_verified_content=true but premium feature absent -> no filtering"
+          (testing "filtering is gated on the setting, not the :content-verification feature — curated is
+                    precomputed at ingestion, so recents still filter without the feature (matches search)"
             (mt/with-premium-features #{}
               (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
                               :user_recently_viewed)
                     ks    (keys-of items)]
-                (is (contains? ks uq*))
-                (is (contains? ks um*))
-                (is (contains? ks ud*)))))
+                (is (not (contains? ks uq*)))
+                (is (not (contains? ks um*)))
+                (is (not (contains? ks ud*))))))
           (testing "metabot-id that does not resolve -> no filtering"
             (mt/with-premium-features #{:content-verification}
               (let [items (-> (context/create-context {} {:metabot-id "nonexistent-entity-id"})
@@ -396,3 +417,10 @@
               _      (#'context/enhance-context-with-schema input)]
           (is (true? @called-native?) "Should use native SQL parsing path")
           (is (false? @called-mbql?) "Should NOT use MBQL path for native queries"))))))
+
+(deftest filter-recents-to-curated-test
+  (testing "keeps only recents that collections.curation marks curated, keyed by [model id] (BOT-1570)"
+    (let [recents [{:model :card :id 1} {:model :table :id 2} {:model :dashboard :id 3}]]
+      (mt/with-dynamic-fn-redefs [curation/curated-ids (constantly #{["card" 1] ["table" 2]})]
+        (is (= [{:model :card :id 1} {:model :table :id 2}]
+               (#'context/filter-recents-to-curated recents)))))))

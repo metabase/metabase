@@ -52,7 +52,7 @@ describe("Cross-version questions - joins", () => {
   it("verify: bar chart is preserved", { tags: ["@target"] }, () => {
     cy.signIn("admin", { skipCache: true });
 
-    cy.visit("/collection/root");
+    X.visitRootCollectionAndWait();
     cy.findAllByTestId("collection-entry-name")
       .filter(`:contains(${Q2_NAME})`)
       .click();

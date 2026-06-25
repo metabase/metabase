@@ -6,6 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import type { GroupId } from "./group";
+import type { ParameterTarget } from "./parameters";
 import type { UserAttributeKey } from "./user";
 
 export enum DataPermission {
@@ -15,7 +16,6 @@ export enum DataPermission {
   DATA_MODEL = "data-model",
   DETAILS = "details",
   TRANSFORMS = "transforms",
-  WORKSPACES = "workspaces",
   COLLECTIONS = "collections",
 }
 
@@ -46,6 +46,15 @@ export enum DataPermissionValue {
 export type PermissionsGraph = {
   groups: GroupsPermissions;
   revision: number;
+};
+
+// The `groups`/`revision` pair is always present; advanced-permissions plugins
+// (sandboxing, impersonation, …) append their own top-level keys, hence the
+// open index signature.
+export type UpdatePermissionsGraphRequest = {
+  groups: GroupsPermissions;
+  revision: number;
+  [key: string]: unknown;
 };
 
 export type GroupsPermissions = {
@@ -86,10 +95,6 @@ export type TransformsPermission =
   | DataPermissionValue.NO
   | DataPermissionValue.YES;
 
-export type WorkspacesPermission =
-  | DataPermissionValue.NO
-  | DataPermissionValue.YES;
-
 export type DatabasePermissions = {
   [DataPermission.VIEW_DATA]: SchemasPermissions;
   [DataPermission.CREATE_QUERIES]?: NativePermissions;
@@ -97,7 +102,6 @@ export type DatabasePermissions = {
   [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
   [DataPermission.DETAILS]?: DetailsPermissions;
   [DataPermission.TRANSFORMS]?: TransformsPermission;
-  [DataPermission.WORKSPACES]?: WorkspacesPermission;
 };
 
 export type DataModelPermissions = {
@@ -143,6 +147,12 @@ export type FieldsPermissions =
   | DataPermissionValue.SANDBOXED
   | DataPermissionValue.BLOCKED;
 
+export type UpdateCollectionPermissionsGraphRequest = {
+  namespace?: string | null;
+  revision: number;
+  groups: CollectionPermissions;
+};
+
 export type CollectionPermissionsGraph = {
   groups: CollectionPermissions;
   revision: number;
@@ -154,16 +164,13 @@ export type CollectionPermissions = {
 
 export type CollectionPermission = "write" | "read" | "none";
 
-// FIXME: is there a more suitable type for this?
-export type DimensionRef = ["dimension", any[]];
-
 export type GroupTableAccessPolicy = {
   id: number;
   group_id: number;
   table_id: number;
   card_id: number | null;
   attribute_remappings: {
-    [key: UserAttributeKey]: DimensionRef;
+    [key: UserAttributeKey]: ParameterTarget;
   };
   permission_id: number | null;
 };
@@ -178,3 +185,24 @@ export type DataSegregationStrategy =
   | "row-column-level-security"
   | "connection-impersonation"
   | "database-routing";
+
+export type DatabaseEntityId = {
+  databaseId: number;
+};
+
+export type SchemaEntityId = DatabaseEntityId & {
+  schemaName: string | undefined;
+};
+
+export type TableEntityId = SchemaEntityId & {
+  tableId: number;
+};
+
+export type PermissionEntityId = DatabaseEntityId &
+  Partial<Omit<TableEntityId, "databaseId">>;
+
+export type EntityWithGroupId = PermissionEntityId & { groupId: number };
+
+export type PermissionSubject = "schemas" | "tables" | "fields";
+
+export type SpecialGroupType = "admin" | "analyst" | "external" | null;

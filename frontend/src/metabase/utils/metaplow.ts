@@ -58,20 +58,41 @@ async function send(payload: MetaplowPayload): Promise<unknown> {
   });
 }
 
+interface MetaplowConfig {
+  beforeSend: (
+    type: string,
+    payload: MetaplowPayload,
+  ) => MetaplowPayload | void;
+}
+
+let _config: MetaplowConfig = {
+  beforeSend: (_type, payload) => payload,
+};
+
+export function initMetaplow(config: Partial<MetaplowConfig>): void {
+  _config = { ..._config, ...config };
+}
+
 export function trackMetaplowEvent(
   name: MetaplowPayload["name"],
   data: MetaplowPayload["data"] = {},
 ): void {
-  send({
+  const payload = _config.beforeSend("event", {
     ...getBasePayload(window.location.href),
     name,
     data,
-  }).catch(() => undefined);
+  });
+  if (payload) {
+    send(payload).catch(() => undefined);
+  }
 }
 
-export function trackMetaplowPageView(url: string): Promise<unknown> {
-  return send({
+export function trackMetaplowPageView(url: string) {
+  const payload = _config.beforeSend("event", {
     ...getBasePayload(url),
     name: "pageview",
-  }).catch(() => undefined);
+  });
+  if (payload) {
+    send(payload).catch(() => undefined);
+  }
 }

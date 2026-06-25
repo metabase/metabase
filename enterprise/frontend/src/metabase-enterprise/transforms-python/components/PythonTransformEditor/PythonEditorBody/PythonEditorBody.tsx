@@ -86,7 +86,7 @@ export function PythonEditorBody({
   );
 
   const editorContent = (
-    <Flex h="100%" align="end" bg="background-secondary" pos="relative">
+    <Flex h="100%" align="end" bg="background_page-secondary" pos="relative">
       <PythonEditor
         value={source}
         proposedValue={proposedSource}
@@ -130,8 +130,8 @@ export function PythonEditorBody({
           {!hideRunButton && (
             <RunButtonWithTooltip
               disabled={!isRunnable}
-              isRunning={isRunning}
-              isDirty={isDirty}
+              isRunning={Boolean(isRunning)}
+              isDirty={Boolean(isDirty)}
               onRun={onRun}
               onCancel={onCancel}
               getTooltip={() => t`Run Python script`}

@@ -41,12 +41,12 @@ const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
   const { backgroundColor, iconColor } = match(channel)
     .with("channel/slack", () => ({
       backgroundColor:
-        "color-mix(in srgb, var(--mb-color-saturated-purple) 10%, var(--mb-color-background-primary))",
+        "color-mix(in srgb, var(--mb-color-saturated-purple) 10%, var(--mb-color-background_page-primary))",
       iconColor: "saturated-purple" as const,
     }))
     .otherwise(() => ({
-      backgroundColor: "var(--mb-color-background-brand)",
-      iconColor: "brand" as const,
+      backgroundColor: "var(--mb-color-background_surface-brand-subtle)",
+      iconColor: "core-brand" as const,
     }));
 
   return (
@@ -55,7 +55,11 @@ const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
       justify="center"
       w={AVATAR_SIZE}
       h={AVATAR_SIZE}
-      bd={bordered ? "2px solid var(--mb-color-background-primary)" : undefined}
+      bd={
+        bordered
+          ? "2px solid var(--mb-color-background_page-primary)"
+          : undefined
+      }
       bdrs="50%"
       className={S.channelAvatar}
       style={{ backgroundColor }}

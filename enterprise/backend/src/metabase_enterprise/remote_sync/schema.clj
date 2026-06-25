@@ -24,6 +24,7 @@
    [:version {:optional true} [:maybe :string]]
    [:cancelled {:optional true} [:maybe :boolean]]
    [:error_message {:optional true} [:maybe :string]]
+   [:outcome {:optional true} [:maybe :map]]
    [:conflicts {:optional true} [:maybe [:sequential :string]]]
    [:status TaskStatus]])
 
@@ -102,6 +103,30 @@
    [:message :string]
    [:task_id pos-int?]])
 
+(def MergeSummary
+  "Counts of remote changes a merge would fold into local content."
+  [:map
+   [:added :int]
+   [:updated :int]
+   [:removed :int]])
+
+(def ForcePushCasualties
+  "Remote content a force push would discard, keyed by how: entities removed entirely (`:deleted`) or
+  whose remote-side edits would be replaced (`:overwritten`). Each is human-readable entity labels."
+  [:map
+   [:deleted [:sequential :string]]
+   [:overwritten [:sequential :string]]])
+
+(def ExportPreflightResponse
+  "Schema for GET /export-preflight response."
+  [:map
+   [:has_changes :boolean]
+   [:clean :boolean]
+   [:conflicts [:sequential :string]]
+   [:summary MergeSummary]
+   [:force_push_casualties ForcePushCasualties]
+   [:reason [:maybe :string]]])
+
 (def SettingsUpdateResponse
   "Schema for PUT /settings response."
   [:map
@@ -132,7 +157,8 @@
    [:has_changes :boolean]
    [:remote_version [:maybe :string]]
    [:local_version [:maybe :string]]
-   [:cached :boolean]])
+   [:cached :boolean]
+   [:branch_missing {:optional true} :boolean]])
 
 (def TestConnectionResponse
   "Schema for POST /test-connection response."

@@ -854,7 +854,9 @@ export class UnconnectedDataSelector extends Component {
             </Box>
           </Popover.Target>
 
-          <Popover.Dropdown>{this.renderContent()}</Popover.Dropdown>
+          <Popover.Dropdown aria-label={this.props.popoverAriaLabel}>
+            {this.renderContent()}
+          </Popover.Dropdown>
         </Popover>
       );
     }
@@ -903,6 +905,7 @@ function withAvailableModels(WrappedComponent) {
       calculate_available_models: true,
       limit: 0,
       models: ["dataset"],
+      context: "data-picker",
     });
     const { data: _data, ...metadata } = response ?? {};
     return (
@@ -917,10 +920,19 @@ function withAvailableModels(WrappedComponent) {
   };
 }
 
+// Prefetches the saved-databases list and forwards its loading state as
+// `allLoading` so the picker waits for the databases (not just the models
+// search) before hydrating its initial step. Without this the picker would
+// briefly show only models and stream the databases in afterwards.
 function withSavedDatabasesPrefetch(WrappedComponent) {
   return function DataSelectorWithSavedDatabasesPrefetch(props) {
-    useListDatabasesQuery({ saved: true });
-    return <WrappedComponent {...props} />;
+    const { isLoading } = useListDatabasesQuery({ saved: true });
+    return (
+      <WrappedComponent
+        {...props}
+        allLoading={isLoading || (props.allLoading ?? false)}
+      />
+    );
   };
 }
 

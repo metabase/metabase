@@ -544,7 +544,7 @@ const SdkDashboardInner = ({
                 dispatch(setEditingDashboard(dashboard));
               },
               confirmButtonProps: {
-                color: "brand",
+                color: "core-brand",
               },
             });
           } else {

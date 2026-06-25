@@ -1,9 +1,33 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import type { Column, Series } from "./data";
-import type { ClickBehavior } from "./viz";
+import type { BaseWidgetProps, ClickBehavior } from "./viz";
 
 export type WidgetName = keyof Widgets;
+
+/**
+ * Handle returned by a custom widget's mount call.
+ *
+ * The host drives the widget's lifecycle through this handle: `update` pushes
+ * fresh props after re-renders, `unmount` tears down the widget's React tree.
+ */
+export type WidgetMountHandle<TProps> = {
+  update(props: TProps): void;
+  unmount(): void;
+};
+
+/**
+ * Mount adapter for a custom-component setting widget.
+ *
+ * When a setting's `widget` is a React component, the host wraps it into a
+ * `WidgetMount` so it renders within the plugin's sandbox. The host gives the
+ * plugin a container element; the plugin renders into it using its own React
+ * instance and returns a handle the host can `update` / `unmount`.
+ */
+export type WidgetMount<TProps = Record<string, unknown>> = (
+  container: Element,
+  initialProps: TProps,
+) => WidgetMountHandle<TProps>;
 
 export type Widgets = {
   input: InputProps;
@@ -88,7 +112,18 @@ export type MultiselectProps = {
   placeholderNoOptions?: string;
 };
 
-type PropsFromWidget<W extends WidgetName> = Widgets[W];
+type OmitBaseWidgetProps<P> = keyof BaseWidgetProps<
+  unknown,
+  Record<string, unknown>
+> extends keyof P
+  ? Omit<P, keyof BaseWidgetProps<unknown, Record<string, unknown>>>
+  : P;
+
+type PropsFromWidget<W> = W extends WidgetName
+  ? Widgets[W]
+  : W extends ComponentType<infer P>
+    ? OmitBaseWidgetProps<P>
+    : never;
 
 type CommonVisualizationSettings = {
   "card.title"?: string | undefined | null;
@@ -102,7 +137,10 @@ export type CustomVisualizationSettings<
 > = TSettings & CommonVisualizationSettings;
 
 export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
-  () => <W extends WidgetName, Key extends keyof TSettings>(settingDefinition: {
+  () => <
+    W extends WidgetName | ComponentType<any>,
+    Key extends keyof TSettings,
+  >(settingDefinition: {
     /**
      * Unique key that identifies this setting. Must match the key used in your
      * `CustomVisualizationSettings` type and in the `settings` map passed to
@@ -191,10 +229,16 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
     eraseDependencies?: string[];
 
     /**
-     * Widget to render for this setting. Must be one of the built-in widget
-     * names (see `WidgetName`). Custom React components are not supported:
-     * plugin code must run inside the sandbox, and a custom widget would be
-     * rendered host-side, bypassing it.
+     * Widget to render for this setting: either a built-in widget name
+     * (`WidgetName`) or a custom React component (`React.ComponentType<P>`).
+     *
+     * When using a custom component, `getProps` should return only the
+     * non-base props; base widget props are provided by the settings
+     * renderer.
+     *
+     * Custom-component widgets are rewritten internally to a `WidgetMount`
+     * before the definition leaves the plugin sandbox, so the host never
+     * receives a plain React component reference.
      */
     widget: W;
 
@@ -244,7 +288,9 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
      * dropdown's `options` list from the available columns.
      *
      * The return type is inferred from the `widget` value: props of the named
-     * built-in widget. Omit `getProps` entirely when the widget has no
+     * built-in widget when `widget` is a `WidgetName`, or the component's own
+     * props (minus the base props the engine injects) when `widget` is a custom
+     * React component. Omit `getProps` entirely when the widget has no
      * configurable props (`ToggleProps` is `never`).
      *
      * @param series - The current query result (rows + column metadata).

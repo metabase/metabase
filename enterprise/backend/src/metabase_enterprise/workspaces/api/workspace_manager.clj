@@ -25,18 +25,10 @@
   [:enum {:decode/api keyword}
    :unprovisioned :provisioning :provisioned :deprovisioning])
 
-(def ^:private AddDatabaseParams
-  [:map {:closed true}
-   [:database_id   ::lib.schema.id/database]
-   [:input_schemas [:sequential ms/NonBlankString]]])
-
-(def ^:private UpdateDatabaseParams
-  [:map {:closed true}
-   [:input_schemas [:sequential ms/NonBlankString]]])
-
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
-   [:name ms/NonBlankString]])
+   [:name         ms/NonBlankString]
+   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
@@ -47,7 +39,8 @@
    [:database_id      ::lib.schema.id/database]
    [:input_schemas    [:sequential ms/NonBlankString]]
    [:output_namespace :string]
-   [:status           WorkspaceStatus]])
+   [:status           WorkspaceStatus]
+   [:database         {:optional true} [:maybe :map]]])
 
 (def ^:private CreatorResponse
   [:map {:closed true}
@@ -78,7 +71,10 @@
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
 (defn- present-workspace-database [wsd]
-  (select-keys wsd [:database_id :input_schemas :output_namespace :status]))
+  (-> wsd
+      (select-keys [:database_id :input_schemas :output_namespace :status :database])
+      ;; never expose connection credentials
+      (m/update-existing :database #(some-> % (dissoc :details)))))
 
 (defn- present-creator [creator]
   (when creator
@@ -95,10 +91,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential WorkspaceResponse]
   "List all Workspaces."
   []
-  ;; Top-level gate: only Data Analysts (and admins) may list. We then apply `mi/can-read?` per row
-  ;; for defense in depth — if `can-read?` ever grows tighter rules, the listing will narrow with it
-  ;; instead of leaking rows that the per-row check would refuse.
-  (api/check-data-analyst)
+  (api/check-superuser)
   (into [] (comp (filter mi/can-read?)
                  (map present-workspace))
         (ws/list-workspaces)))
@@ -110,7 +103,8 @@
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
-  "Create a new Workspace (name only, no databases)."
+  "Create a new Workspace attached to the given databases (each must be eligible
+   for workspaces) and provision it (blocking)."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
   (present-workspace
@@ -134,39 +128,6 @@
   (api/write-check :model/Workspace id)
   (ws/delete-workspace! id)
   {:id id :deleted true})
-
-;;; ---------------------------------------- Database sub-endpoints --------------------------------------------
-
-(api.macros/defendpoint :post "/:id/database" :- WorkspaceResponse
-  "Add a database to a workspace and provision it immediately (blocking)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   params :- AddDatabaseParams]
-  (api/create-check :model/WorkspaceDatabase params)
-  (present-workspace
-   (ws/add-database! id (:database_id params) (:input_schemas params))))
-
-(api.macros/defendpoint :put "/:id/database/:db-id" :- WorkspaceResponse
-  "Update a database's input namespaces. Deprovisions the old config and reprovisions
-   with the new one (blocking)."
-  [{:keys [id db-id]} :- [:map [:id ms/PositiveInt] [:db-id ms/PositiveInt]]
-   _query-params
-   params :- UpdateDatabaseParams]
-  (api/write-check (api/check-404 (t2/select-one :model/WorkspaceDatabase
-                                                 :workspace_id id
-                                                 :database_id db-id)))
-  (present-workspace
-   (ws/update-database! id db-id (:input_schemas params))))
-
-(api.macros/defendpoint :delete "/:id/database/:db-id"
-  :- WorkspaceResponse
-  "Deprovision and remove a database from a workspace (blocking)."
-  [{:keys [id db-id]} :- [:map [:id ms/PositiveInt] [:db-id ms/PositiveInt]]]
-  (api/write-check (api/check-404 (t2/select-one :model/WorkspaceDatabase
-                                                 :workspace_id id
-                                                 :database_id db-id)))
-  (present-workspace
-   (ws/remove-database! id db-id)))
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

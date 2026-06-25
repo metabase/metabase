@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { Stack } from "metabase/ui";
 import type { Segment } from "metabase-types/api";

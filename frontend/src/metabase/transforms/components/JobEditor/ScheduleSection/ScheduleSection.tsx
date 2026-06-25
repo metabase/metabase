@@ -2,8 +2,8 @@ import { c, t } from "ttag";
 
 import { useRunTransformJobMutation } from "metabase/api";
 import { Schedule } from "metabase/common/components/Schedule";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useSetting } from "metabase/common/hooks";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
@@ -21,6 +21,7 @@ import type { TransformJobInfo } from "../types";
 type ScheduleSectionProps = {
   job: TransformJobInfo;
   readOnly?: boolean;
+  isCheckingPermissions?: boolean;
   onScheduleChange: (
     schedule: string,
     uiDisplayType: ScheduleDisplayType,
@@ -30,6 +31,7 @@ type ScheduleSectionProps = {
 export function ScheduleSection({
   job,
   readOnly,
+  isCheckingPermissions,
   onScheduleChange,
 }: ScheduleSectionProps) {
   return (
@@ -48,7 +50,11 @@ export function ScheduleSection({
           run={job?.last_run ?? null}
           neverRunMessage={t`This job hasn’t been run before.`}
         />
-        <RunButtonSection job={job} readOnly={readOnly} />
+        <RunButtonSection
+          job={job}
+          readOnly={readOnly}
+          isCheckingPermissions={isCheckingPermissions}
+        />
       </Group>
     </TitleSection>
   );
@@ -115,15 +121,23 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
 type RunButtonSectionProps = {
   job: TransformJobInfo;
   readOnly?: boolean;
+  isCheckingPermissions?: boolean;
 };
 
-function RunButtonSection({ job, readOnly }: RunButtonSectionProps) {
+function RunButtonSection({
+  job,
+  readOnly,
+  isCheckingPermissions,
+}: RunButtonSectionProps) {
   const [runJob] = useRunTransformJobMutation();
   const { sendErrorToast } = useMetadataToasts();
   const isSaved = job.id != null;
   const hasTags = job.tag_ids?.length !== 0;
 
   const tooltipLabel = (() => {
+    if (isCheckingPermissions) {
+      return t`Checking permissions…`;
+    }
     if (!hasTags) {
       return t`This job doesn't have tags to run.`;
     }
@@ -152,6 +166,7 @@ function RunButtonSection({ job, readOnly }: RunButtonSectionProps) {
         id={job.id}
         run={job.last_run}
         isDisabled={!isSaved || !hasTags || readOnly}
+        isLoading={isCheckingPermissions}
         onRun={handleRun}
       />
     </Tooltip>

@@ -382,7 +382,6 @@
                                  {table-id-3 :one-million-rows}}
                                 :perms/manage-database :yes
                                 :perms/transforms :no
-                                :perms/workspaces :no
                                 :perms/create-queries :no}}}
                (data-perms.graph/data-permissions-graph :group-id group-id-1)))
         (is (= {group-id-1
@@ -457,6 +456,44 @@
           (data-perms/set-table-permission! group-id-1 table-id-2 :perms/create-queries :query-builder)
           (is (= :no (data-perms/full-schema-permission-for-user
                       user-id-1 :perms/create-queries database-id-1 "schema_1"))))))))
+
+(deftest schema-permission-for-user-test
+  (testing "schema-permission-for-user returns the most permissive table-level value within the schema"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id}     {}
+                   :model/User                       {user-id :id}      {}
+                   :model/PermissionsGroupMembership {}                  {:user_id  user-id
+                                                                          :group_id group-id}
+                   :model/Database                   {database-id :id}  {}
+                   :model/Table                      {table-id-1 :id}   {:db_id database-id :schema "schema_1"}
+                   :model/Table                      {table-id-2 :id}   {:db_id database-id :schema "schema_1"}]
+      (mt/with-no-data-perms-for-all-users!
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (testing "one table at :query-builder + one at :no => :query-builder (least restrictive wins)"
+          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+          (is (= :query-builder
+                 (data-perms/schema-permission-for-user
+                  user-id :perms/create-queries database-id "schema_1")))))))
+  (testing "databases whose tables have Table.schema = NULL (regression for #46542)"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id}     {}
+                   :model/User                       {user-id :id}      {}
+                   :model/PermissionsGroupMembership {}                  {:user_id  user-id
+                                                                          :group_id group-id}
+                   :model/Database                   {database-id :id}  {}
+                   :model/Table                      {table-id-1 :id}   {:db_id database-id :schema nil}
+                   :model/Table                      {table-id-2 :id}   {:db_id database-id :schema nil}]
+      (mt/with-no-data-perms-for-all-users!
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+        (testing "called with nil schema-name"
+          (is (= :query-builder
+                 (data-perms/schema-permission-for-user
+                  user-id :perms/create-queries database-id nil))))
+        (testing "called with empty-string schema-name (nil and \"\" are equivalent)"
+          (is (= :query-builder
+                 (data-perms/schema-permission-for-user
+                  user-id :perms/create-queries database-id ""))))))))
 
 (deftest most-permissive-database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
@@ -866,6 +903,83 @@
                                                 :group_id group-id :db_id db-id
                                                 :table_id table-id-4 :perm_type :perms/create-queries))
             "should inherit :query-builder from PUBLIC schema, not the :no default")))))
+
+(defn- distinct-schema-vals-count
+  "Count the *distinct* (group, perm-type, schema, value) tuples for `db-id` —
+  the bounded result set the fixed [[load-perm-context]] loads."
+  [db-id group-ids]
+  (count (t2/select :model/DataPermissions
+                    {:select-distinct [:group_id :perm_type :schema_name :perm_value]
+                     :where [:and [:= :db_id db-id] [:not= :table_id nil]
+                             [:in :group_id group-ids]]})))
+
+(defn- make-granular-perms-scenario!
+  "Create `db-id` with `n-groups` groups and `n-tables` tables in a single
+  schema, all granted granular table-level view-data perms (kept granular by
+  giving one table a differing value so they don't consolidate to a DB-level
+  row). Returns `[db-id group-ids]`."
+  [n-groups n-tables]
+  (let [db-id     (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))
+        group-ids (vec (for [_ (range n-groups)]
+                         (t2/insert-returning-pk! :model/PermissionsGroup
+                                                  (mt/with-temp-defaults :model/PermissionsGroup))))
+        table-ids (vec (for [_ (range n-tables)]
+                         (t2/insert-returning-pk! :model/Table
+                                                  (merge (mt/with-temp-defaults :model/Table)
+                                                         {:db_id db-id :schema "s1" :active true}))))]
+    (doseq [g group-ids]
+      (doseq [tid (butlast table-ids)]
+        (data-perms/set-table-permission! g tid :perms/view-data :unrestricted))
+      ;; one differing table keeps the schema granular (prevents DB-level consolidation)
+      (data-perms/set-table-permission! g (last table-ids) :perms/view-data :blocked))
+    [db-id group-ids]))
+
+(deftest load-perm-context-scales-with-groups-not-tables-test
+  ;; Regression for #76077: syncing new tables loaded *every* table-level
+  ;; data_permissions row for the database, so the introspection result grew
+  ;; with table count and OOM'd on databases with millions of tables. The fix
+  ;; selects DISTINCT (group, perm-type, schema, value), so the loaded set grows
+  ;; linearly with the number of groups and is flat across table count.
+  (mt/with-model-cleanup [:model/PermissionsGroup :model/Database :model/Table]
+    (testing "DISTINCT result is FLAT across table count (the fix)"
+      (let [[db2x5 g2x5]   (make-granular-perms-scenario! 2 5)
+            [db2x10 g2x10] (make-granular-perms-scenario! 2 10)
+            [db2x20 g2x20] (make-granular-perms-scenario! 2 20)
+            d5  (distinct-schema-vals-count db2x5 g2x5)
+            d10 (distinct-schema-vals-count db2x10 g2x10)
+            d20 (distinct-schema-vals-count db2x20 g2x20)]
+        (is (= d5 d10 d20)
+            "distinct-tuple count does not change as table count grows")))
+    (testing "DISTINCT result grows LINEARLY with group count"
+      (let [[db2 g2] (make-granular-perms-scenario! 2 8)
+            [db4 g4] (make-granular-perms-scenario! 4 8)
+            [db8 g8] (make-granular-perms-scenario! 8 8)
+            d2 (distinct-schema-vals-count db2 g2)
+            d4 (distinct-schema-vals-count db4 g4)
+            d8 (distinct-schema-vals-count db8 g8)]
+        ;; per-group contribution is constant, so the count is proportional to groups
+        (is (= (/ d2 2) (/ d4 4) (/ d8 8))
+            "distinct-tuple count per group is constant ⇒ linear in groups")))))
+
+(deftest load-perm-context-distinct-preserves-schema-vals-idx-test
+  (testing "DISTINCT collapse yields the same schema-vals-idx as loading every row (#76077)"
+    (mt/with-model-cleanup [:model/PermissionsGroup :model/Database :model/Table]
+      (let [[db-id group-ids] (make-granular-perms-scenario! 3 12)
+            idx-from (fn [rows]
+                       (reduce (fn [acc {:keys [group_id perm_type schema_name perm_value]}]
+                                 (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
+                               {} rows))
+            all      (t2/select :model/DataPermissions
+                                {:where [:and [:= :db_id db-id] [:not= :table_id nil]
+                                         [:in :group_id group-ids]]})
+            distinct (t2/select :model/DataPermissions
+                                {:select-distinct [:group_id :perm_type :schema_name :perm_value]
+                                 :where [:and [:= :db_id db-id] [:not= :table_id nil]
+                                         [:in :group_id group-ids]]})]
+        (is (< (count distinct) (count all))
+            "DISTINCT actually collapses duplicate rows")
+        (is (= (idx-from all) (idx-from distinct))
+            "the resulting schema-vals-idx is byte-identical")))))
 
 (deftest batch-permissions-lock-skips-fine-grained-locks-test
   (testing "Fine-grained cluster locks are skipped inside with-global-permissions-lock"

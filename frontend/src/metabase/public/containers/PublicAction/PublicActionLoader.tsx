@@ -1,10 +1,11 @@
 import { useCallback, useEffect } from "react";
 import { useAsyncFn, useMount } from "react-use";
 
+import { publicApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
-import { connect } from "metabase/redux";
+import { connect, useDispatch } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { PublicApi } from "metabase/services";
 
 import PublicAction from "./PublicAction";
 import {
@@ -27,9 +28,15 @@ const mapDispatchToProps = {
 };
 
 function PublicActionLoader({ params, setErrorPage }: Props) {
+  const dispatch = useDispatch();
   const [{ value: action, error }, fetchAction] = useAsyncFn(
-    () => PublicApi.action({ uuid: params.uuid }),
-    [params.uuid],
+    () =>
+      runRtkEndpoint(
+        { uuid: params.uuid },
+        dispatch,
+        publicApi.endpoints.getPublicAction,
+      ),
+    [params.uuid, dispatch],
   );
 
   useMount(() => {

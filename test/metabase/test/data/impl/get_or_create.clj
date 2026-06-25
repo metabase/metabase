@@ -36,7 +36,7 @@
   multiple times in parallel -- for example my Oracle test that runs 30 sync calls at the same time to make sure
   nothing explodes and cursors aren't leaked. To make sure this doesn't happen we'll keep a map of
 
-    [driver dataset-name] -> ReentrantReadWriteLock
+    [driver dataset-name] -> ReadWriteLock
 
   and make sure data can be loaded and synced for a given driver + dataset in a synchronized fashion. Code path looks
   like this:
@@ -57,7 +57,7 @@
 
   Because each driver and dataset has its own lock, various datasets can be loaded in parallel, but this will prevent
   the same dataset from being loaded multiple times."
-  {:arglists '(^java.util.concurrent.locks.ReentrantReadWriteLock [driver dataset-name])}
+  {:arglists '(^java.util.concurrent.locks.ReadWriteLock [driver dataset-name])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -445,8 +445,12 @@
     (load-dataset-data-if-needed! driver database-definition)
     (create-and-sync-Database! driver database-definition)
     (catch Throwable e
-      (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
-      (tx/destroy-db! driver database-definition)
+      ;; Destroying the DB when there's a failure loading and syncing is fine
+      ;; for most DBs, but for cloud databases it makes things worse.
+      (when (driver/database-supports? driver :test/dynamic-dataset-loading nil)
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
+        (tx/destroy-db! driver database-definition))
       (throw e))))
 
 (defn- create-database-with-bound-settings! [driver dbdef]

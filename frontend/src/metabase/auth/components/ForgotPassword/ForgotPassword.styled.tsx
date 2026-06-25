@@ -12,7 +12,7 @@ export const InfoBody = styled.div`
 
 export const InfoIcon = styled(Icon)`
   display: block;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   width: 1.5rem;
   height: 1.5rem;
 `;
@@ -20,7 +20,7 @@ export const InfoIcon = styled(Icon)`
 export const InfoIconContainer = styled.div`
   padding: 1.25rem;
   border-radius: 50%;
-  background-color: var(--mb-color-background-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
   margin-bottom: 1.5rem;
 `;
 
@@ -35,6 +35,6 @@ export const InfoLink = styled(Link)`
   margin-top: 2.5rem;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

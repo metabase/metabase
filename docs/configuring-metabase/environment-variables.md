@@ -128,24 +128,6 @@ x.com`
 
 Allowed iframe hosts.
 
-### `MB_CSP_IMG_ENABLED`
-
-- Type: boolean
-- Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `csp-img-enabled`.
-- [Configuration file name](./config-file.md): `csp-img-enabled`
-
-When on, the browser Content Security Policy restricts `img-src` so images can only load from this Metabase instance and the domains listed in `MB_CSP_IMG_ALLOWED_HOSTS`. Must be turned on to enable Custom Visualizations.
-
-### `MB_CSP_IMG_ALLOWED_HOSTS`
-
-- Type: string
-- Default: `""`
-- [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
-- [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
-
-Comma-separated list of domains that images can load from in dashboard text cards, entity descriptions, and custom visualizations when `MB_CSP_IMG_ENABLED` is on. Empty by default, which restricts images to those hosted by your Metabase instance. See [Allowed domains for images](./settings.md#allowed-domains-for-images).
-
 ### `MB_ANALYTICS_PII_RETENTION_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -372,6 +354,24 @@ Identify when new versions of Metabase are available.
 Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true,
   but you can disable this behavior if you want to sync it manually or use SerDes to populate its data model.
 
+### `MB_CSP_IMG_ALLOWED_HOSTS`
+
+- Type: string
+- Default: ``
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-allowed-hosts`.
+- [Configuration file name](./config-file.md): `csp-img-allowed-hosts`
+
+Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance.
+
+### `MB_CSP_IMG_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `csp-img-enabled`.
+- [Configuration file name](./config-file.md): `csp-img-enabled`
+
+Restrict the browser Content Security Policy so images can only load from this Metabase instance or the hosts listed in `csp-img-allowed-hosts`. Must be on to enable Custom Visualizations.
+
 ### `MB_CSV_FIELD_SEPARATOR`
 
 - Type: string
@@ -529,6 +529,17 @@ The email address you want to use for the sender of emails from your custom SMTP
 - [Configuration file name](./config-file.md): `email-from-name`
 
 The name you want to use for the sender of emails.
+
+### `MB_EMAIL_MAX_RECIPIENTS_PER_MESSAGE`
+
+- Type: integer
+- Default: `50`
+- [Exported as](../installation-and-operation/serialization.md): `email-max-recipients-per-message`.
+- [Configuration file name](./config-file.md): `email-max-recipients-per-message`
+
+The maximum number of recipients allowed on a single email. Notifications with more recipients than
+                this are split into multiple messages. This guards against SMTP providers (e.g. Amazon SES) that reject
+                any message exceeding their per-message recipient cap. Defaults to 50; set to 0 to disable batching.
 
 ### `MB_EMAIL_MAX_RECIPIENTS_PER_SECOND`
 
@@ -772,6 +783,16 @@ Enable admins to create publicly viewable links (and embeddable iframes) for Que
 - [Configuration file name](./config-file.md): `enable-xrays`
 
 Allow users to explore data using X-rays.
+
+### `MB_FINGERPRINT_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `fingerprint-max-fields-per-table`.
+
+Maximum number of fields per table to fingerprint. If a table has more eligible fields than this, the rest are
+  skipped during fingerprinting analysis -- loading that many fields into memory at once can exhaust the heap (this has
+  OOM'd instances syncing document databases like MongoDB with very large or dynamic schemas).
 
 ### `MB_FOLLOW_UP_EMAIL_SENT`
 
@@ -1326,6 +1347,13 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 
 Whether Metabot is enabled for regular usage.
 
+### `MB_METABOT_RECENT_VIEWS_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Whether the user's recently viewed items are included in the Metabot system prompt.
+
 ### `MB_METABOT_SLACK_SIGNING_SECRET`
 
 - Type: string
@@ -1560,6 +1588,14 @@ The remote branch to sync with, e.g. `main`.
 - [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
 
 Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
+
+### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
+
+- Type: integer
+- Default: `60`
+- [Configuration file name](./config-file.md): `remote-sync-git-timeout-seconds`
+
+Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.
 
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
 
@@ -1842,6 +1878,16 @@ Is SAML Single Log Out enabled?
 Determines what happens when a user logs in via SAML and doesn't have a Metabase account.
 
 When set to `true`, users who log in via SAML will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via SAML.
+
+### `MB_SCAN_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `scan-max-fields-per-table`.
+
+Maximum number of fields per table to scan for field values. If a table has more active fields than this, the rest
+  are skipped when scanning field values -- scanning that many fields would load them all into memory and, on non-SQL
+  drivers like MongoDB, issue a warehouse request per field.
 
 ### `MB_SCIM_ENABLED`
 
@@ -2190,6 +2236,16 @@ Enable or disable surveys.
 
 Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo. Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields from root to leaf are synced as well.
 
+### `MB_SYNC_MAX_FIELDS_PER_TABLE`
+
+- Type: integer
+- Default: `10000`
+- [Exported as](../installation-and-operation/serialization.md): `sync-max-fields-per-table`.
+
+Maximum number of fields per table to sync as :model/Field rows. If a table's warehouse schema has more fields than
+  this, only the first (by name) are synced and the rest are skipped -- keeps document databases with very large or
+  dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields.
+
 ### `MB_SYNCHRONOUS_BATCH_UPDATES`
 
 - Type: boolean
@@ -2298,6 +2354,34 @@ Upload settings.
 - Default: `null`
 
 Prefix for upload table names.
+
+### `MB_USAGE_METADATA_ENABLED`
+
+- Type: boolean
+- Default: `false`
+
+Whether usage-driven metadata batch processing is enabled.
+
+### `MB_USAGE_METADATA_LAST_COMPLETED_DAY`
+
+- Type: string
+- Default: `null`
+
+Internal watermark for the last completed usage metadata day.
+
+### `MB_USAGE_METADATA_RETENTION_DAYS`
+
+- Type: integer
+- Default: `90`
+
+How many days of usage metadata rollups to retain.
+
+### `MB_USAGE_METADATA_SCHEDULE`
+
+- Type: string
+- Default: `0 0 2 * * ? *`
+
+Cron schedule (in UTC) for usage metadata batch processing.
 
 ### `MB_USER_VISIBILITY`
 
@@ -2763,7 +2847,7 @@ Comma-separated namespaces to trace. **WARNING:** Could log sensitive informatio
 
 ### `MB_PASSWORD_COMPLEXITY`
 
-Type: string (`"weak"`, `"normal"`, `"strong"`)<br>
+Type: string (`"weak"`, `"normal"`, `"strong"`, `"strong-enough"`)<br>
 Default: `"normal"`
 
 Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#mb_password_length)
@@ -2771,6 +2855,7 @@ Enforce a password complexity rule to increase security for regular logins. This
 - `weak` no character constraints
 - `normal` at least 1 digit
 - `strong` minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
+- `strong-enough` minimum 15 characters
 
 ### `MB_PASSWORD_LENGTH`
 

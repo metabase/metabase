@@ -1,7 +1,7 @@
 import type { DropTargetMonitor } from "react-dnd";
 import { DropTarget } from "react-dnd";
 
-import { isItemPinned } from "metabase/collections/utils";
+import { isItemPinned } from "metabase/common/collections/utils";
 import type { CollectionItem } from "metabase-types/api";
 
 import { DropArea } from "./DropArea";

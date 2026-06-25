@@ -35,15 +35,15 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
   color: var(--mb-color-text-tertiary);
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
   ${(props) => props.direction}: 0;
 
   background: linear-gradient(
     to ${(props) => props.direction},
-    ${() => alpha("background-primary", 0.1)},
-    ${() => alpha("background-primary", 0.5)},
+    ${() => alpha("background_page-primary", 0.1)},
+    ${() => alpha("background_page-primary", 0.5)},
     30%,
-    var(--mb-color-background-primary)
+    var(--mb-color-background_page-primary)
   );
 `;

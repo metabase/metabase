@@ -46,23 +46,27 @@ export function InfoPanelField({
   const isExternalFk = field.fk_target_table_id != null && targetNode == null;
 
   const fieldName = (
-    <Ellipsified className={S.fieldName}>{field.name}</Ellipsified>
+    <Ellipsified className={S.fieldName} maw={targetNode ? "50%" : "100%"}>
+      {field.name}
+    </Ellipsified>
   );
 
   return (
     <Group className={cx(S.fieldRow, CS.textWrap)} gap="sm" wrap="nowrap">
       <FixedSizeIcon name={fieldIcon} c="text-secondary" />
       {isExternalFk ? (
-        <Tooltip label={t`Fetch external table`} disabled={isExpanding}>
+        <Tooltip
+          label={t`Fetch external table`}
+          disabled={isExpanding}
+          position="left"
+        >
           <UnstyledButton
             className={S.fkLink}
-            c="brand"
+            c="core-brand"
             disabled={isExpanding}
             onClick={onFetchExternal}
-            flex="1 1 auto"
-            lh={1}
+            flex="0 1 auto"
             h="100%"
-            style={{ overflow: "visible" }}
           >
             {fieldName}
           </UnstyledButton>
@@ -87,7 +91,7 @@ export function InfoPanelField({
           </Text>
           <UnstyledButton
             className={S.fkLink}
-            c="brand"
+            c="core-brand"
             onClick={() => onZoomToNode(targetNode.id)}
           >
             <Group align="end" gap={4} flex="0 0 auto" wrap="nowrap" w="100%">

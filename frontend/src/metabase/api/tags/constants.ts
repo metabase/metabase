@@ -2,6 +2,7 @@ export type TagType = (typeof TAG_TYPES)[number];
 
 export const TAG_TYPES = [
   "action",
+  "activity",
   "alert",
   "api-key",
   "bookmark",
@@ -32,6 +33,7 @@ export const TAG_TYPES = [
   "measure",
   "model-index",
   "notification",
+  "oauth-authorization",
   "parameter-values",
   "permissions-group",
   "persisted-info",

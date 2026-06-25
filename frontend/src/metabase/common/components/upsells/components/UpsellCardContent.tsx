@@ -9,8 +9,9 @@ import {
   trackUpsellViewed,
 } from "metabase/common/components/upsells/components/analytics";
 import { useSelector } from "metabase/redux";
+import { getIsHosted } from "metabase/selectors/settings";
 import { getStoreUsers } from "metabase/selectors/store-users";
-import { getIsHosted } from "metabase/setup/selectors";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Card,
@@ -76,7 +77,7 @@ export const UpsellCardContent = ({
             </Flex>
           </Box>
           <Divider orientation="vertical" />
-          <Center w="100%" bg="background-secondary" p={33}>
+          <Center w="100%" bg="background_page-secondary" p={33}>
             <Image src={image} w="100%" h="auto" />
           </Center>
         </Flex>
@@ -141,9 +142,10 @@ const UpsellCardLeftColumnContent = ({
   isTrialAvailable: boolean;
 }) => {
   const isHosted = useSelector(getIsHosted);
+  const isAdmin = useSelector(getUserIsAdmin);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
-  const shouldShowContactAdmin = isHosted && !isStoreUser;
+  const shouldShowContactAdmin = isHosted && !isStoreUser && !isAdmin;
 
   return (
     <Stack gap="sm" w="100%">

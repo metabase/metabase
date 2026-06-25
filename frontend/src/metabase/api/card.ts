@@ -99,8 +99,13 @@ export const cardApi = Api.injectEndpoints({
           metadata ? provideCardQueryMetadataTags(id, metadata) : [],
         onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
       }),
-      getCardQuery: builder.query<Dataset, CardQueryRequest>({
-        query: ({ cardId, ...body }) => ({
+      getCardQuery: builder.query<
+        Dataset,
+        CardQueryRequest & { _refetchDeps?: unknown }
+      >({
+        // `_refetchDeps` is part of the RTK cache key (so imperative runners can
+        // force a unique key per call) but must not be sent to the server.
+        query: ({ cardId, _refetchDeps, ...body }) => ({
           method: "POST",
           url: `/api/card/${cardId}/query`,
           body,
@@ -108,8 +113,11 @@ export const cardApi = Api.injectEndpoints({
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),
       }),
-      getCardQueryPivot: builder.query<Dataset, CardQueryRequest>({
-        query: ({ cardId, ...body }) => ({
+      getCardQueryPivot: builder.query<
+        Dataset,
+        CardQueryRequest & { _refetchDeps?: unknown }
+      >({
+        query: ({ cardId, _refetchDeps, ...body }) => ({
           method: "POST",
           url: `/api/card/pivot/${cardId}/query`,
           body,
@@ -163,6 +171,7 @@ export const cardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
+        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
         query: ({ file, collection_id }) => {
@@ -173,9 +182,7 @@ export const cardApi = Api.injectEndpoints({
           return {
             method: "POST",
             url: "/api/upload/csv",
-            body: { formData },
-            formData: true,
-            fetch: true,
+            body: formData,
           };
         },
         invalidatesTags: (_, error) =>
@@ -215,6 +222,7 @@ export const cardApi = Api.injectEndpoints({
 
           return invalidateTags(error, tags);
         },
+        onQueryStarted: hydrateMetadataStore(QuestionSchema),
       }),
       deleteCard: builder.mutation<void, CardId>({
         query: (id) => ({

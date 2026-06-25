@@ -1,11 +1,9 @@
 import { t } from "ttag";
 
+import { summarizeChannels } from "metabase/admin/tools/notifications/utils";
 import { Flex, Stack, Text } from "metabase/ui";
-import type {
-  NotificationHandlerEmail,
-  NotificationHandlerHttp,
-  NotificationHandlerSlack,
-} from "metabase-types/api";
+
+import { trackAlertsManagementRunHistoryViewAllClicked } from "../analytics";
 
 import { DetailsSection } from "./DetailsSection";
 import { DetailsTable } from "./DetailsTable";
@@ -23,23 +21,14 @@ export const SidebarBody = ({
   isDetailFetching,
   detail,
 }: SidebarBodyProps) => {
-  const handlers = notification.handlers ?? [];
-  const emailHandler = handlers.find(
-    (handler): handler is NotificationHandlerEmail =>
-      handler.channel_type === "channel/email",
-  );
-  const slackHandler = handlers.find(
-    (handler): handler is NotificationHandlerSlack =>
-      handler.channel_type === "channel/slack",
-  );
-  const httpHandler = handlers.find(
-    (handler): handler is NotificationHandlerHttp =>
-      handler.channel_type === "channel/http",
-  );
-  const emailRecipientCount = emailHandler?.recipients.length ?? 0;
-  const slackChannelCount = slackHandler?.recipients.length ?? 0;
+  const channelSummaries = summarizeChannels(notification);
+  const emailSummary = channelSummaries["channel/email"];
+  const slackSummary = channelSummaries["channel/slack"];
+  const emailRecipientCount = emailSummary.count;
+  const slackChannelCount = slackSummary.count;
+  const webhookCount = channelSummaries["channel/http"].count;
 
-  const cardId = notification.payload.card_id;
+  const cardId = notification.payload?.card_id;
 
   return (
     <Stack gap="xl">
@@ -47,24 +36,30 @@ export const SidebarBody = ({
         notification={notification}
         emailRecipientCount={emailRecipientCount}
         slackChannelCount={slackChannelCount}
-        httpHandler={httpHandler}
+        webhookCount={webhookCount}
       />
       <NotificationRunSummaryLog
         title={t`Check history`}
         runs={detail?.check_history}
         isLoading={isDetailFetching}
         cardId={cardId}
+        onViewAllClick={() =>
+          trackAlertsManagementRunHistoryViewAllClicked(cardId, "check")
+        }
       />
       <NotificationRunSummaryLog
         title={t`Send history`}
         runs={detail?.send_history}
         isLoading={isDetailFetching}
         cardId={cardId}
+        onViewAllClick={() =>
+          trackAlertsManagementRunHistoryViewAllClicked(cardId, "send")
+        }
       />
-      {emailHandler && emailRecipientCount > 0 && (
+      {emailRecipientCount > 0 && (
         <SidebarSection title={getEmailRecipientLabel(emailRecipientCount)}>
           <DetailsTable>
-            {emailHandler.recipients.map((recipient, index) => {
+            {emailSummary.recipients.map((recipient, index) => {
               const { name, email } = getEmailRowText(recipient);
               return (
                 <Flex
@@ -89,13 +84,13 @@ export const SidebarBody = ({
           </DetailsTable>
         </SidebarSection>
       )}
-      {slackHandler && slackChannelCount > 0 && (
+      {slackChannelCount > 0 && (
         <SidebarSection title={getSlackChannelLabel(slackChannelCount)}>
           <DetailsTable>
-            {slackHandler.recipients.map((recipient, index) => (
+            {slackSummary.recipients.map((recipient, index) => (
               <Flex key={recipient.id ?? index} align="center" px="md" py="sm">
                 <Text size="md" c="text-primary">
-                  {recipient.details?.value ?? ""}
+                  {recipient.details.value}
                 </Text>
               </Flex>
             ))}

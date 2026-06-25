@@ -1,7 +1,7 @@
 import type { Route } from "react-router";
 
+import type { MetricPageParams } from "metabase/common/metrics/types";
 import { MetricQueryPage } from "metabase/metrics/pages/MetricQueryPage";
-import type { MetricPageParams } from "metabase/metrics/types";
 
 import { DataStudioMetricBreadcrumbs } from "../../components/DataStudioMetricBreadcrumbs";
 import { dataStudioMetricUrls } from "../../urls";

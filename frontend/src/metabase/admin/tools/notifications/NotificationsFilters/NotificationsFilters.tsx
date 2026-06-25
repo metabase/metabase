@@ -29,6 +29,7 @@ import {
   getChannelIconName,
   getChannelLabel,
 } from "../NotificationsAdminPage/utils";
+import { trackAlertsManagementFiltersApplied } from "../analytics";
 
 import { hasActiveFilters, stateToDraft } from "./utils";
 
@@ -51,6 +52,7 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
   }, [opened, state]);
 
   const handleApply = () => {
+    trackAlertsManagementFiltersApplied();
     onChange({
       channel: draft.channel,
       creator_active: draft.creator_active,
@@ -219,8 +221,8 @@ type FilterPillProps = {
 const FilterPill = ({ icon, label, selected, onClick }: FilterPillProps) => (
   <UnstyledButton
     onClick={onClick}
-    bg={selected ? "background-selected" : "background-primary"}
-    bd="1px solid var(--mb-color-border)"
+    bg={selected ? "background_surface-selected" : "background_page-primary"}
+    bd="1px solid var(--mb-color-border-neutral)"
     px={12}
     py="sm"
     bdrs="xl"

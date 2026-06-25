@@ -121,18 +121,35 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         TableSection.clickDetailsTab();
       }
       cy.log("sync");
-      TableSection.getSyncOptionsButton().click();
-      H.modal().button("Sync table schema").click();
+
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Re-sync schema").click();
+      } else {
+        TableSection.getSyncOptionsButton().click();
+        H.modal().button("Sync table schema").click();
+      }
       verifyAndCloseToast("Failed to start sync");
 
-      cy.log("scan");
-      H.modal().button("Re-scan table").click();
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Re-scan field values").click();
+      } else {
+        H.modal().button("Re-scan table").click();
+      }
       verifyAndCloseToast("Failed to start scan");
 
-      cy.log("discard field values");
-      H.modal().button("Discard cached field values").click();
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Discard cached field values").click();
+      } else {
+        H.modal().button("Discard cached field values").click();
+      }
+
       verifyAndCloseToast("Failed to discard values");
-      cy.realPress("Escape");
+      if (area === "admin") {
+        cy.realPress("Escape");
+      }
 
       if (area === "data studio") {
         TableSection.clickFieldsTab();
@@ -387,15 +404,15 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       );
 
       cy.log("JSON unfolding");
-      TablePicker.getDatabase("Writable Postgres12").click();
-      // Switching tables loads the new table's metadata async; wait for that
-      // specific request so the field interaction doesn't run against the
-      // previously-selected table (a fresh alias avoids matching a stale one).
-      cy.intercept("GET", "/api/table/*/query_metadata*").as(
-        "manyTypesMetadata",
-      );
+      // The in-test DB switch via picker (.getDatabase().click() then
+      // .getTable().click()) races the picker re-render: the table click can
+      // land before the writable DB tables list is interactive, so the click
+      // never propagates to a URL change. The "Error handling" sibling above
+      // hit the same flake and was fixed by using visit({ databaseId:
+      // WRITABLE_DB_ID }) (which waits for picker bootstrap). Same pattern
+      // here.
+      visit({ databaseId: WRITABLE_DB_ID });
       TablePicker.getTable("Many Data Types").click();
-      cy.wait("@manyTypesMetadata");
       if (area === "data studio") {
         TableSection.clickFieldsTab();
       }
@@ -406,9 +423,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       FieldSection.getUnfoldJsonInput().should("have.value", "Yes");
 
       cy.log("formatting");
-      cy.intercept("GET", "/api/table/*/query_metadata*").as("ordersMetadata");
+      // Same fresh-visit anchor as the Many Data Types switch above.
+      visit({ databaseId: SAMPLE_DB_ID });
       TablePicker.getTable("Orders").click();
-      cy.wait("@ordersMetadata");
       if (area === "data studio") {
         TableSection.clickFieldsTab();
       }
@@ -440,8 +457,19 @@ function verifyAndCloseToast(message: string) {
 }
 
 function verifyToastAndUndo(message: string) {
-  H.undoToast().should("contain.text", message);
-  H.undoToast().button("Undo").click();
-  H.undoToast().should("contain.text", "Change undone");
-  H.undoToast().icon("close").click({ force: true });
+  // Under network throttling, clicking Undo creates a new "Change undone"
+  // toast alongside the original (Mantine notifications stack rather than
+  // mutate in place). The original auto-dismisses, but the dismiss can lag
+  // past Cypress's 4s retry window, so cy.findByTestId("toast-undo")
+  // singular sees two elements and fails with "Found multiple elements".
+  // Assert against the list (waits for the expected toast), then scope the
+  // action to that toast so we never act on the wrong one.
+  const toast = (text: string) =>
+    H.undoToastList().filter(`:contains("${text}")`).first();
+
+  H.undoToastList().should("contain.text", message);
+  toast(message).button("Undo").click();
+
+  H.undoToastList().should("contain.text", "Change undone");
+  toast("Change undone").icon("close").click({ force: true });
 }

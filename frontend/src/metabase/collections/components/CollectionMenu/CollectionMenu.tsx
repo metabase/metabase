@@ -7,7 +7,7 @@ import {
   isPersonalCollection,
   isRootCollection,
   isRootPersonalCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasDashboardQuestionCandidates } from "metabase/common/components/MoveQuestionsIntoDashboardsModal/hooks";
 import { UserHasSeenAll } from "metabase/common/components/UserHasSeen/UserHasSeenAll";

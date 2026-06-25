@@ -86,6 +86,32 @@
           (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model1)
           (is (true? (@#'semantic.index-metadata/index-table-exists? pgvector index))))))))
 
+(deftest ensure-active-hnsw-index!-test
+  (mt/with-premium-features #{:semantic-search}
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.tu/unique-index-metadata)
+          model          semantic.tu/mock-embedding-model
+          cleanup        (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))]
+      (with-open [index-ref ^Closeable (semantic.tu/closeable
+                                        (semantic.pgvector-api/init-semantic-search! pgvector index-metadata model)
+                                        cleanup)]
+        (let [index     @index-ref
+              hnsw-name (semantic.index/hnsw-index-name index)]
+          (testing "builds the HNSW index on the active index table when it is missing"
+            ;; init only builds the HNSW index when configured for :hnsw, so drop it for a deterministic
+            ;; starting point regardless of the ambient strategy -- mimics a brute-force-configured instance.
+            (jdbc/execute! pgvector [(str "DROP INDEX IF EXISTS \"" hnsw-name "\"")])
+            (is (not (semantic.tu/table-has-index? (:table-name index) hnsw-name)))
+            (semantic.pgvector-api/ensure-active-hnsw-index! pgvector index-metadata)
+            (is (semantic.tu/table-has-index? (:table-name index) hnsw-name)))
+          (testing "is a noop when the HNSW index already exists"
+            (let [before (semantic.tu/index-relfilenode hnsw-name)]
+              (semantic.pgvector-api/ensure-active-hnsw-index! pgvector index-metadata)
+              (is (= before (semantic.tu/index-relfilenode hnsw-name))
+                  "relfilenode unchanged => the existing index was reused, not rebuilt")))))
+      (testing "is a noop when there is no active index"
+        (is (nil? (semantic.pgvector-api/ensure-active-hnsw-index! pgvector index-metadata)))))))
+
 (defn- open-semantic-search! ^Closeable [pgvector index-metadata embedding-model]
   (semantic.tu/closeable
    (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
@@ -186,9 +212,9 @@
               (is (= api-results index-results))))
           ;; it would be better to test permissions at a higher level than we currently do, but for now to save time...
           (testing "assumption: permissions are applied at the index query level, check the expected fn is called"
-            (let [query-index semantic.index/query-index
+            (let [query-index (mt/original-fn #'semantic.index/query-index)
                   called      (atom false)]
-              (with-redefs [semantic.index/query-index (fn [& args] (reset! called true) (apply query-index args))]
+              (mt/with-dynamic-fn-redefs [semantic.index/query-index (fn [& args] (reset! called true) (apply query-index args))]
                 (sut pgvector index-metadata search)
                 (is @called))))
           (testing "same results after reinit"

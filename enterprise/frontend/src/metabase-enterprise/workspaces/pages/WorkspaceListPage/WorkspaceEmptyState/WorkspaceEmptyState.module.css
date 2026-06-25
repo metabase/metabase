@@ -1,9 +1,9 @@
 .docsLink {
   color: inherit;
   text-decoration: none;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .docsLink:hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }

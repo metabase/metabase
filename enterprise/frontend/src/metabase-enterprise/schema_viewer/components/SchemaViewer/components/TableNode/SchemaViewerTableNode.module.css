@@ -1,5 +1,5 @@
 .card {
-  --node-border-color: var(--mb-color-border);
+  --node-border-color: var(--mb-color-border-neutral);
 
   position: relative;
   width: 20rem;
@@ -10,11 +10,11 @@
 }
 
 .card.selected {
-  --node-border-color: var(--mb-color-brand);
+  --node-border-color: var(--mb-color-core-brand);
 }
 
 .header {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .fields {

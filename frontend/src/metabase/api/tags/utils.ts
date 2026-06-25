@@ -37,6 +37,7 @@ import type {
   ModelIndex,
   NativeQuerySnippet,
   NotificationChannel,
+  OAuthAuthorization,
   ParameterId,
   PopularItem,
   RecentItem,
@@ -117,6 +118,7 @@ export function provideActivityItemListTags(
   return [
     ...ACTIVITY_MODELS.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideActivityItemTags),
+    listTag("activity"),
   ];
 }
 
@@ -484,6 +486,21 @@ export const provideAdminNotificationListTags = (
     idTag("notification", notification.id),
   ),
 ];
+
+export function provideOAuthAuthorizationListTags(
+  authorizations: OAuthAuthorization[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("oauth-authorization"),
+    ...authorizations.flatMap(provideOAuthAuthorizationTags),
+  ];
+}
+
+export function provideOAuthAuthorizationTags(
+  authorization: OAuthAuthorization,
+): TagDescription<TagType>[] {
+  return [idTag("oauth-authorization", authorization.id)];
+}
 
 export function providePermissionsGroupListTags(
   groups: GroupListQuery[],

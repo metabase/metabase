@@ -4,8 +4,15 @@ import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { automagicDashboardsApi, cardApi, dashboardApi } from "metabase/api";
-import { isAbortError } from "metabase/api/legacy-client";
+import {
+  automagicDashboardsApi,
+  cardApi,
+  dashboardApi,
+  embedApi,
+  makePivotAwareQueryRunner,
+  publicApi,
+} from "metabase/api";
+import { isAbortError } from "metabase/api/client";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
@@ -28,20 +35,12 @@ import {
 } from "metabase/dashboard/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import { runAdhocDatasetQuery } from "metabase/querying/run-query";
 import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  AutoApi,
-  DashboardApi,
-  EmbedApi,
-  PublicApi,
-  maybeUsePivotEndpoint,
-  runAdhocDatasetQuery,
-  shouldUsePivotEndpoint,
-} from "metabase/services";
 import {
   getDashboardType,
   isQuestionDashCard,
@@ -330,47 +329,33 @@ export const fetchCardDataAction = createAsyncThunk<
     );
 
     const metadata = getMetadata(getState());
-    const queryOptions = {
-      signal: controller.signal,
-    };
+    const runQuery = makePivotAwareQueryRunner(dispatch, controller.signal);
 
     if (dashboardType === "public") {
       result = (await fetchDataOrError(
-        maybeUsePivotEndpoint(
-          PublicApi.dashboardCardQuery,
-          card,
-          metadata,
-        )(
-          {
-            uuid: dashcard.dashboard_id,
-            dashcardId: dashcard.id,
-            cardId: card.id,
-            parameters: datasetQuery.parameters
-              ? JSON.stringify(datasetQuery.parameters)
-              : undefined,
-            ignore_cache: ignoreCache,
-          },
-          queryOptions,
-        ),
+        runQuery(publicApi.endpoints.getPublicDashcardQuery, card, metadata, {
+          // In public dashboards `dashboard_id` holds the public UUID string.
+          uuid: dashcard.dashboard_id as string,
+          dashcardId: dashcard.id,
+          cardId: card.id,
+          parameters: datasetQuery.parameters
+            ? JSON.stringify(datasetQuery.parameters)
+            : undefined,
+          ignore_cache: ignoreCache,
+        }),
       )) as Dataset | { error: unknown };
     } else if (dashboardType === "embed") {
       result = (await fetchDataOrError(
-        maybeUsePivotEndpoint(
-          EmbedApi.dashboardCardQuery,
-          card,
-          metadata,
-        )(
-          {
-            token: dashcard.dashboard_id,
-            dashcardId: dashcard.id,
-            cardId: card.id,
-            parameters: JSON.stringify(
-              getParameterValuesBySlug(dashboard.parameters, parameterValues),
-            ),
-            ignore_cache: ignoreCache,
-          },
-          queryOptions,
-        ),
+        runQuery(embedApi.endpoints.getEmbedDashcardQuery, card, metadata, {
+          // In embedded dashboards `dashboard_id` holds the embed token string.
+          token: dashcard.dashboard_id as string,
+          dashcardId: dashcard.id,
+          cardId: card.id,
+          parameters: JSON.stringify(
+            getParameterValuesBySlug(dashboard.parameters, parameterValues),
+          ),
+          ignore_cache: ignoreCache,
+        }),
       )) as Dataset | { error: unknown };
     } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = (await fetchDataOrError(
@@ -400,39 +385,28 @@ export const fetchCardDataAction = createAsyncThunk<
 
       // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
       if (shouldUseCardQueryEndpoint) {
-        const cardQueryEndpoint = shouldUsePivotEndpoint(card, metadata)
-          ? cardApi.endpoints.getCardQueryPivot
-          : cardApi.endpoints.getCardQuery;
-        const queryAction = dispatch(
-          cardQueryEndpoint.initiate(
-            { cardId: card.id, ignore_cache: ignoreCache },
-            { forceRefetch: true },
-          ),
-        );
-        controller.signal.addEventListener("abort", () => queryAction.abort());
-        try {
-          result = (await fetchDataOrError(queryAction.unwrap())) as
-            | Dataset
-            | { error: unknown };
-        } finally {
-          queryAction.unsubscribe?.();
-        }
-      } else {
-        const requestBody = {
-          dashboardId: dashcard.dashboard_id,
-          dashcardId: dashcard.id,
-          cardId: card.id,
-          parameters: datasetQuery.parameters,
-          ignore_cache: ignoreCache,
-          dashboard_id: dashcard.dashboard_id,
-          dashboard_load_id: dashboardLoadId,
-        };
         result = (await fetchDataOrError(
-          maybeUsePivotEndpoint(
-            DashboardApi.cardQuery,
+          runQuery(cardApi.endpoints.getCardQuery, card, metadata, {
+            cardId: card.id,
+            ignore_cache: ignoreCache,
+          }),
+        )) as Dataset | { error: unknown };
+      } else {
+        result = (await fetchDataOrError(
+          runQuery(
+            dashboardApi.endpoints.getDashboardCardQuery,
             card,
             metadata,
-          )(requestBody, queryOptions),
+            {
+              dashboardId: dashcard.dashboard_id,
+              dashcardId: dashcard.id,
+              cardId: card.id,
+              parameters: datasetQuery.parameters,
+              ignore_cache: ignoreCache,
+              dashboard_id: dashcard.dashboard_id,
+              dashboard_load_id: dashboardLoadId,
+            },
+          ),
         )) as Dataset | { error: unknown };
       }
     }
@@ -732,8 +706,10 @@ export const fetchDashboard = createAsyncThunk(
         };
         result = denormalize(dashId, dashboardSchema, entities);
       } else if (dashboardType === "public") {
-        result = await PublicApi.dashboard(
+        result = await runRtkEndpoint(
           { uuid: dashId, dashboard_load_id: dashboardLoadId },
+          dispatch,
+          publicApi.endpoints.getPublicDashboard,
           { signal: fetchDashboardCancellation.signal },
         );
         result = {
@@ -745,8 +721,10 @@ export const fetchDashboard = createAsyncThunk(
           })),
         };
       } else if (dashboardType === "embed") {
-        result = await EmbedApi.dashboard(
+        result = await runRtkEndpoint(
           { token: dashId, dashboard_load_id: dashboardLoadId },
+          dispatch,
+          embedApi.endpoints.getEmbedDashboard,
           { signal: fetchDashboardCancellation.signal },
         );
         result = {
@@ -761,8 +739,10 @@ export const fetchDashboard = createAsyncThunk(
         const subPath = String(dashId).split("/").slice(3).join("/");
         const [entity, entityId] = subPath.split(/[/?]/);
         const [response] = await Promise.all([
-          AutoApi.dashboard(
+          runRtkEndpoint(
             { subPath, dashboard_load_id: dashboardLoadId },
+            dispatch,
+            automagicDashboardsApi.endpoints.getXrayDashboard,
             { signal: fetchDashboardCancellation.signal },
           ),
           runRtkEndpoint(
@@ -773,6 +753,7 @@ export const fetchDashboard = createAsyncThunk(
             },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
+            { signal: fetchDashboardCancellation.signal },
           ),
         ]);
         result = {
@@ -794,8 +775,10 @@ export const fetchDashboard = createAsyncThunk(
         dashId = result.id = String(dashId);
       } else {
         const [response] = await Promise.all([
-          DashboardApi.get(
-            { dashId: dashId, dashboard_load_id: dashboardLoadId },
+          runRtkEndpoint(
+            { id: dashId, dashboard_load_id: dashboardLoadId },
+            dispatch,
+            dashboardApi.endpoints.getDashboard,
             { signal: fetchDashboardCancellation.signal },
           ),
           runRtkEndpoint(
@@ -812,15 +795,24 @@ export const fetchDashboard = createAsyncThunk(
 
       const isUsingCachedResults = entities != null;
       if (!isUsingCachedResults) {
-        // copy over any virtual cards from the dashcard to the underlying card/question
-        result.dashcards.forEach((card: DashboardCard) => {
-          if (card.visualization_settings?.virtual_card) {
-            card.card = Object.assign(
-              card.card || {},
-              card.visualization_settings.virtual_card,
-            );
-          }
-        });
+        // Copy over any virtual cards from the dashcard to the underlying
+        // card/question. The result can come straight from RTK Query, whose
+        // responses are deeply frozen, so build new objects rather than
+        // mutating in place.
+        result = {
+          ...result,
+          dashcards: result.dashcards.map((card: DashboardCard) =>
+            card.visualization_settings?.virtual_card
+              ? {
+                  ...card,
+                  card: {
+                    ...(card.card ?? {}),
+                    ...card.visualization_settings.virtual_card,
+                  },
+                }
+              : card,
+          ),
+        };
       }
 
       if (result.param_fields) {

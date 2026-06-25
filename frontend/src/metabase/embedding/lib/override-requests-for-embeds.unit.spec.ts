@@ -1,7 +1,22 @@
+import { api } from "metabase/api/client";
+import { isEmbedPreview } from "metabase/embedding/config";
+
 import {
   matchUrlPattern,
   overrideRequests,
+  rewriteEmbedPreviewUrl,
+  setupEmbedPreviewRewrite,
 } from "./override-requests-for-embeds";
+
+jest.mock("metabase/embedding/config", () => ({
+  isEmbedPreview: jest.fn(),
+}));
+
+const mockIsEmbedPreview = jest.mocked(isEmbedPreview);
+
+afterEach(() => {
+  mockIsEmbedPreview.mockReset();
+});
 
 describe("matchUrlPattern", () => {
   it("should match URL with single parameter", () => {
@@ -96,8 +111,6 @@ describe("matchUrlPattern", () => {
 });
 
 describe("overrideRequests", () => {
-  const defaultOptions = { hasBody: false };
-
   it.each(["guest", "static", "public"] as const)(
     "leaves /api/frontend-errors untouched in %s embed mode",
     async (embedType) => {
@@ -105,7 +118,6 @@ describe("overrideRequests", () => {
         embedType,
         method: "POST",
         url: "/api/frontend-errors",
-        options: { ...defaultOptions, hasBody: true },
         data: { type: "component-crash" },
       });
 
@@ -119,7 +131,6 @@ describe("overrideRequests", () => {
       embedType: "guest",
       method: "GET",
       url: "/api/card/THE_JWT_TOKEN",
-      options: defaultOptions,
       data: {},
     });
 
@@ -131,11 +142,70 @@ describe("overrideRequests", () => {
       embedType: "guest",
       method: "POST",
       url: "/api/card/123/query",
-      options: { ...defaultOptions, hasBody: true },
       data: {},
     });
 
     expect(result.url).toBe("/api/embed/card/:token/query");
     expect(result.method).toBe("GET");
+  });
+});
+
+describe("setupEmbedPreviewRewrite", () => {
+  // The embed route registers `usePublicEndpoints` on a parent of the dashboard
+  // fetcher, and React runs child effects before parent effects, so this must be
+  // called synchronously (not from an effect) to catch the first embed request.
+  it("registers rewriteEmbedPreviewUrl on the shared client, idempotently", () => {
+    const before = api.beforeRequestHandlers.filter(
+      (handler) => handler === rewriteEmbedPreviewUrl,
+    ).length;
+
+    expect(before).toBe(0);
+
+    setupEmbedPreviewRewrite();
+    setupEmbedPreviewRewrite();
+
+    const after = api.beforeRequestHandlers.filter(
+      (handler) => handler === rewriteEmbedPreviewUrl,
+    ).length;
+
+    expect(after).toBe(1);
+  });
+});
+
+describe("rewriteEmbedPreviewUrl", () => {
+  it("rewrites the embed base to the preview base inside an embed preview", async () => {
+    mockIsEmbedPreview.mockReturnValue(true);
+
+    const result = await rewriteEmbedPreviewUrl({
+      method: "GET",
+      url: "/api/embed/card/THE_TOKEN/query",
+      data: {},
+    });
+
+    expect(result).toEqual({ url: "/api/preview_embed/card/THE_TOKEN/query" });
+  });
+
+  it("leaves the url untouched outside an embed preview", async () => {
+    mockIsEmbedPreview.mockReturnValue(false);
+
+    const result = await rewriteEmbedPreviewUrl({
+      method: "GET",
+      url: "/api/embed/card/THE_TOKEN/query",
+      data: {},
+    });
+
+    expect(result).toBeUndefined();
+  });
+
+  it("leaves non-embed urls untouched inside an embed preview", async () => {
+    mockIsEmbedPreview.mockReturnValue(true);
+
+    const result = await rewriteEmbedPreviewUrl({
+      method: "GET",
+      url: "/api/card/1/query",
+      data: {},
+    });
+
+    expect(result).toBeUndefined();
   });
 });

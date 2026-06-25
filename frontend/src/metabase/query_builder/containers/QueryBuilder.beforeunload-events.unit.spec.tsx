@@ -15,7 +15,6 @@ import {
   TEST_UNSAVED_NATIVE_CARD,
   TEST_UNSAVED_STRUCTURED_CARD,
   setup,
-  startNewNotebookModel,
   triggerMetadataChange,
   triggerNativeQueryChange,
   triggerNotebookQueryChange,
@@ -39,21 +38,6 @@ describe("QueryBuilder - beforeunload events", () => {
     HTMLElement.prototype.scrollBy = scrollBy;
 
     jest.resetAllMocks();
-  });
-
-  describe("creating models", () => {
-    it("shows custom warning modal when leaving via SPA navigation", async () => {
-      const { mockEventListener } = await setup({
-        card: null,
-        initialRoute: "/model/new",
-      });
-
-      await startNewNotebookModel();
-
-      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-    });
   });
 
   describe("editing models", () => {

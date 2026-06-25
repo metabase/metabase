@@ -23,7 +23,7 @@ import {
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Ellipsified, Portal, Progress } from "metabase/ui";
+import { Card, Ellipsified, Portal, Progress } from "metabase/ui";
 import { capitalize, inflect } from "metabase/utils/formatting";
 
 import CS from "./UndoListing.module.css";
@@ -34,7 +34,6 @@ import {
   ControlsCardContent,
   DefaultText,
   DismissIcon,
-  ToastCard,
   UndoButton,
   UndoList,
 } from "./UndoListing.styled";
@@ -89,23 +88,37 @@ function UndoToast({
     }
   };
 
+  const dark = undo.dark ?? true;
+  const noBorder = undo.showProgress;
+
   return (
-    <ToastCard
+    <Card
       ref={undo.ref}
-      dark={undo.dark ?? true}
       data-testid="toast-undo"
       color={undo.toastColor}
       role="status"
-      noBorder={undo.showProgress}
       className={CS.toast}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={{ ...style, ...undo.style }}
+      bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
+      c={dark ? "text-secondary-inverse" : "text-primary"}
+      withBorder={!noBorder}
+      radius="md"
+      p="md"
+      mt="sm"
+      maw="calc(100vw - 2 * var(--mantine-spacing-md))"
+      style={{
+        overflowX: noBorder ? "hidden" : undefined,
+        ...style,
+        ...undo.style,
+      }}
     >
       {undo.showProgress && (
         <Progress
           size="sm"
-          color={undo.pausedAt ? "background-tertiary-inverse" : "brand"}
+          color={
+            undo.pausedAt ? "background_page-tertiary-inverse" : "core-brand"
+          }
           /* we intentionally break a11y - css animation is smoother */
           value={100}
           pos="absolute"
@@ -162,7 +175,7 @@ function UndoToast({
           )}
         </ControlsCardContent>
       </CardContent>
-    </ToastCard>
+    </Card>
   );
 }
 

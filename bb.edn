@@ -2,10 +2,9 @@
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src"]
- ;; use Cam's fork temporarily until a new release with https://github.com/weavejester/cljfmt/pull/420 is cut
- ;; (release > 0.16.4)
- :deps {dev.weavejester/cljfmt {:git/sha "05886be17744846685e6a733973fdfbd24e1acd5"
-                                :git/url "https://github.com/camsaul/cljfmt"} ;; run cljfmt from bb
+ ;; use Git version of dep temporarily until a new release > 0.16.4 is cut
+ :deps {dev.weavejester/cljfmt {:git/sha "075eae26e3c8dad433b88f05927bcd50e3571328"
+                                :git/url "https://github.com/weavejester/cljfmt"} ;; run cljfmt from bb
         io.github.paintparty/bling {:mvn/version "0.8.8"} ;; printing bells and whistles
         medley/medley {:mvn/version "1.3.0"} ;; utilities
         metosin/malli {:mvn/version "0.17.0"} ;; data validation
@@ -374,9 +373,9 @@
                         ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
                         ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
                         ["3"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
-                        ["4"    "Driver is quarantined"                   "SKIP" "driver is quarantined"]
+                        ["4"    "Configured status = skip (PR branches)" "SKIP" "driver is quarantined"]
                         ["4(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
-                        ["5"    "On master or release branch"             "RUN"  "master/release branch"]
+                        ["5"    "On master or release branch"             "RUN"  "master/release branch (quarantine ignored)"]
                         ["6"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
                         ["7"
                          "Cloud driver + its files changed"
@@ -390,12 +389,25 @@
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by module changes")]
                         ["12"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
+        "\nThis table decides only WHETHER a driver runs. A driver's configured status then\n"
+        "applies to that decision (see 'Driver Status' below) and never overrides it.\n"
+        "\nNote: the remote quarantine list (status = skip) is ignored entirely on master and\n"
+        "release-* branches -- every driver runs and gates there (Priority 4 is bypassed).\n"
         "\n\n## Labels of Interest\n\n"
         "These PR labels influence driver test decisions:\n\n"
         "  ci:run-all-drivers        Force-run ALL drivers (overrides quarantine)\n"
         "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb (overrides quarantine)\n"
         "  ci:all-cloud-drivers      Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
         "  break-quarantine-DRIVER   Un-quarantine a specific driver, e.g. break-quarantine-mysql\n"
+        "\n## Driver Status (from the CI driver config)\n\n"
+        "Each driver also gets a configured status, emitted as DRIVER-status=... for the result job. The\n"
+        "run/skip decision above always takes precedence; status only shapes the outcome of a run mage\n"
+        "decides on:\n\n"
+        "  skip       Listed with status \"skip\": not run at all (quarantined; break-quarantine-DRIVER overrides)\n"
+        "  info       Listed with status \"info\": if mage decides to run it, the run proceeds but its result\n"
+        "             must NOT gate (data collection). info NEVER forces a run -- if mage wouldn't run the\n"
+        "             driver, info does not change that.\n"
+        "  required   No configured status: runs and gates as usual (the default)\n"
         "\n## All Drivers\n\n"
         (str/join ", " (map name (sort mage.modules/all-drivers)))
         "\n")))

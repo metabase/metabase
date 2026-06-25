@@ -1,8 +1,8 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useDocsUrl } from "metabase/common/hooks";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { FormSelect } from "metabase/forms";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -84,7 +84,7 @@ export const IncrementalTransformSettings = ({
       if (!hasCheckpointOptions) {
         return t`Incremental transforms require at least one numeric or temporal source field.`;
       }
-      return t`Only process new and changed data`;
+      return t`Only process new data`;
     };
 
     const transformHasIssues =

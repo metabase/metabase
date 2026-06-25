@@ -16,7 +16,7 @@
 .button {
   margin-bottom: 0.625rem;
   margin-right: -0.125rem;
-  background: var(--mb-color-brand);
+  background: var(--mb-color-core-brand);
   border-radius: 50%;
   align-self: flex-end;
   margin-left: 2px;
@@ -53,18 +53,18 @@
 }
 
 .buttonResponding {
-  border: 1px solid var(--mb-color-brand);
+  border: 1px solid var(--mb-color-core-brand);
   background: transparent;
 }
 
 .sendIcon {
-  color: var(--mb-color-background-primary);
+  color: var(--mb-color-background_page-primary);
   width: 0.8rem;
   transition: color 150ms ease;
 }
 
 .stopIcon {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   width: 0.5rem;
   height: 0.5rem;
   transition: color 150ms ease;

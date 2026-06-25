@@ -1,13 +1,13 @@
 import { act, renderHook } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { mainReducers as reducers } from "__support__/entities-store";
 import {
   setupDeleteUserKeyValueEndpoint,
   setupGetUserKeyValueEndpoint,
   setupUpdateUserKeyValueEndpoint,
 } from "__support__/server-mocks/user-key-value";
 import { waitFor } from "__support__/ui";
-import { mainReducers as reducers } from "metabase/reducers-main";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getStore } from "metabase/store";

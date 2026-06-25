@@ -1,9 +1,9 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Center, Icon, Stack, Text, Title } from "metabase/ui";
@@ -28,9 +28,9 @@ export function NoWritableDatabasesEmptyState() {
           <Title
             order={3}
             ta="center"
-          >{t`To use transforms, you need a writable database connection`}</Title>
+          >{t`No compatible database connection`}</Title>
           <Text ta="center" c="text-secondary">
-            {t`None of your connected databases have a writable connection. Either edit the connection on the database you want to enable transforms on, or connect to a different database.`}
+            {t`None of your connected databases can be used with transforms. Connect a compatible database or check that your existing databases meet the requirements.`}
           </Text>
           {canAccessDatabases && (
             <Button

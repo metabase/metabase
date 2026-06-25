@@ -3,6 +3,7 @@ import type {
   Notification,
   NotificationCronSubscription,
   NotificationHandlerEmail,
+  NotificationHandlerHttp,
   NotificationHandlerSlack,
   NotificationRecipientUser,
 } from "metabase-types/api";
@@ -89,6 +90,23 @@ export const createMockNotificationHandlerSlack = (
   notification_id: 10,
   active: true,
   id: 13,
+  created_at: "2025-01-07T18:40:47.245205+03:00",
+  ...opts,
+});
+
+export const createMockNotificationHandlerHttp = (
+  opts?: Partial<NotificationHandlerHttp>,
+): NotificationHandlerHttp => ({
+  template_id: null,
+  channel_id: 1,
+  channel_type: "channel/http",
+  channel: null,
+  template: null,
+  recipients: [],
+  updated_at: "2025-01-07T18:40:47.245205+03:00",
+  notification_id: 10,
+  active: true,
+  id: 14,
   created_at: "2025-01-07T18:40:47.245205+03:00",
   ...opts,
 });

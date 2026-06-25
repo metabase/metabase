@@ -6,6 +6,7 @@ import {
   useGetAdhocQueryQuery,
 } from "metabase/api/dataset";
 import { useSelector } from "metabase/redux";
+import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
@@ -16,17 +17,7 @@ import { getCardWithDraft } from "../selectors";
 
 interface UseCardDataProps {
   id: number;
-}
-
-export interface UseCardDataResult {
-  card?: Card;
-  dataset?: Dataset;
-  isLoading: boolean;
-  series: RawSeries | null;
-  question?: Question;
-  error?: "not found" | "unknown" | null;
-  draftCard?: Card;
-  regularDataset?: Dataset;
+  skip?: boolean;
 }
 
 function buildAdhocQueryParams(card: Card) {
@@ -83,9 +74,12 @@ function selectIsLoadingDataset(
   return isLoadingDraft;
 }
 
-export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
+export function useCardData({
+  id,
+  skip = false,
+}: UseCardDataProps): UseCardDataResult {
   const isDraft = id < 0;
-  const shouldSkipSavedCard = !id || isDraft;
+  const shouldSkipSavedCard = !id || isDraft || skip;
 
   const {
     data: card,
@@ -116,8 +110,8 @@ export function useCardData({ id }: UseCardDataProps): UseCardDataResult {
     }
   }, [isDraft, isPivotTable, cardToUse, metadata]);
 
-  const shouldSkipRegularQuery = !id || isDraft || !card;
-  const canQueryDraftCard = isDraft && cardToUse?.dataset_query;
+  const shouldSkipRegularQuery = !id || isDraft || !card || skip;
+  const canQueryDraftCard = isDraft && cardToUse?.dataset_query && !skip;
   const shouldQueryDraftNonPivot = canQueryDraftCard && !isPivotTable;
   const shouldQueryDraftPivot = canQueryDraftCard && isPivotTable && metadata;
 

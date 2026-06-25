@@ -147,7 +147,8 @@
             (driver/drop-table! driver db-id (:name table-schema))))))))
 
 (deftest transform-schema-created-if-needed-test
-  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas]})
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table :schemas
+                                                         :test/dynamic-dataset-loading]})
     (mt/dataset transforms-dataset/transforms-test
       (let [schema (str "transform_schema_" (mt/random-name))]
         (try
@@ -367,7 +368,9 @@
     (let [calls (atom [])
           record-call! (fn [call-name] (swap! calls conj call-name))
           mock-query "CREATE TABLE test_schema.test_table AS (SELECT 1 AS x);"
-          mock-rows [[1]]
+          ;; `execute-raw-queries!` yields one `{:rows-affected N}` map per statement; `run-transform!`
+          ;; returns `(last …)`, which must satisfy `::driver/run-transform-result`.
+          mock-rows [{:rows-affected 1}]
           transform-details {:output-table :test_schema/test_table
                              :database {:id 1}
                              :transform-type :table}]

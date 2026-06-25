@@ -35,7 +35,7 @@ export const LoadingSpinner = styled((props: LoadingSpinnerProps) => (
   flex-grow: 1;
   align-self: center;
   justify-content: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 export const RelativeContainer = styled.div<{ height?: string }>`
@@ -68,7 +68,7 @@ export const Li = styled.li`
   padding: 0.3em 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 
   &:last-child {
     border-bottom: none;

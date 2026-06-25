@@ -21,7 +21,7 @@ export const FilterInputContainer = styled.div`
 export const ItemGroupsDivider = styled.hr`
   margin: 1rem 1.5rem;
   border: 0;
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const EmptyStateContainer = styled.div`
