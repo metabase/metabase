@@ -42,7 +42,9 @@
   "Walk `(:data message)` in insertion order and emit AI-SDK-message maps for
   history replay. Preserves adjacency of tool calls and their tool results."
   [message]
-  (into [] (mapcat tool-part->history-messages) (:data message)))
+  (->> (or (:data message) [])
+       (schema.v2/check-message-data "slack history replay metabot_message.data")
+       (into [] (mapcat tool-part->history-messages))))
 
 (defn message-history
   "Tool call history for Slack messages. Returns {slack-msg-id -> [messages...]}."

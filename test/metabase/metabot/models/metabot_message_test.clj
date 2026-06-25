@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-message-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -47,3 +48,17 @@
     (testing "selecting without data_version leaves data unconverted rather than throwing"
       (let [row (t2/select-one [:model/MetabotMessage :id :data] :id (:id msg))]
         (is (= [{:role "user" :content "hi"}] (:data row)))))))
+
+(deftest after-select-revalidates-v2-data-in-dev-test
+  (mt/with-temp [:model/MetabotConversation conv {}
+                 :model/MetabotMessage      msg  {:conversation_id (:id conv)
+                                                  ;; invalid v2: a text part missing :text
+                                                  :data            [{:type "text"}]
+                                                  :data_version    2}]
+    (testing "outside dev, malformed v2 rows are re-served without validation"
+      (is (= [{:type "text"}] (:data (t2/select-one :model/MetabotMessage :id (:id msg))))))
+    (testing "in dev, a malformed v2 row throws on read"
+      (with-redefs [config/is-dev? true]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid metabot_message.data \(read\)"
+                              (t2/select-one :model/MetabotMessage :id (:id msg))))))))

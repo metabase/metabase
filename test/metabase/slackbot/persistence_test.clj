@@ -10,6 +10,24 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
+(deftest message-history-validates-stored-parts-test
+  (testing "malformed stored v2 parts are rejected before slack history replay"
+    (let [conv-id (str (random-uuid))]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    "1709567890.000099"
+                     :role            "assistant"
+                     :profile_id      "test"
+                     :total_tokens    0
+                     ;; invalid v2: a tool part with no :state to dispatch on
+                     :data            [{:type "tool-search" :toolCallId "z"}]
+                     :data_version    2})
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid slack history replay metabot_message.data"
+                              (slackbot.persistence/message-history conv-id #{"1709567890.000099"})))))))
+
 (deftest message-history-test
   (let [conv-id (str (random-uuid))]
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
