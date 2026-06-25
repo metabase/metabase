@@ -5,8 +5,10 @@
 // brotli (as-served) bytes plus percent — against the previously *plotted* data
 // point (restored from a rolling cache), so the deltas can be charted directly.
 // It also decides whether this commit is worth recording at all: a point is kept
-// when the as-served size moved by at least MIN_DELTA_PERCENT, when a new
-// bundle/kind appears, or when the build is a tagged release (always kept).
+// when the as-served size moved by at least MIN_DELTA_PERCENT, or when a new
+// bundle/kind appears. Only master builds run through here — releases form
+// non-linear lines whose deltas are meaningless, so they're not recorded (their
+// historical sizes are backfilled separately).
 const fs = require("fs");
 const path = require("path");
 
@@ -83,10 +85,8 @@ const rows = measurements.map(measurement => {
   };
 });
 
-// Always keep a point for a tagged release, even when nothing moved.
-const isRelease = version !== "";
 const firstPoint = previous.length === 0;
-const significant = firstPoint || hasNewSeries || isRelease || maxServedDeltaPercent >= threshold;
+const significant = firstPoint || hasNewSeries || maxServedDeltaPercent >= threshold;
 
 writeJson(env.ROWS_OUT, rows);
 
@@ -108,9 +108,7 @@ const reason = firstPoint
   ? "first point"
   : hasNewSeries
     ? "new bundle/kind series"
-    : isRelease
-      ? `release ${version}`
-      : `max served Δ ${maxServedDeltaPercent.toFixed(2)}% (threshold ${threshold}%)`;
+    : `max served Δ ${maxServedDeltaPercent.toFixed(2)}% (threshold ${threshold}%)`;
 console.log(`${significant ? "RECORD" : "SKIP"} — ${reason}`);
 
 setOutput("significant", significant ? "true" : "false");
