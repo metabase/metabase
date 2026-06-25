@@ -187,31 +187,20 @@
              (mapv :value))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Metric aggregations — read via lib, for the definitional-axis guard
+;;; Definitional-axis guard — the field(s) the metric is defined on, read via lib
 ;;; ---------------------------------------------------------------------------
 
-(defn- metric-aggregations
-  "The metric Card's top-level aggregation clauses (lib clause vectors), or nil
-  when the metric-ctx carries no card / the query can't be built (test fixtures)."
+(defn- metric-definitional-columns
+  "The columns the metric's own aggregation is *defined over* — e.g. the `category`
+  column behind a `share(category = 'detractor')` rate — as lib column metadata,
+  pulled out of the aggregation clauses with `lib/referenced-columns`. Empty when
+  the metric-ctx carries no card / the query can't be built (test fixtures)."
   [metric-ctx]
   (try
     (when-let [card (:card metric-ctx)]
-      (lib/aggregations (lib/query (:mp metric-ctx) (:dataset_query card))))
+      (let [query (lib/query (:mp metric-ctx) (:dataset_query card))]
+        (into [] (mapcat #(lib/referenced-columns query %)) (lib/aggregations query))))
     (catch Throwable _ nil)))
-
-(defn- field-ids
-  "All integer field ids referenced anywhere in `clauses` (a seq of clause
-  vectors) — walks nested `[:field {opts} id]` refs. The tag is matched as both
-  the keyword `:field` (normalized lib clauses, e.g. a metric's aggregation) and
-  the string `\"field\"` (a thread-group's JSON-snapshotted dimension target, whose
-  tag deserializes as a string). Nominal (string-id) refs are ignored."
-  [clauses]
-  (into #{}
-        (comp (mapcat #(tree-seq vector? seq %))
-              (filter #(and (vector? %) (#{:field "field"} (first %))))
-              (map peek)
-              (filter integer?))
-        clauses))
 
 (defn- definitional-dim?
   "True when `candidate`'s target field is one the metric's own aggregation is
@@ -219,9 +208,13 @@
   rate. Splitting a metric by the very field that defines it is a tautology (every
   bucket lands at a `[0,1]` extreme by construction), so the loop drops it from
   descent candidacy, the same way it never re-splits a filter-path axis.
-  `agg-field-ids` is `(field-ids (metric-aggregations metric-ctx))`."
-  [agg-field-ids {:keys [target]}]
-  (boolean (some agg-field-ids (field-ids [target]))))
+  `defn-cols` is `(metric-definitional-columns metric-ctx)`; the candidate's
+  snapshot `:target` is normalized to a lib ref and matched against them through
+  lib, so the JSON-snapshotted clause tag and id/name matching are lib's concern."
+  [defn-cols {:keys [target]}]
+  (boolean
+   (when (and (seq defn-cols) target)
+     (lib/find-matching-column (qp.mbql/normalize-target-ref target) defn-cols))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Split gain — continuous, support-weighted, bias-corrected, per-df effect size
@@ -514,11 +507,11 @@
   definitional axis of the metric (you cannot meaningfully split a metric by the
   field that defines it — see [[definitional-dim?]])."
   [metric-ctx filter-path]
-  (let [used     (set (map :dimension-id filter-path))
-        agg-fids (field-ids (metric-aggregations metric-ctx))]
+  (let [used      (set (map :dimension-id filter-path))
+        defn-cols (metric-definitional-columns metric-ctx)]
     (into []
           (remove (fn [c] (or (used (:dimension-id c))
-                              (definitional-dim? agg-fids c))))
+                              (definitional-dim? defn-cols c))))
           (candidate-categorical-dims metric-ctx))))
 
 (defn- measure-node

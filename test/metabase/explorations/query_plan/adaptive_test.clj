@@ -354,19 +354,28 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest definitional-dim-test
-  (let [agg      [[:share {:lib/uuid "u"} [:= {:lib/uuid "v"} [:field {:base-type :type/Text} 2342] "detractor"]]]
-        agg-fids (#'qp.adaptive/field-ids agg)]
-    (testing "field-ids walks nested aggregation clauses for integer field refs"
-      (is (= #{2342} agg-fids)))
+  ;; A `share(category = "Gadget")` rate is *defined on* products.category, so
+  ;; splitting it by category is a tautology and must be dropped from descent.
+  (let [mp        (mt/metadata-provider)
+        category  (lib.metadata/field mp (mt/id :products :category))
+        metric-q  (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                      (lib/aggregate (lib/share (lib/= category "Gadget"))))
+        defn-cols (#'qp.adaptive/metric-definitional-columns
+                   {:mp mp :card {:dataset_query metric-q}})]
+    (testing "metric-definitional-columns reads the aggregation's columns via lib"
+      (is (= [(mt/id :products :category)] (map :id defn-cols))))
     (testing "the metric's defining field is a definitional axis (excluded from descent)"
-      (is (true? (#'qp.adaptive/definitional-dim? agg-fids {:target [:field {} 2342]}))))
+      (is (true? (#'qp.adaptive/definitional-dim?
+                  defn-cols {:target [:field {} (mt/id :products :category)]}))))
     (testing "a JSON-snapshotted target with a STRING \"field\" tag must still match"
-      (is (= #{2342} (#'qp.adaptive/field-ids [["field" {:base-type "type/Text"} 2342]])))
-      (is (true? (#'qp.adaptive/definitional-dim? agg-fids {:target ["field" {:base-type "type/Text"} 2342]}))))
+      (is (true? (#'qp.adaptive/definitional-dim?
+                  defn-cols {:target ["field" {:base-type "type/Text"} (mt/id :products :category)]}))))
     (testing "any other field is not a definitional axis"
-      (is (false? (#'qp.adaptive/definitional-dim? agg-fids {:target [:field {} 2307]}))))
-    (testing "a nominal (string-id) field ref never matches"
-      (is (= #{} (#'qp.adaptive/field-ids [[:field {} "category"]]))))))
+      (is (false? (#'qp.adaptive/definitional-dim?
+                   defn-cols {:target [:field {} (mt/id :products :vendor)]}))))
+    (testing "no defining columns → nothing is definitional"
+      (is (false? (#'qp.adaptive/definitional-dim?
+                   [] {:target [:field {} (mt/id :products :category)]}))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Issue 5 — descent governance: min-support + deviation value selection
