@@ -118,14 +118,21 @@
   each created thread (production does this in an async worker that doesn't run in
   tests). Also finalizes each query's dataset_query (production does this in the
   runner's per-row execution step). Returns the re-hydrated exploration so callers
-  see materialized :queries with dataset_query populated."
+  see materialized :queries with dataset_query populated.
+
+  Pins the planner to `:mechanical` so the materialized fan-out is the deterministic
+  matrix these structural API tests assert against. The default `:adaptive` planner
+  layers data-gated drilled survivors on top, which vary with the underlying data and
+  would make exact query/group counts non-deterministic — the adaptive search is
+  covered by `metabase.explorations.query-plan.adaptive-test`."
   [user body]
-  (let [resp (mt/user-http-request user :post 200 "exploration" (->groups-body body))]
-    (doseq [thread (:threads resp)]
-      (query-plan/generate-query-plan! (:id thread)))
-    (let [hydrated (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))]
-      (finalize-queries! (mapcat :queries (:threads hydrated)))
-      (vectorize-clauses (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))))))
+  (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
+    (let [resp (mt/user-http-request user :post 200 "exploration" (->groups-body body))]
+      (doseq [thread (:threads resp)]
+        (query-plan/generate-query-plan! (:id thread)))
+      (let [hydrated (mt/user-http-request user :get 200 (str "exploration/" (:id resp)))]
+        (finalize-queries! (mapcat :queries (:threads hydrated)))
+        (vectorize-clauses (mt/user-http-request user :get 200 (str "exploration/" (:id resp))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    GET /api/exploration/dimensions                                             |
