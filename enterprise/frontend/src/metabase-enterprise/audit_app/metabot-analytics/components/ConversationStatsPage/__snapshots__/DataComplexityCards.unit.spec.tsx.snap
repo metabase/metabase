@@ -541,7 +541,7 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
                   color="text-primary"
                   data-size="md"
                 >
-                  8
+                  7.5
                 </div>
               </div>
             </div>
