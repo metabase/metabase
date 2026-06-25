@@ -323,14 +323,12 @@
     (log/throttle (* 60 1000)
       (log/errorf e \"Couldn't do the thing: %s\" (ex-message e)))
 
-  The throttle key is this form's source location, so every `throttle` site throttles independently with
-  no manual key management. When throttled, `body` is skipped *entirely* — including the underlying logger
-  lookup. Returns the value of `body`, or
-  `nil` when throttled."
+  When throttled, `body` is skipped *entirely* — including the underlying logger lookup.
+  Returns the value of `body`, or `nil` when throttled."
   {:arglists '([interval-ms & body])}
   [interval-ms & body]
   (let [m (meta &form)
-        k (str *ns* \: (:line m) \: (:column m))]
+        k (keyword (str *ns*) (str (:line m) \- (:column m)))]
     `(when (metabase.util.log.throttle/allow? ~k ~interval-ms)
        ~@body)))
 

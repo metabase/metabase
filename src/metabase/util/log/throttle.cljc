@@ -24,11 +24,9 @@
     (if (< (- now (long (get @state k 0))) interval-ms)
       ;; fast path: still within the window — no write, no allocation
       false
-      ;; slow path: window elapsed; try to claim the slot. Re-check under swap! in case another thread
-      ;; (or this one, having raced) already claimed it since we read `state`.
-      (let [allow? (volatile! false)]
-        (swap! state (fn [m]
-                       (if (>= (- now (long (get m k 0))) interval-ms)
-                         (do (vreset! allow? true) (assoc m k now))
-                         m)))
-        @allow?))))
+      ;; slow path: window elapsed; try to claim the slot.
+      (let [[old _] (swap-vals! state (fn [m]
+                                        (if (>= (- now (long (get m k 0))) interval-ms)
+                                          (assoc m k now)
+                                          m)))]
+        (>= (- now (long (get old k 0))) interval-ms)))))
