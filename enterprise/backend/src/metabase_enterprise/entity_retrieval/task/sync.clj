@@ -11,9 +11,6 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.entity-retrieval.core :as entity-retrieval.core]
-   [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
-   [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
@@ -27,11 +24,11 @@
   OsiAiContextSync [_ctx]
   (when (entity-retrieval.core/available?)
     (try
-      (let [{:keys [inserted deleted] :as result}
-            (reconcile/reconcile! (semantic.db.datasource/ensure-initialized-data-source!)
-                                  (embedding/get-configured-model))]
+      ;; Same queue-and-coalesce schedule the force-reconcile API uses: this run waits out a concurrent
+      ;; node rather than skipping, and never runs alongside an API-triggered reconcile on this node.
+      (let [{:keys [inserted deleted] :as index} (:index (entity-retrieval.core/reconcile-coalesced!))]
         (when (pos? (+ (or inserted 0) (or deleted 0)))
-          (log/info "library entity index reconciled" result)))
+          (log/info "library entity index reconciled" index)))
       (catch Throwable e
         ;; Log and move on: the next periodic run retries from the authoritative appdb table.
         (log/error e "entity-retrieval mirror reconciliation failed")))))

@@ -15,6 +15,7 @@
 
 (p/import-vars
  [metabase.entity-retrieval.mirror
+  force-reconcile!
   library-entity-keys
   search])
 

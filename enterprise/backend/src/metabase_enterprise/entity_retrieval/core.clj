@@ -51,6 +51,81 @@
   (when (available?)
     (task/trigger-now! sync-job-key)))
 
+(defonce ^:private run-lock (Object.))
+
+;; The reconcile schedule, shared by the force-reconcile API and the background sync job, both mutated only
+;; under run-lock. `current-run` is the in-flight run (nil when idle); `next-run` is the single follow-up
+;; queued behind it (nil when none). A caller never joins the in-flight run — it may have begun before the
+;; caller's write — so it starts a run when idle, or queues (or joins) the one follow-up, which begins only
+;; once the in-flight run finishes. Every caller's write is thus covered by a run that starts after it, a
+;; burst of callers collapses to a single extra run, and the API and the periodic job never run two
+;; reconciles at once on a node.
+(defonce ^:private current-run (atom nil))
+(defonce ^:private next-run (atom nil))
+
+(defn- elapsed-ms
+  "Whole milliseconds between two System/nanoTime readings."
+  ^long [^long from ^long to]
+  (Math/round (/ (double (- to from)) 1e6)))
+
+(defn- start-reconcile!
+  "Spawn the reconcile future, first awaiting `predecessor` (nil to begin at once) so a queued follow-up
+  reflects writes made after the predecessor began.
+  Its value is {:index <diff> :execution {:waited_ms _ :ran_ms _}} — index mutations alongside how long the
+  run sat queued and then ran.
+  On completion it promotes the queued follow-up, if any, to the current run under the lock."
+  [ds model predecessor]
+  (future
+    (let [scheduled (System/nanoTime)]
+      (when predecessor
+        ;; A failed predecessor must not block the follow-up — its writes still need reconciling.
+        (try @predecessor (catch Throwable _ nil)))
+      (try
+        (let [started (System/nanoTime)
+              diff    (reconcile/reconcile-now! ds model)]
+          {:index     diff
+           :execution {:waited_ms (elapsed-ms scheduled started)
+                       :ran_ms    (elapsed-ms started (System/nanoTime))}})
+        (finally
+          (locking run-lock
+            (reset! current-run @next-run)
+            (reset! next-run nil)))))))
+
+(defn reconcile-coalesced!
+  "Run a reconcile through the shared queue-and-coalesce schedule, blocking until a run covering this call
+  finishes.
+  Returns {:index {:inserted n :deleted n :unchanged n} :execution {:waited_ms _ :ran_ms _}} — the index
+  mutations separated from how long the run waited to start and then ran.
+  A call never joins a run already in flight, which may predate its write; it starts a run when idle, or
+  queues a single follow-up behind the in-flight run that concurrent callers coalesce onto.
+  Across nodes the run waits for the reconcile advisory lock (see [[reconcile/reconcile-now!]]).
+  Callers must have checked [[available?]]."
+  []
+  (let [ds    (semantic.db.datasource/ensure-initialized-data-source!)
+        model (embedding/get-configured-model)
+        ;; Claim under the lock (creation and the slot write are one atomic step); block on the deref
+        ;; outside it so a joiner never holds the lock while a reconcile runs.
+        run   (locking run-lock
+                (cond
+                  (nil? @current-run) (let [f (start-reconcile! ds model nil)]
+                                        (reset! current-run f)
+                                        f)
+                  (nil? @next-run)    (let [f (start-reconcile! ds model @current-run)]
+                                        (reset! next-run f)
+                                        f)
+                  :else               @next-run))]
+    @run))
+
+(defenterprise force-reconcile!
+  "Reconcile the `library_entity_index` against the appdb, blocking until a run covering this call finishes.
+  Returns {:index {:inserted n :deleted n :unchanged n} :execution {:waited_ms _ :ran_ms _}}, or nil when
+  entity retrieval isn't available (no pgvector store configured).
+  See [[reconcile-coalesced!]] for the queue-and-coalesce semantics it shares with the background sync."
+  :feature :semantic-search
+  []
+  (when (available?)
+    (reconcile-coalesced!)))
+
 (defenterprise library-entity-keys
   "Live set of `[entity_type entity_local_id]` for entities currently in the library (see the OSS shim)."
   :feature :semantic-search

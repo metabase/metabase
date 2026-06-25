@@ -4,6 +4,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -113,6 +114,29 @@
     (when (seq changes)
       (t2/update! :model/OsiAiContext id changes)))
   (t2/select-one :model/OsiAiContext :id id))
+
+(api.macros/defendpoint :post "/reconcile"
+  :- [:map
+      [:index     [:map
+                   [:inserted  :int]
+                   [:deleted   :int]
+                   [:unchanged :int]]]
+      [:execution [:map
+                   [:waited_ms :int]
+                   [:ran_ms    :int]]]]
+  "Force a reconcile of the library entity index against the application database, blocking until a
+  reconcile covering this call finishes.
+  Returns the index mutations (`index`) separately from execution timing (`execution`: how long the run
+  waited to start, then how long it ran).
+  This call never reuses a reconcile already in progress (it may have started before your latest change);
+  it starts one if the index is idle, otherwise it queues a single follow-up that any other waiting calls
+  share.
+  Requires the semantic search feature; returns a 400 when it isn't configured."
+  [_route-params
+   _query-params]
+  (api/check-superuser)
+  (api/check-400 (entity-retrieval/force-reconcile!)
+                 "The library entity index requires semantic search, which is not configured."))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"

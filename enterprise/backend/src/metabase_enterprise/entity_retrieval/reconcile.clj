@@ -235,6 +235,14 @@
      :deleted   (count to-delete)
      :unchanged (- (count desired) (count to-insert))}))
 
+(defn- reconcile-holding-lock!
+  "Run the diff while the reconcile advisory lock is held on `conn`, unlocking when done."
+  [conn pgvector embedding-model]
+  (try
+    (reconcile-against-appdb! pgvector embedding-model)
+    (finally
+      (jdbc/execute! conn [(format "SELECT pg_advisory_unlock(%d)" reconcile-lock-id)]))))
+
 (defn reconcile!
   "Bring the pgvector `library_entity_index` in line with the appdb; see the namespace docstring.
   Serialized across nodes with a pg advisory lock — if another node is already reconciling, this run is
@@ -248,7 +256,16 @@
                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
       (do (log/info "library entity index: another node holds the reconcile lock; skipping this run")
           {:skipped true})
-      (try
-        (reconcile-against-appdb! pgvector embedding-model)
-        (finally
-          (jdbc/execute! conn [(format "SELECT pg_advisory_unlock(%d)" reconcile-lock-id)]))))))
+      (reconcile-holding-lock! conn pgvector embedding-model))))
+
+(defn reconcile-now!
+  "Force a reconcile on the calling thread, blocking until it completes; returns {:inserted n :deleted n
+  :unchanged n}.
+  Unlike [[reconcile!]], which skips when another node holds the advisory lock, this waits for the lock so
+  the run always happens — the on-demand counterpart to the periodic job."
+  [pgvector embedding-model]
+  (index-table/ensure-tables! pgvector embedding-model)
+  (with-open [conn (jdbc/get-connection pgvector)]
+    ;; Blocking acquire (not try-lock): a forced reconcile waits out a concurrent node rather than skipping.
+    (jdbc/execute! conn [(format "SELECT pg_advisory_lock(%d)" reconcile-lock-id)])
+    (reconcile-holding-lock! conn pgvector embedding-model)))

@@ -129,6 +129,12 @@
           (mt/user-http-request :crowberto :put 200 (str "osi/ai-context/" (:id a))
                                 {:entity_type "table" :entity_local_id 1}))))))
 
+(deftest reconcile-test
+  (testing "POST /reconcile requires superuser"
+    (mt/user-http-request :rasta :post 403 "osi/ai-context/reconcile"))
+  (testing "without semantic search the index can't be reconciled, so it 400s rather than no-opping silently"
+    (mt/user-http-request :crowberto :post 400 "osi/ai-context/reconcile")))
+
 (deftest delete-test
   (with-test-entry [entry {}]
     (testing "non-superuser gets 403"

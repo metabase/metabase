@@ -6,6 +6,7 @@
    [metabase-enterprise.entity-retrieval.test-util :as tu]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]
@@ -128,6 +129,27 @@
             (reconcile/reconcile! ds model)
             (is (empty? (docs-for ds "table" table-id)))
             (is (seq (docs-for ds "metric" metric-id)) "the metric is untouched")))))))
+
+(deftest ^:sequential reconcile-now!-runs-to-completion-test
+  (testing "reconcile-now! blocks and reconciles, and (unlike reconcile!) never skips on lock contention"
+    (mt/with-premium-features #{:library :semantic-search}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{data :data}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id}    {}
+                           :model/Table    {table-id :id} {:db_id         db-id
+                                                           :collection_id (:id data)
+                                                           :is_published  true
+                                                           :active        true
+                                                           :name          "orders"
+                                                           :display_name  "Orders"}]
+              (testing "the forced run returns the diff and populates the index"
+                (let [result (reconcile/reconcile-now! ds model)]
+                  (is (pos? (:inserted result)))
+                  (is (not (contains? result :skipped)))
+                  (is (seq (docs-for ds "table" table-id)))))
+              (testing "a second forced run still executes (returns a diff, not {:skipped true})"
+                (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile-now! ds model)))))))))))
 
 (deftest ^:sequential rebuild-on-model-change-test
   (mt/with-premium-features #{:library :semantic-search}

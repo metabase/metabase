@@ -51,6 +51,49 @@
             (mirror/request-sync!)
             (is (= [entity-retrieval.core/sync-job-key] @triggered))))))))
 
+(deftest force-reconcile-coalescing-test
+  (testing "force-reconcile! never joins the in-flight run, queues one shared follow-up, and reports index + timing"
+    (mt/with-premium-features #{:semantic-search}
+      ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
+      (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
+        (let [current @#'entity-retrieval.core/current-run
+              nxt     @#'entity-retrieval.core/next-run
+              calls   (atom 0)]
+          (mt/with-dynamic-fn-redefs
+            [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
+             semantic.embedding/get-configured-model                (constantly ::model)
+             reconcile/reconcile-now!                               (fn [_ds _model]
+                                                                      (swap! calls inc)
+                                                                      {:inserted 3 :deleted 1 :unchanged 2})]
+            (testing "idle: the caller starts the run, gets its index diff + timing, and the schedule clears"
+              (reset! current nil) (reset! nxt nil) (reset! calls 0)
+              (is (=? {:index     {:inserted 3 :deleted 1 :unchanged 2}
+                       :execution {:waited_ms int? :ran_ms int?}}
+                      (entity-retrieval.core/force-reconcile!)))
+              (is (= 1 @calls))
+              (is (nil? @current)) (is (nil? @nxt)))
+            (testing "a run in flight: the caller queues a fresh follow-up instead of reusing the in-flight run"
+              ;; a completed future stands in for the in-flight run — the caller must still run a fresh pass.
+              (reset! current (future {:index {} :execution {}})) (reset! nxt nil) (reset! calls 0)
+              (is (=? {:index {:inserted 3 :deleted 1 :unchanged 2}}
+                      (entity-retrieval.core/force-reconcile!)))
+              (is (= 1 @calls) "a fresh reconcile ran; the in-flight run's result was not reused"))
+            (testing "a follow-up already queued: further callers coalesce onto it (no extra run)"
+              (reset! current (future {:index {} :execution {}}))
+              (reset! nxt (future {:index {:inserted 7 :deleted 0 :unchanged 0} :execution {:waited_ms 5 :ran_ms 9}}))
+              (reset! calls 0)
+              (is (=? {:index     {:inserted 7 :deleted 0 :unchanged 0}
+                       :execution {:waited_ms 5 :ran_ms 9}}
+                      (entity-retrieval.core/force-reconcile!)))
+              (is (zero? @calls) "joined the queued follow-up; no new reconcile")
+              (reset! current nil) (reset! nxt nil))))))))
+
+(deftest force-reconcile-unavailable-returns-nil-test
+  (testing "force-reconcile! is nil (so the API can 400) when pgvector isn't configured"
+    (mt/with-premium-features #{:semantic-search}
+      (with-redefs [semantic.db.datasource/db-url nil]
+        (is (nil? (entity-retrieval.core/force-reconcile!)))))))
+
 (deftest pgvector-configured-decoupled-from-feature-test
   (testing "scheduling gates on pgvector config, independent of the feature flag, so a license enabled after boot still gets the periodic sync"
     ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.

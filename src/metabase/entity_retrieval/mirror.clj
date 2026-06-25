@@ -15,6 +15,15 @@
   []
   nil)
 
+(defenterprise force-reconcile!
+  "Reconcile the pgvector index with the appdb, blocking until a run covering this call finishes.
+  Returns {:index <inserted/deleted/unchanged> :execution <waited_ms/ran_ms>}; nil in OSS (no index to
+  reconcile).
+  See the enterprise impl for the queue-and-coalesce semantics."
+  metabase-enterprise.entity-retrieval.core
+  []
+  nil)
+
 (defenterprise search
   "Similarity-search the library entity index for the documents nearest `user-search-prompt`.
   Returns up to `limit` matches shaped `{:entity {:model :id} :doc_type :doc_text :score}`,
