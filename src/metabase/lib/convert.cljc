@@ -744,6 +744,10 @@
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
       disqualify
+      ;; `:template-tags-order` is an MBQL 5-only concept (legacy native queries never had an explicit
+      ;; tag order); drop it so the legacy shape stays stable and the legacy round-trip stays lossless.
+      ;; Order is re-derived from `:template-tags` when converting back to MBQL 5. See #5136.
+      (dissoc :template-tags-order)
       (update-vals ->legacy-MBQL)
       ;; a native stage becomes
       ;;

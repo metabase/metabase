@@ -67,21 +67,58 @@
    [:parameters         {:optional true} [:ref ::lib.schema.parameter/parameters]]
    [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]])
 
+(defn- reconcile-template-tags-order
+  "Return `stage` with its `:template-tags-order` reconciled against the actual `:template-tags` keys, so the
+  order is always a valid permutation of the tag names:
+  - keep existing order entries that are still present in the tag map, preserving their positions;
+  - append any tag-map names missing from the order (in map-key order);
+  - drop order entries that no longer correspond to a tag.
+
+  This makes the (display-only) ordering self-healing when `:template-tags` is mutated directly, e.g. by code
+  that swaps in a tag map without touching the order -- the two can otherwise drift (un-normalized vs
+  normalized tag names, or keyword vs string keys) and previously crashed queries. Display metadata must never
+  be able to break a query. See #5136."
+  [stage]
+  (let [tags (:template-tags stage)]
+    (cond
+      (not (seq tags))
+      ;; No tags -> no order is meaningful; drop a stale one if present.
+      (dissoc stage :template-tags-order)
+
+      :else
+      (let [;; Coerce tag keys to their normalized string form (the final `:map-of` key form), so the order
+            ;; entries always match the map keys by type regardless of which Malli decode phase this runs in.
+            ->name      common/normalize-string-key
+            tag-names   (into #{} (map ->name) (keys tags))
+            existing    (map ->name (seq (:template-tags-order stage)))
+            kept        (filterv tag-names existing)
+            kept-set    (set kept)
+            ;; append any tag names missing from the order, in map-key order
+            appended    (filterv (complement kept-set) (map ->name (keys tags)))]
+        (assoc stage :template-tags-order (into kept appended))))))
+
+(defn- normalize-stage-native
+  "Normalize a native stage: drop empty/null keys, then reconcile `:template-tags-order` against the tag map
+  so the two can never drift out of sync. See #5136."
+  [m]
+  (->> m
+       normalize-stage-common
+       ;; filter out null :collection keys -- see #59675; also filter out empty `:template-tags` maps and
+       ;; empty `:template-tags-order` vectors (an order only makes sense alongside tags).
+       (m/filter-kv (fn [k v]
+                      (case k
+                        :collection          (some? v)
+                        :template-tags       (seq v)
+                        :template-tags-order (seq v)
+                        true)))
+       reconcile-template-tags-order))
+
 (mr/def ::stage.native
   [:and
    [:merge
     ::stage.common
     [:map
-     {:decode/normalize   #(->> %
-                                normalize-stage-common
-                                ;; filter out null :collection keys -- see #59675
-                                ;;
-                                ;; also filter out empty `:template-tags` maps.
-                                (m/filter-kv (fn [k v]
-                                               (case k
-                                                 :collection    (some? v)
-                                                 :template-tags (seq v)
-                                                 true))))
+     {:decode/normalize   normalize-stage-native
       :encode/for-hashing #'common/encode-map-for-hashing}
      [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
@@ -119,15 +156,7 @@
      :order-by     "MBQL stage keys like :order-by are not allowed in a native query stage."
      :offset       "MBQL stage keys like :offset are not allowed in a native query stage."
      :page         "MBQL stage keys like :page are not allowed in a native query stage."
-     :args         "Native query parameters should use :params, not :args."})
-   [:fn
-    {:error/message ":template-tags-order, when present, must list each template tag name exactly once"}
-    (fn [stage]
-      (let [tags  (:template-tags stage)
-            order (:template-tags-order stage)]
-        (or (not (and (seq tags) (seq order)))
-            (and (= (count order) (count (keys tags)))
-                 (= (set order) (set (keys tags)))))))]])
+     :args         "Native query parameters should use :params, not :args."})])
 
 (mr/def ::breakout
   [:ref ::ref/ref])

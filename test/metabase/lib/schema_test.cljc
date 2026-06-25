@@ -348,9 +348,10 @@
 (deftest ^:parallel remove-empty-stage-metadata-test
   (is (= {:lib/type :mbql/query
           :database 1493
-          :stages   [{:template-tags {"x" {:id "6c3d5730-6f9b-4bd6-ae25-3496e8b95011", :type :text, :name "x", :display-name "X"}}
-                      :lib/type      :mbql.stage/native
-                      :native        "update users set name = 'foo' where id = {{x}}"}]}
+          :stages   [{:template-tags       {"x" {:id "6c3d5730-6f9b-4bd6-ae25-3496e8b95011", :type :text, :name "x", :display-name "X"}}
+                      :template-tags-order ["x"]
+                      :lib/type            :mbql.stage/native
+                      :native              "update users set name = 'foo' where id = {{x}}"}]}
          (lib/normalize
           '{:lib/type "mbql/query"
             :database 1493
