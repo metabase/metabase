@@ -206,6 +206,34 @@
           (is (re-find #"/auth/reset_password/.*redirect(&#x3D;|=)/question/7.*#new"
                        (join-url-html {:type "question" :id 7 :name "Signups"}))))))))
 
+(deftest create-and-invite-user-email-content-test
+  (testing "the invite email is scoped to the dashboard/question when an invite_target is present"
+    (mt/with-model-cleanup [:model/User]
+      (let [invite-email (fn [invite-target]
+                           (mt/with-temporary-setting-values [site-url  "https://metabase.com"
+                                                              site-name "SuperStar"]
+                             (-> (notification.tu/with-captured-channel-send!
+                                   (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
+                                                                 {:first_name "Ngoc" :email "ngoc@metabase.com"}
+                                                                 false
+                                                                 invite-target))
+                                 :channel/email first)))
+            body         (fn [email] (-> email :message first :content))]
+        (testing "dashboard"
+          (let [email (invite-email {:type "dashboard" :id 42 :name "Q3 KPIs"})]
+            (is (= "You're invited to view the dashboard Q3 KPIs" (:subject email)))
+            (is (re-find #"Ngoc wants to share a Metabase dashboard with you" (body email)))
+            (is (re-find #"Q3 KPIs" (body email)))))
+        (testing "question"
+          (let [email (invite-email {:type "question" :id 7 :name "Signups"})]
+            (is (= "You're invited to view the question Signups" (:subject email)))
+            (is (re-find #"Ngoc wants to share a Metabase question with you" (body email)))
+            (is (re-find #"Signups" (body email)))))
+        (testing "no invite_target falls back to the generic invite"
+          (let [email (invite-email nil)]
+            (is (= "You're invited to join SuperStar's Metabase" (:subject email)))
+            (is (re-find #"Ngoc wants you to join them on Metabase" (body email)))))))))
+
 (deftest notification-create-email-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]
     (let [rasta (mt/fetch-user :rasta)
