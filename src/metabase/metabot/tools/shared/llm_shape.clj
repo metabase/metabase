@@ -268,6 +268,41 @@
     :related_table_fqn           fully_qualified_name
     :related_table_fields_xml    (when (seq fields) (str/join "\n" (map field->xml fields)))}))
 
+(defn- related-table-ref->xml
+  "One entry in the related-tables truncation roster — a related table the LLM can look up by id."
+  [{:keys [id name related_by]}]
+  (str "<related-table-ref"
+       (when (some? id) (str " id=\"" id "\""))
+       " name=\"" (escape-xml name) "\""
+       (when related_by (str " related_by=\"" (escape-xml related_by) "\""))
+       "/>"))
+
+(defn- related-tables->xml
+  "Render the related-tables block for a table/model: each detailed related table, plus — when the
+   detailed list was capped — a note that more related tables exist and a roster of their ids/names, so
+   the LLM doesn't assume the detailed list is exhaustive and can look any of the others up individually.
+
+   `truncated?`/`total`/`refs`/`refs-truncated?` come from the entity-detail result built by
+   [[metabase.metabot.tools.entity-details/related-tables-result]]. Returns nil when there is nothing to
+   render."
+  [related-tables {:keys [truncated? total refs refs-truncated?]}]
+  (let [detailed (when (seq related-tables)
+                   (str/join "" (map related-table->xml related-tables)))
+        note     (when truncated?
+                   (str "<related-tables-truncated shown=\"" (count related-tables) "\""
+                        (when total (str " total=\"" total "\"")) ">\n"
+                        "Only the related tables above are shown with full column details; this entity "
+                        "has more FK-related tables than are shown here.\n"
+                        (when (seq refs)
+                          (str "Complete list of related tables (use entity_details by id to fetch the "
+                               "columns of any not detailed above):\n"
+                               (str/join "\n" (map related-table-ref->xml refs)) "\n"))
+                        (when refs-truncated?
+                          "(This list is itself truncated — even more related tables exist.)\n")
+                        "</related-tables-truncated>"))]
+    (when (or detailed note)
+      (str detailed (when (and detailed note) "\n") note))))
+
 (defn- dimension-source-table
   "Human-readable `schema.table` for a queryable dimension, derived from its portable FK, plus
   the join label when the dimension is reached through an FK from the base table."
@@ -339,7 +374,8 @@
    without a separate `entity_details` call — it's the first slot of every portable FK in
    the representations-format `construct_notebook_query` tool."
   [{:keys [id name database_id database_name database_engine database_schema
-           description fields related_tables measures segments]}]
+           description fields related_tables related_tables_truncated related_tables_total
+           related_table_refs related_table_refs_truncated measures segments]}]
   (let [fqn (fully-qualified-name database_schema name)]
     (render-llm-template
      :table
@@ -352,8 +388,11 @@
       :table_description        description
       :table_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
-      :table_related_tables_xml (when (seq related_tables)
-                                  (str/join "" (map related-table->xml related_tables)))
+      :table_related_tables_xml (related-tables->xml related_tables
+                                                     {:truncated?      related_tables_truncated
+                                                      :total           related_tables_total
+                                                      :refs            related_table_refs
+                                                      :refs-truncated? related_table_refs_truncated})
       :table_measures_xml       (when (seq measures)
                                   (str/join "\n" (map measure->xml measures)))
       :table_segments_xml       (when (seq segments)
@@ -381,7 +420,8 @@
    representations form used elsewhere. Note: Python uses <metabase-model> tag but closes
    with </model>."
   [{:keys [id name description verified fields database_id database_name database_engine
-           related_tables measures segments portable_entity_id query_json]}]
+           related_tables related_tables_truncated related_tables_total related_table_refs
+           related_table_refs_truncated measures segments portable_entity_id query_json]}]
   (let [fqn (model-fully-qualified-name id name)]
     (render-llm-template
      :model
@@ -397,8 +437,11 @@
       :model_query_json         (repr-data->llm-block query_json)
       :model_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
-      :model_related_tables_xml (when (seq related_tables)
-                                  (str/join "\n" (map related-table->xml related_tables)))
+      :model_related_tables_xml (related-tables->xml related_tables
+                                                     {:truncated?      related_tables_truncated
+                                                      :total           related_tables_total
+                                                      :refs            related_table_refs
+                                                      :refs-truncated? related_table_refs_truncated})
       :model_measures_xml       (when (seq measures)
                                   (str/join "\n" (map measure->xml measures)))
       :model_segments_xml       (when (seq segments)

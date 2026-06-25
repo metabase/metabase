@@ -539,3 +539,45 @@
             (with-redefs-fn {#'entity-details/max-related-tables 1}
               (fn []
                 (is (= 1 (related-count)))))))))))
+
+(deftest related-tables-truncation-tracking-test
+  (testing (str "when the FK-related-table list is capped, the result reports the truncation and a "
+                "lightweight roster of all related tables (id/name) so the LLM knows more exist and can "
+                "look them up individually (metabase#76493)")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [details (fn []
+                        (:structured-output
+                         (entity-details/get-table-details {:entity-type :table
+                                                            :entity-id (mt/id :orders)})))]
+          (testing "no truncation metadata when nothing was capped"
+            (let [output (details)]
+              (is (nil? (:related_tables_truncated output)))
+              (is (nil? (:related_tables_total output)))
+              (is (nil? (:related_table_refs output)))))
+          (testing "capping the detailed list reports truncation + a full roster of related tables"
+            (with-redefs-fn {#'entity-details/max-related-tables 1}
+              (fn []
+                (let [output (details)]
+                  (is (= 1 (count (:related_tables output))))
+                  (is (true? (:related_tables_truncated output)))
+                  (is (= 2 (:related_tables_total output)))
+                  (testing "roster lists every related table by id and name, not just the truncated ones"
+                    (is (= 2 (count (:related_table_refs output))))
+                    (is (every? :id (:related_table_refs output)))
+                    (is (every? :name (:related_table_refs output))))
+                  (testing "roster itself is not flagged truncated when it fits under its own cap"
+                    (is (nil? (:related_table_refs_truncated output)))))))))))))
+
+(deftest related-table-refs-truncation-test
+  (testing "the related-tables roster is itself capped at `max-related-table-refs` and flags truncation"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (with-redefs-fn {#'entity-details/max-related-tables   1
+                         #'entity-details/max-related-table-refs 1}
+          (fn []
+            (let [output (:structured-output
+                          (entity-details/get-table-details {:entity-type :table
+                                                             :entity-id (mt/id :orders)}))]
+              (is (= 1 (count (:related_table_refs output))))
+              (is (true? (:related_table_refs_truncated output))))))))))

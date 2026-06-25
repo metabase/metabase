@@ -238,7 +238,7 @@
                      :database_id :database_name :portable_entity_id
                      :base_table_id :base_table_name :base_table_portable_fk]))))
 
-(declare related-tables)
+(declare related-tables related-tables-result)
 
 (def ^:private max-related-tables
   "Maximum number of FK-related tables to expand when building entity context for the LLM.
@@ -248,6 +248,13 @@
   for the request's lifetime, exhausting the heap (metabase#76493). The LLM context window can't usefully
   hold hundreds of related tables anyway, so we cap the fan-out."
   20)
+
+(def ^:private max-related-table-refs
+  "Maximum number of FK-related tables to list by id/name in the truncation roster (see
+  [[related-tables]]). This roster is cheap (ids/names only, no column fetch), so it can be longer than
+  [[max-related-tables]] — it lets the LLM see which related tables exist beyond the detailed ones and
+  look any of them up individually."
+  50)
 
 (defn- table-details
   ([id] (table-details id nil))
@@ -282,8 +289,8 @@
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
                        field-values-fn
                        (map #(metabot.tools.u/add-table-reference table-query %))))
-           related-tables (when with-related-tables?
-                            (related-tables table-query with-fields? field-values-fn))]
+           related (when with-related-tables?
+                     (related-tables table-query with-fields? field-values-fn))]
        (-> {:id id
             :type :table
             :fields (mapv #(metabot.tools.u/->result-column table-query %) cols)
@@ -299,7 +306,6 @@
             ;; [db-name, schema-or-null, table-name]. LLM uses this as `source-table`.
             :portable_fk (when db-name [db-name (:schema base) (:name base)])}
            (m/assoc-some :description (:description base)
-                         :related_tables related-tables
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))
@@ -308,36 +314,70 @@
                                                       (lib/available-measures table-query))))
                          :segments (when with-segments?
                                      (not-empty (mapv #(convert-measure-or-segment % :filters)
-                                                      (lib/available-segments table-query))))))))))
+                                                      (lib/available-segments table-query)))))
+           (merge (related-tables-result related)))))))
 
 (defn related-tables
-  "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
-   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys.
+  "FK-related-table context for `query`. Each distinct FK path (a `[table-id fk-field-id]` pair) is a
+   separate related table, so the same table reachable through multiple foreign keys appears once per FK.
 
-   The number of related tables is capped at [[max-related-tables]] to bound the amount of metadata
-   fetched and formatted for the LLM context — without the cap a highly-connected schema can fetch
-   and pin an unbounded number of columns for the request's lifetime (metabase#76493)."
+   Returns nil when the query has no FK-related tables, otherwise a map:
+
+     :tables  vector of detailed related-table maps (one per FK path), each with its fields, capped at
+              [[max-related-tables]]. This is the expensive part — each entry re-fetches and formats the
+              target table's full column set.
+     :total   total number of FK-related tables before capping.
+     :refs    lightweight roster `{:id :name :related_by}` of related tables, capped at
+              [[max-related-table-refs]] (ids/names only, no column fetch). Lets the LLM see which
+              related tables exist beyond the detailed ones and look any of them up individually.
+
+   Capping bounds the metadata fetched and formatted for the LLM context — without it a highly-connected
+   schema fetches and pins an unbounded number of columns for the request's lifetime (metabase#76493)."
   [query with-fields? field-values-fn]
-  (let [all-main-cols (lib/visible-columns query)
-        fk-cols       (filter :fk-field-id all-main-cols)
-        grouped-fks   (group-by (juxt :table-id :fk-field-id) fk-cols)
-        ;; sort for a deterministic selection when we cap, so the same tables are kept across calls
-        fk-groups     (sort (keys grouped-fks))]
-    (when (seq fk-groups)
-      (when (> (count fk-groups) max-related-tables)
+  (let [fk-groups (->> (lib/visible-columns query)
+                       (filter :fk-field-id)
+                       (group-by (juxt :table-id :fk-field-id))
+                       keys
+                       ;; sort for a deterministic selection when we cap, so the same tables are kept
+                       sort)
+        total     (count fk-groups)]
+    (when (pos? total)
+      (when (> total max-related-tables)
         (log/warnf "Capping MetaBot related-table expansion to %d of %d FK-related tables (metabase#76493)."
-                   max-related-tables (count fk-groups)))
-      (mapv
-       (fn [[table-id fk-field-id]]
-         (let [base-details   (table-details table-id
-                                             {:with-fields?         with-fields?
-                                              :field-values-fn      field-values-fn
-                                              :with-related-tables? false
-                                              :with-metrics?        false})
-               base-table-col (lib.metadata/field query fk-field-id)
-               fk-field-name  (:name base-table-col)]
-           (assoc base-details :related_by fk-field-name)))
-       (take max-related-tables fk-groups)))))
+                   max-related-tables total))
+      {:total  total
+       :tables (mapv
+                (fn [[table-id fk-field-id]]
+                  (-> (table-details table-id
+                                     {:with-fields?         with-fields?
+                                      :field-values-fn      field-values-fn
+                                      :with-related-tables? false
+                                      :with-metrics?        false})
+                      (assoc :related_by (:name (lib.metadata/field query fk-field-id)))))
+                (take max-related-tables fk-groups))
+       :refs   (mapv
+                (fn [[table-id fk-field-id]]
+                  {:id         table-id
+                   ;; table metadata is just the table row (name/schema) — no visible-columns fetch
+                   :name       (:name (lib.metadata/table query table-id))
+                   :related_by (:name (lib.metadata/field query fk-field-id))})
+                (take max-related-table-refs fk-groups))})))
+
+(defn- related-tables-result
+  "Convert the map returned by [[related-tables]] (or nil) into the subset of entity-detail result keys
+   that describe related tables: the detailed `:related_tables` list, plus — when that list was capped —
+   a `:related_tables_truncated` flag, the `:related_tables_total` count, and the `:related_table_refs`
+   roster (with its own `:related_table_refs_truncated` flag) so the LLM knows more related tables exist
+   and can look them up individually."
+  [related]
+  (when-let [{:keys [tables total refs]} related]
+    (let [truncated?      (> total (count tables))
+          refs-truncated? (> total (count refs))]
+      (cond-> {:related_tables tables}
+        truncated?      (assoc :related_tables_truncated true
+                               :related_tables_total     total
+                               :related_table_refs        refs)
+        refs-truncated? (assoc :related_table_refs_truncated true)))))
 
 (defn- card-details
   "Get details for a card."
@@ -373,8 +413,8 @@
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
                                 field-values-fn))
-         related-tables (when with-related-tables?
-                          (related-tables card-query with-fields? field-values-fn))]
+         related (when with-related-tables?
+                   (related-tables card-query with-fields? field-values-fn))]
      (-> {:id id
           :type card-type
           :fields (mapv #(metabot.tools.u/->result-column card-query %) returned-fields)
@@ -414,7 +454,6 @@
                          metadata-provider
                          (lib/query metadata-provider (lib-be/normalize-query dataset-query))
                          shared.content-store/default-store))
-          :related_tables related-tables
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
                                       (lib/available-metrics card-query))))
@@ -423,7 +462,8 @@
                                        (lib/available-measures card-query))))
           :segments (when with-segments?
                       (not-empty (mapv #(convert-measure-or-segment % :filters)
-                                       (lib/available-segments card-query)))))))))
+                                       (lib/available-segments card-query)))))
+         (merge (related-tables-result related))))))
 
 (defn cards-details
   "Get the details of metrics or models as specified by `card-type` and `cards`
