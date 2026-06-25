@@ -52,14 +52,33 @@ const mockScores: DataComplexityScoresResponse = {
         components: {
           entity_count: mockComponentScore(1, 10),
           field_count: mockComponentScore(8, 8),
+          collection_tree_size: mockComponentScore(2, 2),
+          fields_per_entity: mockComponentScore(0.8, 1),
         },
       },
       ambiguity: {
-        ...mockScore(0),
+        ...mockScore(3),
         components: {
           name_collisions: mockComponentScore(0, 0),
           synonym_pairs: mockComponentScore(0, 0),
           repeated_measures: mockComponentScore(0, 0),
+          // nested sub-group: exercises arbitrary-depth rendering
+          synonym_degree: {
+            ...mockScore(3),
+            components: {
+              p50: mockComponentScore(1, 1),
+              p90: mockComponentScore(2, 2),
+              max: mockComponentScore(0, 0),
+            },
+          },
+        },
+      },
+      // descriptive-only group with fractional (coverage-gap) measurements
+      metadata: {
+        ...mockScore(15),
+        components: {
+          description_coverage: mockComponentScore(0.75, 7.5),
+          semantic_type_coverage: mockComponentScore(0.5, 5),
         },
       },
     },
@@ -124,10 +143,11 @@ const mockScoresWithError: DataComplexityScoresResponse = {
         rating: null,
         rating_label: null,
         components: {
-          ...mockScores.metabot.components.ambiguity.components,
+          name_collisions: mockComponentScore(0, 0),
           synonym_pairs: {
             error: "Embedding service timed out",
           },
+          repeated_measures: mockComponentScore(0, 0),
         },
       },
     },

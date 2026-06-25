@@ -111,59 +111,51 @@ export const DATA_COMPLEXITY_CATALOG_IDS = [
   "metabot",
 ] as const;
 
-export const DATA_COMPLEXITY_GROUP_IDS = ["size", "ambiguity"] as const;
-
 export type DataComplexityRating = "low" | "medium" | "high";
 export type DataComplexityCatalogId =
   (typeof DATA_COMPLEXITY_CATALOG_IDS)[number];
-export type DataComplexityGroupId = (typeof DATA_COMPLEXITY_GROUP_IDS)[number];
 
-export type DataComplexitySizeComponentId = "entity_count" | "field_count";
-export type DataComplexityAmbiguityComponentId =
-  | "name_collisions"
-  | "synonym_pairs"
-  | "repeated_measures";
-export type DataComplexityComponentId =
-  | DataComplexitySizeComponentId
-  | DataComplexityAmbiguityComponentId;
-type DataComplexityGroupComponents = {
-  size: DataComplexitySizeComponentId;
-  ambiguity: DataComplexityAmbiguityComponentId;
+// The score tree is recursive and open: a node is a failure, a scored leaf, or a grouping whose
+// `components` may nest arbitrarily deep (e.g. the synonym-degree sub-group). The backend can add
+// or rename measures without breaking the client — the renderer walks the tree generically and
+// labels nodes by key. `rating`/`rating_label` are only populated where rating bands apply
+// (currently the catalog total) and are null elsewhere.
+
+// A failed sub-score (e.g. an embedder outage): carries the message and a null score that cascades.
+export type DataComplexityFailure = {
+  error: string;
+  score?: null;
 };
 
-export type DataComplexityFailure = { error: string };
-export type ScoreAndRating = {
-  score: number;
-  rating: DataComplexityRating | null;
-  rating_label: string | null;
-};
-
-export type ScoreAndRatingError = {
-  [K in keyof ScoreAndRating]: null;
-};
-
+// A scored leaf. `score`/`measurement` may be fractional (ratios, coverage gaps, graph analytics),
+// and `score` is null when it cascaded from a failure.
 export type DataComplexityLeaf = {
   measurement: number;
-} & ScoreAndRating;
-
-export type DataComplexitySubScore = DataComplexityFailure | DataComplexityLeaf;
-
-export type DataComplexityCatalog = (ScoreAndRating | ScoreAndRatingError) & {
-  components: {
-    [G in DataComplexityGroupId]: (ScoreAndRating | ScoreAndRatingError) & {
-      components: Record<
-        DataComplexityGroupComponents[G],
-        DataComplexitySubScore
-      >;
-    };
-  };
+  score: number | null;
+  rating?: DataComplexityRating | null;
+  rating_label?: string | null;
 };
+
+// An internal grouping node. `score` is the rollup of its scored descendants, or absent/null when
+// scoring was skipped (level 0) or cascaded from a failure.
+export type DataComplexityGroup = {
+  score?: number | null;
+  rating?: DataComplexityRating | null;
+  rating_label?: string | null;
+  components: Record<string, DataComplexityNode>;
+};
+
+export type DataComplexityNode =
+  | DataComplexityFailure
+  | DataComplexityLeaf
+  | DataComplexityGroup;
 
 export type DataComplexityScoresResponse = {
   meta: {
     formula_version: number;
     format_version: number;
     synonym_threshold: number;
+    level?: number;
     calculated_at?: string;
     embedding_model?: {
       provider: string;
@@ -171,5 +163,5 @@ export type DataComplexityScoresResponse = {
     } | null;
   };
 } & {
-  [K in DataComplexityCatalogId]: DataComplexityCatalog;
+  [K in DataComplexityCatalogId]: DataComplexityGroup;
 };
