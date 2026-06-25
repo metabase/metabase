@@ -2,8 +2,8 @@ import type React from "react";
 import { type MouseEvent, type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
-import { isEmbedding } from "metabase/embedding/config";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { isEmbedding } from "metabase/embedding/config";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
