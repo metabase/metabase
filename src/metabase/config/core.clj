@@ -146,8 +146,7 @@
   thread's context classloader so that JARs added after build time (via `-cp` or the plugins directory) are seen."
   []
   (try
-    (Class/forName h2-driver-class-name false (.getContextClassLoader (Thread/currentThread)))
-    true
+    (some? (Class/forName h2-driver-class-name false (.getContextClassLoader (Thread/currentThread))))
     (catch Throwable _
       false)))
 
