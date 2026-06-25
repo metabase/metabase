@@ -187,14 +187,16 @@
                                 (constantly {:embedder random-synonym-embedder})]
       (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [& _] nil)]
         (let [resp             (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)
+              ;; Full component path into the response tree (ambiguity leaves now live in the
+              ;; :name / :synonym sub-groups). Keys are snake-cased at the API boundary.
               leaf-path        {:entity_count      [:size      :entity_count]
                                 :field_count       [:size      :field_count]
-                                :name_collisions   [:ambiguity :name_collisions]
-                                :synonym_pairs     [:ambiguity :synonym_pairs]
-                                :repeated_measures [:ambiguity :repeated_measures]}
+                                :name_collisions   [:ambiguity :name    :collisions]
+                                :synonym_pairs     [:ambiguity :synonym :pairs]
+                                :repeated_measures [:ambiguity :name    :repeated_measures]}
               leaf-field       (fn [cat k field]
-                                 (let [[group leaf] (leaf-path k)]
-                                   (get-in resp [cat :components group :components leaf field])))
+                                 (let [path (interpose :components (leaf-path k))]
+                                   (get-in resp (concat [cat :components] path [field]))))
               measurement      (fn [cat k] (leaf-field cat k :measurement))
               component-score  (fn [cat k] (leaf-field cat k :score))
               ;; NOTE: `:synonym_pairs` is intentionally included here even though it's *theoretically*

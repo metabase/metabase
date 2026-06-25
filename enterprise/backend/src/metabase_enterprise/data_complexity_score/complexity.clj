@@ -29,27 +29,29 @@
   "Bump when the response shape changes in a way that breaks consumer parsing, even when scores are equivalent.
 
   v2 added a raft of new scored leaves under `:size`/`:ambiguity`, a new scored `:metadata` grouping,
-  and the nested `:synonym-degree` sub-group — every measure is a scored `{:measurement :score}` leaf."
+  and nested sub-groups under `:ambiguity` (`:name` and `:synonym`, the latter holding `:degree`) —
+  every measure is a scored `{:measurement :score}` leaf. (Kept at 2 because v2 is still unreleased;
+  these are within-v2 shape iterations, not a consumer-observable break.)"
   2)
 
 (def weights
   "Per-axis weights applied to raw measurements. Public because they're part of the scoring
   fingerprint — a tuning change must force a re-score and be visible to Snowplow consumers
   without bumping `formula-version`."
-  {:entity                 10
-   :name-collision         100
-   :synonym-pair           50
-   :field                  1
-   :repeated-measure       2
-   :collection-tree-size   1
-   :field-level-collisions 5
-   ;; CALIBRATION PLACEHOLDERS -- the measures below were descriptive (`{:value}`) before v2 turned
-   ;; every measure into a scored leaf. These weights are NOT yet tuned against real catalogs; they
-   ;; exist so the new measures contribute to the rollup and are subject to a future calibration pass.
-   :fields-per-entity         1
-   :measure-to-dim-ratio      1
-   :name-collisions-density   1
-   :name-concentration        10
+  {;; :size measures
+   :entity               10
+   :field                1
+   :collection-tree-size 1
+   :fields-per-entity    1
+   :measure-to-dim-ratio 1
+   ;; :ambiguity / :name sub-group (keys mirror the leaf paths, sans redundant prefix)
+   :name-collisions         100
+   :name-collisions-density 1
+   :name-concentration      10
+   :name-field-collisions   5
+   :name-repeated-measures  2
+   ;; :ambiguity / :synonym sub-group
+   :synonym-pairs             50
    :synonym-edge-density      1
    :synonym-components        1
    :synonym-largest-component 2
@@ -59,7 +61,10 @@
    :synonym-degree-p50        1
    :synonym-degree-p90        1
    :synonym-degree-max        1
-   ;; Metadata measures score the GAP (1 - coverage), so high curation adds ~0 complexity.
+   ;; CALIBRATION PLACEHOLDERS -- the formerly-descriptive measures (ratios, graph analytics, coverage
+   ;; gaps) are NOT yet tuned against real catalogs; they exist so every measure contributes to the
+   ;; rollup and are subject to a future calibration pass.
+   ;; :metadata measures score the GAP (1 - coverage), so high curation adds ~0 complexity.
    :description-coverage       10
    :field-description-coverage 10
    :semantic-type-coverage     10
@@ -394,13 +399,13 @@
         metric-cards (count (filter #(= :metric (:kind %)) entities))]
     (scored-leaf :measure-to-dim-ratio (safe-ratio (+ measures metric-cards) total-fields))))
 
-;;; ------------------------------- :ambiguity measures -------------------------------
+;;; ------------------------- :ambiguity / :name sub-group measures -------------------------
 
 (defn- score-name-collisions [entities]
-  (scored-leaf :name-collision (repeated-names (map :name entities))))
+  (scored-leaf :name-collisions (repeated-names (map :name entities))))
 
 (defn- score-repeated-measures [entities]
-  (scored-leaf :repeated-measure (repeated-names (mapcat :measure-names entities))))
+  (scored-leaf :name-repeated-measures (repeated-names (mapcat :measure-names entities))))
 
 (defn- score-field-level-collisions
   "Scored: count of distinct normalized field names appearing on more than one distinct table.
@@ -417,7 +422,7 @@
                              {}
                              entities)
         collisions   (count (filter (fn [[_ tables]] (> (count tables) 1)) name->tables))]
-    (scored-leaf :field-level-collisions collisions)))
+    (scored-leaf :name-field-collisions collisions)))
 
 (defn- name-collisions-density
   "Scored: collisions per 100 entities. Undefined (empty catalog) → 0."
@@ -580,46 +585,48 @@
    :max (scored-leaf :synonym-degree-max max)})
 
 (defn- synonym-block
-  "Build the `:ambiguity` synonym variables — the scored `:synonym-pairs`, six scored scalar
-  analytics, and the nested `:synonym-degree` sub-group — from one adjacency graph. `embedder-out`
-  is the already-invoked [[embedder-result]] so the lookup is shared with `:embedding-coverage`.
+  "Build the `:ambiguity :synonym` sub-group — the scored `:pairs`, six scored scalar analytics, and
+  the nested `:degree` sub-group — from one adjacency graph. The orchestrator nests this whole map
+  under `:ambiguity :synonym`, so the leaf keys drop the redundant `synonym-` prefix (the weight-map
+  keys keep it, to stay self-documenting). `embedder-out` is the already-invoked [[embedder-result]]
+  so the lookup is shared with `:embedding-coverage`.
 
   Every measure is a scored leaf now. An undefined analytic (e.g. clustering with no triples, or any
-  ratio at n=0) scores 0 via [[scored-leaf]]. On embedder ERROR, `:synonym-pairs` carries
-  `{:error ... :score nil}` so the nil cascades through `:ambiguity` → the catalog total (visibly
-  distinct from a real zero). n=0 (no embedded names) and n=1 (singleton) are the degenerate graphs."
+  ratio at n=0) scores 0 via [[scored-leaf]]. On embedder ERROR, `:pairs` carries
+  `{:error ... :score nil}` so the nil cascades through `:synonym` → `:ambiguity` → the catalog total
+  (visibly distinct from a real zero). n=0 (no embedded names) and n=1 (singleton) are degenerate."
   [entities {:keys [name->vec error]}]
   (if error
-    {:synonym-pairs             {:error error :score nil}
-     :synonym-edge-density      (scored-leaf :synonym-edge-density 0)
-     :synonym-components        (scored-leaf :synonym-components 0)
-     :synonym-largest-component (scored-leaf :synonym-largest-component 0)
-     :synonym-avg-component     (scored-leaf :synonym-avg-component 0)
-     :synonym-clustering-coef   (scored-leaf :synonym-clustering-coef 0)
-     :synonym-avg-degree        (scored-leaf :synonym-avg-degree 0)
-     :synonym-degree            (degree-group {:p50 0 :p90 0 :max 0})}
+    {:pairs             {:error error :score nil}
+     :edge-density      (scored-leaf :synonym-edge-density 0)
+     :components        (scored-leaf :synonym-components 0)
+     :largest-component (scored-leaf :synonym-largest-component 0)
+     :avg-component     (scored-leaf :synonym-avg-component 0)
+     :clustering-coef   (scored-leaf :synonym-clustering-coef 0)
+     :avg-degree        (scored-leaf :synonym-avg-degree 0)
+     :degree            (degree-group {:p50 0 :p90 0 :max 0})}
     (let [vecs (entity-vectors entities name->vec)
           n    (alength vecs)]
       (cond
         (zero? n)
-        {:synonym-pairs             (scored-leaf :synonym-pair 0)
-         :synonym-edge-density      (scored-leaf :synonym-edge-density 0)
-         :synonym-components        (scored-leaf :synonym-components 0)
-         :synonym-largest-component (scored-leaf :synonym-largest-component 0)
-         :synonym-avg-component     (scored-leaf :synonym-avg-component 0)
-         :synonym-clustering-coef   (scored-leaf :synonym-clustering-coef 0)
-         :synonym-avg-degree        (scored-leaf :synonym-avg-degree 0)
-         :synonym-degree            (degree-group {:p50 0 :p90 0 :max 0})}
+        {:pairs             (scored-leaf :synonym-pairs 0)
+         :edge-density      (scored-leaf :synonym-edge-density 0)
+         :components        (scored-leaf :synonym-components 0)
+         :largest-component (scored-leaf :synonym-largest-component 0)
+         :avg-component     (scored-leaf :synonym-avg-component 0)
+         :clustering-coef   (scored-leaf :synonym-clustering-coef 0)
+         :avg-degree        (scored-leaf :synonym-avg-degree 0)
+         :degree            (degree-group {:p50 0 :p90 0 :max 0})}
 
         (= 1 n)
-        {:synonym-pairs             (scored-leaf :synonym-pair 0)
-         :synonym-edge-density      (scored-leaf :synonym-edge-density 0.0)
-         :synonym-components        (scored-leaf :synonym-components 1)
-         :synonym-largest-component (scored-leaf :synonym-largest-component 1)
-         :synonym-avg-component     (scored-leaf :synonym-avg-component 0)
-         :synonym-clustering-coef   (scored-leaf :synonym-clustering-coef 0)
-         :synonym-avg-degree        (scored-leaf :synonym-avg-degree 0.0)
-         :synonym-degree            (degree-group {:p50 0 :p90 0 :max 0})}
+        {:pairs             (scored-leaf :synonym-pairs 0)
+         :edge-density      (scored-leaf :synonym-edge-density 0.0)
+         :components        (scored-leaf :synonym-components 1)
+         :largest-component (scored-leaf :synonym-largest-component 1)
+         :avg-component     (scored-leaf :synonym-avg-component 0)
+         :clustering-coef   (scored-leaf :synonym-clustering-coef 0)
+         :avg-degree        (scored-leaf :synonym-avg-degree 0.0)
+         :degree            (degree-group {:p50 0 :p90 0 :max 0})}
 
         :else
         (let [{:keys [^objects adj edges]} (build-adjacency vecs synonym-similarity-threshold)
@@ -632,14 +639,14 @@
               ;; so the value stays in [0,100] (a complete graph = 100%). n ≥ 2 here, so the
               ;; denominator is ≥ 1.
               possible-edges (/ (* n (dec n)) 2)]
-          {:synonym-pairs             (scored-leaf :synonym-pair edges)
-           :synonym-edge-density      (scored-leaf :synonym-edge-density (* 100.0 (/ (double ^long edges) (double possible-edges))))
-           :synonym-components        (scored-leaf :synonym-components (count comps))
-           :synonym-largest-component (scored-leaf :synonym-largest-component largest)
-           :synonym-avg-component     (scored-leaf :synonym-avg-component avg-comp)
-           :synonym-clustering-coef   (scored-leaf :synonym-clustering-coef (clustering-coefficient adj n))
-           :synonym-avg-degree        (scored-leaf :synonym-avg-degree (double (/ (* 2.0 ^long edges) (double n))))
-           :synonym-degree            (degree-group (degree-summary adj n))})))))
+          {:pairs             (scored-leaf :synonym-pairs edges)
+           :edge-density      (scored-leaf :synonym-edge-density (* 100.0 (/ (double ^long edges) (double possible-edges))))
+           :components        (scored-leaf :synonym-components (count comps))
+           :largest-component (scored-leaf :synonym-largest-component largest)
+           :avg-component     (scored-leaf :synonym-avg-component avg-comp)
+           :clustering-coef   (scored-leaf :synonym-clustering-coef (clustering-coefficient adj n))
+           :avg-degree        (scored-leaf :synonym-avg-degree (double (/ (* 2.0 ^long edges) (double n))))
+           :degree            (degree-group (degree-summary adj n))})))))
 
 (defn- embedding-coverage
   "Fraction of distinct normalized names with an embedding in `name->vec` (in [0,1]). nil when there
@@ -701,10 +708,15 @@
   surrounding shape defines the `:size`/`:ambiguity`/`:metadata` groupings that [[score-catalog]]
   rolls up; all three now carry a `:score`.
 
+  `:ambiguity` is split into two sub-groups, `:name` (string-layer collisions/density) and
+  `:synonym` (the embedding graph), each a plain internal node that `rollup-node` rolls up to its own
+  `:score` that then feeds `:ambiguity`'s total. `:size` and `:metadata` stay flat.
+
   Cost-tiered by `:level` (default [[default-level]]): level ≥ 1 computes the cheap DB-only measures
-  (scale, nominal, metadata coverage minus embedding-coverage); level ≥ 2 ALSO invokes the embedder
-  and adds the synonym graph (`:synonym-pairs` + the scalar analytics + the `:synonym-degree`
-  sub-group) and `:embedding-coverage`. At level 1 those keys are OMITTED entirely (not zero leaves).
+  (scale, `:name` nominal collisions, metadata coverage minus embedding-coverage); level ≥ 2 ALSO
+  invokes the embedder and adds the `:synonym` sub-group (`:pairs` + the scalar analytics + the
+  nested `:degree` group) and `:embedding-coverage`. At level 1 `:synonym`/`:embedding-coverage` are
+  OMITTED entirely (not zero leaves).
 
   Metadata coverage has inverted polarity (more curation = less complexity), so it scores the GAP
   `(1 - coverage)` — see [[coverage-gap-leaf]]. `:description-quality` scores the raw p50 word count.
@@ -724,12 +736,12 @@
                  :collection-tree-size (score-collection-tree-size collection-count)
                  :fields-per-entity    (fields-per-entity n total-fields)
                  :measure-to-dim-ratio (measure-to-dim-ratio entities total-fields)}
-     :ambiguity (cond-> {:name-collisions         (score-name-collisions entities)
-                         :repeated-measures       (score-repeated-measures entities)
-                         :field-level-collisions  (score-field-level-collisions entities)
-                         :name-collisions-density (name-collisions-density entities)
-                         :name-concentration      (name-concentration entities)}
-                  (>= level 2) (merge (synonym-block entities emb)))
+     :ambiguity (cond-> {:name {:collisions         (score-name-collisions entities)
+                                :collisions-density (name-collisions-density entities)
+                                :concentration      (name-concentration entities)
+                                :field-collisions   (score-field-level-collisions entities)
+                                :repeated-measures  (score-repeated-measures entities)}}
+                  (>= level 2) (assoc :synonym (synonym-block entities emb)))
      :metadata  (cond-> {:description-coverage       (coverage-gap-leaf :description-coverage
                                                                         (safe-ratio (count (filter #(has-description? (:description %)) entities))
                                                                                     n))

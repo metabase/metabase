@@ -22,7 +22,7 @@
 
 (def ^:private Failure
   "Sub-score that couldn't be computed; carries the failure message. A scored leaf whose computation
-  errored (only `:synonym-pairs` can) also carries `:score nil` so the nil cascades through its
+  errored (only `:ambiguity :synonym :pairs` can) also carries `:score nil` so the nil cascades through its
   parent's rollup — see the cascade contract in `complexity/synonym-block`.
   (Named `Failure` rather than `Error` to avoid shadowing `java.lang.Error`.)"
   [:map {:closed true}

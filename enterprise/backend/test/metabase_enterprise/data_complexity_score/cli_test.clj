@@ -52,10 +52,10 @@
         (is (=? {:components {:size      {:components {:entity-count         {:measurement 6.0 :score 60}
                                                        :field-count          {:measurement 3.0 :score 3}
                                                        :collection-tree-size {:measurement 0.0 :score 0}}}
-                              :ambiguity {:components {:name-collisions        {:measurement 1.0 :score 100}
-                                                       :synonym-pairs          {:measurement 1.0 :score 50}
-                                                       :repeated-measures      {:measurement 1.0 :score 2}
-                                                       :field-level-collisions {:measurement 0.0 :score 0}}}
+                              :ambiguity {:components {:name    {:components {:collisions        {:measurement 1.0 :score 100}
+                                                                              :repeated-measures {:measurement 1.0 :score 2}
+                                                                              :field-collisions  {:measurement 0.0 :score 0}}}
+                                                       :synonym {:components {:pairs {:measurement 1.0 :score 50}}}}}
                               :metadata  {:score number?}}}
                 (:library result))))
       (testing "universe primary scored leaves match the hand-derived values"
@@ -63,10 +63,10 @@
         (is (=? {:components {:size      {:components {:entity-count         {:measurement 10.0 :score 100}
                                                        :field-count          {:measurement 5.0  :score 5}
                                                        :collection-tree-size {:measurement 0.0  :score 0}}}
-                              :ambiguity {:components {:name-collisions        {:measurement 2.0  :score 200}
-                                                       :synonym-pairs          {:measurement 2.0  :score 100}
-                                                       :repeated-measures      {:measurement 2.0  :score 4}
-                                                       :field-level-collisions {:measurement 0.0  :score 0}}}}}
+                              :ambiguity {:components {:name    {:components {:collisions        {:measurement 2.0 :score 200}
+                                                                              :repeated-measures {:measurement 2.0 :score 4}
+                                                                              :field-collisions  {:measurement 0.0 :score 0}}}
+                                                       :synonym {:components {:pairs {:measurement 2.0 :score 100}}}}}}}
                 (:universe result))))
       (testing "meta has formula-version + format-version + threshold + level + weights but no :embedding-model (offline mode)"
         ;; Literal 2/2 here is intentional — flags accidental version bumps that would invalidate the
@@ -155,7 +155,8 @@
                                    []
                                    (embedders/file-embedder embeddings)
                                    {})
-                                  [:library :components :ambiguity :components :synonym-pairs :measurement]))]
+                                  [:library :components :ambiguity :components
+                                   :synonym :components :pairs :measurement]))]
         (testing "cosine ≈ 0.50 — above the old 0.30 cutoff, below 0.80: NOT a synonym"
           (is (= 0.0 (score-pairs {"alpha" [1.0 0.0]
                                    "beta"  [0.5 0.866]}))))
