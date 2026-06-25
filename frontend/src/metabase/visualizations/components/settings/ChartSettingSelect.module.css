@@ -7,15 +7,14 @@
 
 .wrapper {
   margin-top: 0;
-}
 
-.section {
-  background-color: unset;
-  z-index: initial;
+  .section {
+    background-color: unset;
+    z-index: initial;
+  }
 }
 
 .input {
-  border: none;
   color: var(--mb-color-text-primary);
   cursor: pointer;
   font-weight: bold;
