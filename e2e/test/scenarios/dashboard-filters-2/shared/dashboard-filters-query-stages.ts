@@ -721,7 +721,9 @@ export function clickAway() {
 
 export function goBackToDashboard() {
   cy.findByLabelText("Back to Test Dashboard").click();
-  cy.wait("@getDashboard");
+  // Returning from a drill reuses the dashboard already in the store, so there
+  // is no GET to wait on; wait for the dashboard itself to be shown instead.
+  cy.findByTestId("dashboard-grid").should("be.visible");
 }
 
 export function getDashboardId(): Cypress.Chainable<number> {
