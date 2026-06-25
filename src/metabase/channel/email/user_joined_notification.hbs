@@ -1,29 +1,32 @@
 {{> metabase/channel/email/_header.hbs }}
-  <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); text-align: center;">
-    <div style="padding-bottom: 1em;">
-      <h2 style="font-weight: normal; color: #4C545B;line-height: 1.65rem;">
-        {{joinedUserName}}
-        {{#if joinedViaSSO}}
-          created a {{applicationName}} account.
-        {{else}}
-          accepted their {{applicationName}} invitation.
-        {{/if}}
-      </h2>
-      <h4 style="font-weight: normal;">
-        <a style="color: #4A90E2; text-decoration: none;" href="mailto:{{{adminEmail}}}">
-          {{joinedUserEmail}}
-        </a>
-        joined {{#if joinedViaSSO}}via Single Sign-On{{/if}} on {{joinedDate}}
-      </h4>
+  <div style="padding-top: 40px; padding-left: 16px; padding-bottom: 96px; padding-right: 16px; box-sizing: border-box; width: 100%; max-width: 600px; background-color: #FFFFFF; border-radius: 24px; border: 1px solid #dcdfe0; margin-top: 32px; margin-left: auto; margin-right: auto;">
+    <div style="margin-bottom: 32px; text-align: center; padding-top: 5px; box-sizing: border-box; padding-bottom: 5px;">
+      <img style="max-height: 46px; max-width: 100%;" src="{{{applicationLogoUrl}}}" alt="{{applicationName}} logo" />
     </div>
-    <div style="padding: 1em;">
-      <a style="{{buttonStyle}}" href="{{joinedUserEditUrl}}">
-        Edit {{joinedUserName}}'s settings
-      </a>
-    </div>
-    <div style="padding-bottom: 2em; font-size: x-small;">
-      Button not working? Paste this link into your browser:<br/>
-      {{{joinedUserEditUrl}}}
+    <div>
+      <div style="max-width: 504px; text-align: center; margin-left: auto; margin-right: auto;">
+        <h2 style="font-weight: 400; color: #2F3C45; line-height: 36px; margin-top: 0; font-size: 27px;">
+          {{#if joinedViaSSO}}
+            {{joinedUserName}} created a {{applicationName}} account
+          {{else}}
+            {{joinedUserName}} accepted their {{applicationName}} invitation
+          {{/if}}
+        </h2>
+      </div>
+      <div style="max-width: 504px; text-align: center; margin-left: auto; margin-right: auto;">
+        <p style="margin-top: 24px; margin-bottom: 32px; line-height: 24px; color: #656F76; font-size: 15px;">
+          <a style="color: #358CD9; text-decoration: none;" href="mailto:{{{adminEmail}}}">{{joinedUserEmail}}</a>
+          joined {{#if joinedViaSSO}}via Single Sign-On {{/if}}on {{joinedDate}}.
+        </p>
+      </div>
+      <div style="padding-right: 0; padding-left: 0; text-align: center; width: 100%;">
+        <a
+          style="font-size: 15px; padding-top: 16px; padding-bottom: 16px; padding-left: 32px; padding-right: 32px; cursor: pointer; text-decoration: none; font-weight: 700; border-radius: 12px; background-color: #358CD9; color: #fff; line-height: 16px; display: inline-block; margin-left: auto; margin-right: auto; min-width: 200px;"
+          href="{{joinedUserEditUrl}}"
+        >Edit {{joinedUserName}}'s settings</a>
+      </div>
     </div>
   </div>
-{{> metabase/channel/email/_footer.hbs }}
+</div>
+</body>
+</html>

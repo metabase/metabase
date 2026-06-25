@@ -137,8 +137,7 @@
       :message-type :html
       :message      (channel.template/render "metabase/channel/email/user_joined_notification.hbs"
                                              (merge (common-context)
-                                                    {:logoHeader        true
-                                                     :joinedUserName    (or (:first_name new-user) (:email new-user))
+                                                    {:joinedUserName    (or (:first_name new-user) (:email new-user))
                                                      :joinedViaSSO      google-auth?
                                                      :joinedUserEmail   (:email new-user)
                                                      :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
