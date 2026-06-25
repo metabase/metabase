@@ -16,7 +16,7 @@
   import that bypassed the model hooks).
 
   Runs from the background sync job and the force-reconcile API (both via the coalescing schedule in
-  [[metabase-enterprise.entity-retrieval.core]]); callers pass the datasource and embedding model, so this
+  [[metabase-enterprise.entity-retrieval.core]]); callers pass the datasource and a model resolver, so this
   namespace reads no settings."
   (:require
    [buddy.core.hash :as buddy-hash]
@@ -239,18 +239,23 @@
 (defn reconcile!
   "Reconcile the pgvector `library_entity_index` with the appdb, blocking until it completes; returns
   {:inserted n :deleted n :unchanged n}.
+  `resolve-model` is a thunk returning the embedding model; it is called only once the advisory lock is
+  held, so a run that waited out a concurrent node embeds with the model current at run time, not one
+  captured before the wait.
   Serialized across nodes by the reconcile advisory lock — a concurrent node makes this wait, not skip.
   See the namespace docstring."
-  [pgvector embedding-model]
+  [pgvector resolve-model]
   (with-open [conn (jdbc/get-connection pgvector)]
     ;; Session-level pg_advisory_lock, not the transaction-scoped pg_advisory_xact_lock that index-table and
     ;; semantic-search use: the run commits per batch and tolerates partial failure across runs, so it must
     ;; not be wrapped in one transaction. Blocking acquire — wait out a concurrent node rather than skip.
     (jdbc/execute! conn [(format "SELECT pg_advisory_lock(%d)" reconcile-lock-id)])
     (try
-      ;; Under the lock too: ensure-tables! can drop+rebuild the vectors table on a model change, which
-      ;; would otherwise pull the table out from under a concurrent node's in-flight run.
-      (index-table/ensure-tables! pgvector embedding-model)
-      (reconcile-against-appdb! pgvector embedding-model)
+      ;; Resolve the model only now, under the lock, so a config change during the lock wait can't make us
+      ;; embed with a stale model. ensure-tables! (which may drop+rebuild on a model change) runs under the
+      ;; lock too, so a rebuild can't pull the table out from under a concurrent node's in-flight run.
+      (let [embedding-model (resolve-model)]
+        (index-table/ensure-tables! pgvector embedding-model)
+        (reconcile-against-appdb! pgvector embedding-model))
       (finally
         (jdbc/execute! conn [(format "SELECT pg_advisory_unlock(%d)" reconcile-lock-id)])))))

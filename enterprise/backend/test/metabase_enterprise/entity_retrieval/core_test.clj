@@ -62,7 +62,7 @@
           (mt/with-dynamic-fn-redefs
             [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
              semantic.embedding/get-configured-model                (constantly ::model)
-             reconcile/reconcile!                                   (fn [_ds _model]
+             reconcile/reconcile!                                   (fn [_ds _resolve-model]
                                                                       (swap! calls inc)
                                                                       {:inserted 3 :deleted 1 :unchanged 2})]
             (testing "idle: the caller starts the run, gets its index diff + timing, and the schedule clears"
@@ -127,7 +127,7 @@
                                :model/Table      {far-id :id}   {:db_id db-id :collection_id data-id :is_published true
                                                                  :active true :name "far" :display_name "far"}]
                   (try
-                    (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
+                    (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                     (testing "the nearer table ranks first; each hit carries the entity ref + matched doc"
                       (is (=? [{:entity {:model "table" :id near-id} :doc_type "name" :doc_text "near"}
                                {:entity {:model "table" :id far-id}}]
@@ -176,7 +176,7 @@
                   (try
                     (let [cse-id (put-ai-context! "table" table-id
                                                   {:instructions "Group by month." :synonyms [synonym]})]
-                      (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
+                      (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                       (testing "the tool returns the table, matched on the curated synonym, with usage_instructions"
                         (is (=? [{:type "table" :id table-id :matched_doc_type "synonym" :matched_text synonym
                                   :usage_instructions "Group by month." :similarity (approx 1.0)}]
@@ -188,7 +188,7 @@
                           (is (empty? (search!)))))
                       (testing "deleting the ai_context via the CRUD API + reconcile drops the synonym doc"
                         (mt/user-http-request :crowberto :delete 204 (str "osi/ai-context/" cse-id))
-                        (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
+                        (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                         (is (empty? (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" WHERE doc_type = 'synonym' AND entity_local_id = %d"
                                                                index-table/*vectors-table* table-id)])))))
                     (finally
@@ -222,7 +222,7 @@
                                                                  :active true :name "beta" :display_name "beta"}]
                   (try
                     (put-ai-context! "table" beta {:synonyms [synonym]})
-                    (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
+                    (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                     ;; raw NN would tie both at distance 0; the 0.02 vs 0.01 doc_type bump puts alpha's name first.
                     (is (= [[alpha "name"] [beta "synonym"]]
                            (mapv (juxt (comp :id :entity) :doc_type) (take 2 (mirror/search q 10)))))

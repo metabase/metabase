@@ -96,7 +96,7 @@
                                                                       :synonyms ["sales" "revenue"]
                                                                       :examples ["orders last month"]}}]
           (testing "first run indexes name/description docs for every library entity, plus ai_context docs"
-            (reconcile/reconcile! ds model)
+            (reconcile/reconcile! ds (constantly model))
             (testing "the published table: name + description + 2 synonyms + 1 example"
               (let [docs (docs-for ds "table" table-id)]
                 (is (= {"name" 1 "description" 1 "synonym" 2 "example" 1}
@@ -106,27 +106,27 @@
               (let [docs (docs-for ds "metric" metric-id)]
                 (is (= {"name" 1 "description" 1} (frequencies (map :doc_type docs)))))))
           (testing "an unchanged second run writes nothing"
-            (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds model))))
+            (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds (constantly model)))))
           (testing "editing instructions is a no-op for the index (instructions are read live, not stored)"
             (let [before (set (map :doc_id (docs-for ds "table" table-id)))]
               (t2/update! :model/OsiAiContext cse-id
                           {:ai_context {:instructions "Group by week."
                                         :synonyms ["sales" "revenue"]
                                         :examples ["orders last month"]}})
-              (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds model)))
+              (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds (constantly model))))
               (is (= before (set (map :doc_id (docs-for ds "table" table-id)))) "doc_ids unchanged")))
           (testing "renaming the table mints a new name doc_id and GCs the old one"
             (let [old-name-id (->> (docs-for ds "table" table-id)
                                    (filter #(= "name" (:doc_type %))) first :doc_id)]
               (t2/update! :model/Table table-id {:display_name "Sales Orders"})
-              (reconcile/reconcile! ds model)
+              (reconcile/reconcile! ds (constantly model))
               (let [names (filter #(= "name" (:doc_type %)) (docs-for ds "table" table-id))]
                 (is (= 1 (count names)))
                 (is (= "Sales Orders" (:doc_text (first names))))
                 (is (not= old-name-id (:doc_id (first names)))))))
           (testing "unpublishing the table removes it from the library, GCing all its docs"
             (t2/update! :model/Table table-id {:is_published false})
-            (reconcile/reconcile! ds model)
+            (reconcile/reconcile! ds (constantly model))
             (is (empty? (docs-for ds "table" table-id)))
             (is (seq (docs-for ds "metric" metric-id)) "the metric is untouched")))))))
 
@@ -144,11 +144,11 @@
                                                            :name          "orders"
                                                            :display_name  "Orders"}]
               (testing "the run returns the diff and populates the index"
-                (let [result (reconcile/reconcile! ds model)]
+                (let [result (reconcile/reconcile! ds (constantly model))]
                   (is (pos? (:inserted result)))
                   (is (seq (docs-for ds "table" table-id)))))
               (testing "a second run writes nothing"
-                (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds model)))))))))))
+                (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds (constantly model))))))))))))
 
 (deftest ^:sequential rebuild-on-model-change-test
   (mt/with-premium-features #{:library :semantic-search}
@@ -161,13 +161,13 @@
                                                          :is_published true :active true
                                                          :name "orders" :display_name "Orders"}]
           (testing "populate the index under the original model"
-            (reconcile/reconcile! ds model)
+            (reconcile/reconcile! ds (constantly model))
             (is (seq (docs-for ds "table" table-id))))
           (testing "a model-identity change drops the vectors table and the next run re-embeds everything"
             (let [new-model (assoc model :model-name "model-v2")]
               (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
               (is (= [] (index-rows ds)))
-              (reconcile/reconcile! ds new-model)
+              (reconcile/reconcile! ds (constantly new-model))
               (is (seq (docs-for ds "table" table-id)))
               (testing "a schema-version mismatch alone also triggers the rebuild"
                 (jdbc/execute! ds [(format "UPDATE \"%s\" SET schema_version = schema_version - 1"
@@ -194,7 +194,7 @@
                                                           :definition (tu/segment-definition orders total 100)}]
             ;; publish the (real, fielded) orders table into the library for the duration of the test
             (mt/with-temp-vals-in-db :model/Table orders {:collection_id data-id :is_published true}
-              (reconcile/reconcile! ds model)
+              (reconcile/reconcile! ds (constantly model))
               (testing "both are indexed with name + description docs"
                 (is (= {"name" 1 "description" 1}
                        (frequencies (map :doc_type (docs-for ds "measure" measure-id)))))
@@ -226,14 +226,14 @@
                                                      :active true :name "a" :display_name "Edited Orig"}
                          :model/Table {leaving :id} {:db_id db-id :collection_id data-id :is_published true
                                                      :active true :name "b" :display_name "Leaving"}]
-            (reconcile/reconcile! ds model)
+            (reconcile/reconcile! ds (constantly model))
             ;; `edited` is renamed (old name doc -> orphan, new name doc -> to-insert);
             ;; `leaving` is unpublished (its docs -> orphans, with nothing in to-insert).
             (t2/update! :model/Table edited {:display_name "Edited New"})
             (t2/update! :model/Table leaving {:is_published false})
             ;; force the insert of the only to-insert batch (edited's new name doc) to fail.
             (mt/with-dynamic-fn-redefs [reconcile/insert-batch! (fn [& _] (throw (ex-info "boom" {})))]
-              (reconcile/reconcile! ds model))
+              (reconcile/reconcile! ds (constantly model)))
             (testing "the edited entity's stale orphan is retained (its replacement insert failed)"
               (is (= #{"Edited Orig"} (set (map :doc_text (docs-for ds "table" edited))))))
             (testing "the entity that left the library is still GC'd (no failed insert of its own)"

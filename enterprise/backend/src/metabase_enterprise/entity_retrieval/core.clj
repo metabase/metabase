@@ -15,6 +15,7 @@
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
@@ -63,34 +64,29 @@
 (defonce ^:private current-run (atom nil))
 (defonce ^:private next-run (atom nil))
 
-(defn- elapsed-ms
-  "Whole milliseconds between two System/nanoTime readings."
-  ^long [^long from ^long to]
-  (Math/round (/ (double (- to from)) 1e6)))
-
 (defn- start-reconcile!
   "Spawn the reconcile future, first awaiting `predecessor` (nil to begin at once) so a queued follow-up
   reflects writes made after the predecessor began.
-  The datasource and embedding model are resolved inside the future just before the run, so a follow-up
-  that executes after a config change reconciles with the current model, not a stale one captured at queue
-  time.
+  The datasource is resolved inside the future; the embedding model is resolved later still, under the
+  reconcile lock (see [[reconcile/reconcile!]]), so a run that waited out a concurrent node uses the
+  current model rather than one captured before the wait.
   Its value is {:index <diff> :execution {:waited_ms _ :ran_ms _}} — index mutations alongside how long the
   run sat queued and then ran.
   On completion it promotes the queued follow-up, if any, to the current run under the lock."
   [predecessor]
   (future
-    (let [scheduled (System/nanoTime)]
+    (let [scheduled (u/start-timer)]
       (when predecessor
         ;; A failed predecessor must not block the follow-up — its writes still need reconciling.
         (try @predecessor (catch Throwable _ nil)))
       (try
-        (let [ds      (semantic.db.datasource/ensure-initialized-data-source!)
-              model   (embedding/get-configured-model)
-              started (System/nanoTime)
-              diff    (reconcile/reconcile! ds model)]
+        (let [ds        (semantic.db.datasource/ensure-initialized-data-source!)
+              waited-ms (Math/round ^double (u/since-ms scheduled))
+              started   (u/start-timer)
+              diff      (reconcile/reconcile! ds embedding/get-configured-model)]
           {:index     diff
-           :execution {:waited_ms (elapsed-ms scheduled started)
-                       :ran_ms    (elapsed-ms started (System/nanoTime))}})
+           :execution {:waited_ms waited-ms
+                       :ran_ms    (Math/round ^double (u/since-ms started))}})
         (finally
           (locking run-lock
             (reset! current-run @next-run)
