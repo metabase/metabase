@@ -52,6 +52,7 @@ export const TreemapChart = ({
     [rawSeries],
   );
 
+  // trigger build
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
   const overlayRef = useRef<TreemapHoverOverlay | null>(null);
