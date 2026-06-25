@@ -318,3 +318,69 @@
       (testing "Fields without lowercase versions should be converted to lowercase"
         (is (= "product"
                (t2/select-one-fn :name :model/Field :id single-field-id)))))))
+
+(defn- audit-view-table
+  "The single active `metabase_table` row for audit view `view-name` (matched case-insensitively),
+   or nil. Used to locate the same view across host engines whose schema/name casing differs."
+  [view-name]
+  (->> (t2/select [:model/Table :id :name :schema :active] :db_id audit/audit-db-id :active true)
+       (filter #(= view-name (u/lower-case-en (:name %))))
+       first))
+
+(deftest audit-db-self-heals-duplicate-rows-from-stale-schema-test
+  ;; GHY-3974 Mode A: when an interrupted or raced `adjust-audit-db-to-host!` leaves an audit
+  ;; `metabase_table` row at a schema the host driver does not report, the next schema sync sees the
+  ;; driver-reported tuple as new (insert) and the existing row as old (retire) — duplicating the view
+  ;; and breaking customer content that still points at the now-inactive row. `ensure-audit-db-installed!`
+  ;; must reconcile back to a single active row per view and leave dependent content on an active table.
+  (mt/test-drivers #{:postgres :h2 :mysql}
+    (with-audit-db-restoration!
+      (ee-audit/ensure-audit-db-installed!)
+      (let [v-content (audit-view-table "v_content")
+            orig-id   (:id v-content)]
+        (is (some? orig-id) "expected a v_content table after install")
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id   audit/audit-db-id
+                        :table_id      orig-id
+                        :dataset_query {:database audit/audit-db-id
+                                        :type     :query
+                                        :query    {:source-table orig-id}}}]
+          (testing "precondition: an interrupted host-adjust + schema sync duplicates the view row"
+            ;; flip the schema to a value the host driver will not report, so the sync diff mismatches
+            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (sync/sync-database! (t2/select-one :model/Database :is_audit true) {:scan :schema})
+            (is (= 2 (t2/count :model/Table :db_id audit/audit-db-id :name (:name v-content)))
+                "stale-schema sync should produce a duplicate pair")
+            (is (false? (t2/select-one-fn :active :model/Table :id orig-id))
+                "the row the customer card points at is retired"))
+          (testing "ensure-audit-db-installed! self-heals the duplicate"
+            (ee-audit/ensure-audit-db-installed!)
+            (let [rows (->> (t2/select [:model/Table :id :name :active] :db_id audit/audit-db-id)
+                            (filter #(= "v_content" (u/lower-case-en (:name %)))))]
+              (is (= 1 (count rows)) "exactly one metabase_table row per view after heal")
+              (is (every? :active rows) "the surviving row is active"))
+            (testing "the customer card still points at an active table"
+              (is (true? (t2/select-one-fn :active :model/Table
+                                           :id (t2/select-one-fn :table_id :model/Card :id card-id)))
+                  "card's table_id must reference an active table after heal"))))))))
+
+(deftest checksum-not-advanced-until-host-adjust-completes-test
+  ;; GHY-3974 Mode B: `last-analytics-checksum` must not advance until the audit DB is fully back at the
+  ;; host-canonical schema. Today the checksum is written right after the serdes load but *before*
+  ;; `adjust-audit-db-to-host!`; a process death in that window leaves rows at the postgres "source"
+  ;; convention (schema="public", postgres types) while the checksum already says "up to date", so
+  ;; `should-load-audit?` returns false forever and the host-adjust never re-runs. If the host-adjust
+  ;; is interrupted, the checksum must stay put so the next boot re-runs the load and the adjust.
+  (mt/test-drivers #{:postgres :h2 :mysql}
+    (t2/delete! :model/Database :is_audit true)
+    (audit/last-analytics-checksum! 0)
+    (testing "an interrupted adjust-audit-db-to-host! does not advance the checksum"
+      (with-redefs [serialization.cmd/v2-load-internal!  (fn [& _] {:seen [] :errors []})
+                    ee-audit/adjust-audit-db-to-host! (fn [& _] (throw (ex-info "host-adjust interrupted" {})))]
+        (is (thrown-with-msg? Exception #"host-adjust interrupted"
+                              (ee-audit/ensure-audit-db-installed!)))
+        (is (= 0 (audit/last-analytics-checksum))
+            "checksum stays 0 so the next boot re-runs the load and host-adjust")))
+    ;; leave a clean-ish state for sibling tests
+    (t2/delete! :model/Database :is_audit true)
+    (audit/last-analytics-checksum! 0)))
