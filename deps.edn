@@ -294,7 +294,11 @@
     ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
-   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"]
+   ;; H2 is the default dev/test data driver but now lives in its own driver module, so its source isn't on the core
+   ;; classpath. Include it here (the H2 JAR is already a `:dev` dep) so every `:dev`/test run can load it without
+   ;; pulling in all of `:drivers`. `:check` and the uberjar build don't use `:dev`, so they still exclude it.
+   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"
+                 "modules/drivers/h2/src"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
