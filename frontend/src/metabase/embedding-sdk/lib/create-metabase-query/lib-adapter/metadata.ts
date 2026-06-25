@@ -212,13 +212,6 @@ const createMeasureMetadataRecord = (
   table_id: tableId,
 });
 
-// The generated schema ships a measure's output column, not its aggregation, but
-// metabase-lib needs a definition to resolve the aggregation column when ordering
-// by the measure. Each record gets a placeholder definition that only makes the
-// column orderable (a numeric count); the executed query references the measure
-// by id, so it never reaches it. It's built on the metadata's source table — the
-// one table guaranteed to resolve — so it works even for measures from mapped
-// tables not otherwise present in the metadata, and it's built once and shared.
 const createMeasureMetadataRecords = (
   measures: readonly MeasureReferenceInput[],
   metadata: MetadataInput,
@@ -243,18 +236,13 @@ const buildPlaceholderAggregationQuery = (
   metadata: MetadataInput,
   databaseId: number,
   sourceId: TableId,
-): DatasetQuery | undefined => {
-  try {
-    return Lib.toJsQuery(
-      Lib.aggregateByCount(
-        createLibQuery(metadata, databaseId, sourceId),
-        STAGE_INDEX,
-      ),
-    );
-  } catch {
-    return undefined;
-  }
-};
+): DatasetQuery =>
+  Lib.toJsQuery(
+    Lib.aggregateByCount(
+      createLibQuery(metadata, databaseId, sourceId),
+      STAGE_INDEX,
+    ),
+  );
 
 const createQuestionMetadataRecord = (cardId: number, databaseId: number) => ({
   id: cardId,
@@ -278,7 +266,7 @@ const createMetricCardMetadataRecord = (
     sourceTableId: number | null;
     sourceCardId: number | null;
   },
-  datasetQuery: DatasetQuery | undefined,
+  datasetQuery: DatasetQuery,
 ) => ({
   id: metricId,
   name: `Metric ${metricId}`,
