@@ -48,3 +48,18 @@
         (is (= 200 (.getWidth b)))
         (finally
           (image-buffer/release b))))))
+
+(deftest multiple-buffers-per-size-are-pooled-test
+  (testing "the pool keeps more than one idle buffer per size, so same-size renders each reuse one"
+    (let [a (image-buffer/acquire 50 50)
+          b (image-buffer/acquire 50 50)]
+      (is (not (identical? a b)))
+      (image-buffer/release a)
+      (image-buffer/release b)
+      (let [x (image-buffer/acquire 50 50)
+            y (image-buffer/acquire 50 50)]
+        (try
+          (is (= #{a b} #{x y}) "both released buffers were reused")
+          (finally
+            (image-buffer/release x)
+            (image-buffer/release y)))))))

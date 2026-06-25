@@ -53,8 +53,7 @@
       (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB))))
 
 (mu/defn release
-  "Return `img` to the pool so it can be reused. Safe to call with `nil`."
-  [img :- [:maybe (ms/InstanceOfClass BufferedImage)]]
-  (when img
-    (.offer ^ConcurrentLinkedQueue (queue-for (.getWidth ^BufferedImage img) (.getHeight ^BufferedImage img))
-            (SoftReference. img))))
+  "Return `img` to the pool so it can be reused."
+  [img :- (ms/InstanceOfClass BufferedImage)]
+  (.offer ^ConcurrentLinkedQueue (queue-for (.getWidth ^BufferedImage img) (.getHeight ^BufferedImage img))
+          (SoftReference. img)))
