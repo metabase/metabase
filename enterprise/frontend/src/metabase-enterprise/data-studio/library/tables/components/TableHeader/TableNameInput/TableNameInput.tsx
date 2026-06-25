@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
-import { PaneHeaderInput } from "metabase/data-studio/common/components/PaneHeader";
+import { PaneHeaderInput } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { Table } from "metabase-types/api";
 

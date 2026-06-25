@@ -1,5 +1,5 @@
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import type { MetricPageProps } from "metabase/common/metrics/types";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 
 import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";

@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { useGetTableSelectionInfoQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { trackDataStudioTableUnpublished } from "metabase/data-studio/analytics";
+import { trackDataStudioTableUnpublished } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { UnpublishTablesModalProps } from "metabase/plugins";
 import {

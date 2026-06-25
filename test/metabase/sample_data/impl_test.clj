@@ -14,6 +14,7 @@
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses-rest.api-test :as api.database-test]
    [toucan2.core :as t2])
@@ -203,6 +204,28 @@
         (is (not (t2/exists? :model/DashboardTab :id (:id tab)))))
       (testing "the Example collection is preserved (the engine swap no longer deletes it)"
         (is (t2/exists? :model/Collection :id (:id examples)))))))
+
+(deftest replace-sample-database-survives-dangling-visualizer-ref-test
+  (testing "The engine swap completes when a sample dashcard has a dangling visualizer ref"
+    (mt/with-temp
+      [:model/Database  old-sample  {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}
+       :model/Card      sample-card {:database_id (:id old-sample)}
+       :model/Dashboard sample-dash {}
+       :model/DashboardCard dc {:dashboard_id (:id sample-dash), :card_id (:id sample-card)}]
+      ;; Inject a dangling visualizer ref via raw SQL so the model's hooks don't reject/rewrite it.
+      (t2/query-one {:update (t2/table-name :model/DashboardCard)
+                     :set    {:visualization_settings
+                              (json/encode {:visualization
+                                            {:columnValuesMapping
+                                             {:COLUMN_1 [{:sourceId "card:gEnfWx10SmfjiccZpcGrj"}]}}})}
+                     :where  [:= :id (:id dc)]})
+      (with-redefs [config/load-sample-content? (constantly false)]
+        (testing "the replacement completes instead of throwing on the dangling ref"
+          (is (nil? (#'sample-data/update-sample-database-if-needed! old-sample)))))
+      (testing "the old sample DB and the dashboard emptied by its removal are deleted"
+        (is (not (t2/exists? :model/Database :id (:id old-sample))))
+        (is (not (t2/exists? :model/Card :id (:id sample-card))))
+        (is (not (t2/exists? :model/Dashboard :id (:id sample-dash))))))))
 
 (def ^:private edn-example-collection-entity-id
   "Stable entity id of the bundled Examples collection in sample-content.edn."

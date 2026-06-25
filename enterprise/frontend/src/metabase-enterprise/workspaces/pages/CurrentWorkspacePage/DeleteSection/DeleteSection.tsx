@@ -1,7 +1,7 @@
 import { jt, t } from "ttag";
 
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { Button, Code, Group, Text } from "metabase/ui";
 import { useDeleteCurrentWorkspaceMutation } from "metabase-enterprise/api";
 
