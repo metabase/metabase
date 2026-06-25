@@ -54,24 +54,8 @@ const mergeTableColumns = (
     ({ name }) =>
       secondTableColumns.findIndex((col) => col.name === name) === -1,
   );
-  const removedColumns = secondTableColumns
-    .filter(
-      ({ name }) =>
-        firstTableColumns.findIndex((col) => col.name === name) === -1,
-    )
-    .map(({ name }) => name);
-  const shouldRemoveSecondOnlyColumns =
-    addedColumns.length > 0 &&
-    removedColumns.length > 0 &&
-    secondTableColumns.length <= firstTableColumns.length;
 
-  return [
-    ...secondTableColumns.filter(
-      ({ name }) =>
-        !shouldRemoveSecondOnlyColumns || !removedColumns.includes(name),
-    ),
-    ...addedColumns,
-  ];
+  return [...secondTableColumns, ...addedColumns];
 };
 
 export const isSettingHiddenOnDashboards = (
