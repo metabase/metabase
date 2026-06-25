@@ -119,7 +119,7 @@ jobs:
 
             uploadCsvToMb({
               baseUrl: "https://stats.metabase.com",
-              tableId: 79417,
+              tableId: 79702,
               jsonData: data,
               mode: "append",
             }).then(() => {
