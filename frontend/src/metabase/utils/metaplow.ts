@@ -1,4 +1,5 @@
 import { init, track } from "@metabase/track";
+import { isObject } from "underscore";
 
 import Settings from "metabase/utils/settings";
 
@@ -16,7 +17,7 @@ const getSanitizedUrl = (url: string) => {
 };
 
 interface MetaplowConfig {
-  getUserId: () => string;
+  getUserId: () => number | undefined;
 }
 
 export function initMetaplow(config: MetaplowConfig): void {
@@ -24,12 +25,25 @@ export function initMetaplow(config: MetaplowConfig): void {
   if (!metaplowUrl) {
     return;
   }
+  const hostUrl = metaplowUrl.replace(/\/send$/, "");
 
   init({
     website: METAPLOW_WEBSITE_ID,
-    hostUrl: metaplowUrl,
+    hostUrl,
     tag: "metabase-instance",
-    beforeSend: (_type, payload) => {
+    beforeSend: (type, originalPayload) => {
+      let payload = originalPayload as Record<string, unknown>;
+
+      // Replace default pageview behavior with our own custom pageview tracking
+      const isAutoPageView = type === "event" && !payload.name;
+      if (isAutoPageView) {
+        return;
+      }
+      if (payload.name === "pageview" && isObject(payload.data)) {
+        payload = { ...payload, url: payload.data.url };
+        delete (payload.data as Record<string, unknown>).url;
+      }
+
       return {
         ...payload,
         url:
@@ -37,8 +51,13 @@ export function initMetaplow(config: MetaplowConfig): void {
             ? getSanitizedUrl(payload.url)
             : "",
         id: Settings.get("analytics-uuid") ?? "",
+        referrer: "", // TODO: Is unsetting this still needed?
+        title: "", // TODO: Is unsetting this still needed?
         hostname: anonymizedHostname,
-        user_id: config.getUserId(),
+        data: {
+          ...(payload.data as Record<string, unknown> | undefined),
+          user_id: config.getUserId(),
+        },
       };
     },
   });
@@ -47,10 +66,10 @@ export function initMetaplow(config: MetaplowConfig): void {
 export function trackMetaplowEvent(
   name: string,
   data: Record<string, unknown> = {},
-): void {
-  track(name, data);
+) {
+  return track(name, data);
 }
 
-export function trackMetaplowPageView() {
-  track("pageview");
+export function trackMetaplowPageView(url: string) {
+  return track("pageview", { url });
 }
