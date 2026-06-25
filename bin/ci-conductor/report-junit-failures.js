@@ -54,12 +54,6 @@ function elementBody(inner) {
   return text.trim();
 }
 
-/** First line is often `foo_test.clj:1184`; pull the basename out if so. */
-function fileFromLines(lines) {
-  const match = lines[0]?.match(/^(\S+\.clj[cs]?):\d+/);
-  return match ? match[1] : undefined;
-}
-
 /**
  * Parse one JUnit XML document into ci-conductor `tests[]` entries — one per
  * `<testcase>` that carries a `<failure>` or `<error>`. Multiple problems in a
@@ -97,13 +91,12 @@ function parseJunit(xml) {
         .filter((body) => body !== "")
         .join("\n\n");
       const lines = stack.split("\n").filter((line) => line.trim() !== "");
-      const file = fileFromLines(lines);
-      // The first line is usually the file:line locator; the meaningful summary
-      // is the line after it (the testing context / assertion).
+      // The first line of the failure body (the `file:line` locator); the full
+      // trace, including this line, stays in `stack`.
       const attrMessage = problems
         .map((p) => attr(p[2], "message"))
         .find((m) => m != null && m !== "");
-      const message = attrMessage ?? (file ? lines[1] : lines[0]) ?? undefined;
+      const message = attrMessage ?? lines[0] ?? undefined;
 
       tests.push({
         name,

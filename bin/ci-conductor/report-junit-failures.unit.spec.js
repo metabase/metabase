@@ -69,8 +69,8 @@ describe("parseJunit", () => {
     // file_path is intentionally null — backend identity is (suite, path, name).
     expect(test.file).toBeNull();
     expect(test.status).toBe("failure");
-    // The message skips the file:line locator line.
-    expect(test.message).toBe("unwrapping a boolean wrapper stays idempotent");
+    // The message is the first line of the failure body — the file:line locator.
+    expect(test.message).toBe("repair_test.clj:1184");
     // The stack carries both failures.
     expect(test.stack).toContain("repair_test.clj:1184");
     expect(test.stack).toContain("repair_test.clj:1186");
