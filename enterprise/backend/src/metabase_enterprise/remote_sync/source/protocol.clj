@@ -56,27 +56,6 @@
 
     Returns the file contents as a string, or nil if the file doesn't exist.")
 
-  (write-files! [snapshot message files]
-    "Writes multiple files to the source with a commit message.
-
-    Takes a SourceSnapshot instance implementing this protocol, a message (the commit message to use when writing files),
-    and files (a sequence of file specs). Each file spec is a map with :path and :content keys.
-
-    All existing files within managed directories that are not in the write set are removed.
-    Files outside managed directories are always preserved.
-
-    Returns the version of the written files.")
-
-  (apply-changes! [snapshot message upserts delete-paths]
-    "Incrementally updates the source: writes/overwrites `upserts`, removes `delete-paths`,
-    and PRESERVES every other existing file (unlike `write-files!`, which deletes managed-dir
-    files absent from the write set).
-
-    Takes a SourceSnapshot instance, a commit message, `upserts` (a sequence of file specs, each
-    a map with :path and :content), and `delete-paths` (a sequence of path strings to remove).
-
-    Returns the version of the written files.")
-
   (open-commit [snapshot]
     "Begin building one commit incrementally; returns a CommitBuilder.")
 

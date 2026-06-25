@@ -696,7 +696,7 @@
                      :pushed pushed-count
                      :branch (settings/remote-sync-branch)}})
         ;; The merge was pushed to `version`, but its commit can't be resolved locally (should not happen —
-        ;; write-files! updates the local ref before returning). Fail loudly rather than silently advancing
+        ;; finish-commit! updates the local ref before returning). Fail loudly rather than silently advancing
         ;; the version while skipping the reconcile, which would leave local missing the folded-in remote
         ;; changes. The push already landed, so a retry sees the divergence and re-merges + reconciles.
         (throw (ex-info (format (str "Merge pushed to %s but its commit could not be resolved locally to "

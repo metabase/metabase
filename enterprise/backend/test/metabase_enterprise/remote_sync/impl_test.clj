@@ -1672,8 +1672,6 @@ serdes/meta:
     (version [_] version)
     (list-files [_] [])
     (read-file [_ _] nil)
-    (write-files! [_ _ _] version)
-    (apply-changes! [_ _ _ _] version)
     (open-commit [_]
       (reify source.p/CommitBuilder
         (stage-upsert! [_ _] nil)

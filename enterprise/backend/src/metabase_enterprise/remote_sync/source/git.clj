@@ -361,34 +361,6 @@
       (.finish builder))
     (->GitCommit snapshot inserter reader rev-walk index (.editor index) parent-id)))
 
-(defn- with-staged
-  "Open a commit on `snapshot`, run `stage!` (given the CommitBuilder), and finish — or abort on any throw."
-  [snapshot ^String message stage!]
-  (let [c (open-commit* snapshot)]
-    (try
-      (stage! c)
-      (source.p/finish-commit! c message)
-      (catch Throwable e
-        (source.p/abort-commit! c)
-        (throw e)))))
-
-(defn- write-files!
-  "Full export: replace every managed dir wholesale with `files` (managed-dir files not in `files` are
-  removed), preserving everything outside the managed dirs."
-  [snapshot ^String message files]
-  (with-staged snapshot message
-    (fn [c]
-      (source.p/replace-all! c)
-      (doseq [f files] (source.p/stage-upsert! c f)))))
-
-(defn- apply-changes!
-  "Incremental patch: write `upserts`, remove `delete-paths`, and preserve every other file."
-  [snapshot ^String message upserts delete-paths]
-  (with-staged snapshot message
-    (fn [c]
-      (doseq [u upserts] (source.p/stage-upsert! c u))
-      (doseq [p delete-paths] (source.p/stage-delete! c p)))))
-
 (defn branches
   "Retrieves all branch names from the remote repository.
 
@@ -465,12 +437,6 @@
 
   (read-file [this path]
     (read-file this path))
-
-  (write-files! [this message files]
-    (write-files! this message files))
-
-  (apply-changes! [this message upserts delete-paths]
-    (apply-changes! this message upserts delete-paths))
 
   (open-commit [this]
     (open-commit* this))

@@ -34,12 +34,6 @@
     (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
       (source.p/read-file original-snapshot path)))
 
-  (write-files! [_ _message _files]
-    (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
-
-  (apply-changes! [_ _message _upserts _delete-paths]
-    (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
-
   (open-commit [_]
     (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
 
@@ -106,31 +100,6 @@
                            spec)))
           stream)))
 
-(defn store!
-  "Stores serialized entities from a stream to a remote source and commits the changes.
-
-  Takes a stream (a sequence of serialized entities to be stored), a snapshot (the remote source
-  implementing the SourceSnapshot protocol where files will be written), a task-id (the RemoteSyncTask
-  identifier used to track progress updates), and a message (the commit message to use when writing
-  files to the source).
-
-  Returns `{:version <written-version> :entries [{:model_type :entity_id :path} ...]}`."
-  [stream snapshot task-id message]
-  (let [opts         (serdes/storage-base-context)
-        stream-count (bounded-count 10000 stream)
-        entries      (volatile! [])
-        version      (->> stream
-                          (map-indexed (fn [idx entity]
-                                         (let [spec (entity->file-spec opts entity)]
-                                           (vswap! entries conj {:model_type (-> entity :serdes/meta last :model)
-                                                                 :entity_id  (:entity_id entity)
-                                                                 :path       (:path spec)})
-                                           (remote-sync.task/update-progress!
-                                            task-id (-> (min (inc idx) stream-count) (/ stream-count) (* 0.65) (+ 0.3)))
-                                           spec)))
-                          (source.p/write-files! snapshot message))]
-    {:version version :entries @entries}))
-
 (defn- snapshot->specs
   "Reads a snapshot's managed-directory files into a sequence of `{:path :content}` specs, matching the
   shape produced by [[serialize-specs]]. Used to read the merge base and remote-tip trees for merging."
@@ -164,14 +133,12 @@
 
 (defn specs->snapshot
   "Builds an in-memory read-only SourceSnapshot backed by `specs` (a seq of `{:path :content}`), so merged
-  content can be loaded into the app DB without writing it to git. `write-files!` is unsupported."
+  content can be loaded into the app DB without writing it to git. Writing is unsupported."
   [specs]
   (let [by-path (into {} (map (juxt :path :content)) specs)]
     (reify source.p/SourceSnapshot
       (list-files [_] (vec (keys by-path)))
       (read-file [_ path] (get by-path path))
-      (write-files! [_ _ _] (throw (ex-info "in-memory merge snapshot is read-only" {})))
-      (apply-changes! [_ _ _ _] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (open-commit [_] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (version [_] nil))))
 
@@ -199,6 +166,20 @@
   [stream snapshot]
   (remote-sync.merge/force-push-casualties [] (serialize-specs stream nil) (snapshot->specs snapshot)))
 
+(defn- replace-all-files!
+  "Wholesale-commit `file-specs` ({:path :content}) to `snapshot`: clear the managed dirs, stage every spec,
+  and push. Returns the new version; aborts the commit on any error."
+  [snapshot message file-specs]
+  (let [commit (source.p/open-commit snapshot)]
+    (try
+      (source.p/replace-all! commit)
+      (doseq [spec file-specs]
+        (source.p/stage-upsert! commit spec))
+      (source.p/finish-commit! commit message)
+      (catch Throwable e
+        (source.p/abort-commit! commit)
+        (throw e)))))
+
 (defn merge-and-store!
   "Like [[store!]], but reconciles the freshly serialized local state against a remote branch that has
   advanced beyond the last sync. Performs an entity-identity 3-way merge of:
@@ -214,7 +195,7 @@
     (if (seq conflicts)
       {:status :conflict :conflicts conflicts :summary summary}
       {:status  :success
-       :version (source.p/write-files! snapshot message merged)
+       :version (replace-all-files! snapshot message merged)
        :summary summary})))
 
 (defn source-from-settings
