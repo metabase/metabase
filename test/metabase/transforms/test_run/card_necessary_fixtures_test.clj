@@ -56,13 +56,13 @@
    :dataset_query {:type :query :database 1 :query {:source-table (first table-ids)}}
    ::tables       table-ids})
 
-(defn- run-fixture
+(defn- run-fixture!
   "Exercise `card->necessary-fixtures` for `card` + `source-ids` over
   `all-transforms`, with `table-dependencies` and `card->tables` both rebound."
   [card source-ids all-transforms]
   (let [deps-fn (stub-deps-lookup all-transforms)]
     (with-redefs [transforms-base.i/table-dependencies deps-fn
-                  card-refs/card->tables               (fn [c] (::tables c))]
+                  card-refs/card->tables               ::tables]
       (subgraph/card->necessary-fixtures card source-ids all-transforms))))
 
 ;;; ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@
 (deftest card-reads-only-raw-table-test
   (testing "card whose tables have no producer → :slice empty, :leaf-deps = #{{:table 999}}"
     (let [card   (make-card #{999})
-          result (run-fixture card #{} [])]
+          result (run-fixture! card #{} [])]
       (is (= #{} (:slice result))
           "no transforms in scope → empty slice")
       (is (= [] (:order result)))
@@ -97,7 +97,7 @@
     ;; By selecting S as source, we cut at S: S's inputs (table 50) become fixtures,
     ;; and T's other input table-150 (from U, which is NOT selected) becomes a fixture too.
     (let [card   (make-card #{200})
-          result (run-fixture card #{10} [s t u])]
+          result (run-fixture! card #{10} [s t u])]
       (is (= #{10 20} (:slice result))
           "S and T are in the slice; U is excluded (not selected)")
       (is (= [10 20] (:order result))
@@ -110,7 +110,7 @@
 (deftest card-reads-one-transform-select-target-as-source-test
   (testing "select T itself as source → minimal slice #{T}, T's inputs are all fixtures"
     (let [card   (make-card #{200})
-          result (run-fixture card #{20} [s t u])]
+          result (run-fixture! card #{20} [s t u])]
       (is (= #{20} (:slice result))
           "only T is in the slice")
       (is (= [20] (:order result)))
@@ -121,7 +121,7 @@
 (deftest card-reads-mix-of-produced-and-raw-table-test
   (testing "card reads T's output + raw table 999; sources = T → fixtures include both T's inputs and table 999"
     (let [card   (make-card #{200 999})
-          result (run-fixture card #{20} [s t u])]
+          result (run-fixture! card #{20} [s t u])]
       (is (= #{20} (:slice result)))
       (is (= [20] (:order result)))
       ;; T's inputs {:table 100} and {:table 150} are leaves (producers not in slice).
@@ -132,7 +132,7 @@
 (deftest card-reads-mix-select-deeper-source-test
   (testing "card reads T's output + raw table 999; sources = S → slice = #{S T}, U excluded"
     (let [card   (make-card #{200 999})
-          result (run-fixture card #{10} [s t u])]
+          result (run-fixture! card #{10} [s t u])]
       (is (= #{10 20} (:slice result))
           "S and T; U excluded")
       ;; S's input {:table 50}: leaf (S is selected source).
@@ -149,7 +149,7 @@
     (let [s1    (make-transform 10 100 #{{:table 50}})
           s2    (make-transform 11 101 #{{:table 50}})
           card  (make-card #{100 101})
-          result (run-fixture card #{10 11} [s1 s2])]
+          result (run-fixture! card #{10 11} [s1 s2])]
       (is (= #{10 11} (:slice result)))
       (is (= [10 11] (:order result)))
       (is (= #{{:table 50}} (:leaf-deps result))
@@ -160,7 +160,7 @@
     ;; Outer card's card->tables returns #{200} (what the transitive BFS would yield
     ;; for a card that sources an inner card which reads T's output table 200).
     (let [card   (make-card #{200})
-          result (run-fixture card #{20} [s t u])]
+          result (run-fixture! card #{20} [s t u])]
       ;; T's inputs are fixtures since T is its own source boundary.
       (is (= #{20} (:slice result)))
       (is (= #{{:table 100} {:table 150}} (:leaf-deps result))
@@ -173,9 +173,9 @@
     (let [card (make-card #{200})]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"do not feed"
-           (run-fixture card #{99} [s t u])))
+           (run-fixture! card #{99} [s t u])))
       (try
-        (run-fixture card #{99} [s t u])
+        (run-fixture! card #{99} [s t u])
         (catch clojure.lang.ExceptionInfo e
           (is (= ::subgraph/sources-not-ancestors
                  (:error-type (ex-data e)))
@@ -192,7 +192,7 @@
           b     (make-transform 2 200 #{{:table 100}})
           c     (make-transform 3 300 #{{:table 200}})
           card  (make-card #{300})
-          result (run-fixture card #{2} [a b c])]
+          result (run-fixture! card #{2} [a b c])]
       (is (= #{2 3} (:slice result))
           "B and C in slice; A excluded")
       (is (= [2 3] (:order result))
@@ -203,7 +203,7 @@
 (deftest card-reads-no-tables-test
   (testing "card with empty table set → no slice, no order, no fixtures"
     (let [card   (make-card #{})
-          result (run-fixture card #{} [])]
+          result (run-fixture! card #{} [])]
       (is (= #{} (:slice result)))
       (is (= [] (:order result)))
       (is (= #{} (:leaf-deps result))))))

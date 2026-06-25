@@ -83,7 +83,7 @@
 (deftest build-transform-details-output-db-set-for-db-slot-driver-test
   (testing ":output-db in transform details equals :db from output-target for a db-slot driver"
     ;; Stub connection-spec so build-transform-details doesn't hit the real app DB.
-    (with-redefs [metabase.driver/connection-spec (fn [_drv _db] {:subprotocol "stub"})]
+    (with-redefs [driver/connection-spec (fn [_drv _db] {:subprotocol "stub"})]
       (let [output-target {:schema "myschema"
                            :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
                            :db     "my_catalog"}
@@ -94,7 +94,7 @@
 
 (deftest build-transform-details-output-db-nil-for-non-db-slot-driver-test
   (testing ":output-db is nil for a non-db-slot driver (regression guard)"
-    (with-redefs [metabase.driver/connection-spec (fn [_drv _db] {:subprotocol "stub"})]
+    (with-redefs [driver/connection-spec (fn [_drv _db] {:subprotocol "stub"})]
       (let [output-target {:schema "public"
                            :table  "mb_transform_temp_table_test_abc123_aabbccdd_out"
                            :db     nil}

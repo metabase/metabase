@@ -26,13 +26,20 @@
    :type     :query
    :query    {:source-table (str "card__" (:id c))}})
 
+(defn- table-query
+  "A dataset_query whose source is the physical table `table-id`."
+  [table-id]
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table table-id}})
+
 ;;; ---------------------------------------------------------------------------
 ;;; Linear chain: A → B → physical table
 ;;; ---------------------------------------------------------------------------
 
 (deftest linear-chain-test
   (testing "Linear chain A→B→physical table: card->tables returns the leaf table"
-    (mt/with-temp [:model/Card b {:dataset_query (mt/mbql-query orders {})}
+    (mt/with-temp [:model/Card b {:dataset_query (table-query (mt/id :orders))}
                    :model/Card a {:dataset_query (source-card-query b)}]
       (is (= #{(mt/id :orders)}
              (card-refs/card->tables a))
@@ -44,7 +51,7 @@
 
 (deftest diamond-test
   (testing "Diamond A→{B,C}→D: shared descendant D expanded once; union of tables correct"
-    (mt/with-temp [:model/Card d {:dataset_query (mt/mbql-query orders {})}
+    (mt/with-temp [:model/Card d {:dataset_query (table-query (mt/id :orders))}
                    :model/Card b {:dataset_query (source-card-query d)}
                    :model/Card c {:dataset_query (source-card-query d)}
                    :model/Card a {:dataset_query {:database (mt/id)
@@ -69,7 +76,7 @@
 (deftest cycle-terminates-test
   (testing "Cycle A→B→A terminates without infinite loop or exception"
     ;; We create A and B manually so we can set up mutual references.
-    (mt/with-temp [:model/Card a {:dataset_query (mt/mbql-query orders {})}
+    (mt/with-temp [:model/Card a {:dataset_query (table-query (mt/id :orders))}
                    :model/Card b {:dataset_query (source-card-query a)}]
       ;; Now update A to source from B, creating the cycle A→B→A.
       (t2/update! :model/Card (:id a) {:dataset_query (source-card-query b)})
@@ -85,7 +92,7 @@
 
 (deftest mixed-table-and-card-test
   (testing "Root card references both a physical table and a source card: union of all tables"
-    (mt/with-temp [:model/Card inner {:dataset_query (mt/mbql-query people {})}
+    (mt/with-temp [:model/Card inner {:dataset_query (table-query (mt/id :people))}
                    :model/Card root  {:dataset_query
                                       {:database (mt/id)
                                        :type     :query
@@ -118,7 +125,7 @@
 
 (deftest batching-contract-test
   (testing "BFS issues one card-row load per LAYER, not per card"
-    (mt/with-temp [:model/Card d {:dataset_query (mt/mbql-query orders {})}
+    (mt/with-temp [:model/Card d {:dataset_query (table-query (mt/id :orders))}
                    :model/Card b {:dataset_query (source-card-query d)}
                    :model/Card c {:dataset_query (source-card-query d)}
                    :model/Card a {:dataset_query {:database (mt/id)
@@ -129,11 +136,12 @@
                                                                       :condition    [:= 1 1]
                                                                       :fields       :none}]}}}]
       (let [load-count (atom 0)]
-        (with-redefs [card-refs/batch-load-cards
-                      (fn [ids]
-                        (swap! load-count inc)
-                        ;; delegate to the real impl
-                        (t2/select :model/Card :id [:in ids]))]
+        (mt/with-dynamic-fn-redefs [card-refs/batch-load-cards
+                                    (fn [ids]
+                                      (swap! load-count inc)
+                                      ;; call t2/select directly, not batch-load-cards — the
+                                      ;; replacement must not re-enter the redefined var.
+                                      (t2/select :model/Card :id [:in ids]))]
           (card-refs/card->tables a)
           (is (= 2 @load-count)
               (str "Expected 2 batch loads (one per layer: {B,C} then {D}), "

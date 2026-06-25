@@ -18,7 +18,7 @@
 
 (deftest mbql-physical-table-test
   (testing "MBQL question over a single physical table: table id in :tables, :cards empty"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders {})}]
+    (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id) :type :query :query {:source-table (mt/id :orders)}}}]
       (let [{:keys [tables cards]} (card-refs/card->immediate-refs card)]
         (is (= #{(mt/id :orders)} tables))
         (is (= #{} cards))))))
@@ -48,7 +48,7 @@
 
 (deftest mbql-source-card-test
   (testing "MBQL question whose source is another card: source card id in :cards, not its tables"
-    (mt/with-temp [:model/Card source {:dataset_query (mt/mbql-query orders {})}
+    (mt/with-temp [:model/Card source {:dataset_query {:database (mt/id) :type :query :query {:source-table (mt/id :orders)}}}
                    :model/Card card   {:dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (str "card__" (:id source))}}}]
@@ -64,7 +64,10 @@
 (deftest metric-card-test
   (testing "Metric card (:type :metric) is structurally an MBQL card: table id in :tables"
     (mt/with-temp [:model/Card metric {:type          :metric
-                                       :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}]
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (mt/id :orders)
+                                                                  :aggregation  [[:count]]}}}]
       (let [{:keys [tables cards]} (card-refs/card->immediate-refs metric)]
         (is (= #{(mt/id :orders)} tables))
         (is (= #{} cards))))))

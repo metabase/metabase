@@ -15,7 +15,6 @@
   (:require
    [clojure.set :as set]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.metadata.jvm :as lib-be.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.core :as sql-tools]
@@ -122,7 +121,7 @@
   ;; application-database-metadata-provider call builds a fresh provider and pays
   ;; its own metadata round-trips; with it, same-db-id calls collapse to a cached
   ;; lookup after the first, so per-card construction within a layer is free.
-  (lib-be.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [root-refs (card->immediate-refs card)]
       (loop [tables   (:tables root-refs)
              visited  #{(:id card)}
