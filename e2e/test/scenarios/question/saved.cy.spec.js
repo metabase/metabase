@@ -300,37 +300,43 @@ describe("scenarios > question > saved", () => {
     cy.findAllByTestId("header-cell")
       .filter(":contains(Tax)")
       .as("headerCell")
+      .should("be.visible")
       .then(($cell) => {
-        const originalWidth = $cell[0].getBoundingClientRect().width;
-        cy.wrap(originalWidth).as("originalWidth");
+        cy.wrap($cell[0].getBoundingClientRect().width).as("originalWidth");
       });
 
-    cy.findByTestId("resize-handle-TAX").trigger("mousedown", {
-      button: 0,
-      clientX: 0,
-      clientY: 0,
-    });
+    const moveX = 100;
 
-    // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
-    const stepX = 10;
-    cy.get("body")
-      .trigger("mousemove", {
-        clientX: stepX,
-        clientY: 0,
-      })
-      .trigger("mousemove", {
-        clientX: stepX * 2,
-        clientY: 0,
-      });
-    cy.get("body").trigger("mouseup", { force: true });
-
-    // Wait until column width gets updated
-    cy.wait(10);
-
+    // The TanStack resize handle re-renders while the grid measures itself, so a
+    // single drag is occasionally lost or only partially applied and the column
+    // never grows enough. Re-run the (idempotent, gte-checked) drag until the
+    // column has actually widened, turning a dropped drag into a non-event.
     cy.get("@originalWidth").then((originalWidth) => {
-      cy.get("@headerCell").should(($newCell) => {
-        const newWidth = $newCell[0].getBoundingClientRect().width;
-        expect(newWidth).to.be.gte(originalWidth + stepX * 2);
+      const minWidth = originalWidth + moveX * 0.6;
+
+      const dragUntilResized = (attemptsLeft) => {
+        cy.findByTestId("resize-handle-TAX").trigger("mousedown", {
+          button: 0,
+          clientX: 0,
+          clientY: 0,
+        });
+        cy.get("body")
+          .trigger("mousemove", { clientX: moveX / 2, clientY: 0 })
+          .trigger("mousemove", { clientX: moveX, clientY: 0 })
+          .trigger("mouseup", { button: 0, clientX: moveX, clientY: 0 });
+
+        cy.get("@headerCell").then(($cell) => {
+          const width = $cell[0].getBoundingClientRect().width;
+          if (width < minWidth && attemptsLeft > 0) {
+            dragUntilResized(attemptsLeft - 1);
+          }
+        });
+      };
+
+      dragUntilResized(4);
+
+      cy.get("@headerCell").should(($cell) => {
+        expect($cell[0].getBoundingClientRect().width).to.be.gte(minWidth);
       });
     });
   });

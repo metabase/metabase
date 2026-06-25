@@ -11,6 +11,7 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]
@@ -44,6 +45,21 @@
   (and
    (some? semantic.db.datasource/db-url)
    (semantic.settings/semantic-search-enabled)))
+
+(defn build-hnsw-index-async!
+  "Build the HNSW index on the active semantic search index in the background, returning promptly.
+
+  No-ops when semantic search isn't available on this instance. Backs the just-in-time HNSW build, which
+  runs only when an instance is configured to the `:hnsw` vector-search strategy."
+  []
+  (when (semantic.util/semantic-search-available?)
+    (future
+      (try
+        (semantic.pgvector-api/ensure-active-hnsw-index! (semantic.env/get-pgvector-datasource!)
+                                                         (semantic.env/get-index-metadata))
+        (catch Throwable t
+          (log/error t "Failed to build HNSW index for semantic search")))))
+  nil)
 
 (defn- with-zero-semantic-distance-score
   "Record a 0 `:semantic-distance` score on `results` that lack it, for a consistent merged-result score breakdown."

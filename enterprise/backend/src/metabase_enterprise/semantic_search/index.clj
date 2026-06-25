@@ -12,6 +12,7 @@
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -466,9 +467,33 @@
   [index]
   (index-name index "_content_idx"))
 
+(defn create-hnsw-index-if-not-exists!
+  "Create the HNSW index on the `embedding` column of `index`'s table, if it does not already exist.
+
+  HNSW indexes are expensive to build and maintain, so we only create one when an instance is configured to
+  use the `:hnsw` vector-search strategy (see [[create-index-table-if-not-exists!]] and the async build
+  triggered by [[metabase-enterprise.semantic-search.settings/semantic-search-vector-strategy]]).
+
+  Pass `concurrently? true` to build with `CREATE INDEX CONCURRENTLY` (for a populated table whose writes
+  shouldn't be locked out); it must run outside a transaction."
+  [connectable index & {:keys [concurrently?] :or {concurrently? false}}]
+  (let [{:keys [table-name]} index
+        ;; HoneySQL emits CONCURRENTLY in the wrong position (before INDEX), so splice it into the
+        ;; formatted statement instead: `CREATE INDEX CONCURRENTLY IF NOT EXISTS ...` is valid Postgres.
+        [sql & params] (sql-format-quoted
+                        (sql.helpers/create-index
+                         [(keyword (hnsw-index-name index)) :if-not-exists]
+                         [(keyword table-name) :using-hnsw [[:raw "embedding vector_cosine_ops"]]]))
+        sql            (cond-> sql
+                         concurrently? (str/replace-first "CREATE INDEX " "CREATE INDEX CONCURRENTLY "))]
+    (jdbc/execute! connectable (into [sql] params))))
+
 (defn create-index-table-if-not-exists!
   "Ensure that the index table exists and is ready to be populated. If
-  force-reset? is true, drops and recreates the table if it exists."
+  force-reset? is true, drops and recreates the table if it exists.
+
+  The HNSW index is only created when the instance is configured for the `:hnsw` vector-search strategy;
+  otherwise it is built just-in-time when the strategy is configured (see [[create-hnsw-index-if-not-exists!]])."
   [connectable index & {:keys [force-reset?] :or {force-reset? false}}]
   (try
     (let [{:keys [embedding-model table-name]} index
@@ -483,12 +508,8 @@
        (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
            (sql.helpers/with-columns (index-table-schema vector-dimensions))
            sql-format-quoted))
-      (jdbc/execute!
-       connectable
-       (-> (sql.helpers/create-index
-            [(keyword (hnsw-index-name index)) :if-not-exists]
-            [(keyword table-name) :using-hnsw [[:raw "embedding vector_cosine_ops"]]])
-           sql-format-quoted))
+      (when (= :hnsw (semantic-settings/semantic-search-vector-strategy))
+        (create-hnsw-index-if-not-exists! connectable index))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
@@ -910,72 +931,78 @@
         search-string (:search-string search-context)]
     (if (str/blank? search-string)
       {:results [] :raw-count 0}
-      (let [timer (u/start-timer)
+      (do
+        (when (and (= :hnsw (vector-search-strategy search-context))
+                   (not (semantic.util/index-exists? db (hnsw-index-name index))))
+          (throw (ex-info (str "HNSW vector-search strategy requested but no HNSW index exists. "
+                               "Set the semantic-search-vector-strategy setting to :hnsw to build it.")
+                          {:table-name (:table-name index)})))
+        (let [timer (u/start-timer)
 
-            ;; Warm the pool concurrently with the embedding round-trip: the pool holds zero idle
-            ;; connections by default (see semantic-search.db.datasource), so the first search after an
-            ;; idle period would otherwise pay the connection handshake serially on top of the embedding
-            ;; latency.
-            _ (warm-connection-pool-async! db)
-            embedding (tracing/with-span :search "search.semantic.embedding"
-                        {:search.semantic/provider   (:provider embedding-model)
-                         :search.semantic/model-name (:model-name embedding-model)}
-                        (embedding/get-embedding embedding-model
-                                                 (embedding/prefix-search-query embedding-model search-string)
-                                                 {:type :query :record-tokens? true}))
-            embedding-time-ms (u/since-ms timer)
+              ;; Warm the pool concurrently with the embedding round-trip: the pool holds zero idle
+              ;; connections by default (see semantic-search.db.datasource), so the first search after an
+              ;; idle period would otherwise pay the connection handshake serially on top of the embedding
+              ;; latency.
+              _ (warm-connection-pool-async! db)
+              embedding (tracing/with-span :search "search.semantic.embedding"
+                          {:search.semantic/provider   (:provider embedding-model)
+                           :search.semantic/model-name (:model-name embedding-model)}
+                          (embedding/get-embedding embedding-model
+                                                   (embedding/prefix-search-query embedding-model search-string)
+                                                   {:type :query :record-tokens? true}))
+              embedding-time-ms (u/since-ms timer)
 
-            db-timer (u/start-timer)
-            weights (search.config/weights search-context)
-            scorers (scoring/semantic-scorers (:table-name index) search-context)
-            query (scored-search-query index embedding search-context scorers)
-            xform (comp (map decode-legacy-input)
-                        (map (partial legacy-input-with-score weights (keys scorers))))
-            reducible (reducible-search-query db query)
-            raw-results (tracing/with-span :search "search.semantic.db-query"
-                          {:search/query-length (count search-string)}
-                          (into [] xform reducible))
-            db-query-time-ms (u/since-ms db-timer)
+              db-timer (u/start-timer)
+              weights (search.config/weights search-context)
+              scorers (scoring/semantic-scorers (:table-name index) search-context)
+              query (scored-search-query index embedding search-context scorers)
+              xform (comp (map decode-legacy-input)
+                          (map (partial legacy-input-with-score weights (keys scorers))))
+              reducible (reducible-search-query db query)
+              raw-results (tracing/with-span :search "search.semantic.db-query"
+                            {:search/query-length (count search-string)}
+                            (into [] xform reducible))
+              db-query-time-ms (u/since-ms db-timer)
 
-            filter-timer (u/start-timer)
-            filtered-results (tracing/with-span :search "search.semantic.permission-filter"
-                               {:search.semantic/raw-count (count raw-results)}
-                               (->> raw-results
-                                    filter-read-permitted
-                                    (apply-collection-id-filter search-context)
-                                    (mapv search/collapse-id)))
-            filter-time-ms (u/since-ms filter-timer)
+              filter-timer (u/start-timer)
+              filtered-results (tracing/with-span :search "search.semantic.permission-filter"
+                                 {:search.semantic/raw-count (count raw-results)}
+                                 (->> raw-results
+                                      filter-read-permitted
+                                      (apply-collection-id-filter search-context)
+                                      (mapv search/collapse-id)))
+              filter-time-ms (u/since-ms filter-timer)
 
-            appdb-scorers (scoring/appdb-scorers search-context)
-            appdb-scores-timer (u/start-timer)
-            final-results (->> filtered-results
-                               (scoring/with-appdb-scores search-context appdb-scorers weights))
-            appdb-scores-time-ms (u/since-ms appdb-scores-timer)
-            total-time-ms (u/since-ms timer)]
-        (log/debug "Semantic search"
-                   {:search-string-length (count search-string)
-                    :raw-results-count (count raw-results)
-                    :final-results-count (count final-results)
-                    :embedding-time-ms embedding-time-ms
-                    :db-query-time-ms db-query-time-ms
-                    :filter-time-ms filter-time-ms
-                    :appdb-scores-time-ms appdb-scores-time-ms
-                    :total-time-ms total-time-ms})
-        (analytics/inc! :metabase-search/semantic-embedding-ms
-                        {:embedding-model (:name embedding-model)}
-                        embedding-time-ms)
-        (analytics/inc! :metabase-search/semantic-db-query-ms
-                        {:embedding-model (:name embedding-model)}
-                        db-query-time-ms)
-        (analytics/inc! :metabase-search/semantic-appdb-scores-ms
-                        appdb-scores-time-ms)
-        (analytics/inc! :metabase-search/semantic-search-ms
-                        {:embedding-model (:name embedding-model)}
-                        total-time-ms)
-        (comment
-          (jdbc/execute! db (sql-format-quoted query)))
-        {:results final-results
-         :raw-count (count raw-results)}))))
+              appdb-scorers (scoring/appdb-scorers search-context)
+              appdb-scores-timer (u/start-timer)
+              final-results (->> filtered-results
+                                 (scoring/with-appdb-scores search-context appdb-scorers weights))
+              appdb-scores-time-ms (u/since-ms appdb-scores-timer)
+              total-time-ms (u/since-ms timer)]
+          (log/debug "Semantic search"
+                     {:search-string-length (count search-string)
+                      :raw-results-count (count raw-results)
+                      :final-results-count (count final-results)
+                      :embedding-time-ms embedding-time-ms
+                      :db-query-time-ms db-query-time-ms
+                      :filter-time-ms filter-time-ms
+                      :appdb-scores-time-ms appdb-scores-time-ms
+                      :total-time-ms total-time-ms})
+          (analytics/inc! :metabase-search/semantic-embedding-ms
+                          {:embedding-model (:name embedding-model)}
+                          embedding-time-ms)
+          (analytics/inc! :metabase-search/semantic-db-query-ms
+                          {:embedding-model (:name embedding-model)}
+                          db-query-time-ms)
+          (analytics/inc! :metabase-search/semantic-appdb-scores-ms
+                          appdb-scores-time-ms)
+          (analytics/inc! :metabase-search/semantic-search-ms
+                          {:embedding-model (:name embedding-model)}
+                          total-time-ms)
+          (comment
+            (jdbc/execute! db (sql-format-quoted query)))
+          {:results final-results
+           :raw-count (count raw-results)})))))
 
 (defn- row-present?
   "Whether a single `(model, id)` row survives `where` against the index `table`."

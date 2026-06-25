@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
+import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import { Badge, Group, Loader, Stack, Title } from "metabase/ui";
 import { useListBrokenGraphNodesQuery } from "metabase-enterprise/api";
 import { DependencyList } from "metabase-enterprise/dependencies/components/DependencyList";

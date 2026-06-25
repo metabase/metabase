@@ -11,14 +11,14 @@ import { EditableText } from "metabase/common/components/EditableText";
 import { Unauthorized } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Link } from "metabase/common/components/Link";
-import { useToast } from "metabase/common/hooks";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
   PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
+import { useToast } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Card, Flex, Stack } from "metabase/ui";
