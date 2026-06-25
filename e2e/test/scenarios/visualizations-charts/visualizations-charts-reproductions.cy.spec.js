@@ -665,7 +665,9 @@ describe("issue 21665", () => {
 
     H.visitDashboard("@dashboardId");
 
-    cy.get("@dashboardLoaded").should("have.callCount", 3);
+    // Saving the dashboard no longer triggers an extra reload (the save response
+    // is reused), so it loads twice: once on initial visit, once on re-visit.
+    cy.get("@dashboardLoaded").should("have.callCount", 2);
     cy.findByTestId("dashcard")
       .findByText(
         "Some columns are missing, this card might not render correctly.",
