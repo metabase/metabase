@@ -466,6 +466,13 @@
       (is (= {:type "tool-output-available" :toolCallId "call-1" :output "rows"}
              output-event)
           "only the LLM-facing output string goes on the wire")))
+  (testing "a result map without :output keeps internal keys off the wire"
+    (let [[output-event] (sse-events [{:type :tool-output :id "call-i" :function "clarify"
+                                       :result {:instructions "internal LLM steering — never show the client"
+                                                :data-parts   [{:type "data-foo"}]}}])]
+      (is (= {:type "tool-output-available" :toolCallId "call-i" :output ""}
+             output-event)
+          "no :output key -> empty wire output; internal :instructions/:data-parts never leak")))
   (testing "tool error becomes tool-output-error"
     (is (= {:type "tool-output-error" :toolCallId "call-2" :errorText "Tool failed"}
            (first (sse-events [{:type :tool-output :id "call-2" :error {:message "Tool failed"}}])))))

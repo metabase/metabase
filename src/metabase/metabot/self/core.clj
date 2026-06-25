@@ -268,7 +268,7 @@
   [result]
   (cond
     (string? result) result
-    (map? result)    (or (:output result) (json/encode result))
+    (map? result)    (or (:output result) "")
     (nil? result)    ""
     :else            (str result)))
 
