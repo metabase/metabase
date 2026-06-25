@@ -128,7 +128,7 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
         h={24}
         className={S.iconCircle}
         bd="1px solid var(--mb-color-border-neutral)"
-        bg="background-primary"
+        bg="background_page-primary"
       >
         <Icon name={icon} c="text-tertiary" size={12} />
       </Center>

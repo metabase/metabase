@@ -554,7 +554,8 @@
 
                                      (not force-deletion?)
                                      (into (:deletion-conflicts @conflicts)))))
-            incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))]
+            incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))
+            dirty?             (delay (remote-sync.object/dirty?))]
         (cond
           ;; --- Merge mode: fold remote changes into local, keeping un-pushed local changes. ---
           merge?
@@ -592,7 +593,8 @@
                :message message})
 
             :else
-            (let [imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
+            (let [_             (log/info "Remote sync full import: forced")
+                  imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
               (log/info "Successfully reloaded entities from git repository")
               {:status :success
                :version snapshot-version
@@ -611,7 +613,7 @@
 
           ;; Incremental fast-path: no local drift and the change is incrementally loadable. Tested before the
           ;; conflict. It touches only changed files, so it can't wholesale-delete unsynced transforms.
-          (and (not (remote-sync.object/dirty?))
+          (and (not @dirty?)
                (not= :remote-sync/incremental-not-possible @incremental-plan))
           (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
 
@@ -625,7 +627,12 @@
              :message message})
 
           :else ;; fall back to full import
-          (let [imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
+          (let [reason        (cond
+                                @dirty?       "local changes pending"
+                                first-import? "first import"
+                                :else         "changes not incrementally loadable")
+                _             (log/infof "Remote sync full import: %s" reason)
+                imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
             (log/info "Successfully reloaded entities from git repository")
             {:status :success
              :version snapshot-version
@@ -1069,7 +1076,9 @@
           (cond
             ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
             force?
-            (full-export! snapshot task-id message sync-timestamp)
+            (do
+              (log/info "Remote sync full export: forced overwrite")
+              (full-export! snapshot task-id message sync-timestamp))
 
             (and diverged? merge?)
             (cond
@@ -1100,7 +1109,9 @@
             (incremental-export! @plan @disabled-files task-id snapshot message sync-timestamp)
 
             :else ;; fall back to full
-            (full-export! snapshot task-id message sync-timestamp))))
+            (do
+              (log/info "Remote sync full export: a pending change can't be applied incrementally")
+              (full-export! snapshot task-id message sync-timestamp)))))
       (catch Exception e
         ;; handle-task-result! records the failure on this result, and skips entirely when the task
         ;; was already cancelled (ended_at set) — so cancellation needs no special case here.

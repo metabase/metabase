@@ -11,7 +11,7 @@
 
 .pinned {
   position: relative;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 
   --border-style: 1px solid var(--mb-color-border-neutral);
 
@@ -32,12 +32,12 @@
   cursor: pointer;
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &:focus:not(.disabled) {
     outline: none;
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &:focus-visible {
@@ -46,10 +46,10 @@
 }
 
 .content.active {
-  background-color: var(--mb-color-background-selected);
+  background-color: var(--mb-color-background_surface-selected);
 
   &:hover {
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
   }
 }
 

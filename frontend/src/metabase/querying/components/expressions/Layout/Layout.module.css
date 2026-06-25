@@ -21,7 +21,7 @@
     --main-width: 460px;
     --sidebar-width: 180px;
 
-    background: var(--mb-color-background-primary);
+    background: var(--mb-color-background_page-primary);
     position: fixed;
     top: 0;
     left: 0;

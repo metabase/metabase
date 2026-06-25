@@ -2,7 +2,13 @@ import { createMockMetadata } from "__support__/metadata";
 import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type {
+  RemoteSyncEntity,
+  RemoteSyncEntityStatus,
+} from "metabase-types/api";
 import {
+  createMockCollection,
+  createMockRemoteSyncEntity,
   createMockStructuredDatasetQuery,
   createMockTemplateTag,
   createMockTransform,
@@ -10,7 +16,23 @@ import {
   createMockTransformTarget,
 } from "metabase-types/api/mocks";
 
-import { buildTreeData, getIncrementalWarning } from "./utils";
+import {
+  buildTreeData,
+  getDescendantCollectionIds,
+  getFolderSyncColor,
+  getIncrementalWarning,
+  getSyncColorForEntities,
+} from "./utils";
+
+const dirtyEntity = (
+  status: RemoteSyncEntityStatus,
+  overrides: Partial<RemoteSyncEntity> = {},
+): RemoteSyncEntity =>
+  createMockRemoteSyncEntity({
+    model: "transform",
+    sync_status: status,
+    ...overrides,
+  });
 
 jest.mock("metabase/transforms/utils", () => ({
   getLibQuery: jest.fn(),
@@ -120,6 +142,120 @@ describe("buildTreeData", () => {
     expect(result[1].owner).toMatchObject({ email: "external@example.com" });
     expect(result[1].owner_email).toBe("external@example.com");
     expect(result[2].owner).toBeUndefined();
+  });
+});
+
+describe("getDescendantCollectionIds", () => {
+  it("includes the folder's own collection id and all nested folder ids", () => {
+    const collections = [
+      createMockCollection({
+        id: 1,
+        name: "Parent",
+        children: [
+          createMockCollection({
+            id: 2,
+            name: "Child",
+            children: [createMockCollection({ id: 3, name: "Grandchild" })],
+          }),
+        ],
+      }),
+    ];
+
+    const [parentNode] = buildTreeData(collections, []);
+
+    expect(getDescendantCollectionIds(parentNode)).toEqual(new Set([1, 2, 3]));
+  });
+
+  it("ignores transform leaves and counts only collection ids", () => {
+    const collections = [
+      createMockCollection({ id: 10, name: "Folder", children: [] }),
+    ];
+    const transforms = [
+      createMockTransform({ id: 99, name: "T", collection_id: 10 }),
+    ];
+
+    const [folderNode] = buildTreeData(collections, transforms);
+
+    expect(getDescendantCollectionIds(folderNode)).toEqual(new Set([10]));
+  });
+});
+
+describe("getSyncColorForEntities", () => {
+  it("returns undefined when there are no changes", () => {
+    expect(getSyncColorForEntities([])).toBeUndefined();
+  });
+
+  it("colors a created entity green (success)", () => {
+    expect(getSyncColorForEntities([dirtyEntity("create")])).toBe("success");
+  });
+
+  it("colors an updated entity amber (warning)", () => {
+    expect(getSyncColorForEntities([dirtyEntity("update")])).toBe("warning");
+  });
+
+  it("colors a removed entity red (danger)", () => {
+    expect(getSyncColorForEntities([dirtyEntity("removed")])).toBe("danger");
+  });
+});
+
+describe("getFolderSyncColor", () => {
+  const collection = (id: number, status: RemoteSyncEntityStatus) =>
+    dirtyEntity(status, { id, model: "collection" });
+  const childTransform = (
+    collectionId: number,
+    status: RemoteSyncEntityStatus,
+  ) =>
+    dirtyEntity(status, {
+      id: 100 + collectionId,
+      collection_id: collectionId,
+    });
+
+  it("returns undefined when the subtree has no changes", () => {
+    expect(getFolderSyncColor([], 1)).toBeUndefined();
+  });
+
+  it("colors a brand-new folder green", () => {
+    expect(getFolderSyncColor([collection(1, "create")], 1)).toBe("success");
+  });
+
+  it("colors a renamed or moved folder amber, not green", () => {
+    expect(getFolderSyncColor([collection(1, "update")], 1)).toBe("warning");
+  });
+
+  it("colors an existing folder amber when it only contains new children", () => {
+    expect(getFolderSyncColor([childTransform(1, "create")], 1)).toBe(
+      "warning",
+    );
+  });
+
+  it("colors an existing folder amber when a child was removed", () => {
+    expect(getFolderSyncColor([childTransform(1, "removed")], 1)).toBe(
+      "warning",
+    );
+  });
+
+  it("keeps a brand-new folder green even with new children", () => {
+    expect(
+      getFolderSyncColor(
+        [collection(1, "create"), childTransform(1, "create")],
+        1,
+      ),
+    ).toBe("success");
+  });
+
+  it("keeps nested brand-new folders green (new folder > new folder > new transform)", () => {
+    const subtree = [
+      collection(1, "create"),
+      collection(2, "create"),
+      childTransform(2, "create"),
+    ];
+    expect(getFolderSyncColor(subtree, 1)).toBe("success");
+    expect(
+      getFolderSyncColor(
+        [collection(2, "create"), childTransform(2, "create")],
+        2,
+      ),
+    ).toBe("success");
   });
 });
 

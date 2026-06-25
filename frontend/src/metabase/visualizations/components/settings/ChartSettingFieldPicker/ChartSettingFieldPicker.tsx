@@ -122,7 +122,7 @@ export const ChartSettingFieldPicker = ({
     <Group
       className={cx(S.root, className)}
       data-testid="chartsettings-field-picker"
-      bg="background-primary"
+      bg="background_page-primary"
       align="center"
     >
       <ChartSettingSelect

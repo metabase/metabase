@@ -237,7 +237,7 @@ describe("AISettingsPage", () => {
 
     expect(
       await screen.findByRole("switch", {
-        name: "Only use Verified content",
+        name: "Only use verified or curated content",
       }),
     ).toBeChecked();
   });

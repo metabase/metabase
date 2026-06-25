@@ -50,7 +50,7 @@ export const OptionItem = styled.div<OptionItemProps>`
         `
       : css`
           color: var(--mb-color-text-primary);
-          background-color: var(--mb-color-background-primary);
+          background-color: var(--mb-color-background_page-primary);
         `}
 
   &:hover {
@@ -58,7 +58,7 @@ export const OptionItem = styled.div<OptionItemProps>`
       !props.selected &&
       css`
         color: var(--mb-color-text-hover);
-        background-color: var(--mb-color-background-hover);
+        background-color: var(--mb-color-background_surface-hover);
       `}
   }
 `;

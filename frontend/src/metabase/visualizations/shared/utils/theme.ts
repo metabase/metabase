@@ -15,7 +15,7 @@ function getPieBorderColor(
     return dashboardCardBg;
   }
   if (questionBg === "transparent") {
-    return "var(--mb-color-background-primary)";
+    return "var(--mb-color-background_page-primary)";
   }
   return questionBg;
 }

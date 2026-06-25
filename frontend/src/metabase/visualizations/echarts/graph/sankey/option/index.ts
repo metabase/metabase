@@ -71,7 +71,7 @@ export const getSankeyChartOption = (
       color: renderingContext.getColor("text-primary"),
       fontSize: SANKEY_CHART_STYLE.edgeLabels.size,
       textBorderWidth: SANKEY_CHART_STYLE.edgeLabels.textBorderWidth,
-      textBorderColor: renderingContext.getColor("background-primary"),
+      textBorderColor: renderingContext.getColor("background_page-primary"),
       fontFamily: renderingContext.fontFamily,
     },
     emphasis: {
@@ -92,7 +92,7 @@ export const getSankeyChartOption = (
       fontWeight: nodeLabelStyle.weight,
       fontFamily: nodeLabelStyle.family,
       textBorderWidth: SANKEY_CHART_STYLE.nodeLabels.textBorderWidth,
-      textBorderColor: renderingContext.getColor("background-primary"),
+      textBorderColor: renderingContext.getColor("background_page-primary"),
       formatter: (param) => {
         const shouldTruncate = layout.nodeIndicesWithTruncatedLabels?.has(
           param.dataIndex,

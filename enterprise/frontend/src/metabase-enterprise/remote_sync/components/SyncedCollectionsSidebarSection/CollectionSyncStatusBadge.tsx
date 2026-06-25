@@ -10,6 +10,7 @@ export const CollectionSyncStatusBadge = () => (
       h="0.5rem"
       w="0.5rem"
       mr="xs"
+      flex="0 0 auto"
       data-testid="remote-sync-status"
     />
   </Tooltip>

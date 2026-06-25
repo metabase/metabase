@@ -1,5 +1,3 @@
-import { SOFT_RELOAD_CARD } from "metabase/redux/query-builder";
-
 import { reducer } from "./index";
 
 const UPDATE = "metabase/entities/UPDATE";
@@ -124,27 +122,29 @@ describe("entities reducer", () => {
   });
 
   describe("custom slice reducers", () => {
-    it("runs the questions custom reducer after merging entities", () => {
-      const merged = reducer(undefined, {
+    it("runs the tables custom reducer after merging entities", () => {
+      const seeded = reducer(undefined, {
         type: UPDATE,
         payload: {
           entities: {
-            questions: { 1: { id: 1, moderated_status: null } },
+            tables: {
+              5: { id: 5, original_fields: [{ id: 100, name: "Old" }] },
+            },
           },
         },
       });
 
-      const next = reducer(merged, {
-        type: SOFT_RELOAD_CARD,
+      const next = reducer(seeded, {
+        type: UPDATE,
         payload: {
-          id: 1,
-          moderation_reviews: [{ status: "verified", most_recent: true }],
+          entities: {
+            fields: { 100: { id: 100, table_id: 5, name: "New" } },
+          },
         },
       });
 
-      expect(next.questions[1]).toMatchObject({
-        id: 1,
-        moderated_status: "verified",
+      expect(next.tables[5]).toMatchObject({
+        original_fields: [{ id: 100, name: "New" }],
       });
     });
   });
