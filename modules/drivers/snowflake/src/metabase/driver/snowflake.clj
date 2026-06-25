@@ -1033,36 +1033,14 @@
         cols   (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
     [[(format "ALTER TABLE %s CLUSTER BY (%s)" target cols)]]))
 
-(defn- split-top-level-commas
-  "Split on commas not nested inside parens, so an expression clustering key like `TO_DATE(ts), category` keeps its
-  function args intact."
-  [^String s]
-  (loop [i 0, depth 0, start 0, acc []]
-    (if (< i (.length s))
-      (let [c (.charAt s i)]
-        (cond
-          (= c \()                     (recur (inc i) (inc depth) start acc)
-          (= c \))                     (recur (inc i) (dec depth) start acc)
-          (and (= c \,) (zero? depth))  (recur (inc i) depth (inc i) (conj acc (subs s start i)))
-          :else                        (recur (inc i) depth start acc)))
-      (conj acc (subs s start)))))
-
-(defn- unquote-ident
-  "Strip surrounding double-quotes off a quoted identifier (unescaping doubled quotes); leaves bare names and
-  expressions untouched."
-  [^String s]
-  (if (and (> (count s) 1) (str/starts-with? s "\"") (str/ends-with? s "\""))
-    (str/replace (subs s 1 (dec (count s))) "\"\"" "\"")
-    s))
-
 (defn- parse-clustering-key
   "Parse a Snowflake `CLUSTERING_KEY` string like `LINEAR(category, price)` into its top-level column names/expressions
   in order. Returns nil for a table with no clustering key."
   [clustering-key]
   (when-let [s (not-empty (some-> clustering-key str/trim))]
     (let [inner (or (second (re-matches #"(?is)\s*LINEAR\s*\((.*)\)\s*" s)) s)]
-      (->> (split-top-level-commas inner)
-           (map (comp unquote-ident str/trim))
+      (->> (driver.common/split-top-level-commas inner)
+           (map #(driver.common/unquote-ident (str/trim %) \"))
            (remove str/blank?)
            vec))))
 
