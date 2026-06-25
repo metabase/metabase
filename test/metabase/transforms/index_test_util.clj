@@ -33,7 +33,7 @@
 
 (defn- mysql-indexes
   [database schema table]
-  ;; MySQL has no schema layer, so a transform target's `schema` is nil; fall back to the connection's bound database.
+  ;; MySQL has no schemas, so `schema` is nil; fall back to the connection's database.
   (->> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                    [(str "SELECT DISTINCT index_name FROM information_schema.statistics "
                          "WHERE table_schema = COALESCE(?, DATABASE()) AND table_name = ?")
@@ -77,8 +77,8 @@
                 :expected         {:sorting-key  "(category)"
                                    :skip-indexes [{:name "by_price" :type "minmax" :expr "(price)" :granularity 1}]}
                 :physical-indexes clickhouse-indexes}
-   ;; MySQL: standalone btree + fulltext. A TEXT column can't be btree-indexed without a prefix length, so btree
-   ;; goes on `price` (float) while fulltext, which requires a text column, goes on `category`.
+   ;; btree goes on `price` because a TEXT column needs a prefix length to be btree-indexed; fulltext needs text,
+   ;; so it goes on `category`.
    :mysql      {:indexes          [{:kind :btree :name "by_price" :columns [{:name "price"}]}
                                    {:kind :fulltext :name "ft_category" :columns [{:name "category"}]}]
                 :expected         #{"by_price" "ft_category"}

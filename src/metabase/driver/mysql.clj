@@ -1448,14 +1448,13 @@
 
 (defmethod driver/supported-index-methods :mysql
   [_driver _database]
-  ;; btree (with a UNIQUE modifier) and fulltext, both standalone. Spatial is niche and InnoDB silently rewrites
-  ;; USING HASH into btree, so neither is offered.
+  ;; spatial is niche, and InnoDB silently rewrites USING HASH into btree, so neither is offered.
   (let [name+cols [driver.common/index-name-field driver.common/index-columns-field]]
     {:btree    {:lifecycle :standalone :fields (conj name+cols driver.common/index-unique-field)}
      :fulltext {:lifecycle :standalone :fields name+cols}}))
 
 (defn- mysql-index-column-sql
-  "Quote one indexed column; append its `ASC`/`DESC` direction only for btree (fulltext has no per-column order)."
+  "Quote an indexed column, appending `ASC`/`DESC` only for btree (fulltext has no per-column order)."
   [btree? {col-name :name :keys [direction]}]
   (cond-> (sql.u/quote-name :mysql :field col-name)
     (and btree? direction) (str " " (u/upper-case-en (name direction)))))
@@ -1474,7 +1473,7 @@
             cols)))
 
 (defn- sql-string-literal
-  "A MySQL `'...'` string literal for the trusted `s` (ANSI-escaping embedded quotes)."
+  "A MySQL `'...'` string literal for trusted `s`, escaping embedded quotes."
   [s]
   (str \' (sql.u/escape-sql s :ansi) \'))
 
@@ -1483,12 +1482,9 @@
   (let [create (create-index-sql schema table structured)]
     (if-not if-not-exists
       [[create]]
-      ;; MySQL has no `CREATE INDEX IF NOT EXISTS`. The transform apply path re-issues creates on full-rebuild runs, so
-      ;; guard with dynamic SQL that skips the create when an index of this name already exists. The schema/table/name
-      ;; are trusted identifiers (already spliced into the DDL), so they're inlined as string literals: the MariaDB
-      ;; driver rejects `?` placeholders inside the `SET @var := (SELECT ...)` subquery. Session variables survive the
-      ;; DDL's implicit commit, and every statement runs via `executeUpdate`, which the `SET`s and
-      ;; `PREPARE`/`EXECUTE`/`DEALLOCATE` all accept.
+      ;; MySQL has no `CREATE INDEX IF NOT EXISTS`, and the apply path re-issues creates on full rebuilds, so guard
+      ;; with dynamic SQL that runs the create only when no index of this name exists. Identifiers are inlined as
+      ;; string literals because the MariaDB driver rejects `?` placeholders inside the `SET @var := (SELECT ...)`.
       [[(format "SET @mb_idx_exists := (SELECT COUNT(*) FROM information_schema.statistics
                                         WHERE table_schema = %s AND table_name = %s AND index_name = %s)"
                 (if (not-empty schema) (sql-string-literal schema) "DATABASE()")
@@ -1508,8 +1504,7 @@
     :btree))
 
 (defn- mysql-index-rows->index
-  "Collapse the per-column `information_schema.statistics` rows of one index (already ordered by `SEQ_IN_INDEX`) into a
-  normalized `::table-index` map."
+  "Collapse one index's per-column `information_schema.statistics` rows (ordered by `SEQ_IN_INDEX`) into an index map."
   [rows]
   (let [{:keys [index_name non_unique index_type]} (first rows)]
     {:name              index_name
