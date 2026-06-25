@@ -7,6 +7,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
    [metabase.indexes.schema :as schema]
    [metabase.util.i18n :refer [tru]]
@@ -24,7 +25,7 @@
    [:index_name ms/NonBlankString]
    ;; The real structured schema (not a bare `:map`) so response coercion doesn't strip its keys.
    [:structured ::schema/index-structured]
-   [:status [:enum :pending :running :succeeded :failed :dropped]]
+   [:status [:enum :create-pending :update-pending :deletion-pending :running :succeeded :failed]]
    [:error_message [:maybe :string]]
    [:created_by [:maybe ms/PositiveInt]]
    [:created_at :any]
@@ -66,7 +67,7 @@
    {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
   (let [transform (api/read-check :model/Transform transform-id)
         {:keys [database schema] table-name :name} (:target transform)
-        managed   (t2/select :model/TableIndex :transform_id transform-id {:order-by [[:id :asc]]})
+        managed   (table-index/select-for-transform transform-id)
         warehouse (reconcile/fetch-warehouse-indexes (t2/select-one :model/Database database) schema table-name)]
     {:data (reconcile/merge-indexes managed warehouse)}))
 
@@ -85,9 +86,10 @@
                                          [:transform_id ms/PositiveInt]
                                          [:structured :map]]]
   (api/write-check :model/Transform transform_id)
-  (let [idx-name (reconcile/index-name structured)]
+  (let [structured (schema/keywordize-structured structured)
+        idx-name   (reconcile/index-name structured)]
     ;; (transform_id, index_name) is unique; reject a duplicate cleanly instead of hitting the constraint.
-    (api/check-400 (not (t2/exists? :model/TableIndex :transform_id transform_id :index_name idx-name))
+    (api/check-400 (not (table-index/exists-for-transform? transform_id idx-name))
                    (tru "An index named \"{0}\" already exists for this transform." idx-name))
     (t2/insert-returning-instance! :model/TableIndex
                                    {:transform_id transform_id
@@ -95,24 +97,35 @@
                                     :structured   structured
                                     :created_by   api/*current-user-id*})))
 
+(defn- assert-stable-key!
+  [existing structured]
+  (api/check-400 (= (reconcile/index-name (:structured existing))
+                    (reconcile/index-name structured))
+                 (tru "The index name cannot be changed. Delete and recreate the index instead."))
+  (api/check-400 (= (:kind (:structured existing)) (:kind structured))
+                 (tru "The index type cannot be changed. Delete and recreate the index instead."))
+  (api/check-400 (= (:type (:structured existing)) (:type structured))
+                 (tru "The index type cannot be changed. Delete and recreate the index instead.")))
+
 (api.macros/defendpoint :put "/request/:id" :- RequestIndex
-  "Replace the structured definition of an index request, resetting it to pending."
+  "Replace the structured definition of an index request, marking it update-pending."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [structured]} :- [:map [:structured :map]]]
-  (write-check-owner! (api/check-404 (t2/select-one :model/TableIndex :id id)))
-  ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
-  (t2/with-transaction [_conn]
-    (t2/update! :model/TableIndex id {:structured    structured
-                                      :index_name    (reconcile/index-name structured)
-                                      :status        :pending
-                                      :error_message nil})
-    (t2/select-one :model/TableIndex :id id)))
+  (let [structured (schema/keywordize-structured structured)
+        existing   (api/check-404 (table-index/select-applicable-by-id id))]
+    (write-check-owner! existing)
+    (assert-stable-key! existing structured)
+    ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
+    (t2/with-transaction [_conn]
+      (t2/update! :model/TableIndex id {:structured structured})
+      (t2/select-one :model/TableIndex :id id))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/request/:id"
   "Delete an index request."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (write-check-owner! (api/check-404 (t2/select-one :model/TableIndex :id id)))
-  (t2/delete! :model/TableIndex :id id)
+  (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
+    (write-check-owner! existing)
+    (t2/update! :model/TableIndex id {:status :deletion-pending}))
   api/generic-204-no-content)
