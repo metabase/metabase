@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver]
    [metabase.test :as mt]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.query-test-util :as query-test-util]
    [toucan2.core :as t2]))
 
@@ -16,14 +17,17 @@
    :source {:type "query" :query (query-test-util/make-query :source-table "venues")}
    :target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
 
+(defn- temp-incremental-transform-spec []
+  (assoc-in (temp-transform-spec) [:target :type] "table-incremental"))
+
 (def ^:private btree {:kind "btree" :name "by_cat" :columns [{:name "name"}]})
 
 (deftest crud-happy-path-test
   (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
-    (testing "POST creates a pending index"
+    (testing "POST creates a create-pending index"
       (let [created (mt/user-http-request :crowberto :post 200 "index/request"
                                           {:transform_id transform-id :structured btree})]
-        (is (= "pending" (:status created)))
+        (is (= "create-pending" (:status created)))
         (is (= transform-id (:transform_id created)))
         (is (= "by_cat" (:index_name created)))
         (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] [])]
@@ -42,13 +46,19 @@
         (testing "PUT replaces the structured definition"
           (let [updated (mt/user-http-request :crowberto :put 200 (str "index/request/" (:id created))
                                               {:structured (assoc btree :columns [{:name "price"}])})]
+            (is (= "update-pending" (:status updated)))
             (is (= "price" (-> updated :structured :columns first :name)))))
-        (testing "DELETE removes it"
+        (testing "DELETE marks it deletion-pending until a rebuild drops the warehouse index"
           (mt/user-http-request :crowberto :delete 204 (str "index/request/" (:id created)))
-          (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] [])]
+          (with-redefs [metabase.driver/fetch-table-indexes
+                        (fn [& _] [{:name "by_cat" :kind :btree :access-method "btree" :is-unique false
+                                    :is-primary false :is-valid true :key-columns ["name"] :include-columns []
+                                    :partial-predicate nil :definition "..."}])]
             (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
                                                        (str "index?transform-id=" transform-id))]
-              (is (empty? data)))))))))
+              (is (= [(:id created)] (map #(get-in % [:request :id]) data)))
+              (is (= "deletion-pending" (-> data first :request :status)))
+              (is (true? (:present_in_warehouse (first data)))))))))))
 
 (deftest merged-list-test
   (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
@@ -102,6 +112,50 @@
       (is (re-find #"already exists"
                    (mt/user-http-request :crowberto :post 400 "index/request"
                                          {:transform_id transform-id :structured btree}))))))
+
+(deftest put-cannot-change-index-key-test
+  (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
+    (let [created (mt/user-http-request :crowberto :post 200 "index/request"
+                                        {:transform_id transform-id :structured btree})]
+      (testing "name is stable"
+        (is (re-find #"name cannot be changed"
+                     (mt/user-http-request :crowberto :put 400 (str "index/request/" (:id created))
+                                           {:structured (assoc btree :name "by_price")}))))
+      (testing "kind is stable"
+        (is (re-find #"type cannot be changed"
+                     (mt/user-http-request :crowberto :put 400 (str "index/request/" (:id created))
+                                           {:structured (assoc btree :kind "hash")})))))))
+
+(deftest soft-deleted-index-cannot-be-recreated-test
+  (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
+    (let [created (mt/user-http-request :crowberto :post 200 "index/request"
+                                        {:transform_id transform-id :structured btree})]
+      (mt/user-http-request :crowberto :delete 204 (str "index/request/" (:id created)))
+      (is (re-find #"already exists"
+                   (mt/user-http-request :crowberto :post 400 "index/request"
+                                         {:transform_id transform-id :structured btree})))
+      (is (= 1 (count (t2/select :model/TableIndex :transform_id transform-id)))))))
+
+(deftest incremental-mutations-force-next-run-to-rebuild-test
+  (mt/with-temp [:model/Transform {transform-id :id} (assoc (temp-incremental-transform-spec)
+                                                            :last_checkpoint_value "100")]
+    (testing "POST clears the checkpoint so the new index can be applied"
+      (let [created (mt/user-http-request :crowberto :post 200 "index/request"
+                                          {:transform_id transform-id :structured btree})]
+        (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id)))
+        (testing "PUT clears the checkpoint so the changed structure can be applied"
+          (t2/update! :model/Transform transform-id {:last_checkpoint_value "200"})
+          (mt/user-http-request :crowberto :put 200 (str "index/request/" (:id created))
+                                {:structured (assoc btree :columns [{:name "price"}])})
+          (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id))))
+        (testing "DELETE clears the checkpoint so the old index can be dropped by the rebuild"
+          (t2/update! :model/Transform transform-id {:last_checkpoint_value "300"})
+          (mt/user-http-request :crowberto :delete 204 (str "index/request/" (:id created)))
+          (is (nil? (t2/select-one-fn :last_checkpoint_value :model/Transform transform-id))))
+        (testing "pending index status still forces a full rebuild if an in-flight run saves a checkpoint"
+          (t2/update! :model/Transform transform-id {:last_checkpoint_value "400"})
+          (is (#'transforms-base.u/full-incremental-run?
+               (t2/select-one :model/Transform transform-id))))))))
 
 (deftest inline-kind-index-name-test
   (testing "an inline kind with no :name gets its index_name from :kind"

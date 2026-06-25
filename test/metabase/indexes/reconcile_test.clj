@@ -7,12 +7,12 @@
 (def ^:private managed-btree
   {:id 1 :transform_id 7 :index_name "by_cat"
    :structured {:kind :btree :name "by_cat" :columns [{:name "name"}] :unique true}
-   :status :pending :error_message nil :created_by 3 :last_executed_at nil})
+   :status :create-pending :error_message nil :created_by 3 :last_executed_at nil})
 
 (def ^:private managed-sortkey
   {:id 2 :transform_id 7 :index_name "sortkey"
    :structured {:kind :sortkey :style :compound :columns [{:name "a"} {:name "b"}]}
-   :status :pending :error_message nil :created_by 3 :last_executed_at nil})
+   :status :create-pending :error_message nil :created_by 3 :last_executed_at nil})
 
 (def ^:private wh-btree
   {:name "by_cat" :kind :btree :access-method "btree" :is-unique true :is-primary false
@@ -25,7 +25,7 @@
 (def ^:private managed-distkey
   {:id 3 :transform_id 7 :index_name "distkey"
    :structured {:kind :distkey :style :key :columns [{:name "category"}]}
-   :status :pending :error_message nil :created_by 3 :last_executed_at nil})
+   :status :create-pending :error_message nil :created_by 3 :last_executed_at nil})
 
 (def ^:private wh-distkey
   {:name nil :kind :distkey :access-method nil :is-unique false :is-primary false
@@ -54,7 +54,7 @@
       (is (= "by_cat" (:name e)))
       (is (true? (:is_unique e)))
       (is (= 1 (-> e :request :id)))
-      (is (= :pending (-> e :request :status)))
+      (is (= :create-pending (-> e :request :status)))
       (is (= (:structured managed-btree) (-> e :request :structured)))))
   (testing "DBA (warehouse-only): observed, unmanaged, no request bookkeeping"
     (let [[e] (reconcile/merge-indexes [] [wh-dba])]
@@ -69,7 +69,7 @@
       (is (false? (:present_in_warehouse e)))
       (is (= "by_cat" (:name e)))
       (is (true? (:is_unique e)))
-      (is (= :pending (-> e :request :status)))))
+      (is (= :create-pending (-> e :request :status)))))
   (testing "a managed inline sortkey matches the warehouse sortkey by kind+columns, listed once as managed"
     (let [merged (reconcile/merge-indexes [managed-sortkey] [wh-sortkey])]
       (is (= 1 (count merged)))
