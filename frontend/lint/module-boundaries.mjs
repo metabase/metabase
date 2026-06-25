@@ -62,7 +62,6 @@ const elements = [
     pattern: "enterprise/frontend/src/custom-viz/**",
   }),
   createElement({ type: "shared", name: "data-grid" }),
-  createElement({ type: "shared", name: "data-studio" }),
   createElement({ type: "shared", name: "databases" }),
   createElement({ type: "shared", name: "detail-view" }),
   createElement({
@@ -154,6 +153,7 @@ const elements = [
   // feature
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
+  createElement({ type: "feature", name: "data-studio" }),
   createElement({ type: "feature", name: "documents" }),
   createElement({
     type: "feature",
