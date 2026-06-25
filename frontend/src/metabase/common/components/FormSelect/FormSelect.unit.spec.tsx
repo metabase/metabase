@@ -47,14 +47,14 @@ describe("FormSelect", () => {
 
     render(<TestFormSelect initialValue="line" onSubmit={onSubmit} />);
 
-    expect(screen.getByText("Line")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Line")).toBeInTheDocument();
   });
 
   it("should propagate the changed value to the form", async () => {
     const onSubmit = jest.fn();
 
     render(<TestFormSelect onSubmit={onSubmit} />);
-    await userEvent.click(screen.getByText("Choose"));
+    await userEvent.click(screen.getByPlaceholderText("Choose"));
     await userEvent.click(screen.getByText("Line"));
     await userEvent.click(screen.getByText("Submit"));
 
@@ -76,7 +76,7 @@ describe("FormSelect", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormSelect initialValue="line" onSubmit={onSubmit} />);
-    await userEvent.click(screen.getByText("Line"));
+    await userEvent.click(screen.getByDisplayValue("Line"));
     await userEvent.click(screen.getByText("Bar"));
     await userEvent.click(screen.getByText("Submit"));
 

@@ -1,57 +1,72 @@
 import { useField } from "formik";
 import type { ReactNode, Ref } from "react";
-import { forwardRef, useCallback, useMemo } from "react";
+import { forwardRef, useMemo } from "react";
 
 import { FormField } from "metabase/common/components/FormField";
-import type {
-  SelectChangeEvent,
-  SelectOption,
-  SelectProps,
-} from "metabase/common/components/Select";
-import { Select } from "metabase/common/components/Select";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { Select } from "metabase/ui";
 
-export interface FormSelectProps<
-  TValue,
-  TOption extends object = SelectOption<TValue>,
-> extends Omit<SelectProps<TValue, TOption>, "value"> {
+type FormSelectOption = {
+  name: string | number;
+  value: string | number;
+};
+
+export interface FormSelectProps {
   name: string;
   title?: string;
   actions?: ReactNode;
   description?: ReactNode;
   optional?: boolean;
+  className?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  options?: FormSelectOption[];
+  onChange?: (value: string | number | undefined) => void;
 }
 
 /**
  * @deprecated: use FormSelect from "metabase/forms"
  */
-export const FormSelect = forwardRef(function FormSelect<
-  TValue,
-  TOption extends object = SelectOption<TValue>,
->(
+export const FormSelect = forwardRef(function FormSelect(
   {
     name,
     className,
     title,
     actions,
     description,
-    onChange,
     optional,
-    ...props
-  }: FormSelectProps<TValue, TOption>,
+    placeholder,
+    disabled,
+    options = [],
+    onChange,
+  }: FormSelectProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
-  const buttonProps = useMemo(() => ({ id, onBlur }), [id, onBlur]);
 
-  const handleChange = useCallback(
-    (event: SelectChangeEvent<TValue>) => {
-      setValue(event.target.value);
-      onChange?.(event);
-    },
-    [setValue, onChange],
+  const data = useMemo(
+    () =>
+      options.map((option) => ({
+        value: String(option.value),
+        label: String(option.name),
+      })),
+    [options],
   );
+
+  const valueByKey = useMemo(
+    () =>
+      new Map<string, string | number>(
+        options.map((option) => [String(option.value), option.value]),
+      ),
+    [options],
+  );
+
+  const handleChange = (selected: string | null) => {
+    const nextValue = selected != null ? valueByKey.get(selected) : undefined;
+    setValue(nextValue);
+    onChange?.(nextValue);
+  };
 
   return (
     <FormField
@@ -65,11 +80,13 @@ export const FormSelect = forwardRef(function FormSelect<
       optional={optional}
     >
       <Select
-        {...props}
-        name={name}
-        value={value}
+        id={id}
+        data={data}
+        value={value != null ? String(value) : null}
+        placeholder={placeholder}
+        disabled={disabled}
         onChange={handleChange}
-        buttonProps={buttonProps}
+        onBlur={onBlur}
       />
     </FormField>
   );

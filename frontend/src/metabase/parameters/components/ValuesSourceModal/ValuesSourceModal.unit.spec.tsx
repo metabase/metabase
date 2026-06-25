@@ -235,16 +235,12 @@ describe("ValuesSourceModal", () => {
           ],
         });
 
-        await userEvent.click(
-          screen.getByRole("button", { name: /Pick a column/ }),
-        );
+        await userEvent.click(screen.getByPlaceholderText(/Pick a column/));
         expect(
-          screen.queryByRole("heading", { name: "ID" }),
+          screen.queryByRole("option", { name: "ID" }),
         ).not.toBeInTheDocument();
 
-        await userEvent.click(
-          screen.getByRole("heading", { name: "Category" }),
-        );
+        await userEvent.click(screen.getByRole("option", { name: "Category" }));
         await userEvent.click(screen.getByRole("button", { name: "Done" }));
         expect(onSubmit).toHaveBeenCalledWith("card", {
           card_id: 1,
@@ -334,12 +330,12 @@ describe("ValuesSourceModal", () => {
           screen.getByText("Column to supply the labels"),
         ).toBeInTheDocument();
 
-        await userEvent.click(screen.getByRole("button", { name: /Title/ }));
-        const categoryOption = await screen.findByRole("heading", {
+        await userEvent.click(screen.getByDisplayValue("Title"));
+        const categoryOption = await screen.findByRole("option", {
           name: "Category",
         });
         expect(
-          screen.queryByRole("heading", { name: "ID" }),
+          screen.queryByRole("option", { name: "ID" }),
         ).not.toBeInTheDocument();
         await userEvent.click(categoryOption);
 
@@ -387,8 +383,8 @@ describe("ValuesSourceModal", () => {
           ],
         });
 
-        await userEvent.click(screen.getByRole("button", { name: /Title/ }));
-        const noneOption = await screen.findByRole("heading", { name: "None" });
+        await userEvent.click(screen.getByDisplayValue("Title"));
+        const noneOption = await screen.findByRole("option", { name: "None" });
         await userEvent.click(noneOption);
 
         await userEvent.click(screen.getByRole("button", { name: "Done" }));
@@ -938,14 +934,12 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: /Pick a column/ }),
-      );
+      await userEvent.click(screen.getByPlaceholderText(/Pick a column/));
       expect(
-        screen.queryByRole("heading", { name: "Category" }),
+        screen.queryByRole("option", { name: "Category" }),
       ).not.toBeInTheDocument();
 
-      await userEvent.click(screen.getByRole("heading", { name: "ID" }));
+      await userEvent.click(screen.getByRole("option", { name: "ID" }));
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
       expect(onSubmit).toHaveBeenCalledWith("card", {
         card_id: 1,

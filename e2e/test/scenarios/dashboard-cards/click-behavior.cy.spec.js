@@ -2115,45 +2115,45 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       // 1st stage - Orders
       getClickMapping("ID").click();
-      H.popover().findByText("ID").click();
+      H.menu().findByText("ID").click();
 
       // 1st stage - Custom columns
       getClickMapping("Net").click();
-      H.popover().findByText("User → Longitude: 10°").click();
+      H.menu().findByText("User → Longitude: 10°").click();
 
       // 1st stage - Reviews #1 (explicit join)
       getClickMapping("Reviews - Product → Reviewer").click();
-      H.popover().findByText("Product → Category").click();
+      H.menu().findByText("Product → Category").click();
 
       // 1st stage - Products (implicit join with Orders)
       getClickMapping("Product → Title").first().click();
-      H.popover().findByText("Product → Category").click();
+      H.menu().findByText("Product → Category").click();
 
       // 1st stage - People (implicit join with Orders)
       getClickMapping("User → Longitude").click();
-      H.popover().findByText("User → Longitude: 10°").click();
+      H.menu().findByText("User → Longitude: 10°").click();
 
       // 1st stage - Products (implicit join with Reviews)
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getClickMapping("Product → Vendor").last().click();
-      H.popover().findByText("Product → Category").click();
+      H.menu().findByText("Product → Category").click();
 
       // 1st stage - Aggregations & breakouts
       getClickMapping("Product → Category").eq(2).click();
-      H.popover().findByText("Product → Category").click();
+      H.menu().findByText("Product → Category").click();
 
       // 2nd stage - Custom columns
       getClickMapping("5 * Count").click();
-      H.popover().findByText("Count").click();
+      H.menu().findByText("Count").click();
 
       // 2nd stage - Reviews #2 (explicit join)
       getClickMapping("Reviews - Created At: Month → Rating").click();
-      H.popover().findByText("ID").click();
+      H.menu().findByText("ID").click();
 
       // 2nd stage - Aggregations & breakouts
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getClickMapping("Count").last().click();
-      H.popover().findByText("User → Longitude: 10°").click();
+      H.menu().findByText("User → Longitude: 10°").click();
 
       customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`);
 
@@ -2684,7 +2684,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addDashboardDestination();
       getClickMapping("Text filter").click();
 
-      H.popover().findByText("Count").click();
+      H.menu().findByText("Count").click();
       H.saveDashboard();
     });
 

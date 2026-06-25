@@ -1,5 +1,4 @@
-import type { ChangeEvent } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,9 +8,9 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Select } from "metabase/common/components/Select";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
@@ -127,31 +126,27 @@ interface SchemaSelectProps {
 }
 
 const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
-  const trigger = (
-    <SchemaTrigger>
-      <SchemaTriggerText data-testid="xray-schema-name">
-        {schema}
-      </SchemaTriggerText>
-      <SchemaTriggerIcon name="chevrondown" />
-    </SchemaTrigger>
-  );
-
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      onChange?.(event.target.value);
-    },
-    [onChange],
-  );
-
   return (
-    <Select
-      value={schema}
-      options={schemas}
-      optionNameFn={getSchemaOption}
-      optionValueFn={getSchemaOption}
-      onChange={handleChange}
-      triggerElement={trigger}
-    />
+    <Menu position="bottom-start">
+      <Menu.Target>
+        <SchemaTrigger>
+          <SchemaTriggerText data-testid="xray-schema-name">
+            {schema}
+          </SchemaTriggerText>
+          <SchemaTriggerIcon name="chevrondown" />
+        </SchemaTrigger>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {schemas.map((schemaOption) => (
+          <Menu.Item
+            key={schemaOption}
+            onClick={() => onChange?.(schemaOption)}
+          >
+            {schemaOption}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 };
 
@@ -191,8 +186,4 @@ const getMessages = (count: number) => {
     .map((index) => options[index % options.length])
     .sample(count)
     .value();
-};
-
-const getSchemaOption = (schema: string) => {
-  return schema;
 };

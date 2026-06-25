@@ -1,8 +1,8 @@
 import { assocIn } from "icepick";
+import { Fragment } from "react";
 import { t } from "ttag";
 
-import { Select } from "metabase/common/components/Select";
-import { Flex } from "metabase/ui";
+import { Flex, Menu } from "metabase/ui";
 import type { ClickBehavior } from "metabase-types/api";
 
 import S from "./ClickMappings.module.css";
@@ -21,10 +21,20 @@ export function ClickMappingsTargetWithoutSource({
 }) {
   const { id, name, type } = target;
 
+  const handleSelect = (source: SourceOption) => {
+    updateSettings(
+      assocIn(clickBehavior, ["parameterMapping", id], {
+        source,
+        target: target.target,
+        id,
+        type,
+      }),
+    );
+  };
+
   return (
-    <Select
-      key={id}
-      triggerElement={
+    <Menu key={id} position="bottom-start">
+      <Menu.Target>
         <Flex
           className={S.TargetTrigger}
           p="sm"
@@ -35,33 +45,31 @@ export function ClickMappingsTargetWithoutSource({
         >
           {name}
         </Flex>
-      }
-      value={null}
-      sections={Object.entries(sourceOptions).map(([sourceType, items]) => ({
-        name: {
-          parameter: t`Dashboard filters`,
-          column: t`Columns`,
-          userAttribute: t`User attributes`,
-        }[sourceType],
-        items,
-      }))}
-      optionValueFn={getKeyForSource}
-      optionNameFn={(option: SourceOption) =>
-        option.type == null ? t`None` : option.name
-      }
-      onChange={({ target: { value } }: { target: { value: string } }) => {
-        updateSettings(
-          assocIn(clickBehavior, ["parameterMapping", id], {
-            source: Object.values(sourceOptions)
-              .flat()
-              .find((option) => getKeyForSource(option) === value),
-            target: target.target,
-            id,
-            type,
-          }),
-        );
-      }}
-    />
+      </Menu.Target>
+      <Menu.Dropdown>
+        {Object.entries(sourceOptions).map(([sourceType, items]) => (
+          <Fragment key={sourceType}>
+            <Menu.Label>
+              {
+                {
+                  parameter: t`Dashboard filters`,
+                  column: t`Columns`,
+                  userAttribute: t`User attributes`,
+                }[sourceType]
+              }
+            </Menu.Label>
+            {items.map((option) => (
+              <Menu.Item
+                key={getKeyForSource(option) ?? "none"}
+                onClick={() => handleSelect(option)}
+              >
+                {option.type == null ? t`None` : option.name}
+              </Menu.Item>
+            ))}
+          </Fragment>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 }
 

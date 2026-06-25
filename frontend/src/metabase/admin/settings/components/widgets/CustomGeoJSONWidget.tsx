@@ -14,11 +14,19 @@ import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Option, Select } from "metabase/common/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { Button, Ellipsified, Image, Modal, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Ellipsified,
+  Image,
+  Modal,
+  Select,
+  SelectItem,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 import type {
   CustomGeoJSONMap,
@@ -249,6 +257,12 @@ interface GeoJsonPropertySelectProps {
   dataTestId: string;
 }
 
+const SampleValues = ({ values }: { values: any[] }) => (
+  <Ellipsified mt="sm" fz="0.75em" fw="bold" maw={250}>
+    {t`Sample values:`} {values.join(", ")}
+  </Ellipsified>
+);
+
 const GeoJsonPropertySelect = ({
   value,
   onChange,
@@ -272,34 +286,32 @@ const GeoJsonPropertySelect = ({
     }
   }
 
+  const selectedValues = value !== null ? options[value] : undefined;
+
   return (
     <div data-testid={dataTestId}>
       <Select
-        value={value || ""}
-        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-          onChange(e.target.value)
-        }
+        value={value}
         placeholder={t`Select…`}
-      >
-        {Object.entries(options).map(([name, values]) => (
-          <Option key={name} value={name}>
+        data={Object.keys(options).map((name) => ({
+          value: name,
+          label: name,
+        }))}
+        onChange={(newValue) => {
+          if (newValue !== null) {
+            onChange(newValue);
+          }
+        }}
+        renderOption={(item) => (
+          <SelectItem selected={item.checked}>
             <div>
-              <div style={{ textAlign: "left" }}>{name}</div>
-              <div
-                className={cx(CS.mt1, CS.h6)}
-                style={{
-                  maxWidth: 250,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {t`Sample values:`} {values.join(", ")}
-              </div>
+              <div style={{ textAlign: "left" }}>{item.option.label}</div>
+              <SampleValues values={options[item.option.value] ?? []} />
             </div>
-          </Option>
-        ))}
-      </Select>
+          </SelectItem>
+        )}
+      />
+      {selectedValues && <SampleValues values={selectedValues} />}
     </div>
   );
 };

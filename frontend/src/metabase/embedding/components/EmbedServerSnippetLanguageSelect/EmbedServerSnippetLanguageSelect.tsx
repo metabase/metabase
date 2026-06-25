@@ -1,8 +1,6 @@
-import type { ChangeEvent } from "react";
-
-import { Option, Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/embedding/types";
+import { Select } from "metabase/ui";
 
 type Props = {
   languageOptions: CodeSampleOption[];
@@ -24,19 +22,17 @@ export const EmbedServerSnippetLanguageSelect = ({
   return (
     <Select
       className={CS.mlAuto}
+      data-testid={dataTestId ? `${dataTestId}-select-button` : undefined}
       value={selectedOptionId}
-      onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-        onChangeOption(e.target.value)
-      }
-      buttonProps={{
-        dataTestId,
+      data={languageOptions.map((option) => ({
+        value: option.id,
+        label: option.name,
+      }))}
+      onChange={(value) => {
+        if (value !== null) {
+          onChangeOption(value);
+        }
       }}
-    >
-      {languageOptions.map((option) => (
-        <Option key={option.id} value={option.id}>
-          {option.name}
-        </Option>
-      ))}
-    </Select>
+    />
   );
 };

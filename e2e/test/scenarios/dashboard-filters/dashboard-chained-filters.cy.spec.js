@@ -271,7 +271,7 @@ describe("scenarios > dashboard > chained filter", () => {
               .parent()
               .findByText("ID")
               .click();
-            H.popover().findByText("UUID").should("be.visible");
+            H.menu().findByText("UUID").should("be.visible");
           });
         });
       });
