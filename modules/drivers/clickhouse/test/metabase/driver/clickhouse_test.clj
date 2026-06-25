@@ -495,7 +495,7 @@
              (->> "WITH RECURSIVE t AS ( SELECT 1 AS n UNION ALL SELECT n + 1 FROM t WHERE n < 3 ) SELECT * FROM t;"
                   (lib/native-query (mt/metadata-provider))
                   (qp/process-query)
-                  (mt/rows)))))))
+                  (mt/formatted-rows [int])))))))
 
 (deftest ^:parallel query-with-boolean-setting-test
   (mt/test-driver :clickhouse
