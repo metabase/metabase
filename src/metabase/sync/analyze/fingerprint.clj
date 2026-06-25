@@ -304,3 +304,11 @@
   [field :- i/FieldInstance]
   (let [table (field/table field)]
     (fingerprint-fields! table [field])))
+
+(mu/defn refingerprint-table!
+  "Refingerprint all the Fields in `table` that are eligible for fingerprinting. Like [[refingerprint-field!]], but
+  for every Field in the Table rather than just one. See [[fingerprint-table!]] for details on how the eligible
+  Fields are selected and how many are processed at once."
+  [table :- i/TableInstance]
+  (binding [*refingerprint?* true]
+    (fingerprint-table! table)))

@@ -6,6 +6,7 @@ import { Modal, Stack, Text, rem } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 
 import { DiscardFieldValuesButton } from "../DiscardFieldValuesButton";
+import { RefingerprintFieldButton } from "../RefingerprintFieldButton";
 import { RescanFieldButton } from "../RescanFieldButton";
 
 type FieldValuesModalProps = {
@@ -35,6 +36,8 @@ export const FieldValuesModal = ({
         </Text>
 
         <RescanFieldButton fieldId={fieldId} />
+
+        <RefingerprintFieldButton fieldId={fieldId} />
 
         <DiscardFieldValuesButton fieldId={fieldId} />
       </Stack>
