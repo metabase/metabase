@@ -115,7 +115,7 @@
   "IDs of Dashboards holding at least one card backed by `database-id`. Captured before the sample
   database is deleted so the dashboards it empties out can be pruned afterward."
   [database-id]
-  (t2/select-fn-set :dashboard_id :model/DashboardCard
+  (t2/select-fn-set :dashboard_id [:model/DashboardCard :dashboard_id]
                     :card_id [:in {:select [:id]
                                    :from   [(t2/table-name :model/Card)]
                                    :where  [:= :database_id database-id]}]))
@@ -126,7 +126,7 @@
   in cards from another database) is left alone."
   [dashboard-ids]
   (when (seq dashboard-ids)
-    (let [non-empty (t2/select-fn-set :dashboard_id :model/DashboardCard :dashboard_id [:in dashboard-ids])
+    (let [non-empty (t2/select-fn-set :dashboard_id [:model/DashboardCard :dashboard_id] :dashboard_id [:in dashboard-ids])
           empty-ids (remove (or non-empty #{}) dashboard-ids)]
       (when (seq empty-ids)
         (t2/delete! :model/Dashboard :id [:in empty-ids])))))

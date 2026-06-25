@@ -136,7 +136,7 @@ function ModelActionListItem({
               <Tooltip label={t`Run`}>
                 <ActionIcon
                   variant="subtle"
-                  bg="background-primary"
+                  bg="background_page-primary"
                   c="text-primary"
                   aria-label={t`Run`}
                   onClick={openExecuteModal}

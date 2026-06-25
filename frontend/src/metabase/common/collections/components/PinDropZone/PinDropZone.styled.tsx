@@ -41,7 +41,7 @@ export const PinDropTargetIndicator = styled.div<PinDropTargetRenderArgs>`
     `4px solid ${
       props.hovered
         ? "var(--mb-color-core-brand)"
-        : "var(--mb-color-background-tertiary)"
+        : "var(--mb-color-background_page-tertiary)"
     }`};
   display: ${(props) => !(props.hovered || props.highlighted) && "none"};
   min-height: 2rem;

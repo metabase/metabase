@@ -318,6 +318,11 @@ function assertHourDateFilterInUrl(): void {
 }
 
 function clickLastTimeseriesChartDot(title: string): void {
+  // Anchor on the chart being fully rendered before drilling: the page only
+  // waits for the audit metadata, so the chart's dataset query + ECharts render
+  // can still be in flight. Without this, cartesianChartCircle() races the
+  // render and times out looking for [data-testid="chart-container"].
+  assertChartRendered(title);
   getChartCard(title).within(() => {
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.cartesianChartCircle()

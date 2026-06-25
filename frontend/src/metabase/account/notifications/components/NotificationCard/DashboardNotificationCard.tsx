@@ -51,7 +51,7 @@ export const DashboardNotificationCard = ({
       align="center"
       px="lg"
       py="md"
-      bg="background-primary"
+      bg="background_page-primary"
     >
       <Box flex="1 1 auto">
         {dashboardEntityLink ? (

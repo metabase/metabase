@@ -1,10 +1,15 @@
 (ns metabase-enterprise.semantic-search.settings
   (:require
+   [metabase.events.core :as events]
    [metabase.llm.settings :as llm-settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
+
+;; Topic for the just-in-time HNSW build, handled in metabase-enterprise.semantic-search.events. Declared
+;; here, not there, so it's valid wherever the setter runs regardless of handler-namespace load order.
+(derive :event/semantic-search-hnsw-enabled :metabase/event)
 
 (def ^:private valid-embedding-providers
   "The set of valid embedding provider names."
@@ -120,21 +125,26 @@
   (deferred-tru
    (str "Default vector-search strategy for semantic search: `hnsw` (approximate, HNSW-index-backed) or "
         "`brute-force` (exact, applies non-vector filters first then computes cosine distance over the "
-        "survivors). Individual requests may override this via the `vector_search_strategy` API parameter."))
+        "survivors). Defaults to `brute-force`, which needs no index; selecting `hnsw` builds the HNSW index "
+        "just-in-time. Individual requests may override this via the `vector_search_strategy` API parameter."))
   :type       :keyword
-  :default    :hnsw
+  :default    :brute-force
   :encryption :no
   :export?    false
   :visibility :internal
   :doc        false
   :setter     (fn [new-value]
-                (let [kw (some-> new-value keyword)]
+                (let [kw  (some-> new-value keyword)
+                      old (setting/get-value-of-type :keyword :semantic-search-vector-strategy)]
                   (when (and kw (not (contains? valid-vector-search-strategies kw)))
                     (throw (ex-info (str "Invalid vector-search strategy: " (pr-str new-value)
                                          ". Valid strategies are: " (pr-str valid-vector-search-strategies))
                                     {:invalid-value new-value
                                      :valid-values  valid-vector-search-strategies})))
-                  (setting/set-value-of-type! :keyword :semantic-search-vector-strategy kw))))
+                  (setting/set-value-of-type! :keyword :semantic-search-vector-strategy kw)
+                  ;; Gated on the transition (not every set) so re-setting :hnsw doesn't rebuild the index.
+                  (when (and (= kw :hnsw) (not= old :hnsw))
+                    (events/publish-event! :event/semantic-search-hnsw-enabled {})))))
 
 (defsetting semantic-search-min-results-threshold
   (deferred-tru "Minimum number of semantic search results required before falling back to other engines.")

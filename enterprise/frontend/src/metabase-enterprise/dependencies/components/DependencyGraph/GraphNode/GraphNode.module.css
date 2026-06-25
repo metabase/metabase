@@ -19,7 +19,7 @@
 
 .pill {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
 
   &:hover,
   &.selected {

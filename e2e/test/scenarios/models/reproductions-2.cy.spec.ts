@@ -211,7 +211,7 @@ describe("issue 37300", () => {
       cy.findByText("ID").should("be.visible");
       cy.findByText("Ean").should("be.visible");
 
-      cy.findByText("No results!").should("be.visible");
+      cy.findByText("No results").should("be.visible");
     });
   });
 });
@@ -776,11 +776,20 @@ describe("issue 38747", () => {
     H.popover().findByText("Entity Key").click();
     H.datasetEditBar().button("Save").click();
 
+    cy.intercept("POST", "/api/card").as("createModel");
+    cy.intercept("POST", "/api/dataset").as("modelQuery");
     H.modal().button("Save").click();
 
-    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click({
-      waitForAnimations: false,
-    });
+    // Wait for the model to be created and its query to resolve before
+    // interacting with the table, otherwise the click can race the table
+    // rendering/animating in after the redirect to the model view.
+    cy.wait("@createModel");
+    cy.wait("@modelQuery");
+    H.tableInteractive().should("be.visible");
+
+    cy.findByRole("gridcell", { name: "Nolan-Wolff" })
+      .should("be.visible")
+      .click({ waitForAnimations: false });
 
     // Assert that we're at an adhoc question with aproprate filters
     cy.location("pathname").should("equal", "/question");

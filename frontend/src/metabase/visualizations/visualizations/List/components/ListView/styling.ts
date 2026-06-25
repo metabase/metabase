@@ -63,7 +63,7 @@ const CATEGORY_COLORS = [
 // Get a consistent color for a category value based on its hash
 export const getCategoryColor = (categoryValue: any, columnName: string) => {
   if (categoryValue == null || categoryValue === "") {
-    return "var(--mb-color-background-secondary)";
+    return "var(--mb-color-background_page-secondary)";
   }
 
   const stringValue = String(categoryValue);

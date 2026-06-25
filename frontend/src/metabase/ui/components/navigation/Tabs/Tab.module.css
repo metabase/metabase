@@ -22,8 +22,8 @@
   justify-content: start;
 
   &:hover {
-    border-color: var(--mb-color-background-hover);
-    background-color: var(--mb-color-background-hover);
+    border-color: var(--mb-color-background_surface-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &:focus:not([data-css-specificity-hack]) {

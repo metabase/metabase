@@ -21,8 +21,8 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
   border-radius: 0.5rem;
   background-color: ${(props) =>
     props.readOnly
-      ? "var(--mb-color-background-secondary)"
-      : "var(--mb-color-background-primary)"};
+      ? "var(--mb-color-background_page-secondary)"
+      : "var(--mb-color-background_page-primary)"};
   outline: none;
   text-align: inherit;
 
