@@ -56,11 +56,11 @@ databaseChangeLog:
   - changeSet:
       id: v63.qmoutbox3
       author: nvoxland
+      dbms: postgresql
       comment: >-
         Tune autovacuum for the high-churn outbox table.
       changes:
         - sql:
-            dbms: postgresql
             sql: >-
               ALTER TABLE queue_message_outbox SET (
                 autovacuum_vacuum_scale_factor = 0.0,
@@ -70,7 +70,6 @@ databaseChangeLog:
               )
       rollback:
         - sql:
-            dbms: postgresql
             sql: >-
               ALTER TABLE queue_message_outbox RESET (
                 autovacuum_vacuum_scale_factor,
