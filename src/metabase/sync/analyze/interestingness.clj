@@ -44,12 +44,14 @@
               (reduce concat [] (sync.fingerprint/incomplete-analysis-kvs)))))
 
 (mu/defn score-fields!
-  "Score interestingness for all qualifying Fields in `table`.
-  `baseline` is the instance-wide p95 breakout-count baseline."
+  "Score interestingness for all qualifying Fields in `table`. `counts` is the instance-wide
+  `{field-id breakout-count}` map and `baseline` its p95 — both scanned once per sync and threaded
+  in (see [[score-fields-for-db!]]) so the global usage aggregate isn't re-queried per table."
   [table    :- i/TableInstance
+   counts   :- [:map-of :int :int]
    baseline :- [:maybe :int]]
   (if-let [fields (fields-to-score table)]
-    (let [counts (usage-metadata/breakout-counts-by-field (map u/the-id fields))]
+    (do
       (log/debugf "Scoring interestingness for %d fields in %s" (count fields) (sync-util/name-for-logging table))
       (reduce (fn [stats field]
                 (let [result (score-and-save! field (get counts (u/the-id field)) baseline)]
@@ -65,9 +67,10 @@
   [database        :- i/DatabaseInstance
    log-progress-fn]
   (let [tables   (sync-util/reducible-sync-tables database)
-        baseline (usage-metadata/breakout-count-baseline)]
+        counts   (usage-metadata/breakout-counts-by-field)
+        baseline (usage-metadata/breakout-count-baseline counts)]
     (transduce (map (fn [table]
-                      (let [result (score-fields! table baseline)]
+                      (let [result (score-fields! table counts baseline)]
                         (log-progress-fn "score-interestingness" table)
                         result)))
                (partial merge-with +)

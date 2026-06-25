@@ -85,14 +85,17 @@
                                         :base_type :type/Text :fingerprint fingerprint}
                  :model/Field    f3    {:table_id (:id table) :semantic_type :type/Category
                                         :base_type :type/Text :fingerprint fingerprint}]
-    (let [row (fn [field cnt] {:source_type    :table
-                               :source_id      (:id table)
-                               :ownership_mode :direct
-                               :field_id       (:id field)
-                               :temporal_unit  nil
-                               :binning        nil
-                               :bucket_date    (t/local-date 2026 4 15)
-                               :count          cnt})]
+    (let [row             (fn [field cnt] {:source_type    :table
+                                           :source_id      (:id table)
+                                           :ownership_mode :direct
+                                           :field_id       (:id field)
+                                           :temporal_unit  nil
+                                           :binning        nil
+                                           :bucket_date    (t/local-date 2026 4 15)
+                                           :count          cnt})
+          expected-counts {(:id f1) 10
+                           (:id f2) 1000
+                           (:id f3) 100000}]
       (mt/with-temp [:model/SourceDimensionDaily _ (row f1 10)
                      :model/SourceDimensionDaily _ (row f2 1000)
                      :model/SourceDimensionDaily _ (row f3 100000)]
@@ -101,9 +104,9 @@
           (usage-metadata.interestingness/rescore-dimension-interestingness!))
         (testing "each field persists the score computed from its own breakout count"
           (doseq [field [f1 f2 f3]]
-            (let [counts   {(:id field) (get {(:id f1) 10 (:id f2) 1000 (:id f3) 100000} (:id field))}
+            (let [n        (get expected-counts (:id field))
                   expected (interestingness/dimension-interestingness
-                            (assoc field :usage {:breakout-count          (get counts (:id field))
+                            (assoc field :usage {:breakout-count          n
                                                  :baseline-breakout-count (usage-metadata.interestingness/breakout-count-baseline)}))]
               (is (= expected
                      (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field)))))))))))

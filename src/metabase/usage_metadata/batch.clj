@@ -329,16 +329,14 @@
   [retention-days today]
   (let [retention-days (max 1 (or retention-days 1))
         cutoff-day     (t/minus today (t/days retention-days))
-        pruned-fields  (into #{}
-                             (keep :field_id)
-                             (t2/select [:model/SourceDimensionDaily [[:distinct :field_id] :field_id]]
-                                        {:where [:and
-                                                 [:< :bucket_date cutoff-day]
-                                                 [:in :ownership_mode ["direct" "projected"]]
-                                                 [:not= :field_id nil]]}))]
+        pruned-fields  (t2/select-fn-set :field_id :model/SourceDimensionDaily
+                                         :bucket_date    [:< cutoff-day]
+                                         :ownership_mode [:in ["direct" "projected"]]
+                                         :field_id       [:not= nil])]
     (doseq [model rollup-models]
       (t2/delete! model :bucket_date [:< cutoff-day]))
-    {:cutoff-day cutoff-day :pruned-dimension-fields pruned-fields}))
+    {:cutoff-day              cutoff-day
+     :pruned-dimension-fields pruned-fields}))
 
 (defn run-batch!
   "Process all currently targetable closed UTC days and return a run summary."
@@ -352,18 +350,18 @@
                                   :yesterday          (t/minus today (t/days 1))})
          started-ns (System/nanoTime)
          {:keys [cutoff-day pruned-dimension-fields]} (delete-expired-rollups! retention-days today)
-         initial    {:status                :success
-                     :days-targeted         (count days)
-                     :days-processed        0
-                     :query-execution-rows  0
-                     :joined-rows           0
-                     :segment-tuples        0
-                     :metric-tuples         0
-                     :dimension-tuples      0
-                     :profile-observations  0
-                     :segment-rollup-rows   0
-                     :metric-rollup-rows    0
-                     :dimension-rollup-rows 0
+         initial    {:status                  :success
+                     :days-targeted           (count days)
+                     :days-processed          0
+                     :query-execution-rows    0
+                     :joined-rows             0
+                     :segment-tuples          0
+                     :metric-tuples           0
+                     :dimension-tuples        0
+                     :profile-observations    0
+                     :segment-rollup-rows     0
+                     :metric-rollup-rows      0
+                     :dimension-rollup-rows   0
                      :skipped-rows            {}
                      :retention-cutoff        cutoff-day
                      :pruned-dimension-fields pruned-dimension-fields

@@ -8,6 +8,7 @@
   (:require
    [clojure.set :as set]
    [metabase.interestingness.core :as interestingness]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -15,24 +16,18 @@
 
 (mu/defn breakout-counts-by-field :- [:map-of :int :int]
   "Total breakout executions per field across all sources, summed from `source_dimension_daily`
-   rollups (direct + projected ownership). Returns `{field-id total-count}`.
-
-   With no args, sums every field with usage. Pass `field-ids` to restrict to a known set (e.g.
-   the fields of one table during sync) — an empty/blank set short-circuits to `{}`."
-  ([] (breakout-counts-by-field nil))
-  ([field-ids :- [:maybe [:sequential :int]]]
-   (if (and (some? field-ids) (empty? field-ids))
-     {}
-     (into {}
-           ;; SUM of an int column comes back as a Long on H2/Postgres but a BigDecimal on
-           ;; MySQL/MariaDB — coerce to long so the `:int` return schema holds across app DBs.
-           (map (juxt :field_id (comp long :total_count)))
-           (t2/select [:model/SourceDimensionDaily :field_id [[:sum :count] :total_count]]
-                      {:where    (cond-> [:and
-                                          [:in :ownership_mode ["direct" "projected"]]
-                                          [:not= :field_id nil]]
-                                   (seq field-ids) (conj [:in :field_id field-ids]))
-                       :group-by [:field_id]})))))
+   rollups (direct + projected ownership), instance-wide. Returns `{field-id total-count}` for every
+   field with usage."
+  []
+  (into {}
+        ;; SUM of an int column comes back as a Long on H2/Postgres but a BigDecimal on
+        ;; MySQL/MariaDB — coerce to long so the `:int` return schema holds across app DBs.
+        (map (juxt :field_id (comp long :total_count)))
+        (t2/select [:model/SourceDimensionDaily :field_id [[:sum :count] :total_count]]
+                   {:where    [:and
+                               [:in :ownership_mode ["direct" "projected"]]
+                               [:not= :field_id nil]]
+                    :group-by [:field_id]})))
 
 (defn- percentile
   "Nearest-rank percentile `p` (0..1) of a collection of numbers. Returns nil for an empty coll.
@@ -55,9 +50,13 @@
 (mu/defn breakout-count-baseline :- :int
   "The p95 scaling baseline of per-field breakout-execution totals across the whole instance — the
    value the usage interestingness signal is scored against. Returns 0 when there's no usage yet.
-   Always instance-wide (not scoped to any table)."
-  []
-  (baseline-of (breakout-counts-by-field)))
+   Always instance-wide (not scoped to any table).
+
+   [[breakout-counts-by-field]] is a full-instance aggregate scan, so the no-arg arity is expensive:
+   prefer the `counts` arity, passing a `{field-id count}` map already scanned once for this sync, so
+   the global read isn't repeated per table/field."
+  ([] (breakout-count-baseline (breakout-counts-by-field)))
+  ([counts :- [:map-of :int :int]] (baseline-of counts)))
 
 (def ^:dynamic *update-partition-size*
   "Max number of fields persisted per `t2/update!` call when rescoring. Dynamic for testing."
@@ -69,8 +68,7 @@
    chunk, field ids are grouped by score so the CASE emits one branch per distinct score value."
   [score-by-id]
   (doseq [chunk (partition-all *update-partition-size* score-by-id)]
-    (let [ids-by-score (reduce (fn [m [id score]] (update m score (fnil conj []) id))
-                               {} chunk)
+    (let [ids-by-score (u/group-by second first chunk)
           case-expr    (into [:case]
                              (mapcat (fn [[score ids]] [[:in :id ids] score]))
                              ids-by-score)]
@@ -102,7 +100,7 @@
                                          (interestingness/dimension-interestingness
                                           (assoc field :usage {:breakout-count          n
                                                                :baseline-breakout-count baseline}))])))
-                               (t2/select [:model/Field :id :fingerprint :semantic_type :base_type]
-                                          :id [:in field-ids]))]
+                               (t2/reducible-select [:model/Field :id :fingerprint :semantic_type :base_type]
+                                                    :id [:in field-ids]))]
          (persist-scores! score-by-id)))
      (count field-ids))))

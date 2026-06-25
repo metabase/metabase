@@ -64,8 +64,9 @@
                                                    :count          100000}]
     (let [baseline (interestingness/dimension-interestingness field)]
       (testing "a re-fingerprinted, heavily-broken-out field scores above its usage-less baseline"
-        (is (= {:fields-scored 1 :fields-failed 0}
-               (sync.interestingness/score-fields!
-                table (usage-metadata/breakout-count-baseline))))
+        (let [counts (usage-metadata/breakout-counts-by-field)]
+          (is (= {:fields-scored 1 :fields-failed 0}
+                 (sync.interestingness/score-fields!
+                  table counts (usage-metadata/breakout-count-baseline counts)))))
         (is (> (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field))
                baseline))))))

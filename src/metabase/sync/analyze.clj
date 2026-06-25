@@ -77,7 +77,8 @@
   (sync.fingerprint/fingerprint-table! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)
-  (sync.interestingness/score-fields! table (usage-metadata/breakout-count-baseline))
+  (let [counts (usage-metadata/breakout-counts-by-field)]
+    (sync.interestingness/score-fields! table counts (usage-metadata/breakout-count-baseline counts)))
   (update-fields-last-analyzed! table))
 
 (defn- maybe-log-progress [progress-bar-fn]
