@@ -110,7 +110,6 @@ databaseChangeLog:
       failOnError: false
       preConditions:
         - onFail: MARK_RAN
-        - onError: MARK_RAN
         # If any notification_id has already been written, normal app usage may have self-healed the
         # relevant recent runs. Mark this changeset ran so future startups do not keep rechecking.
         - sqlCheck:
