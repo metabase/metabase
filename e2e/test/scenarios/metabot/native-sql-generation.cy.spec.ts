@@ -241,9 +241,13 @@ describe("Native SQL generation", () => {
 
 // Response helpers
 const mockCodeEditResponse = (sql: string) =>
-  `2:{"type":"code_edit","version":1,"value":{"buffer_id":"qb","mode":"rewrite","value":"${sql}"}}
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+  H.createMetabotSSEBody([
+    H.metabotDataPart("code_edit", {
+      buffer_id: "qb",
+      mode: "rewrite",
+      value: sql,
+    }),
+  ]);
 
 const mockTextOnlyResponse = (text: string) =>
-  `0:"${text}"
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+  H.createMetabotSSEBody(H.metabotTextPart(text));

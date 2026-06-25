@@ -68,8 +68,7 @@ describe("Metabot UI", () => {
       cy.log("test on message shorter than prompt");
       H.mockMetabotResponse({
         statusCode: 200,
-        body: `0:"${loremIpsum.repeat(5)}"
-d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        body: H.createMetabotSSEBody(H.metabotTextPart(loremIpsum.repeat(5))),
       });
       H.sendMetabotMessage("You really mean that?");
       cy.log("scroll new prompt to top of the scroll area");
@@ -87,8 +86,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
 
       H.mockMetabotResponse({
         statusCode: 200,
-        body: `0:"${loremIpsum.repeat(50)}"
-d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        body: H.createMetabotSSEBody(H.metabotTextPart(loremIpsum.repeat(50))),
       });
       H.sendMetabotMessage("Keep going...");
 
@@ -103,8 +101,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
     it("should open metabot to the bottom of the conversation when reopened with message history", () => {
       H.mockMetabotResponse({
         statusCode: 200,
-        body: `0:"${loremIpsum.repeat(5)}"
-d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        body: H.createMetabotSSEBody(H.metabotTextPart(loremIpsum.repeat(5))),
       });
       H.openMetabotViaSearchButton();
       H.sendMetabotMessage("Who is your favorite?");
@@ -252,9 +249,15 @@ describe("Metabot in full-app embedding", () => {
   });
 });
 
-const whoIsYourFavoriteResponse = `0:"You, but don't tell anyone."
-2:{"type":"state","version":1,"value":{"queries":{}}}
-d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+const whoIsYourFavoriteResponse = H.createMetabotSSEBody([
+  ...H.metabotTextPart("You, but don't tell anyone."),
+  H.metabotDataPart("state", { queries: {} }),
+  H.metabotFinishPart("stop", {
+    usage: { inputTokens: 4916, outputTokens: 8, totalTokens: 4924 },
+  }),
+]);
 
-const apiKeyInvalidResponse = `3:"Anthropic API key expired or invalid"
-d:{"finishReason":"error","usage":{}}`;
+const apiKeyInvalidResponse = H.createMetabotSSEBody([
+  H.metabotErrorPart("Anthropic API key expired or invalid"),
+  H.metabotFinishPart("error"),
+]);
