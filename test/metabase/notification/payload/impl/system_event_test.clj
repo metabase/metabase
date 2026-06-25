@@ -9,6 +9,7 @@
    [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -186,6 +187,24 @@
           (is (some #(and (= (:type %) :inline)
                           (= (:content-type %) "image/png"))
                     (rest (:message email)))))))))
+
+(deftest create-and-invite-user-redirect-test
+  (testing "create-and-invite-user! lands the invitee on the invite_target item after signup"
+    (mt/with-model-cleanup [:model/User]
+      (let [join-url-html (fn [invite-target]
+                            (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+                              (-> (notification.tu/with-captured-channel-send!
+                                    (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
+                                                                  {:first_name "Admin" :email "admin@metabase.com"}
+                                                                  false
+                                                                  invite-target))
+                                  :channel/email first :message first :content)))]
+        (testing "dashboard"
+          (is (re-find #"/auth/reset_password/.*redirect(&#x3D;|=)/dashboard/42.*#new"
+                       (join-url-html {:type "dashboard" :id 42 :name "Q3 KPIs"}))))
+        (testing "question"
+          (is (re-find #"/auth/reset_password/.*redirect(&#x3D;|=)/question/7.*#new"
+                       (join-url-html {:type "question" :id 7 :name "Signups"}))))))))
 
 (deftest notification-create-email-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]

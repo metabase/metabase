@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import type { InviteTarget } from "metabase-types/api";
 import { createMockGroup, createMockUser } from "metabase-types/api/mocks";
 
 import { InviteToViewModal } from "./InviteToViewModal";
@@ -19,6 +20,12 @@ const TITLE = "Invite someone to view this dashboard";
 const SHARE_URL = "http://localhost/dashboard/1";
 
 const CREATED_USER = createMockUser({ id: 99, email: "newbie@metabase.com" });
+
+const INVITE_TARGET: InviteTarget = {
+  type: "dashboard",
+  id: 1,
+  name: "My dashboard",
+};
 
 interface SetupOpts {
   title?: string;
@@ -57,7 +64,12 @@ const setup = ({
   });
 
   const { store } = renderWithProviders(
-    <InviteToViewModal title={title} shareUrl={SHARE_URL} onClose={onClose} />,
+    <InviteToViewModal
+      title={title}
+      shareUrl={SHARE_URL}
+      inviteTarget={INVITE_TARGET}
+      onClose={onClose}
+    />,
     { storeInitialState: state },
   );
 
@@ -146,5 +158,21 @@ describe("InviteToViewModal", () => {
       await screen.findByText("Email address already in use."),
     ).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("sends the invite_target entity in the create-user request", async () => {
+    const { onClose } = setup({ emailConfigured: true });
+
+    await submitInvite("newbie@metabase.com");
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+    const call = fetchMock.callHistory.calls("path:/api/user", {
+      method: "POST",
+    })[0];
+    const body = JSON.parse(
+      await (call.options?.body as unknown as Promise<string>),
+    );
+    expect(body.invite_target).toEqual(INVITE_TARGET);
   });
 });

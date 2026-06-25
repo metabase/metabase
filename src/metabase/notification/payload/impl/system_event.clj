@@ -22,7 +22,8 @@
                                        (not (session/enable-password-login)))
         email (t2/select-one-fn :email [:model/User :email] user-id)]
     (if should-link-to-login-page
-      (str (system/site-url) "/auth/login")
+      (cond-> (str (system/site-url) "/auth/login")
+        redirect (str "?redirect=" redirect))
       ;; NOTE: the new user join url is a password reset route with an indicator that this is a first time user.
       (str (user/form-password-reset-url reset-token)
            "?"
@@ -36,11 +37,16 @@
   Currently we need it to support usecases that our template engines doesn't support such as i18n,
   but ideally this should be part of the template."
   [topic event-info]
-  (let [{user-id :id from-setup :is_from_setup} (:object event-info)]
+  (let [{user-id :id from-setup :is_from_setup invite-target :invite_target} (:object event-info)]
     (case topic
       :event/user-invited
-      {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs))
-       :user_invited_join_url      (join-url user-id (when from-setup "/admin/databases/create"))}
+      (let [redirect (or (when invite-target
+                           (case (:type invite-target)
+                             "dashboard" (urls/dashboard-path (:id invite-target))
+                             "question"  (urls/card-path (:id invite-target))))
+                         (when from-setup "/admin/databases/create"))]
+        {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs))
+         :user_invited_join_url      (join-url user-id redirect)})
       :event/security-advisory-match
       (let [{:keys [severity match_status]} (:object event-info)]
         {:severity_label     (case severity

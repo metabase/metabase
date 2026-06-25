@@ -103,6 +103,8 @@
              [:is_from_setup {:optional true} :boolean]
              [:first_name    {:optional true} [:maybe :string]]
              [:invite_method {:optional true} :string]
+             [:invite_target {:optional true}
+              [:map [:type [:enum "dashboard" "question"]] [:id pos-int?] [:name :string]]]
              [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]
    [:details {:optional true}
     [:map {:closed true}

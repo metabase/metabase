@@ -11,17 +11,19 @@ import { useSelector } from "metabase/redux";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
 import { Button, Group, Icon, Modal, Stack, Text } from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
-import type { User } from "metabase-types/api";
+import type { InviteTarget, User } from "metabase-types/api";
 
 interface InviteToViewModalProps {
   title: string;
   shareUrl: string;
+  inviteTarget?: InviteTarget;
   onClose: () => void;
 }
 
 export const InviteToViewModal = ({
   title,
   shareUrl,
+  inviteTarget,
   onClose,
 }: InviteToViewModalProps) => {
   const [createUser] = useCreateUserMutation();
@@ -46,6 +48,7 @@ export const InviteToViewModal = ({
       last_name: values.last_name ?? undefined,
       login_attributes: values.login_attributes || undefined,
       ...(password ? { password } : {}),
+      ...(inviteTarget ? { invite_target: inviteTarget } : {}),
     }).unwrap();
 
   const inviteByEmail = async (values: Partial<User>) => {
