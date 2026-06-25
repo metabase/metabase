@@ -44,7 +44,7 @@
 
 (defn- bigquery-clustering
   "Clustering columns of `table` in dataset `schema`, in clustering order, read from INFORMATION_SCHEMA. BigQuery has no
-  JDBC connection, so this runs a native query through the QP rather than `jdbc/query`. Returns e.g. `[\"category\"]`."
+  JDBC, so this runs through the QP as a native query rather than `jdbc/query`."
   [database schema table]
   (mapv first
         (mt/rows

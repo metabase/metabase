@@ -971,9 +971,7 @@
                               :expressions/integer              true
                               :expressions/text                 true
                               :identifiers-with-spaces          true
-                              ;; clustering is BigQuery's only index-equivalent; it's inlined into the CTAS/CREATE
-                              ;; TABLE (`CLUSTER BY`), so there's no separate DDL (`:index/standalone-create`,
-                              ;; `:transforms/index-ddl`).
+                              ;; clustering is the only index-equivalent, inlined as CLUSTER BY (no standalone DDL)
                               :index/fetch                      true
                               :index/inline-create              true
                               :metadata/key-constraints         false
@@ -1090,10 +1088,9 @@
 ;;; |                                          Indexes (Index Manager)                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; BigQuery has no secondary indexes. Clustering is the index-equivalent and is inlined into the table at creation
-;; (`CLUSTER BY`), so it renders in both creation seams: the CTAS in `compile-transform` and the CREATE TABLE in
-;; `create-table!`. Clustering is unnamed (matched by kind + columns in `reconcile/unnamed-inline-kinds`), and
-;; BigQuery allows at most 4 clustering columns.
+;; BigQuery has no secondary indexes. Clustering is the index-equivalent, inlined as `CLUSTER BY` into both creation
+;; seams (the CTAS in `compile-transform` and the CREATE TABLE in `create-table!`). It's unnamed, so reconcile matches
+;; it by kind + columns.
 
 (defmethod driver/supported-index-methods :bigquery-cloud-sdk
   [_driver _database]
@@ -1101,7 +1098,7 @@
                 :fields    [driver.common/index-columns-field]}})
 
 (defn- clustering-clause
-  "Render the inline `CLUSTER BY col1, col2, ...` clause for a table's `indexes`, or nil when there's no clustering."
+  "Inline `CLUSTER BY col, ...` clause for a table's `indexes`, or nil when there's no clustering."
   [indexes]
   (when-let [{:keys [columns]} (some #(when (= :clustering (:kind %)) %) indexes)]
     (let [cols (str/join ", " (map #(sql.u/quote-name :bigquery-cloud-sdk :field (:name %)) columns))]
@@ -1109,8 +1106,7 @@
 
 (defn- table-clustering-columns
   "Clustering columns of the BigQuery `table` in `schema`, in clustering order, or nil when the table is absent, isn't a
-  standard table (view/external), or isn't clustered. Reads the table metadata directly; no SQL.
-  Uses `get-table*` (like `table-exists?`) so a missing table is nil rather than a Malli error."
+  standard table (view/external), or isn't clustered. Reads table metadata directly, no SQL."
   [database schema table]
   (when-not (or (str/blank? schema) (str/blank? table))
     (let [details    (driver.conn/effective-details database)
@@ -1122,9 +1118,6 @@
             (when-let [^Clustering clustering (.getClustering ^StandardTableDefinition definition)]
               (not-empty (vec (.getFields clustering))))))))))
 
-;; The only physical "index" is the inline, unnamed clustering, read straight off the table metadata
-;; (`StandardTableDefinition.getClustering`); views/external tables have no clustering. Returns a single unnamed
-;; `:clustering` row whose `:key-columns` are in clustering order, or `[]` when the table isn't clustered.
 (defmethod driver/fetch-table-indexes :bigquery-cloud-sdk
   [_driver database schema table]
   (if-let [cluster-cols (table-clustering-columns database schema table)]
