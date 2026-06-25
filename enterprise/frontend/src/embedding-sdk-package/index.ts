@@ -151,6 +151,7 @@ export type {
   MetabaseFontFamily,
   MetabaseGlobalPluginsConfig,
   ProtectedColorKey,
+  MetabaseCard,
   MetabasePluginsConfig,
   MetabaseQuestion,
   MetabaseTheme,
