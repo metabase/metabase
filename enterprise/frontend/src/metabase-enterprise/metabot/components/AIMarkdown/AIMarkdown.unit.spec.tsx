@@ -34,4 +34,14 @@ describe("AIMarkdown", () => {
     // Verify it's rendered as a smart link by checking for the icon
     expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
   });
+
+  it("should not render images", async () => {
+    setup({
+      children: `start ![remote](https://example.com/cat.png) ![data](data:image/png;base64,iVBORw0KGgo=) end`,
+    });
+
+    expect(await screen.findByText(/start/)).toBeInTheDocument();
+    expect(screen.getByText(/end/)).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
 });
