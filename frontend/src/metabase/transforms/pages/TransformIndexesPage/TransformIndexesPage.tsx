@@ -10,10 +10,10 @@ import { isTransformRunning } from "metabase/transforms/utils";
 import { Button, Center, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
-  TableIndexEntry,
-  TableIndexRequestStatus,
   RequestableIndexes,
   TableId,
+  TableIndexEntry,
+  TableIndexRequestStatus,
   TransformId,
 } from "metabase-types/api";
 
@@ -26,7 +26,12 @@ import { IndexTable } from "./IndexTable";
 // state, so newly created indexes update without a manual refresh.
 const POLL_INTERVAL = 5000;
 
-const IN_PROGRESS_STATUSES: TableIndexRequestStatus[] = ["pending", "running"];
+const IN_PROGRESS_STATUSES: TableIndexRequestStatus[] = [
+  "create-pending",
+  "update-pending",
+  "deletion-pending",
+  "running",
+];
 
 function hasIndexInProgress(indexes: TableIndexEntry[]): boolean {
   return indexes.some(

@@ -125,11 +125,12 @@ export type IndexMethod = {
 export type RequestableIndexes = Record<string, IndexMethod>;
 
 export const TABLE_INDEX_REQUEST_STATUSES = [
-  "pending",
+  "create-pending",
+  "update-pending",
+  "deletion-pending",
   "running",
   "succeeded",
   "failed",
-  "dropped",
 ] as const;
 export type TableIndexRequestStatus =
   (typeof TABLE_INDEX_REQUEST_STATUSES)[number];

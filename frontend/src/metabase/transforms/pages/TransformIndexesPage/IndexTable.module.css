@@ -1,4 +1,4 @@
-@keyframes index-creating-glow {
+@keyframes index-applying-glow {
   0%,
   100% {
     opacity: 0.4;
@@ -11,17 +11,17 @@
   }
 }
 
-.creatingDot {
+.applyingDot {
   width: 8px;
   height: 8px;
   flex-shrink: 0;
   border-radius: 50%;
   background-color: var(--mb-color-brand);
-  animation: index-creating-glow 1.4s ease-in-out infinite;
+  animation: index-applying-glow 1.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .creatingDot {
+  .applyingDot {
     animation: none;
     opacity: 1;
   }

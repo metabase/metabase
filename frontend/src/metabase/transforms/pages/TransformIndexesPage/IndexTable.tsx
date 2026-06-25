@@ -54,34 +54,90 @@ function isManagedIndex(index: TableIndexEntry): boolean {
   return index.request != null;
 }
 
-// A pending index gets applied to the warehouse the next time the transform
-// runs, so while the transform is running it's actively being created.
-function isIndexBeingCreated(
+// A request queued for deletion can no longer be edited or re-deleted -- the
+// backend treats it as gone, so there are no actions to offer.
+function isDeletionPending(index: TableIndexEntry): boolean {
+  return index.request?.status === "deletion-pending";
+}
+
+const PENDING_STATUSES: TableIndexRequestStatus[] = [
+  "create-pending",
+  "update-pending",
+  "deletion-pending",
+];
+
+// The warehouse only reflects an index request once the transform rebuilds its
+// target: the run flips runnable requests to `running`, while pending requests
+// are applied during a run already in flight. Either way the index is actively
+// being applied.
+function isIndexBeingApplied(
   index: TableIndexEntry,
   isTransformRunning: boolean,
 ): boolean {
-  return isTransformRunning && index.request?.status === "pending";
+  const status = index.request?.status;
+  if (status == null) {
+    return false;
+  }
+  return (
+    status === "running" ||
+    (isTransformRunning && PENDING_STATUSES.includes(status))
+  );
 }
 
-function CreatingIndicator() {
+function ApplyingIndicator() {
   return (
-    <Tooltip label={t`This index is being created.`}>
+    <Tooltip label={t`This index is being applied.`}>
       <Box
-        className={S.creatingDot}
+        className={S.applyingDot}
         role="status"
-        aria-label={t`Being created`}
+        aria-label={t`Being applied`}
       />
     </Tooltip>
   );
 }
 
+// Three buckets: pending work (including the active run) is brand, a verified
+// index is success, and a failed one is error.
 const STATUS_COLORS = {
-  pending: "text-secondary",
+  "create-pending": "brand",
+  "update-pending": "brand",
+  "deletion-pending": "brand",
   running: "brand",
   succeeded: "success",
   failed: "error",
-  dropped: "warning",
 } as const satisfies Record<TableIndexRequestStatus, string>;
+
+function getStatusLabel(status: TableIndexRequestStatus): string {
+  switch (status) {
+    case "create-pending":
+      return t`Pending creation`;
+    case "update-pending":
+      return t`Pending update`;
+    case "deletion-pending":
+      return t`Pending deletion`;
+    case "running":
+      return t`Running`;
+    case "succeeded":
+      return t`Succeeded`;
+    case "failed":
+      return t`Failed`;
+  }
+}
+
+// Pending states are applied only on the transform's next full rebuild, so each
+// one explains what that run will do.
+function getPendingTooltip(status: TableIndexRequestStatus): string | null {
+  switch (status) {
+    case "create-pending":
+      return t`This index will be created the next time the transform runs.`;
+    case "update-pending":
+      return t`This index will be updated the next time the transform runs.`;
+    case "deletion-pending":
+      return t`This index will be deleted the next time the transform runs.`;
+    default:
+      return null;
+  }
+}
 
 type IndexSourceCellProps = {
   index: TableIndexEntry;
@@ -90,13 +146,13 @@ type IndexSourceCellProps = {
 
 function IndexSourceCell({ index, applicationName }: IndexSourceCellProps) {
   if (isManagedIndex(index)) {
-    return <Badge color="brand">{t`Managed`}</Badge>;
+    return t`Managed`;
   }
   return (
     <Tooltip
       label={t`This index was created outside of ${applicationName} and isn't managed here.`}
     >
-      <Badge color="text-secondary">{t`External`}</Badge>
+      <Box component="span" c="text-secondary">{t`External`}</Box>
     </Tooltip>
   );
 }
@@ -109,17 +165,18 @@ function IndexStatusCell({ index }: { index: TableIndexEntry }) {
   }
 
   const badge = (
-    <Badge color={STATUS_COLORS[request.status]}>{request.status}</Badge>
+    <Badge color={STATUS_COLORS[request.status]}>
+      {getStatusLabel(request.status)}
+    </Badge>
   );
   // A pending index exists only as a request -- it isn't applied to the
   // warehouse until the transform runs again.
-  if (request.status === "pending") {
+  const pendingTooltip = getPendingTooltip(request.status);
+  if (pendingTooltip) {
     return (
       <Group gap="xs" wrap="nowrap" w="fit-content">
         {badge}
-        <Tooltip
-          label={t`This index will be created the next time the transform runs.`}
-        >
+        <Tooltip label={pendingTooltip}>
           <Icon name="info" c="text-secondary" />
         </Tooltip>
       </Group>
@@ -256,7 +313,7 @@ function getColumns({
       header: t`Kind`,
       width: "auto",
       accessorFn: (index) => index.kind,
-      cell: ({ row }) => <Badge>{row.original.kind}</Badge>,
+      cell: ({ row }) => row.original.kind,
     },
     {
       id: "columns",
@@ -286,8 +343,8 @@ function getColumns({
       cell: ({ row }) => (
         <Group gap="xs" wrap="nowrap">
           <IndexStatusCell index={row.original} />{" "}
-          {isIndexBeingCreated(row.original, isTransformRunning) && (
-            <CreatingIndicator />
+          {isIndexBeingApplied(row.original, isTransformRunning) && (
+            <ApplyingIndicator />
           )}
         </Group>
       ),
@@ -326,7 +383,7 @@ function getColumns({
       header: "",
       width: "auto",
       cell: ({ row }) =>
-        isManagedIndex(row.original) ? (
+        isManagedIndex(row.original) && !isDeletionPending(row.original) ? (
           <IndexActionsCell
             onEdit={() => onEdit(row.original)}
             onDelete={() => onDelete(row.original)}
