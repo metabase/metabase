@@ -4,7 +4,7 @@
 }
 
 .root[data-size="md"] {
-  line-height: 1.25rem;
+  line-height: 1.43; /* 20px */
 }
 
 .root {

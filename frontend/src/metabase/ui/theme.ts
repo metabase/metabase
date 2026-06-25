@@ -113,11 +113,11 @@ export const getThemeOverrides = (
     xl: rem(999), // Do not use. Use Title component instead.
   },
   lineHeights: {
-    xs: rem(15),
-    sm: rem(16),
-    md: rem(16),
-    lg: rem(24),
-    xl: rem(999), // Do not use. Use Title component instead.
+    xs: "1.36", // 15px / 11px
+    sm: "1.33", // 16px / 12px
+    md: "1.14", // 16px / 14px
+    lg: "1.5", // 24px / 16px
+    xl: "999", // Do not use. Use Title component instead.
   },
   headings: {
     sizes: {
