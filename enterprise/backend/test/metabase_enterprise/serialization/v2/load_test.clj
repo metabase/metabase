@@ -276,6 +276,57 @@
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 
+(deftest model-result-metadata-id-roundtrips-test
+  (testing "GHY-3946: deserializing a model re-derives its result_metadata :id from the query when the underlying Fields are already present, so a filter mapped to the model column keeps its value dropdown; overrides are preserved"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "serialize a model whose CATEGORY column carries a user override"
+          (ts/with-db source-db
+            (let [coll  (ts/create! :model/Collection :name "models")
+                  db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "products" :db_id (:id db))
+                  field (ts/create! :model/Field :name "category" :table_id (:id table)
+                                    :base_type :type/Text :semantic_type :type/Category
+                                    :has_field_values :list)]
+              (ts/create! :model/Card
+                          :type            :model
+                          :name            "Products Model"
+                          :collection_id   (:id coll)
+                          :database_id     (:id db)
+                          :table_id        (:id table)
+                          :query_type      :query
+                          :dataset_query   {:type     :query
+                                            :query    {:source-table (:id table)}
+                                            :database (:id db)}
+                          :result_metadata [{:name "category" :display_name "Custom Category"
+                                             :base_type :type/Text :semantic_type :type/Category
+                                             :id (:id field) :field_ref [:field (:id field) nil]
+                                             :table_id (:id table)}])
+              (reset! serialized (into [] (serdes.extract/extract {}))))))
+        (testing "the serialized model column keeps its user override"
+          (let [card (first (filter #(= "Products Model" (:name %)) (by-model @serialized "Card")))
+                cat  (first (filter #(= "category" (:name %)) (:result_metadata card)))]
+            (is (some? cat))
+            (is (= "Custom Category" (:display_name cat)))))
+        (testing "loading re-derives the local :id when the data model already exists on the destination"
+          (ts/with-db dest-db
+            ;; the data model is already present on the destination (and at different IDs than the source)
+            (ts/create! :model/Database :name "decoy")
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "products" :db_id (:id db))
+                  field (ts/create! :model/Field :name "category" :table_id (:id table)
+                                    :base_type :type/Text :semantic_type :type/Category
+                                    :has_field_values :list)]
+              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+              (let [dest-card (t2/select-one :model/Card :name "Products Model")
+                    cat       (first (filter #(= "category" (:name %)) (:result_metadata dest-card)))]
+                (is (number? (:id cat))
+                    "model column kept a numeric :id link after the round-trip")
+                (is (= (:id field) (:id cat))
+                    "model column :id points at the dest Field id")
+                (is (= "Custom Category" (:display_name cat))
+                    "user override on the column survived the round-trip")))))))))
+
 (deftest segment-test
   ;; Segment.definition is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
   ;; converted to a portable form and read back in.
