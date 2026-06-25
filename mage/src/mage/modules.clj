@@ -310,6 +310,20 @@
                         [(keyword %)])))
       (set)))
 
+(defn- effective-quarantined-drivers
+  "Set of quarantined drivers to actually enforce for this run.
+
+   The quarantine list is fetched on the fly from a remote file (ci-test-config.json, see
+   [[quarantined-drivers]]). We intentionally IGNORE it on `master` and `release-*` branches:
+   there, every driver must run and gate, so a stray remote quarantine entry can't silently
+   disable a driver's tests (nor raise a quarantine-conflict, which would fail a push demanding
+   a PR-only break-quarantine label). On PR/feature branches the quarantine is honored, subject
+   to the break-quarantine-<driver> label."
+  [is-master-or-release]
+  (if is-master-or-release
+    #{}
+    (quarantined-drivers)))
+
 (defn- parse-bool
   "Parse a string boolean from CLI args. Returns true for 'true', false otherwise."
   [s]
@@ -365,7 +379,9 @@
                "ci:run-all-drivers label"
                (str (run-driver-label driver) " label"))}
 
-    ;; Priority 4: Quarantined drivers (respected even on master/release)
+    ;; Priority 4: Quarantined drivers — skipped unless a break-quarantine-<driver> label is present.
+    ;; On master/release this set is empty (see [[effective-quarantined-drivers]]), so quarantine is
+    ;; ignored there and we fall through to Priority 5.
     (contains? quarantined-drivers driver)
     (do
       (when verbose?
@@ -435,15 +451,19 @@
   [{:keys [options] :as _parsed}]
   (let [github-output-only? (some? (:github-output-only options))
         git-ref (get options :git-ref "master")
+        is-master-or-release (parse-bool (:is-master-or-release options))
         ;; Detect file changes for ALL drivers via git diff
         particular-driver-changed? (drivers-with-file-changes git-ref)
         ctx {:git-ref git-ref
-             :is-master-or-release (parse-bool (:is-master-or-release options))
+             :is-master-or-release is-master-or-release
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
              :particular-driver-changed? particular-driver-changed?
              :verbose? (not github-output-only?)}
-        quarantined (quarantined-drivers)
+        ;; On master/release we drop the remote quarantine list entirely (see
+        ;; [[effective-quarantined-drivers]]) so every driver runs and gates, and no
+        ;; quarantine-conflict is raised.
+        quarantined (effective-quarantined-drivers is-master-or-release)
         updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-deps-affected? updated)
@@ -462,7 +482,6 @@
                                                       (not (contains? (:pr-labels ctx)
                                                                       (break-quarantine-label driver))))))
                                        all-drivers)]
-
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
       (do
@@ -470,7 +489,6 @@
           (println (str (name driver) "-should-run=" should-run)))
         (doseq [driver quarantined-with-changes]
           (println (str (name driver) "-quarantine-conflict=true"))))
-
       (do
         ;; Print module analysis summary
         (println "")
@@ -480,7 +498,6 @@
         (println "Important file changed:" (boolean important-file-changed?))
         (println "Drivers with file changes:" (pr-str particular-driver-changed?))
         (println "")
-
         ;; Print human-readable decision summary
         (println "=== Driver Decisions ===")
         (doseq [{:keys [driver should-run reason]} decisions]
@@ -489,7 +506,6 @@
                            (if should-run (c/green "RUN ") (c/yellow "SKIP"))
                            reason)))
         (println "")
-
         ;; Print GITHUB_OUTPUT preview with colors
         (let [{drivers-to-run true drivers-to-skip false} (group-by :should-run decisions)]
           (println (c/green (str "\n=== Drivers to Run (" (count drivers-to-run) ") ===")))
@@ -498,7 +514,6 @@
           (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
           (doseq [{:keys [driver]} drivers-to-skip]
             (println (str (name driver) "-should-run=false"))))
-
         ;; Output quarantine conflict warnings with colors
         (when (seq quarantined-with-changes)
           (println "")
@@ -507,7 +522,6 @@
           (doseq [driver quarantined-with-changes]
             (println (c/red (str "  • " (name driver) " - add label '" (break-quarantine-label driver) "' to run tests")))
             (println (str (name driver) "-quarantine-conflict=true"))))))
-
     (u/exit 0)))
 
 (defn -main
