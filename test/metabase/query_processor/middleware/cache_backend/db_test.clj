@@ -6,13 +6,21 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
+   [metabase.query-processor.middleware.cache-backend.test-util :as backend.tu]
    [metabase.test :as mt]
-   [metabase.util.encryption-test :as encryption-test])
+   [metabase.test.initialize :as initialize]
+   [metabase.util.encryption-test :as encryption-test]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)
    (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :once (fn [thunk]
+                      (initialize/initialize-if-needed! :db)
+                      (thunk)))
 
 (defn- cache-results
   "Get the stored value from the query_cache"
@@ -80,3 +88,11 @@
               (testing "no \"Error saving query results to cache.\" should be logged"
                 (is (empty? (filter #(some-> % :message (str/includes? "Error saving query results to cache"))
                                     (messages))))))))))))
+
+(deftest query-cache-behavior-test
+  (testing "DB backend supports the shared query-cache middleware behavior"
+    (t2/delete! :model/QueryCache)
+    (try
+      (backend.tu/assert-query-cache-behavior! (i/cache-backend :db))
+      (finally
+        (t2/delete! :model/QueryCache)))))
