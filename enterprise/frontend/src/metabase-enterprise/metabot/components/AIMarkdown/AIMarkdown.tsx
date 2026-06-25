@@ -16,6 +16,9 @@ type AIMarkdownProps = MarkdownProps & {
   onInternalLinkClick?: (link: string) => void;
 };
 
+// SEC-505: block all images; to support them we'll need detection for valid/allowed image sources
+const DISALLOWED_ELEMENTS = ["img"];
+
 const getComponents = ({
   onInternalLinkClick,
 }: Pick<AIMarkdownProps, "onInternalLinkClick">) => ({
@@ -69,6 +72,8 @@ export const AIMarkdown = memo(
       <Markdown
         className={cx(S.aiMarkdown, className)}
         components={components}
+        disallowedElements={DISALLOWED_ELEMENTS}
+        unwrapDisallowed
         {...props}
       />
     );
