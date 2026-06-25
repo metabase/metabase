@@ -20,6 +20,23 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
+      id: v62.legacy-library-root-entity-id-updated-id-cleanup
+      author: andsalves
+      comment: >-
+        Delete the first updated changeset rows for the Library Data and Library Metrics entity ID backfills. Those
+        changesets were re-id'd after patching their MySQL/MariaDB SQL to avoid hard-coded utf8mb4 collations, @see
+        #76510.
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM ${databasechangelog.name} WHERE id IN (
+                'v62.2026-05-13T12:00:01-updated',
+                'v62.2026-05-13T12:00:02-updated'
+              ) AND filename = 'migrations/062_update_migrations.yaml';
+      rollback:
+        - empty: {}
+
+  - changeSet:
       id: v62.2026-05-13T11:59:58
       author: andsalves
       comment: Backfill type column value for Library collections
@@ -71,7 +88,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T12:00:01-updated
+      id: v62.2026-05-13T12:00:01-updated-2
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library Data section
       changes:
@@ -106,9 +123,9 @@ databaseChangeLog:
               UPDATE collection
               SET entity_id = 'librarylibrarydatadat'
               WHERE type = 'library-data'
-                AND location IN (
+                AND CAST(location AS BINARY) IN (
                   SELECT loc FROM (
-                    SELECT CONCAT('/', CAST(id AS CHAR), '/') COLLATE utf8mb4_unicode_ci AS loc
+                    SELECT CAST(CONCAT('/', CAST(id AS CHAR), '/') AS BINARY) AS loc
                     FROM collection
                     WHERE type = 'library' AND location = '/'
                   ) lib_loc
@@ -118,8 +135,8 @@ databaseChangeLog:
                     SELECT COUNT(*) AS cnt
                     FROM collection child
                     WHERE child.type = 'library-data'
-                      AND child.location IN (
-                        SELECT CONCAT('/', CAST(lib.id AS CHAR), '/') COLLATE utf8mb4_unicode_ci
+                      AND CAST(child.location AS BINARY) IN (
+                        SELECT CAST(CONCAT('/', CAST(lib.id AS CHAR), '/') AS BINARY)
                         FROM collection lib
                         WHERE lib.type = 'library' AND lib.location = '/'
                       )
@@ -129,7 +146,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T12:00:02-updated
+      id: v62.2026-05-13T12:00:02-updated-2
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library Metrics section
       changes:
@@ -164,9 +181,9 @@ databaseChangeLog:
               UPDATE collection
               SET entity_id = 'librarylibrarymetrics'
               WHERE type = 'library-metrics'
-                AND location IN (
+                AND CAST(location AS BINARY) IN (
                   SELECT loc FROM (
-                    SELECT CONCAT('/', CAST(id AS CHAR), '/') COLLATE utf8mb4_unicode_ci AS loc
+                    SELECT CAST(CONCAT('/', CAST(id AS CHAR), '/') AS BINARY) AS loc
                     FROM collection
                     WHERE type = 'library' AND location = '/'
                   ) lib_loc
@@ -176,8 +193,8 @@ databaseChangeLog:
                     SELECT COUNT(*) AS cnt
                     FROM collection child
                     WHERE child.type = 'library-metrics'
-                      AND child.location IN (
-                        SELECT CONCAT('/', CAST(lib.id AS CHAR), '/') COLLATE utf8mb4_unicode_ci
+                      AND CAST(child.location AS BINARY) IN (
+                        SELECT CAST(CONCAT('/', CAST(lib.id AS CHAR), '/') AS BINARY)
                         FROM collection lib
                         WHERE lib.type = 'library' AND lib.location = '/'
                       )
