@@ -23,7 +23,8 @@
   "The queue of idle buffers for `w` x `h`, creating it on first use.
 
   `w`/`h` are coerced to `long` so the key is type-stable: `acquire` is called with longs but `release` reads ints
-  off the image, and a Clojure vector key compares elements with Java `.equals`, where `(long 5)` != `(int 5)`."
+  off the image, and a Clojure vector key compares elements with Java `.equals`, where `(.equals (long 5) (int 5))`
+  is false."
   [w :- :int
    h :- :int]
   (.computeIfAbsent ^ConcurrentHashMap pool [(long w) (long h)] new-queue))
@@ -40,11 +41,12 @@
 
 (mu/defn acquire :- (ms/InstanceOfClass BufferedImage)
   "Return a cleared `TYPE_INT_ARGB` [[BufferedImage]] of exactly `w` x `h`, reusing an idle pooled buffer of that size
-  when one is available. Pass the result to [[release]] when finished so it can be reused."
+  when one is available. Pass the result to [[release]] when finished so it can be reused.
+
+  Polls soft refs until it finds one whose buffer the GC hasn't reclaimed, discarding the cleared ones."
   [w :- :int
    h :- :int]
   (let [q   (queue-for w h)
-        ;; poll soft refs until we find one whose buffer the GC hasn't reclaimed, discarding the cleared ones.
         img (loop []
               (when-let [ref (.poll ^ConcurrentLinkedQueue q)]
                 (or (.get ^SoftReference ref) (recur))))]
