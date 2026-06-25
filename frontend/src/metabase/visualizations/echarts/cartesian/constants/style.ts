@@ -15,16 +15,10 @@ export const Z_INDEXES = {
   series: 6, // Bars needs to have a lower z value than line/area series, see issue #40209
 };
 
-// Geometry of the DOM timeline-events band rendered below the plot.
-// `height` (the vertical space the layout reserves below the plot) is derived
-// from the chip size, the band's inner padding and its outer margin — never set
-// directly.
 export const TIMELINE_EVENTS_BAND = {
   chipWidth: 32,
   chipHeight: 24,
-  // Vertical padding inside the gray band, above and below the chips.
   bandPaddingY: 4,
-  // Gap between the gray band and the plot (top) / the axis labels (bottom).
   marginY: 8,
 };
 

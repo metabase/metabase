@@ -7,12 +7,8 @@ import S from "./TimelineEventsBand.module.css";
 import { TimelineEventRow, TimelineEventsList } from "./TimelineEventsList";
 import type { PositionedTimelineEventGroup } from "./utils";
 
-// The popover shows at most this many events; beyond it a "See all" link opens
-// the timeline sidebar.
 const MAX_VISIBLE_EVENTS = 3;
 
-// Push the dropdown far enough above the chip that it clears the x-axis line:
-// the chip sits `marginY + bandPaddingY` below the axis, plus a small gap.
 const AXIS_CLEARANCE = 8;
 const POPOVER_OFFSET =
   TIMELINE_EVENTS_BAND.marginY +

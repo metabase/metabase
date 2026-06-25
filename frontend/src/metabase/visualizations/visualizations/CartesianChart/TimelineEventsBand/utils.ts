@@ -32,16 +32,10 @@ export const getTimelineEventGroupIconName = (
 interface PositioningInput {
   timelineEventsModel: TimelineEventsModel;
   chartInstance: EChartsType;
-  /** Horizontal pixel extent of the plot area (ECharts grid). */
   plotBounds: { left: number; right: number };
   xAxisIndex: number;
 }
 
-/**
- * Maps each (already clustered) timeline event group to a pixel x within the
- * chart's plotting area using the live ECharts coordinate system, dropping
- * groups that fall outside the visible x range.
- */
 export const getPositionedTimelineEventGroups = ({
   timelineEventsModel,
   chartInstance,

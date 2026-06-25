@@ -44,12 +44,10 @@ export const TimelineEventsBand = ({
     };
   }, [chartInstance]);
 
-  // The gray band sits `marginY` below the plot bottom; chips center inside it.
   const gridBottom = chartSize.height - chartLayout.padding.bottom;
   const trackTop = gridBottom + TIMELINE_EVENTS_BAND.marginY;
   const centerY = trackTop + TIMELINE_BAND_HEIGHT / 2;
 
-  // The plot area spans the ECharts grid insets, which equal the layout padding.
   const plotLeft = chartLayout.padding.left;
   const plotRight = chartSize.width - chartLayout.padding.right;
 
