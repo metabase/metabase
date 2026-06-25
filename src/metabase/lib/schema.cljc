@@ -68,38 +68,42 @@
    [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]])
 
 (defn- reconcile-template-tags-order
-  "Return `stage` with its `:template-tags-order` reconciled against the actual `:template-tags` keys, so the
-  order is always a valid permutation of the tag names:
-  - keep existing order entries that are still present in the tag map, preserving their positions;
-  - append any tag-map names missing from the order (in map-key order);
-  - drop order entries that no longer correspond to a tag.
+  "Return `stage` with a *self-healed* `:template-tags-order`, but ONLY when the stage already has one.
 
-  This makes the (display-only) ordering self-healing when `:template-tags` is mutated directly, e.g. by code
-  that swaps in a tag map without touching the order -- the two can otherwise drift (un-normalized vs
-  normalized tag names, or keyword vs string keys) and previously crashed queries. Display metadata must never
-  be able to break a query. See #5136."
+  Crucially this does NOT add `:template-tags-order` to a stage that lacks it -- doing so would mutate the
+  serialized shape of every existing native query (breaking serdes baselines and exact-equality tests, and
+  growing storage). The key is added only by the authoring functions ([[metabase.lib.native/native-query]],
+  [[metabase.lib.native/with-native-query]], [[metabase.lib.native/with-template-tags-order]]); see #5136.
+
+  When a stage DOES already carry an order (i.e. it was authored/edited/reordered), reconcile it against the
+  actual tag keys so display metadata can never drift into an inconsistent state and break anything:
+  - keep order entries still present in the tag map, preserving positions;
+  - append tag-map names missing from the order (in map-key order);
+  - drop order entries that no longer correspond to a tag;
+  - coerce entries to the normalized string key form so keyword-vs-string decode timing can't desync them."
   [stage]
   (let [tags (:template-tags stage)]
     (cond
+      ;; No explicit order recorded -> leave the stage untouched (never add one here).
+      (not (contains? stage :template-tags-order))
+      stage
+
+      ;; An order was recorded but there are no tags -> it's stale, drop it.
       (not (seq tags))
-      ;; No tags -> no order is meaningful; drop a stale one if present.
       (dissoc stage :template-tags-order)
 
       :else
-      (let [;; Coerce tag keys to their normalized string form (the final `:map-of` key form), so the order
-            ;; entries always match the map keys by type regardless of which Malli decode phase this runs in.
-            ->name      common/normalize-string-key
-            tag-names   (into #{} (map ->name) (keys tags))
-            existing    (map ->name (seq (:template-tags-order stage)))
-            kept        (filterv tag-names existing)
-            kept-set    (set kept)
-            ;; append any tag names missing from the order, in map-key order
-            appended    (filterv (complement kept-set) (map ->name (keys tags)))]
+      (let [->name    common/normalize-string-key
+            tag-names (into #{} (map ->name) (keys tags))
+            existing  (map ->name (seq (:template-tags-order stage)))
+            kept      (filterv tag-names existing)
+            kept-set  (set kept)
+            appended  (filterv (complement kept-set) (map ->name (keys tags)))]
         (assoc stage :template-tags-order (into kept appended))))))
 
 (defn- normalize-stage-native
-  "Normalize a native stage: drop empty/null keys, then reconcile `:template-tags-order` against the tag map
-  so the two can never drift out of sync. See #5136."
+  "Normalize a native stage: drop empty/null keys, then self-heal an existing `:template-tags-order` against the
+  tag map (without adding one). See #5136."
   [m]
   (->> m
        normalize-stage-common

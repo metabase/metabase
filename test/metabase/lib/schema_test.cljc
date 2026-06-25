@@ -348,10 +348,9 @@
 (deftest ^:parallel remove-empty-stage-metadata-test
   (is (= {:lib/type :mbql/query
           :database 1493
-          :stages   [{:template-tags       {"x" {:id "6c3d5730-6f9b-4bd6-ae25-3496e8b95011", :type :text, :name "x", :display-name "X"}}
-                      :template-tags-order ["x"]
-                      :lib/type            :mbql.stage/native
-                      :native              "update users set name = 'foo' where id = {{x}}"}]}
+          :stages   [{:template-tags {"x" {:id "6c3d5730-6f9b-4bd6-ae25-3496e8b95011", :type :text, :name "x", :display-name "X"}}
+                      :lib/type      :mbql.stage/native
+                      :native        "update users set name = 'foo' where id = {{x}}"}]}
          (lib/normalize
           '{:lib/type "mbql/query"
             :database 1493
@@ -359,6 +358,35 @@
                         :lib/type           "mbql.stage/native"
                         :lib/stage-metadata nil
                         :native             "update users set name = 'foo' where id = {{x}}"})}))))
+
+(deftest ^:parallel normalize-does-not-add-template-tags-order-test
+  (testing "Normalizing a native stage must NOT add `:template-tags-order` (#5136)
+    Adding it here would mutate the serialized shape of every existing native query, breaking serdes baselines
+    and exact-equality tests. The key is added only by the authoring functions; normalize only self-heals an
+    order that is already present."
+    (is (not (contains? (lib/normalize
+                         '{:lib/type "mbql/query"
+                           :database 1
+                           :stages   ({:lib/type      "mbql.stage/native"
+                                       :template-tags {:a {:type "text", :name "a", :display-name "A"}
+                                                       :b {:type "text", :name "b", :display-name "B"}}
+                                       :native        "SELECT {{a}}, {{b}}"})})
+                        :template-tags-order)))))
+
+(deftest ^:parallel normalize-self-heals-template-tags-order-test
+  (testing "When a stage already has a `:template-tags-order`, normalize reconciles it against the tag map (#5136)"
+    (let [normalized (lib/normalize
+                      '{:lib/type "mbql/query"
+                        :database 1
+                        :stages   ({:lib/type            "mbql.stage/native"
+                                    :template-tags       {"b" {:type "text", :name "b", :display-name "B"}
+                                                          "c" {:type "text", :name "c", :display-name "C"}}
+                                    ;; stale order: references a dropped tag "a" and misses "c"
+                                    :template-tags-order ["b" "a"]
+                                    :native              "SELECT {{b}}, {{c}}"})})
+          stage      (-> normalized :stages first)]
+      ;; "a" dropped (no such tag), "c" appended in map-key order, "b" kept in place
+      (is (= ["b" "c"] (:template-tags-order stage))))))
 
 (deftest ^:parallel first-mbql-stage-cannot-be-empty-test
   (is (= {:stages [["Initial MBQL stage must have either :source-table or :source-card (but not both)"]]}
