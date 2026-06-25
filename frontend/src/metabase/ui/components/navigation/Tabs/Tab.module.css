@@ -16,6 +16,10 @@
   }
 }
 
+[data-list-border-hidden] .list::before {
+  border-width: 0;
+}
+
 .tab {
   color: var(--mb-color-text-primary);
   max-width: 100%;
