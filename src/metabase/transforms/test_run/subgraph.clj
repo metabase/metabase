@@ -1,8 +1,8 @@
 (ns metabase.transforms.test-run.subgraph
   "Sub-graph resolution for chained transform test runs.
 
-  Given a *target* transform, a set of selected *source* transforms, and the full
-  set of transforms, compute the executable slice: the transform nodes to run, the
+  Given a *target* (a transform id or a card) and a set of user-selected *source*
+  transforms, compute the executable slice: the transform nodes to run, the
   topological order to run them in, and the boundary *leaf* inputs the caller must
   supply as fixtures.
 
@@ -13,11 +13,19 @@
   a **leaf** (needs a fixture) iff no node *in the slice* produces it — this covers
   both raw warehouse tables and *sibling* outputs (a node feeding the slice that
   the user did not select as a source). Selecting only the target reduces to
-  single-transform testing."
+  single-transform testing.
+
+  Two entry points:
+
+  - [[resolve-subgraph]] — transform target: seed-ids = `#{target-id}`.
+  - [[card->necessary-fixtures]] — card target: seed-ids = producing-transform ids
+    of the physical tables the card reads; the card's raw-table refs become
+    immediate fixtures independent of the selected sources."
   (:require
    [clojure.set :as set]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as ordering]
+   [metabase.transforms.test-run.card-refs :as card-refs]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -48,7 +56,7 @@
         (recur (conj seen x) (into (rest queue) (adj x))))
       seen)))
 
-(defn- topo-order
+(defn topo-order
   "Kahn topological sort of `node-set` using dependency map `deps` (id -> #{upstream}).
   Dependencies outside `node-set` are ignored (the slice is run hermetically).
   Ties are broken by `id` ascending for determinism. Throws on a cycle."
@@ -70,27 +78,31 @@
                          ready)))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Slice computation (pure)
+;;; Slice computation (pure, multi-seed)
 ;;; ---------------------------------------------------------------------------
 
 (defn compute-slice
   "Pure slice computation over a dependency map.
 
-  `deps` is the target's upstream dependency closure (`{id -> #{upstream-ids}}`,
-  as produced by `ordering/transform-ordering`). Returns:
+  `deps` is the upstream dependency closure of the seed transforms
+  (`{id -> #{upstream-ids}}`, as produced by `ordering/transform-ordering`).
 
-      {:slice       #{transform-ids}   ; sources..target inclusive, interior auto-included
+  `seed-ids` is the set of nodes that must always be included in the slice (the
+  \"top\" of the sub-graph — the transform target for a transform target run, or
+  the set of producing transforms for a card target run). Returns:
+
+      {:slice       #{transform-ids}   ; sources..seeds inclusive, interior auto-included
        :order       [transform-ids]    ; topological (upstream first)
-       :bad-sources #{transform-ids}}  ; selected sources that are not ancestors of target
+       :bad-sources #{transform-ids}}  ; selected sources that are not ancestors of any seed
 
-  The slice is `closure ∩ descendants-or-self(sources)`, always including the
-  target. `:bad-sources` is non-empty when a selected source does not feed the
-  target — callers should fail closed rather than run a degenerate slice."
-  [deps source-ids target-id]
+  The slice is `(closure ∩ descendants-or-self(sources)) ∪ seed-ids`.
+  `:bad-sources` is non-empty when a selected source does not feed any seed —
+  callers should fail closed rather than run a degenerate slice."
+  [deps source-ids seed-ids]
   (let [closure     (set (keys deps))
         bad-sources (set/difference (set source-ids) closure)
         descendants (reachable (reverse-edges deps) source-ids)
-        slice       (conj (set/intersection closure descendants) target-id)]
+        slice       (into (set/intersection closure descendants) seed-ids)]
     {:slice       slice
      :order       (topo-order deps slice)
      :bad-sources bad-sources}))
@@ -118,7 +130,7 @@
           dep)))
 
 ;;; ---------------------------------------------------------------------------
-;;; Public entry point
+;;; Public entry points
 ;;; ---------------------------------------------------------------------------
 
 (defn resolve-subgraph
@@ -139,7 +151,7 @@
   source does not feed the target (fail closed — no degenerate slice)."
   [target-id source-ids all-transforms]
   (let [{deps :dependencies} (ordering/transform-ordering [target-id] all-transforms)
-        {:keys [slice order bad-sources]} (compute-slice deps source-ids target-id)]
+        {:keys [slice order bad-sources]} (compute-slice deps source-ids #{target-id})]
     (when (seq bad-sources)
       (throw (ex-info
               (str "Selected source transform(s) do not feed the target transform: "
@@ -155,3 +167,62 @@
        :leaf-deps (leaf-deps slice
                              #(transforms-base.i/table-dependencies (id->transform %))
                              producer-of)})))
+
+(defn card->necessary-fixtures
+  "Resolve the executable sub-graph for a card-target test run — the card analogue
+  of [[resolve-subgraph]].
+
+  Arguments:
+  - `card`           — a `:model/Card` row with a `:dataset_query` key.
+  - `source-ids`     — the user's chosen boundary source transform ids; the slice
+                       runs from them up to the transforms that produce the card's
+                       tables. A source ancestral to none of those is rejected.
+  - `all-transforms` — the full transform set, read once by the caller for a
+                       consistent snapshot of the DAG.
+
+  Returns:
+
+      {:slice     #{transform-ids}   ; transform nodes to run
+       :order     [transform-ids]    ; topological run order, upstream first
+       :leaf-deps #{raw-dep-maps}}   ; boundary inputs needing CSV fixtures
+
+  `:leaf-deps` gathers two kinds of boundary table under one `{:table id}` shape:
+  the sub-graph's own leaves, and the tables the card reads that no in-slice
+  transform produces — production lookups and dimensions among them. The caller
+  must supply a fixture for each; a missing one is caught downstream by the
+  scratch-mapping guard, which fails closed and names the table it could not map.
+
+  Throws `ex-info` with `:error-type ::sources-not-ancestors` when a selected
+  source feeds none of the card's producing transforms — the same fail-closed
+  contract as [[resolve-subgraph]]."
+  [card source-ids all-transforms]
+  (let [card-table-ids (card-refs/card->tables card)
+        producer-of    (ordering/dependency-producer-map all-transforms)
+        ;; Step 2: classify each physical table the card reads.
+        ;; nil-producer tables are immediate fixture leaves; produced tables seed the slice.
+        {seed-table-ids    true
+         boundary-table-ids false}
+        (group-by (fn [tid] (some? (producer-of {:table tid}))) card-table-ids)
+        seed-ids           (into #{} (keep (fn [tid] (producer-of {:table tid}))) seed-table-ids)
+        ;; Step 3: walk the seed transforms' upstream closure, then apply source-id cutoff.
+        {deps :dependencies} (ordering/transform-ordering (vec seed-ids) all-transforms)
+        {:keys [slice order bad-sources]} (compute-slice deps source-ids seed-ids)]
+    (when (seq bad-sources)
+      (throw (ex-info
+              (str "Selected source transform(s) do not feed any of the card's producing"
+                   " transforms: "
+                   (pr-str (vec (sort bad-sources)))
+                   ". Every source must be an upstream dependency of a transform that"
+                   " produces a table the card reads.")
+              {:error-type  ::sources-not-ancestors
+               :bad-sources bad-sources
+               :card-id     (:id card)})))
+    ;; Step 4: fixtures = card's raw boundary tables ∪ slice's leaf deps.
+    (let [card-fixtures  (into #{} (map (fn [tid] {:table tid})) boundary-table-ids)
+          id->transform  (u/index-by :id all-transforms)
+          chain-fixtures (leaf-deps slice
+                                    #(transforms-base.i/table-dependencies (id->transform %))
+                                    producer-of)]
+      {:slice     slice
+       :order     order
+       :leaf-deps (set/union card-fixtures chain-fixtures)})))
