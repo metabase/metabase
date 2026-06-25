@@ -48,6 +48,20 @@ export * from "./data-app.esm.js";
 writeToFile("data-app.cjs", dataApp_cjs);
 writeToFile("data-app.js", dataApp_js);
 
+// Data-app sandbox runtime imports
+const dataAppSandbox_cjs = `
+const DataAppSandbox = require("./data-app-sandbox.bundle");
+
+module.exports = DataAppSandbox;
+`.trim();
+
+const dataAppSandbox_js = `
+export * from "./data-app-sandbox.esm.js";
+`.trim();
+
+writeToFile("data-app-sandbox.cjs", dataAppSandbox_cjs);
+writeToFile("data-app-sandbox.js", dataAppSandbox_js);
+
 // Development mode entry point.
 // When the host app bundler resolves the "development" exports condition,
 // this file sets a window global so the SDK bundle can detect dev mode.

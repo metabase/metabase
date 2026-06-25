@@ -39,6 +39,7 @@ const baseConfig = {
   entry: {
     main: "./index.ts",
     "data-app": "./data-app.ts",
+    "data-app-sandbox": "./data-app-sandbox.ts",
   },
 
   output: {
@@ -82,7 +83,7 @@ const baseConfig = {
       ...getBuildInfoValues({ version: getSdkPackageVersionFromPackageJson() }),
     }),
     new rspack.optimize.LimitChunkCountPlugin({
-      maxChunks: 2,
+      maxChunks: 3,
     }),
     new rspack.BannerPlugin(getBannerOptions(SDK_PACKAGE_BANNER)),
   ].filter(Boolean),
@@ -94,6 +95,7 @@ const esmConfig = {
   entry: {
     "main.esm": "./index.ts",
     "data-app.esm": "./data-app.ts",
+    "data-app-sandbox.esm": "./data-app-sandbox.ts",
   },
 
   output: {

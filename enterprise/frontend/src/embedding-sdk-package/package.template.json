@@ -24,6 +24,11 @@
       "require": "./dist/data-app.cjs",
       "import": "./dist/data-app.js"
     },
+    "./data-app-sandbox": {
+      "types": "./dist/data-app-sandbox.d.ts",
+      "require": "./dist/data-app-sandbox.cjs",
+      "import": "./dist/data-app-sandbox.js"
+    },
     "./package.json": "./package.json"
   },
   "typesVersions": {
