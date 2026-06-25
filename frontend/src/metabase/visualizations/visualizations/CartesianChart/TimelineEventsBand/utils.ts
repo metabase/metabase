@@ -7,9 +7,13 @@ import type {
 import type { IconName, TimelineIcon } from "metabase-types/api";
 
 export const TIMELINE_ICON_TO_ICON_NAME = {
+  info: "info",
+  sticky_note: "sticky_note",
+  event: "event",
   star: "star",
   cake: "cake",
-  mail: "mail",
+  mail: "mail_at",
+  mail_at: "mail_at",
   warning: "warning",
   bell: "bell",
   cloud: "cloud",
