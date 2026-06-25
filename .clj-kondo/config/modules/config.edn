@@ -1939,8 +1939,8 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/Database
                     :model/DataPermissions
+                    :model/Database
                     :model/Field
                     :model/Table}}
 
