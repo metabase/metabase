@@ -9,7 +9,8 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -65,6 +66,27 @@
             (is (=? {:databases empty?}
                     (mt/user-http-request :crowberto :delete 200
                                           (str "ee/workspace-manager/" ws-id "/database/" (mt/id)))))))))))
+
+(deftest delete-workspace-pending-databases-test
+  (testing "DELETE refuses a workspace with a pending database unless ignore-pending=true"
+    (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                {:name "Pending"})]
+          (mt/user-http-request :crowberto :post 200
+                                (str "ee/workspace-manager/" ws-id "/database")
+                                {:database_id (mt/id) :input_schemas ["PUBLIC"]})
+          (let [wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id ws-id)]
+            (t2/update! :model/WorkspaceDatabase {:id wsd-id} {:status :provisioning})
+            (testing "refused by default with a 409 listing the pending databases"
+              (is (=? {:pending_databases [{:database_id (mt/id) :status "provisioning"}]}
+                      (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/" ws-id))))
+              (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id)))
+            (testing "ignore-pending=true deletes anyway"
+              (is (=? {:id ws-id :deleted true}
+                      (mt/user-http-request :crowberto :delete 200
+                                            (str "ee/workspace-manager/" ws-id "?ignore-pending=true"))))
+              (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id)))))))))
 
 (deftest add-database-without-schemas-feature-test
   (testing "POST /:id/database accepts an empty :input_schemas list for drivers that support workspaces but not the `:schemas` feature (e.g. MySQL)"

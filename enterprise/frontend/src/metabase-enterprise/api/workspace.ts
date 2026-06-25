@@ -2,6 +2,8 @@ import type {
   CreateWorkspaceDatabaseRequest,
   CreateWorkspaceRequest,
   DeleteWorkspaceDatabaseRequest,
+  DeleteWorkspaceRequest,
+  DeleteWorkspaceResponse,
   UpdateWorkspaceDatabaseRequest,
   UpdateWorkspaceRequest,
   Workspace,
@@ -52,12 +54,16 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
-    deleteWorkspace: builder.mutation<void, WorkspaceId>({
-      query: (id) => ({
+    deleteWorkspace: builder.mutation<
+      DeleteWorkspaceResponse,
+      DeleteWorkspaceRequest
+    >({
+      query: ({ id, ignorePending }) => ({
         method: "DELETE",
         url: `/api/ee/workspace-manager/${id}`,
+        params: ignorePending ? { "ignore-pending": true } : undefined,
       }),
-      invalidatesTags: (_, error, id) =>
+      invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
     createWorkspaceDatabase: builder.mutation<
