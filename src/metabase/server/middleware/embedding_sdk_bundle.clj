@@ -21,7 +21,9 @@
 
 (defn- serve-for-dev
   [request resource]
-  (some-> (static/static-resource request resource)
+  ;; Serve the raw resource (never a stale build-time .br/.gz) so local SDK rebuilds are
+  ;; always reflected — the dev build rewrites the raw .js but doesn't recompress.
+  (some-> (static/static-resource request resource {:compressed? false})
           (assoc-in [:headers "Cache-Control"] no-store-cache-header)))
 
 (defn- serve-for-prod

@@ -82,11 +82,17 @@
             (assoc-in [:headers "Vary"] "Accept-Encoding"))))
 
 (defn static-resource
-  "Serve a static resource, preferring pre-compressed variants when available."
-  [request resource-path]
-  (or (compressed-resource request resource-path :brotli)
-      (compressed-resource request resource-path :gzip)
-      (compressed-resource request resource-path :identity)))
+  "Serve a static resource, preferring pre-compressed variants when available.
+
+   With `{:compressed? false}` (used in dev), always serve the raw resource. Pre-compressed
+   .br/.gz files are only emitted by prod builds; a dev build rewrites the raw .js but leaves
+   any stale compressed sibling in place, so preferring it would shadow the freshly built file."
+  ([request resource-path]
+   (static-resource request resource-path nil))
+  ([request resource-path {:keys [compressed?] :or {compressed? true}}]
+   (or (when compressed? (compressed-resource request resource-path :brotli))
+       (when compressed? (compressed-resource request resource-path :gzip))
+       (compressed-resource request resource-path :identity))))
 
 (defn- add-wildcard [path]
   (str path (if (str/ends-with? path "/") "*" "/*")))
