@@ -59,8 +59,8 @@
     (is (= :adaptive   (planner/planner-name qp.adaptive/planner)))))
 
 (deftest planner-setting-default-test
-  (testing "explorations-query-planner defaults to :mechanical"
-    (is (= :mechanical (explorations.settings/explorations-query-planner)))))
+  (testing "explorations-query-planner defaults to :adaptive"
+    (is (= :adaptive (explorations.settings/explorations-query-planner)))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Materialization stamps group_id (mechanical planner, end-to-end through the DB)
