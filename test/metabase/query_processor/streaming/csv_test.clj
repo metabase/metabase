@@ -169,8 +169,8 @@
                         (mt/user-http-request :crowberto :post 200 "dataset/csv"
                                               (merge {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 1})}
                                                      params)))]
-      (testing "included by default"
-        (is (true? (bom-prefix? (download {})))))
+      (testing "omitted by default so external API consumers don't get an unexpected BOM"
+        (is (false? (bom-prefix? (download {})))))
       (testing "included when explicitly true"
         (is (true? (bom-prefix? (download {:csv_include_bom true})))))
       (testing "omitted when false"
@@ -181,7 +181,8 @@
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 1})}]
           (let [download-card (fn [params]
                                 (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv" card-id) params))]
-            (is (true? (bom-prefix? (download-card {}))))
+            (is (false? (bom-prefix? (download-card {}))))
+            (is (true? (bom-prefix? (download-card {:csv_include_bom true}))))
             (is (false? (bom-prefix? (download-card {:csv_include_bom false}))))))))))
 
 (deftest lazy-seq-realized-test

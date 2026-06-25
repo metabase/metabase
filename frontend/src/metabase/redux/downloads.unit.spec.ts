@@ -148,6 +148,18 @@ describe("getDatasetParams - public question (uuid-based)", () => {
     expect(url.get("format_rows")).toBe("true");
     expect(url.get("pivot_results")).toBe("true");
   });
+
+  it("requests the UTF-8 BOM so exports open correctly in Excel", () => {
+    const downloadParams = getDatasetParams({
+      type: "csv",
+      question,
+      result,
+      uuid: PUBLIC_UUID,
+    });
+
+    const url = new URLSearchParams(downloadParams.params);
+    expect(url.get("csv_include_bom")).toBe("true");
+  });
 });
 
 describe("getChartFileName", () => {

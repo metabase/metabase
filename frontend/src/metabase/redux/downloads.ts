@@ -270,6 +270,7 @@ export const downloadDataset = createAsyncThunk(
 type ExportParams = {
   format_rows: boolean;
   pivot_results: boolean;
+  csv_include_bom: boolean;
 };
 
 const getPublicDashcardParams = (
@@ -461,6 +462,7 @@ export const getDatasetParams = ({
   const exportParams: ExportParams = {
     format_rows: enableFormatting,
     pivot_results: enablePivot,
+    csv_include_bom: true,
   };
 
   const { accessedVia, resourceType } = getDownloadedResourceType({

@@ -149,7 +149,7 @@
                                                                 (string? x) (json/decode viz-setting-key-fn)))}]]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]
-       [:csv_include_bom         {:default true} ms/BooleanValue]]]
+       [:csv_include_bom         {:default false} ms/BooleanValue]]]
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -160,7 +160,7 @@
                                                                    (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                                                    (assoc :format-rows?           (or format-rows false)
                                                                           :pivot?                 (or pivot-results false)
-                                                                          :csv-include-bom?       (if (some? csv-include-bom) csv-include-bom true)
+                                                                          :csv-include-bom?       (if (some? csv-include-bom) csv-include-bom false)
                                                                           :process-viz-settings?  true
                                                                           :skip-results-metadata? true))))]
     (run-streaming-query

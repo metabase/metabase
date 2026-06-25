@@ -944,7 +944,7 @@
                                          [:sequential [:map-of :keyword :any]]]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]
-       [:csv_include_bom {:default true} ms/BooleanValue]]]
+       [:csv_include_bom {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
    (api/check-404 (t2/select-one :model/Card card-id)) export-format
    :parameters  parameters
@@ -955,7 +955,7 @@
                  :ignore-cached-results? true
                  :format-rows?           format-rows?
                  :pivot?                 pivot-results?
-                 :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? true)
+                 :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
                  :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
