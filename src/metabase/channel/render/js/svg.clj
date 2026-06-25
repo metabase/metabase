@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [metabase.appearance.core :as appearance]
+   [metabase.channel.render.image-buffer :as image-buffer]
    [metabase.channel.render.js.engine :as js.engine]
    [metabase.channel.render.style :as style]
    [metabase.config.core :as config]
@@ -16,6 +17,7 @@
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
+   (java.util ArrayList)
    (java.util.concurrent TimeUnit)
    (org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument)
    (org.apache.batik.transcoder TranscoderInput TranscoderOutput)
@@ -197,6 +199,17 @@
   Defaults to white to ensure charts are readable in dark mode email clients."
   java.awt.Color/WHITE)
 
+(defn- reusing-buffers-transcoder
+  "A [[PNGTranscoder]] whose output ARGB raster is borrowed from [[metabase.channel.render.image-buffer]] instead of
+  freshly allocated. Batik calls `createImage` to mint the (often ~1 MB+) result buffer; we hand it a pooled one and
+  record it in `acquired` so the caller can release it after `transcode` finishes."
+  ^PNGTranscoder [^ArrayList acquired]
+  (proxy [PNGTranscoder] []
+    (createImage [w h]
+      (let [img (image-buffer/acquire w h)]
+        (.add acquired img)
+        img))))
+
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (style/register-fonts-if-needed!)
@@ -204,7 +217,8 @@
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
-          transcoder                   (PNGTranscoder.)
+          acquired                     (ArrayList. 1)
+          transcoder                   (reusing-buffers-transcoder acquired)
           ;; `:scale` (default 1) supersamples the raster only -- the SVG is laid out at the
           ;; logical :width/:height but rasterized to scale-times more pixels.
           scale                        (:scale *chart-size* 1)
@@ -215,7 +229,11 @@
         (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT render-height))
       (when *svg-background-color*
         (.addTranscodingHint transcoder PNGTranscoder/KEY_BACKGROUND_COLOR *svg-background-color*))
-      (.transcode transcoder in out))
+      (try
+        (.transcode transcoder in out)
+        (finally
+          (doseq [img acquired]
+            (image-buffer/release img)))))
     (.toByteArray os)))
 
 (defn svg-string->bytes

@@ -11,7 +11,6 @@
   (or (config/config-int :mb-async-query-thread-pool-size)
       (config/config-int :mb-jetty-maxthreads)
       50))
-
 (defonce ^:private thread-pool*
   (delay
     (Executors/newFixedThreadPool thread-pool-max-size
