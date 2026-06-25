@@ -6,7 +6,6 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
-import { trackCustomVizSelected } from "./analytics";
 import { CustomVizDevPage } from "./components/CustomVizDevPage";
 import { CustomVizPage } from "./components/CustomVizPage";
 import { CustomVizSettingWidget } from "./components/CustomVizSettingWidget";
@@ -35,7 +34,6 @@ export function initializePlugin() {
       isCustomVizDisplay,
       isWidgetMount,
       CustomVizSettingWidget,
-      trackCustomVizSelected,
     });
   }
 }
