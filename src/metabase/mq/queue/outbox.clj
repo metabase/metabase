@@ -69,18 +69,24 @@
       (swap! state assoc ::rows rows))))
 
 (defn publish-outbox-rows!
-  "after-commit callback: publish each row inserted by [[insert-outbox-rows!]] to the backend and
-  delete it from the outbox. Per-row try/catch — on failure the row is left for [[recover-outbox!]]
-  to republish (at-least-once)."
+  "after-commit callback: publish each row inserted by [[insert-outbox-rows!]] to the backend, then
+  delete the successfully-published rows in a single batched DELETE. Per-row try/catch — on failure
+  the row is left for [[recover-outbox!]] to republish (at-least-once)."
   []
   (when-let [state (mdb/transaction-state)]
-    (doseq [{:keys [id channel payload]} (::rows @state)]
-      (try
-        (transport/publish-encoded! channel payload)
-        (t2/delete! :queue_message_outbox :id id)
-        (catch Exception e
-          (log/error e "Error publishing outbox row; recovery sweep will retry"
-                     {:channel channel :outbox-id id}))))))
+    (let [published-ids (reduce
+                         (fn [ids {:keys [id channel payload]}]
+                           (try
+                             (transport/publish-encoded! channel payload)
+                             (conj ids id)
+                             (catch Exception e
+                               (log/error e "Error publishing outbox row; recovery sweep will retry"
+                                          {:channel channel :outbox-id id})
+                               ids)))
+                         []
+                         (::rows @state))]
+      (when (seq published-ids)
+        (t2/delete! :queue_message_outbox :id [:in published-ids])))))
 
 (defn defer-transactional!
   "Routes `msgs` for `channel` through the transactional outbox. Accumulates them per channel in
@@ -113,20 +119,23 @@
                                        :where    [:< :created_at threshold]
                                        :order-by [[:id :asc]]
                                        :limit    recovery-batch-size
-                                       :for      (for-update-clause)})]
+                                       :for      (for-update-clause)})
+                  ;; publish every row, collecting the ids that succeeded, then delete them in a
+                  ;; single batched DELETE — only rows whose publish succeeded are removed.
+                  published-ids (reduce
+                                 (fn [ids {:keys [id queue_name payload]}]
+                                   (try
+                                     (transport/publish-encoded! (keyword "queue" queue_name) payload)
+                                     (conj ids id)
+                                     (catch Exception e
+                                       (log/error e "Error publishing outbox row during recovery; a later sweep will retry"
+                                                  {:queue queue_name :outbox-id id})
+                                       ids)))
+                                 [] rows)]
+              (when (seq published-ids)
+                (t2/delete! :queue_message_outbox :id [:in published-ids]))
               {:claimed (count rows)
-               :deleted (reduce
-                         (fn [n {:keys [id queue_name payload]}]
-                           (try
-                             (transport/publish-encoded! (keyword "queue" queue_name) payload)
-                             ;; only delete a row once its publish has succeeded
-                             (t2/delete! :queue_message_outbox :id id)
-                             (inc n)
-                             (catch Exception e
-                               (log/error e "Error publishing outbox row during recovery; a later sweep will retry"
-                                          {:queue queue_name :outbox-id id})
-                               n)))
-                         0 rows)}))]
+               :deleted (count published-ids)}))]
       ;; Stop once the batch wasn't full, or no row could be published (e.g. an all-failing batch) —
       ;; recurring then would re-claim the same undeletable rows forever.
       (if (and (= claimed recovery-batch-size) (pos? deleted))

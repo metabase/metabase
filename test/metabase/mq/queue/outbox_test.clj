@@ -243,6 +243,34 @@
         (is (t2/exists? :queue_message_outbox :id bad-id)
             "the failed row is retained for a later sweep")))))
 
+(deftest publish-outbox-rows-batches-deletes-test
+  (testing "successfully published rows are deleted as a batch; a row whose publish fails is retained"
+    (mq.tu/with-test-mq [_ctx]
+      (let [p1   (payload/encode ["one"])
+            p2   (payload/encode ["two"])
+            p3   (payload/encode ["three"])
+            id1  (t2/insert-returning-pk! :queue_message_outbox {:queue_name "outbox-require" :payload p1})
+            id2  (t2/insert-returning-pk! :queue_message_outbox {:queue_name "outbox-require" :payload p2})
+            id3  (t2/insert-returning-pk! :queue_message_outbox {:queue_name "outbox-require" :payload p3})
+            published (atom [])
+            real-publish (dynamic-redefs/original-fn #'transport/publish-encoded!)]
+        (with-dynamic-fn-redefs [transport/publish-encoded!
+                                 (fn [channel payload]
+                                   ;; the middle row fails to publish
+                                   (if (= payload p2)
+                                     (throw (ex-info "boom" {}))
+                                     (do (swap! published conj payload)
+                                         (real-publish channel payload))))]
+          (binding [app-db.conn/*transaction-state*
+                    (atom {:metabase.mq.queue.outbox/rows
+                           [{:id id1 :channel :queue/outbox-require :payload p1}
+                            {:id id2 :channel :queue/outbox-require :payload p2}
+                            {:id id3 :channel :queue/outbox-require :payload p3}]})]
+            (outbox/publish-outbox-rows!)))
+        (is (not (t2/exists? :queue_message_outbox :id id1)) "published row deleted")
+        (is (t2/exists? :queue_message_outbox :id id2) "failed row retained for recovery")
+        (is (not (t2/exists? :queue_message_outbox :id id3)) "published row deleted")))))
+
 (deftest recover-outbox-skips-fresh-rows-test
   (mq.tu/with-test-mq [_ctx]
     (testing "rows younger than the recovery age are left for the normal after-commit path"

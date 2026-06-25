@@ -52,3 +52,29 @@ databaseChangeLog:
             columns:
               - column:
                   name: created_at
+
+  - changeSet:
+      id: v63.qmoutbox3
+      author: nvoxland
+      comment: >-
+        Tune autovacuum for the high-churn outbox table.
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE queue_message_outbox SET (
+                autovacuum_vacuum_scale_factor = 0.0,
+                autovacuum_vacuum_threshold = 50,
+                autovacuum_analyze_scale_factor = 0.0,
+                autovacuum_analyze_threshold = 50
+              )
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE queue_message_outbox RESET (
+                autovacuum_vacuum_scale_factor,
+                autovacuum_vacuum_threshold,
+                autovacuum_analyze_scale_factor,
+                autovacuum_analyze_threshold
+              )
