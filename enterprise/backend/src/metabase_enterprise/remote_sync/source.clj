@@ -80,10 +80,8 @@
   (codecs/bytes->hex (buddy-hash/sha256 content)))
 
 (defn row->content-hash
-  "SHA-256 (hex) of the serialized YAML for the entity named by `row` (a map with `:model_type` and
-  `:model_id`), or nil if the entity can't be extracted/serialized. Always hashes the live DB entity's
-  serialization (never the bytes on disk), so the value matches at every sync point and in the event
-  consumer regardless of YAML-on-disk formatting drift."
+  "SHA-256 (hex) of the serialized YAML for the entity named by `row` ({:model_type :model_id}), or nil if it
+  can't be extracted. Hashes the live DB serialization (never on-disk bytes), so it's stable across sync points."
   [row]
   (when-let [entity (first (spec/extract-entities-for-rows [row]))]
     (content-hash (:content (entity->file-spec (serdes/storage-base-context) entity)))))

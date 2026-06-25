@@ -238,14 +238,11 @@
                            :content_hash (into [:case] (concat (mapcat (fn [id] [[:= :id id] (:content_hash (by-id id))]) hits) [:else :content_hash]))))))))
 
 (defn- import-content-metadata
-  "Builds {:model_type :model_id :path :content_hash} entries for the given RemoteSyncObject `rows` (maps
-  with :model_type and :model_id) after an import — folded into the import insert by `merge-content-metadata`.
-  Re-serializes each loaded entity once (grouped by model) to compute its `content_hash` — matching what the
-  update-event consumer recomputes. `file_path` is the actual repo path the entity was read from
-  (`repo-paths`, from cached-file-paths) for entity-id models, so later renames/deletes resolve the real
-  file; other models fall back to the freshly computed path. Entities that fail to serialize are skipped.
-  Call within a `serdes/with-cache` (see `insert-with-metadata!`) so FK lookups are memoized; `rows` should
-  be a bounded chunk so the IN clauses stay within DB param limits."
+  "Content-hash entries for imported `rows` ({:model_type :model_id}), re-serializing each entity once to hash
+  it. `repo-paths` supplies the real repo path for entity-id models (else the freshly computed one).
+
+  Returns:
+   - [{:model_type :model_id :path :content_hash}] (entities that fail to serialize are omitted)"
   [rows repo-paths]
   (let [storage-opts (serdes/storage-base-context)
         repo-by-eid  (into {} (map (fn [{:keys [model_type entity_id path]}] [[model_type entity_id] path])) repo-paths)
@@ -275,9 +272,8 @@
           (group-by :model_type rows))))
 
 (defn- merge-content-metadata
-  "Folds the file_path + content_hash from `metadata` entries ({:model_type :model_id :path :content_hash})
-  into `rows` (RemoteSyncObject insert maps), matched by (model_type, model_id), so the metadata can be
-  written by the import's single insert rather than a follow-up update. Rows with no metadata are unchanged."
+  "Folds `metadata` ({:model_type :model_id :path :content_hash}) into matching `rows` as :file_path +
+  :content_hash; rows with no metadata are unchanged."
   [rows metadata]
   (let [by-key (into {} (map (juxt (juxt :model_type :model_id) identity)) metadata)]
     (mapv (fn [row]
@@ -287,11 +283,8 @@
           rows)))
 
 (defn- insert-with-metadata!
-  "Inserts RemoteSyncObject `rows` after an import, in chunks of `content-hash-batch-size`. Each chunk
-  re-serializes only its entities to compute file_path + content_hash (`repo-paths` supplies the actual repo
-  path for entity-id models) and folds them into that chunk's insert — so insert/IN param counts and the
-  memory held at once are bounded to one chunk. The whole run shares one serdes cache so FK lookups are
-  memoized across chunks."
+  "Inserts RemoteSyncObject `rows` after an import, one `content-hash-batch-size` chunk at a time, folding
+  each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
   [rows repo-paths]
   (serdes/with-cache
     (doseq [chunk (partition-all content-hash-batch-size rows)]
@@ -725,11 +718,9 @@
                          (u/traverse #{[model-type model-id]} #(serdes/required (first %) (second %)))))))
 
 (defn- untracked-content-deps
-  "The `{:model_type :model_id}` entities in the change's export closure that are remote-sync content but have
-  no RemoteSyncObject row — dependencies a full export would pull (via `serdes/descendants`/`required`) yet
-  that aren't independently tracked (e.g. a card in a non-synced collection referenced by a synced card, and
-  that card's collection). These get written alongside the change so the incremental export matches what a
-  full export would emit. Excludes the entity itself and non-content deps (e.g. databases)."
+  "The `{:model_type :model_id}` entities in `[model-type model-id]`'s export closure that are remote-sync
+  content but have no RemoteSyncObject row — untracked deps an incremental export must write to match a full
+  export. Excludes the entity itself and non-content deps (e.g. databases)."
   [model-type model-id]
   (into #{}
         (filter (fn [{:keys [model_type model_id]}]
@@ -807,9 +798,8 @@
        (reduce merge-incremental-export-plans-reducer {})))
 
 (defn- dependencies->incremental-export-plan
-  "Validate the untracked dependency entities `dep-ids` (a set of `{:model_type :model_id}`) one chunk at a
-  time, returning a plan `{:writes [{:model_type :model_id :file_path}]}`, or
-  `:remote-sync/incremental-not-possible` at the first chunk whose target path collides with a different entity."
+  "Plan fragment ({:writes [...]}) for the untracked dependency entities `dep-ids` ({:model_type :model_id}),
+  one chunk at a time, or `:remote-sync/incremental-not-possible` if any target path collides."
   [snapshot opts dep-ids]
   (->> dep-ids
        (->sized-chunks)
@@ -902,15 +892,11 @@
            (reduce merge-incremental-export-plans-reducer {})))))
 
 (defn- incremental-export-plan
-  "Validate `rows` (`RemoteSyncObject`s) and build an incremental export plan, one chunk at a time.
+  "Build an incremental export plan for `rows` (`RemoteSyncObject`s) against `snapshot`, one chunk at a time.
 
-  Arguments:
-    - `snapshot`: git repo to test existing paths against
-    - `rows`: RemoteSyncObjects to export.
-
-  Return:
-    - `{:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}`, or
-    - `:remote-sync/incremental-not-possible` when any row can't be exported incrementally."
+  Returns:
+   - {:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}, or
+   - :remote-sync/incremental-not-possible when any row can't go incrementally"
   [snapshot rows]
   (let [opts          (serdes/storage-base-context)
         ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
