@@ -62,7 +62,7 @@
           (mt/with-dynamic-fn-redefs
             [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
              semantic.embedding/get-configured-model                (constantly ::model)
-             reconcile/reconcile-now!                               (fn [_ds _model]
+             reconcile/reconcile!                                   (fn [_ds _model]
                                                                       (swap! calls inc)
                                                                       {:inserted 3 :deleted 1 :unchanged 2})]
             (testing "idle: the caller starts the run, gets its index diff + timing, and the schedule clears"

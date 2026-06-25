@@ -130,8 +130,8 @@
             (is (empty? (docs-for ds "table" table-id)))
             (is (seq (docs-for ds "metric" metric-id)) "the metric is untouched")))))))
 
-(deftest ^:sequential reconcile-now!-runs-to-completion-test
-  (testing "reconcile-now! blocks and reconciles, and (unlike reconcile!) never skips on lock contention"
+(deftest ^:sequential reconcile!-runs-to-completion-test
+  (testing "reconcile! blocks until the run completes and a second run is idempotent"
     (mt/with-premium-features #{:library :semantic-search}
       (with-isolated-index [ds]
         (collections.tu/with-library [{data :data}]
@@ -143,13 +143,12 @@
                                                            :active        true
                                                            :name          "orders"
                                                            :display_name  "Orders"}]
-              (testing "the forced run returns the diff and populates the index"
-                (let [result (reconcile/reconcile-now! ds model)]
+              (testing "the run returns the diff and populates the index"
+                (let [result (reconcile/reconcile! ds model)]
                   (is (pos? (:inserted result)))
-                  (is (not (contains? result :skipped)))
                   (is (seq (docs-for ds "table" table-id)))))
-              (testing "a second forced run still executes (returns a diff, not {:skipped true})"
-                (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile-now! ds model)))))))))))
+              (testing "a second run writes nothing"
+                (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds model)))))))))))
 
 (deftest ^:sequential rebuild-on-model-change-test
   (mt/with-premium-features #{:library :semantic-search}

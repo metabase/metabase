@@ -97,8 +97,9 @@
 
 (defmacro with-library
   "Ensure the singleton Library collection and its Data/Metrics sub-collections exist for the duration of
-  `body`, binding `binding` to a `{:library _ :data _ :metrics _}` map of those collections. Reuses an
-  existing library if one is present; otherwise creates a temporary tree that's cleaned up afterward."
+  `body`, binding `binding` to a `{:library _ :data _ :metrics _}` map of those collections.
+  Reuses an existing library if one is present; otherwise creates a temporary tree that's cleaned up
+  afterward."
   {:style/indent 1}
   [[binding] & body]
   `(do-with-library (fn [~binding] ~@body)))

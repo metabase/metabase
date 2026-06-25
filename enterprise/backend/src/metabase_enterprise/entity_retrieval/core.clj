@@ -82,7 +82,7 @@
         (try @predecessor (catch Throwable _ nil)))
       (try
         (let [started (System/nanoTime)
-              diff    (reconcile/reconcile-now! ds model)]
+              diff    (reconcile/reconcile! ds model)]
           {:index     diff
            :execution {:waited_ms (elapsed-ms scheduled started)
                        :ran_ms    (elapsed-ms started (System/nanoTime))}})
@@ -98,7 +98,7 @@
   mutations separated from how long the run waited to start and then ran.
   A call never joins a run already in flight, which may predate its write; it starts a run when idle, or
   queues a single follow-up behind the in-flight run that concurrent callers coalesce onto.
-  Across nodes the run waits for the reconcile advisory lock (see [[reconcile/reconcile-now!]]).
+  Across nodes the run waits for the reconcile advisory lock (see [[reconcile/reconcile!]]).
   Callers must have checked [[available?]]."
   []
   (let [ds    (semantic.db.datasource/ensure-initialized-data-source!)
