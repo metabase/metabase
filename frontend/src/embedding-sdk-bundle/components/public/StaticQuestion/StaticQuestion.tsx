@@ -32,7 +32,7 @@ import {
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
 import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-layout";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
-import { getCardFromSdkQuestionQuery } from "embedding-sdk-bundle/lib/sdk-question-query";
+import { resolveDeserializedCard } from "embedding-sdk-bundle/lib/sdk-question/resolve-deserialized-card";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
@@ -109,6 +109,7 @@ const StaticQuestionInner = (
   props: StaticQuestionInternalProps,
 ): JSX.Element | null => {
   const query = props.query;
+  const card = props.card;
 
   // Normalize props for Guest Embed usage (e.g. enforce withDownloads in OSS).
   const normalizedProps =
@@ -157,8 +158,8 @@ const StaticQuestionInner = (
   );
 
   const deserializedCard = useMemo(
-    () => getCardFromSdkQuestionQuery(query),
-    [query],
+    () => resolveDeserializedCard({ card, query }),
+    [card, query],
   );
 
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);

@@ -33,7 +33,7 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
-import { getCardFromSdkQuestionQuery } from "embedding-sdk-bundle/lib/sdk-question-query";
+import { resolveDeserializedCard } from "embedding-sdk-bundle/lib/sdk-question/resolve-deserialized-card";
 import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
@@ -108,6 +108,7 @@ export type InteractiveQuestionComponents = {
 function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
   const {
     query,
+    card,
     questionId,
     title,
     withDownloads,
@@ -117,8 +118,8 @@ function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
   } = props;
 
   const deserializedCard = useMemo(
-    () => getCardFromSdkQuestionQuery(query),
-    [query],
+    () => resolveDeserializedCard({ card, query }),
+    [card, query],
   );
 
   // When rendered via the `query` prop (Metabot `navigate_to`), no questionId is
