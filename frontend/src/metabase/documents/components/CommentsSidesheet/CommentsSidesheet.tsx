@@ -26,7 +26,7 @@ export const CommentsSidesheet = ({ params }: Props) => {
     <Box
       component="aside"
       pos="relative"
-      mah="100dvh"
+      h="100%"
       w="30rem"
       className={Animation.slideLeft}
       style={{

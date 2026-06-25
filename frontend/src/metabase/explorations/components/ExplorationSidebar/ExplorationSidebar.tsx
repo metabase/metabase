@@ -60,6 +60,7 @@ interface ExplorationSidebarProps {
   selectedEntityId: SelectedEntityId | null;
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
+  isOpen: boolean;
 }
 
 export function ExplorationSidebar({
@@ -68,6 +69,7 @@ export function ExplorationSidebar({
   selectedEntityId,
   setSelectedEntityId,
   getSelectedEntityIdUrl,
+  isOpen,
 }: ExplorationSidebarProps) {
   const treeController = useTree({
     data: tree,
@@ -196,6 +198,11 @@ export function ExplorationSidebar({
       getSelectedEntityIdUrl,
     ],
   );
+
+  if (!isOpen) {
+    // we still want keyboard shortcuts to work, so the component should still be mounted
+    return null;
+  }
 
   return (
     <Box

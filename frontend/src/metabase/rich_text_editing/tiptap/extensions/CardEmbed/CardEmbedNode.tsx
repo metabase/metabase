@@ -38,7 +38,7 @@ import {
   useNodeInViewport,
   useReportPrefetchLoading,
 } from "metabase/documents/hooks/use-node-in-viewport";
-import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
+import { useUnresolvedDocumentCommentsCount } from "metabase/documents/hooks/use-unresolved-document-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
@@ -234,7 +234,7 @@ export const CardEmbedComponent = memo(
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+    const unresolvedCommentsCount = useUnresolvedDocumentCommentsCount(_id, {
       skip: !isInViewport,
     });
     const documentHost = useSelector(getDocumentHost);

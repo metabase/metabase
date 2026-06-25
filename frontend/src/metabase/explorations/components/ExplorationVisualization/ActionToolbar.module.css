@@ -15,3 +15,11 @@ selecting the same class twice is a specificity hack to ensure the override take
   box-shadow: none;
   border-radius: 0;
 }
+
+.timelineMenuTarget {
+  cursor: pointer;
+  background-color: var(--mb-color-background-secondary);
+  &:hover {
+    background-color: var(--mb-color-background-tertiary);
+  }
+}

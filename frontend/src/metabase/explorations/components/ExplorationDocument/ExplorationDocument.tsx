@@ -55,6 +55,7 @@ interface ExplorationDocumentProps {
   childTargetId?: string;
   route: Route;
   locationSearch: string;
+  isCommentsSidesheetOpen: boolean;
 }
 
 export function ExplorationDocument({
@@ -63,6 +64,7 @@ export function ExplorationDocument({
   childTargetId,
   route,
   locationSearch,
+  isCommentsSidesheetOpen,
 }: ExplorationDocumentProps) {
   const { isAiSummary, isCanceled } = document;
 
@@ -133,8 +135,8 @@ export function ExplorationDocument({
       <Stack
         flex={1}
         h="100%"
-        py="3rem"
-        pr="3rem"
+        pb="3rem"
+        pr={isCommentsSidesheetOpen ? "3rem" : "1rem"}
         align="center"
         style={{
           overflowY: "auto",

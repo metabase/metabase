@@ -41,3 +41,10 @@
 .commentsSidebar {
   border-left: 1px solid var(--mb-color-border-neutral);
 }
+
+.commentTimelineBadge {
+  background-color: var(--mb-color-background-secondary);
+  &:hover {
+    background-color: var(--mb-color-background-tertiary);
+  }
+}
