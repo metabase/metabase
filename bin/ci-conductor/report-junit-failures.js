@@ -17,10 +17,6 @@ const { join } = require("node:path");
 
 const JUNIT_DIR = process.env.JUNIT_DIR || "target/junit";
 
-// When set, the payload is logged instead of POSTed — used to validate env
-// resolution and payload shape in CI before sending real data.
-const isDryRun = process.env.CI_CONDUCTOR_DRY_RUN === "true";
-
 // The endpoint can be slow, but the reporter must never hang a CI job.
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -182,30 +178,18 @@ function runContext() {
 }
 
 /**
- * Report the given failures to ci-conductor. In dry-run mode the payload is
- * logged and nothing is sent. Otherwise it's POSTed, no-opping when the webhook
- * URL isn't configured (local runs, PRs without the secret). Never throws.
+ * Report the given failures to ci-conductor by POSTing them to the webhook,
+ * no-opping when the webhook URL isn't configured (local runs, PRs without the
+ * secret). Never throws — reporting must not break a test run.
  */
 async function postFailedTests(tests) {
   const baseUrl = process.env.CI_CONDUCTOR_BASE_URL;
-  if (tests.length === 0 || (!baseUrl && !isDryRun)) {
+  if (tests.length === 0 || !baseUrl) {
     return;
   }
 
   try {
     const body = { ...runContext(), tests };
-
-    if (isDryRun) {
-      console.log(
-        `[ci-conductor] (dry run) would POST ${tests.length} failure(s):`,
-        JSON.stringify(body),
-      );
-      return;
-    }
-
-    if (!baseUrl) {
-      return;
-    }
 
     const endpoint = `${baseUrl.replace(/\/+$/, "")}/webhooks/failed-tests`;
     const headers = { "Content-Type": "application/json" };

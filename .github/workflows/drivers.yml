@@ -17,9 +17,6 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
-  # Rollout: log the payload instead of POSTing until we've confirmed env
-  # resolution and `node` availability on the driver runners. Remove to go live.
-  CI_CONDUCTOR_DRY_RUN: "true"
 
 jobs:
   # This job determines which driver tests should run based on PR context.
