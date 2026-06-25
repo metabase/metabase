@@ -7,7 +7,6 @@ import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import {
-  Badge,
   Button,
   Card,
   Code,
@@ -51,18 +50,11 @@ function getColumns(): TreeTableColumnDef<IndexRow>[] {
         ),
     },
     {
-      id: "source",
-      header: t`Source`,
+      id: "kind",
+      header: t`Type`,
       width: "auto",
-      accessorFn: (index) =>
-        index.metabase_managed ? t`Managed` : t`External`,
-      cell: ({ row }) => (
-        <Badge
-          color={row.original.metabase_managed ? "brand" : "text-secondary"}
-        >
-          {row.original.metabase_managed ? t`Managed` : t`External`}
-        </Badge>
-      ),
+      accessorFn: (index) => index.kind,
+      cell: ({ row }) => <Code>{row.original.kind}</Code>,
     },
     {
       id: "columns",
