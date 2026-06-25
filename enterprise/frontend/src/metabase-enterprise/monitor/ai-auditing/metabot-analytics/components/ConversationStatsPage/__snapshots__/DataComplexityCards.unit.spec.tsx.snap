@@ -245,17 +245,19 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
               role="region"
             >
               <div>
-                <div
-                  color="text-primary"
-                  data-size="sm"
-                >
-                  How many tables, models, and metrics are included in this layer.
-                </div>
-                <div
-                  color="text-primary"
-                  data-size="sm"
-                >
-                  Low complexity
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    How many tables, models, and metrics are included in this layer.
+                  </div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Low complexity
+                  </div>
                 </div>
               </div>
             </div>
@@ -309,17 +311,139 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
               role="region"
             >
               <div>
-                <div
-                  color="text-primary"
-                  data-size="sm"
-                >
-                  Active physical-table fields exposed through this layer.
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Active physical-table fields exposed through this layer.
+                  </div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Low complexity
+                  </div>
                 </div>
-                <div
-                  color="text-primary"
-                  data-size="sm"
-                >
-                  Low complexity
+              </div>
+            </div>
+          </div>
+          <div>
+            <button
+              aria-expanded="false"
+              data-accordion-control="true"
+              data-chevron-position="right"
+              type="button"
+            >
+              <span
+                data-position="right"
+              >
+                <svg
+                  aria-label="chevrondown icon"
+                  height="12"
+                  role="img"
+                  width="12"
+                />
+              </span>
+              <span>
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="md"
+                    data-truncate="end"
+                  >
+                    Collection tree size
+                  </div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    2
+                  </div>
+                  <div
+                    data-size="sm"
+                    data-variant="filled"
+                  >
+                    <span>
+                      2
+                    </span>
+                  </div>
+                </div>
+              </span>
+            </button>
+            <div
+              aria-hidden="true"
+              inert=""
+              role="region"
+            >
+              <div>
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Low complexity
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <button
+              aria-expanded="false"
+              data-accordion-control="true"
+              data-chevron-position="right"
+              type="button"
+            >
+              <span
+                data-position="right"
+              >
+                <svg
+                  aria-label="chevrondown icon"
+                  height="12"
+                  role="img"
+                  width="12"
+                />
+              </span>
+              <span>
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="md"
+                    data-truncate="end"
+                  >
+                    Fields per entity
+                  </div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    0.8
+                  </div>
+                  <div
+                    data-size="sm"
+                    data-variant="filled"
+                  >
+                    <span>
+                      1
+                    </span>
+                  </div>
+                </div>
+              </span>
+            </button>
+            <div
+              aria-hidden="true"
+              inert=""
+              role="region"
+            >
+              <div>
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Low complexity
+                  </div>
                 </div>
               </div>
             </div>
@@ -339,7 +463,7 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
             data-variant="filled"
           >
             <span>
-              Complexity score 0
+              Complexity score 3
             </span>
           </div>
         </div>
@@ -396,17 +520,19 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
               role="region"
             >
               <div>
-                <div
-                  color="text-primary"
-                  data-size="sm"
-                >
-                  Exact duplicate names after normalization, which can make entities harder to distinguish.
-                </div>
-                <div
-                  color="text-primary"
-                  data-size="sm"
-                >
-                  Low complexity
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Exact duplicate names after normalization, which can make entities harder to distinguish.
+                  </div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Low complexity
+                  </div>
                 </div>
               </div>
             </div>
@@ -460,17 +586,19 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
               role="region"
             >
               <div>
-                <div
-                  color="text-primary"
-                  data-size="sm"
-                >
-                  Pairs of entity names that are semantically similar enough to be treated as possible synonyms.
-                </div>
-                <div
-                  color="text-primary"
-                  data-size="sm"
-                >
-                  Low complexity
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Pairs of entity names that are semantically similar enough to be treated as possible synonyms.
+                  </div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Low complexity
+                  </div>
                 </div>
               </div>
             </div>
@@ -524,17 +652,401 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
               role="region"
             >
               <div>
-                <div
-                  color="text-primary"
-                  data-size="sm"
-                >
-                  Duplicate measure names across included tables.
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Duplicate measure names across included tables.
+                  </div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Low complexity
+                  </div>
                 </div>
-                <div
-                  color="text-primary"
-                  data-size="sm"
-                >
-                  Low complexity
+              </div>
+            </div>
+          </div>
+          <div>
+            <button
+              aria-expanded="false"
+              data-accordion-control="true"
+              data-chevron-position="right"
+              type="button"
+            >
+              <span
+                data-position="right"
+              >
+                <svg
+                  aria-label="chevrondown icon"
+                  height="12"
+                  role="img"
+                  width="12"
+                />
+              </span>
+              <span>
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="md"
+                    data-truncate="end"
+                  >
+                    Synonym degree
+                  </div>
+                  <div
+                    data-size="sm"
+                    data-variant="filled"
+                  >
+                    <span>
+                      3
+                    </span>
+                  </div>
+                </div>
+              </span>
+            </button>
+            <div
+              aria-hidden="true"
+              inert=""
+              role="region"
+            >
+              <div>
+                <div>
+                  <div
+                    data-accordion="true"
+                    data-variant="separated"
+                  >
+                    <div>
+                      <button
+                        aria-expanded="false"
+                        data-accordion-control="true"
+                        data-chevron-position="right"
+                        type="button"
+                      >
+                        <span
+                          data-position="right"
+                        >
+                          <svg
+                            aria-label="chevrondown icon"
+                            height="12"
+                            role="img"
+                            width="12"
+                          />
+                        </span>
+                        <span>
+                          <div>
+                            <div
+                              color="text-primary"
+                              data-size="md"
+                              data-truncate="end"
+                            >
+                              P50
+                            </div>
+                            <div
+                              color="text-primary"
+                              data-size="sm"
+                            >
+                              1
+                            </div>
+                            <div
+                              data-size="sm"
+                              data-variant="filled"
+                            >
+                              <span>
+                                1
+                              </span>
+                            </div>
+                          </div>
+                        </span>
+                      </button>
+                      <div
+                        aria-hidden="true"
+                        inert=""
+                        role="region"
+                      >
+                        <div>
+                          <div>
+                            <div
+                              color="text-primary"
+                              data-size="sm"
+                            >
+                              Low complexity
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <button
+                        aria-expanded="false"
+                        data-accordion-control="true"
+                        data-chevron-position="right"
+                        type="button"
+                      >
+                        <span
+                          data-position="right"
+                        >
+                          <svg
+                            aria-label="chevrondown icon"
+                            height="12"
+                            role="img"
+                            width="12"
+                          />
+                        </span>
+                        <span>
+                          <div>
+                            <div
+                              color="text-primary"
+                              data-size="md"
+                              data-truncate="end"
+                            >
+                              P90
+                            </div>
+                            <div
+                              color="text-primary"
+                              data-size="sm"
+                            >
+                              2
+                            </div>
+                            <div
+                              data-size="sm"
+                              data-variant="filled"
+                            >
+                              <span>
+                                2
+                              </span>
+                            </div>
+                          </div>
+                        </span>
+                      </button>
+                      <div
+                        aria-hidden="true"
+                        inert=""
+                        role="region"
+                      >
+                        <div>
+                          <div>
+                            <div
+                              color="text-primary"
+                              data-size="sm"
+                            >
+                              Low complexity
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <button
+                        aria-expanded="false"
+                        data-accordion-control="true"
+                        data-chevron-position="right"
+                        type="button"
+                      >
+                        <span
+                          data-position="right"
+                        >
+                          <svg
+                            aria-label="chevrondown icon"
+                            height="12"
+                            role="img"
+                            width="12"
+                          />
+                        </span>
+                        <span>
+                          <div>
+                            <div
+                              color="text-primary"
+                              data-size="md"
+                              data-truncate="end"
+                            >
+                              Max
+                            </div>
+                            <div
+                              color="text-primary"
+                              data-size="sm"
+                            >
+                              0
+                            </div>
+                            <div
+                              data-size="sm"
+                              data-variant="filled"
+                            >
+                              <span>
+                                0
+                              </span>
+                            </div>
+                          </div>
+                        </span>
+                      </button>
+                      <div
+                        aria-hidden="true"
+                        inert=""
+                        role="region"
+                      >
+                        <div>
+                          <div>
+                            <div
+                              color="text-primary"
+                              data-size="sm"
+                            >
+                              Low complexity
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Low complexity
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div>
+          <div
+            color="text-primary"
+            data-size="md"
+          >
+            Metadata coverage
+          </div>
+          <div
+            data-size="sm"
+            data-variant="filled"
+          >
+            <span>
+              Complexity score 15
+            </span>
+          </div>
+        </div>
+        <div
+          data-accordion="true"
+          data-variant="separated"
+        >
+          <div>
+            <button
+              aria-expanded="false"
+              data-accordion-control="true"
+              data-chevron-position="right"
+              type="button"
+            >
+              <span
+                data-position="right"
+              >
+                <svg
+                  aria-label="chevrondown icon"
+                  height="12"
+                  role="img"
+                  width="12"
+                />
+              </span>
+              <span>
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="md"
+                    data-truncate="end"
+                  >
+                    Description coverage
+                  </div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    0.75
+                  </div>
+                  <div
+                    data-size="sm"
+                    data-variant="filled"
+                  >
+                    <span>
+                      8
+                    </span>
+                  </div>
+                </div>
+              </span>
+            </button>
+            <div
+              aria-hidden="true"
+              inert=""
+              role="region"
+            >
+              <div>
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Low complexity
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <button
+              aria-expanded="false"
+              data-accordion-control="true"
+              data-chevron-position="right"
+              type="button"
+            >
+              <span
+                data-position="right"
+              >
+                <svg
+                  aria-label="chevrondown icon"
+                  height="12"
+                  role="img"
+                  width="12"
+                />
+              </span>
+              <span>
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="md"
+                    data-truncate="end"
+                  >
+                    Semantic type coverage
+                  </div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    0.5
+                  </div>
+                  <div
+                    data-size="sm"
+                    data-variant="filled"
+                  >
+                    <span>
+                      5
+                    </span>
+                  </div>
+                </div>
+              </span>
+            </button>
+            <div
+              aria-hidden="true"
+              inert=""
+              role="region"
+            >
+              <div>
+                <div>
+                  <div
+                    color="text-primary"
+                    data-size="sm"
+                  >
+                    Low complexity
+                  </div>
                 </div>
               </div>
             </div>
