@@ -25,14 +25,15 @@ const APP_DIST = "resources/frontend_client/app/dist";
 const SDK_ROOT = "resources/frontend_client/app/embedding-sdk";
 
 /**
- * Async SDK chunks are unreachable today: output.publicPath is "", so import()
- * chunks are emitted but never fetched at runtime. They're excluded from "total"
- * (which equals "initial") until that's fixed. There's no reliable way to detect
- * loadability from the build artifacts, so this is a manual flag: flip it to true
- * in the same change that lands the publicPath fix, and "total" will include the
- * (now reachable) async chunks while "initial" stays the eager first-load set.
+ * Async SDK chunks are reachable once output.publicPath is set so import() chunks
+ * are actually fetched at runtime — which landed in master. "total" then includes
+ * them while "initial" stays the eager first-load set. There's no reliable way to
+ * detect loadability from the build artifacts, so this is a manual flag, now
+ * defaulting to true to match master. Set SDK_ASYNC_CHUNKS_LOADABLE=false to
+ * measure an older commit built before the publicPath fix (async unreachable, so
+ * "total" collapses to "initial").
  */
-const SDK_ASYNC_CHUNKS_LOADABLE = false;
+const SDK_ASYNC_CHUNKS_LOADABLE = process.env.SDK_ASYNC_CHUNKS_LOADABLE !== "false";
 
 // The chunk runtime is inlined into the bootstrap, never sent as a standalone file.
 const SDK_RUNTIME_RE = /embedding-sdk-chunk-runtime\./;
@@ -128,17 +129,34 @@ function measureApp() {
 }
 
 /**
- * Legacy SDK: a self-contained monolith loaded in one shot, so initial == total.
- * Reported as total only.
+ * Legacy SDK: the "embedding-sdk" entry, a single eager file in legacy/. It still
+ * emits on-demand chunks (jspdf, echarts, leaflet, ...) into the shared chunks/
+ * dir via dynamic import(). initial = the eager legacy file; total = initial plus
+ * its reachable async chunks — but only when those are loadable at runtime (see
+ * SDK_ASYNC_CHUNKS_LOADABLE), otherwise total == initial. Mirrors the chunked SDK.
  */
 function measureLegacySdk() {
-  const candidates = [`${SDK_ROOT}/legacy`, `${SDK_ROOT}.js`];
-  const chosen = candidates.find(candidate => fs.existsSync(resolve(candidate)));
-  if (!chosen) {
-    console.warn(`Skipping "embedding-sdk-legacy": output not found (${candidates.join(", ")})`);
-    return [];
+  const absRoot = resolve(SDK_ROOT);
+  const stats = readStats("artifacts/stats-embedding-sdk.json");
+  const initialNames = entrypointJsAssets(stats, "embedding-sdk", "assets");
+  if (!initialNames) {
+    // No stats / older layout: fall back to whatever sits in the legacy dir.
+    const candidates = [`${SDK_ROOT}/legacy`, `${SDK_ROOT}.js`];
+    const chosen = candidates.find(candidate => fs.existsSync(resolve(candidate)));
+    if (!chosen) {
+      console.warn(`Skipping "embedding-sdk-legacy": output not found (${candidates.join(", ")})`);
+      return [];
+    }
+    return [{ bundle: "embedding-sdk-legacy", kind: "total", ...sizeOf(collectJsFiles(resolve(chosen))) }];
   }
-  return [{ bundle: "embedding-sdk-legacy", kind: "total", ...sizeOf(collectJsFiles(resolve(chosen))) }];
+  const reachableNames = entrypointJsAssets(stats, "embedding-sdk", "reachableAssets") || initialNames;
+  const notRuntime = name => !SDK_RUNTIME_RE.test(name);
+  const initial = sizeOf(assetFiles(absRoot, unique(initialNames).filter(notRuntime)));
+  const total = SDK_ASYNC_CHUNKS_LOADABLE ? sizeOf(assetFiles(absRoot, unique(reachableNames).filter(notRuntime))) : initial;
+  return [
+    { bundle: "embedding-sdk-legacy", kind: "initial", ...initial },
+    { bundle: "embedding-sdk-legacy", kind: "total", ...total },
+  ];
 }
 
 /**
