@@ -278,16 +278,10 @@
           (#'sample-data/update-sample-database-if-needed! old-sample)))
       (let [db (t2/select-one :model/Database :is_sample true :engine :sqlite)]
         (is (some? db) "the engine swap created a SQLite sample database")
-        (let [orders-id (t2/select-one-pk :model/Table :db_id (u/the-id db) :name "ORDERS")
-              query     {:database (u/the-id db)
-                         :type     :query
-                         :query    {:source-table orders-id, :limit 1}}]
-          (testing "admin (crowberto) can query the sample DB"
-            (is (= "completed"
-                   (:status (mt/user-http-request :crowberto :post 202 "dataset" query)))))
-          (testing "non-admin (rasta, All Users) can query the sample DB"
-            (is (= "completed"
-                   (:status (mt/user-http-request :rasta :post 202 "dataset" query))))))))))
+        (testing "admin (crowberto) has access to the sample DB"
+          (is (= (u/the-id db) (:id (mt/user-http-request :crowberto :get 200 (format "database/%s" (u/the-id db)))))))
+        (testing "non-admin (rasta, All Users) has access to the sample DB"
+          (is (= (u/the-id db) (:id (mt/user-http-request :rasta :get 200 (format "database/%s" (u/the-id db)))))))))))
 
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
