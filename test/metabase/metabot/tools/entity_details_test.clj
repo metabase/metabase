@@ -570,11 +570,11 @@
                     (is (nil? (:related_table_refs_truncated output)))))))))))))
 
 (deftest related-table-refs-truncation-test
-  (testing "the related-tables roster is itself capped at `max-related-table-refs` and flags truncation"
+  (testing "the related-tables list is itself capped at `max-related-table-truncated-refs` and flags truncation"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (with-redefs-fn {#'entity-details/max-related-tables   1
-                         #'entity-details/max-related-table-refs 1}
+                         #'entity-details/max-related-table-truncated-refs 1}
           (fn []
             (let [output (:structured-output
                           (entity-details/get-table-details {:entity-type :table

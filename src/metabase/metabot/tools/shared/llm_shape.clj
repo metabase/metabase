@@ -110,6 +110,17 @@
   (when s
     (str/replace s "|" "\\u007c")))
 
+(defn- truncate
+  "Cap `s` at `max-len` characters, appending an ellipsis when truncated.
+  Useful to ensure long free text values (e.g. table descriptions) don't bloat the LLM context.
+  Returns nil for nil input."
+  [s max-len]
+  (when s
+    (let [s (str s)]
+      (if (> (count s) max-len)
+        (str (subs s 0 max-len) "...")
+        s))))
+
 (defn- database-type-or-unknown
   "Return database type or 'unknown' if nil."
   [database-type]
@@ -268,13 +279,19 @@
     :related_table_fqn           fully_qualified_name
     :related_table_fields_xml    (when (seq fields) (str/join "\n" (map field->xml fields)))}))
 
+(def ^:private max-related-table-ref-description-length
+  "Cap on a related-table-ref's description in the truncation list."
+  512)
+
 (defn- related-table-ref->xml
   "One entry in the related-tables truncation roster — a related table the LLM can look up by id."
-  [{:keys [id name related_by]}]
+  [{:keys [id name description related_by]}]
   (str "<related-table-ref"
        (when (some? id) (str " id=\"" id "\""))
        " name=\"" (escape-xml name) "\""
        (when related_by (str " related_by=\"" (escape-xml related_by) "\""))
+       (when (not-empty description)
+         (str " description=\"" (escape-xml (truncate description max-related-table-ref-description-length)) "\""))
        "/>"))
 
 (defn- related-tables->xml

@@ -761,6 +761,28 @@
       (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by=\"user_id\"/>")
           "the roster lists every related table by id/name so the LLM can look them up"))))
 
+(deftest ^:parallel table->xml-related-table-ref-description-test
+  (testing "a related-table-ref surfaces the table's description when present, and omits it when absent"
+    (let [xml (llm-shape/table->xml
+               (assoc base-table-with-truncated-related
+                      :related_table_refs [{:id 20 :name "products" :related_by "product_id"
+                                            :description "All the products we sell"}
+                                           {:id 21 :name "people" :related_by "user_id"}]))]
+      (is (str/includes? xml (str "<related-table-ref id=\"20\" name=\"products\" "
+                                  "related_by=\"product_id\" description=\"All the products we sell\"/>")))
+      (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by=\"user_id\"/>")
+          "a ref with no description renders no description attribute")))
+  (testing "a long related-table-ref description is capped and gets an ellipsis"
+    (let [long-desc (apply str (repeat 600 "x"))
+          cap-len   @#'llm-shape/max-related-table-ref-description-length
+          xml       (llm-shape/table->xml
+                     (assoc base-table-with-truncated-related
+                            :related_table_refs [{:id 20 :name "products" :related_by "product_id"
+                                                  :description long-desc}]))]
+      (is (str/includes? xml (str "description=\"" (apply str (repeat cap-len "x")) "...\"")))
+      (is (not (str/includes? xml (apply str (repeat (inc cap-len) "x"))))
+          "the description is truncated to the cap before the ellipsis"))))
+
 (deftest ^:parallel table->xml-related-tables-roster-truncation-test
   (testing "when the roster itself is capped, the note says so"
     (let [xml (llm-shape/table->xml (assoc base-table-with-truncated-related

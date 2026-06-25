@@ -243,17 +243,17 @@
 (def ^:private max-related-tables
   "Maximum number of FK-related tables to expand when building entity context for the LLM.
 
-  Each related table re-fetches and formats its full column set, so on a database with a very large
-  / highly-connected schema an unbounded FK fan-out fetches and pins an unbounded number of columns
-  for the request's lifetime, exhausting the heap (metabase#76493). The LLM context window can't usefully
-  hold hundreds of related tables anyway, so we cap the fan-out."
+  Each related table fetches and formats its full column set, so on a database with a very large / highly-connected
+  schema, an unbounded FK fan-out fetches an unbounded number of columns that are cached for the request's lifetime,
+  exhausting the heap (metabase#76493). The LLM context window can't usefully hold hundreds of related tables anyway,
+  so we limited the number of tables for which we provide column metadata."
   20)
 
-(def ^:private max-related-table-refs
-  "Maximum number of FK-related tables to list by id/name in the truncation roster (see
-  [[related-tables]]). This roster is cheap (ids/names only, no column fetch), so it can be longer than
-  [[max-related-tables]] — it lets the LLM see which related tables exist beyond the detailed ones and
-  look any of them up individually."
+(def ^:private max-related-table-truncated-refs
+  "Maximum number of FK-related tables to list by id/name in the truncation list (see [[related-tables]]).  
+
+  This list is cheap (ids/names/description only, no column fetch), so it can be longer than
+  [[max-related-tables]].  It lets the LLM see which related tables were excluded."
   50)
 
 (defn- table-details
@@ -327,9 +327,9 @@
               [[max-related-tables]]. This is the expensive part — each entry re-fetches and formats the
               target table's full column set.
      :total   total number of FK-related tables before capping.
-     :refs    lightweight roster `{:id :name :related_by}` of related tables, capped at
-              [[max-related-table-refs]] (ids/names only, no column fetch). Lets the LLM see which
-              related tables exist beyond the detailed ones and look any of them up individually.
+     :refs    lightweight list `{:id :name :description :related_by}` of related tables, capped at
+              [[max-related-table-truncated-refs]] (ids/names only, no column fetch). Lets the LLM see
+              which related tables exist beyond the detailed ones and look any of them up individually.
 
    Capping bounds the metadata fetched and formatted for the LLM context — without it a highly-connected
    schema fetches and pins an unbounded number of columns for the request's lifetime (metabase#76493)."
@@ -357,11 +357,13 @@
                 (take max-related-tables fk-groups))
        :refs   (mapv
                 (fn [[table-id fk-field-id]]
-                  {:id         table-id
-                   ;; table metadata is just the table row (name/schema) — no visible-columns fetch
-                   :name       (:name (lib.metadata/table query table-id))
-                   :related_by (:name (lib.metadata/field query fk-field-id))})
-                (take max-related-table-refs fk-groups))})))
+                  ;; table metadata is just the table row (name/schema/description) — no visible-columns fetch
+                  (let [table (lib.metadata/table query table-id)]
+                    {:id          table-id
+                     :name        (:name table)
+                     :description (:description table)
+                     :related_by  (:name (lib.metadata/field query fk-field-id))}))
+                (take max-related-table-truncated-refs fk-groups))})))
 
 (defn- related-tables-result
   "Convert the map returned by [[related-tables]] (or nil) into the subset of entity-detail result keys
