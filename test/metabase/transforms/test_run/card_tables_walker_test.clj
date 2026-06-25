@@ -9,6 +9,8 @@
     invariant."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.transforms.test-run.card-refs :as card-refs]
    [toucan2.core :as t2]))
@@ -16,22 +18,30 @@
 (set! *warn-on-reflection* true)
 
 ;;; ---------------------------------------------------------------------------
-;;; Helpers
+;;; Query builders (Lib)
 ;;; ---------------------------------------------------------------------------
 
-(defn- source-card-query
-  "A dataset_query whose source is card `c` (MBQL source-card pattern)."
-  [c]
-  {:database (mt/id)
-   :type     :query
-   :query    {:source-table (str "card__" (:id c))}})
-
 (defn- table-query
-  "A dataset_query whose source is the physical table `table-id`."
+  "A query reading physical table `table-id`."
   [table-id]
-  {:database (mt/id)
-   :type     :query
-   :query    {:source-table table-id}})
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp table-id))))
+
+(defn- card-query
+  "A query whose source is card `card-id`."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/card mp card-id))))
+
+(defn- join-card
+  "Join card `card-id` onto `query`. The condition is trivial — it exists only to
+  register the joined card as a reference for extraction."
+  [query card-id]
+  (let [mp     (mt/metadata-provider)
+        c-meta (lib.metadata/card mp card-id)
+        lhs    (first (lib/returned-columns query))
+        rhs    (first (lib/returned-columns (lib/query mp c-meta)))]
+    (lib/join query (lib/join-clause c-meta [(lib/= lhs rhs)]))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Linear chain: A → B → physical table
@@ -40,7 +50,7 @@
 (deftest linear-chain-test
   (testing "Linear chain A→B→physical table: card->tables returns the leaf table"
     (mt/with-temp [:model/Card b {:dataset_query (table-query (mt/id :orders))}
-                   :model/Card a {:dataset_query (source-card-query b)}]
+                   :model/Card a {:dataset_query (card-query (:id b))}]
       (is (= #{(mt/id :orders)}
              (card-refs/card->tables a))
           "A references B references orders; only orders is a physical table"))))
@@ -52,19 +62,11 @@
 (deftest diamond-test
   (testing "Diamond A→{B,C}→D: shared descendant D expanded once; union of tables correct"
     (mt/with-temp [:model/Card d {:dataset_query (table-query (mt/id :orders))}
-                   :model/Card b {:dataset_query (source-card-query d)}
-                   :model/Card c {:dataset_query (source-card-query d)}
-                   :model/Card a {:dataset_query {:database (mt/id)
-                                                  :type     :query
-                                                  :query    {:source-table (str "card__" (:id b))
-                                                             ;; second source via explicit join
-                                                             :joins [{:source-table (str "card__" (:id c))
-                                                                      :alias        "c_join"
-                                                                      :condition    [:= 1 1]
-                                                                      :fields       :none}]}}}]
+                   :model/Card b {:dataset_query (card-query (:id d))}
+                   :model/Card c {:dataset_query (card-query (:id d))}
+                   :model/Card a {:dataset_query (join-card (card-query (:id b)) (:id c))}]
       ;; A references both B and C; both reference D; D references orders.
-      ;; card->tables must return #{orders-id} — not #{orders-id orders-id} (dedup) and not an
-      ;; error from double-expanding D.
+      ;; card->tables must return #{orders-id} — deduped, with D expanded once.
       (is (= #{(mt/id :orders)}
              (card-refs/card->tables a))
           "orders appears once despite two paths through B and C"))))
@@ -75,11 +77,10 @@
 
 (deftest cycle-terminates-test
   (testing "Cycle A→B→A terminates without infinite loop or exception"
-    ;; We create A and B manually so we can set up mutual references.
+    ;; Create A and B, then point A at B so A→B→A is a cycle.
     (mt/with-temp [:model/Card a {:dataset_query (table-query (mt/id :orders))}
-                   :model/Card b {:dataset_query (source-card-query a)}]
-      ;; Now update A to source from B, creating the cycle A→B→A.
-      (t2/update! :model/Card (:id a) {:dataset_query (source-card-query b)})
+                   :model/Card b {:dataset_query (card-query (:id a))}]
+      (t2/update! :model/Card (:id a) {:dataset_query (card-query (:id b))})
       (let [a-reloaded (t2/select-one :model/Card :id (:id a))]
         ;; Should terminate (no stack overflow) and return #{} because
         ;; all paths lead back to cards, never to a physical table id.
@@ -93,14 +94,7 @@
 (deftest mixed-table-and-card-test
   (testing "Root card references both a physical table and a source card: union of all tables"
     (mt/with-temp [:model/Card inner {:dataset_query (table-query (mt/id :people))}
-                   :model/Card root  {:dataset_query
-                                      {:database (mt/id)
-                                       :type     :query
-                                       :query    {:source-table (mt/id :orders)
-                                                  :joins [{:source-table (str "card__" (:id inner))
-                                                           :alias        "inner_join"
-                                                           :condition    [:= 1 1]
-                                                           :fields       :none}]}}}]
+                   :model/Card root  {:dataset_query (join-card (table-query (mt/id :orders)) (:id inner))}]
       (is (= #{(mt/id :orders) (mt/id :people)}
              (card-refs/card->tables root))
           "orders from direct ref + people via inner card"))))
@@ -108,7 +102,7 @@
 ;;; ---------------------------------------------------------------------------
 ;;; Batching-contract test — the heart of this task
 ;;;
-;;; Strategy: with-redefs `batch-load-cards` (the public seam wrapping
+;;; Strategy: with-dynamic-fn-redefs `batch-load-cards` (the public seam wrapping
 ;;; `(t2/select :model/Card :id [:in …])`) to a counting wrapper, and verify that
 ;;; the load count equals the number of BFS layers, not the number of cards.
 ;;;
@@ -124,17 +118,11 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest batching-contract-test
-  (testing "BFS issues one card-row load per LAYER, not per card"
+  (testing "BFS issues one card-row load per layer, not per card"
     (mt/with-temp [:model/Card d {:dataset_query (table-query (mt/id :orders))}
-                   :model/Card b {:dataset_query (source-card-query d)}
-                   :model/Card c {:dataset_query (source-card-query d)}
-                   :model/Card a {:dataset_query {:database (mt/id)
-                                                  :type     :query
-                                                  :query    {:source-table (str "card__" (:id b))
-                                                             :joins [{:source-table (str "card__" (:id c))
-                                                                      :alias        "c_join"
-                                                                      :condition    [:= 1 1]
-                                                                      :fields       :none}]}}}]
+                   :model/Card b {:dataset_query (card-query (:id d))}
+                   :model/Card c {:dataset_query (card-query (:id d))}
+                   :model/Card a {:dataset_query (join-card (card-query (:id b)) (:id c))}]
       (let [load-count (atom 0)]
         (mt/with-dynamic-fn-redefs [card-refs/batch-load-cards
                                     (fn [ids]

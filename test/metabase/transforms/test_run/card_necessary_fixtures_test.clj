@@ -50,10 +50,12 @@
       (get id->raw-deps (:id transform) #{}))))
 
 (defn- make-card
-  "Minimal synthetic card whose `card->tables` returns exactly `table-ids`."
+  "Minimal synthetic card. [[run-fixture!]] stubs `card->tables` to read `::tables`,
+  so `:dataset_query` is never parsed — it is inert filler (a real query would drag
+  a database into what is a pure, DB-free test)."
   [table-ids]
   {:id            9999
-   :dataset_query {:type :query :database 1 :query {:source-table (first table-ids)}}
+   :dataset_query {}
    ::tables       table-ids})
 
 (defn- run-fixture!
