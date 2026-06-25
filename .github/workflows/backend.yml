@@ -23,6 +23,8 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Run clj-kondo
         run: ./bin/mage kondo
+      - name: Check modules config is sorted
+        run: ./bin/mage sort-modules-config --check
 
   be-linter-eastwood:
     if: ${{ !inputs.skip }}

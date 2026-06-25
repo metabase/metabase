@@ -14,6 +14,7 @@
    [mage.fix-unused-requires-test]
    [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]
    [mage.modules-test]
+   [mage.sort-modules-config-test]
    [mage.token-scan-test]
    [mage.util :as u]
    [mage.util-test]))
@@ -24,6 +25,7 @@
   mage.fix-unused-requires-test/keep-me
   mage.util-test/keep-me
   mage.modules-test/keep-me
+  mage.sort-modules-config-test/keep-me
   merge-yaml-migrations-test/keep-me
   token-scan-test/keep-me)
 

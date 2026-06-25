@@ -95,6 +95,14 @@
                                       :description "Files or directories to fix unused requires in"}]]
    :task (task! (fix/fix-files parsed))}
 
+  sort-modules-config
+  {:doc "Sort .clj-kondo/config/modules/config.edn (module order + :model-imports/:model-exports sets)"
+   :examples [["./bin/mage sort-modules-config" "Sort the modules Kondo config in place"]
+              ["./bin/mage sort-modules-config --check" "Fail (exit 1) if the config is not sorted; make no changes"]]
+   :options [["-c" "--check" "Check only: exit non-zero if the config is not sorted"]]
+   :requires [[mage.sort-modules-config :as sort-modules-config]]
+   :task (task! (sort-modules-config/sort-config parsed))}
+
   check
   {:doc "Checks whether we can compile all source files (and finds circular dependencies)"
    :examples [["./bin/mage check"]]
