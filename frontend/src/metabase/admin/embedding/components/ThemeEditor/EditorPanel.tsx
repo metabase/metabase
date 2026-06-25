@@ -239,7 +239,7 @@ export function EditorPanel({
                 }}
                 placeholder={t`Default`}
                 rightSection={
-                  <Text c="text-tertiary" fz="sm">
+                  <Text c="text-disabled" fz="sm">
                     {"px"}
                   </Text>
                 }

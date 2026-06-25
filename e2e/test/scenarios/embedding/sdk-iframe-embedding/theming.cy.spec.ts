@@ -11,7 +11,7 @@ const LIGHT_THEME = {
     brand: "rgb(156, 39, 176)",
     "text-primary": "rgb(45, 59, 69)",
     "text-secondary": "rgb(124, 136, 150)",
-    "text-tertiary": "rgb(184, 187, 195)",
+    "text-disabled": "rgb(184, 187, 195)",
   },
 } as const satisfies MetabaseTheme;
 
@@ -20,7 +20,7 @@ const DARK_THEME = {
     brand: "rgb(255, 87, 51)",
     "text-primary": "rgb(255, 255, 255)",
     "text-secondary": "rgb(200, 205, 210)",
-    "text-tertiary": "rgb(184, 187, 195)",
+    "text-disabled": "rgb(184, 187, 195)",
     background: "rgb(39, 39, 59)",
     border: "rgb(184, 187, 195)",
   },

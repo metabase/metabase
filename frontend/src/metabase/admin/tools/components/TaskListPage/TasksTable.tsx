@@ -93,7 +93,7 @@ export const TasksTable = ({
               <tr>
                 <td colSpan={8}>
                   <Flex
-                    c="text-tertiary"
+                    c="text-disabled"
                     justify="center"
                   >{t`No results`}</Flex>
                 </td>

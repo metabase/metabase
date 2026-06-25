@@ -43,7 +43,7 @@ export const CollectionBreadcrumbs = ({
 
   const separator = (
     <Box
-      c="text-tertiary"
+      c="text-disabled"
       fz="0.8em"
       fw="bold"
       mx="0.5rem"
