@@ -117,7 +117,7 @@ const LogsBase = ({
                 {processUUIDs.length > 1 && (
                   <Select
                     value={process}
-                    w={400}
+                    comboboxProps={{ width: 400, position: "bottom-start" }}
                     data={[
                       { value: "ALL", label: t`All Metabase processes` },
                       ...processUUIDs.map((uuid) => ({
