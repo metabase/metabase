@@ -30,7 +30,7 @@
   (into {}
         (map (fn [[key value]]
                (cond-> [key value]
-                 (and  (contains? #{:expires_at :consumed_at :grant_ends_at} key)
+                 (and  (contains? #{:expires_at :consumed_at :grant_ends_at :confirmed_at} key)
                        (string? value))
                  (update 1 t/instant))))
         credentials))

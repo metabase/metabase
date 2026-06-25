@@ -7,7 +7,11 @@ import {
 import { push } from "react-router-redux";
 
 import { loadLocalization } from "metabase/api/localization";
-import { sessionApi } from "metabase/api/session";
+import {
+  type MfaChallengeResponse,
+  isMfaChallenge,
+  sessionApi,
+} from "metabase/api/session";
 import { openNavbar } from "metabase/redux/app";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
@@ -60,13 +64,48 @@ interface LoginPayload {
   redirectUrl?: string;
 }
 
+export interface LoginResult {
+  mfaChallenge?: MfaChallengeResponse;
+}
+
 export const LOGIN = "metabase/auth/LOGIN";
 export const login = createAsyncThunk(
   LOGIN,
   async ({ data }: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
-      await dispatch(
+      const result = await dispatch(
         sessionApi.endpoints.createSession.initiate(data),
+      ).unwrap();
+
+      // First factor passed but a second factor is required: stop here and let the
+      // UI collect the one-time code. No session exists yet, so don't refresh.
+      if (isMfaChallenge(result)) {
+        const challenge: LoginResult = { mfaChallenge: result };
+        return challenge;
+      }
+
+      await dispatch(refreshSession()).unwrap();
+      if (!isSmallScreen()) {
+        dispatch(openNavbar());
+      }
+      const success: LoginResult = {};
+      return success;
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
+
+export const COMPLETE_MFA_LOGIN = "metabase/auth/COMPLETE_MFA_LOGIN";
+export const completeMfaLogin = createAsyncThunk(
+  COMPLETE_MFA_LOGIN,
+  async (
+    { mfaToken, code }: { mfaToken: string; code: string },
+    { dispatch, rejectWithValue },
+  ) => {
+    try {
+      await dispatch(
+        sessionApi.endpoints.verifyMfa.initiate({ mfa_token: mfaToken, code }),
       ).unwrap();
       await dispatch(refreshSession()).unwrap();
       if (!isSmallScreen()) {

@@ -33,12 +33,16 @@
    ;; IP Address doesn't have an actual UI field so just show error by username
    :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
 
+(def ^:private mfa-throttlers
+  "Throttle second-factor verification — the codes are only 6 digits so brute-forcing must be slow."
+  {:user-id (throttle/make-throttler :user-id, :attempts-threshold 5)})
+
 (def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
 (def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
-(mu/defn- ldap-login :- [:maybe [:map [:key ms/UUIDString]]]
-  "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
-  authenticated."
+(mu/defn- ldap-login :- [:maybe :map]
+  "If LDAP is enabled and a matching user exists return a new Session for them (or an MFA-pending
+  result map when a second factor is required), or `nil` if they couldn't be authenticated."
   [username password device-info :- request/DeviceInfo]
   (when (sso/ldap-enabled)
     (let [result (auth-identity/login! :provider/ldap
@@ -56,14 +60,15 @@
                          :errors {:password password-fail-snippet}}))
 
         (:success? result)
-        (:session result)
+        (if (auth-identity/mfa-pending? result) result (:session result))
 
         :else
         (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                  :status-code 401}))))))
 
-(mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
-  "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
+(mu/defn- email-login :- [:maybe :map]
+  "Find a matching `User` if one exists and return a new Session for them (or an MFA-pending result
+  map when a second factor is required), or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
    device-info :- request/DeviceInfo]
@@ -73,7 +78,7 @@
                                       :device-info device-info})]
     (cond
       (contains? #{:invalid-credentials :server-error :authentication-expired} (:error result)) nil
-      (:success? result) (:session result)
+      (:success? result) (if (auth-identity/mfa-pending? result) result (:session result))
       :else (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
                                                      :status-code 401})))))
 
@@ -85,9 +90,9 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn- login :- session.schema/SessionSchema
-  "Attempt to login with different available methods with `username` and `password`, returning new Session ID or
-  throwing an Exception if login could not be completed."
+(mu/defn- login :- [:or session.schema/SessionSchema [:map [:mfa-required :boolean]]]
+  "Attempt to login with different available methods with `username` and `password`, returning a new Session (or an
+  MFA-pending result map when a second factor is required) or throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
    password    :- ms/NonBlankString
    device-info :- request/DeviceInfo]
@@ -130,16 +135,130 @@
   (let [ip-address   (request/ip-address request)
         request-time (t/zoned-date-time (t/zone-id "GMT"))
         do-login     (fn []
-                       (let [{session-key :key, :as session} (login username password (request/device-info request))
-                             response                        (vary-meta {:id (str session-key)}
-                                                                        assoc :metabase-user-id (:user_id session))]
-                         (request/set-session-cookies request response session request-time)))]
+                       (let [result (login username password (request/device-info request))]
+                         (if (auth-identity/mfa-pending? result)
+                           ;; First factor OK, but a second factor is required: hand back a challenge
+                           ;; token instead of a session. No cookies are set yet.
+                           {:status 200
+                            :body   {:mfa_required    true
+                                     :method          (:mfa-method result)
+                                     :enroll_required (boolean (:mfa-enroll-required result))
+                                     :mfa_token       (:mfa-token result)}}
+                           (let [{session-key :key, :as session} result
+                                 response                        (vary-meta {:id (str session-key)}
+                                                                            assoc :metabase-user-id (:user_id session))]
+                             (request/set-session-cookies request response session request-time)))))]
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
         (throttle/with-throttling [(login-throttlers :ip-address) ip-address
                                    (login-throttlers :username)   username]
           (do-login))))))
+
+;;; -------------------------------------------------- Native MFA (TOTP) --------------------------------------------------
+
+(defn- check-logged-in!
+  "MFA management endpoints live under /api/session (which is exempt from auth enforcement), so we
+  must check for a current user ourselves."
+  []
+  (when-not api/*current-user-id*
+    (throw (ex-info (str (deferred-tru "You must be logged in to do that.")) {:status-code 401}))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/mfa"
+  "Complete a two-factor login by verifying a one-time code. Takes the `mfa_token` returned by
+  `POST /api/session` and the `code` from the user's authenticator app, and on success sets the
+  session cookie."
+  [_route-params
+   _query-params
+   {:keys [mfa_token code]} :- [:map
+                                [:mfa_token ms/NonBlankString]
+                                [:code      ms/NonBlankString]]
+   request]
+  (let [request-time (t/zoned-date-time (t/zone-id "GMT"))]
+    (http-401-on-error
+      (let [claims       (or (auth-identity/verify-challenge-token mfa_token)
+                             (throw (ex-info (str (deferred-tru "Authentication session expired. Please log in again."))
+                                             {:status-code 401})))
+            user-id      (:user-id claims)
+            first-factor (auth-identity/provider-string->keyword (:provider claims))]
+        (throttle-check (mfa-throttlers :user-id) user-id)
+        (let [auth-result (auth-identity/authenticate :provider/totp {:user-id user-id :code code})]
+          (if (:success? auth-result)
+            (let [user     (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)
+                  session  (auth-identity/create-session-with-auth-tracking! user (request/device-info request) first-factor)
+                  response (vary-meta {:id (str (:key session))} assoc :metabase-user-id (:user_id session))]
+              (request/set-session-cookies request response session request-time))
+            (throw (ex-info (str (deferred-tru "Invalid authentication code.")) {:status-code 401}))))))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/mfa"
+  "Return the current user's MFA status."
+  []
+  (check-logged-in!)
+  (auth-identity/mfa-status api/*current-user-id*))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/mfa/enroll"
+  "Begin TOTP enrollment for the current user. Requires the account password. Returns the Base32
+  `secret` and an `otpauth_uri` for QR display; enrollment is not active until confirmed."
+  [_route-params
+   _query-params
+   {:keys [password]} :- [:map [:password ms/NonBlankString]]]
+  (check-logged-in!)
+  (or (auth-identity/mfa-enroll! api/*current-user-id* password)
+      (throw (ex-info (str (deferred-tru "Invalid password.")) {:status-code 401}))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/mfa/enroll/confirm"
+  "Confirm TOTP enrollment by verifying a code from the authenticator app."
+  [_route-params
+   _query-params
+   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+  (check-logged-in!)
+  (if (auth-identity/mfa-confirm-enrollment! api/*current-user-id* code)
+    {:success true}
+    (throw (ex-info (str (deferred-tru "Invalid authentication code.")) {:status-code 400}))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/mfa/disable"
+  "Disable TOTP for the current user. Requires the account password."
+  [_route-params
+   _query-params
+   {:keys [password]} :- [:map [:password ms/NonBlankString]]]
+  (check-logged-in!)
+  (if (auth-identity/mfa-disable! api/*current-user-id* password)
+    api/generic-204-no-content
+    (throw (ex-info (str (deferred-tru "Invalid password.")) {:status-code 401}))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/mfa/admin-reset"
+  "Admin: clear a user's TOTP enrollment (lockout recovery)."
+  [_route-params
+   _query-params
+   {:keys [user_id]} :- [:map [:user_id ms/PositiveInt]]]
+  (api/check-superuser)
+  (auth-identity/mfa-admin-reset! user_id)
+  api/generic-204-no-content)
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint.
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/mfa/admin-settings"
+  "Admin: toggle the global MFA settings."
+  [_route-params
+   _query-params
+   {:keys [enabled required]} :- [:map
+                                  [:enabled  {:optional true} [:maybe :boolean]]
+                                  [:required {:optional true} [:maybe :boolean]]]]
+  (api/check-superuser)
+  (auth-identity/set-mfa-admin-settings! {:enabled enabled :required required})
+  api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
