@@ -495,7 +495,19 @@
       (is (=? [{:type "error" :errorText "You have reached your AI usage limit."}
                {:type "finish" :finishReason "error"
                 :messageMetadata {:errorCode "ai_usage_limit_reached"}}]
-              events)))))
+              events))))
+  (testing "accumulated usage and a typed error code share one finish.messageMetadata"
+    (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
+                  {:type :error :error {:message    "You have reached your AI usage limit."
+                                        :error-code :ai_usage_limit_reached}}]
+          finish (last (sse-events parts))]
+      (is (=? {:type            "finish"
+               :finishReason    "error"
+               :messageMetadata {:usage        {:inputTokens 10 :outputTokens 5 :totalTokens 15}
+                                 :usageByModel {:claude-sonnet-4-6 {:inputTokens 10 :outputTokens 5 :totalTokens 15}}
+                                 :errorCode    "ai_usage_limit_reached"}}
+              finish)))))
 
 (deftest parts->aisdk-sse-xf-usage-test
   (testing "accumulated usage lands on finish.messageMetadata, last snapshot per model"

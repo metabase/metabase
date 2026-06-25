@@ -47,7 +47,7 @@
         structured (assoc :structured_output structured)))
     result))
 
-(defn internal-parts->storable
+(defn- internal-parts->storable
   "Convert internal agent-loop parts to v2 at-rest parts
   (`:metabase.metabot.schema.v2/message-data`). `:tool-input`/`:tool-output`
   pairs merge into a single `tool-<name>` part whose `:state` reflects the
@@ -235,7 +235,7 @@
                   (cond-> {:conversation_id conversation-id
                            :data            (schema.v2/check-message-data "metabot_message.data"
                                                                           [{:type "text" :text (:content user-message)}])
-                           :data_version    2
+                           :data_version    schema.v2/current-data-version
                            :role            :user
                            :profile_id      profile-id
                            :external_id     (str (random-uuid))
@@ -250,7 +250,7 @@
                 :model/MetabotMessage
                 (cond-> {:conversation_id conversation-id
                          :data            []
-                         :data_version    2
+                         :data_version    schema.v2/current-data-version
                          :role            :assistant
                          :profile_id      profile-id
                          :external_id     assistant-external-id
@@ -305,7 +305,7 @@
                     {:state (:data state-part)}))
       (t2/update! :model/MetabotMessage assistant-msg-id
                   (cond-> {:data         content
-                           :data_version 2
+                           :data_version schema.v2/current-data-version
                            :usage        usage
                            :total_tokens (->> (vals usage)
                                               (map #(+ (:prompt %) (:completion %)))
@@ -348,15 +348,15 @@
                  :message (:text part)}
           external-id (assoc :externalId external-id)))
 
-      (and (string? part-type) (str/starts-with? part-type "tool-"))
+      (schema.v2/tool-part? part)
       (cond-> {:id     (:toolCallId part)
                :role   "agent"
                :type   "tool_call"
-               :name   (subs part-type 5)
+               :name   (schema.v2/tool-part-name part)
                :args   (when-let [i (:input part)] (if (string? i) i (json/encode i)))
                :status "ended"}
         (= "output-available" (:state part))
-        (assoc :result (json/encode (:output part)) :is_error false)
+        (assoc :result (when (some? (:output part)) (json/encode (:output part))) :is_error false)
 
         ;; errored calls store no output — :result stays nil, matching the
         ;; pre-v2 chat shape the FE renders

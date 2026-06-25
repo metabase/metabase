@@ -75,6 +75,15 @@
       (is (not (contains? (first result) :result)))
       (is (not (contains? (first result) :is_error))))))
 
+(deftest ^:parallel message->chat-messages-test-11
+  (testing "resolved tool part with a nil :output yields a nil :result, not the string \"null\""
+    (let [result (metabot-persistence/message->chat-messages
+                  {:role :assistant
+                   :data [{:type "tool-search" :toolCallId "call-4" :state "output-available"
+                           :input {} :output nil}]})]
+      (is (false? (:is_error (first result))))
+      (is (nil? (:result (first result)))))))
+
 (deftest ^:parallel message->chat-messages-test-8
   (testing "unknown part types are dropped"
     (is (= []

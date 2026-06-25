@@ -31,6 +31,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def current-data-version
+  "The `metabot_message.data_version` written by all current code paths: the at-rest
+  format is [[::message-data]] (v2). Bump in lockstep when a v3 format lands."
+  2)
+
 (defn- data-type? [t] (and (string? t) (str/starts-with? t "data-")))
 (defn- tool-type? [t] (and (string? t) (str/starts-with? t "tool-")))
 

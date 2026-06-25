@@ -26,7 +26,7 @@
       (-> message
           (update :data #(->> (migrate/migrate-v1->v2 %)
                               (schema.v2/check-message-data "migrated metabot_message.data")))
-          (assoc :data_version 2))
+          (assoc :data_version schema.v2/current-data-version))
       (catch Throwable e
         (log/warn e "Failed to migrate metabot_message data v1->v2 on read" {:id (:id message)})
         message))

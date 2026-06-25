@@ -220,7 +220,7 @@
 ;;; AI SDK SSE Output
 ;;
 ;; Converts internal parts to the AI SDK v5+ SSE protocol: typed `UIMessageChunk`
-;; events (see `metabase.metabot.schema.v2/ui-message-chunk`), one per
+;; events (see `:metabase.metabot.schema.v2/ui-message-chunk`), one per
 ;; `data: {json}` line, terminated by `data: [DONE]`.
 
 (defn format-sse-event
