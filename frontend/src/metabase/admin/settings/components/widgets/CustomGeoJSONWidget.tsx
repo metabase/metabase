@@ -258,8 +258,6 @@ interface GeoJsonPropertySelectProps {
   dataTestId: string;
 }
 
-const DROPDOWN_WIDTH = 300;
-
 const SampleValues = ({ values }: { values: string[] }) => (
   <Ellipsified mt="sm" fz="0.75rem" fw="bold">
     {t`Sample values:`} {values.join(", ")}
@@ -296,7 +294,7 @@ const GeoJsonPropertySelect = ({
       <Select
         value={value}
         placeholder={t`Select…`}
-        comboboxProps={{ width: DROPDOWN_WIDTH, position: "bottom-start" }}
+        comboboxProps={{ width: 300, position: "top-start" }}
         data={Object.keys(options).map((name) => ({
           value: name,
           label: name,
