@@ -101,6 +101,25 @@
   [{:label "osi_ai_context"}
    {:label (u/slugify (entity-ref-label entity) {:unicode? true}) :key (:entity_id entity)}])
 
+;; `(entity_type, entity_local_id)` has a unique constraint, but serdes identity is `entity_id`. When source and
+;; destination independently minted ai_context for the same entity, their `entity_id`s differ, so the default
+;; entity_id-keyed `load-find-local` misses the local row and falls through to an INSERT that violates the constraint.
+;; `load-find-local` only sees the (portable) path, not the ingested row, so it can't resolve `entity_local_id` to a
+;; local id; `load-one!` does see the full ingested map, so we match on the natural key here. We override `load-one!`
+;; rather than `load-find-local` for that reason.
+(defmethod serdes/load-one! "OsiAiContext"
+  [ingested maybe-local]
+  ;; Resolve the portable entity_local_id to its local id (the same way the import spec does), then find any existing
+  ;; row by (entity_type, local-id) so the import updates it in place instead of inserting a duplicate.
+  (let [local (or maybe-local
+                  (let [{:keys [entity_type entity_local_id]} ingested
+                        local-id (import-entity-local-id entity_type entity_local_id)]
+                    (when (some? local-id)
+                      (t2/select-one :model/OsiAiContext
+                                     :entity_type entity_type
+                                     :entity_local_id local-id))))]
+    (serdes/default-load-one! ingested local)))
+
 ;; TODO (Chris 2026-06-24) -- this is a top-level model that *depends on* its entity, so a context row only
 ;; travels on export when it's independently selected.
 ;; We probably want the reverse: selecting an entity should pull in its ai_context (a cascade /

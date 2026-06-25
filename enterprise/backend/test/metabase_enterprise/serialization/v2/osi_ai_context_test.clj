@@ -14,6 +14,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
@@ -123,6 +124,35 @@
           ;; load-metabase! re-inserts under a new id that with-temp can't reap; clean it up so the row
           ;; doesn't leak into other tests' view of the (small, fully-scanned) table.
           (t2/delete! :model/OsiAiContext :entity_id sli-eid))))))
+
+(deftest import-over-existing-natural-key-row-test
+  (testing "importing over a local row for the same (entity_type, entity_local_id) but a different entity_id updates in place"
+    ;; Reproduces the unique-constraint hazard: source and destination independently created ai_context for the
+    ;; same Card, each minting its own entity_id. The default entity_id-keyed lookup misses the local row, so without
+    ;; the natural-key load-one! override the import INSERTs and violates uq_osi_ai_context_entity.
+    (mt/with-temp [:model/Card {card-id :id} {}
+                   :model/OsiAiContext {local-id :id local-eid :entity_id}
+                   {:ai_context {:instructions "destination's own copy"}
+                    :entity_type "card" :entity_local_id card-id}]
+      (let [source-eid (u/generate-nano-id)
+            ;; an incoming export for the SAME card but a different (source-minted) entity_id
+            extracted  (-> (ts/extract-one "OsiAiContext" local-id)
+                           (assoc :entity_id source-eid)
+                           (assoc-in [:serdes/meta 0 :id] source-eid)
+                           (assoc :ai_context {:instructions "source guidance"}))]
+        (is (not= local-eid (:entity_id extracted)))
+        (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+        (testing "still exactly one row for this entity, updated in place (not a duplicate insert)"
+          (is (= 1 (t2/count :model/OsiAiContext :entity_type "card" :entity_local_id card-id))))
+        (testing "the existing row's ai_context was replaced"
+          (is (=? {:id          local-id
+                   :entity_type "card"
+                   :entity_local_id card-id
+                   :ai_context  {:instructions "source guidance"}}
+                  (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-id))))
+        ;; the in-place update swapped local-id's entity_id, so with-temp's entity_id-keyed reap would miss it;
+        ;; delete by natural key so the row doesn't leak into other tests' view of the fully-scanned table.
+        (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))
 
 (deftest disk-export-import-round-trip-test
   (testing "OsiAiContext survives a real on-disk export/import"
