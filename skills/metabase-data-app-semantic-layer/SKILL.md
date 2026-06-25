@@ -17,12 +17,14 @@ Keep the semantic layer and presentation layer separate.
 - Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it in the query instead of manually recreating the concept from raw rows.
 - Filter UI must default to showing data. Empty controls, "All" options, and incomplete custom ranges should produce no filter instead of blocking queries or showing a blank dashboard.
-- Do not hardcode categorical filter option values such as channels, countries, statuses, regions, or segments. Query them from Metabase at runtime using the same generated schema field or metric dimension that the filter applies.
-- Dashboard-level filters should apply to every compatible card, table, KPI, and trend. If a filter can only apply to one query, make that scope obvious in the UI.
-- Do not render a free-text search box that writes directly into an exact id filter such as `franchise_id = value` or `tenant_id = value`. For entity filters such as franchise, tenant, customer, or product, query options at runtime and store the raw id from the selected option. If the app only has ids and no readable label field, label the control honestly or omit the global filter until a label field is available.
+- Do not hardcode categorical filter option values. A generated schema field only proves the field exists, not which values exist; query options from Metabase at runtime using the same generated schema field or metric dimension that the filter applies.
+- Dashboard-level filters should visibly affect every compatible card, table, KPI, and trend. If a filter can only apply to one query, make that scope obvious in the UI; do not show duplicate or no-op date controls.
+- Entity filters, where the stored value is an id/key and the UI shows a label, must use a single searchable combobox. Query options at runtime, search labels, and store the raw value. Never render entity filters as `<select>`; plain selects are only for short closed enums explicitly provided by the user.
 - Do not use native `<input type="date">` for data-app filter bars. Its placeholder and calendar popover are browser-controlled, often show `mm/dd/yyyy`, and cannot be reliably themed. If the repo already has a date picker component or component library, use that. Otherwise install `react-datepicker` for custom date selection.
+- Date bars must include Custom last by default: duration presets, All time, then Custom. Omit Custom only when the user explicitly asks for fixed presets only or no date range control. Date pickers must receive `Date | null`, never `new Date("")` or another invalid date for incomplete ranges.
 - Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Measures must come from `schema.tables.*.measures.*`; metrics must come from `schema.metrics.*`.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, segments, or chart series.
+- Do not custom-render ambiguous business fields such as `margin`, `rate`, `score`, `percent`, `health`, `risk`, or `efficiency`. Do not add `%`, multiply by 100, color-code, or render stars unless semantic-layer units explicitly support it; use an SDK table/chart, omit the field, or ask for curation.
 - Visualization data must come from Metabase through `useMetabaseQuery`, `useMetabaseQueryObject` with `InteractiveQuestion`/`StaticQuestion`, or saved-question SDK components. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
 - `useMetabaseQueryObject(...)` returns a `DatasetQuery | null` to pass as `query={...}` to `InteractiveQuestion` or `StaticQuestion`. If TypeScript rejects SDK component props, treat that as a real bug and fix the prop shape instead of working around the error.
 - `useMetabaseQuery().rows` are keyed objects, not tuple arrays. Never read `row[0]` / `row[1]`, and never silence this with `as unknown as [string, number][]`, `DisplayRow`, or another tuple cast. If TypeScript says property `0` does not exist, it is catching a real bug. Use named returned properties, or render the query with an SDK chart via `useMetabaseQueryObject`.
@@ -74,8 +76,8 @@ or handle the credentials yourself.
 > `echo` `.env.local`** — it's git-ignored and may hold other secrets, so its
 > contents must stay out of the conversation. `source` it so the shell uses the
 > values without exposing them. If `$VITE_MB_API_KEY` or `$VITE_MB_URL` is empty
-> after sourcing (the repo-root file is missing or lacks those vars), ask the
-> user to add them themselves, then continue.
+> or still set to the default `mb_replace_me` placeholder after sourcing, ask
+> the user to add real values themselves, then continue.
 
 Source the credentials from the repo-root `.env.local` and generate the scoped
 schema:
@@ -91,9 +93,10 @@ fi
 # Subshell: the credentials are used by curl but never exported or left behind.
 (
   source "$ROOT/.env.local" 2>/dev/null
-  # Fail early (before curl) if either var is missing — never print the values.
-  if [ -z "$VITE_MB_URL" ] || [ -z "$VITE_MB_API_KEY" ]; then
-    echo "VITE_MB_URL / VITE_MB_API_KEY not set in repo-root .env.local" >&2
+  # Fail early (before curl) if either var is missing or placeholder-only.
+  if [ -z "$VITE_MB_URL" ] || [ "$VITE_MB_URL" = "mb_replace_me" ] ||
+     [ -z "$VITE_MB_API_KEY" ] || [ "$VITE_MB_API_KEY" = "mb_replace_me" ]; then
+    echo "Set real VITE_MB_URL / VITE_MB_API_KEY in repo-root .env.local" >&2
     exit 1
   fi
   curl \
@@ -447,6 +450,7 @@ Before implementing filters, create a filter contract for the visible dashboard.
 - For each filter, name the raw value used in `filter(...)`.
 - For each card, table, KPI, and trend, name the generated field or metric dimension that can receive that filter.
 - If a filter only applies to one section, keep it section-scoped or omit it from the global filter bar.
+- If a page needs a different date field such as `snapshotDate`, use one visible date control for that page.
 - KPI/detail pairs that describe the same concept should use the same relevant filters.
 
 Use the detailed checklist in `references/filter-ui-patterns.md` for filter state rules, runtime categorical options, stale option reset, searchable controls, and custom date-picker implementation.
@@ -517,7 +521,7 @@ const metricFilters = useMemo(
 - Multi-series charts with different units or magnitudes need separate axes or normalization.
 - Format user-facing values: currency to at most 2 decimals, counts as whole numbers, dates as readable labels.
 - Do not render ambiguous derived business metrics unless the semantic layer description or inspected sample values make the meaning and units obvious. This includes fields named like `margin`, `rate`, `score`, `percent`, `health`, `risk`, or `efficiency`.
-- Do not multiply by 100, add `%`, bucket into health/risk labels, or invent interpretation for ambiguous fields without evidence. Prefer omitting the field over guessing.
+- Do not multiply by 100, add `%`, bucket into health/risk labels, render stars, or invent interpretation for ambiguous fields without evidence. Prefer omitting the field or using an SDK table over guessing.
 - If a ratio is needed, derive it explicitly from returned numerator and denominator fields with clear labels. If the source value is an amount, format it as an amount.
 - Empty results are distinct from loading. After `isLoading` is false, render a clear empty state instead of leaving a skeleton or blank KPI.
 
@@ -549,9 +553,10 @@ If no curated schema entry supports the intended UI, leave the section out or as
 
 - Run `npm run typecheck`.
 - Verify every rendered value can be traced to a returned row property, schema field, metric, or deterministic transform.
-- Search touched files for `row[0]`, `row[1]`, `as unknown as`, and `DisplayRow`. If positional row access remains around `useMetabaseQuery` rows, fix the typed row mapping before building.
+- Search touched files for `row[0]`, `row[1]`, `as unknown as`, `DisplayRow`, `<select`, `margin`, `rate`, `score`, `percent`, `%`, `* 100`, and `.toFixed`; fix positional rows, entity `<select>` filters, and unsupported business-field interpretations.
+- Verify every date preset bar includes Custom last unless explicitly omitted, every visible date filter affects the current page, and no page shows duplicate date filters for one scope.
 - Verify `data_app.yml` / `data_app.yaml` points at the built bundle path and that the bundle path is tracked by git.
-- If adding runtime categorical filters, verify "All" maps to no filter and selected values come from runtime query results.
+- For every visible filter, verify "All" maps to no filter, selected values come from runtime query results, and each non-All option changes every card it claims to affect.
 
 ## Common Mistakes
 
@@ -565,14 +570,15 @@ If no curated schema entry supports the intended UI, leave the section out or as
 - Inventing SDK component prop names instead of using `questionId` for saved questions or `query` for generated table/metric queries.
 - Mixing fields, dimensions, segments, or measures from unrelated tables/metrics.
 - Adding a filter UI that sends empty values instead of omitting the filter.
-- Hardcoding categorical filter values like channels, countries, statuses, regions, or segments instead of querying the runtime values from Metabase.
+- Hardcoding categorical filter values instead of querying the runtime values from Metabase.
 - Displaying entity names but filtering by those names when a stable ID is available.
-- Wiring free-text search directly to an exact id filter such as `franchise_id = value`.
 - Applying a dashboard-level filter to only one KPI while related charts and tables ignore it.
+- Showing a global Date Range plus a page-specific Snapshot Date where one date filter has no effect.
 - Letting a KPI and its detail table use different date or category filters without explaining the difference.
+- Rendering `Margin`/`Rate`/`Score`/`Health` with invented `%`, stars, colors, or thresholds.
+- Shipping a date preset bar with no Custom range option, or Custom before All time.
 - Charting opaque IDs such as `franchise_id` when a user-facing name is available.
-- Rendering a very long categorical list in a plain `<select>` instead of using a searchable control.
-- Disabling a whole categorical filter select when options are empty, which also prevents users from returning to "All".
+- Rendering an entity filter in a plain `<select>`, even if the current runtime option list is short.
 - Using native `<input type="date">` and shipping browser-controlled `mm/dd/yyyy` placeholders or unthemed calendar popovers.
 - Assuming `filter(...)` fully validates value types.
 - Letting a `null` bucket become the latest time-series point.
