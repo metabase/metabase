@@ -15,13 +15,14 @@ const propsSchema: Yup.SchemaOf<StaticQuestionInternalProps> = Yup.object({
   sqlParameters: Yup.mixed().optional(),
   onSqlParametersChange: Yup.mixed().optional(),
   hiddenParameters: Yup.mixed().optional(),
-  questionId: Yup.mixed().when(["token", "query"], {
-    is: (token: unknown, query: unknown) =>
-      token !== undefined || query !== undefined,
+  questionId: Yup.mixed().when(["token", "query", "card"], {
+    is: (token: unknown, query: unknown, card: unknown) =>
+      token !== undefined || query !== undefined || card !== undefined,
     then: (schema) => schema.optional(),
     otherwise: (schema) => schema.required(),
   }),
   token: Yup.mixed().optional(),
+  card: Yup.mixed().optional(),
   query: Yup.mixed().optional(),
   style: Yup.mixed().optional(),
   title: Yup.mixed().optional(),
