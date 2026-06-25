@@ -198,6 +198,7 @@
         (dissoc
          :all-scores
          :dataset_query
+         :document
          :relevant-scores
          :collection_effective_ancestors
          :collection_id
