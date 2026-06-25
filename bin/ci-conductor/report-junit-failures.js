@@ -108,7 +108,10 @@ function parseJunit(xml) {
       tests.push({
         name,
         path: namespace || undefined,
-        file,
+        // file_path is unstable for backend tests (the stack locator varies by
+        // failure mode), so identity is (test_suite, test_path, test_name) and
+        // file_path is sent as null. See DEV-2224.
+        file: null,
         message,
         stack: stack || undefined,
         // JUnit only tells us a test failed/errored, never that it recovered, so

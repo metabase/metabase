@@ -66,7 +66,8 @@ describe("parseJunit", () => {
     const [test] = tests;
     expect(test.name).toBe("idempotency-unwrapped-boolean-wrapper-test");
     expect(test.path).toBe("metabase.agent-lib.representations.repair-test");
-    expect(test.file).toBe("repair_test.clj");
+    // file_path is intentionally null — backend identity is (suite, path, name).
+    expect(test.file).toBeNull();
     expect(test.status).toBe("failure");
     // The message skips the file:line locator line.
     expect(test.message).toBe("unwrapping a boolean wrapper stays idempotent");
@@ -79,7 +80,7 @@ describe("parseJunit", () => {
     const tests = parseJunit(PASS_AND_ERROR);
     expect(tests).toHaveLength(1);
     expect(tests[0].name).toBe("erroring-test");
-    expect(tests[0].file).toBe("foo_test.clj");
+    expect(tests[0].file).toBeNull();
     expect(tests[0].status).toBe("failure");
     expect(tests[0].stack).toContain("java.lang.RuntimeException: boom");
   });
