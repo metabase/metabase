@@ -250,6 +250,14 @@
       [skip-checksum-flag skip-checksum-flag]
       [last-checksum (analytics-checksum)])))
 
+(defn- audit-db-in-source-state?
+  "True when audit tables are stuck at the postgres \"source\" schema (`public`) on a non-postgres host —
+   the half-applied state left by an interrupted `adjust-audit-db-to-host!`. Used to force a reload even
+   when `last-analytics-checksum` already matches (GHY-3974 Mode B)."
+  [audit-db-id]
+  (and (not= :postgres (mdb/db-type))
+       (t2/exists? :model/Table :db_id audit-db-id :schema "public")))
+
 (defn- maybe-load-analytics-content!
   "Loads serialized audit content from the classpath if its checksum has changed.
 
@@ -262,25 +270,30 @@
   (boolean
    (when analytics-dir-resource
      (ia-content->plugins (plugins/plugins-dir))
-     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
-       (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
+     (let [[last-checksum current-checksum] (get-last-and-current-checksum)
+           load?                            (audit-app.settings/load-analytics-content)]
+       (when (or (should-load-audit? load? last-checksum current-checksum)
+                 (and load? (audit-db-in-source-state? (:id audit-db))))
          (adjust-audit-db-to-source! audit-db)
          (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
          ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-         (let [report (log/with-no-logs
-                        (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
-                                                             {:backfill? false}
-                                                             :token-check? false
-                                                             :require-initialized-db? false))]
-           (if (not-empty (:errors report))
-             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-             (do
-               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
-               (audit/last-analytics-checksum! current-checksum))))
-         (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
-           (let [original-engine engine]
-             (adjust-audit-db-to-host! audit-db)
-             (not= original-engine (mdb/db-type)))))))))
+         (let [report  (log/with-no-logs
+                         (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
+                                                              {:backfill? false}
+                                                              :token-check? false
+                                                              :require-initialized-db? false))
+               loaded? (empty? (:errors report))]
+           (if loaded?
+             (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
+             (log/info (str "Error Loading Analytics Content: " (pr-str report))))
+           (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
+             (let [original-engine engine]
+               (adjust-audit-db-to-host! audit-db)
+               ;; GHY-3974 Mode B: advance the checksum only after the host-adjust completes, so an
+               ;; interrupted host-adjust leaves the checksum behind and the next boot re-runs the load.
+               (when loaded?
+                 (audit/last-analytics-checksum! current-checksum))
+               (not= original-engine (mdb/db-type))))))))))
 
 (defn- maybe-install-audit-db!
   []
@@ -343,6 +356,41 @@
           ;; Tests need the sync to complete before they run
           @sync-future)))))
 
+(defn- host-canonical-table
+  "The `[name schema]` an audit-DB `metabase_table` row should use for the host engine, matching the
+   conventions `adjust-audit-db-to-host!` applies."
+  [table-name]
+  (case (mdb/db-type)
+    :mysql [(u/lower-case-en table-name) nil]
+    :h2    [(u/upper-case-en table-name) "PUBLIC"]
+    [(u/lower-case-en table-name) "public"]))
+
+(defn- reconcile-audit-db-duplicates!
+  "Collapse duplicate `metabase_table` rows for the same audit view into a single active row at the
+   host-canonical name/schema (GHY-3974 Mode A). For each same-name group with more than one row, keep the
+   row dependent content points at (else the active row, else the lowest id), repoint stray
+   `report_card.table_id` references to it, normalize it to the host-canonical name/schema, and delete the
+   orphans. Schema is derived from the host engine — not the surviving row — so a duplicate left at the
+   postgres \"source\" schema (Mode B masking Mode A) is also corrected. Idempotent: a no-op when there
+   are no duplicates."
+  [audit-db-id]
+  (let [groups (->> (t2/select [:model/Table :id :name :schema :active] :db_id audit-db-id)
+                    (group-by (comp u/lower-case-en :name))
+                    (filter (fn [[_ rows]] (> (count rows) 1))))]
+    (doseq [[_ rows] groups]
+      (let [referenced?       (fn [{:keys [id]}] (t2/exists? :model/Card :table_id id))
+            survivor          (or (first (filter referenced? rows))
+                                  (first (filter :active rows))
+                                  (first (sort-by :id rows)))
+            [c-name c-schema] (host-canonical-table (:name survivor))
+            orphans           (remove #(= (:id %) (:id survivor)) rows)]
+        (doseq [{orphan-id :id} orphans]
+          (t2/update! :model/Card {:table_id orphan-id} {:table_id (:id survivor)})
+          (t2/delete! :model/Table orphan-id))
+        (t2/update! :model/Table (:id survivor) {:active true :name c-name :schema c-schema})
+        (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
+                   (count orphans) (:id survivor))))))
+
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist, and loads audit
   content if it is available."
@@ -354,4 +402,7 @@
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db
         (fn []
-          (maybe-sync-audit-db! audit-db (maybe-load-analytics-content! audit-db))))))))
+          (maybe-sync-audit-db! audit-db (maybe-load-analytics-content! audit-db))
+          ;; GHY-3974 Mode A: runs every boot so already-corrupted instances (whose checksum already
+          ;; matches, so the load/sync above are skipped) still self-heal.
+          (reconcile-audit-db-duplicates! (:id audit-db))))))))
