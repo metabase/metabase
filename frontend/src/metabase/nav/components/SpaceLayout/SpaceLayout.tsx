@@ -1,10 +1,10 @@
+import { useHotkeys } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   ActionIcon,
   Box,
@@ -61,20 +61,14 @@ export function SpaceLayout({
   navExtras,
   children,
 }: SpaceLayoutProps) {
-  // Toggle the sidebar with "[" or Ctrl/Cmd + "." — the latter matches both the
-  // tooltip hint and the main app navbar shortcut. Overriding `shortcut` here
-  // (rather than in the global def) keeps the main app's AppBar toggle on "["
-  // only, so its dedicated Ctrl/Cmd + "." handler doesn't double-fire.
-  useRegisterShortcut(
-    [
-      {
-        id: "toggle-navbar",
-        shortcut: ["[", "$mod+."],
-        perform: () => onNavbarToggle(!isNavbarOpened),
-      },
-    ],
-    [isNavbarOpened, onNavbarToggle],
-  );
+  // Temporary enable 2 hotkeys to toggle the sidebar, until design team
+  // provides a clarification which one should we keep.
+  // TODO: (stasgavrylov - GDGT-2684) Remove this code when navbar hotkey is settled.
+  const toggleNavbar = () => onNavbarToggle(!isNavbarOpened);
+  useHotkeys([
+    ["[", toggleNavbar],
+    ["mod+.", toggleNavbar],
+  ]);
 
   if (isLoading) {
     return (
@@ -149,6 +143,7 @@ export function SpaceTab({
         gap="sm"
         bdrs="md"
         aria-label={label}
+        aria-current={isSelected ? "page" : undefined}
         justify={showLabel ? "start" : "center"}
       >
         <FixedSizeIcon name={icon} display="block" className={S.icon} />

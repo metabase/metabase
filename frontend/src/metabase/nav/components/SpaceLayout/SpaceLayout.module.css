@@ -63,7 +63,8 @@
   }
 
   &.navbarClosed {
-    &:hover {
+    &:hover,
+    &:focus-within {
       .toggle {
         opacity: 1;
       }

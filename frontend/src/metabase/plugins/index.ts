@@ -154,6 +154,7 @@ export {
   PLUGIN_DEPENDENCIES,
   type DependencyGraphPageContextType,
 } from "./oss/dependencies";
+export { PLUGIN_MONITOR } from "./oss/monitor";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
 export {
@@ -200,6 +201,7 @@ import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
+import { reinitialize as reinitializeMonitor } from "./oss/monitor";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeReplacement } from "./oss/replacement";
@@ -244,6 +246,7 @@ export function reinitialize() {
   reinitializeMetabot();
   reinitializeModelPersistence();
   reinitializeModeration();
+  reinitializeMonitor();
   reinitializePermissions();
   reinitializeRemoteSync();
   reinitializeReplacement();
