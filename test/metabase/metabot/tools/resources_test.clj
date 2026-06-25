@@ -540,6 +540,55 @@
         (is (contains? eids (:entity_id personal))
             "crowberto's readable personal collection must appear in the tree list")))))
 
+(deftest canonical-card-type-and-entity-id-fields-test
+  ;; Two regressions on the card /fields drill-down, exercised together because
+  ;; both need a real-query card:
+  ;;  - #3: get-table-details only knows :model/:question, so the canonical
+  ;;    "card" URI segment hit its :else branch and threw "Invalid arguments".
+  ;;  - #2: fetch-card-fields called (parse-long id-str), returning nil on a
+  ;;    21-char entity_id NanoID — the documented entity_id drill-down was dead.
+  ;; The handler now resolves via mbr/resolve-user-entity (both id forms) and
+  ;; derives entity-type from the resolved card's :type.
+  (let [mp    (mt/metadata-provider)
+        query (as-> (lib/query mp (lib.metadata/table mp (mt/id :products))) $
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (m/find-first (comp #{"Category"} :display-name)
+                                              (lib/breakoutable-columns $))))
+        meta  (-> query qp/process-query :data :results_metadata :columns)]
+    (mt/with-temp [:model/Card {id :id eid :entity_id}
+                   {:type :model :dataset_query query :result_metadata meta}]
+      (mt/with-test-user :crowberto
+        (testing "canonical `card` type segment reaches /fields (numeric id)"
+          (is (=? {:resources [{:content {:structured-output map?}}]}
+                  (read-resource/read-resource
+                   {:uris [(str "metabase://card/" id "/fields")]}))))
+        (testing "entity_id (NanoID) resolves on the /fields sub-resource"
+          (is (=? {:resources [{:content {:structured-output map?}}]}
+                  (read-resource/read-resource
+                   {:uris [(str "metabase://card/" eid "/fields")]}))))))))
+
+(deftest card-sources-filters-by-can-read-test
+  (testing "metabase://card/{id}/sources omits source entities the user can't read"
+    ;; Regression: fetch-card-sources read-checked only the parent card, then
+    ;; serialized its source Database/Table/Card with no per-source perm check —
+    ;; exposing restricted source cards and sandboxed table metadata. Sources now
+    ;; route through extract-readable (mi/can-read? gate).
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {src-id :id} {:name "HIDDEN-SOURCE-CARD"}
+                     :model/Card {card-id :id} {:name "PARENT-CARD" :source_card_id src-id}]
+        (let [orig mi/can-read?]
+          (with-redefs [mi/can-read? (fn
+                                       ([instance]
+                                        (if (and (= :model/Card (t2/model instance))
+                                                 (= src-id (:id instance)))
+                                          false
+                                          (orig instance)))
+                                       ([model id] (orig model id)))]
+            (let [{:keys [output]} (read-resource/read-resource
+                                    {:uris [(str "metabase://card/" card-id "/sources")]})]
+              (is (not (str/includes? output "HIDDEN-SOURCE-CARD"))
+                  "unreadable source card must not appear in card sources"))))))))
+
 (deftest list-filters-dashboard-items-by-can-read-test
   (testing "metabase://dashboard/{id}/items hides cards the user can't read"
     (mt/with-current-user (mt/user->id :crowberto)

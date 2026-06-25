@@ -300,18 +300,10 @@
   [mbr uri]
   (assoc mbr :_uri uri))
 
-(defn- canonical-fields
-  "Pull the fields we need to build sync-metadata URIs out of a Toucan instance."
-  [{:keys [name schema] :as _table} db-name]
-  {:db-name    db-name
-   :schema     schema
-   :table-name name})
-
 (defn table-uri-from
   "URI builder for a Table instance + its hydrated database name."
   [table db-name]
-  (let [{:keys [db-name schema table-name]} (canonical-fields table db-name)]
-    (table-uri db-name schema table-name)))
+  (table-uri db-name (:schema table) (:name table)))
 
 (defn list-result
   "Wrap a paged MBR result in the list envelope used by `read_resource`.

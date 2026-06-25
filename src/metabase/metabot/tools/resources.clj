@@ -374,14 +374,34 @@
     (mbr/entity-result (mbr/extract-as-user "Card" card))
     {:status-code 404 :output (str "Card " id-str " not found")}))
 
-(defn- fetch-card-fields [type-str id-str]
-  (table-details (keyword type-str) (parse-long id-str) true))
+(defn- resolve-card-or-404
+  "Resolve a Card by URI segment (entity_id NanoID *or* legacy numeric id) via
+   [[mbr/resolve-user-entity]]. The `card`/`model`/`question` URI types all land
+   here; the downstream entity-type is taken from the card's real `:type`, not
+   the URI segment — so the canonical `card` type works and a mislabeled
+   `model/{id}` of a question still resolves. Returns the Toucan instance or a
+   404 map (caller threads it with `if-let`-style handling)."
+  [id-str]
+  (or (mbr/resolve-user-entity :model/Card id-str)
+      {:status-code 404 :output (str "Card " id-str " not found")}))
 
-(defn- fetch-card-field [type-str id-str field-id]
-  (field-stats/field-values {:entity-type type-str
-                             :entity-id   (parse-long id-str)
-                             :field-id    field-id
-                             :limit       30}))
+(defn- fetch-card-fields [_type-str id-str]
+  (let [card (resolve-card-or-404 id-str)]
+    (if (:status-code card)
+      card
+      ;; entity-type from the resolved card's :type (:question/:model), not the
+      ;; URI segment — get-table-details only knows :question/:model, so passing
+      ;; the canonical "card" segment through verbatim would throw.
+      (table-details (:type card) (:id card) true))))
+
+(defn- fetch-card-field [_type-str id-str field-id]
+  (let [card (resolve-card-or-404 id-str)]
+    (if (:status-code card)
+      card
+      (field-stats/field-values {:entity-type (name (:type card))
+                                 :entity-id   (:id card)
+                                 :field-id    field-id
+                                 :limit       30}))))
 
 (defn- fetch-card-sources [id-str]
   (let [card    (mbr/resolve-user-entity :model/Card id-str)
@@ -390,10 +410,14 @@
         db      (when database_id    (t2/select-one :model/Database database_id))
         table   (when table_id       (t2/select-one :model/Table table_id))
         src     (when source_card_id (t2/select-one :model/Card source_card_id))
-        items   (cond-> []
-                  db    (conj (mbr/->mbr "Database" db))
-                  table (conj (mbr/->mbr "Table" table))
-                  src   (conj (mbr/->mbr "Card" src)))]
+        ;; Gate each source on read perms before extracting — the read-check
+        ;; above only covers the *parent* card. Without this, a source Card the
+        ;; user can't read, or Table metadata they're sandboxed out of, would be
+        ;; fully serialized into the response. `extract-readable` filters by
+        ;; `mi/can-read?` then runs ->mbr, matching fetch-transform-sources.
+        items   (vec (concat (when db    (mbr/extract-readable "Database" [db]))
+                             (when table (mbr/extract-readable "Table" [table]))
+                             (when src   (mbr/extract-readable "Card" [src]))))]
     (mbr/list-result :card-sources (paginate-items items nil))))
 
 ;; ----- Metric -----
@@ -418,12 +442,12 @@
 ;; ----- Transform -----
 
 (defn- fetch-transform [id-str]
-  (let [transform-id (parse-long id-str)]
-    ;; transforms/get-transform runs its own read-check, throws if denied.
-    (transforms/get-transform transform-id)
-    (if-let [t (t2/select-one :model/Transform transform-id)]
-      (mbr/entity-result (mbr/extract-as-user "Transform" t))
-      {:status-code 404 :output (str "Transform " id-str " not found")})))
+  ;; transforms/get-transform runs the read-check (404 if missing, 403 if denied)
+  ;; and returns a Transform Toucan instance enriched with hydrated keys. ->mbr
+  ;; re-selects by (:id instance) via serdes, so those extra keys are inert — no
+  ;; need for a second t2/select-one. Use ->mbr (not extract-as-user) since the
+  ;; read-check already happened inside get-transform.
+  (mbr/entity-result (mbr/->mbr "Transform" (transforms/get-transform (parse-long id-str)))))
 
 (defn- fetch-transform-sources [id-str query-params]
   (let [transform        (transforms/get-transform (parse-long id-str))
