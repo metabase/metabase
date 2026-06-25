@@ -57,17 +57,19 @@ databaseChangeLog:
 
   # Backfill the 90-day window (alerts + subscriptions) from each run's notification-send
   # task_history child. notification_id sits in task_details JSON, top-level or under `original-info`
-  # on failure. task_details is always JSON-serialized by the model, so the cast is safe; a row
-  # missing the key just yields NULL. The two SQL changes are dbms-gated; H2 matches neither and
-  # ages out on its own.
+  # on failure. The SQL blocks are dbms-gated; H2 matches none and ages out on its own.
   - changeSet:
       id: v62.2026-06-06T00:00:02
       author: qnkhuat
       comment: Backfill task_run.notification_id for the last 90 days (Postgres/MySQL; H2 ages out)
-      # This backfill is best-effort and non-critical: never let it block an upgrade. failOnError
-      # skips the changeset on any failure instead of aborting init.
-      failOnError: false
-      validCheckSum: ANY
+      # Skip on MySQL/MariaDB: the CAST(... AS UNSIGNED) below crashes strict mode on a JSON-null
+      # notification_id (GDGT-2680). This body shipped in 0.62.3.x and is frozen (editing it changes
+      # the checksum and breaks cross-branch rollback), so 00:00:03 redoes it safely. PG was fine.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - dbms:
+                type: mysql,mariadb
       changes:
         - sql:
             dbms: postgresql
@@ -83,6 +85,29 @@ databaseChangeLog:
                 AND tr.run_type IN ('alert', 'subscription')
                 AND tr.notification_id IS NULL
                 AND tr.started_at > now() - interval '90 days';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE task_run tr
+              JOIN task_history th ON th.run_id = tr.id
+              SET tr.notification_id = CAST(COALESCE(
+                    JSON_UNQUOTE(JSON_EXTRACT(th.task_details, '$.notification_id')),
+                    JSON_UNQUOTE(JSON_EXTRACT(th.task_details, '$."original-info".notification_id'))
+                  ) AS UNSIGNED)
+              WHERE th.task = 'notification-send'
+                AND tr.run_type IN ('alert', 'subscription')
+                AND tr.notification_id IS NULL
+                AND tr.started_at > now() - interval 90 day;
+      rollback: # nothing to do — column drop in the first changeSet covers it
+
+  # MySQL/MariaDB redo of 00:00:02, strict-mode safe: NULLIF the JSON string 'null' back to SQL NULL
+  # before the CAST, and skip non-JSON task_details. Best-effort, so a bad row can't block startup.
+  - changeSet:
+      id: v62.2026-06-06T00:00:03
+      author: qnkhuat
+      comment: Redo task_run.notification_id backfill on MySQL/MariaDB, strict-mode safe (GDGT-2680)
+      failOnError: false
+      changes:
         - sql:
             dbms: mysql,mariadb
             sql: >-
