@@ -164,8 +164,10 @@ function IndexStatusCell({ index }: { index: TableIndexEntry }) {
     return EMPTY_CELL_PLACEHOLDER;
   }
 
+  // Keep the badge at its content width so the status label is never ellipsized
+  // when the column is tight.
   const badge = (
-    <Badge color={STATUS_COLORS[request.status]}>
+    <Badge color={STATUS_COLORS[request.status]} style={{ flexShrink: 0 }}>
       {getStatusLabel(request.status)}
     </Badge>
   );
