@@ -53,6 +53,13 @@ export function createLibQuery(
   return Lib.queryFromTableOrCardMetadata(provider, table);
 }
 
+// -------------
+// TODO(EMB-1947): these synthetic metadata are temporary.
+//
+// We will fetch query metadata at runtime and pass them as
+// metadata provider to metabase-lib - and rewrite this file.
+// -------------
+
 export function createTableMetadata(
   table: TableMetadataSource,
   databaseId: number,
