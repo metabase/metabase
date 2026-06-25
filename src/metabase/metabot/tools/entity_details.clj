@@ -351,13 +351,16 @@
 
   Returns nil when the query has no FK-related tables, otherwise a map:
 
-    :tables vector of detailed related-table maps (one per FK path), each optionally with its fields, capped at
-            [[max-related-tables]]. This is the expensive part — each entry re-fetches and formats the
-            target table's full column set.
-    :total  total number of FK-related tables before capping.
-    :refs   list of `{:id :name :description :related_by}` of related tables, capped at
-            [[max-related-table-truncated-refs]] (ids/names only, no column fetch). Lets the LLM see
-            which related tables were excluded from `:tables` above."
+    :tables     vector of detailed related-table maps (one per FK path), each optionally with its fields, capped at
+                [[max-related-tables]]. This is the expensive part — each entry re-fetches and formats the
+                target table's full column set.
+    :total      total number of FK-related tables before capping.
+    :refs       list of `{:id :name :description :related_by}` of related tables that were *not* expanded into
+                `:tables`, capped at [[max-related-table-truncated-refs]] (ids/names only, no column fetch). Tables
+                already present in `:tables` are excluded so the roster only surfaces tables the LLM hasn't already
+                seen in full.
+    :refs-total total number of FK-related tables excluded from `:tables` (the population `:refs` is drawn from),
+                before capping."
   [query with-fields? field-values-fn]
   (let [fk-groups (fk-related-table-groups query)
         total     (count fk-groups)]
@@ -365,24 +368,29 @@
       (when (> total max-related-tables)
         (log/infof "Capping metabot related-table expansion to %d of %d FK-related tables."
                    max-related-tables total))
-      {:total  total
-       :tables (mapv
-                (fn [[table-id fk-field-id]]
-                  (-> (table-details table-id
-                                     {:with-fields?         with-fields?
-                                      :field-values-fn      field-values-fn
-                                      :with-related-tables? false
-                                      :with-metrics?        false})
-                      (assoc :related_by (:name (lib.metadata/field query fk-field-id)))))
-                (take max-related-tables fk-groups))
-       :refs   (mapv
-                (fn [[table-id fk-field-id]]
-                  (let [table (lib.metadata/table query table-id)]
-                    {:id          table-id
-                     :name        (:name table)
-                     :description (:description table)
-                     :related_by  (:name (lib.metadata/field query fk-field-id))}))
-                (take max-related-table-truncated-refs fk-groups))})))
+      (let [shown-groups    (take max-related-tables fk-groups)
+            shown-table-ids (into #{} (map first) shown-groups)
+            ;; exclude tables already expanded in :tables so the roster only lists tables not shown in full
+            excluded-groups (remove (comp shown-table-ids first) fk-groups)]
+        {:total      total
+         :tables     (mapv
+                      (fn [[table-id fk-field-id]]
+                        (-> (table-details table-id
+                                           {:with-fields?         with-fields?
+                                            :field-values-fn      field-values-fn
+                                            :with-related-tables? false
+                                            :with-metrics?        false})
+                            (assoc :related_by (:name (lib.metadata/field query fk-field-id)))))
+                      shown-groups)
+         :refs       (mapv
+                      (fn [[table-id fk-field-id]]
+                        (let [table (lib.metadata/table query table-id)]
+                          {:id          table-id
+                           :name        (:name table)
+                           :description (:description table)
+                           :related_by  (:name (lib.metadata/field query fk-field-id))}))
+                      (take max-related-table-truncated-refs excluded-groups))
+         :refs-total (count excluded-groups)}))))
 
 (defn- related-tables-result
   "Convert the map returned by [[related-tables]] into the entity-detail result.
@@ -391,12 +399,13 @@
   - `:related_tables_truncated` (optional) true when `:related_tables` was truncated by [[max-related-tables]]
   - `:related_tables_total` (optional) count of total related tables, before truncation. Only present when truncation
      occurred.
-  - `:related_table_refs` (optional) list of id/name/description. Only present when truncation occurred, so the LLM
-     knows more related tables exist and can look them up individually."
+  - `:related_table_refs` (optional) list of id/name/description for related tables *not* expanded into
+     `:related_tables`. Only present when truncation occurred, so the LLM knows more related tables exist and can
+     look them up individually."
   [related]
-  (when-let [{:keys [tables total refs]} related]
+  (when-let [{:keys [tables total refs refs-total]} related]
     (let [truncated?      (> total (count tables))
-          refs-truncated? (> total (count refs))]
+          refs-truncated? (> refs-total (count refs))]
       (cond-> {:related_tables tables}
         truncated?      (assoc :related_tables_truncated true
                                :related_tables_total     total

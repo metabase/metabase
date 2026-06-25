@@ -562,18 +562,23 @@
                   (is (= 1 (count (:related_tables output))))
                   (is (true? (:related_tables_truncated output)))
                   (is (= 2 (:related_tables_total output)))
-                  (testing "roster lists every related table by id and name, not just the truncated ones"
-                    (is (= 2 (count (:related_table_refs output))))
+                  (testing "roster lists only the related tables excluded from :related_tables, by id and name"
+                    (is (= 1 (count (:related_table_refs output))))
                     (is (every? :id (:related_table_refs output)))
-                    (is (every? :name (:related_table_refs output))))
+                    (is (every? :name (:related_table_refs output)))
+                    (testing "the expanded table is not repeated in the roster"
+                      (let [shown-ids (into #{} (map :id) (:related_tables output))]
+                        (is (not-any? (comp shown-ids :id) (:related_table_refs output))))))
                   (testing "roster itself is not flagged truncated when it fits under its own cap"
                     (is (nil? (:related_table_refs_truncated output)))))))))))))
 
 (deftest related-table-refs-truncation-test
-  (testing "the related-tables list is itself capped at `max-related-table-truncated-refs` and flags truncation"
+  (testing "the related-table roster is itself capped at `max-related-table-truncated-refs` and flags truncation"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
-        (with-redefs-fn {#'entity-details/max-related-tables   1
+        ;; expand zero tables so both of Orders' FK-related tables land in the (excluded) roster, which the cap of
+        ;; 1 then truncates
+        (with-redefs-fn {#'entity-details/max-related-tables   0
                          #'entity-details/max-related-table-truncated-refs 1}
           (fn []
             (let [output (:structured-output
