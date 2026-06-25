@@ -14987,7 +14987,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-dashboard",
         "summary" : "POST /api/agent/v1/dashboard",
-        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.\n  If `collection_id` is omitted the dashboard is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
+        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.\n  If `collection_id` is omitted the dashboard is saved to the caller's personal collection.\n  Pass an explicit `null` to save it to the root collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15173,7 +15173,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-question",
         "summary" : "POST /api/agent/v1/question",
-        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the question is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
+        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the question is saved to the caller's personal collection.\n  Pass an explicit `null` to save it to the root collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
