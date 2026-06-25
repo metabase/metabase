@@ -247,8 +247,7 @@
 (deftest ^:parallel remark-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= (with-test-db-name
-             (str "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
-                  "SELECT"
+             (str "SELECT"
                   " `v4_test_data.venues`.`id` AS `id`,"
                   " `v4_test_data.venues`.`name` AS `name`,"
                   " `v4_test_data.venues`.`category_id` AS `category_id`,"
@@ -256,7 +255,8 @@
                   " `v4_test_data.venues`.`longitude` AS `longitude`,"
                   " `v4_test_data.venues`.`price` AS `price` "
                   "FROM `v4_test_data.venues` "
-                  "LIMIT 1"))
+                  "LIMIT 1"
+                  "\n\n-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304"))
            (query->native
             {:database (mt/id)
              :type     :query
