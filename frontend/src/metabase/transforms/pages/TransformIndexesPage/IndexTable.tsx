@@ -24,10 +24,11 @@ import {
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type {
-  TableIndexEntry,
-  TableIndexRequestStatus,
+  IndexColumnDirection,
   RequestableIndexes,
   TableId,
+  TableIndexEntry,
+  TableIndexRequestStatus,
   UserId,
 } from "metabase-types/api";
 
@@ -130,12 +131,51 @@ function IndexStatusCell({ index }: { index: TableIndexEntry }) {
   return badge;
 }
 
-function IndexColumnsCell({ columns }: { columns: string[] }) {
+// Directions are only known for managed indexes -- they live on the structured
+// request's columns, not on the flat `key_columns` list. External (warehouse)
+// indexes and kinds without per-column ordering (e.g. distkey) carry none.
+function getColumnDirections(
+  index: TableIndexEntry,
+): Map<string, IndexColumnDirection> {
+  const { structured } = index.request ?? {};
+  if (!structured || !("columns" in structured)) {
+    return new Map();
+  }
+  return new Map(
+    structured.columns.flatMap((column) =>
+      column.direction ? [[column.name, column.direction]] : [],
+    ),
+  );
+}
+
+const DIRECTION_ARROWS = {
+  asc: "↑",
+  desc: "↓",
+} as const satisfies Record<IndexColumnDirection, string>;
+
+function getDirectionLabel(direction: IndexColumnDirection): string {
+  return direction === "asc" ? t`Ascending` : t`Descending`;
+}
+
+function IndexColumnsCell({ index }: { index: TableIndexEntry }) {
+  const directions = getColumnDirections(index);
   return (
     <Group gap="xs" wrap="nowrap">
-      {columns.map((name) => (
-        <Code key={name}>{name}</Code>
-      ))}
+      {index.key_columns.map((name) => {
+        const direction = directions.get(name);
+        return (
+          <Code key={name}>
+            <span>{name}</span>
+            {direction && (
+              <Tooltip label={getDirectionLabel(direction)}>
+                <Box component="span" ml={2} c="text-secondary">
+                  {DIRECTION_ARROWS[direction]}
+                </Box>
+              </Tooltip>
+            )}
+          </Code>
+        );
+      })}
     </Group>
   );
 }
@@ -219,9 +259,7 @@ function getColumns({
       minWidth: "auto",
       maxAutoWidth: 480,
       accessorFn: (index) => index.key_columns.join(", "),
-      cell: ({ row }) => (
-        <IndexColumnsCell columns={row.original.key_columns} />
-      ),
+      cell: ({ row }) => <IndexColumnsCell index={row.original} />,
     },
     {
       id: "source",
