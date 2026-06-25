@@ -107,9 +107,9 @@ export function buildMetricDatasetQueryFromInput(
   return query == null ? null : Lib.toJsQuery(query);
 }
 
-// `applyAggregations` adds a default count when there are breakouts but no
-// explicit aggregations; this mirrors that so the applied aggregations and the
-// sort-target lookup share one ordered list.
+// A breakout query with no explicit aggregations is grouped by count, so the
+// shared aggregation list includes a count — both `applyAggregations` and the
+// sort-target lookup then see the same aggregations in the same order.
 const DEFAULT_COUNT_AGGREGATION = { type: "count" };
 
 function getTableAggregations(input: TableQueryInput): readonly unknown[] {

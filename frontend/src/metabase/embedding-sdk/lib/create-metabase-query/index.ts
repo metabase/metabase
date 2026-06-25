@@ -30,11 +30,11 @@ export const createMetabaseQuery: CreateMetabaseQuery = (
 
   if (isMetricQueryInput(input)) {
     throw new Error(
-      "Metric query object creation requires the metric's generated schema.",
+      "Could not create the metric query. Verify the metric's generated schema and that its filters, measures, breakouts, sorts, and limit are valid.",
     );
   } else {
     throw new Error(
-      "Table query object creation requires a table reference with id and databaseId.",
+      "Could not create the table query. Verify the table reference (id and databaseId) and that its filters, aggregations, breakouts, sorts, and limit are valid.",
     );
   }
 };

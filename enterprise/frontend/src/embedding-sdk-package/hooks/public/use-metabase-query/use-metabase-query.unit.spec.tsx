@@ -895,7 +895,7 @@ describe("useMetabaseQuery", () => {
           ],
         }),
       ).toThrow(
-        "Table query object creation requires a table reference with id and databaseId.",
+        "Could not create the table query. Verify the table reference (id and databaseId) and that its filters, aggregations, breakouts, sorts, and limit are valid.",
       );
 
       expect(() =>
@@ -910,7 +910,7 @@ describe("useMetabaseQuery", () => {
           ],
         }),
       ).toThrow(
-        "Table query object creation requires a table reference with id and databaseId.",
+        "Could not create the table query. Verify the table reference (id and databaseId) and that its filters, aggregations, breakouts, sorts, and limit are valid.",
       );
     });
 
@@ -1024,6 +1024,22 @@ describe("useMetabaseQuery", () => {
       );
     });
 
+    it("sorts a minimal table reference by a sort-only field", () => {
+      expect(
+        createMetabaseQuery({
+          table: {
+            id: TEST_SCHEMA.tables.orders.id,
+            databaseId: TEST_SCHEMA.tables.orders.databaseId,
+          },
+          sorts: [sort(TEST_SCHEMA.tables.orders.fields.createdAt, "desc")],
+        }),
+      ).toEqual(
+        queryObject({
+          "order-by": [["desc", mbqlOptions(), fieldRef(103)]],
+        }),
+      );
+    });
+
     it("sorts metric queries by a breakout dimension and limits rows", () => {
       expect(
         createMetabaseQuery({
@@ -1126,7 +1142,7 @@ describe("useMetabaseQuery", () => {
           sorts: [sort("nonexistent_column")],
         }),
       ).toThrow(
-        "Table query object creation requires a table reference with id and databaseId.",
+        "Could not create the table query. Verify the table reference (id and databaseId) and that its filters, aggregations, breakouts, sorts, and limit are valid.",
       );
     });
 
@@ -1137,7 +1153,7 @@ describe("useMetabaseQuery", () => {
           limit: -1,
         }),
       ).toThrow(
-        "Table query object creation requires a table reference with id and databaseId.",
+        "Could not create the table query. Verify the table reference (id and databaseId) and that its filters, aggregations, breakouts, sorts, and limit are valid.",
       );
 
       expect(() =>
@@ -1146,7 +1162,7 @@ describe("useMetabaseQuery", () => {
           limit: 5.5,
         }),
       ).toThrow(
-        "Table query object creation requires a table reference with id and databaseId.",
+        "Could not create the table query. Verify the table reference (id and databaseId) and that its filters, aggregations, breakouts, sorts, and limit are valid.",
       );
     });
 
@@ -1242,7 +1258,7 @@ describe("useMetabaseQuery", () => {
           ],
         }),
       ).toThrow(
-        "Table query object creation requires a table reference with id and databaseId.",
+        "Could not create the table query. Verify the table reference (id and databaseId) and that its filters, aggregations, breakouts, sorts, and limit are valid.",
       );
     });
 

@@ -31,6 +31,7 @@ import {
   getMetricDimensionValues,
   isMetricDimensionWithFieldId,
   normalizeBreakout,
+  normalizeSort,
 } from "../input-utils";
 
 import { getFieldBaseType, getFieldEffectiveType } from "./query-utils";
@@ -342,9 +343,21 @@ function getQueryFieldReferences(query?: QueryMetadataInput): FieldSchema[] {
       return dimension && isTableFieldSchema(dimension) ? [dimension] : [];
     }) ?? [];
 
-  return [...filterFields, ...aggregationFields, ...breakoutFields].filter(
-    hasFieldReferenceId,
-  );
+  // Sort targets can reference a field that nothing else does (e.g. a minimal
+  // `{ id, databaseId }` table sorted by a field), so include them too.
+  const sortFields =
+    query?.sorts?.flatMap((sort) => {
+      const { column } = normalizeSort(sort);
+
+      return isTableFieldSchema(column) ? [column] : [];
+    }) ?? [];
+
+  return [
+    ...filterFields,
+    ...aggregationFields,
+    ...breakoutFields,
+    ...sortFields,
+  ].filter(hasFieldReferenceId);
 }
 
 const getQueryAggregations = (query?: QueryMetadataInput): readonly unknown[] =>
