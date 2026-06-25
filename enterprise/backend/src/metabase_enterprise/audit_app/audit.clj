@@ -5,9 +5,9 @@
    [clojure.string :as str]
    [metabase-enterprise.audit-app.settings :as audit-app.settings]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
-   [metabase.config.core :as config]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.core :as sync]
@@ -331,30 +331,28 @@
       (directory-content-checksum views-dir ".sql"))))
 
 (defn- maybe-sync-audit-db!
-  "One-shot `:scan :schema` sync of the audit DB. Fires when either trigger is true:
+  "One-shot synchronous `:scan :schema` sync of the audit DB. Fires when either trigger is true:
      - `engine-changed?` — `maybe-load-analytics-content!` swapped the audit DB engine and
        field metadata needs to be refreshed for the new dialect.
      - the `instance_analytics_views` SQL files have changed since the last successful sync,
        meaning a migration may have added a new view that isn't yet in `metabase_table`.
-   The two triggers share one sync because they both want the same operation; doing them
-   sequentially would race two parallel syncs against the same DB on a cold boot."
+   The two triggers share one sync because they both want the same operation. Runs synchronously
+   (not in a background future) so it stays inside the caller's cross-node cluster lock and
+   transaction — a sync on another thread would escape the lock and, on a transactional appdb,
+   deadlock against the caller's uncommitted `metabase_table` writes."
   [audit-db engine-changed?]
   (let [current      (views-checksum)
         views-stale? (and current (not= current (audit-app.settings/last-analytics-views-checksum)))]
     (when (or engine-changed? views-stale?)
       (log/infof "Syncing Audit DB schema (engine-changed? %s, views-stale? %s)"
                  engine-changed? views-stale?)
-      (let [sync-future (future
-                          (try
-                            (log/with-no-logs (sync/sync-database! audit-db {:scan :schema}))
-                            (when current
-                              (audit-app.settings/last-analytics-views-checksum! current))
-                            (log/info "Audit DB sync complete.")
-                            (catch Exception e
-                              (log/error e "Audit DB sync failed."))))]
-        (when config/is-test?
-          ;; Tests need the sync to complete before they run
-          @sync-future)))))
+      (try
+        (log/with-no-logs (sync/sync-database! audit-db {:scan :schema}))
+        (when current
+          (audit-app.settings/last-analytics-views-checksum! current))
+        (log/info "Audit DB sync complete.")
+        (catch Exception e
+          (log/error e "Audit DB sync failed."))))))
 
 (defn- host-canonical-table
   "The `[name schema]` an audit-DB `metabase_table` row should use for the host engine, matching the
@@ -391,6 +389,16 @@
         (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
                    (count orphans) (:id survivor))))))
 
+(def ^:private audit-db-cluster-lock
+  "Cluster lock serializing the audit DB load/adjust/sync/reconcile across nodes (GHY-3974 1b)."
+  ::audit-db-lock)
+
+(defn- lock-acquisition-failure?
+  "True for the exception `with-cluster-lock` throws when it could not acquire the lock (as opposed to an
+   error raised by the locked body)."
+  [e]
+  (contains? (ex-data e) :lock-names))
+
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist, and loads audit
   content if it is available."
@@ -398,11 +406,20 @@
   []
   (u/prog1 (maybe-install-audit-db!)
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-      ;; prevent sync while loading
-      ((sync-util/with-duplicate-ops-prevented
-        :sync-database audit-db
-        (fn []
-          (maybe-sync-audit-db! audit-db (maybe-load-analytics-content! audit-db))
-          ;; GHY-3974 Mode A: runs every boot so already-corrupted instances (whose checksum already
-          ;; matches, so the load/sync above are skipped) still self-heal.
-          (reconcile-audit-db-duplicates! (:id audit-db))))))))
+      ;; GHY-3974 1b: serialize the load+adjust+sync+reconcile across nodes so a rolling upgrade can't run a
+      ;; sync against a half-adjusted schema (`with-duplicate-ops-prevented` is per-process only). The sync
+      ;; runs synchronously inside the lock for this reason. If another node already holds the lock it is
+      ;; doing this same work, so we skip rather than fail the boot.
+      (try
+        (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 30}
+          ((sync-util/with-duplicate-ops-prevented
+            :sync-database audit-db
+            (fn []
+              (maybe-sync-audit-db! audit-db (maybe-load-analytics-content! audit-db))
+              ;; GHY-3974 Mode A: runs every boot so already-corrupted instances (whose checksum already
+              ;; matches, so the load/sync above are skipped) still self-heal.
+              (reconcile-audit-db-duplicates! (:id audit-db))))))
+        (catch Throwable e
+          (if (lock-acquisition-failure? e)
+            (log/info "Another node holds the audit DB lock; skipping audit content load on this node.")
+            (throw e)))))))
