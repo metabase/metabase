@@ -101,10 +101,15 @@ function DataComplexityCardSkeleton() {
 function DataComplexityCard({
   catalogId,
   catalog,
+  level,
 }: {
   catalogId: DataComplexityCatalogId;
   catalog: DataComplexityGroup;
+  level?: number;
 }) {
+  // Level 0 disables scoring entirely — distinguish that from a computation failure so we don't
+  // surface "score unavailable" for a deliberately-skipped run.
+  const skipped = level === 0;
   const [isModalOpen, { close, open }] = useDisclosure();
   const { subtitle, title } = match(catalogId)
     .with("library", () => ({
@@ -140,6 +145,11 @@ function DataComplexityCard({
             </Text>
             <Text c="text-secondary">{catalog.rating_label}</Text>
           </Stack>
+        ) : skipped ? (
+          <Stack gap={4} my="sm">
+            <Text fw={700} c="text-secondary">{t`Scoring disabled`}</Text>
+            <Text c="text-secondary">{t`Complexity level is set to 0.`}</Text>
+          </Stack>
         ) : (
           <Stack gap={4} my="sm">
             <Text c="error" fw={700}>{t`Score unavailable`}</Text>
@@ -162,7 +172,7 @@ function DataComplexityCard({
           </Stack>
         }
       >
-        <DataComplexityBreakdown catalog={catalog} />
+        <DataComplexityBreakdown catalog={catalog} level={level} />
       </Modal>
     </Card>
   );
@@ -170,13 +180,21 @@ function DataComplexityCard({
 
 function DataComplexityBreakdown({
   catalog,
+  level,
 }: {
   catalog: DataComplexityGroup;
+  level?: number;
 }) {
-  const hasError = catalog.score == null;
+  const skipped = level === 0;
+  const hasError = !skipped && catalog.score == null;
 
   return (
     <Stack gap="lg" mt="md">
+      {skipped && (
+        <Text c="text-secondary">
+          {t`Scoring is disabled because the complexity level is set to 0.`}
+        </Text>
+      )}
       {hasError && (
         <Alert color="warning" icon={<Icon name="warning" />}>
           {t`Some component scores could not be computed.`}
@@ -321,7 +339,12 @@ export function DataComplexityCards() {
         )
         .with({ data: P.nonNullable }, ({ data }) =>
           DATA_COMPLEXITY_CATALOG_IDS.map((key) => (
-            <DataComplexityCard key={key} catalogId={key} catalog={data[key]} />
+            <DataComplexityCard
+              key={key}
+              catalogId={key}
+              catalog={data[key]}
+              level={data.meta.level}
+            />
           )),
         )
         .exhaustive()}
@@ -367,7 +390,7 @@ function ScoreDisplayInline({
         >{t`Complexity score`}</Text>
       )}
       <Text fw={700} lh="1rem" c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}>
-        {formatNumber(value, { maximumFractionDigits: 0 })}
+        {formatNumber(value, { maximumFractionDigits: 2 })}
       </Text>
     </Flex>
   );

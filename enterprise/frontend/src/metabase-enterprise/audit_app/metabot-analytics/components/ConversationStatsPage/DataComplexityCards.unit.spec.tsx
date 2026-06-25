@@ -10,6 +10,7 @@ import type {
   DataComplexityRating,
   DataComplexityScoresResponse,
 } from "../../types";
+import { DATA_COMPLEXITY_CATALOG_IDS } from "../../types";
 
 import { DataComplexityCards } from "./DataComplexityCards";
 
@@ -229,5 +230,27 @@ describe("DataComplexityCards", () => {
       await modal.findByText("Some component scores could not be computed."),
     ).toBeInTheDocument();
     expect(modal.getByText("Embedding service timed out")).toBeInTheDocument();
+  });
+
+  it("shows a disabled state (not an error) when scoring is skipped at level 0", async () => {
+    const emptyCatalog = { components: {} };
+    fetchMock.get("path:/api/ee/data-complexity-score/complexity", {
+      library: emptyCatalog,
+      universe: emptyCatalog,
+      metabot: emptyCatalog,
+      meta: {
+        formula_version: 2,
+        format_version: 2,
+        synonym_threshold: 0.8,
+        level: 0,
+      },
+    });
+
+    renderDataComplexityCards();
+
+    expect(await screen.findAllByText("Scoring disabled")).toHaveLength(
+      DATA_COMPLEXITY_CATALOG_IDS.length,
+    );
+    expect(screen.queryByText("Score unavailable")).not.toBeInTheDocument();
   });
 });
