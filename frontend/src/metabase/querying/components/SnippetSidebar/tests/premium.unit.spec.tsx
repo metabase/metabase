@@ -1,16 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, screen } from "__support__/ui";
-// TODO remove this and use proper reset functions once
-// plugins initialization functions return proper teardown functions
-// eslint-disable-next-line no-restricted-imports
-import { resetPlugin } from "metabase-enterprise/snippets";
+import { reinitialize } from "metabase/plugins";
 
 import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
 
 async function setup(options: SetupOpts = {}) {
-  await baseSetup({
+  return await baseSetup({
     enterprisePlugins: ["snippets"],
     tokenFeatures: { snippet_collections: true },
     ...options,
@@ -19,7 +16,7 @@ async function setup(options: SetupOpts = {}) {
 
 describe("SnippetSidebar (EE with token feature)", () => {
   beforeEach(() => {
-    resetPlugin();
+    reinitialize();
   });
 
   it("should display the `Change permissions` menu for admin users", async () => {
@@ -41,5 +38,22 @@ describe("SnippetSidebar (EE with token feature)", () => {
 
     expect(await screen.findByText("New snippet")).toBeInTheDocument();
     expect(screen.getByText("New folder")).toBeInTheDocument();
+  });
+
+  it("should open the collection modal when creating a new folder", async () => {
+    const { store } = await setup();
+
+    await userEvent.click(getIcon("add"));
+    await userEvent.click(await screen.findByText("New folder"));
+
+    expect(store.getState().modal).toMatchObject({
+      id: "collection",
+      props: {
+        initialCollectionId: null,
+        namespaces: ["snippets"],
+        showAuthorityLevelPicker: false,
+        shouldNavigateOnCreate: false,
+      },
+    });
   });
 });

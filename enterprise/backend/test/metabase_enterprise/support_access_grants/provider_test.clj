@@ -96,7 +96,6 @@
                     :grant_start_timestamp (t/offset-date-time)
                     :grant_end_timestamp (t/plus (t/offset-date-time) (t/hours 1))
                     :revoked_at nil}]
-
       (let [token (sag.provider/create-support-access-reset! user-id grant)
             auth-identity (t2/select-one :model/AuthIdentity
                                          :user_id user-id

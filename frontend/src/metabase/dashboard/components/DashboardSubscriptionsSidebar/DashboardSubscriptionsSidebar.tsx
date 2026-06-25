@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
+import { skipToken, useListSubscriptionsQuery, userApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { useSetArchive } from "metabase/archive/hooks";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { Pulses } from "metabase/entities/pulses";
 import {
   cancelEditingPulse,
   fetchPulseFormInput,
@@ -18,10 +20,9 @@ import {
   getPulseFormInput,
 } from "metabase/notifications/pulse/selectors";
 import { NEW_PULSE_TEMPLATE, cleanPulse, createChannel } from "metabase/pulse";
-import { connect } from "metabase/redux";
+import { connect, useDispatch } from "metabase/redux";
 import type { DraftDashboardSubscription, State } from "metabase/redux/store";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { UserApi } from "metabase/services";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -115,7 +116,7 @@ const getEditingPulseWithDefaults = (
 const mapStateToProps = (state: State, props: { dashboard: Dashboard }) => ({
   isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
-  formInput: getPulseFormInput(state),
+  formInput: getPulseFormInput(state) as ChannelApiResponse,
   user: getUser(state),
 });
 
@@ -124,7 +125,6 @@ const mapDispatchToProps = {
   saveEditingPulse,
   cancelEditingPulse,
   fetchPulseFormInput,
-  setPulseArchived: Pulses.actions.setArchived,
   testPulse,
 };
 
@@ -153,16 +153,12 @@ interface DashboardSubscriptionsSidebarInnerProps {
   initialCollectionId?: number;
   isAdmin?: boolean;
   pulse: DraftDashboardSubscription;
-  saveEditingPulse: () => Promise<DashboardSubscription>;
+  saveEditingPulse: () => Promise<unknown>;
   testPulse: (pulse: DraftDashboardSubscription) => Promise<unknown>;
   updateEditingPulse: (pulse: DraftDashboardSubscription) => void;
   cancelEditingPulse: () => void;
   pulses?: DashboardSubscription[];
   onCancel: () => void;
-  setPulseArchived: (
-    pulse: DraftDashboardSubscription,
-    archived: boolean,
-  ) => Promise<void>;
   params?: Record<string, string>;
   loading?: boolean;
 }
@@ -179,9 +175,10 @@ function DashboardSubscriptionsSidebarInner({
   cancelEditingPulse: cancelEditing,
   pulses,
   onCancel,
-  setPulseArchived,
   loading: isSubscriptionListLoading,
 }: DashboardSubscriptionsSidebarInnerProps) {
+  const dispatch = useDispatch();
+  const archive = useSetArchive();
   const [editingMode, setEditingMode] = useState<EditingMode>(
     EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
   );
@@ -228,7 +225,12 @@ function DashboardSubscriptionsSidebarInner({
         // We don't need the the list of users in modular embedding/SDK context because we will hard code the recipient to the logged in user.
         setUsers([]);
       } else {
-        setUsers((await UserApi.list()).data);
+        const { data } = await runRtkEndpoint(
+          undefined,
+          dispatch,
+          userApi.endpoints.listUserRecipients,
+        );
+        setUsers(data);
       }
     }
     fetchUsers();
@@ -380,7 +382,9 @@ function DashboardSubscriptionsSidebarInner({
   );
 
   const handleArchive = useCallback(async () => {
-    await setPulseArchived(pulse, true);
+    if (pulse.id != null) {
+      await archive({ id: pulse.id, model: "pulse" }, true);
+    }
 
     if (isEmbeddingSdk() && pulses?.length === 1) {
       onCancel();
@@ -388,7 +392,7 @@ function DashboardSubscriptionsSidebarInner({
       setEditingMode(EDITING_MODES.LIST_PULSES_OR_NEW_PULSE);
       setReturnMode([]);
     }
-  }, [pulse, pulses, setPulseArchived, onCancel]);
+  }, [pulse.id, pulses, archive, onCancel]);
 
   // Because you can navigate down the sidebar, we need to wrap
   // onCancel from props and either call that or reset back a screen
@@ -617,19 +621,19 @@ function AddEditEmailSidebarWithHooks({
   );
 }
 
-const DashboardSubscriptionsSidebarConnected = _.compose(
-  Pulses.loadList({
-    query: (_state: State, { dashboard }: { dashboard: Dashboard }) => ({
-      dashboard_id: dashboard.id,
-    }),
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
+const DashboardSubscriptionsSidebarConnected = connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(DashboardSubscriptionsSidebarInner);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function DashboardSubscriptionsSidebar() {
   const { dashboard, setSharing } = useDashboardContext();
+
+  const { data: pulses, isFetching: isSubscriptionListLoading } =
+    useListSubscriptionsQuery(
+      dashboard ? { dashboard_id: dashboard.id } : skipToken,
+    );
 
   if (!dashboard) {
     return null;
@@ -638,6 +642,8 @@ export default function DashboardSubscriptionsSidebar() {
   return (
     <DashboardSubscriptionsSidebarConnected
       dashboard={dashboard}
+      pulses={pulses}
+      loading={isSubscriptionListLoading}
       onCancel={() => setSharing(false)}
     />
   );

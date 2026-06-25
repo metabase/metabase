@@ -182,7 +182,9 @@ const getCommonDimensionAxisOptions = (
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
       lineStyle: {
-        color: getColor(isSplitPanels ? "border-strong" : "border"),
+        color: getColor(
+          isSplitPanels ? "border-neutral-strong" : "border-neutral",
+        ),
       },
     },
   };

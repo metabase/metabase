@@ -26,26 +26,31 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
   ColorName[]
 > = {
-  brand: ["brand"],
-  "brand-hover": ["background-hover"],
-  "brand-hover-light": ["background-hover"],
-  border: ["border"],
-  filter: ["filter"],
-  summarize: ["summarize"],
+  brand: ["brand", "core-brand"],
+  "brand-hover": ["background-hover", "background_surface-hover"],
+  "brand-hover-light": ["background-hover", "background_surface-hover"],
+  border: ["border", "border-neutral"],
+  filter: ["filter", "core-filter"],
+  summarize: ["summarize", "core-summarize"],
   "text-primary": ["text-primary"],
   "text-secondary": ["text-secondary"],
   "text-tertiary": ["text-tertiary"],
-  background: ["background-primary"],
-  "background-secondary": ["background-secondary", "background-tertiary"],
+  background: ["background-primary", "background_page-primary"],
+  "background-secondary": [
+    "background-secondary",
+    "background-tertiary",
+    "background_page-secondary",
+    "background_page-tertiary",
+  ],
   "background-hover": [],
-  "background-disabled": ["background-disabled"],
-  "background-light": ["background-secondary"],
+  "background-disabled": ["background-disabled", "background_surface-disabled"],
+  "background-light": ["background-secondary", "background_page-secondary"],
   shadow: ["shadow"],
   positive: ["success"],
   negative: ["danger"],
   "text-white": ["text-primary-inverse", "white"],
   error: ["error"],
-  "background-error": ["background-error"],
+  "background-error": ["background-error", "background_surface-error"],
   "text-hover": ["text-hover"],
   focus: ["focus"],
 };
@@ -103,12 +108,14 @@ export function getEmbeddingColorPalette(
   const chartColors =
     sdkColors.charts && mapChartColorsToAccents(sdkColors.charts);
 
-  return {
+  const merged: ColorPalette = {
     ...originalColors,
     ...appPalette,
     ...mappedSdkColors,
     ...chartColors,
   };
+
+  return merged;
 }
 
 /**

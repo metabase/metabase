@@ -20,11 +20,11 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.stage.util]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.namespaces :as shared.ns]
    [metabase.util.performance :refer [mapv some not-empty get-in #?(:clj for)]]))
 
@@ -141,7 +141,9 @@
    options        :- ::lib.metadata.calculation/returned-columns.options]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
-      (not-empty (lib.metadata.calculation/returned-columns query stage-number card options)))))
+      (not-empty
+       (into [] (remove :remapped-from)
+             (lib.metadata.calculation/returned-columns query stage-number card options))))))
 
 ;;; TODO (Cam 8/6/25) -- this should probably live in [[metabase.lib.metric]]
 (mu/defn- metric-visible-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
@@ -167,7 +169,7 @@
          ;; Only include "late" expressions when required.
          ;; "Late" expressions those like :offset which can't be used within the same query stage, like aggregations.
          :when (or include-late-exprs?
-                   (not (lib.util.match/match-lite clause :offset clause)))]
+                   (not (match/match-one clause :offset clause)))]
      (-> col
          (assoc :lib/source :source/expressions, :lib/source-column-alias (:name col))
          (u/assoc-default :effective-type (or (:base-type col) :type/*))))))

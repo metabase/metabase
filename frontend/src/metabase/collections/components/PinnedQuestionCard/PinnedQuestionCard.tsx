@@ -1,21 +1,21 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ActionMenu from "metabase/collections/components/ActionMenu";
+import ActionMenu from "metabase/common/collections/components/ActionMenu";
 import type {
   CreateBookmark,
   DeleteBookmark,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import {
   isFullyParameterized,
   isPreviewShown,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
-import { getIcon } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
-import { modelToUrl } from "metabase/utils/urls";
+import { modelToUrl } from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -49,6 +49,7 @@ const PinnedQuestionCard = ({
   onCreateBookmark,
   onDeleteBookmark,
 }: PinnedQuestionCardProps): JSX.Element => {
+  const getIcon = useGetIcon();
   const isPreview = isPreviewShown(item);
 
   const actionMenu = (

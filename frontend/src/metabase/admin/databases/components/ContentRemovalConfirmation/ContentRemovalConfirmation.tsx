@@ -13,13 +13,14 @@ const ContentRemovalConfirmation = ({
   usageInfo,
   onChange,
 }: ContentRemovalConfirmationProps) => {
-  const { question, dataset, metric, segment } = usageInfo;
+  const { question, dataset, metric, segment, transform } = usageInfo;
 
   const [confirmations, setConfirmations] = useState({
     question: question === 0,
     dataset: dataset === 0,
     metric: metric === 0,
     segment: segment === 0,
+    transform: transform === 0,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,6 +80,18 @@ const ContentRemovalConfirmation = ({
           )}
           name="segment"
           checked={confirmations["segment"]}
+          onChange={handleChange}
+        />
+      )}
+      {transform > 0 && (
+        <Checkbox
+          label={ngettext(
+            msgid`${transform} transform will stop working`,
+            `${transform} transforms will stop working`,
+            transform,
+          )}
+          name="transform"
+          checked={confirmations["transform"]}
           onChange={handleChange}
         />
       )}

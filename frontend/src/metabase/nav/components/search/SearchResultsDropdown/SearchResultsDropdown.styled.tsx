@@ -25,8 +25,8 @@ export const SearchResultsContainer = styled(Paper)<PaperProps>`
 ` as unknown as typeof Paper;
 
 const selectedStyles = css`
-  color: var(--mb-color-brand);
-  background-color: var(--mb-color-background-hover);
+  color: var(--mb-color-core-brand);
+  background-color: var(--mb-color-background_surface-hover);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 `;
@@ -34,7 +34,7 @@ const selectedStyles = css`
 export const SearchDropdownFooter = styled(Group, {
   shouldForwardProp: (propName) => propName !== "isSelected",
 })<{ isSelected?: boolean } & GroupProps>`
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 
   ${({ isSelected }) => isSelected && selectedStyles}
   &:hover {

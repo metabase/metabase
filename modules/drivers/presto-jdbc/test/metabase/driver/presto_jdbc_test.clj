@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.presto-jdbc-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.presto-jdbc-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -32,11 +33,11 @@
                       {:name "test_data_users" :schema "default"}
                       {:name "test_data_venues" :schema "default"}}}
            (-> (driver/describe-database :presto-jdbc (mt/db))
-               (update :tables (comp set (partial filter (comp #{"test_data_categories"
-                                                                 "test_data_venues"
-                                                                 "test_data_checkins"
-                                                                 "test_data_users"}
-                                                               :name)))))))))
+               (update :tables #(into #{} (filter (comp #{"test_data_categories"
+                                                          "test_data_venues"
+                                                          "test_data_checkins"
+                                                          "test_data_users"}
+                                                        :name)) %)))))))
 
 (deftest ^:parallel describe-table-test
   (mt/test-driver :presto-jdbc

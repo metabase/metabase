@@ -1,7 +1,9 @@
 import { assocIn } from "icepick";
 import { t } from "ttag";
 
+import { permissionApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   combineReducers,
   createAction,
@@ -9,8 +11,7 @@ import {
   handleActions,
 } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-
-import { ApplicationPermissionsApi } from "./api";
+import { applicationPermissionsApi } from "metabase-enterprise/api";
 
 const INITIALIZE_APPLICATION_PERMISSIONS =
   "metabase-enterprise/general-permissions/INITIALIZE_APPLICATION_PERMISSIONS";
@@ -18,6 +19,7 @@ export const initializeApplicationPermissions = createThunkAction(
   INITIALIZE_APPLICATION_PERMISSIONS,
   () => async (dispatch) => {
     dispatch(loadApplicationPermissions());
+    dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({}));
   },
 );
 
@@ -25,9 +27,12 @@ const LOAD_APPLICATION_PERMISSIONS =
   "metabase-enterprise/general-permissions/LOAD_APPLICATION_PERMISSIONS";
 export const loadApplicationPermissions = createThunkAction(
   LOAD_APPLICATION_PERMISSIONS,
-  () => () => {
-    return ApplicationPermissionsApi.graph();
-  },
+  () => async (dispatch) =>
+    runRtkEndpoint(
+      undefined,
+      dispatch,
+      applicationPermissionsApi.endpoints.getApplicationPermissionsGraph,
+    ),
 );
 
 const UPDATE_APPLICATION_PERMISSION =
@@ -51,10 +56,14 @@ export const saveApplicationPermissions = createThunkAction(
     const { applicationPermissions, applicationPermissionsRevision } =
       getState().plugins.applicationPermissionsPlugin;
 
-    const result = await ApplicationPermissionsApi.updateGraph({
-      groups: applicationPermissions,
-      revision: applicationPermissionsRevision,
-    }).catch((error) => {
+    const result = await runRtkEndpoint(
+      {
+        groups: applicationPermissions,
+        revision: applicationPermissionsRevision,
+      },
+      dispatch,
+      applicationPermissionsApi.endpoints.updateApplicationPermissionsGraph,
+    ).catch((error) => {
       dispatch(
         addUndo({
           icon: "warning",

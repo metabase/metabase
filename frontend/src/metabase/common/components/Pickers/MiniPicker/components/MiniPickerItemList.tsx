@@ -16,8 +16,9 @@ import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/util
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getIcon } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import type { LibrarySubCollectionType } from "metabase/plugins/oss/library";
 import { useSelector } from "metabase/redux";
 import {
   Box,
@@ -31,6 +32,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   CollectionItem,
   SchemaName,
@@ -120,6 +122,9 @@ function RootItemList() {
     ]).length &&
     shouldShowLibrary
   ) {
+    if (libraryCollection.type === "library") {
+      return <LibraryRootItemList libraryCollectionId={libraryCollection.id} />;
+    }
     return (
       <CollectionItemList
         parent={{
@@ -164,26 +169,145 @@ function RootItemList() {
   );
 }
 
+/**
+ * Shows the Data and Metrics sections at the library root.
+ * If the user has access to the real root collections (is_library_root),
+ * they render normally. If not, synthetic folders are created to group
+ * any promoted subcollections by their type.
+ */
+function LibraryRootItemList({
+  libraryCollectionId,
+}: {
+  libraryCollectionId: CollectionItem["id"];
+}) {
+  const { setPath } = useMiniPickerContext();
+
+  const { data, isLoading } = useListCollectionItemsQuery({
+    id: libraryCollectionId,
+  });
+
+  const sections = useMemo(() => {
+    type Section = {
+      key: string;
+      name: string;
+      type: LibrarySubCollectionType;
+      realCollection?: CollectionItem;
+      hasPromotedChildren: boolean;
+    };
+
+    const sectionDefs: Section[] = [
+      {
+        key: "data",
+        name: t`Data`,
+        type: "library-data",
+        hasPromotedChildren: false,
+      },
+      {
+        key: "metrics",
+        name: t`Metrics`,
+        type: "library-metrics",
+        hasPromotedChildren: false,
+      },
+    ];
+
+    const items = data?.data ?? [];
+
+    for (const item of items) {
+      if (item.model !== "collection") {
+        continue;
+      }
+
+      for (const section of sectionDefs) {
+        if (item.type !== section.type) {
+          continue;
+        }
+
+        if (item.is_library_root) {
+          section.realCollection = item;
+        } else {
+          section.hasPromotedChildren = true;
+        }
+      }
+    }
+
+    return sectionDefs.filter((s) => s.realCollection || s.hasPromotedChildren);
+  }, [data]);
+
+  if (isLoading) {
+    return <MiniPickerListLoader />;
+  }
+
+  return (
+    <ItemList>
+      {sections.map((section) => {
+        const collection = section.realCollection;
+
+        return (
+          <MiniPickerItem
+            key={section.key}
+            name={collection?.name ?? section.name}
+            model="collection"
+            isFolder
+            onClick={() => {
+              if (collection) {
+                setPath([
+                  {
+                    model: "collection",
+                    id: collection.id,
+                    name: collection.name,
+                    type: collection.type,
+                  },
+                ]);
+              } else {
+                setPath([
+                  {
+                    model: "collection",
+                    id: `${section.type}-${libraryCollectionId}`,
+                    sourceCollectionId: libraryCollectionId,
+                    name: section.name,
+                    type: section.type,
+                    childTypeFilter: section.type,
+                  },
+                ]);
+              }
+            }}
+          />
+        );
+      })}
+    </ItemList>
+  );
+}
+
 function DatabaseItemList({
   parent,
 }: {
   parent: MiniPickerDatabaseItem | MiniPickerSchemaItem;
 }) {
-  const { setPath, onChange, isHidden } = useMiniPickerContext();
+  const { setPath, onChange, isHidden, models, includeHiddenSchemas } =
+    useMiniPickerContext();
+  // Callers opt schemas in as a terminal pick by including "schema" in
+  // `models`. Affects three things: schemas fire `onChange` instead of
+  // `setPath`, single-schema DBs no longer auto-drill to tables, and the
+  // schema row drops its folder chevron.
+  const schemasArePickable = models.includes("schema");
   const { data: allSchemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       parent.model === "database"
-        ? { id: parent.id, "can-query": true }
+        ? {
+            id: parent.id,
+            "can-query": true,
+            include_hidden: includeHiddenSchemas,
+          }
         : skipToken,
     );
 
-  const dbId = parent.model === "database" ? parent.id : parent.dbId!;
+  const dbId = parent.model === "database" ? parent.id : parent.database_id!;
 
   const schemas = allSchemas?.filter((schema) => {
     return !isHidden({
       model: "schema",
       id: schema,
-      dbId,
+      database_id: dbId,
       name: schema,
     });
   });
@@ -191,9 +315,24 @@ function DatabaseItemList({
   const schemaName: SchemaName | null =
     parent.model === "schema"
       ? String(parent.id)
-      : schemas?.length === 1
+      : !schemasArePickable && schemas?.length === 1
         ? schemas[0] // if there's one schema, go straight to tables
         : null;
+
+  // Schema-less DBs (MySQL, Mongo, SQLite, …) report a single nameless schema.
+  // In that case, select the DB immediately instead of showing a blank row at 'schema' step.
+  const shouldAutoSelectNamelessSchema =
+    schemasArePickable &&
+    parent.model === "database" &&
+    schemas?.length === 1 &&
+    isNamelessSchema(schemas[0]);
+
+  useEffect(() => {
+    if (shouldAutoSelectNamelessSchema) {
+      setPath([]);
+      onChange({ model: "schema", id: "", database_id: dbId, name: "" });
+    }
+  }, [shouldAutoSelectNamelessSchema, onChange, setPath, dbId]);
 
   const { data: tablesData, isLoading: isLoadingTables } =
     useListDatabaseSchemaTablesQuery(
@@ -206,32 +345,40 @@ function DatabaseItemList({
         : skipToken,
     );
 
-  if (isLoadingSchemas) {
+  if (isLoadingSchemas || shouldAutoSelectNamelessSchema) {
     return <MiniPickerListLoader />;
   }
 
-  if (schemas?.length && schemas.length > 1 && parent.model === "database") {
+  if (
+    schemas?.length &&
+    parent.model === "database" &&
+    (schemas.length > 1 || schemasArePickable)
+  ) {
     return (
       <ItemList>
-        {schemas.map((schema) => (
-          <MiniPickerItem
-            key={schema}
-            name={schema}
-            isFolder
-            model="schema"
-            onClick={() => {
-              setPath((prevPath) => [
-                ...prevPath,
-                {
-                  model: "schema",
-                  id: schema,
-                  dbId,
-                  name: schema,
-                },
-              ]);
-            }}
-          />
-        ))}
+        {schemas.map((schema) => {
+          const schemaItem: MiniPickerSchemaItem = {
+            model: "schema",
+            id: schema,
+            database_id: dbId,
+            name: schema,
+          };
+          return (
+            <MiniPickerItem
+              key={schema}
+              name={schema}
+              isFolder={!schemasArePickable}
+              model="schema"
+              onClick={() => {
+                if (schemasArePickable) {
+                  onChange(schemaItem);
+                } else {
+                  setPath((prevPath) => [...prevPath, schemaItem]);
+                }
+              }}
+            />
+          );
+        })}
       </ItemList>
     );
   }
@@ -276,12 +423,19 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
   const { setPath, onChange, isFolder, isHidden } = useMiniPickerContext();
 
   const { data, isLoading, isFetching } = useListCollectionItemsQuery({
-    id: parent.id === null ? "root" : parent.id,
+    id: parent.sourceCollectionId ?? (parent.id === null ? "root" : parent.id),
     include_can_run_adhoc_query: true,
   });
 
-  const allItems = data?.data?.filter(canCollectionCardBeUsed) ?? [];
-  const items: CollectionItem[] = allItems.filter((item) => !isHidden(item));
+  const allItems: CollectionItem[] = (data?.data ?? []).filter(
+    (item) => canCollectionCardBeUsed(item) && !isHidden(item),
+  );
+  const typeFilter = parent.childTypeFilter;
+  const items = typeFilter
+    ? allItems.filter(
+        (item) => item.model !== "collection" || item.type === typeFilter,
+      )
+    : allItems;
 
   if (isLoading || isFetching) {
     return <MiniPickerListLoader />;
@@ -305,6 +459,7 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
                     model: item.model,
                     id: item.id,
                     name: item.name,
+                    type: item.type,
                   },
                 ]);
               } else {
@@ -346,6 +501,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
       q: query,
       models: models as SearchModel[],
       limit: 50,
+      context: "data-picker",
     };
     const extraParams =
       typeof searchParams === "function" ? searchParams(params) : searchParams;
@@ -437,13 +593,19 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
 }
 
 export const MiniPickerListLoader = () => (
-  <Stack px="1rem" pt="0.5rem" pb="13px" gap="1rem">
+  <Stack
+    data-testid="mini-picker-list-loader"
+    px="1rem"
+    pt="0.5rem"
+    pb="13px"
+    gap="1rem"
+  >
     <Repeat times={3}>
       <Skeleton
         height="1.5rem"
         width="100%"
         radius="0.5rem"
-        bg="background-secondary"
+        bg="background_page-secondary"
       />
     </Repeat>
   </Stack>
@@ -471,7 +633,15 @@ const isMeasure = (
   return item.model === "measure";
 };
 
-const getLocationDetails = (item: MiniPickerPickableItem) => {
+const isSchema = (
+  item: MiniPickerPickableItem,
+): item is MiniPickerSchemaItem => {
+  return item.model === "schema";
+};
+
+const useLocationDetails = (item: MiniPickerPickableItem) => {
+  const getIcon = useGetIcon();
+
   if (isTableInDb(item)) {
     return {
       itemText: `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`,
@@ -484,6 +654,14 @@ const getLocationDetails = (item: MiniPickerPickableItem) => {
       iconProps: { name: "table" as const },
     };
   }
+  if (isSchema(item)) {
+    // Schemas don't appear in search results (see SearchableMiniPickerItem)
+    // so this branch is defensive; surface the parent database id at most.
+    return {
+      itemText: String(item.database_id),
+      iconProps: { name: "database" as const },
+    };
+  }
   return {
     itemText: item?.collection?.name ?? t`Our analytics`,
     iconProps: getIcon({ ...item.collection, model: "collection" }),
@@ -491,7 +669,7 @@ const getLocationDetails = (item: MiniPickerPickableItem) => {
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
-  const { itemText, iconProps } = getLocationDetails(item);
+  const { itemText, iconProps } = useLocationDetails(item);
 
   if (!itemText) {
     return null;

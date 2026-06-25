@@ -42,3 +42,24 @@ export type SmartScalarComparison =
   | SmartScalarComparisonPreviousPeriod
   | SmartScalarComparisonPeriodsAgo
   | SmartScalarComparisonStaticNumber;
+
+export interface PieRow {
+  key: string;
+  name: string;
+  originalName: string;
+  color: string;
+  defaultColor: boolean;
+  enabled: boolean;
+  hidden: boolean;
+  isOther: boolean;
+}
+
+export interface TreemapRow {
+  key: string;
+  name: string;
+  originalName: string;
+  color: string;
+  defaultColor: boolean;
+  enabled: boolean;
+  hidden: boolean;
+}

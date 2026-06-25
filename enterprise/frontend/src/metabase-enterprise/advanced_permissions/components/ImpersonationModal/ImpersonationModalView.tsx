@@ -3,26 +3,25 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { Alert } from "metabase/common/components/Alert";
-import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { Link } from "metabase/common/components/Link/Link";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { Form, FormProvider, FormSelect } from "metabase/forms";
+import {
+  Form,
+  FormProvider,
+  FormSelect,
+  FormSubmitButton,
+} from "metabase/forms";
+import { Button, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UserAttributeKey } from "metabase-types/api";
 
 import { ImpersonationWarning } from "../ImpersonationWarning";
-
-import {
-  ImpersonationDescription,
-  ImpersonationModalViewRoot,
-} from "./ImpersonationModalView.styled";
 
 const ROLE_ATTRIBUTION_MAPPING_SCHEMA = Yup.object({
   attribute: Yup.string().required(Errors.required).default(""),
@@ -88,15 +87,15 @@ export const ImpersonationModalView = ({
       t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
 
   return (
-    <ImpersonationModalViewRoot>
+    <Stack gap="sm" p="xl">
       <h2>{modalTitle}</h2>
-      <ImpersonationDescription>
+      <Text my="sm" lh="lg">
         {modalMessage}{" "}
         <ExternalLink
           className={CS.link}
           href={permsDocsUrl}
         >{t`Learn More`}</ExternalLink>
-      </ImpersonationDescription>
+      </Text>
       {roleRequired ? (
         <>
           <Alert icon="warning" variant="warning">
@@ -134,7 +133,11 @@ export const ImpersonationModalView = ({
               <FormFooter hasTopBorder>
                 <FormErrorMessage inline />
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
-                <FormSubmitButton title={t`Save`} disabled={!isValid} primary />
+                <FormSubmitButton
+                  label={t`Save`}
+                  disabled={!isValid}
+                  variant="filled"
+                />
               </FormFooter>
             </Form>
           )}
@@ -154,6 +157,6 @@ export const ImpersonationModalView = ({
           </FormFooter>
         </>
       )}
-    </ImpersonationModalViewRoot>
+    </Stack>
   );
 };

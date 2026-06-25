@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -38,7 +39,13 @@
     (conj "Transform" "TransformTag" "TransformJob" "PythonLibrary")
 
     (not (:no-embedding-themes opts))
-    (conj "EmbeddingTheme")))
+    (conj "EmbeddingTheme")
+
+    (not (:no-custom-viz-plugins opts))
+    (conj "CustomVizPlugin")
+
+    (not (:no-curated-search opts))
+    (conj "CuratedSearchEntry")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
@@ -181,8 +188,14 @@
         ;; cards referenced by dashboards live outside the target collections.
         {:keys [reportable-escaped analytics-card-ids]} (when has-content?
                                                           (escape-analysis by-model nodes))]
-    (if (seq reportable-escaped)
-      (log-escape-report! reportable-escaped)
+    (when (seq reportable-escaped)
+      (log-escape-report! reportable-escaped))
+    ;; By default a card referenced from inside the requested collections but living outside them aborts
+    ;; the whole export. With continue-on-error we don't abort: the escaped cards are outside the
+    ;; collection set so they're filtered out of extraction anyway, and the dashboards/cards that
+    ;; reference them are skipped on import (which also honors continue-on-error).
+    (when (or (empty? reportable-escaped)
+              (:continue-on-error opts))
       (let [coll-set        (get by-model "Collection")
             ;; When targets are specified, also include Tables found via descendants
             ;; (published tables in target collections). These are extracted by ID, not all.
@@ -207,11 +220,22 @@
                    ;; extract all non-content entities like data model and settings if necessary
                    (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))])))))
 
+(defn- needs-version?
+  "True for extracted entities that should carry a `:metabase_version` stamp."
+  [entity]
+  (and (not (instance? Exception entity))
+       (not= "Setting" (-> entity :serdes/meta last :model))))
+
+(defn- stamp-version [entity]
+  (if (needs-version? entity)
+    (assoc entity :metabase_version config/mb-version-string)
+    entity))
+
 (defn extract
   "Returns a reducible stream of entities to serialize"
   [opts]
   (serdes.backfill/backfill-ids!)
-  (extract-subtrees opts))
+  (eduction (map stamp-version) (extract-subtrees opts)))
 
 (comment
   (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]

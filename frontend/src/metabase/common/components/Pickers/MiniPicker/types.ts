@@ -1,6 +1,7 @@
 import type {
   CollectionId,
   CollectionItem,
+  CollectionType,
   DatabaseId,
   MeasureId,
   SchemaName,
@@ -9,9 +10,16 @@ import type {
 
 export type MiniPickerCollectionItem = Pick<
   CollectionItem,
-  "id" | "name" | "model" | "here" | "below" | "display" | "collection"
+  "name" | "model" | "here" | "below" | "display" | "collection" | "type"
 > & {
   id: CollectionItem["id"] | CollectionId;
+  sourceCollectionId?: CollectionItem["id"] | CollectionId;
+  /** When set, CollectionItemList only shows children whose type matches */
+  childTypeFilter?: NonNullable<CollectionType>;
+};
+
+export type MiniPickerCollectionFolderItem = MiniPickerCollectionItem & {
+  model: "collection";
 };
 
 export type MiniPickerPickableCollectionItem = MiniPickerCollectionItem & {
@@ -26,7 +34,7 @@ export type MiniPickerPickableCollectionItem = MiniPickerCollectionItem & {
 export type MiniPickerSchemaItem = {
   model: "schema";
   id: SchemaName;
-  dbId: DatabaseId;
+  database_id: DatabaseId;
   name: SchemaName;
 };
 
@@ -77,13 +85,17 @@ export type MiniPickerItem =
 export type MiniPickerFolderItem =
   | MiniPickerDatabaseItem
   | MiniPickerSchemaItem
-  | (MiniPickerCollectionItem & { model: "collection" });
+  | MiniPickerCollectionFolderItem;
 
-// this omits intermediate/folder types that cannot ultimately be picked
+// this omits intermediate/folder types that cannot ultimately be picked.
+// `MiniPickerSchemaItem` is included so callers that pass `models: ["schema"]`
+// can terminate selection on a schema (schemas otherwise default to folder
+// behaviour and only update the path).
 export type MiniPickerPickableItem =
   | MiniPickerPickableCollectionItem
   | MiniPickerTableItem
-  | MiniPickerMeasureItem;
+  | MiniPickerMeasureItem
+  | MiniPickerSchemaItem;
 
 // can't get schemas in search results
 export type SearchableMiniPickerItem =

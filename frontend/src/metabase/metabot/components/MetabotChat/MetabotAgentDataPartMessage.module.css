@@ -1,0 +1,41 @@
+.sourceDataHeader {
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.sourceDataHeader[data-expanded="false"] {
+  border-bottom-color: transparent;
+}
+
+.sourceDataHeader:focus-visible {
+  outline: 2px solid var(--mb-color-focus);
+  outline-offset: -2px;
+}
+
+.sourceDataRow:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.sourceFeedbackButton {
+  color: var(--mb-color-text-secondary);
+  background-color: var(--mb-color-background_surface-primary);
+  border-color: var(--mb-color-border-neutral);
+}
+
+.sourceFeedbackButton:hover {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background_surface-hover);
+}
+
+.sourceFeedbackButton[data-active="true"] {
+  color: var(--mb-color-core-brand);
+}
+
+.sourceItemLink:hover .sourceItemTitleText {
+  color: var(--mb-color-core-brand);
+}
+
+.sourceItemLink:focus-visible {
+  outline: 2px solid var(--mb-color-focus);
+  outline-offset: 2px;
+}

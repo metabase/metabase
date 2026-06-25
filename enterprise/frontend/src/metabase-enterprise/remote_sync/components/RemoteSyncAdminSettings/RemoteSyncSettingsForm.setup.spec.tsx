@@ -5,6 +5,7 @@ import {
   setupRemoteSyncEndpoints,
   setupRootCollectionItemsEndpoint,
   setupSettingsEndpoints,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -49,7 +50,10 @@ const setupEndpoints = ({
   dirty = [] as any[],
   rootCollectionItems = [] as CollectionItem[],
   settingsError,
+  testConnectionError,
   envSettings = [],
+  isDevInstance,
+  upsellDismissed,
 }: {
   remoteSyncEnabled?: boolean;
   remoteSyncUrl?: string;
@@ -62,7 +66,10 @@ const setupEndpoints = ({
   dirty?: any[];
   rootCollectionItems?: CollectionItem[];
   settingsError?: { status: number; message: string };
+  testConnectionError?: { status: number; message: string };
   envSettings?: EnterpriseSettingKey[];
+  isDevInstance?: boolean;
+  upsellDismissed?: boolean;
 } = {}) => {
   const settings = createMockSettings({
     "remote-sync-enabled": remoteSyncEnabled,
@@ -72,6 +79,7 @@ const setupEndpoints = ({
     "remote-sync-branch": remoteSyncBranch,
     "remote-sync-auto-import": remoteSyncAutoImport,
     "remote-sync-transforms": remoteSyncTransforms,
+    "development-mode?": isDevInstance,
   });
 
   const settingDefinitions: SettingDefinition[] = envSettings.map((key) =>
@@ -91,6 +99,12 @@ const setupEndpoints = ({
     ...(settingsError && {
       settingsResponse: { error: settingsError },
     }),
+    ...(testConnectionError && { testConnectionError }),
+  });
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "upsell-remote-sync-dev-instance",
+    value: !!upsellDismissed,
   });
 
   fetchMock.get("express:/api/ee/library", libraryCollection ?? { data: null });
@@ -100,16 +114,19 @@ const setupEndpoints = ({
 
 const createStoreState = ({
   isAdmin = true,
+  isDevInstance = false,
   remoteSyncEnabled = false,
   remoteSyncType = "read-only" as const,
 }: {
   isAdmin?: boolean;
+  isDevInstance?: boolean;
   remoteSyncEnabled?: boolean;
   remoteSyncType?: "read-only" | "read-write";
 } = {}) => {
   return createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
+      "development-mode?": isDevInstance,
       "remote-sync-enabled": remoteSyncEnabled,
       "remote-sync-type": remoteSyncType,
     }),
@@ -129,7 +146,10 @@ interface SetupOpts {
   rootCollectionItems?: CollectionItem[];
   variant?: RemoteSyncSettingsFormProps["variant"];
   settingsError?: { status: number; message: string };
+  testConnectionError?: { status: number; message: string };
   envSettings?: EnterpriseSettingKey[];
+  isDevInstance?: boolean;
+  upsellDismissed?: boolean;
 }
 
 export const setup = ({
@@ -145,7 +165,10 @@ export const setup = ({
   rootCollectionItems = [],
   variant,
   settingsError,
+  testConnectionError,
   envSettings = [],
+  isDevInstance = false,
+  upsellDismissed = false,
 }: SetupOpts = {}) => {
   setupEndpoints({
     remoteSyncEnabled,
@@ -158,13 +181,17 @@ export const setup = ({
     dirty,
     rootCollectionItems,
     settingsError,
+    testConnectionError,
     envSettings,
+    isDevInstance,
+    upsellDismissed,
   });
 
   renderWithProviders(
     <RemoteSyncSettingsForm onCancel={onCancel} variant={variant} />,
     {
       storeInitialState: createStoreState({
+        isDevInstance,
         remoteSyncEnabled,
         remoteSyncType,
       }),

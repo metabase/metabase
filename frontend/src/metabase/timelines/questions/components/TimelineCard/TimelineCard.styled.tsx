@@ -1,7 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { CheckBox } from "metabase/common/components/CheckBox";
 import { Icon } from "metabase/ui";
 
 export const CardRoot = styled.div`
@@ -14,10 +13,6 @@ export const CardHeader = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
-`;
-
-export const CardCheckbox = styled(CheckBox)`
-  height: 1rem;
 `;
 
 export const CardLabel = styled.span`

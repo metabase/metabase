@@ -1,5 +1,6 @@
 import { type FC, type PropsWithChildren, useMemo } from "react";
 
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { RenderIfHasContent } from "embedding-sdk-bundle/components/private/RenderIfHasContent/RenderIfHasContent";
@@ -55,6 +56,8 @@ type StaticQuestionBaseProps = PropsWithChildren<
     | "className"
     | "style"
     | "initialSqlParameters"
+    | "sqlParameters"
+    | "onSqlParametersChange"
     | "hiddenParameters"
     | "withDownloads"
     | "withAlerts"
@@ -120,12 +123,35 @@ const StaticQuestionInner = (
     className,
     style,
     initialSqlParameters,
+    sqlParameters,
+    onSqlParametersChange,
     hiddenParameters,
     withDownloads,
     withAlerts,
     title = false, // Hidden by default for backwards-compatibility.
     children,
   } = normalizedProps;
+
+  const isNewQuestion = questionId === "new" || questionId === "new-native";
+  const trackingEntityId = questionId != null ? questionId : null;
+
+  useTrackSdkComponentMount(
+    "StaticQuestion",
+    trackingEntityId,
+    isNewQuestion
+      ? {
+          id_new: questionId === "new",
+          id_new_native: questionId === "new-native",
+          with_title: title !== false,
+          with_downloads: withDownloads,
+          with_alerts: withAlerts,
+        }
+      : {
+          with_title: title !== false,
+          with_downloads: withDownloads,
+          with_alerts: withAlerts,
+        },
+  );
 
   const deserializedCard = useMemo(
     () => (query ? deserializeCardFromQuery(query) : undefined),
@@ -158,6 +184,8 @@ const StaticQuestionInner = (
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
+      sqlParameters={sqlParameters}
+      onSqlParametersChange={onSqlParametersChange}
       hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
       withAlerts={withAlerts}

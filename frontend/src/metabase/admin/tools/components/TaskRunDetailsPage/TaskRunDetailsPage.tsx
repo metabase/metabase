@@ -22,7 +22,8 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { Task } from "metabase-types/api";
 
 import {
@@ -119,7 +120,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
                   <CopyButton value={taskRun.ended_at} />
                 </>
               ) : (
-                "—"
+                EMPTY_CELL_PLACEHOLDER
               )}
             </Flex>
             <Flex gap="md">

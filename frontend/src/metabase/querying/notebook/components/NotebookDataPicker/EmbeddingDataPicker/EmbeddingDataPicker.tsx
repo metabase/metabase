@@ -21,6 +21,7 @@ type EmbeddingDataPickerProps = {
   query: Lib.Query;
   stageIndex: number;
   table: Lib.TableMetadata | Lib.CardMetadata | undefined;
+  title: string;
   placeholder: string;
   canChangeDatabase: boolean;
   isDisabled: boolean;
@@ -30,6 +31,7 @@ export function EmbeddingDataPicker({
   query,
   stageIndex,
   table,
+  title,
   placeholder,
   canChangeDatabase,
   isDisabled,
@@ -39,6 +41,7 @@ export function EmbeddingDataPicker({
     useSearchQuery({
       models: ["dataset", "table"],
       limit: 0,
+      context: "data-picker",
     });
 
   const databaseId = Lib.databaseID(query);
@@ -139,6 +142,7 @@ export function EmbeddingDataPicker({
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
       canSelectQuestion={entityTypes.includes("question")}
+      popoverAriaLabel={title}
       triggerElement={
         <DataPickerTarget
           table={table}

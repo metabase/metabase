@@ -2,7 +2,7 @@
 import { css } from "@emotion/react";
 
 export const rootStyle = css`
-  font-family: var(--mb-default-font-family), sans-serif;
+  font-family: var(--mb-default-font-family);
   font-weight: 400;
   font-style: normal;
   color: var(--mb-color-text-primary);
@@ -10,7 +10,7 @@ export const rootStyle = css`
   height: 100%; /* ensure the entire page will fill the window */
   display: flex;
   flex-direction: column;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 `;

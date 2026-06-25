@@ -27,7 +27,6 @@ import {
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { Fields } from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import {
@@ -36,8 +35,9 @@ import {
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { connect, useDispatch } from "metabase/redux";
-import { addRemappings } from "metabase/redux/metadata";
+import { addRemappings } from "metabase/redux/remappings";
 import type { State } from "metabase/redux/store";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   type ComboboxItem,
   Loader,
@@ -47,7 +47,7 @@ import {
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
 import Field from "metabase-lib/v1/metadata/Field";
-import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
+import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   CardId,
@@ -85,16 +85,14 @@ const COMBOBOX_WIDTH = 364;
 const DROPDOWN_WIDTH = 314;
 
 function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
+  const metadata = getMetadata(state);
   return {
-    fields: fields.map(
-      (field) =>
-        Fields.selectors.getObject(state, { entityId: field.id }) || field,
-    ),
+    fields: fields.map((field) => metadata.field(field.id) || field),
   };
 }
 
 export interface IFieldValuesWidgetProps {
-  color?: "brand";
+  color?: "core-brand";
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
@@ -279,7 +277,11 @@ export const FieldValuesWidgetInner = forwardRef<
   // ? this may rely on field mutations
   const updateRemappings = (options: FieldValue[]) => {
     if (Field.remappedField(fields) != null) {
-      fields.forEach((field) => dispatch(addRemappings(field.id, options)));
+      fields.forEach((field) => {
+        if (typeof field.id === "number") {
+          dispatch(addRemappings(field.id, options));
+        }
+      });
     }
   };
 
@@ -732,9 +734,7 @@ function RemappedValue({
   const { uuid, token } = useEmbeddingEntityContext();
   const entityIdentifier = uuid ?? token ?? null;
 
-  const isRemapped =
-    Field.remappedField(fields) != null ||
-    getSourceType(parameter) === "static-list";
+  const isRemapped = hasRemappedParameterValues(parameter, fields);
 
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
     dashboardId != null && value != null && isRemapped

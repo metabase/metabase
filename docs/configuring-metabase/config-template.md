@@ -69,6 +69,8 @@ config:
   settings:
     admin-email: null
     aggregated-query-row-limit: null
+    ai-features-enabled: true
+    ai-usage-max-retention-days: null
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -110,21 +112,26 @@ config:
     can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
+    csp-img-allowed-hosts: ''
+    csp-img-enabled: false
     csv-field-separator: ','
     custom-formatting: {}
     custom-geojson: null
     custom-geojson-enabled: true
     custom-homepage: false
     custom-homepage-dashboard: null
+    custom-viz-enabled: false
     dashboards-save-last-used-parameters: true
     db-connection-timeout-ms: 10000
     db-query-timeout-minutes: 20
     default-maps-enabled: true
+    disable-auto-sync: false
     disable-cors-on-localhost: false
     download-row-limit: null
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
     email-from-name: null
+    email-max-recipients-per-message: 50
     email-max-recipients-per-second: null
     email-reply-to: null
     email-smtp-host: null
@@ -137,6 +144,7 @@ config:
     email-smtp-security-override: ssl
     email-smtp-username: null
     email-smtp-username-override: null
+    embedded-metabot-enabled: true
     embedding-app-origins-interactive: null
     embedding-app-origins-sdk: ''
     embedding-homepage: hidden
@@ -149,6 +157,7 @@ config:
     enable-pivoted-exports: true
     enable-public-sharing: true
     enable-xrays: true
+    fingerprint-max-fields-per-table: 10000
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
     google-auth-client-id: null
@@ -199,6 +208,8 @@ config:
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
     license-token-missing-banner-dismissal-timestamp: []
+    llm-anthropic-api-key: null
+    llm-metabot-provider: anthropic/claude-sonnet-4-6
     load-analytics-content: true
     loading-message: doing-science
     login-page-illustration: default
@@ -206,6 +217,8 @@ config:
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
+    metabot-enabled: true
+    metabot-recent-views-enabled: true
     metabot-slack-signing-secret: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
@@ -232,6 +245,7 @@ config:
     remote-sync-auto-import-rate: 5
     remote-sync-branch: null
     remote-sync-check-changes-cache-ttl-seconds: 60
+    remote-sync-git-timeout-seconds: 60
     remote-sync-task-time-limit-ms: 300000
     remote-sync-token: null
     remote-sync-transforms: false
@@ -262,6 +276,7 @@ config:
     saml-keystore-path: null
     saml-slo-enabled: false
     saml-user-provisioning-enabled: true
+    scan-max-fields-per-table: 10000
     scim-enabled: null
     sdk-encryption-validation-key: null
     search-language: null
@@ -300,11 +315,17 @@ config:
     subscription-allowed-domains: null
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
+    sync-max-fields-per-table: 10000
     synchronous-batch-updates: false
     thread-interrupt-escalation-timeout-ms: 0
+    transform-run-job-sql-concurrency: 3
     transform-timeout: 240
     transforms-enabled: false
     unaggregated-query-row-limit: null
     uploads-settings: null
+    usage-metadata-enabled: false
+    usage-metadata-last-completed-day: null
+    usage-metadata-retention-days: 90
+    usage-metadata-schedule: 0 0 2 * * ? *
     user-visibility: all
 ```

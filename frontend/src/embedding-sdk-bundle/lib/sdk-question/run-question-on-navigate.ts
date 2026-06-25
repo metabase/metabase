@@ -35,7 +35,7 @@ export const runQuestionOnNavigateSdk =
       previousCard,
       originalQuestion,
       parameterValues,
-      cancelDeferred,
+      signal,
       onQuestionChange,
       onClearQueryResults,
     } = params;
@@ -65,9 +65,10 @@ export const runQuestionOnNavigateSdk =
       question: new Question(nextCard, getMetadata(getState())),
       originalQuestion,
       parameterValues,
-      cancelDeferred,
+      signal,
       isGuestEmbed,
       token,
+      dispatch,
     });
 
     return state as SdkQuestionState;

@@ -77,6 +77,19 @@
                                      (:name field)
                                      (pr-str (:base_type field))))))))
 
+(defn validate-incremental-table-tag!
+  "Reject a table-incremental native-query transform whose source query has no table template tag for
+  the incremental range filter to target.
+
+  Without that table variable the incremental filter has nowhere to be injected, so the transform is
+  in a broken state. This surfaces the error eagerly at create/update time instead of only when the
+  transform is run."
+  [{:keys [target] :as transform}]
+  (when (and (= :table-incremental (keyword (:type target)))
+             (transforms-base.u/native-query-transform? transform))
+    (api/check-400 (transforms-base.u/incremental-table-tag-name transform)
+                   (deferred-tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field."))))
+
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
@@ -86,12 +99,12 @@
                                                                   (when database-id
                                                                     [[:= :source_database_id database-id]]))
                                                   :order-by [[:id :asc]]})]
-      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
+      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
            (into []
                  (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                        (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
-                       (map #(update % :last_run transforms-base.u/localize-run-timestamps))
+                       (map #(update % :last_run transforms-base.u/present-run))
                        (map transforms.u/add-source-readable)))))))
 
 (defn get-transform
@@ -100,8 +113,8 @@
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms-base.u/target-table (transforms-base.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator :owner)
-        (u/update-some :last_run transforms-base.u/localize-run-timestamps)
+        (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
+        (u/update-some :last_run transforms-base.u/present-run)
         (assoc :table target-table)
         transforms.u/add-source-readable)))
 
@@ -114,6 +127,7 @@
    (when (transforms-base.u/query-transform? body)
      (validate-transform-query! body))
    (validate-target-schema! body)
+   (validate-incremental-table-tag! body)
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
@@ -130,7 +144,7 @@
                         (when (seq tag-ids)
                           (transform.model/update-transform-tags! (:id transform) tag-ids))
                         ;; Return with hydrated tag_ids
-                        (t2/hydrate transform :transform_tag_ids :creator :owner)))]
+                        (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
      (events/publish-event! :event/transform-create {:object transform :user-id creator-id})
      transform)))
 
@@ -144,13 +158,15 @@
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       (api/check-403 (and (mi/can-write? old) (mi/can-write? new)))
-
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)
                       (when (contains? body :target)
                         (validate-target-schema! new))
-                      (validate-incremental-column-type! new)
+                      (when (contains? body :source)
+                        (validate-incremental-column-type! new))
+                      (when (or (contains? body :source) (contains? body :target))
+                        (validate-incremental-table-tag! new))
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
                         (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
@@ -164,7 +180,7 @@
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner))]
+                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
         transforms.u/add-source-readable)))

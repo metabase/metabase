@@ -10,7 +10,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   EnterpriseSettings,
   TokenFeatures,
@@ -134,7 +134,7 @@ describe("TransformSettingsSection", () => {
     it("makes Incremental transformation switch disabled", () => {
       expect(
         screen.getByRole("switch", {
-          name: /Only process new and changed data/,
+          name: /Only process new data/,
         }),
       ).toBeDisabled();
     });

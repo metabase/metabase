@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
-import type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 import {
   Box,
   Button,
@@ -15,8 +14,10 @@ import {
   Stack,
   Text,
   TextInput,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import type { MetabaseFontFamily } from "metabase/utils/fonts";
 
 import { ColorSwatchCard } from "./ColorSwatchCard";
 import {
@@ -68,7 +69,7 @@ export function EditorPanel({
       direction="column"
       w="100%"
       maw={480}
-      style={{ borderRight: "1px solid var(--mb-color-border)" }}
+      style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
     >
       <Box flex={1} style={{ overflow: "auto" }} p="xl">
         <Flex align="center" justify="space-between" mb="xl">
@@ -104,15 +105,17 @@ export function EditorPanel({
             <Flex mb="sm" h="26" align="center" justify="space-between">
               <Text fw={600}>{t`Main colors`}</Text>
               {editor.hasMainColorChanges && (
-                <Button
-                  variant="subtle"
-                  pt="5"
-                  size="compact-sm"
-                  aria-label={t`Revert to default main colors`}
-                  onClick={editor.resetMainColors}
-                >
-                  <Icon name="revert" size={16} />
-                </Button>
+                <Tooltip label={t`Reset main colors to defaults`}>
+                  <Button
+                    variant="subtle"
+                    pt="5"
+                    size="compact-sm"
+                    aria-label={t`Reset main colors to defaults`}
+                    onClick={editor.resetMainColors}
+                  >
+                    <Icon name="revert" size={16} />
+                  </Button>
+                </Tooltip>
               )}
             </Flex>
             <Flex gap="sm">
@@ -130,7 +133,7 @@ export function EditorPanel({
             <Flex mt="md" h="26" align="center" justify="space-between">
               <UnstyledButton onClick={() => setMoreColorsOpen((v) => !v)}>
                 <Flex align="center" gap="xs">
-                  <Text c="brand" fz="sm" fw={600}>
+                  <Text c="core-brand" fz="sm" fw={600}>
                     {moreColorsOpen
                       ? t`Show fewer colors`
                       : t`Show more colors`}
@@ -138,20 +141,24 @@ export function EditorPanel({
                   <Icon
                     name={moreColorsOpen ? "chevronup" : "chevronright"}
                     size={12}
-                    c="brand"
+                    c="core-brand"
                   />
                 </Flex>
               </UnstyledButton>
 
-              {editor.hasAdditionalColorChanges && (
-                <Button
-                  variant="subtle"
-                  size="compact-sm"
-                  aria-label={t`Revert to default additional colors`}
-                  onClick={editor.resetAdditionalColors}
+              {editor.hasOutOfSyncAdditionalColors && (
+                <Tooltip
+                  label={t`Regenerate filter, summarize, positive, negative, and chart colors from the brand color`}
                 >
-                  <Icon name="revert" size={16} />
-                </Button>
+                  <Button
+                    variant="subtle"
+                    size="compact-sm"
+                    aria-label={t`Regenerate from brand color`}
+                    onClick={editor.regenerateAdditionalColorsFromBrand}
+                  >
+                    <Icon name="revert" size={16} />
+                  </Button>
+                </Tooltip>
               )}
             </Flex>
 
@@ -260,7 +267,7 @@ export function EditorPanel({
         p="lg"
         gap="md"
         justify="space-between"
-        style={{ borderTop: "1px solid var(--mb-color-border)" }}
+        style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >
         <Button variant="subtle" onClick={onCancel}>
           {t`Cancel`}

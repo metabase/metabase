@@ -1,26 +1,31 @@
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
-import { Modal } from "metabase/common/components/Modal";
+import { useListActionsQuery, useSearchQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { Actions } from "metabase/entities/actions";
-import { Search } from "metabase/entities/search";
+import {
+  ActionIcon,
+  Button,
+  Icon,
+  Modal,
+  PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
+} from "metabase/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
   ActionItem,
   ActionsList,
-  EditButton,
   EmptyModelStateContainer,
   EmptyState,
   ModelCollapseSection,
-  NewActionButton,
 } from "./ActionPicker.styled";
 import { sortAndGroupActions } from "./utils";
+
+type ActionPickerModel = Pick<Card, "id" | "name" | "database_id">;
 
 export function ActionPicker({
   models,
@@ -28,14 +33,14 @@ export function ActionPicker({
   onClick,
   currentAction,
 }: {
-  models: Card[];
+  models: ActionPickerModel[];
   actions: WritebackAction[];
   onClick: (action: WritebackAction) => void;
   currentAction?: WritebackAction;
 }) {
   const sortedModels =
     useMemo(
-      () => models?.sort((a, b) => a.name.localeCompare(b.name)),
+      () => models?.toSorted((a, b) => a.name.localeCompare(b.name)),
       [models],
     ) ?? [];
 
@@ -70,7 +75,7 @@ function ModelActionPicker({
   currentAction,
 }: {
   onClick: (newValue: WritebackAction) => void;
-  model: Card;
+  model: ActionPickerModel;
   actions: WritebackAction[];
   currentAction?: WritebackAction;
 }) {
@@ -94,6 +99,16 @@ function ModelActionPicker({
     onClick(updatedAction);
   };
 
+  const newActionButton = (
+    <Button
+      variant="subtle"
+      m="0.25rem 0.75rem"
+      onClick={toggleIsActionCreatorVisible}
+    >
+      {t`Create new action`}
+    </Button>
+  );
+
   return (
     <>
       <ModelCollapseSection
@@ -112,9 +127,7 @@ function ModelActionPicker({
                 data-testid={`action-item-${action.name}`}
               >
                 <span>{action.name}</span>
-                <EditButton
-                  icon="pencil"
-                  onlyIcon
+                <ActionIcon
                   onClick={(event: MouseEvent<HTMLButtonElement>) => {
                     // we have a click listener on the parent
                     event.stopPropagation();
@@ -122,45 +135,71 @@ function ModelActionPicker({
                     setEditingActionId(action.id);
                     toggleIsActionCreatorVisible();
                   }}
-                />
+                >
+                  <Icon name="pencil" />
+                </ActionIcon>
               </ActionItem>
             ))}
-            <NewActionButton onlyText onClick={toggleIsActionCreatorVisible}>
-              {t`Create new action`}
-            </NewActionButton>
+            {newActionButton}
           </ActionsList>
         ) : (
           <EmptyModelStateContainer>
             <div>{t`There are no actions for this model`}</div>
-            <NewActionButton onlyText onClick={toggleIsActionCreatorVisible}>
-              {t`Create new action`}
-            </NewActionButton>
+            {newActionButton}
           </EmptyModelStateContainer>
         )}
       </ModelCollapseSection>
-      {isActionCreatorOpen && (
-        <Modal wide onClose={closeModal}>
-          <ActionCreator
-            modelId={model.id}
-            databaseId={model.database_id}
-            actionId={editingActionId}
-            onClose={closeModal}
-            onSubmit={handleModalSubmit}
-          />
-        </Modal>
-      )}
+      <Modal
+        {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
+        opened={isActionCreatorOpen}
+        onClose={closeModal}
+        size="95%"
+        withCloseButton={false}
+        padding={0}
+      >
+        <ActionCreator
+          modelId={model.id}
+          databaseId={model.database_id}
+          actionId={editingActionId}
+          onClose={closeModal}
+          onSubmit={handleModalSubmit}
+        />
+      </Modal>
     </>
   );
 }
 
-export const ConnectedActionPicker = _.compose(
-  Search.loadList({
-    query: () => ({
-      models: ["dataset"],
-    }),
-    listName: "models",
-  }),
-  Actions.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-)(ActionPicker);
+function ActionPickerWithModels(
+  props: Omit<Parameters<typeof ActionPicker>[0], "models" | "actions">,
+) {
+  const {
+    data: searchResponse,
+    isLoading: isLoadingSearch,
+    error: searchError,
+  } = useSearchQuery({ models: ["dataset"], context: "entity-picker" });
+  const {
+    data: actions = [],
+    isLoading: isLoadingActions,
+    error: actionsError,
+  } = useListActionsQuery({});
+  const models = (searchResponse?.data ?? []).flatMap((result) =>
+    typeof result.id === "number"
+      ? [
+          {
+            id: result.id,
+            name: result.name,
+            database_id: result.database_id,
+          },
+        ]
+      : [],
+  );
+  const isLoading = isLoadingSearch || isLoadingActions;
+  const error = searchError || actionsError;
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      <ActionPicker {...props} models={models} actions={actions} />
+    </LoadingAndErrorWrapper>
+  );
+}
+
+export const ConnectedActionPicker = ActionPickerWithModels;

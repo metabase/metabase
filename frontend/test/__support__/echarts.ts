@@ -1,4 +1,5 @@
 import type {
+  BaseCartesianChartModel,
   BreakoutSeriesModel,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -32,3 +33,35 @@ export const createMockBreakoutSeriesModel = (
   breakoutValue: "foo",
   ...createMockSeriesModel(opts),
 });
+
+export const createMockCartesianChartModel = (
+  opts?: Partial<BaseCartesianChartModel>,
+): BaseCartesianChartModel => {
+  const column = createMockColumn();
+  return {
+    dimensionModel: {
+      column,
+      columnIndex: 0,
+      columnByCardId: {},
+    },
+    seriesModels: [],
+    dataset: [],
+    transformedDataset: [],
+    yAxisScaleTransforms: {
+      toEChartsAxisValue: (value) => (typeof value === "number" ? value : null),
+      fromEChartsAxisValue: (value) => value,
+    },
+    stackModels: [],
+    leftAxisModel: null,
+    rightAxisModel: null,
+    xAxisModel: {
+      axisType: "category",
+      isHistogram: false,
+      formatter: String,
+      valuesCount: 0,
+    },
+    columnByDataKey: {},
+    seriesLabelsFormatters: {},
+    ...opts,
+  };
+};

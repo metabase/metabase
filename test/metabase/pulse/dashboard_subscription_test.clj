@@ -1,4 +1,5 @@
 (ns metabase.pulse.dashboard-subscription-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.dashboard-subscription-test]}}}}}}
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -7,6 +8,7 @@
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
+   [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
@@ -624,23 +626,18 @@
                                                      #"https://testmb\.com/collection/\d+"
                                                      #"Linked collection name"
                                                      #"Linked collection desc"
-
                                                      #"https://testmb\.com/browse/\d+"
                                                      #"Linked database name"
                                                      #"Linked database desc"
-
                                                      #"https://testmb\.com/question\?db=\d+table=\d+"
                                                      #"Linked table dname"
                                                      #"Linked table desc"
-
                                                      #"https://testmb\.com/question/\d+"
                                                      #"Linked card name"
                                                      #"Linked card desc"
-
                                                      #"https://testmb\.com/question/\d+"
                                                      #"Linked model name"
                                                      #"Linked model desc"
-
                                                      #"https://testmb\.com/dashboard/\d+"
                                                      #"Linked Dashboard name"
                                                      #"Linked Dashboard desc")
@@ -835,7 +832,6 @@
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
-
   (testing "Link cards are returned and info should be newly fetched"
     (mt/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
       (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
@@ -886,7 +882,6 @@
       (is (=? [{:text "Markdown"}
                {:text "### [https://metabase.com](https://metabase.com)"}]
               (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil)))))
-
   (testing "Link cards are returned and info should be newly fetched"
     (mt/with-temp [:model/Dashboard dashboard {:name "Test Dashboard"}]
       (with-link-card-fixture-for-dashboard dashboard [{:keys [collection-owner-id
@@ -913,7 +908,6 @@
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
                      {:text "### [https://metabase.com](https://metabase.com)"}]
                     (execute-dashboard (:id dashboard) collection-owner-id nil))))
-
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
@@ -1213,7 +1207,6 @@
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/csv-attachment]})
               (mt/summarize-multipart-single-email email #"Aviary KPIs"))))}}
-
    "xlsx"
    {:pulse-card {:include_xls true}
     :assert
@@ -1223,7 +1216,6 @@
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/xls-attachment]})
               (mt/summarize-multipart-single-email email #"Aviary KPIs"))))}}
-
    "no result should not include csv"
    {:card {:dataset_query (mt/mbql-query venues {:filter [:= $id -1]})}
     :pulse-card {:include_csv true}
@@ -1365,7 +1357,6 @@
                        (mt/summarize-multipart-single-email
                         (first (:channel/email pulse-results))
                         #"Aviary KPIs")))
-
                 (is (=? {:channel "#general",
                          :blocks (default-slack-blocks dashboard-id [card-id])}
                         (pulse.test-util/thunk->boolean (first (:channel/slack pulse-results)))))))))))))
@@ -1398,3 +1389,122 @@
               (first (:channel/email pulse-results))
               #"Aviary KPIs"
               #"Dashboard content available in attached files"))))))
+
+(deftest dashboard-sub-include-pdf-test
+  (testing "A channel with :include_pdf attaches a server-rendered PDF of the whole dashboard (#_subs)"
+    (let [render-args (atom nil)]
+      ;; Stub the renderer: avoid producing a real PDF, and capture the args it's called with.
+      (with-redefs [channel.render/render-dashboard-to-pdf
+                    (fn [dashboard-id user-id parameters]
+                      (reset! render-args {:dashboard-id dashboard-id
+                                           :user-id      user-id
+                                           :parameters   parameters})
+                      (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+        (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                           :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      card-id}
+                       :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                            :dashboard_id dashboard-id}
+                       :model/PulseCard     _ {:pulse_id pulse-id
+                                               :card_id  card-id
+                                               :position 0}
+                       :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                         :channel_type "email"
+                                                         :details      {:include_pdf true}}
+                       :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                       :pulse_channel_id pc-id}]
+          (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+            (testing "renderer is called with the subscription's dashboard id and resolved parameters"
+              (is (= dashboard-id (:dashboard-id @render-args)))
+              (is (= [] (:parameters @render-args))))
+            (let [message  (:message (first (:channel/email pulse-results)))
+                  pdf-part (some #(when (= "application/pdf" (:content-type %)) %) message)]
+              (testing "the PDF attachment is named after the dashboard"
+                (is (= "Aviary KPIs.pdf" (:file-name pdf-part)))
+                (is (= java.net.URL (class (:content pdf-part)))))
+              (testing "the email still includes its HTML body and the chart image"
+                (is (some #(= "image/png" (:content-type %)) message))
+                (is (some #(= "text/html; charset=utf-8" (:type %)) message))))))))))
+
+(deftest dashboard-sub-no-pdf-by-default-test
+  (testing "Without :include_pdf, the renderer is not invoked and no PDF is attached"
+    (let [called? (atom false)]
+      (with-redefs [channel.render/render-dashboard-to-pdf
+                    (fn [& _] (reset! called? true) (byte-array 0))]
+        (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                           :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      card-id}
+                       :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                            :dashboard_id dashboard-id}
+                       :model/PulseCard     _ {:pulse_id pulse-id
+                                               :card_id  card-id
+                                               :position 0}
+                       :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                         :channel_type "email"}
+                       :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                       :pulse_channel_id pc-id}]
+          (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+            (is (false? @called?))
+            (is (= (rasta-dashsub-message
+                    {:message [{"Aviary KPIs" true}
+                               pulse.test-util/png-attachment]})
+                   (mt/summarize-multipart-single-email
+                    (first (:channel/email pulse-results))
+                    #"Aviary KPIs")))))))))
+
+(deftest dashboard-sub-slack-include-pdf-test
+  (testing "A Slack channel with :include_pdf renders the dashboard PDF and carries it on the message"
+    (notification.tu/with-channel-fixtures [:channel/slack]
+      (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                         :display       :line
+                                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+                     :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id :row 0}
+                     :model/Pulse         {pulse-id :id} {:name "Pulse Name" :dashboard_id dashboard-id}
+                     :model/PulseCard     _ {:pulse_id pulse-id :card_id card-id :position 0}
+                     :model/PulseChannel  _ {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general" :include_pdf true}}]
+        (let [render-args (atom nil)]
+          (with-redefs [channel.render/render-dashboard-to-pdf
+                        (fn [dashboard-id user-id parameters]
+                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id :parameters parameters})
+                          (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+            (pulse.test-util/slack-test-setup!
+             (let [results (pulse.test-util/with-captured-channel-send-messages!
+                             (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                   msg     (first (:channel/slack results))]
+               (testing "renderer is called with the subscription's dashboard id"
+                 (is (= dashboard-id (:dashboard-id @render-args))))
+               (testing "the slack message carries the rendered PDF"
+                 (is (bytes? (-> msg :pdf :bytes)))
+                 (is (str/ends-with? (-> msg :pdf :filename) ".pdf")))
+               (testing "it's a single message: no chart-image blocks, title/link ride along as the PDF caption"
+                 (is (empty? (:blocks msg)))
+                 (is (str/includes? (-> msg :pdf :comment) "Aviary KPIs")))))))))))
+
+(deftest dashboard-sub-slack-no-pdf-sends-images-test
+  (testing "Without :include_pdf, Slack still sends chart images and no PDF"
+    (notification.tu/with-channel-fixtures [:channel/slack]
+      (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                         :display       :line
+                                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+                     :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id :row 0}
+                     :model/Pulse         {pulse-id :id} {:name "Pulse Name" :dashboard_id dashboard-id}
+                     :model/PulseCard     _ {:pulse_id pulse-id :card_id card-id :position 0}
+                     :model/PulseChannel  _ {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general"}}]
+        (pulse.test-util/slack-test-setup!
+         (let [results (pulse.test-util/with-captured-channel-send-messages!
+                         (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+               msg     (first (:channel/slack results))]
+           (is (nil? (:pdf msg)))
+           (is (some #(= "image" (:type %)) (:blocks msg)))))))))

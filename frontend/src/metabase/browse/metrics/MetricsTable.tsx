@@ -7,7 +7,8 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
 } from "metabase/api";
-import { getCollectionName } from "metabase/collections/utils";
+import { useSetArchive } from "metabase/archive/hooks";
+import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
@@ -23,21 +24,18 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { Bookmarks } from "metabase/entities/bookmarks";
-import { Questions } from "metabase/entities/questions";
 import { useDispatch } from "metabase/redux";
 import {
   Button,
   FixedSizeIcon,
   Flex,
   Icon,
-  type IconName,
   Menu,
   Repeat,
   Skeleton,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
-import type { SortingOptions } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import type { IconName, SortingOptions } from "metabase-types/api";
 
 import BrowseTableS from "../components/BrowseTable.module.css";
 
@@ -331,6 +329,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
   const [createBookmark] = useCreateBookmarkMutation();
   const [deleteBookmark] = useDeleteBookmarkMutation();
   const dispatch = useDispatch();
+  const archive = useSetArchive();
 
   const actions = useMemo(() => {
     if (!metric) {
@@ -349,8 +348,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
-
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     } else {
@@ -365,7 +362,6 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
           });
 
           trackMetricBookmarked();
-          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     }
@@ -387,18 +383,13 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         title: t`Move to trash`,
         icon: "trash",
         action() {
-          dispatch(
-            Questions.actions.setArchived(
-              { id: metric.id, model: "metric" },
-              true,
-            ),
-          );
+          archive({ id: metric.id, model: "metric" }, true);
         },
       });
     }
 
     return actions;
-  }, [metric, createBookmark, deleteBookmark, dispatch]);
+  }, [metric, createBookmark, deleteBookmark, dispatch, archive]);
 
   return (
     <td

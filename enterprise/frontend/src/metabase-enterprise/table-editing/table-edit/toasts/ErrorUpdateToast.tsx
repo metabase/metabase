@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
 import { Anchor, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import {
   getUpdateApiErrorMessage,
@@ -77,7 +77,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
 
       <Button
         size="compact-lg"
-        c="background-secondary-inverse"
+        c="background_page-secondary-inverse"
         variant="filled"
         autoContrast
         radius="0.5rem"

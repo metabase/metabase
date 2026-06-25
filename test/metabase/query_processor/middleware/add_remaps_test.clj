@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.add-remaps-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-remaps-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -233,7 +234,6 @@
                                       {"apple"  "Appletini"
                                        "banana" "Bananasplit"
                                        "kiwi"   "Kiwi-flavored Thing"})
-
       (is (=? {:status    :completed
                :row_count 3
                :data      {:rows [[1 "apple"   4 3 "Appletini"]
@@ -832,3 +832,32 @@
         (is (= ["ID"
                 "Orders → ID"]
                (map :display_name (qp.preprocess/query->expected-cols query))))))))
+
+(deftest ^:parallel self-join-with-remapped-columns-uses-remapping-test
+  (let [mp (mt/metadata-provider)
+        orders (lib.metadata/table mp (mt/id :orders))
+        order-id (lib.metadata/field mp (mt/id :orders :id))
+        user-id (lib.metadata/field mp (mt/id :orders :user_id))
+        user-email (lib.metadata/field mp (mt/id :people :email))
+        rm-mp (lib.tu/remap-metadata-provider mp user-id user-email)
+        query (-> (lib/query rm-mp orders)
+                  (lib/with-fields [order-id user-id])
+                  (lib/join (-> (lib/join-clause orders [(lib/= order-id order-id)])
+                                (lib/with-join-fields [order-id user-id])))
+                  (lib/limit 3))
+        result (qp/process-query query)]
+    (is (= [[1 1 1 1 "borer-hudson@yahoo.com" "borer-hudson@yahoo.com"]
+            [2 1 2 1 "borer-hudson@yahoo.com" "borer-hudson@yahoo.com"]
+            [3 1 3 1 "borer-hudson@yahoo.com" "borer-hudson@yahoo.com"]]
+           (mt/rows result)))
+    (is (= [{:name "ID"}
+            {:name "USER_ID", :remapped_to "EMAIL"}
+            {:name "ID_2"}
+            {:name "USER_ID_2", :remapped_to "EMAIL_2"}
+            {:name "EMAIL", :remapped_from "USER_ID"}
+            {:name "EMAIL_2", :remapped_from "USER_ID_2"}]
+           (->> result
+                :data
+                :results_metadata
+                :columns
+                (mapv #(select-keys % [:name :remapped_to :remapped_from])))))))

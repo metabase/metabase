@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [humane-are.core :as humane-are]
    [mb.hawk.core :as hawk]
+   [metabase.analytics.core :as analytics.core]
    [metabase.config.core :as config]
    [metabase.core.bootstrap]
    [metabase.test-runner.assert-exprs]
@@ -87,10 +88,18 @@
    "test_config"
    "test_resources"])
 
+;; snowflake and bigquery tests are very unreliable; let's bypass an additional
+;; potential source of unreliability by running tests without any parallelism.
+(def ^:private non-parallel-drivers #{:snowflake :bigquery-cloud-sdk})
+
 (defn- default-options []
   {:namespace-pattern   #"^(?:(?:metabase.*)|(?:hooks\..*))" ; anything starting with `metabase*` (including `metabase-enterprise`) or `hooks.*`
    :exclude-directories excluded-directories
-   :test-warn-time      3000})
+   :test-warn-time      60000
+   :multithread?        (if (empty? (set/intersection (tx.env/test-drivers)
+                                                      non-parallel-drivers))
+                          :vars
+                          false)})
 
 (defn module-folders
   [modules]
@@ -122,8 +131,11 @@
   ([options]
    (hawk/find-tests-with-options (parse-options options))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- initialize-all-fixtures []
   (let [steps (initialize/all-components)]
+    (analytics.core/setup!)
+    (log/info "Initialized prometheus collector")
     (u/with-timer-ms [duration-ms]
       (doseq [init-step steps]
         (fixtures/initialize init-step))

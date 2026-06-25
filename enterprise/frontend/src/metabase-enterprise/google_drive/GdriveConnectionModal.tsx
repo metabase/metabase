@@ -2,12 +2,12 @@ import dayjs from "dayjs";
 import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
-import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useDispatch } from "metabase/redux";
+import { reloadSettings } from "metabase/redux/settings";
 import {
   Box,
   Button,
@@ -137,10 +137,10 @@ function GoogleSheetsConnectModal({
 
   return (
     <ModalWrapper onClose={onClose} title={t`Import Google Sheets`}>
-      <SegmentedControl
+      <SegmentedControl<UploadType>
         fullWidth
         autoContrast
-        color="brand"
+        color="core-brand"
         c="text-primary-inverse"
         value={linkType}
         onChange={setLinkType}
@@ -152,7 +152,7 @@ function GoogleSheetsConnectModal({
         }
       />
       <Flex
-        bg="background-secondary"
+        bg="background_page-secondary"
         style={{ borderRadius: "0.5rem" }}
         p="md"
         direction="column"
@@ -303,7 +303,7 @@ export const DriveConnectionDisplay = () => {
   return (
     <MaybeLink href={folderUrl ?? ""}>
       <Flex
-        bg="background-secondary"
+        bg="background_page-secondary"
         w="100%"
         gap="sm"
         p="md"

@@ -16,6 +16,7 @@ export const setupUserKeyValueEndpoints = ({
     `path:/api/user-key-value/namespace/${namespace}/key/${key}`,
     new Response(JSON.stringify(value), {
       status: 200,
+      headers: { "Content-Type": "application/json" },
     }),
     {
       name: getName,
@@ -56,9 +57,12 @@ export function setupGetUserKeyValueEndpoint(kv: UserKeyValue) {
 }
 
 export function setupNullGetUserKeyValueEndpoints() {
+  // A missing key has no stored value, so the backend returns 204 No Content
+  // (the `defendpoint` handler returns nil, which the response middleware maps
+  // to a 204). The client normalizes that to `null`.
   return fetchMock.get(
     `express:/api/user-key-value/namespace/:namespace/key/:key`,
-    { status: 200 },
+    { status: 204 },
   );
 }
 

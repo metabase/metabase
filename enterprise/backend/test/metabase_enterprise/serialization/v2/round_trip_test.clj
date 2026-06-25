@@ -25,7 +25,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
@@ -38,17 +38,11 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]
-   [metabase.warehouses.models.database :as models.database])
+   [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
    (java.nio.file Files Path StandardCopyOption)
    (java.nio.file.attribute FileAttribute)))
-
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [models.database/assert-not-h2! (constantly nil)]
-                        (thunk))))
 
 (set! *warn-on-reflection* true)
 
@@ -137,6 +131,12 @@
 (def ^:private internal-model?
   #{"Schema"})
 
+(def ^:private covered-by-dedicated-round-trip-test?
+  "Models that have full export/import coverage in their own round-trip test and so don't need a
+  fixture in this shared baseline. CuratedSearchEntry is covered (in-memory + on-disk) by
+  metabase-enterprise.serialization.v2.curated-search-entry-test."
+  #{"CuratedSearchEntry"})
+
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."
   []
@@ -148,7 +148,7 @@
         resources  (ingest/ingest-list ingestable)
         baselined  (into #{} (map :model) (apply concat resources))
         necessary? (set serdes.models/exported-models)]
-    (doseq [m serdes.models/exported-models]
+    (doseq [m serdes.models/exported-models :when (not (covered-by-dedicated-round-trip-test? m))]
       (is (baselined m) (format "We need to add %s entries to %s" m source-dir-path)))
     (doseq [b baselined :when (not (internal-model? b))]
       (is (necessary? b) (format "We can remove %s files from %s" b source-dir-path)))))

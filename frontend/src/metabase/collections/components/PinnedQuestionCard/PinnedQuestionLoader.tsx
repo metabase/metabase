@@ -4,14 +4,13 @@ import { useGetCardQuery } from "metabase/api";
 import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { IconName } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import type { RawSeries } from "metabase-types/api";
+import type { IconName, RawSeries } from "metabase-types/api";
 
 export interface PinnedQuestionLoaderProps {
   id: number;

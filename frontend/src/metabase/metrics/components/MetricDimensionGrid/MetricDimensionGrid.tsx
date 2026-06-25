@@ -3,9 +3,9 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { trackMetricPageShowMoreClicked } from "metabase/browse/metrics/analytics";
+import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
+import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
-import type { DimensionType } from "metabase/metrics/common/utils/dimension-types";
 import { useDispatch } from "metabase/redux";
 import {
   Button,
@@ -16,7 +16,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import type { MetricDefinition } from "metabase-lib/metric";

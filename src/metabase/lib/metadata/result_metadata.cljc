@@ -30,12 +30,15 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.types.core]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)]]))
+
+(comment metabase.types.core/keep-me)
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
@@ -70,21 +73,28 @@
   from the driver to values calculated by Lib."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
+  (let [driver-col (update-keys driver-col u/->kebab-case-en)
+        driver-base-type (:base-type driver-col)
+        lib-col-type ((some-fn :effective-type :base-type) lib-col)
+        ;; When the driver type is text but the lib type is temporal, this is usually because the driver doesn't
+        ;; support temporal types natively (e.g. sqlite (#75604)). So we'll prefer the lib types in this case,
+        ;; and when the driver type is missing or `:type/*`.
+        prefer-lib-type? (or (#{nil :type/*} driver-base-type)
+                             (and (isa? driver-base-type :type/Text)
+                                  (isa? lib-col-type :type/Temporal)))]
     (merge lib-col
            (m/filter-vals some? driver-col)
-           ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
-           (when (#{nil :type/*} (:base-type driver-col))
+           ;; Prefer our inferred base type if the driver type is unreliable and ours is more specific
+           (when prefer-lib-type?
              (when-let [lib-base-type (:base-type lib-col)]
                {:base-type lib-base-type}))
            ;; Prefer our `:name` if it's something different that what's returned by the driver (e.g. for named
            ;; aggregations). Same for `:lib/source`
            (u/select-non-nil-keys lib-col [:name :lib/source])
-           ;; whatever type comes back from the query is by definition the effective type, otherwise fall back to the
-           ;; type calculated by Lib
-           {:effective-type (or (when-let [driver-base-type (:base-type driver-col)]
-                                  (when-not (= driver-base-type :type/*)
-                                    driver-base-type))
+           ;; whatever type comes back from the query is by definition the effective type, but fall back to the
+           ;; type calculated by Lib if the driver type is unreliable
+           {:effective-type (or (when-not prefer-lib-type?
+                                  driver-base-type)
                                 (:effective-type lib-col)
                                 (:base-type lib-col)
                                 :type/*)})))
@@ -170,7 +180,7 @@
                                                            (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
                                                            (log/debugf "In query:\n%s" (u/pprint-to-str query))
                                                            nil))]
-                                         (lib.util.match/match-lite expr
+                                         (match/match-one expr
                                            [:convert-timezone _opts _expr source-tz & _]
                                            source-tz))))]
             (cond-> col
@@ -240,7 +250,7 @@
   [col   :- ::kebab-cased-map
    a-ref :- ::mbql.s/Reference]
   (let [a-ref (remove-namespaced-options a-ref)]
-    (lib.util.match/replace-lite a-ref
+    (match/replace a-ref
       [:field (id :guard pos-int?) opts]
       [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
                               (:source-field opts) (dissoc :join-alias)

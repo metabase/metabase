@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.actions.test-util
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.test-util]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.actions.test-util]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -123,7 +125,9 @@
       ...)"
   {:style/indent :defn}
   [table-definitions & body]
-  `(do-with-dataset-definition (tx/dataset-definition "temp-test-data" ~table-definitions) (fn [] ~@body)))
+  `(do-with-dataset-definition (tx/dataset-definition (str "temp-test-data" (u.random/random-name))
+                                                      ~table-definitions)
+                               (fn [] ~@body)))
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.

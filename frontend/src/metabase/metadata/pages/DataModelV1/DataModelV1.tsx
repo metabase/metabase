@@ -11,7 +11,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import {
   FieldEmptyState,
@@ -96,9 +96,9 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
   }
 
   return (
-    <Flex bg="background-secondary" data-testid="data-model" h="100%">
+    <Flex bg="background_page-secondary" data-testid="data-model" h="100%">
       <Stack
-        bg="background-primary"
+        bg="background_page-primary"
         className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
         gap={0}

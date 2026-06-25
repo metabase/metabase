@@ -1,5 +1,5 @@
-import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName } from "metabase-types/api";
 
 export const MODERATION_STATUS = {
   verified: "verified",
@@ -12,12 +12,12 @@ export const MODERATION_STATUS_ICONS: Map<
 
 MODERATION_STATUS_ICONS.set("verified", {
   name: "verified",
-  color: "brand",
+  color: "core-brand",
 });
 
 MODERATION_STATUS_ICONS.set("verified_filled", {
   name: "verified_filled",
-  color: "brand",
+  color: "core-brand",
 });
 
 MODERATION_STATUS_ICONS.set(null, {

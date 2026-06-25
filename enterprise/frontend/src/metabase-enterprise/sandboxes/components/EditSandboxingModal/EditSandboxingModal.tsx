@@ -4,20 +4,25 @@ import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetPermissionsGroupQuery,
+  useGetTableQuery,
+  useValidateGroupTableAccessPolicyMutation,
+} from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { QuestionLoader } from "metabase/common/components/QuestionLoader";
-import { Radio } from "metabase/common/components/Radio";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { EntityName } from "metabase/entities/containers/EntityName";
-import { GTAPApi } from "metabase/services";
-import type { IconName } from "metabase/ui";
-import { Button, Center, Icon, Loader } from "metabase/ui";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { Button, Center, Icon, Loader, Radio, Stack } from "metabase/ui";
+import { getName } from "metabase/utils/name";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -25,7 +30,9 @@ import type {
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
 import type {
+  GroupId,
   GroupTableAccessPolicy,
+  IconName,
   Table,
   UserAttributeKey,
 } from "metabase-types/api";
@@ -103,13 +110,15 @@ const EditSandboxingModal = ({
   const [showPickerModal, { turnOn: showModal, turnOff: hideModal }] =
     useToggle(false);
 
+  const [validatePolicy] = useValidateGroupTableAccessPolicyMutation();
+
   const [{ error }, savePolicy] = useAsyncFn(async () => {
     const shouldValidate = normalizedPolicy.card_id != null;
     if (shouldValidate) {
-      await GTAPApi.validate(normalizedPolicy);
+      await validatePolicy(normalizedPolicy).unwrap();
     }
     onSave(normalizedPolicy);
-  }, [normalizedPolicy]);
+  }, [normalizedPolicy, validatePolicy]);
 
   const remainingAttributesOptions = attributes.filter(
     (attribute) => !(attribute in policy.attribute_remappings),
@@ -162,20 +171,23 @@ const EditSandboxingModal = ({
               <h4
                 className={CS.pb1}
               >{t`How do you want to filter this table?`}</h4>
-              <Radio
-                value={!shouldUseSavedQuestion}
-                options={[
-                  { name: t`Filter by a column in the table`, value: true },
-                  {
-                    name: t`Use a saved question to create a custom view for this table`,
-                    value: false,
-                  },
-                ]}
-                onChange={(shouldUseSavedQuestion) =>
-                  setShouldUseSavedQuestion(!shouldUseSavedQuestion)
+              <Radio.Group
+                value={shouldUseSavedQuestion ? "saved-question" : "column"}
+                onChange={(value) =>
+                  setShouldUseSavedQuestion(value === "saved-question")
                 }
-                vertical
-              />
+              >
+                <Stack gap="sm">
+                  <Radio
+                    value="column"
+                    label={t`Filter by a column in the table`}
+                  />
+                  <Radio
+                    value="saved-question"
+                    label={t`Use a saved question to create a custom view for this table`}
+                  />
+                </Stack>
+              </Radio.Group>
             </div>
           ) : (
             <div>
@@ -276,7 +288,7 @@ const EditSandboxingModal = ({
           <ActionButton
             className={CS.ml1}
             actionFn={savePolicy}
-            primary
+            variant="filled"
             disabled={!canSave}
           >
             {t`Save`}
@@ -310,12 +322,18 @@ const SummaryRow = ({ icon, content }: SummaryRowProps) => (
   </div>
 );
 
+const PermissionsGroupName = ({ groupId }: { groupId: GroupId }) => {
+  const { data: group } = useGetPermissionsGroupQuery(groupId);
+  return group ? <span>{group.name}</span> : null;
+};
+
 interface PolicySummaryProps {
   policy: GroupTableAccessPolicy;
   policyTable: Table | undefined;
 }
 
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
+  const tc = useTranslateContent();
   const headingId = _.uniqueId();
   return (
     <div aria-labelledby={headingId}>
@@ -329,7 +347,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
         icon="group"
         content={jt`Users in ${(
           <strong key="group-name">
-            <EntityName entityType="groups" entityId={policy.group_id} />
+            <PermissionsGroupName groupId={policy.group_id} />
           </strong>
         )} can view`}
       />
@@ -339,16 +357,11 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
           policy.card_id
             ? jt`rows in the ${(
                 <strong key="question-name">
-                  <EntityName
-                    entityType="questions"
-                    entityId={policy.card_id}
-                  />
+                  <QuestionName id={policy.card_id} />
                 </strong>
               )} question`
             : jt`rows in the ${(
-                <strong key="table-name">
-                  <EntityName entityType="tables" entityId={policy.table_id} />
-                </strong>
+                <strong key="table-name">{tc(getName(policyTable))}</strong>
               )} table`
         }
       />

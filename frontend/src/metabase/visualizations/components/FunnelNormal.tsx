@@ -5,11 +5,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified } from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import {
-  formatChangeWithSign,
-  formatNumber,
-  formatValue,
-} from "metabase/utils/formatting";
+import { formatChangeWithSign, formatNumber } from "metabase/utils/formatting";
 import { formatNullable } from "metabase/utils/formatting/nullable";
 import { isNotNull } from "metabase/utils/types";
 import {
@@ -21,6 +17,7 @@ import {
   Subtitle,
   Title,
 } from "metabase/visualizations/components/FunnelNormal.styled";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import {
   calculateFunnelSteps,
   calculateStepOpacity,
@@ -318,7 +315,7 @@ const GraphSection = ({
       >
         <polygon
           opacity={calculateStepOpacity(index, numSteps)}
-          fill={Color(color("brand")).hex()}
+          fill={Color(color("core-brand")).hex()}
           points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
         />
       </svg>

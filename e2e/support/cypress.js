@@ -1,6 +1,5 @@
-import registerCypressGrep from "@cypress/grep"; // eslint-disable-line import/order
+import { register as registerCypressGrep } from "@cypress/grep";
 registerCypressGrep();
-
 import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
@@ -122,19 +121,6 @@ if (isCI) {
     cy.wait(50, { log: false }).then(() =>
       cy.addTestContext(Cypress.TerminalReport.getLogs("txt")),
     );
-  });
-
-  // Fast failure notifications
-  afterEach(() => {
-    const testInfo = Cypress.mocha.getRunner().suite.ctx.currentTest;
-    const isLastRetry = testInfo.currentRetry() === testInfo.retries();
-
-    if (testInfo.state === "failed" && isLastRetry) {
-      cy.task("reportCIFailure", {
-        spec: Cypress.spec,
-        test: Cypress.currentTest,
-      });
-    }
   });
 
   const options = {

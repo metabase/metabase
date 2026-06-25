@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.field-visibility-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.field-visibility-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -21,7 +23,6 @@
     (testing "sanity check -- everything should be returned before making changes"
       (is (=? (m/index-by :id (qp.test-util/expected-cols :venues))
               (m/index-by :id (venues-cols-from-query)))))
-
     (testing ":details-only fields should not be returned in normal queries"
       (tu/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :details-only}
         (is (=? (m/index-by :id (for [col (qp.test-util/expected-cols :venues)]

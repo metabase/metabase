@@ -1,12 +1,11 @@
 import type { LineSeriesOption } from "echarts/charts";
 import type { MarkLine2DDataItemOption } from "echarts/types/src/component/marker/MarkLineModel";
 
-import type { IconName } from "metabase/ui/components/icons/Icon/icons";
 import { Icons } from "metabase/ui/components/icons/Icon/icons";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { RenderingContext } from "metabase/visualizations/types";
-import type { TimelineEventId } from "metabase-types/api";
+import type { IconName, TimelineEventId } from "metabase-types/api";
 
 import {
   TIMELINE_EVENT_DATA_NAME,
@@ -59,7 +58,7 @@ export const getTimelineEventsSeries = (
       selectedEventsIds.includes(event.id),
     );
 
-    const color = getColor(isSelected ? "brand" : "text-tertiary");
+    const color = getColor(isSelected ? "core-brand" : "text-tertiary");
     const iconName =
       events.length === 1 ? (events[0].icon as IconName) : "star";
 
@@ -72,7 +71,7 @@ export const getTimelineEventsSeries = (
       symbolOffset: [0, 12],
       symbolRotate: 0,
       symbol: dataUri,
-      lineStyle: isSelected ? { color: getColor("brand") } : undefined,
+      lineStyle: isSelected ? { color: getColor("core-brand") } : undefined,
       label: {
         show: events.length > 1,
         formatter: () => String(events.length),
@@ -88,8 +87,8 @@ export const getTimelineEventsSeries = (
 
     if (splitPanelYExtent) {
       const markLineData: MarkLine2DDataItemOption = [
-        { xAxis: date, y: splitPanelYExtent.topY, symbol: "none" },
         { ...itemProps, xAxis: date, y: splitPanelYExtent.bottomY },
+        { xAxis: date, y: splitPanelYExtent.topY, symbol: "none" },
       ];
       return markLineData;
     }
@@ -116,13 +115,13 @@ export const getTimelineEventsSeries = (
       },
       emphasis: {
         lineStyle: {
-          color: getColor("brand"),
+          color: getColor("core-brand"),
         },
         label: {
-          color: getColor("brand"),
+          color: getColor("core-brand"),
         },
         itemStyle: {
-          color: getColor("brand"),
+          color: getColor("core-brand"),
         },
       },
       symbol: "none",

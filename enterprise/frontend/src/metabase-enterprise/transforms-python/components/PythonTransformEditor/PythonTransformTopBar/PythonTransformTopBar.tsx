@@ -1,9 +1,9 @@
-import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { hasFeature } from "metabase/common/utils/database";
 import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
 import { useSelector } from "metabase/redux";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
@@ -50,7 +50,7 @@ export function PythonTransformTopBar({
   return (
     <Flex
       align="flex-start"
-      bg="background-secondary"
+      bg="background_page-secondary"
       data-testid="python-transform-top-bar"
       className={S.TopBar}
     >

@@ -38,11 +38,14 @@
 (p/import-vars
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
+  batch-delete-permissions!
+  batch-insert-permissions!
   disable-perms-cache
   download-perms-level
   full-db-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
+  index-database-permissions
   is-superuser?
   is-data-analyst?
   most-permissive-database-permission-for-user
@@ -67,6 +70,7 @@
   set-default-group-permissions!
   set-default-database-permissions!
   set-default-table-permissions!
+  set-default-table-permissions-bulk!
   with-global-permissions-lock
   with-db-scoped-permissions-lock]
  [metabase.permissions.models.data-permissions.sql
@@ -79,7 +83,12 @@
  [metabase.permissions.models.permissions
   namespace-clause
   can-read-audit-helper
+  can-read-via-parent-collection?
+  collection-based-visibility-search-models
+  collection-id-only-read-method
+  collection-id-only-read-models
   current-user-has-application-permissions?
+  define-collection-based-visibility!
   grant-application-permissions!
   grant-collection-read-permissions!
   grant-collection-readwrite-permissions!

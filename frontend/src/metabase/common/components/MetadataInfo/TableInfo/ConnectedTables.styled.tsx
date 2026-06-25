@@ -16,7 +16,7 @@ export const LabelButton = styled.button`
   &:hover,
   &:focus {
     ${InteractiveTableLabel} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 `;
@@ -25,7 +25,7 @@ export const LabelLink = styled(Link)`
   &:hover,
   &:focus {
     ${InteractiveTableLabel} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 `;

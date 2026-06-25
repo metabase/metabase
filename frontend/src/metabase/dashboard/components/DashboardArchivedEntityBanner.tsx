@@ -1,7 +1,9 @@
+import { Api, dashboardApi } from "metabase/api";
+import { listTag } from "metabase/api/tags";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
-import { Bookmarks } from "metabase/entities/bookmarks";
-import { Dashboards } from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/redux";
+import type { Dispatch } from "metabase/redux/store";
 
 import { useDashboardContext } from "../context";
 
@@ -14,8 +16,8 @@ export const DashboardArchivedEntityBanner = () => {
   } = useDashboardContext();
 
   const dispatch = useDispatch();
-  const invalidateBookmarks = async () =>
-    await dispatch(Bookmarks.actions.invalidateLists());
+  const invalidateBookmarks = () =>
+    dispatch(Api.util.invalidateTags([listTag("bookmark")]));
 
   if (!dashboard) {
     return null;
@@ -35,11 +37,16 @@ export const DashboardArchivedEntityBanner = () => {
       canDelete={canDelete}
       onUnarchive={async () => {
         await setArchivedDashboard(false);
-        await invalidateBookmarks();
+        invalidateBookmarks();
       }}
       onMove={({ id }) => moveDashboardToCollection({ id })}
       onDeletePermanently={() => {
-        const deleteAction = Dashboards.actions.delete({ id: dashboard?.id });
+        const deleteAction = (innerDispatch: Dispatch) =>
+          runRtkEndpoint(
+            dashboard.id,
+            innerDispatch,
+            dashboardApi.endpoints.deleteDashboard,
+          );
         deletePermanently(deleteAction);
       }}
     />

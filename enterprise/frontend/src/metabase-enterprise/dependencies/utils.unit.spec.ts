@@ -1,4 +1,3 @@
-import type { IconName } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   AnalysisFindingError,
@@ -7,6 +6,7 @@ import type {
   DependencyGroupType,
   DependencyNode,
   DependencyType,
+  IconName,
 } from "metabase-types/api";
 import {
   createMockAnalysisFindingError,
@@ -240,7 +240,7 @@ describe("getNodeTypeInfo", () => {
           type: "model",
         }),
       }),
-      expectedTypeInfo: { label: "Model", color: "brand" },
+      expectedTypeInfo: { label: "Model", color: "core-brand" },
     },
     {
       node: createMockCardDependencyNode({
@@ -248,11 +248,11 @@ describe("getNodeTypeInfo", () => {
           type: "metric",
         }),
       }),
-      expectedTypeInfo: { label: "Metric", color: "summarize" },
+      expectedTypeInfo: { label: "Metric", color: "core-summarize" },
     },
     {
       node: createMockTableDependencyNode(),
-      expectedTypeInfo: { label: "Table", color: "brand" },
+      expectedTypeInfo: { label: "Table", color: "core-brand" },
     },
     {
       node: createMockSnippetDependencyNode(),
@@ -633,12 +633,15 @@ describe("getDependencyGroupTypeInfo", () => {
       groupType: "question",
       expected: { label: "Question", color: "text-secondary" },
     },
-    { groupType: "model", expected: { label: "Model", color: "brand" } },
-    { groupType: "metric", expected: { label: "Metric", color: "summarize" } },
-    { groupType: "table", expected: { label: "Table", color: "brand" } },
+    { groupType: "model", expected: { label: "Model", color: "core-brand" } },
+    {
+      groupType: "metric",
+      expected: { label: "Metric", color: "core-summarize" },
+    },
+    { groupType: "table", expected: { label: "Table", color: "core-brand" } },
     {
       groupType: "dashboard",
-      expected: { label: "Dashboard", color: "filter" },
+      expected: { label: "Dashboard", color: "core-filter" },
     },
     {
       groupType: "sandbox",

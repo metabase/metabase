@@ -8,7 +8,9 @@ import {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
+import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import CS from "metabase/css/core/index.css";
+import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
@@ -17,6 +19,7 @@ import {
   Button,
   Flex,
   Icon,
+  Loader,
   Menu,
   Text,
   TextInput,
@@ -27,11 +30,11 @@ import {
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { Document } from "metabase-types/api";
 
-import { DocumentPublicLinkPopover } from "../../embedding/components/PublicLinkPopover";
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 import { getListCommentsQuery } from "../utils/api";
 
+import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
 
 const saveButtonTransition: TransitionProps["transition"] = {
@@ -85,10 +88,34 @@ export const DocumentHeader = ({
 
   const hasPublicLink = !!document?.public_uuid;
 
-  const handlePrint = useCallback(() => {
+  const { prepareForPrint } = usePrintContext();
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPreparingForPrint, setIsPreparingForPrint] = useState(false);
+
+  const handlePrint = useCallback(async () => {
+    setIsPreparingForPrint(true);
+    try {
+      await prepareForPrint();
+    } finally {
+      setIsPreparingForPrint(false);
+    }
+    setIsMenuOpen(false);
+    await waitUntilNextFramePainted();
     window.print();
     trackDocumentPrint(document);
-  }, [document]);
+  }, [document, prepareForPrint]);
+
+  const handleMenuChange = useCallback(
+    (opened: boolean) => {
+      if (!opened && isPreparingForPrint) {
+        return;
+      }
+
+      setIsMenuOpen(opened);
+    },
+    [isPreparingForPrint],
+  );
 
   return (
     <Flex
@@ -184,7 +211,11 @@ export const DocumentHeader = ({
           </Tooltip>
         )}
         {!document?.archived && (
-          <Menu position="bottom-end">
+          <Menu
+            position="bottom-end"
+            opened={isMenuOpen}
+            onChange={handleMenuChange}
+          >
             <Menu.Target>
               <ActionIcon
                 variant="subtle"
@@ -197,7 +228,15 @@ export const DocumentHeader = ({
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item
-                leftSection={<Icon name="document" />}
+                leftSection={
+                  isPreparingForPrint ? (
+                    <Loader size="xs" />
+                  ) : (
+                    <Icon name="document" />
+                  )
+                }
+                closeMenuOnClick={false}
+                disabled={isPreparingForPrint}
                 onClick={handlePrint}
               >
                 {t`Print Document`}

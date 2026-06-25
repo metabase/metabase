@@ -1,9 +1,10 @@
-import type { Component, ComponentType } from "react";
+import type { ComponentType } from "react";
 
-import type { IconName } from "metabase/ui";
+import type { Dispatch } from "metabase/redux/store";
 import type {
   Collection,
   CollectionId,
+  IconName,
   NativeQuerySnippet,
 } from "metabase-types/api";
 
@@ -11,24 +12,25 @@ import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
 export type SnippetSidebarMenuOption = {
   icon: IconName;
-  name?: string;
-  label?: string;
+  name: string;
   onClick: () => void;
 };
 
-export type SnippetSidebarState = {
-  modalSnippetCollection?: Partial<Collection> | null;
-  permissionsModalCollectionId?: CollectionId | null;
+// EE plugins receive the SnippetSidebar class instance; this is the subset of
+// its props they rely on.
+export type SnippetSidebarContext = {
+  props: {
+    snippetCollection: Collection;
+    dispatch: Dispatch;
+  };
 };
 
-export type SnippetSidebarProps = {
-  snippetCollection: { id: CollectionId | null };
+export type SnippetSidebarRowRenderers = {
+  collection: ComponentType<{
+    item: Collection;
+    setSnippetCollectionId?: (id: CollectionId) => void;
+  }> | null;
 };
-
-export type SnippetSidebarComponent = Component<
-  SnippetSidebarProps,
-  SnippetSidebarState
->;
 
 export type SnippetCollectionPickerModalProps = {
   isOpen: boolean;
@@ -36,20 +38,8 @@ export type SnippetCollectionPickerModalProps = {
   onClose: () => void;
 };
 
-export type SnippetFormModalProps = {
-  collection: Partial<Collection>;
-  onClose: () => void;
-  onSaved?: () => void;
-  opened?: boolean;
-};
-
-export type SnippetCollectionMenuProps = {
-  collection: Collection;
-  onEditDetails?: (collection: Collection) => void;
-  onChangePermissions?: (collectionId: CollectionId) => void;
-};
-
 export type SnippetCollectionPermissionsModalProps = {
+  opened: boolean;
   collectionId: CollectionId;
   onClose: () => void;
 };
@@ -62,8 +52,6 @@ export type MoveSnippetModalProps = {
 export type SnippetFoldersPlugin = {
   isEnabled: boolean;
   CollectionPickerModal: ComponentType<SnippetCollectionPickerModalProps>;
-  CollectionFormModal: ComponentType<SnippetFormModalProps>;
-  CollectionMenu: ComponentType<SnippetCollectionMenuProps>;
   CollectionPermissionsModal: ComponentType<SnippetCollectionPermissionsModalProps>;
   MoveSnippetModal: ComponentType<MoveSnippetModalProps>;
 };
@@ -72,10 +60,6 @@ export const getDefaultPluginSnippetFolders = () => ({
   isEnabled: false,
   CollectionPickerModal:
     PluginPlaceholder as ComponentType<SnippetCollectionPickerModalProps>,
-  CollectionFormModal:
-    PluginPlaceholder as ComponentType<SnippetFormModalProps>,
-  CollectionMenu:
-    PluginPlaceholder as ComponentType<SnippetCollectionMenuProps>,
   CollectionPermissionsModal:
     PluginPlaceholder as ComponentType<SnippetCollectionPermissionsModalProps>,
   MoveSnippetModal: PluginPlaceholder as ComponentType<MoveSnippetModalProps>,

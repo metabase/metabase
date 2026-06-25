@@ -49,7 +49,6 @@
               (is (= [{:data (merge expected-payload {"event" "interactive_embedding_enabled"})
                        :user-id (str (mt/user->id :crowberto))}]
                      (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))))
-
               (mt/with-temporary-setting-values [enable-embedding-interactive false]
                 (is (= [{:data
                          (merge expected-payload {"event" "interactive_embedding_disabled"})
@@ -158,9 +157,7 @@
     (test-enabled-sync! {:mb-enable-embedding-interactive false} :no-op)
     (test-enabled-sync! {:mb-enable-embedding-interactive true :mb-enable-embedding-static true} :no-op)
     (test-enabled-sync! {:mb-enable-embedding-interactive false :mb-enable-embedding-static true} :no-op)
-
     (test-enabled-sync! {:mb-enable-embedding true} :sets-all-true)
-
     (test-enabled-sync! {:mb-enable-embedding false} :sets-all-false)))
 
 (defn test-origin-sync! [env expected-behavior]
@@ -198,13 +195,10 @@
                                        embedding-app-origins-interactive nil
                                        embedding-app-origins-sdk nil]
       (test-origin-sync! {} :no-op)
-
       (test-origin-sync! {:mb-embedding-app-origins-sdk other-ip} :no-op)
       (test-origin-sync! {:mb-embedding-app-origins-sdk nil} :no-op)
-
       (test-origin-sync! {:mb-embedding-app-origins-interactive other-ip} :no-op)
       (test-origin-sync! {:mb-embedding-app-origins-interactive nil} :no-op)
-
       (test-origin-sync! {:mb-embedding-app-origin other-ip} :sets-both))))
 
 (deftest disable-cors-on-localhost-validation-test
@@ -228,7 +222,6 @@
                clojure.lang.ExceptionInfo
                #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
                (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")))))))
-
   (testing "Should allow localhost origins when disable-cors-on-localhost is disabled"
     (mt/with-premium-features #{:embedding-sdk}
       (mt/with-temporary-setting-values [enable-embedding-sdk true

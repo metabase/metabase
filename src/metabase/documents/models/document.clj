@@ -8,9 +8,11 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -98,7 +100,8 @@
   (sync-document-cards-collection! id collection_id
                                    :archived archived
                                    :archived-directly archived_directly)
-  (events/publish-event! :event/document-update {:object instance})
+  (when-not mi/*deserializing?*
+    (events/publish-event! :event/document-update {:object instance}))
   instance)
 
 (t2/define-after-select :model/Document
@@ -113,6 +116,27 @@
 
 ;;; ----------------------------------------------- Search ----------------------------------------------------------
 
+(defn- document->search-text
+  "Extract the plain searchable text from a document's prose-mirror body for the search index.
+
+  Receives the raw `:document` value as it comes off the ingestion query (a JSON string).
+  Returns nil if it can't be parsed, so a malformed/oversized body never blocks the rest of the
+  document (e.g. its name) from being indexed."
+  [document]
+  (when document
+    (try
+      (-> (cond-> document (string? document) json/decode+kw)
+          prose-mirror/ast->text
+          not-empty)
+      (catch Throwable _ nil))))
+
+;; The legacy (in-place) search engine LIKE-matches the raw `:document` JSON in SQL, but scores results
+;; against this cleaned-up text. Extracting prose here means a query that only hits JSON structure
+;; (e.g. "paragraph") matches no real content and is correctly dropped as a non-match.
+(defmethod search.config/column->string [:document :document]
+  [value _model _column]
+  (or (document->search-text value) ""))
+
 (search.spec/define-spec "document"
   {:model :model/Document
    :attrs {:archived true
@@ -123,7 +147,11 @@
            :updated-at :updated_at
            :last-viewed-at :last_viewed_at
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms [:name]
+   :search-terms {:name true
+                  :document document->search-text}
+   ;; Document bodies are full-text searchable (via `document->search-text` above) but are
+   ;; deliberately excluded from semantic-search embeddings.
+   :embedding-exclude #{:document}
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:document-name :name
                   :document-id :id

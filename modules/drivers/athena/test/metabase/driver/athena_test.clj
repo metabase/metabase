@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.athena-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.athena-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -11,6 +12,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.date-time-zone-functions-test :as qp-test.date-time-zone-functions-test]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -37,7 +39,7 @@
 
 (deftest sync-test
   (testing "sync with nested fields"
-    (with-redefs [athena/run-query (constantly nested-schema)]
+    (mt/with-dynamic-fn-redefs [athena/run-query (constantly nested-schema)]
       (is (= #{{:name              "key"
                 :base-type         :type/Integer
                 :database-type     "int"
@@ -56,6 +58,70 @@
     (is (= #{{:name "id", :base-type :type/Text, :database-type "string", :database-position 0}
              {:name "ts", :base-type :type/Text, :database-type "STRING", :database-position 1}}
            (#'athena/describe-table-fields-without-nested-fields :athena "test" "test" upper-case-schema-columns)))))
+
+;; the partition section format comes from Hive's DESCRIBE formatter; see
+;; `PARTITION_TRANSFORM_SPEC_SCHEMA` in
+;; https://github.com/apache/hive/blob/1cb455bbb6753e548e1435f4345b4e0d4644bf9f/ql/src/java/org/apache/hadoop/hive/ql/ddl/table/info/desc/DescTableDesc.java#L43
+(def ^:private iceberg-partitioned-schema
+  "DESCRIBE output for an Iceberg table partitioned by `identity(weather_id)` and
+  `identity(temporal_key)`. Unlike Hive tables, where the partition section repeats the columns
+  with their real types, Iceberg lists the partition transform (e.g. `identity`) in the type
+  column."
+  [{:_col0 "weather_id\tstring\t"}
+   {:_col0 "subcounty_id\tstring\t"}
+   {:_col0 "weight\tfloat\t"}
+   {:_col0 "unused_index\tint\t"}
+   {:_col0 "temporal_key\tstring\t"}
+   {:_col0 "# Partition Transform Information\t\t"}
+   {:_col0 "# col_name\ttransform_type\t"}
+   {:_col0 "weather_id\tidentity\t"}
+   {:_col0 "temporal_key\tidentity\t"}])
+
+(def ^:private hive-partitioned-schema
+  "The same table as a Hive-style partitioned table: the partition section repeats the partition
+  columns with their real types."
+  [{:_col0 "weather_id\tstring\t"}
+   {:_col0 "subcounty_id\tstring\t"}
+   {:_col0 "weight\tfloat\t"}
+   {:_col0 "unused_index\tint\t"}
+   {:_col0 "temporal_key\tstring\t"}
+   {:_col0 "# Partition Information\t\t"}
+   {:_col0 "# col_name\tdata_type\tcomment"}
+   {:_col0 "weather_id\tstring\t"}
+   {:_col0 "temporal_key\tstring\t"}])
+
+(deftest ^:parallel describe-iceberg-partitioned-table-test
+  (let [expected-fields #{{:name "weather_id", :base-type :type/Text, :database-type "string", :database-position 0}
+                          {:name "subcounty_id", :base-type :type/Text, :database-type "string", :database-position 1}
+                          {:name "weight", :base-type :type/Float, :database-type "float", :database-position 2}
+                          {:name "unused_index", :base-type :type/Integer, :database-type "int", :database-position 3}
+                          {:name "temporal_key", :base-type :type/Text, :database-type "string", :database-position 4}}]
+    (testing "Iceberg partition transform rows in DESCRIBE output shouldn't create duplicate Fields (#75579)"
+      (mt/with-dynamic-fn-redefs [athena/run-query (constantly iceberg-partitioned-schema)]
+        (is (= expected-fields
+               (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))
+    (testing "partition columns repeated Hive-style with their real types are only synced once"
+      (mt/with-dynamic-fn-redefs [athena/run-query (constantly hive-partitioned-schema)]
+        (is (= expected-fields
+               (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))
+    (testing "repeated partition rows are dropped even if the partition section marker is missing"
+      (mt/with-dynamic-fn-redefs [athena/run-query (constantly [{:_col0 "weather_id\tstring\t"}
+                                                                {:_col0 "subcounty_id\tstring\t"}
+                                                                {:_col0 "weight\tfloat\t"}
+                                                                {:_col0 "unused_index\tint\t"}
+                                                                {:_col0 "temporal_key\tstring\t"}
+                                                                {:_col0 "weather_id\tidentity\t"}
+                                                                {:_col0 "temporal_key\tidentity\t"}])]
+        (is (= expected-fields
+               (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))))
+
+(deftest ^:parallel describe-unknown-database-type-test
+  (testing "unknown database types should fall back to :type/* instead of a nil base type (#75579)"
+    (mt/with-dynamic-fn-redefs [athena/run-query (constantly [{:_col0 "id\tint\t"}
+                                                              {:_col0 "hll\thyperloglog\t"}])]
+      (is (= #{{:name "id", :base-type :type/Integer, :database-type "int", :database-position 0}
+               {:name "hll", :base-type :type/*, :database-type "hyperloglog", :database-position 1}}
+             (#'athena/describe-table-fields-with-nested-fields "test" "test" "test"))))))
 
 (deftest ^:parallel describe-table-fields-with-nested-fields-test
   (driver/with-driver :athena
@@ -272,44 +338,50 @@
             (is (str/starts-with? result "SELECT"))))))))
 
 (deftest describe-table-works-without-get-table-metadata-permission-test
-  (testing "`describe-table` works if the AWS user's IAM policy doesn't include athena:GetTableMetadata permissions")
-  (mt/test-driver :athena
-    (mt/dataset airports
-      (let [catalog "AwsDataCatalog" ; The bug only happens when :catalog is not nil
-            details (assoc (:details (mt/db))
+  (testing "`describe-table` works if the AWS user's IAM policy doesn't include athena:GetTableMetadata permissions"
+    (mt/test-driver :athena
+      (mt/dataset airports
+        (let [catalog "AwsDataCatalog" ; The bug only happens when :catalog is not nil
+              details (assoc (:details (mt/db))
                              ;; these credentials are for a user that doesn't have athena:GetTableMetadata permissions
-                           :access_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-access-key)
-                           :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
-                           :catalog catalog)]
-        (mt/with-temp [:model/Database db {:engine :athena, :details details}]
-          (sync/sync-database! db {:scan :schema})
-          (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
-            (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
+                             :access_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-access-key)
+                             :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
+                             :catalog catalog)]
+          (mt/with-temp [:model/Database db {:engine :athena, :details details}]
+            (sync/sync-database! db {:scan :schema})
+            (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
+              (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
                 ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
                 ;; undo the changes in https://github.com/metabase/metabase/pull/44032
-              (is (empty? (sql-jdbc.execute/do-with-connection-with-options
-                           :athena
-                           db
-                           nil
-                           (fn [^java.sql.Connection conn]
-                             (let [metadata (.getMetaData conn)]
-                               (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
-            (testing "`describe-table` returns the fields anyway"
-              (is (not-empty (:fields (driver/describe-table :athena db table)))))
-            (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441)"
-              (let [get-columns-called (volatile! false)]
-                (with-redefs [athena/get-columns (fn [& _]
-                                                   (vreset! get-columns-called true)
-                                                   [{:column_name "c" :type_name "bigint"}
-                                                    {:column_name "c" :type_name "string"}])]
-                  (is (= #{{:database-position 0, :name "id", :database-type "int", :base-type :type/Integer}
-                           {:database-position 1, :name "name", :database-type "string", :base-type :type/Text}
-                           {:database-position 2, :name "code", :database-type "string", :base-type :type/Text}
-                           {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
-                           {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
-                           {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
-                         (:fields (driver/describe-table :athena db table))))
-                  (is (true? @get-columns-called)))))))))))
+                (is (empty? (sql-jdbc.execute/do-with-connection-with-options
+                             :athena
+                             db
+                             nil
+                             (fn [^java.sql.Connection conn]
+                               (let [metadata (.getMetaData conn)]
+                                 (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
+              (testing "`describe-table` returns the fields anyway"
+                (is (not-empty (:fields (driver/describe-table :athena db table))))))))))))
+
+(deftest describe-table-falls-back-to-describe-on-duplicate-jdbc-columns-test
+  (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441, GHY-3273)"
+    (mt/test-driver :athena
+      (mt/dataset airports
+        (let [db                 (mt/db)
+              table              (t2/select-one :model/Table :db_id (:id db) :name "airport")
+              get-columns-called (volatile! false)]
+          (mt/with-dynamic-fn-redefs [athena/get-columns (fn [& _]
+                                                           (vreset! get-columns-called true)
+                                                           [{:column_name "c" :type_name "bigint"}
+                                                            {:column_name "c" :type_name "string"}])]
+            (is (= #{{:database-position 0, :name "id", :database-type "int", :base-type :type/Integer}
+                     {:database-position 1, :name "name", :database-type "string", :base-type :type/Text}
+                     {:database-position 2, :name "code", :database-type "string", :base-type :type/Text}
+                     {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
+                     {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
+                     {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
+                   (:fields (driver/describe-table :athena db table))))
+            (is (true? @get-columns-called))))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"
@@ -504,3 +576,28 @@
                             {:name "t", :schema "db_router_data", :description nil}
                             {:name "times", :schema "diff_time_zones_athena_cases", :description nil}}}
                  filtered-tables)))))))
+
+(deftest ^:parallel regex-text-parameters-in-native-template-tags-test
+  (testing "Text parameters should be compiled inline (#33878)"
+    (driver/with-driver :athena
+      (letfn [(query-with-param [parameter-value]
+                {:lib/type     :mbql/query
+                 :lib/metadata meta/metadata-provider
+                 :database     (meta/id)
+                 :stages       [{:lib/type      :mbql.stage/native
+                                 :template-tags {"category_name" {:name         "category_name"
+                                                                  :display-name "Category name"
+                                                                  :type         :text
+                                                                  :required     true}}
+                                 :native        "SELECT * FROM categories WHERE regexp_like(name, {{category_name}})"}]
+                 :parameters   [{:type   :text
+                                 :target [:variable [:template-tag "category_name"]]
+                                 :value  parameter-value}]})]
+        (are [parameter-value expected] (=? {:query expected}
+                                            (qp.compile/compile (query-with-param parameter-value)))
+          "^(?!.*\btrial_text\b).*$"
+          "SELECT * FROM categories WHERE regexp_like(name, '^(?!.*\btrial_text\b).*$')"
+
+          ;; should escape single quotes
+          "'); OR 1 = 1 --"
+          "SELECT * FROM categories WHERE regexp_like(name, '''); OR 1 = 1 --')")))))

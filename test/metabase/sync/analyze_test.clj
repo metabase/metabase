@@ -232,7 +232,7 @@
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (with-redefs [quick-task/submit-task! (fn [task] (task))]
+    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
       (mt/with-temp [:model/Table table (fake-table)
                      :model/Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")
@@ -261,7 +261,6 @@
     (let [field (mi/instance :model/Field {:base_type :type/Integer :name "foo_type"})
           fingerprint (fn [c] {:global {:distinct-count c :nil% 0}})
           threshold classifiers.category/category-cardinality-threshold]
-
       (are [card]
 
            (->
@@ -272,7 +271,6 @@
         (dec threshold)
         threshold
         (inc threshold))
-
       (is (not-category (classifiers.name/infer-and-assoc-semantic-type-by-name field {}))))))
 
 (deftest classify-bool-values-test

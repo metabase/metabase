@@ -6,12 +6,12 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import { DASHBOARD_APP_ACTIONS } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import {
   createMockDashboardState,
   createMockStoreDashboard,
 } from "metabase/redux/store/mocks";
-import type { IconName } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -69,7 +69,7 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   [DASHBOARD_ACTION.DASHBOARD_SHARING]: {
     icon: "share",
-    tooltip: "Sharing",
+    tooltip: "Share",
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     icon: "clock",

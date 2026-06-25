@@ -26,7 +26,7 @@
   [& body]
   `(when (search/supports-index?)
      (search.index/with-temp-index-table
-      ;; We need ingestion to happen on the same thread so that it uses the right search index.
+       ;; We need ingestion to happen on the same thread so that it uses the right search index.
        (with-sync-search-indexing
          ~@body))))
 

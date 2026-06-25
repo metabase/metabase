@@ -3,14 +3,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { getNewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
+import { NewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Icon, Menu } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
@@ -42,18 +42,15 @@ export const NewItemMenuView = ({
 
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
-  const { canUseNlq } = useUserMetabotPermissions();
+  const { hasNlqAccess } = useUserMetabotPermissions();
 
   const menuItems = useMemo(() => {
     const items = [];
 
-    const aiExplorationItem = getNewMenuItemAIExploration(
-      hasDataAccess,
-      collectionId,
-      canUseNlq,
-    );
-    if (aiExplorationItem) {
-      items.push(aiExplorationItem);
+    if (hasDataAccess && hasNlqAccess) {
+      items.push(
+        <NewMenuItemAIExploration key="nlq" collectionId={collectionId} />,
+      );
     }
 
     if (hasDataAccess) {
@@ -128,7 +125,7 @@ export const NewItemMenuView = ({
     hasDatabaseWithJsonEngine,
     dispatch,
     canWriteToCollections,
-    canUseNlq,
+    hasNlqAccess,
   ]);
 
   if (menuItems.length === 0) {

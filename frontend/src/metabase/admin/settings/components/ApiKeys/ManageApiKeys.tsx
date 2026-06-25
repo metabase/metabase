@@ -1,148 +1,221 @@
-import { useMemo, useState } from "react";
+import type { Row } from "@tanstack/react-table";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg?component";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useListApiKeysQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { ClientSortableTable } from "metabase/common/components/Table";
-import CS from "metabase/css/core/index.css";
 import {
+  ActionIcon,
+  Box,
   Button,
+  Card,
+  Center,
   Ellipsified,
   Group,
   Icon,
+  Menu,
   Stack,
   Text,
   Title,
+  TreeTable,
+  type TreeTableColumnDef,
+  useTreeTableInstance,
 } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
-import { formatDateTimeWithUnit } from "metabase/utils/formatting/date";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import type { ApiKey } from "metabase-types/api";
 
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
-import type { FlatApiKey } from "./utils";
-import { flattenApiKey, formatMaskedKey } from "./utils";
+import S from "./ManageApiKeys.module.css";
+import { formatMaskedKey } from "./utils";
 
 const { fontFamilyMonospace } = getThemeOverrides();
 
 type Modal = null | "create" | "edit" | "delete";
 
-function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
+const getNodeId = (apiKey: ApiKey) => String(apiKey.id);
+
+// TODO: replace with the shared `metabase/common/components/EmptyState` once it's migrated off Emotion (UXW-3641).
+function EmptyState() {
   return (
-    <Stack
-      mt="xl"
-      align="center"
-      justify="center"
-      gap="sm"
-      data-testid="empty-table-warning"
-    >
-      <Title order={2}>{t`No API keys here yet`}</Title>
-      <Text mb="md">
-        {t`You can create an API key to make API calls programmatically.`}
-      </Text>
-      <Button key="create-key-button" variant="filled" onClick={onCreate}>
-        {t`Create API key`}
-      </Button>
-    </Stack>
+    <Center mih="20rem" data-testid="empty-table-warning">
+      <Stack align="center" gap="sm">
+        <Box c="text-primary" lh={0}>
+          <ApiKeysEmptyIllustration aria-hidden />
+        </Box>
+        <Text
+          c="text-tertiary"
+          size="sm"
+          ta="center"
+        >{t`No API keys yet`}</Text>
+      </Stack>
+    </Center>
+  );
+}
+
+function ApiKeyActionsMenu({
+  apiKey,
+  onEdit,
+  onDelete,
+}: {
+  apiKey: ApiKey;
+  onEdit: (apiKey: ApiKey) => void;
+  onDelete: (apiKey: ApiKey) => void;
+}) {
+  return (
+    <Menu shadow="md" position="bottom-end">
+      <Menu.Target>
+        <ActionIcon
+          variant="subtle"
+          aria-label={t`API key actions`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Icon name="ellipsis" />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
+        <Menu.Item
+          leftSection={<Icon name="pencil" />}
+          onClick={() => onEdit(apiKey)}
+        >
+          {t`Edit`}
+        </Menu.Item>
+        <Menu.Item
+          leftSection={<Icon name="trash" />}
+          onClick={() => onDelete(apiKey)}
+        >
+          {t`Delete`}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
+
+function useApiKeyColumns({
+  onEdit,
+  onDelete,
+}: {
+  onEdit: (apiKey: ApiKey) => void;
+  onDelete: (apiKey: ApiKey) => void;
+}): TreeTableColumnDef<ApiKey>[] {
+  return useMemo(
+    () => [
+      {
+        id: "name",
+        header: t`Key name`,
+        minWidth: 140,
+        enableSorting: true,
+        accessorFn: (apiKey) => apiKey.name,
+        cell: ({ row }) => <Ellipsified>{row.original.name}</Ellipsified>,
+      },
+      {
+        id: "group_name",
+        header: t`Group`,
+        minWidth: 130,
+        enableSorting: true,
+        accessorFn: (apiKey) => apiKey.group.name,
+        cell: ({ row }) => <Ellipsified>{row.original.group.name}</Ellipsified>,
+      },
+      {
+        id: "masked_key",
+        header: t`Key`,
+        minWidth: 130,
+        enableSorting: false,
+        accessorFn: (apiKey) => apiKey.masked_key,
+        cell: ({ row }) => (
+          <Text ff={fontFamilyMonospace as string}>
+            {formatMaskedKey(row.original.masked_key)}
+          </Text>
+        ),
+      },
+      {
+        id: "updated_by_name",
+        header: t`Last modified by`,
+        minWidth: 130,
+        enableSorting: true,
+        accessorFn: (apiKey) => apiKey.updated_by?.common_name ?? "",
+        cell: ({ row }) => (
+          <Ellipsified>
+            {row.original.updated_by?.common_name ?? ""}
+          </Ellipsified>
+        ),
+      },
+      {
+        id: "updated_at",
+        header: t`Last modified on`,
+        width: 200,
+        enableSorting: true,
+        sortDescFirst: true,
+        accessorFn: (apiKey) => apiKey.updated_at,
+        cell: ({ row }) =>
+          formatDateTimeWithUnit(row.original.updated_at, "minute"),
+      },
+      {
+        id: "actions",
+        header: "",
+        width: 64,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <ApiKeyActionsMenu
+            apiKey={row.original}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ),
+      },
+    ],
+    [onEdit, onDelete],
   );
 }
 
 function ApiKeysTable({
   apiKeys,
-  setActiveApiKey,
-  setModal,
-  loading,
-  error,
+  onEdit,
+  onDelete,
 }: {
-  apiKeys?: ApiKey[];
-  setActiveApiKey: (apiKey: ApiKey) => void;
-  setModal: (modal: Modal) => void;
-  loading: boolean;
-  error?: unknown;
+  apiKeys: ApiKey[];
+  onEdit: (apiKey: ApiKey) => void;
+  onDelete: (apiKey: ApiKey) => void;
 }) {
-  const flatApiKeys = useMemo(() => apiKeys?.map(flattenApiKey), [apiKeys]);
+  const columns = useApiKeyColumns({ onEdit, onDelete });
+  const instance = useTreeTableInstance<ApiKey>({
+    data: apiKeys,
+    columns,
+    getNodeId,
+    defaultRowHeight: 48,
+  });
 
-  if (loading || error) {
-    return <DelayedLoadingAndErrorWrapper loading={loading} error={error} />;
-  }
+  const getRowProps = useCallback(
+    (row: Row<ApiKey>) => ({
+      "data-testid": `api-key-row-${row.original.id}`,
+      "aria-label": row.original.name,
+    }),
+    [],
+  );
 
-  if (apiKeys?.length === 0 || !apiKeys || !flatApiKeys) {
-    return <EmptyTableWarning onCreate={() => setModal("create")} />;
-  }
-
-  const columns = [
-    { key: "name", name: t`Key name` },
-    { key: "group_name", name: t`Group` },
-    { key: "masked_key", name: t`Key` },
-    { key: "updated_by_name", name: t`Last modified by` },
-    { key: "updated_at", name: t`Last modified on` },
-    { key: "actions", name: "", sortable: false },
-  ];
+  const handleRowClick = useCallback(
+    (row: Row<ApiKey>) => onEdit(row.original),
+    [onEdit],
+  );
 
   return (
-    <ClientSortableTable
-      data-testid="api-keys-table"
-      columns={columns}
-      rows={flatApiKeys}
-      rowRenderer={(row) => (
-        <ApiKeyRow
-          apiKey={row}
-          setActiveApiKey={setActiveApiKey}
-          setModal={setModal}
-        />
-      )}
-    />
+    <Box data-testid="api-keys-table">
+      <TreeTable
+        instance={instance}
+        hierarchical={false}
+        headerVariant="pill"
+        ariaLabel={t`API keys`}
+        getRowProps={getRowProps}
+        onRowClick={handleRowClick}
+        classNames={{ cell: S.cell, row: S.row }}
+      />
+    </Box>
   );
 }
-
-const ApiKeyRow = ({
-  apiKey,
-  setActiveApiKey,
-  setModal,
-}: {
-  apiKey: FlatApiKey;
-  setActiveApiKey: (apiKey: ApiKey) => void;
-  setModal: (modal: Modal) => void;
-}) => (
-  <tr>
-    <td className={CS.textBold} style={{ maxWidth: 400 }}>
-      <Ellipsified>{apiKey.name}</Ellipsified>
-    </td>
-    <td>{apiKey.group.name}</td>
-    <td>
-      <Text ff={fontFamilyMonospace as string}>
-        {formatMaskedKey(apiKey.masked_key)}
-      </Text>
-    </td>
-    <td>{apiKey.updated_by.common_name}</td>
-    <td>{formatDateTimeWithUnit(apiKey.updated_at, "minute")}</td>
-    <td>
-      <Group gap="md" py="md">
-        <Icon
-          name="pencil"
-          className={CS.cursorPointer}
-          onClick={() => {
-            setActiveApiKey(apiKey);
-            setModal("edit");
-          }}
-        />
-        <Icon
-          name="trash"
-          className={CS.cursorPointer}
-          onClick={() => {
-            setActiveApiKey(apiKey);
-            setModal("delete");
-          }}
-        />
-      </Group>
-    </td>
-  </tr>
-);
 
 export const ManageApiKeys = () => {
   const [modal, setModal] = useState<Modal>(null);
@@ -152,44 +225,62 @@ export const ManageApiKeys = () => {
 
   const sortedApiKeys = useMemo(() => {
     if (!apiKeys) {
-      return;
+      return [];
     }
     return [...apiKeys].sort((a, b) => a.name.localeCompare(b.name));
   }, [apiKeys]);
 
   const handleClose = () => setModal(null);
+  const handleEdit = useCallback((apiKey: ApiKey) => {
+    setActiveApiKey(apiKey);
+    setModal("edit");
+  }, []);
+  const handleDelete = useCallback((apiKey: ApiKey) => {
+    setActiveApiKey(apiKey);
+    setModal("delete");
+  }, []);
+
+  const hasKeys = sortedApiKeys.length > 0;
+  const showLoadingOrError = isLoading || Boolean(error);
 
   return (
-    <SettingsPageWrapper title={t`API keys`}>
-      <SettingsSection>
-        <ApiKeyModals
-          onClose={handleClose}
-          modal={modal}
-          activeApiKey={activeApiKey}
-        />
-        <Stack gap="lg">
-          <Group
-            justify="space-between"
-            align="center"
-            data-testid="api-keys-settings-header"
-          >
-            <Text c="text-secondary">
-              {t`Allow users to use API keys to authenticate their API calls.`}
-            </Text>
-            <Button
-              variant="filled"
-              onClick={() => setModal("create")}
-            >{t`Create API key`}</Button>
-          </Group>
+    <SettingsPageWrapper>
+      <ApiKeyModals
+        onClose={handleClose}
+        modal={modal}
+        activeApiKey={activeApiKey}
+      />
+      <Group
+        justify="space-between"
+        align="flex-start"
+        gap="xl"
+        data-testid="api-keys-settings-header"
+      >
+        <Box>
+          <Title order={1}>{t`API keys`}</Title>
+          <Text c="text-secondary" maw="40rem">
+            {t`Create API keys to let users authenticate API calls or make them programmatically.`}
+          </Text>
+        </Box>
+        <Button variant="filled" onClick={() => setModal("create")}>
+          {t`Create an API key`}
+        </Button>
+      </Group>
+      <Card withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
+        {showLoadingOrError ? (
+          <Box p="xl" mih="20rem">
+            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+          </Box>
+        ) : hasKeys ? (
           <ApiKeysTable
-            loading={isLoading}
-            error={error}
             apiKeys={sortedApiKeys}
-            setActiveApiKey={setActiveApiKey}
-            setModal={setModal}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
           />
-        </Stack>
-      </SettingsSection>
+        ) : (
+          <EmptyState />
+        )}
+      </Card>
     </SettingsPageWrapper>
   );
 };

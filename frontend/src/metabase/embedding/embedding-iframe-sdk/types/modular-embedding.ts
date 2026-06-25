@@ -76,6 +76,16 @@ export interface MetabaseDashboardAttributes {
   "initial-parameters"?: object;
 
   /**
+   * Controlled dashboard filters values, e.g. `{ 'productId': '42' }`.
+   * Setting this attribute supersedes `initial-parameters` as the seed
+   * and stays in sync with subsequent mutations. Pair with the
+   * `parameters-change` DOM event to track edits.
+   *
+   * @remarks Pro/Enterprise, Guest embed
+   */
+  parameters?: object;
+
+  /**
    * List of filter names to hide from the dashboard, e.g. `['productId']`.
    *
    * @remarks Pro/Enterprise
@@ -162,6 +172,16 @@ export interface MetabaseQuestionAttributes {
    * @remarks Pro/Enterprise, Guest embed
    */
   "initial-sql-parameters"?: object;
+
+  /**
+   * Controlled SQL parameter values, e.g. `{ "productId": "42" }`. Setting
+   * this attribute supersedes `initial-sql-parameters` as the seed and
+   * stays in sync with subsequent mutations. Pair with the
+   * `sql-parameters-change` DOM event to track edits.
+   *
+   * @remarks Pro/Enterprise, Guest embed
+   */
+  "sql-parameters"?: object;
 
   /**
    * List of parameter names to hide from the question.

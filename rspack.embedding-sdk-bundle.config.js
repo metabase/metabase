@@ -8,6 +8,9 @@ const BundleAnalyzerPlugin =
 const prefixwrap = require("postcss-prefixwrap");
 
 const mainConfig = require("./rspack.main.config");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
 const { resolve } = require("path");
 const path = require("path");
 
@@ -29,6 +32,9 @@ const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
 const {
   SDK_BUNDLE_PATH,
   SDK_BUNDLE_FILENAME,
@@ -231,6 +237,7 @@ const config = {
   },
 
   plugins: [
+    ...bundleStatsPlugins("stats-embedding-sdk.json"),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
     // https://github.com/remarkjs/remark/discussions/903
@@ -351,6 +358,7 @@ const config = {
         analyzerMode: "static",
         reportFilename: BUILD_PATH + "/dist/report.html",
       }),
+    ...COMPRESSION_CONFIG,
   ].filter(Boolean),
 };
 

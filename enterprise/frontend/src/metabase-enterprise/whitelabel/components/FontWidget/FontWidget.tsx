@@ -1,11 +1,9 @@
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import {
-  BasicAdminSettingInput,
-  SetByEnvVar,
-} from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { Box } from "metabase/ui";
 
 import { FontFilesWidget } from "./FontFilesWidget";
@@ -57,6 +55,7 @@ export const FontWidget = () => {
             value={fontValue}
             name="application-font"
             inputType="select"
+            searchable
             onChange={(newValue) => handleChange(newValue as string)}
             options={fontOptions}
           />

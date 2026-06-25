@@ -9,14 +9,14 @@ summary: "Change how Metabot appears in Metabase for a branded look."
 
 _Admin > AI > Customization_
 
-Admins can change how Metabot displays itself in Metabase. 
+Admins can change how Metabot displays itself in Metabase.
 
 To navigate to the AI customization settings:
 
 1. Click the **grid** icon in the upper right.
 2. Click **Admin**.
 3. Go to the **AI** tab.
-4. Click on the **Customization* tab. 
+4. Click on the **Customization** tab.
 
 These customizations are just surface-level. If you want to change the AI's behavior, check out [System prompts](./system-prompts.md).
 
@@ -40,4 +40,3 @@ Once you've uploaded a custom icon, this toggle appears and controls whether the
 - [AI usage controls](./usage-controls.md)
 - [AI system prompts](./system-prompts.md)
 - [Metabot](./metabot.md)
-

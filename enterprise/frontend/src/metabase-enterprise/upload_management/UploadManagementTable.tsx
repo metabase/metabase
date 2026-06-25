@@ -19,7 +19,7 @@ import {
   Icon,
   Text,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import {
   useDeleteUploadTableMutation,
   useListUploadTablesQuery,

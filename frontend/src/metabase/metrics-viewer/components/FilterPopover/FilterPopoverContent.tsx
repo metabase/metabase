@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import { FilterPickerBody } from "metabase/common/metrics/components/FilterPicker/FilterPickerBody";
 import {
   Badge,
   Box,
@@ -124,7 +124,7 @@ export function FilterPopoverContent({
       return null;
     }
     return (
-      <Box w={FILTER_WIDTH}>
+      <Box miw={FILTER_WIDTH}>
         <FilterPickerBody
           definition={selected.definition}
           dimension={navState.dimension}

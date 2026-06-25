@@ -1,48 +1,25 @@
+import type { Location } from "history";
 import { dissoc } from "icepick";
 import { useState } from "react";
-import { type WithRouterProps, withRouter } from "react-router";
+import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
-import type { CopyDashboardFormProperties } from "metabase/dashboard/containers/CopyDashboardForm";
-import { Collections } from "metabase/entities/collections";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import { Dashboards } from "metabase/entities/dashboards";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import * as Urls from "metabase/utils/urls";
+import { useCopyDashboardMutation } from "metabase/api";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
+import type { CopyDashboardFormProperties } from "metabase/common/components/CopyDashboardForm";
+import { CopyModal } from "metabase/common/components/CopyModal";
+import { useDispatch, useSelector } from "metabase/redux";
+import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
 import { getDashboardComplete } from "../selectors";
 
-type OwnProps = {
+type DashboardCopyModalProps = {
   onClose: () => void;
+  params: { slug?: string };
+  location: Location;
 };
-
-const mapStateToProps = (state: State, props: OwnProps) => {
-  const dashboard = getDashboardComplete(state);
-  return {
-    dashboard,
-    initialCollectionId: Collections.selectors.getInitialCollectionId(state, {
-      ...props,
-      collectionId: dashboard?.collection_id,
-    }),
-  };
-};
-
-const mapDispatchToProps = {
-  copyDashboard: Dashboards.actions.copy,
-  onReplaceLocation: replace,
-};
-
-type StateProps = ReturnType<typeof mapStateToProps>;
-type DispatchProps = typeof mapDispatchToProps;
-
-type DashboardCopyModalProps = OwnProps &
-  StateProps &
-  DispatchProps &
-  WithRouterProps;
 
 const getTitle = (
   dashboard: Dashboard | null,
@@ -59,12 +36,17 @@ const getTitle = (
 
 const DashboardCopyModal = ({
   onClose,
-  onReplaceLocation,
-  copyDashboard,
-  dashboard,
-  initialCollectionId,
   params,
+  location,
 }: DashboardCopyModalProps) => {
+  const dispatch = useDispatch();
+  const [copyDashboard] = useCopyDashboardMutation();
+  const dashboard = useSelector(getDashboardComplete);
+  const initialCollectionId = useInitialCollectionId({
+    collectionId: dashboard?.collection_id,
+    params,
+    location,
+  });
   const [isShallowCopy, setIsShallowCopy] = useState(true);
   const dashboardIdFromSlug = Urls.extractEntityId(params?.slug);
 
@@ -80,7 +62,7 @@ const DashboardCopyModal = ({
   };
 
   return (
-    <EntityCopyModal
+    <CopyModal
       entityType="dashboards"
       entityObject={{
         ...dashboard,
@@ -88,19 +70,21 @@ const DashboardCopyModal = ({
       }}
       title={title}
       overwriteOnInitialValuesChange
-      copy={async (object) =>
-        await copyDashboard({ id: dashboardIdFromSlug }, dissoc(object, "id"))
-      }
+      copy={async (object) => {
+        const { is_shallow_copy, ...overrides } = dissoc(object, "id");
+        return await copyDashboard({
+          id: dashboardIdFromSlug,
+          ...overrides,
+          is_deep_copy: !is_shallow_copy,
+        }).unwrap();
+      }}
       onClose={onClose}
       onSaved={(savedDashboard: Dashboard) =>
-        onReplaceLocation(Urls.dashboard(savedDashboard))
+        dispatch(replace(Urls.dashboard(savedDashboard)))
       }
       onValuesChange={handleValuesChange}
     />
   );
 };
 
-export const DashboardCopyModalConnected = _.compose(
-  withRouter,
-  connect(mapStateToProps, mapDispatchToProps),
-)(DashboardCopyModal);
+export const DashboardCopyModalConnected = withRouter(DashboardCopyModal);

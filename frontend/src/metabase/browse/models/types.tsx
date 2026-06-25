@@ -1,16 +1,4 @@
-import type { RecentCollectionItem, SearchResult } from "metabase-types/api";
-
-/**
- * Model retrieved through the search endpoint
- */
-export type ModelResult = SearchResult<number, "dataset">;
-
-/**
- * Model retrieved through the recent views endpoint
- */
-export interface RecentModel extends RecentCollectionItem {
-  model: "dataset";
-}
+export type { ModelResult, RecentModel } from "metabase-types/api";
 
 export type ModelFilterSettings = {
   verified?: boolean;

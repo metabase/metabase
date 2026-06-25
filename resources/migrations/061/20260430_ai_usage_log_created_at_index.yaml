@@ -1,0 +1,19 @@
+## Index on ai_usage_log.created_at to support the Tokens-tab analytics charts,
+## which filter by date range and break out / bucket by created_at on every
+## render. Without the index, adhoc MBQL against v_ai_usage_log full-scans
+## the ledger.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-30T12:00:00
+      author: tyler
+      comment: Index on ai_usage_log.created_at for analytics-view time filtering
+      changes:
+        - createIndex:
+            indexName: idx_ai_usage_log_created_at
+            tableName: ai_usage_log
+            columns:
+              - column:
+                  name: created_at

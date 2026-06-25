@@ -1,5 +1,9 @@
 .inputWrapper {
   cursor: text;
+  min-height: 3rem;
+  padding: 0.5rem;
+  background: var(--mb-color-background_page-secondary);
+  border-radius: 1rem;
 }
 
 .inputField {
@@ -20,7 +24,7 @@
 }
 
 .cmMetricToken {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.25rem;
   padding: 0 0.25rem;
   line-height: 1.25rem;
@@ -36,7 +40,7 @@
   padding: 4px 8px;
   font-size: 0.75rem;
   color: var(--mb-color-error);
-  background: var(--mb-color-background-primary);
+  background: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-error);
   border-radius: var(--mantine-radius-sm, 4px);
   max-width: 20rem;

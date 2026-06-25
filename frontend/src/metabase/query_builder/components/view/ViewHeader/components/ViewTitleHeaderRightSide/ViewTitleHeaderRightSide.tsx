@@ -3,7 +3,6 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { AIQuestionAnalysisButton } from "metabase/metabot/components/AIQuestionAnalysisButton";
 import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -27,6 +26,8 @@ import { QuestionActions } from "../QuestionActions";
 import { QuestionNotebookButton } from "../QuestionNotebookButton";
 import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
 import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
+
+import { QuestionSharingMenu } from "./QuestionSharingMenu/QuestionSharingMenu";
 
 interface ViewTitleHeaderRightSideProps {
   question: Question;
@@ -214,7 +215,6 @@ export function ViewTitleHeaderRightSide({
             )}
             iconSize={16}
             onlyIcon
-            medium
             isRunning={isRunning}
             isDirty={isResultDirty}
             onRun={() => runQuestionQuery({ ignoreCache: true })}

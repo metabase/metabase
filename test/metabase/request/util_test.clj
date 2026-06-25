@@ -42,7 +42,14 @@
                               {"front-end-https" "on"}         true
                               {"front-end-https" "off"}        false
                               {"origin" "https://mysite.com"}  true
-                              {"origin" "http://mysite.com"}   false}]
+                              {"origin" "http://mysite.com"}   false
+                              ;; a blank proto header must fall through to the boolean HTTPS indicators (BOT-1617)
+                              {"x-forwarded-proto" "" "x-forwarded-ssl" "on"}          true
+                              {"x-forwarded-proto" "" "front-end-https" "on"}          true
+                              {"x-forwarded-proto" "  " "origin" "https://mysite.com"} true
+                              ;; the first hop of a comma-separated chain wins
+                              {"x-forwarded-proto" "https, http"} true
+                              {"x-forwarded-proto" "HTTPS"}       true}]
     (testing (pr-str (list 'https? {:headers headers}))
       (is (= expected
              (req.util/https? {:headers headers}))))))
@@ -98,7 +105,6 @@
     (testing "request with no forwarding"
       (is (= "127.0.0.1"
              (request.current/ip-address request))))
-
     (testing "request with forwarding"
       (let [mock-request (-> (ring.mock/request :get "api/session")
                              (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
@@ -115,7 +121,6 @@
                                  (ring.mock/header "x-proxyuser-ip" "1.2.3.4"))]
             (is (= "1.2.3.4"
                    (request.current/ip-address mock-request)))))))
-
     (testing "forwarding explicitly disabled via MB_NOT_BEHIND_PROXY=true"
       (mt/with-temp-env-var-value! [mb-not-behind-proxy "true"]
         (let [mock-request (-> (ring.mock/request :get "api/session")
@@ -194,6 +199,6 @@
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/requests))))))
   (testing "increments :metabase-geocoding/errors on failed geocoding"
     (mt/with-prometheus-system! [_ system]
-      (with-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
         (req.util/geocode-ip-addresses ["8.8.8.8"])
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))

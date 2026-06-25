@@ -1,11 +1,13 @@
 (ns metabase.metabot.tools.entity-details-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.metabot.tools.entity-details-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -150,10 +152,8 @@
               output (:structured-output result)
               related-tables (:related_tables output)
               products-related (first (filter #(= products-id (:id %)) related-tables))]
-
           (testing "Orders table has Products as a related table"
             (is (some? products-related)))
-
           (testing "Related Products table has correct number of fields (excluding implicitly joinable fields)"
             (is (= expected-products-field-count
                    (count (:fields products-related)))
@@ -190,7 +190,6 @@
                                                             :entity-id (mt/id :orders)})
                   output (:structured-output result)]
               (is (nil? (:measures output)))))
-
           (testing "with_measures: true includes measures for the table"
             (let [result (entity-details/get-table-details {:entity-type :table
                                                             :entity-id (mt/id :orders)
@@ -199,11 +198,26 @@
                   measures (:measures output)]
               (is (sequential? measures))
               (is (= 1 (count measures)))
-              (let [measure (first measures)]
+              (let [measure (first measures)
+                    definition (:definition measure)]
                 (is (= measure-id (:id measure)))
                 (is (= "Total Revenue" (:name measure)))
                 (is (string? (:definition-description measure)))
-                (is (map? (:definition measure)))))))))))
+                (testing "portable_entity_id is surfaced (21-char NanoID for `[measure, {}, <pid>]` clauses)"
+                  (is (string? (:portable-entity-id measure)))
+                  (is (= 21 (count (:portable-entity-id measure)))))
+                (testing "definition is a portable aggregation clause array"
+                  (is (vector? definition))
+                  (is (= 1 (count definition))
+                      "measures have exactly one aggregation clause")
+                  (let [[head opts arg] (first definition)]
+                    (is (= "sum" head) "head is a string operator")
+                    (is (map? opts) "options map at position 1")
+                    (is (= "field" (first arg)) "argument is a field clause")
+                    (is (vector? (nth arg 2))
+                        "field's FK is a portable string array (not numeric id)")
+                    (is (every? (some-fn string? nil?) (nth arg 2))
+                        "every portable FK segment is a string (or null for schemaless)")))))))))))
 
 (deftest get-table-details-with-segments-test
   (testing "get-table-details returns segments when with_segments is true"
@@ -217,7 +231,6 @@
                                                             :entity-id (mt/id :orders)})
                   output (:structured-output result)]
               (is (nil? (:segments output)))))
-
           (testing "with_segments: true includes segments for the table"
             (let [result (entity-details/get-table-details {:entity-type :table
                                                             :entity-id (mt/id :orders)
@@ -226,11 +239,111 @@
                   segments (:segments output)]
               (is (sequential? segments))
               (is (= 1 (count segments)))
-              (let [segment (first segments)]
+              (let [segment (first segments)
+                    definition (:definition segment)]
                 (is (= segment-id (:id segment)))
                 (is (= "High Value Orders" (:name segment)))
                 (is (string? (:definition-description segment)))
-                (is (map? (:definition segment)))))))))))
+                (testing "portable_entity_id is surfaced (21-char NanoID for `[segment, {}, <pid>]` clauses)"
+                  (is (string? (:portable-entity-id segment)))
+                  (is (= 21 (count (:portable-entity-id segment)))))
+                (testing "definition is a portable filter clause array"
+                  (is (vector? definition))
+                  (is (>= (count definition) 1)
+                      "segments have one or more filter clauses")
+                  (let [[head opts field-clause value] (first definition)]
+                    (is (= ">" head) "head is a string operator")
+                    (is (map? opts) "options map at position 1")
+                    (is (= "field" (first field-clause)) "argument is a field clause")
+                    (is (vector? (nth field-clause 2))
+                        "field's FK is a portable string array")
+                    (is (= 100 value) "literal comparison value is preserved")))))))))))
+
+(deftest measure-segment-definition-round-trips-through-construct-test
+  (testing (str "the exported measure/segment definition is in the exact portable form "
+                "an agent can paste into construct_notebook_query's external-query — "
+                "regression test for benchmark/5 Tables - Measures and Segments failures")
+    (let [measure-def (measure-definition (mt/id :orders) (mt/id :orders :total))
+          segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 100)
+          table-fk    [(:name (lib.metadata/database (mt/metadata-provider)))
+                       (:schema (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                       "ORDERS"]]
+      (mt/with-temp [:model/Measure _ {:name "Round-trip Measure"
+                                       :table_id (mt/id :orders)
+                                       :definition measure-def}
+                     :model/Segment _ {:name "Round-trip Segment"
+                                       :table_id (mt/id :orders)
+                                       :definition segment-def}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [result   (entity-details/get-table-details
+                          {:entity-type :table :entity-id (mt/id :orders)
+                           :with-measures? true :with-segments? true})
+                output   (:structured-output result)
+                m-clause (-> output :measures first :definition)
+                s-clause (-> output :segments first :definition)
+                ;; Simulate the agent pasting these clauses into a fresh external-query.
+                fresh-query {:lib/type "mbql/query"
+                             :stages [{:lib/type "mbql.stage/mbql"
+                                       :source-table table-fk
+                                       :aggregation m-clause
+                                       :filters s-clause}]}]
+            (testing "external-query containing the pasted clauses resolves cleanly"
+              ;; require the construct-tool pipeline lazily — it's the agent-facing entry point
+              (let [repr      (requiring-resolve 'metabase.agent-lib.representations/external-query->portable)
+                    repair    (requiring-resolve 'metabase.agent-lib.representations.repair/repair)
+                    resolve-q (requiring-resolve 'metabase.agent-lib.representations.resolve/resolve-query)
+                    mp        ((requiring-resolve 'metabase.lib-be.core/application-database-metadata-provider) (mt/id))
+                    cs        @(requiring-resolve 'metabase.models.serialization.resolve.mp/unchecked-app-db-content-store)
+                    portable  (repr fresh-query)
+                    repaired  (repair mp portable cs)
+                    resolved  (resolve-q mp repaired cs)]
+                (is (= :mbql/query (:lib/type resolved)))
+                (is (= 1 (count (get-in resolved [:stages 0 :aggregation]))))
+                (is (= 1 (count (get-in resolved [:stages 0 :filters]))))))))))))
+
+(deftest measure-segment-opaque-id-clause-round-trips-test
+  (testing (str "the `portable_entity_id` surfaced on `<measure>` / `<segment>` can be used in "
+                "`[measure, {}, pid]` / `[segment, {}, pid]` clauses end-to-end — regression "
+                "test for benchmark/6 Tables-MS rubric (data_source must reference the ids)")
+    (let [measure-def (measure-definition (mt/id :orders) (mt/id :orders :total))
+          segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 100)
+          table-fk    [(:name (lib.metadata/database (mt/metadata-provider)))
+                       (:schema (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                       "ORDERS"]]
+      (mt/with-temp [:model/Measure {measure-id :id measure-pid :entity_id}
+                     {:name "Opaque Measure"
+                      :table_id (mt/id :orders)
+                      :definition measure-def}
+                     :model/Segment {segment-id :id segment-pid :entity_id}
+                     {:name "Opaque Segment"
+                      :table_id (mt/id :orders)
+                      :definition segment-def}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [;; Mirrors what the agent does: paste `[measure, {}, "<pid>"]` and
+                ;; `[segment, {}, "<pid>"]` into a fresh external-query and send it.
+                fresh-query {:lib/type "mbql/query"
+                             :stages [{:lib/type "mbql.stage/mbql"
+                                       :source-table table-fk
+                                       :aggregation [["measure" {} measure-pid]]
+                                       :filters [["segment" {} segment-pid]]}]}
+                repr      (requiring-resolve 'metabase.agent-lib.representations/external-query->portable)
+                repair    (requiring-resolve 'metabase.agent-lib.representations.repair/repair)
+                resolve-q (requiring-resolve 'metabase.agent-lib.representations.resolve/resolve-query)
+                mp        ((requiring-resolve 'metabase.lib-be.core/application-database-metadata-provider) (mt/id))
+                cs        @(requiring-resolve 'metabase.models.serialization.resolve.mp/unchecked-app-db-content-store)
+                portable  (repr fresh-query)
+                repaired  (repair mp portable cs)
+                resolved  (resolve-q mp repaired cs)]
+            (testing "measure clause resolves to numeric id (rubric's `data_source` check)"
+              (let [agg (get-in resolved [:stages 0 :aggregation])]
+                (is (= 1 (count agg)))
+                (is (= :measure (first (first agg))))
+                (is (= measure-id (nth (first agg) 2)))))
+            (testing "segment clause resolves to numeric id"
+              (let [filters (get-in resolved [:stages 0 :filters])]
+                (is (= 1 (count filters)))
+                (is (= :segment (first (first filters))))
+                (is (= segment-id (nth (first filters) 2)))))))))))
 
 (deftest get-table-details-measures-scoped-to-table-test
   (testing "get-table-details only returns measures for the requested table, not other tables"
@@ -271,7 +384,6 @@
             (let [result (entity-details/get-metric-details {:metric-id metric-id})
                   output (:structured-output result)]
               (is (nil? (:segments output)))))
-
           (testing "with_segments: true includes segments for the metric"
             (let [result (entity-details/get-metric-details {:metric-id metric-id
                                                              :with-segments? true})
@@ -282,3 +394,129 @@
               (let [segment (first segments)]
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
+
+;;; ============================================================
+;;; Base-table surfacing on get-metric-details (regression)
+;;; ============================================================
+
+(deftest get-metric-details-exposes-base-table-test
+  (testing (str "get-metric-details must populate `:base_table_id`, `:base_table_name`, and\n"
+                "`:base_table_portable_fk` so the LLM can write `source-table:` verbatim.\n"
+                "Regression: earlier code read `(some-> (:dataset-query card) :query :source-table)`,\n"
+                "which silently produced nil because the t2 row uses `:dataset_query` (snake_case)\n"
+                "and the query is MBQL 5 with `:stages[0] :source-table`, not legacy `:query`.\n"
+                "The fix reads `:table_id` directly from the card row.")
+    (let [mp (mt/metadata-provider)
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                  :database_id   (mt/id)
+                                                  :name          "Base-table Sample Metric"
+                                                  :type          :metric}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [output  (:structured-output (entity-details/get-metric-details
+                                             {:metric-id metric-id
+                                              :with-queryable-dimensions? false
+                                              :with-field-values? false}))
+                db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+                orders  (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
+            (is (= (mt/id :orders) (:base_table_id output)))
+            (is (= (:name orders)  (:base_table_name output)))
+            (is (= [db-name (:schema orders) (:name orders)]
+                   (:base_table_portable_fk output))
+                "portable FK should be `[database_name, schema, table_name]`")))))))
+
+;;; ============================================================
+;;; Portable entity_id in card details (step 11.2)
+;;; ============================================================
+
+(deftest get-entity-details-question-exposes-portable-entity-id-test
+  (testing "card details (question) expose :portable_entity_id for the agent to use in source-card"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id card-eid :entity_id}
+                       {:database_id  (mt/id)
+                        :type         :question
+                        :name         "My Saved Q"
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :venues)}}}]
+          (let [result (entity-details/get-table-details {:entity-type :question :entity-id card-id})
+                output (:structured-output result)]
+            (is (= :question (:type output)))
+            (is (= card-id (:id output)))
+            (is (= card-eid (:portable_entity_id output)))
+            (is (string? (:portable_entity_id output)))))))))
+
+(deftest get-entity-details-model-exposes-portable-entity-id-test
+  (testing "card details (model) also expose :portable_entity_id"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id card-eid :entity_id}
+                       {:database_id  (mt/id)
+                        :type         :model
+                        :name         "My Model"
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :venues)}}}]
+          (let [result (entity-details/get-table-details {:entity-type :model :entity-id card-id})
+                output (:structured-output result)]
+            (is (= :model (:type output)))
+            (is (= card-id (:id output)))
+            (is (= card-eid (:portable_entity_id output)))))))))
+
+(deftest card-details-exposes-query-json-structured-test
+  (testing "card-details surfaces the saved structured query as a portable representations map"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id  (mt/id)
+                        :type         :question
+                        :name         "Venues by Price"
+                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
+                                                              :breakout    [$price]})}]
+          (let [output (-> (entity-details/get-table-details {:entity-type :question :entity-id card-id})
+                           :structured-output)
+                exported (:query_json output)]
+            (is (map? exported)
+                "`:query_json` is present for an MBQL question")
+            (is (= "mbql/query" (get exported "lib/type")))
+            ;; Portable FK paths use the human-readable database name, not numeric ids.
+            (is (vector? (get-in exported ["stages" 0 "source-table"])))
+            (is (not (contains? exported "lib/metadata")))))))))
+
+(deftest card-details-exposes-query-json-native-test
+  (testing "card-details surfaces native saved queries as a portable repr map, preserving the SQL inside"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id  (mt/id)
+                        :type         :question
+                        :name         "Native Venues"
+                        :dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native   {:query "SELECT * FROM VENUES LIMIT 5"}}}]
+          (let [output (-> (entity-details/get-table-details {:entity-type :question :entity-id card-id})
+                           :structured-output)
+                exported (:query_json output)]
+            (is (map? exported))
+            (is (= "mbql/query" (get exported "lib/type")))
+            (is (= "mbql.stage/native" (get-in exported ["stages" 0 "lib/type"]))
+                "native stage is exported in the canonical repr form, not as a bare SQL string")
+            (is (= "SELECT * FROM VENUES LIMIT 5"
+                   (get-in exported ["stages" 0 "native"]))
+                "the SQL body itself is preserved verbatim inside `native:`")))))))
+
+(deftest get-report-details-includes-query-json-test
+  (testing "get-report-details (slim payload) carries `:query_json` so question->xml can render it"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id}
+                       {:database_id  (mt/id)
+                        :type         :question
+                        :name         "Q"
+                        :dataset_query (mt/mbql-query venues {:limit 3})}]
+          (let [output (-> (entity-details/get-report-details {:report-id card-id})
+                           :structured-output)]
+            (is (map? (:query_json output)))
+            (is (= "mbql/query" (get-in output [:query_json "lib/type"])))))))))

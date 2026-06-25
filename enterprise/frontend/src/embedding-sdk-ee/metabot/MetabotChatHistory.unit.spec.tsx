@@ -19,15 +19,15 @@ const makeVisibleState = (messages: MetabotChatMessage[]) =>
   );
 
 describe("MetabotChatHistory", () => {
-  it("should not render chart messages in the message list", () => {
+  it("should not render navigate_to data_part messages in the message list", () => {
     setup({
       ui: <MetabotChatHistory />,
       metabotInitialState: makeVisibleState([
         {
           id: "1",
           role: "agent",
-          type: "chart",
-          navigateTo: "/question#abc",
+          type: "data_part",
+          part: { type: "navigate_to", version: 1, value: "/question#abc" },
         },
       ]),
     });

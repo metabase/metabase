@@ -1,34 +1,12 @@
+/*
+ * EmbedFrame-specific styles.
+ *
+ * Shared theme class names (EmbedFrame, DashCard, Card, WithThemeBackground,
+ * etc.) are in metabase/embedding/theme.module.css — EmbedFrame.tsx imports both.
+ */
+
 body:where(:global(.mb-wrapper)) {
   background-color: transparent;
-}
-
-.EmbedFrame {
-  color: var(--mb-color-text-primary);
-}
-
-.EmbedFrame,
-/* this is to make it work when exporting to pdfs, where the EmbedFrame is not part of the exported dom */
-.WithThemeBackground {
-  background-color: var(--mb-color-bg-dashboard);
-  border-color: var(--mb-color-border);
-}
-
-.EmbedFrameHeader,
-.EmbedFrameFooter {
-  color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-bg-dashboard);
-}
-
-.EmbedFrame,
-.EmbedFrame .DashCard .Card,
-.EmbedFrame .ContentContainer,
-.EmbedFrame .EmbedFrameHeader,
-.EmbedFrame .Separator,
-.EmbedFrame .ParameterFieldSet,
-.EmbedFrame .ParametersWidgetContainer,
-.EmbedFrame .EmbedFrameFooter,
-.EmbedFrame .LogoBadge {
-  transition: var(--transition-theme-change);
 }
 
 .ParameterPanel.AllowSticky {
@@ -43,10 +21,10 @@ body:where(:global(.mb-wrapper)) {
 .ParameterPanel.IsSticky {
   background-color: color-mix(
     in srgb,
-    var(--mb-color-background-primary),
+    var(--mb-color-background_page-primary),
     var(--mb-color-bg-dashboard) 15%
   );
-  border-bottom-color: var(--mb-color-border);
+  border-bottom-color: var(--mb-color-border-neutral);
 }
 
 /**
@@ -73,37 +51,16 @@ body:where(:global(.mb-wrapper)) {
     var(--mb-color-text-primary-inverse) 45%,
     transparent
   );
-  --mb-color-background-secondary: var(
-    --mb-color-background-tertiary-inverseer
+  --mb-color-background_page-secondary: var(
+    --mb-color-background_page-tertiary-inverse
   );
 }
 
-.NoBackground {
-  --mb-color-bg-dashboard: transparent;
-}
-
 [data-metabase-theme="transparent"][data-metabase-theme="transparent"] {
-  .EmbedFrame {
-    background-color: transparent;
-
-    .DashCard .Card {
-      background-color: transparent;
-    }
-  }
-
-  .WithThemeBackground {
-    background-color: transparent;
-  }
-
-  .EmbedFrameHeader,
-  .EmbedFrameFooter {
-    background-color: transparent;
-  }
-
   .ParameterPanel.IsSticky {
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background-primary),
+      var(--mb-color-background_page-primary),
       transparent 15%
     );
     border-bottom-color: transparent;

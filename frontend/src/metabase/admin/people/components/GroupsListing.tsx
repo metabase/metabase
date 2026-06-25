@@ -3,10 +3,15 @@ import { useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
+import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/admin/utils/groups";
 import { useListApiKeysQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
-import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -22,11 +27,6 @@ import {
   Menu,
   UnstyledButton,
 } from "metabase/ui";
-import {
-  getGroupNameLocalized,
-  isAdminGroup,
-  isDefaultGroup,
-} from "metabase/utils/groups";
 import { KEYCODE_ENTER } from "metabase/utils/keyboard";
 import type { ApiKey, GroupInfo } from "metabase-types/api";
 
@@ -187,7 +187,7 @@ function EditingGroupRow({
   const textIsValid = group.name && group.name.length;
 
   return (
-    <Box component="tr" bd="1px solid var(--mb-color-brand)">
+    <Box component="tr" bd="1px solid var(--mb-color-core-brand)">
       <td>
         <Input
           fz="lg"
@@ -271,7 +271,7 @@ function GroupRow({
             user={{ name: getGroupNameLocalized(group) }}
             bg={backgroundColor}
           />
-          <Box component="span" fw={700} c="brand">
+          <Box component="span" fw={700} c="core-brand">
             {getGroupNameLocalized(group)}
           </Box>
         </Flex>
@@ -548,7 +548,7 @@ export const GroupsListing = (props: GroupsListingProps) => {
         closeButtonText={null}
         withCloseButton={false}
         confirmButtonText={t`Ok`}
-        confirmButtonProps={{ color: "brand" }}
+        confirmButtonProps={{ color: "core-brand" }}
         data-testid="alert-modal"
       />
     </AdminPaneLayout>

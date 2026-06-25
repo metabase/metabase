@@ -11,9 +11,34 @@
    [clojure.java.io :as io]
    [metabase.util.i18n :refer [trs]])
   (:import
-   (org.graalvm.polyglot Context HostAccess Source Value)))
+   (org.graalvm.polyglot Context Engine HostAccess Source Value)))
 
 (set! *warn-on-reflection* true)
+
+;; A singleton (one shared instance, not rebuilt per context) so all contexts sharing the `Engine` have identical
+;; host-access config, as GraalVM requires.
+
+(def ^:private no-host-class-lookup
+  "Predicate blocking all host class lookup. A singleton so all contexts sharing an engine have identical config."
+  (reify java.util.function.Predicate
+    (test [_ _] false)))
+
+(defn- new-js-engine
+  "Build a JS `Engine` to be shared across contexts. We run JS interpreted (no Graal compiler on a stock JDK), so
+  `engine.WarnInterpreterOnly` is silenced here on the engine (it's an engine-level option)."
+  ^Engine []
+  ;; https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md
+  (.. (Engine/newBuilder)
+      (option "engine.WarnInterpreterOnly" "false")
+      (build)))
+
+(defonce ^:private
+  ^{:doc "GraalVM `Engine` shared by every sandboxed JS context (static-viz, color selector, untrusted custom-viz
+          plugins). The engine owns the Truffle runtime + parsed-source cache, so contexts (and pool recycles) reuse
+          one engine instead of each standing up its own. The engine is a process-lifetime singleton (intentionally
+          never closed)."}
+  shared-sandboxed-js-engine
+  (delay (new-js-engine)))
 
 (defn threadlocal-fifo-memoizer
   "Returns a memoizer that is unique to each thread."
@@ -29,32 +54,10 @@
   All data must be passed as JSON strings and parsed in JS."
   ^Context []
   (.. (Context/newBuilder (into-array String ["js"]))
-      ;; https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md
-      (option "engine.WarnInterpreterOnly" "false")
+      (engine @shared-sandboxed-js-engine)
       (option "js.intl-402" "true")
       (allowHostAccess HostAccess/NONE)
-      (allowHostClassLookup (reify java.util.function.Predicate
-                              (test [_ _] false)))
-      (out System/out)
-      (err System/err)
-      (allowIO false)
-      (build)))
-
-(defn trusted-context
-  "Create an org.graalvm.polyglot.Context for trusted first-party javascript only.
-  Allows reading Clojure collections from JS (list/array access) but still blocks
-  Java class lookup, method invocation, and filesystem I/O."
-  ^Context []
-  (.. (Context/newBuilder (into-array String ["js"]))
-      (option "engine.WarnInterpreterOnly" "false")
-      (option "js.intl-402" "true")
-      (allowHostAccess (.. (HostAccess/newBuilder)
-                           (allowListAccess true)
-                           (allowArrayAccess true)
-                           (allowIterableAccess true)
-                           (build)))
-      (allowHostClassLookup (reify java.util.function.Predicate
-                              (test [_ _] false)))
+      (allowHostClassLookup no-host-class-lookup)
       (out System/out)
       (err System/err)
       (allowIO false)

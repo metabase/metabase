@@ -17,6 +17,8 @@ import { stampMetricCounts } from "../../utils/expression";
 
 export type MetricNameMap = Partial<Record<MetricSourceId, string>>;
 
+export const NO_COMMA_CHARS = new Set(["+", "-", "*", "/", "(", ","]);
+
 /**
  * Returns an array of human-readable expression strings interleaved with numbers
  * identifying when metrics are used multiple times in the expression.
@@ -44,10 +46,10 @@ export function buildExpressionForPill(
     } else if (token.type === "metric") {
       const name = metricNames[token.sourceId];
       curr += name ?? "";
-      if (token.count > 1) {
+      if (token.occurrenceCount > 1) {
         result.push(curr);
         curr = "";
-        result.push(token.count);
+        result.push(token.occurrenceCount);
       }
     } else if (token.type === "constant") {
       curr += String(token.value);
@@ -70,6 +72,69 @@ export function buildExpressionText(
 }
 
 export const ENTITY_SEPARATOR = ", ";
+
+/**
+ * Plans how to splice a selected metric name into the current formula text.
+ *
+ * Determines whether a leading "," separator is required (when the metric is
+ * chained after other content). Returns `isAtEndOfFormula` so the caller can
+ * decide whether to keep the dropdown open for a chained pick (no trailing
+ * separator is inserted — the dropdown is reopened programmatically instead).
+ * Trailing whitespace after the word being replaced is still swallowed so
+ * the formula doesn't accumulate stale spaces.
+ *
+ * Returned offsets are in post-change document coordinates, so `metricFrom`
+ * and `metricTo` can be passed straight to the metric-identity tracker.
+ */
+export function planMetricInsertion({
+  docText,
+  wordStart,
+  wordEnd,
+  metricName,
+}: {
+  docText: string;
+  wordStart: number;
+  wordEnd: number;
+  metricName: string;
+}): {
+  insertText: string;
+  replaceFrom: number;
+  replaceTo: number;
+  newCursorPos: number;
+  metricFrom: number;
+  metricTo: number;
+  needsLeadingComma: boolean;
+  isAtEndOfFormula: boolean;
+} {
+  const textBeforeWord = docText.slice(0, wordStart).trimEnd();
+  const lastChar = textBeforeWord[textBeforeWord.length - 1];
+  const needsLeadingComma =
+    textBeforeWord.length > 0 && !NO_COMMA_CHARS.has(lastChar);
+
+  // The selection lands the metric at the tail of the formula when nothing
+  // meaningful follows the word being replaced. Used by the caller to decide
+  // whether to reopen the dropdown for a chained pick.
+  const isAtEndOfFormula = docText.slice(wordEnd).trim().length === 0;
+
+  const leadingSep = needsLeadingComma ? ENTITY_SEPARATOR : "";
+  const insertText = leadingSep + metricName;
+  const replaceFrom = needsLeadingComma ? textBeforeWord.length : wordStart;
+  const replaceTo = isAtEndOfFormula ? docText.length : wordEnd;
+  const newCursorPos = replaceFrom + insertText.length;
+  const metricFrom = replaceFrom + leadingSep.length;
+  const metricTo = metricFrom + metricName.length;
+
+  return {
+    insertText,
+    replaceFrom,
+    replaceTo,
+    newCursorPos,
+    metricFrom,
+    metricTo,
+    needsLeadingComma,
+    isAtEndOfFormula,
+  };
+}
 
 export interface FullTextWithIdentities {
   text: string;
@@ -422,7 +487,7 @@ export function traverseMetricTokens(
 function stripPositions(token: PositionedToken): ExpressionSubToken | null {
   switch (token.type) {
     case "metric":
-      return { type: "metric", sourceId: token.sourceId, count: 0 };
+      return { type: "metric", sourceId: token.sourceId, occurrenceCount: 0 };
     case "operator":
       return { type: "operator", op: token.op };
     case "constant":
@@ -648,7 +713,7 @@ export function parseFullTextWithPositions(
       tokens.push({
         type: "metric",
         sourceId: identity.sourceId,
-        count: 0,
+        occurrenceCount: 0,
         from: identity.from,
         to: identity.to,
       });
@@ -740,7 +805,7 @@ export function parseFullTextWithPositions(
           tokens.push({
             type: "metric",
             sourceId: id,
-            count: 0,
+            occurrenceCount: 0,
             from: i,
             to: nextI,
           });

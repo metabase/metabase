@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.api.table-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.api.table-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.api.table :as table]
@@ -30,7 +31,6 @@
                included in the sandboxing question"
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (field-names :rasta))))
-
       (testing "Users with full permissions should not be affected by this field filtering"
         (is (= all-columns
                (field-names :crowberto)))))))
@@ -66,12 +66,10 @@
         (if metadata
           (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
           (card.metadata/save-metadata-async! metadata-future card)))
-
       (testing "Users with restricted access to the columns of a table via a native query sandbox should only see
                columns included in the sandboxing question"
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (field-names :rasta))))
-
       (testing "Users with full permissions should not be affected by this field filtering"
         (is (= all-columns
                (field-names :crowberto)))))))
@@ -112,7 +110,6 @@
           (is (= #{"VENUES.CATEGORY_ID" "VENUES.ID" "VENUES.NAME"}
                  (->> (table/batch-fetch-table-query-metadatas [(mt/id :venues) (mt/id :checkins)] nil)
                       upper-case-field-names)))))
-
       (testing "Users with full permissions should not be affected by this field filtering"
         (mt/with-current-user (mt/user->id :crowberto)
           (is (= #{"CHECKINS.DATE" "CHECKINS.ID" "CHECKINS.USER_ID" "CHECKINS.VENUE_ID"

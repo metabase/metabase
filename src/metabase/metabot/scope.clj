@@ -37,6 +37,8 @@
 ;; Question (saved cards via Agent API)
 (api-scope/defscope agent-question-create "agent:question:create"
   (deferred-tru "Create saved questions"))
+(api-scope/defscope agent-question-update "agent:question:update"
+  (deferred-tru "Update saved questions"))
 
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
@@ -51,8 +53,18 @@
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
   (deferred-tru "Create dashboards"))
+(api-scope/defscope agent-dashboard-update "agent:dashboard:update"
+  (deferred-tru "Update dashboards"))
 (api-scope/defscope agent-dashboard-subscribe "agent:dashboard:subscribe"
   (deferred-tru "Subscribe to dashboard alerts"))
+
+;; Collection
+(api-scope/defscope agent-collection-create "agent:collection:create"
+  (deferred-tru "Create collections"))
+
+;; SQL execution (MCP execute_sql tool, distinct from execute_query)
+(api-scope/defscope agent-sql-execute "agent:sql:execute"
+  (deferred-tru "Execute raw SQL queries"))
 
 ;; Document
 (api-scope/defscope agent-document-read "agent:document:read"
@@ -69,6 +81,10 @@
   (deferred-tru "Edit charts and visualizations"))
 (api-scope/defscope agent-viz-navigate "agent:viz:navigate"
   (deferred-tru "Navigate to visualizations"))
+(api-scope/defscope agent-viz-mcp-ui-query "agent:viz:mcp-ui:query"
+  (deferred-tru "Render query visualizations in the MCP UI"))
+(api-scope/defscope agent-viz-mcp-ui-drill-through "agent:viz:mcp-ui:drill-through"
+  (deferred-tru "Render drill-through visualizations in the MCP UI"))
 
 ;; Alert
 (api-scope/defscope agent-alert-create "agent:alert:create"
@@ -91,14 +107,6 @@
   (deferred-tru "View todos"))
 (api-scope/defscope agent-todo-write "agent:todo:write"
   (deferred-tru "Create and edit todos"))
-
-;; Table
-(api-scope/defscope agent-table-read "agent:table:read"
-  (deferred-tru "View table metadata and field values"))
-
-;; Metric
-(api-scope/defscope agent-metric-read "agent:metric:read"
-  (deferred-tru "View metric definitions"))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot permission type definitions
@@ -139,6 +147,18 @@
   consumers should fall back to `perm-type-defaults`."
   nil)
 
+(def ^:dynamic *current-user-capabilities*
+  "The request's capabilities (strings/keywords as sent by the API). Bound in the request path
+  alongside `*current-user-scope*` so capability-gated checks (e.g. which skills are loadable)
+  match the manifest, which is built from the same capabilities. Defaults to `#{}`."
+  #{})
+
+(def ^:dynamic *current-loadable-skill-ids*
+  "Request-scoped atom containing the set of skill ids that appeared in the current
+  profile's skill manifest. When bound, `load_skill` rejects ids outside this set
+  even if the skill otherwise satisfies capability/scope gates."
+  nil)
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Permission → Scope mapping
 ;;; ──────────────────────────────────────────────────────────────────
@@ -147,8 +167,9 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*"}
-   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"}})
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:question:*"}
+   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
+                                        "agent:collection:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."

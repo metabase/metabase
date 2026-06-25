@@ -200,7 +200,21 @@ describe("issue 8030 + 32444", () => {
 
         H.saveDashboard();
 
+        // Saving exits edit mode and reloads the dashcards in view mode. How
+        // many post-save card queries fire is not deterministic (cached results
+        // may be reused), so rather than counting them we wait for the reload to
+        // start and then for both cards to finish loading before re-aliasing
+        // below. Otherwise a still in-flight post-save query — slow under network
+        // throttling — would be captured by the new intercept on the same URL
+        // and miscounted as a filter-triggered query (the test then sees 2,
+        // not 1).
         cy.wait("@getCardQuery");
+        H.getDashboardCard(0)
+          .findByTestId("loading-indicator")
+          .should("not.exist");
+        H.getDashboardCard(1)
+          .findByTestId("loading-indicator")
+          .should("not.exist");
 
         // Reset the intercept after save so we only count filter-triggered queries.
         cy.intercept(

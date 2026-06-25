@@ -16,12 +16,3 @@ export const trackAnalyticsPiiRetentionChanged = (isEnabled: boolean) => {
     triggered_from: "admin",
   });
 };
-
-export const trackCustomHomepageDashboardEnabled = (
-  source: "admin" | "homepage",
-) => {
-  trackSchemaEvent("settings", {
-    event: "homepage_dashboard_enabled",
-    source,
-  });
-};

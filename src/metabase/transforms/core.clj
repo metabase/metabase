@@ -7,19 +7,26 @@
    [metabase.transforms.crud]
    [metabase.transforms.execute]
    [metabase.transforms.jobs]
+   [metabase.transforms.models.job-run]
    [metabase.transforms.models.transform]
    [metabase.transforms.models.transform-job]
    [metabase.transforms.models.transform-run]
    [metabase.transforms.models.transform-run-cancelation]
    [metabase.transforms.models.transform-tag]
+   [metabase.transforms.notification]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
+   [metabase.transforms.usage]
    [metabase.transforms.util]
    [potemkin :as p]))
 
 (p/import-vars
  [metabase.transforms.settings
-  transform-timeout]
+  transform-timeout
+  transforms-meter-locked]
+ [metabase.transforms.usage
+  transform-locked?
+  transforms-meter-locked?]
  [metabase.transforms-base.util
   native-query-transform?
   output-table
@@ -57,6 +64,7 @@
   initialize-job!
   update-job!
   delete-job!
+  delete-trigger!
   existing-trigger]
  [metabase.transforms.models.transform
   update-transform-tags!]
@@ -64,9 +72,14 @@
   timeout-run!
   paged-runs
   running-run-for-transform-id]
+ [metabase.transforms.models.job-run
+  paged-job-runs
+  transform-runs-for-job-run]
  [metabase.transforms.models.transform-run-cancelation
   mark-cancel-started-run!]
  [metabase.transforms.models.transform-job
+  activate-job!
+  deactivate-job!
   update-job-tags!]
  [metabase.transforms.models.transform-tag
   tag-name-exists?

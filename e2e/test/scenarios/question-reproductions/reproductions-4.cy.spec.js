@@ -568,7 +568,7 @@ describe("issue 41464", () => {
 
     cy.findByTestId("query-builder-main").within(() => {
       cy.findByTestId("loading-indicator").should("be.visible");
-      cy.findByText("No results!", { timeout: 500 }).should("not.exist");
+      cy.findByText("No results", { timeout: 500 }).should("not.exist");
     });
   });
 });
@@ -588,7 +588,7 @@ describe("issue 45359", { tags: "@skip" }, () => {
 
     H.getNotebookStep("data")
       .findByText("Orders")
-      .should("have.css", "font-family", "Lato, sans-serif");
+      .should("have.css", "font-family", "Lato, Arial, sans-serif");
 
     cy.get("@font-regular.all").should("have.length", 1);
     cy.get("@font-regular").should(({ response }) => {

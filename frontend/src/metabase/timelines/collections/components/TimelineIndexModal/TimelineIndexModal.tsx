@@ -18,7 +18,7 @@ const TimelineIndexModal = ({
   if (timelines.length === 1) {
     return (
       <TimelineDetailsModal
-        params={{ ...params, timelineId: timelines[0].id }}
+        params={{ ...params, timelineId: String(timelines[0].id) }}
         onClose={onClose}
       />
     );

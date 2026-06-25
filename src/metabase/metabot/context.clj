@@ -10,6 +10,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.curation :as curation]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.json :as json]
@@ -209,17 +212,14 @@
                    (when-let [query (query-for-sql-parsing item)]
                      (when-let [tables (seq (database-tables-for-context {:query query}))]
                        (assoc item :used_tables tables)))
-
                    ;; Handle MBQL/notebook queries
                    (when-let [db-and-table-ids (mbql-source-table-ids item)]
                      (when-let [tables (seq (mbql-source-tables-for-context db-and-table-ids))]
                        (assoc item :used_tables tables)))
-
                    ;; Handle Python transforms
                    (when-let [db-and-table-ids (python-transform-db-and-table-ids item)]
                      (when-let [tables (seq (python-transform-tables-for-context db-and-table-ids))]
                        (assoc item :used_tables tables)))
-
                    ;; Unknown item: return unchanged
                    item))
                 user-viewing)]
@@ -246,26 +246,54 @@
       (assoc context :user_is_viewing annotated-viewing))
     context))
 
+(defn- get-metabot
+  "Look up the metabot row for the given UUID/entity-id, mirroring the resolution used by `metabase.metabot.tools.search`."
+  [metabot-id]
+  (when metabot-id
+    (t2/select-one :model/Metabot
+                   :entity_id (get-in metabot.config/metabot-config
+                                      [metabot-id :entity-id]
+                                      metabot-id))))
+
+(defn- filter-recents-to-curated
+  "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
+  Delegates to metabot.curation/curated-ids, the source-of-truth check, so recent-view filtering can't drift
+  from the canonical rule and doesn't depend on the search index."
+  [recents]
+  (let [curated (curation/curated-ids (map (juxt (comp name :model) :id) recents))]
+    (filter (fn [{:keys [model id]}] (contains? curated [(name model) id])) recents)))
+
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
   Includes the 5 most recent items across cards, datasets, metrics, dashboards, and tables.
-  (Excludes collections and documents for now, which aren't searchable by Metabot.)"
-  [context]
+  (Excludes collections and documents for now, which aren't searchable by Metabot.)
+
+  When `metabot-id` is provided and the metabot has `use_verified_content` enabled, filters recents down
+  to curated content (verified, official-collection, library/published, or authoritative) before taking
+  the top 5, matching how search filters answer sources."
+  [context {:keys [metabot-id] :as _opts}]
   (try
-    (let [recents (:recents (activity-feed/get-recents api/*current-user-id*
-                                                       [:views :selections]
-                                                       {:models [:card :dataset :metric :dashboard :table]}))
-          processed-recents (mapv (fn [item]
-                                    (let [item-type
-                                          (case (:model item)
-                                            :card "question"
-                                            :dataset "model"
-                                            (name (:model item)))]
-                                      (-> item
-                                          (select-keys [:id :name :description])
-                                          (assoc :type item-type))))
-                                  (take 5 recents))]
-      (assoc context :user_recently_viewed processed-recents))
+    ;; When disabled, strip any preexisting :user_recently_viewed so the setting guarantees recent
+    ;; views never reach the prompt, even for a caller-supplied context that already carries the key.
+    (if-not (metabot.settings/metabot-recent-views-enabled?)
+      (dissoc context :user_recently_viewed)
+      (assoc context :user_recently_viewed
+             (let [recents (:recents (activity-feed/get-recents api/*current-user-id*
+                                                                [:views :selections]
+                                                                {:models [:card :dataset :metric :dashboard :table]}))
+                   recents (cond->> recents
+                             (:use_verified_content (get-metabot metabot-id))
+                             filter-recents-to-curated)]
+               (mapv (fn [item]
+                       (let [item-type
+                             (case (:model item)
+                               :card "question"
+                               :dataset "model"
+                               (name (:model item)))]
+                         (-> item
+                             (select-keys [:id :name :description])
+                             (assoc :type item-type))))
+                     (take 5 recents)))))
     (catch Exception e
       (log/error e "Error adding recent views to metabot context")
       context)))
@@ -287,5 +315,5 @@
    (-> context
        enhance-context-with-schema
        annotate-transform-source-types
-       add-recent-views
+       (add-recent-views (or opts {}))
        (set-user-time opts))))

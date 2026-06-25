@@ -29,13 +29,13 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- join? [x]
@@ -72,7 +72,7 @@
   columns from [[join-condition-lhs-columns]], and the RHS expression from [[join-condition-rhs-columns]]."
   [condition  :- [:maybe ::lib.schema.expression/boolean]]
   (when condition
-    (lib.util.match/match-lite condition
+    (match/match-one condition
       [(_operator :guard lib.schema.join/condition-operators)
        _opts
        (_lhs :guard lib.util/clause?)
@@ -126,7 +126,7 @@
 
     ;; if we've specified `old-alias`, then update ANY `:field` clause using it to `new-alias` instead.
     old-alias
-    (lib.util.match/replace-in join [:conditions]
+    (match/replace-in join [:conditions]
       (field :guard (and (lib.util/field-clause? field) (= (lib.join.util/current-join-alias field) old-alias)))
       (with-join-alias field new-alias))
 
@@ -137,7 +137,7 @@
                                (mapv (fn [condition]
                                        (standard-join-condition-update-rhs condition
                                                                            (fn [rhs]
-                                                                             (lib.util.match/replace-lite rhs
+                                                                             (match/replace rhs
                                                                                (field :guard lib.util/field-clause?)
                                                                                (with-join-alias field new-alias)))))
                                      conditions)))))
@@ -484,7 +484,7 @@
     conditions
     (mapv (fn [condition]
             (standard-join-condition-update-rhs condition (fn [rhs]
-                                                            (lib.util.match/replace-lite rhs
+                                                            (match/replace rhs
                                                               (field :guard (and (lib.util/field-clause? field) (not (lib.join.util/current-join-alias field))))
                                                               (with-join-alias field join-alias)))))
           conditions)))
@@ -515,11 +515,50 @@
                                           fields)))]
     (u/assoc-dissoc joinable :fields fields)))
 
+(defn- stranded-join-refs
+  "Refs in `a-join`'s conditions or exposed `:fields` that point at source columns missing from `cols` (a proposed new
+  source projection). Non-empty means narrowing the source to `cols` would leave the join referencing columns its
+  subquery no longer returns."
+  [a-join cols]
+  (let [join-alias (:alias a-join)
+        field-refs (when (sequential? (:fields a-join))
+                     (:fields a-join))
+        cond-refs  (when join-alias
+                     (match/match-many (:conditions a-join)
+                       [:field (opts :guard (= (:join-alias opts) join-alias)) _] &match))]
+    (into []
+          (remove (fn [a-ref]
+                    (lib.equality/find-matching-column
+                     (lib.options/update-options a-ref dissoc :join-alias :source-field) cols)))
+          (concat field-refs cond-refs))))
+
+(mu/defn with-join-source-fields :- ::lib.join.util/partial-join
+  "Set the `:fields` projection on the join's source subquery (the first stage of `a-join`). `cols` is a coll of
+  column metadatas from the source Table or Card; `nil`/empty dissocs, reverting to implicit-all.
+
+  Throws if the join's first stage is not an MBQL stage, or if narrowing the source to `cols` would strand a column the
+  join still references in its conditions or its exposed `:fields`.
+
+  For what the join EXPOSES to its outer stage, see [[with-join-fields]]."
+  [a-join :- ::lib.join.util/partial-join
+   cols   :- [:maybe [:sequential some?]]] ; ideally [:sequential ::lib.schema.metadata/column]
+  (let [first-stage-type (-> a-join :stages first :lib/type)]
+    (when-not (= :mbql.stage/mbql first-stage-type)
+      (throw (ex-info "with-join-source-fields requires the join's first stage to be an MBQL stage"
+                      {:first-stage-type first-stage-type
+                       :join             a-join}))))
+  (let [refs (not-empty (mapv lib.ref/ref cols))]
+    (when refs
+      (when-let [stranded (not-empty (stranded-join-refs a-join cols))]
+        (throw (ex-info "with-join-source-fields would strand references the join still needs"
+                        {:join a-join, :cols cols, :stranded stranded}))))
+    (update-in a-join [:stages 0] u/assoc-dissoc :fields refs)))
+
 (defn- select-home-column
   [home-cols cond-fields]
   (when (seq cond-fields)
     (let [cond-home-cols (keep #(lib.equality/find-matching-column % home-cols) cond-fields)]
-          ;; first choice: the leftmost FK or PK in the condition referring to a home column
+      ;; first choice: the leftmost FK or PK in the condition referring to a home column
       (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
           ;; otherwise the leftmost home column in the condition
           (first cond-home-cols)
@@ -567,7 +606,7 @@
     join-alias))
 
 (defn- add-alias-to-join-refs [query stage-number form join-alias join-cols]
-  (lib.util.match/replace-lite form
+  (match/replace form
     (field :guard (and (lib.util/field-clause? field)
                        (lib.equality/find-matching-column query stage-number field join-cols)))
     (with-join-alias field join-alias)))
@@ -580,7 +619,7 @@
     ;; these cases, but only for conditions that look like the ones generated
     ;; generated by the FE. These have the form home-field op join-field,
     ;; so we break ties by looking at the position of the field reference.
-    (lib.util.match/match-lite condition
+    (match/match-one condition
       [op op-opts (lhs :guard lib.util/field-clause?) (rhs :guard lib.util/field-clause?)]
       (let [lhs-alias (lib.join.util/current-join-alias lhs)
             rhs-alias (lib.join.util/current-join-alias rhs)]
@@ -1045,7 +1084,13 @@
     (case j-fields
       :all        (map #(assoc % :selected? true))
       (:none nil) (map #(assoc % :selected? false))
-      (mapcat #(lib.equality/mark-selected-columns [%] j-fields)))))
+      ;; Per-column check against `j-fields` avoids the spurious
+      ;; "N refs are selected, but we found 1 matches" warning that
+      ;; `mark-selected-columns` emits when given a single column and many refs.
+      (map (fn [col]
+             (assoc col :selected?
+                    (boolean (some #(lib.equality/find-matching-column nil -1 % [col])
+                                   j-fields))))))))
 
 (def ^:private xform-fix-source-for-joinable-columns
   (map #(assoc % :lib/source :source/joins)))
@@ -1113,8 +1158,8 @@
   (when-let [table (and (zero? (lib.util/canonical-stage-index query stage-number)) ; first stage?
                         (first-join? query stage-number join-or-joinable)           ; first join?
                         (lib.metadata.calculation/primary-source-table query))]     ; query ultimately uses source Table?
-      ;; I think `:default` display name style is okay here, there shouldn't be a difference between `:default` and
-      ;; `:long` for a Table anyway
+    ;; I think `:default` display name style is okay here, there shouldn't be a difference between `:default` and
+    ;; `:long` for a Table anyway
     (lib.metadata.calculation/display-name query stage-number table)))
 
 (mu/defn join-lhs-display-name :- ::lib.schema.common/non-blank-string

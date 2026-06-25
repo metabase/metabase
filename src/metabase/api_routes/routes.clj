@@ -5,6 +5,7 @@
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
    [metabase.analytics.api]
+   [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
    [metabase.api.docs]
    [metabase.api.macros :as api.macros]
@@ -20,6 +21,7 @@
    [metabase.collections-rest.api]
    [metabase.comments.api]
    [metabase.config.core :as config]
+   [metabase.curated-search.api]
    [metabase.dashboards-rest.api]
    [metabase.data-studio.api]
    [metabase.documents.api]
@@ -28,11 +30,13 @@
    [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
+   [metabase.health-inspector.api]
    [metabase.indexed-entities.api]
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.mcp.api]
+   [metabase.mcp.callback-api]
    [metabase.measures.api]
    [metabase.metabot.api]
    [metabase.metabot.api.entity-analysis]
@@ -40,6 +44,7 @@
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
+   [metabase.oauth-server.api.admin]
    [metabase.permissions-rest.api]
    [metabase.premium-features.api]
    [metabase.product-feedback.api]
@@ -75,6 +80,7 @@
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
          metabase.analytics.api/keep-me
+         metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
          metabase.bookmarks.api/keep-me
@@ -83,6 +89,7 @@
          metabase.cloud-migration.api/keep-me
          metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
+         metabase.curated-search.api/keep-me
          metabase.dashboards-rest.api/keep-me
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
@@ -94,6 +101,8 @@
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
          metabase.mcp.api/keep-me
+         metabase.mcp.callback-api/keep-me
+         metabase.oauth-server.api.admin/keep-me
          metabase.measures.api/keep-me
          metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
@@ -159,6 +168,7 @@
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
+   "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
    "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
@@ -170,6 +180,7 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
+   "/curated-search"       (+auth 'metabase.curated-search.api)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
@@ -179,24 +190,30 @@
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
+   "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
+   "/health-inspector"     (+auth 'metabase.health-inspector.api)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
+   ;; `/mcp` is a legacy alias of the canonical `/metabase-mcp` below, kept for back-compat with
+   ;; existing clients. See [[metabase.mcp.api/endpoint-paths]].
    "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/measure"              (+auth 'metabase.measures.api)
+   "/metabase-mcp"         (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
+   "/oauth"                (+auth 'metabase.oauth-server.api.admin)
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.api/routes)

@@ -1,6 +1,5 @@
 (ns build
   (:require
-   [build-drivers :as build-drivers]
    [build.licenses :as license]
    [build.python :as build.python]
    [build.uberjar :as uberjar]
@@ -36,7 +35,8 @@
                :env {"PATH"       (env/env :path)
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
-                     "MB_EDITION" mb-edition}}
+                     "MB_EDITION" mb-edition
+                     "EMIT_BUNDLE_STATS" (or (env/env :emit-bundle-stats) "false")}}
               "bun" "run" "build-release"))
       (u/step "Build static viz"
         (u/sh {:dir u/project-root-directory
@@ -65,7 +65,6 @@
           (run! (comp (partial u/error "Missing License: %s") first)
                 without-license))
         (u/announce "License information generated at %s" output-filename)))
-
     (u/step "Run `bun run generate-license-disclaimer`"
       (u/sh {:dir u/project-root-directory}
             "bun" "run" "generate-license-disclaimer"))))
@@ -89,8 +88,8 @@
                    (build-frontend! edition))
    :licenses     (fn [{:keys [edition]}]
                    (build-licenses! edition))
-   :drivers      (fn [{:keys [edition]}]
-                   (build-drivers/build-drivers! edition))
+   #_#_:drivers      (fn [{:keys [edition]}]
+                       (build-drivers/build-drivers! edition))
    :python       (fn [{:keys [edition]}]
                    (build.python/build-python-deps! edition))
    :uberjar      (fn [{:keys [edition]}]

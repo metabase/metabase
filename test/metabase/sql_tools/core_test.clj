@@ -175,7 +175,7 @@
         (is (= :skipped status))
         (is (= :missing-dialect reason))))))
 
-(deftest ^:parallel is-single-select-stmt?-test
+(deftest ^:parallel is-single-stmt-of-type?-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))
@@ -184,20 +184,61 @@
                     (lib/filter (lib/= product-category "Widget")))
           native-query (:query (qp.compile/compile-with-inline-parameters query))]
       (testing "A single SELECT statement returns true and the reconstructed SQL"
-        (are [sql] (=? {:is-single-select? true, :sql string?}
-                       (sql-tools/is-single-select-stmt? driver/*driver* sql))
+        (are [sql] (=? {:is-single-stmt? true :allowed-stmt-type? true :sql string?}
+                       (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))
           native-query
           "SELECT 1"
           "SELECT * FROM table"
           "WITH x AS (SELECT * FROM foo) SELECT * from x"
           "WITH x AS (SELECT a FROM foo), y AS (SELECT b FROM bar), z AS (SELECT c FROM baz) SELECT x.a, y.b, z.c FROM x, y, z")))
-    (testing "All other queries are rejected"
-      (are [sql] (=? {:is-single-select? false}
-                     (sql-tools/is-single-select-stmt? driver/*driver* sql))
-        "SELECT ("
-        "SELECT 1; SELECT 2"
-        "SET ROLE NONE"
-        "DROP TABLE table"
-        "SET ROLE NONE; DROP TABLE table"
-        "SELECT set_config('role', 'none', false); DROP TABLE table"
-        "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;"))))
+    (testing "All other read queries are rejected"
+      (are [sql is-single-stmt?] (=? {:is-single-stmt? is-single-stmt? :allowed-stmt-type? false}
+                                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))
+        "SELECT (" false
+        "SELECT 1; SELECT 2" false
+        "SET ROLE NONE" true
+        "DROP TABLE table" true
+        "SET ROLE NONE; DROP TABLE table" false
+        "SELECT set_config('role', 'none', false); DROP TABLE table" false
+        "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;" (isa? driver/hierarchy driver/*driver* :postgres)))
+    (testing "A single insert, update or delete statement returns true and the reconstructed SQL"
+      (are [sql] (=? {:is-single-stmt? true :allowed-stmt-type? true :sql string?}
+                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "write"))
+        "INSERT INTO table VALUES (1)"
+        "UPDATE table SET column = 1"
+        "DELETE FROM table WHERE id = 1"))
+    (testing "All other write queries are rejected"
+      (are [sql is-single-stmt?] (=? {:is-single-stmt? is-single-stmt? :allowed-stmt-type? false}
+                                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "write"))
+        "SELECT 1" true
+        "INSERT INTO table VALUES (1); SELECT 1" false
+        "UPDATE table SET column = 1; SELECT 1" false
+        "DELETE FROM table WHERE id = 1; SELECT 1" false
+        "SET ROLE NONE; INSERT INTO table VALUES (1)" false
+        "SELECT set_config('role', 'none', false); DELETE FROM table WHERE id = 1" false))
+    (testing "A single set operation statement returns true and the reconstructed SQL"
+      (doseq [op ["UNION ALL" "INTERSECT ALL" "EXCEPT ALL"]
+              ts [["foo" "bar"] ["foo" "bar" "baz"]]
+              :let [sql (str/join (str " " op " ") (map #(str "SELECT * FROM " %) ts))]]
+        (is (=? {:is-single-stmt? true, :sql string?}
+                (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))))
+      (are [sql] (=? {:is-single-stmt? true, :allowed-stmt-type? true :sql string?}
+                     (sql-tools/is-single-stmt-of-type? driver/*driver* sql "read"))
+        "SELECT * FROM foo UNION ALL SELECT * FROM bar INTERSECT ALL SELECT * FROM baz"
+        "SELECT * FROM foo UNION ALL SELECT * FROM bar EXCEPT ALL SELECT * FROM baz"
+        "SELECT * FROM foo INTERSECT ALL SELECT * FROM bar UNION ALL SELECT * FROM baz"
+        "SELECT * FROM foo INTERSECT ALL SELECT * FROM bar EXCEPT ALL SELECT * FROM baz"
+        "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar UNION ALL SELECT * FROM baz"
+        "SELECT * FROM foo EXCEPT ALL SELECT * FROM bar INTERSECT ALL SELECT * FROM baz"))))
+
+(deftest ^:parallel is-single-stmt-of-type-not-stripped-test
+  (testing "we don't remove value clauses when validating impersonated queries (#74284)"
+    (let [values-query (str "SELECT x FROM (VALUES " (str/join ", " (repeat 105 "(1)")) ") AS t(x)")]
+      (are [sql is-single-stmt? allowed-stmt-type?]
+           (= {:is-single-stmt? is-single-stmt? :allowed-stmt-type? allowed-stmt-type? :sql sql}
+              (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+        values-query true true
+        (str "SELECT 1; " values-query) false false
+        (str "SET ROLE none; " values-query) false false
+        (str values-query "; SELECT 1") false false
+        (str values-query "; SET ROLE none") false false))))

@@ -1,5 +1,5 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { formatValue } from "metabase/utils/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import { computeMaxDecimalsForValues } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,

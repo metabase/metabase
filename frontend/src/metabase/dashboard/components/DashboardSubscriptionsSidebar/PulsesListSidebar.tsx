@@ -10,13 +10,10 @@ import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { getActivePulseParameters } from "metabase/pulse";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { Button, Icon, Tooltip } from "metabase/ui";
-import {
-  conjunct,
-  formatDateTimeWithUnit,
-  formatTimeWithUnit,
-} from "metabase/utils/formatting";
+import { Button, Card, Flex, Icon, Tooltip } from "metabase/ui";
+import { conjunct, formatTimeWithUnit } from "metabase/utils/formatting";
 import { formatFrame } from "metabase/utils/time-dayjs";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -27,7 +24,7 @@ import type {
 
 import { getParameters } from "../../selectors";
 
-import { PulseCard, SidebarActions } from "./PulsesListSidebar.styled";
+import S from "./PulsesListSidebar.module.css";
 
 type PulsesListSidebarOwnProps = {
   pulses: DashboardSubscription[];
@@ -75,7 +72,7 @@ function _PulsesListSidebar({
       >
         <Subhead>{t`Subscriptions`}</Subhead>
 
-        <SidebarActions>
+        <Flex align="center">
           <Tooltip label={createSubscriptionLabel}>
             <Button
               aria-label={createSubscriptionLabel}
@@ -96,18 +93,21 @@ function _PulsesListSidebar({
               onClick={onCancel}
             />
           </Tooltip>
-        </SidebarActions>
+        </Flex>
       </div>
       <div className={cx(CS.my2, CS.mx4)}>
         {pulses.map((pulse) => {
           const canEdit = canEditPulse(pulse, formInput);
 
           return (
-            <PulseCard
+            <Card
               aria-label="Pulse Card"
               key={pulse.id}
-              flat
-              canEdit={canEdit}
+              className={cx(S.pulseCard, { [S.pulseCardEditable]: canEdit })}
+              p={0}
+              radius="md"
+              shadow="none"
+              withBorder
               onClick={() =>
                 canEdit &&
                 editPulse(pulse, pulse.channels[0].channel_type as ChannelType)
@@ -122,6 +122,7 @@ function _PulsesListSidebar({
                   className={cx(
                     CS.flex,
                     CS.alignCenter,
+                    CS.mb1,
                     CS.hoverChild,
                     CS.hoverInherit,
                   )}
@@ -133,8 +134,7 @@ function _PulsesListSidebar({
                         : "slack"
                     }
                     className={CS.mr1}
-                    style={{ paddingBottom: "5px" }}
-                    size={16}
+                    size={12}
                   />
                   <Label className={cx(CS.hoverChild, CS.hoverInherit)} mb="0">
                     {friendlySchedule(pulse.channels[0])}
@@ -142,7 +142,7 @@ function _PulsesListSidebar({
                 </div>
                 <PulseDetails pulse={pulse} parameters={parameters} />
               </div>
-            </PulseCard>
+            </Card>
           );
         })}
       </div>

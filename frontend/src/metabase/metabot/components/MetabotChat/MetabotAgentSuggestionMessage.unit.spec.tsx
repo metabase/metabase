@@ -8,6 +8,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import type {
   MetabotSuggestedTransform,
   MetabotTransformInfo,
+  SuggestedTransform,
 } from "metabase-types/api";
 import {
   createMockNativeDatasetQuery,
@@ -18,9 +19,10 @@ import {
   createMockTransform,
 } from "metabase-types/api/mocks/transform";
 
-import type { MetabotAgentEditSuggestionChatMessage } from "../../state/types";
-
-import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
+import {
+  AgentSuggestionMessage,
+  type SuggestionMessage,
+} from "./MetabotAgentSuggestionMessage";
 
 const createMockSuggestedTransform = (
   overrides: Partial<MetabotSuggestedTransform>,
@@ -39,28 +41,44 @@ const createMockTransformInfo = (
   ...overrides,
 });
 
-const createMockTransformSuggestionMessage = (
-  overrides: Partial<MetabotAgentEditSuggestionChatMessage>,
-): MetabotAgentEditSuggestionChatMessage => ({
-  id: "msg-123",
-  role: "agent",
-  type: "edit_suggestion",
-  model: "transform",
+const createMockTransformSuggestionMessage = (overrides: {
   payload: {
-    editorTransform: undefined,
-    suggestedTransform: createMockSuggestedTransform({}),
-  },
-  ...overrides,
-});
+    editorTransform: MetabotTransformInfo | undefined;
+    suggestedTransform: MetabotSuggestedTransform;
+  };
+}): SuggestionMessage => {
+  const {
+    active: _active,
+    suggestionId,
+    ...value
+  } = overrides.payload.suggestedTransform;
+  return {
+    id: "msg-123",
+    role: "agent",
+    type: "data_part",
+    part: {
+      type: "transform_suggestion",
+      version: 1,
+      value: value as SuggestedTransform,
+    },
+    metadata: {
+      editorTransform: overrides.payload.editorTransform,
+      suggestionId,
+    },
+  };
+};
 
-const setup = (message: MetabotAgentEditSuggestionChatMessage) => {
+const setup = (message: SuggestionMessage, readonly = false) => {
   setupEnterprisePlugins();
-  return renderWithProviders(<AgentSuggestionMessage message={message} />, {
-    storeInitialState: createMockState({
-      settings: mockSettings(),
-      currentUser: createMockUser(),
-    }),
-  });
+  return renderWithProviders(
+    <AgentSuggestionMessage message={message} readonly={readonly} />,
+    {
+      storeInitialState: createMockState({
+        settings: mockSettings(),
+        currentUser: createMockUser(),
+      }),
+    },
+  );
 };
 
 describe("AgentSuggestionMessage", () => {
@@ -115,6 +133,30 @@ describe("AgentSuggestionMessage", () => {
     expect(
       await screen.findByRole("button", { name: /Apply/ }),
     ).toBeInTheDocument();
+  });
+
+  it("should disable the action button and show a read-only tooltip when readonly", async () => {
+    setup(
+      createMockTransformSuggestionMessage({
+        payload: {
+          editorTransform: undefined,
+          suggestedTransform: createMockSuggestedTransform({
+            id: undefined,
+            source: {
+              type: "query",
+              query: createMockNativeDatasetQuery(),
+            },
+          }),
+        },
+      }),
+      true,
+    );
+
+    const button = await screen.findByRole("button", { name: /Create/ });
+    expect(button).toBeDisabled();
+
+    await userEvent.hover(button);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Read only");
   });
 
   it("should be collapsible", async () => {

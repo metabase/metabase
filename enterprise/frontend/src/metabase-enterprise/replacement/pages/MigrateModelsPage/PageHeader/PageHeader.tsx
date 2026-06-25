@@ -1,10 +1,10 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { Box, Text, Title } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 export function PageHeader() {
   return (

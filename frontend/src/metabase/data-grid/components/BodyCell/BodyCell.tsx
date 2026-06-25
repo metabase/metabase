@@ -49,7 +49,7 @@ export const BodyCell = memo(function BodyCell<TValue>({
 
   const contentStyle = useMemo(() => {
     if (variant === "pill") {
-      const color = "var(--mb-color-brand)";
+      const color = "var(--mb-color-core-brand)";
       const backgroundColor = `color-mix(in srgb, ${color}, transparent 92%)`;
       const border = `1px solid color-mix(in srgb, ${color}, transparent 86%)`;
       return {

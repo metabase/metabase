@@ -70,6 +70,7 @@ const setup = async ({
           searchText={searchText}
           onSearchItemSelect={onSearchItemSelect}
           goToSearchApp={goToSearchApp}
+          context="search-bar"
         />
       )}
     />,

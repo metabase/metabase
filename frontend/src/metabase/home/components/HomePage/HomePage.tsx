@@ -47,12 +47,14 @@ const useDashboardRedirect = () => {
             message: t`Your admin has set this dashboard as your homepage`,
             icon: "info",
             timeout: 10000,
-            actions: [
-              updateUserSetting({
-                key: "dismissed-custom-dashboard-toast",
-                value: true,
-              }),
-            ],
+            action: () => {
+              dispatch(
+                updateUserSetting({
+                  key: "dismissed-custom-dashboard-toast",
+                  value: true,
+                }),
+              );
+            },
             actionLabel: t`Got it`,
             canDismiss: false,
           }),

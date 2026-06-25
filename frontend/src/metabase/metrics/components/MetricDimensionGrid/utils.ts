@@ -1,13 +1,13 @@
-import type { DimensionDescriptor } from "metabase/metrics/common/utils/dimension-descriptors";
-import { getDimensionDescriptors } from "metabase/metrics/common/utils/dimension-descriptors";
+import type { DimensionDescriptor } from "metabase/common/metrics/utils/dimension-descriptors";
+import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
 import type {
   DimensionType,
   GeoSubtype,
-} from "metabase/metrics/common/utils/dimension-types";
+} from "metabase/common/metrics/utils/dimension-types";
 import {
   GEO_SUBTYPE_PRIORITY,
   getGeoSubtype,
-} from "metabase/metrics/common/utils/dimension-types";
+} from "metabase/common/metrics/utils/dimension-types";
 import type { MetricDefinition } from "metabase-lib/metric";
 
 export interface DefaultDimension {
@@ -61,7 +61,8 @@ function pickAllOfType(
     .filter(
       (dimension) =>
         dimension.dimensionType === dimensionType &&
-        (!options?.requireListValues || dimension.canListValues),
+        (!options?.requireListValues || dimension.canListValues) &&
+        dimension.isPreferred !== false, // undefined is okay - means there is no preferred predicate
     )
     .sort((first, second) => {
       if (first.canListValues !== second.canListValues) {

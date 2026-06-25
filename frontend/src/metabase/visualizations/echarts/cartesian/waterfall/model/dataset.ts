@@ -114,7 +114,7 @@ export const getWaterfallDataset = (
 
 export const extendOriginalDatasetWithTotalDatum = (
   dataset: ChartDataset,
-  waterfallDatasetTotalDatum: Datum,
+  totalValue: RowValue,
   seriesDataKey: DataKey,
   settings: ComputedVisualizationSettings,
 ) => {
@@ -123,7 +123,7 @@ export const extendOriginalDatasetWithTotalDatum = (
   }
 
   const totalDatum: Datum = {
-    [seriesDataKey]: waterfallDatasetTotalDatum[WATERFALL_TOTAL_KEY],
+    [seriesDataKey]: totalValue,
     [X_AXIS_DATA_KEY]: t`Total`,
     [IS_WATERFALL_TOTAL_DATA_KEY]: true,
   };

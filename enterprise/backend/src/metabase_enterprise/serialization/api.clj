@@ -3,6 +3,9 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.serialization.export :as export]
+   [metabase-enterprise.serialization.metadata-file-import :as metadata-file-import]
+   [metabase-enterprise.serialization.schema :as schema]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
@@ -24,9 +27,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
-   [ring.core.protocols :as ring.protocols])
+   [ring.core.protocols :as ring.protocols]
+   [ring.util.response :as response])
   (:import
-   (java.io ByteArrayOutputStream File)))
+   (java.io ByteArrayOutputStream File InputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -68,30 +72,59 @@
 
 ;;; Logic
 
+(def ^:private serialization-logger-prefixes
+  "log4j2 logger-name prefixes whose logs are forked into the `export.log`/`import.log` files inside the archive.
+  These are not loaded namespaces; each prefix captures every logger nested under it (e.g.
+  `metabase-enterprise.serialization` captures `metabase-enterprise.serialization.v2.extract`)."
+  ['metabase-enterprise.serialization
+   'metabase.models.serialization])
+
+(defn- log-export-error!
+  "Log a serialization export error, honoring `full-stacktrace` (full trace vs stripped one-liner)."
+  [e full-stacktrace]
+  (if full-stacktrace
+    (log/error e "Error during serialization export")
+    (log/error (u/strip-error e "Error during serialization export"))))
+
+(defn- extract-entities!
+  "Run eager extraction (target resolution, escape analysis) before streaming starts. It must run
+  before the streaming response opens so a failure can still set a non-200 status. Eager logs (e.g.
+  escape-analysis warnings) are captured into `log-output` so they land in export.log alongside the
+  storage logs captured later. `full-stacktrace` is honored for genuine server failures the way the
+  streaming path and the CLI export do; client input errors carry a `:status-code` and pass through to
+  the API layer unlogged, so they surface as a clean 4xx rather than a logged server error."
+  [opts ^ByteArrayOutputStream log-output full-stacktrace]
+  (try
+    (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
+                                       {:additive *additive-logging*})]
+      (extract/extract opts))
+    (catch Exception e
+      (when-not (:status-code (ex-data e))
+        (log-export-error! e full-stacktrace))
+      (throw e))))
+
 (defn- serialize-to-stream!
-  "Serialize directly to an OutputStream as streaming tar.gz. Returns result map."
-  [^java.io.OutputStream output ^String dirname entities {:keys [full-stacktrace]}]
-  (let [log-output (ByteArrayOutputStream.)
-        writer     (v2.storage.tar/tar-writer output dirname)
-        error      (atom nil)
-        report     (with-open [_logger (logger/for-ns log-output ['metabase-enterprise.serialization
-                                                                  'metabase.models.serialization]
-                                                      {:additive *additive-logging*})]
-                     (try
-                       (let [report (serdes/with-cache
-                                      (v2.storage/store! entities writer))]
-                         (v2.protocols/store-log! writer (.toByteArray log-output))
-                         (v2.protocols/finish! writer)
-                         report)
-                       (catch Exception e
-                         (reset! error e)
-                         (if full-stacktrace
-                           (log/error e "Error during serialization export")
-                           (log/error (u/strip-error e "Error during serialization export")))
-                         (try
-                           (v2.protocols/store-log! writer (.toByteArray log-output))
-                           (v2.protocols/finish! writer)
-                           (catch Exception _)))))]
+  "Serialize directly to an OutputStream as streaming tar.gz. Returns result map.
+
+  Storage logs are appended to `log-output`, whose full contents are then written to `export.log` inside the
+  archive."
+  [^java.io.OutputStream output ^String dirname entities ^ByteArrayOutputStream log-output {:keys [full-stacktrace]}]
+  (let [writer (v2.storage.tar/tar-writer output dirname)
+        error  (atom nil)
+        report (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
+                                                  {:additive *additive-logging*})]
+                 (try
+                   (serdes/with-cache
+                     (v2.storage/store! entities writer))
+                   (catch Exception e
+                     (reset! error e)
+                     (log-export-error! e full-stacktrace)
+                     nil)))]
+    ;; Read the buffer and write the log after the appender has closed (and thus flushed) so nothing is lost.
+    (try
+      (v2.protocols/store-log! writer (.toByteArray log-output))
+      (v2.protocols/finish! writer)
+      (catch Exception _))
     {:report        report
      :success       (nil? @error)
      :error-message (when @error
@@ -117,8 +150,7 @@
         log-file (io/file dst "import.log")
         err      (atom nil)
         reindex? (if (nil? reindex?) true reindex?)
-        report   (with-open [_logger (logger/for-ns log-file ['metabase-enterprise.serialization
-                                                              'metabase.models.serialization]
+        report   (with-open [_logger (logger/for-ns log-file serialization-logger-prefixes
                                                     {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
@@ -156,7 +188,7 @@
                            :direction       "export"
                            :source          "api"
                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                           :count           (count (:seen report))
+                           :count           (reduce + 0 (vals (:entity-counts report)))
                            :error_count     (count (:errors report))
                            :collection      (str/join "," (map str collection))
                            :all_collections (and (empty? collection)
@@ -228,14 +260,16 @@
                            (format "%s-%s"
                                    (u/slugify (appearance/site-name))
                                    (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
-        ;; extract/extract runs eager setup (target resolution, escape analysis) which can throw
-        ;; for invalid inputs (e.g. bad collection ID). This must happen before streaming starts.
-        entities (extract/extract opts)]
+        ;; Eager setup (target resolution, escape analysis) must run before the streaming response opens
+        ;; so a failure can still set a non-200 status. extract-entities! captures its logs into log-output
+        ;; (so escape-analysis warnings land in export.log) and honors full_stacktrace for genuine failures.
+        log-output (ByteArrayOutputStream.)
+        entities   (extract-entities! opts log-output full-stacktrace?)]
     (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
       (sr/set-header! "Content-Disposition"
                       (format "attachment; filename=\"%s.tar.gz\"" export-dirname))
       (let [start  (System/nanoTime)
-            result (serialize-to-stream! output export-dirname entities opts)]
+            result (serialize-to-stream! output export-dirname entities log-output opts)]
         (track-export-event! collection opts start result)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -305,6 +339,107 @@
          :body    (on-response! log-file callback)}))
     (finally
       (io/delete-file (:tempfile file)))))
+
+;;; ----------------------------------- POST /api/ee/serialization/metadata/export -----------------------------------
+
+(api.macros/defendpoint :post "/metadata/export"
+  :- (sr/streaming-response-schema ::schema/export-metadata-response)
+  "Get warehouse metadata (databases, tables, and fields) for all databases visible to the
+  current user. References between rows are emitted as raw numeric ids (`db_id`,
+  `table_id`, `parent_id`, `fk_target_field_id`).
+
+  Sections must be opted into with the `with-databases`, `with-tables`, and `with-fields`
+  query parameters — they all default to `false`. The response is streamed for efficiency
+  with large schemas.
+
+  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or
+  `Query builder and native`) permissions on each database and table."
+  [_route-params
+   query-params :- [:map
+                    [:with-databases {:default false} [:maybe :boolean]]
+                    [:with-tables    {:default false} [:maybe :boolean]]
+                    [:with-fields    {:default false} [:maybe :boolean]]]]
+  (let [opts (assoc query-params :user-info {:user-id       api/*current-user-id*
+                                             :is-superuser? api/*is-superuser?*})]
+    (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+      (export/export-metadata! os opts))))
+
+;;; ----------------------------------- POST /api/ee/serialization/metadata/import -----------------------------------
+
+(defn- spool-to-temp-file!
+  "Stream `is` to a freshly-created temp file in 64 KB chunks. Returns the
+  `File`. If streaming fails the temp file is removed before the throw
+  propagates."
+  ^File [^InputStream is]
+  (let [tmp (File/createTempFile "metadata-import-" ".json")]
+    (try
+      (with-open [os (io/output-stream tmp)]
+        (io/copy is os :buffer-size (* 64 1024)))
+      tmp
+      (catch Throwable t
+        (.delete tmp)
+        (throw t)))))
+
+(api.macros/defendpoint :post "/metadata/import"
+  :- [:map
+      [:status [:= 202]]
+      [:body [:map {:closed true}
+              [:queued :boolean]
+              [:import-id :string]]]]
+  "Import warehouse metadata previously emitted by `POST /metadata/export`. The
+  request body is the JSON document `{databases, tables, fields}`; sections are
+  parsed incrementally so memory stays bounded regardless of payload size.
+
+  To bypass the JSON-parsing request middleware, send with `Content-Type:
+  application/octet-stream`. Restricted to superusers.
+
+  Returns `202` immediately with an `:import-id`; the import runs
+  asynchronously. Poll `GET /metadata/import/:id` for its outcome."
+  [_route-params
+   _query-params
+   _body
+   {:keys [body], :as _request}]
+  (api/check-superuser)
+  (cond
+    (nil? body)
+    (throw (ex-info "Empty request body" {:status-code 400}))
+
+    (not (instance? InputStream body))
+    (throw (ex-info (str "Expected a raw stream body. Send the request with "
+                         "Content-Type: application/octet-stream so the JSON "
+                         "middleware does not pre-parse the payload.")
+                    {:status-code 415}))
+
+    :else
+    (let [tmp (spool-to-temp-file! body)
+          id  (metadata-file-import/enqueue-import! tmp {:delete-after? true})]
+      (-> (response/response {:queued true :import-id id})
+          (assoc :status 202)))))
+
+;;; ------------------------------- GET /api/ee/serialization/metadata/import/:id -------------------------------
+
+(defn- present-import-status
+  "Project an internal registry record onto the public wire shape. Deliberately
+  omits the server-side `:file` path; stringifies the status keyword and the
+  timestamps."
+  [record]
+  {:id          (:id record)
+   :status      (name (:status record))
+   :enqueued-at (str (:enqueued-at record))
+   :started-at  (some-> (:started-at record) str)
+   :finished-at (some-> (:finished-at record) str)
+   :wall-ms     (:wall-ms record)
+   :error       (:error record)})
+
+(api.macros/defendpoint :get "/metadata/import/:id"
+  :- ::schema/import-status-response
+  "Status of a metadata import previously started by `POST /metadata/import`.
+  Status is retained in-memory and is not durable across server restarts.
+  Restricted to superusers."
+  [{:keys [id]} :- [:map [:id ms/UUIDString]]]
+  (api/check-superuser)
+  (or (some-> (metadata-file-import/import-status id) present-import-status)
+      (throw (ex-info "Unknown or expired import id" {:status-code 404}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/serialization` routes."

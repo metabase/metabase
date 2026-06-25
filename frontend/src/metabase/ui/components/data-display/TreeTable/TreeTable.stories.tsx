@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { Box, Icon, type IconName, Text } from "metabase/ui";
+import { Box, Icon, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { EntityNameCell } from "./EntityNameCell";
 import { TreeTable } from "./TreeTable";

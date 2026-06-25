@@ -5,13 +5,16 @@
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedders]
+   [metabase-enterprise.semantic-search.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -22,7 +25,9 @@
 (p/import-vars
  [metabase-enterprise.semantic-search.embedders
   active-embedding-model
-  search-index-embedder])
+  search-index-embedder]
+ [metabase-enterprise.semantic-search.embedding
+  get-embeddings-batch])
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
@@ -40,6 +45,38 @@
   (and
    (some? semantic.db.datasource/db-url)
    (semantic.settings/semantic-search-enabled)))
+
+(defn build-hnsw-index-async!
+  "Build the HNSW index on the active semantic search index in the background, returning promptly.
+
+  No-ops when semantic search isn't available on this instance. Backs the just-in-time HNSW build, which
+  runs only when an instance is configured to the `:hnsw` vector-search strategy."
+  []
+  (when (semantic.util/semantic-search-available?)
+    (future
+      (try
+        (semantic.pgvector-api/ensure-active-hnsw-index! (semantic.env/get-pgvector-datasource!)
+                                                         (semantic.env/get-index-metadata))
+        (catch Throwable t
+          (log/error t "Failed to build HNSW index for semantic search")))))
+  nil)
+
+(defn- with-zero-semantic-distance-score
+  "Record a 0 `:semantic-distance` score on `results` that lack it, for a consistent merged-result score breakdown."
+  [search-ctx results]
+  ;; Fallback (appdb/in-place) results never went through vector search, so they carry no semantic distance.
+  ;; Score them as least-relevant: the 0 below is a score, not a distance -- the opposite of a zero cosine
+  ;; distance, which would be a perfect match.
+  (let [entry {:name         :semantic-distance
+               :score        0
+               :weight       (search.config/weight search-ctx :semantic-distance)
+               :contribution 0}]
+    (map (fn [result]
+           (cond-> result
+             (and (contains? result :all-scores)
+                  (not-any? (comp #{:semantic-distance} :name) (:all-scores result)))
+             (update :all-scores conj entry)))
+         results)))
 
 (defenterprise results
   "Enterprise implementation of semantic search results with improved fallback logic. Falls back to appdb search only
@@ -67,10 +104,8 @@
                         final-count threshold raw-count fallback)
             (analytics/inc! :metabase-search/semantic-fallback-triggered {:fallback-engine fallback})
             (analytics/observe! :metabase-search/semantic-results-before-fallback final-count)
-
             (when (some-> (:offset-int search-ctx) pos?)
               (log/warn "Using an offset with semantic search will produce strange results, e.g. missing expected results, or duplicating them across pages"))
-
             (let [total-limit      (semantic.settings/semantic-search-results-limit)
                   fallback-results (try
                                      (cond->> (search.engine/results (assoc search-ctx :search-engine fallback))
@@ -84,7 +119,7 @@
                                        []))
                   fallback-results (take total-limit fallback-results)
                   _                (analytics/observe! :metabase-search/semantic-fallback-results-usage (count fallback-results))
-                  combined-results (concat results fallback-results)
+                  combined-results (concat results (with-zero-semantic-distance-score search-ctx fallback-results))
                   deduped-results  (m/distinct-by (juxt :model :id) combined-results)]
               (take total-limit deduped-results)))))
       (catch Exception e
@@ -121,6 +156,16 @@
        index-metadata
        model
        ids))))
+
+(defenterprise diagnose
+  "Enterprise implementation of the semantic search engine-owned diagnostic stages."
+  :feature :semantic-search
+  [search-ctx expected-model expected-id]
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.env/get-index-metadata)]
+    (if-not (index-active? pgvector index-metadata)
+      {:type :missing-from-index :details {:reason :no-active-index}}
+      (semantic.pgvector-api/diagnose pgvector index-metadata search-ctx expected-model expected-id))))
 
 ;; NOTE:
 ;; we're currently not returning stats from `init!` as the async nature means

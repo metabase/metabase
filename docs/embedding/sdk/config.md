@@ -15,6 +15,8 @@ To use the SDK in your app, you need to import the `MetabaseProvider` component 
 
 A component that configures the SDK and provides the Metabase SDK's context and theme.
 
+To pass a theme, use `defineMetabaseTheme`. See [Reuse a saved theme in the SDK](../appearance.md#reuse-a-saved-theme-in-the-sdk).
+
 #### API Reference
 
 - [Component](./api/MetabaseProvider.html)

@@ -5,7 +5,8 @@
                         ;; there are several legacy usages of `field-is-type?` here, and I don't really want to add
                         ;; clj-kondo/ignores to all of them... so this will take care of it. We do still want to remove
                         ;; them soon.
-                        :deprecated-var {:exclude {metabase.types.core/field-is-type? {:namespaces ["metabase\\.query-processor\\.cast-test"]}}}
+                        :deprecated-var        {:exclude {metabase.types.core/field-is-type? {:namespaces [metabase.query-processor.cast-test]}
+                                                          metabase.test.data/mbql-query      {:namespaces [metabase.query-processor.cast-test]}}}
                         ;; this is also ok here since this is a drivers namespace
                         :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
   (:require
@@ -145,25 +146,25 @@
       (doseq [[table fields]          [[:people [{:field :zip :db-type "TEXT"}]]
                                        [:orders [{:field :total :db-type "FLOAT"}]]]
               {:keys [field db-type]} fields]
-        (testing (str "Casting " db-type " to integer"))
-        (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))
-              mp           (lib.tu/mock-metadata-provider
-                            mp
-                            {:cards [{:id 1, :dataset-query nested-query}]})
-              field-md     (lib.metadata/field mp (mt/id table field))
-              query        (-> (lib/query mp (lib.metadata/card mp 1))
-                               (lib/with-fields [field-md])
-                               (as-> q
-                                     (lib/expression q "INTCAST" (lib/integer field-md)))
-                               (lib/limit 100))
-              result       (-> query qp/process-query)
-              cols         (mt/cols result)
-              rows         (mt/rows result)]
-          (is (types/field-is-type? :type/Number (last cols)))
-          (doseq [[uncasted-value casted-value] rows]
-            (is (= (biginteger (->integer uncasted-value))
-                   (biginteger casted-value))
-                (str "Casting " (pr-str uncasted-value)))))))))
+        (testing (str "Casting " db-type " to integer")
+          (let [nested-query (lib/query mp (lib.metadata/table mp (mt/id table)))
+                mp           (lib.tu/mock-metadata-provider
+                              mp
+                              {:cards [{:id 1, :dataset-query nested-query}]})
+                field-md     (lib.metadata/field mp (mt/id table field))
+                query        (-> (lib/query mp (lib.metadata/card mp 1))
+                                 (lib/with-fields [field-md])
+                                 (as-> q
+                                       (lib/expression q "INTCAST" (lib/integer field-md)))
+                                 (lib/limit 100))
+                result       (-> query qp/process-query)
+                cols         (mt/cols result)
+                rows         (mt/rows result)]
+            (is (types/field-is-type? :type/Number (last cols)))
+            (doseq [[uncasted-value casted-value] rows]
+              (is (= (biginteger (->integer uncasted-value))
+                     (biginteger casted-value))
+                  (str "Casting " (pr-str uncasted-value))))))))))
 
 (deftest ^:parallel integer-cast-nested-query-custom-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions/integer)
@@ -523,10 +524,6 @@
   [_]
   :type/DateTime)
 
-(defmethod date-type-expected :sqlite
-  [_]
-  :type/Text)
-
 (defmethod date-type-expected :mongo
   [_]
   :type/*)
@@ -828,7 +825,6 @@
                                               :mode nil
                                               :expected #{"2025-05-15T22:20:01Z"
                                                           "2025-05-15 22:20:01"}}
-
                                              ;; iso mode
                                              {:expression (lib/concat "2025-05-15T22:20:01" "")
                                               :mode :iso
@@ -838,7 +834,6 @@
                                               :mode :iso
                                               :expected #{"2025-05-15T22:20:01Z"
                                                           "2025-05-15 22:20:01"}}
-
                                              ;; simple mode
                                              {:expression (lib/concat "20250515222001" "")
                                               :mode :simple

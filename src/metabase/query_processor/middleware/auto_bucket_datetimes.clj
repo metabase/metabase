@@ -10,11 +10,11 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [select-keys every? some not-empty get-in]]))
 
 (mr/def ::column-type-info
@@ -115,7 +115,7 @@
       :do-not-bucket-reason/not-all-values-are-auto-bucketable)
 
     ;; *  do not autobucket clauses that are updating the time interval
-    (lib.util.match/match-lite x
+    (match/match-one x
       [#{:+ :-}
        _
        [#{:expression :field} _ _]
@@ -164,7 +164,7 @@
             {:base-type base-type
              :effective-type (or effective-type base-type)})
           (wrap-clauses [x]
-            (lib.util.match/replace-lite x
+            (match/replace x
               ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
               (x :guard (should-not-be-autobucketed? query stage-path x))
               &match
@@ -188,7 +188,7 @@
    {breakouts :breakout, :keys [filters], :as stage} :- ::lib.schema/stage]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)
-  (if-let [unbucketed-clauses (lib.util.match/match-many (cons filters breakouts)
+  (if-let [unbucketed-clauses (match/match-many (cons filters breakouts)
                                 (clause :guard (should-not-be-autobucketed? query stage-path clause)) nil
                                 [:expression & _]                                                     &match
                                 [:field & _]                                                          &match)]

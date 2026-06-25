@@ -1,0 +1,11 @@
+.row {
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-background_page-tertiary);
+  }
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--mb-color-core-brand);
+}

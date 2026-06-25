@@ -7,7 +7,7 @@ import { getParentEntity } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { navigateBackToDashboard } from "metabase/redux/query-builder";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { CollectionItemModel, DashboardId } from "metabase-types/api";
 
 import S from "./QueryBuilderBackButton.module.css";
@@ -59,14 +59,14 @@ export function QueryBuilderBackButton({
         variant="outline"
         radius="xl"
         size="2.625rem"
-        color="border"
+        color="border-neutral"
         aria-label={label}
         onClick={handleClick}
         component={noLink ? undefined : Link}
         to={url}
         {...actionIconProps}
       >
-        <Icon c="brand" name="arrow_left" />
+        <Icon c="core-brand" name="arrow_left" />
       </ActionIcon>
     </Tooltip>
   );

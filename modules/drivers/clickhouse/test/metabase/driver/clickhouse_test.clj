@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -399,9 +400,9 @@
 (deftest ^:synchronized csv-upload-and-sync-test
   (testing "ClickHouse CSV uploads work correctly when cloud mode is enabled"
     (mt/test-driver :clickhouse
-      (with-redefs [clickhouse-version/dbms-version (constantly {:cloud true
-                                                                 :version "24.8.1"
-                                                                 :semantic-version {:major 24 :minor 8}})]
+      (mt/with-dynamic-fn-redefs [clickhouse-version/dbms-version (constantly {:cloud true
+                                                                               :version "24.8.1"
+                                                                               :semantic-version {:major 24 :minor 8}})]
         (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
                             (assoc :enable-multiple-db false))
               conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
@@ -547,3 +548,17 @@
                                     (driver/native-result-metadata :clickhouse broken-query)))
               (is (thrown-with-msg? Exception #"SQL parsing failed."
                                     (driver/validate-native-query-fields :clickhouse broken-query)))))))))
+
+(deftest ^:parallel set-role-statement-escape-quotes-test
+  (are [role sql] (= sql
+                     (sql-jdbc/set-role-statement :clickhouse nil role))
+    "x"                             "SET ROLE \"x\""
+    ;; don't re-quote something that already has quotes
+    "\"x\""                         "SET ROLE \"x\""
+    ;; split on commas and quote separately
+    "x,y"                           "SET ROLE \"x\",\"y\""
+    ;; default database role, don't quote
+    "NONE"                          "SET ROLE NONE"
+    ;; escape double-quotes in the role
+    "x\"; SELECT sleep(10); --"     "SET ROLE \"x\"\"; SELECT sleep(10); --\""
+    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""))

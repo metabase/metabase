@@ -92,9 +92,10 @@
                 :description doc
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
-(defn- openrouter-errors [res]
-  (let [status    (long (:status res 0))
-        error-msg (get-in res [:body :error :message])]
+(defn- openrouter-error-msg
+  "Canonical, status-specific OpenRouter error message."
+  [res]
+  (let [status (long (:status res 0))]
     (case status
       401 (tru "OpenRouter API key expired or invalid")
       402 (tru "OpenRouter has insufficient credits")
@@ -104,20 +105,19 @@
       500 (tru "OpenRouter returned an internal server error")
       502 (tru "OpenRouter upstream provider returned an error")
       503 (tru "OpenRouter service is unavailable")
-      (if error-msg
-        (tru "OpenRouter API error (HTTP {0}): {1}" status error-msg)
-        (tru "OpenRouter API error (HTTP {0})" status)))))
+      (tru "OpenRouter API error (HTTP {0})" status))))
 
 (defn list-models
   "List available OpenRouter models.
-  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [api-key ai-proxy?]}]
-   (when (and api-key (str/blank? api-key))
+  ([{:keys [credentials ai-proxy?]}]
+   (when (and credentials (str/blank? (:api-key credentials)))
      (throw (core/missing-api-key-ex "OpenRouter")))
    (try
      (let [auth (core/resolve-auth "openrouter" "OpenRouter"
-                                   (when-let [k (or (not-empty api-key) (not-empty (llm/llm-openrouter-api-key)))]
+                                   (when-let [k (or (not-empty (:api-key credentials))
+                                                    (not-empty (llm/llm-openrouter-api-key)))]
                                      {:url     (llm/llm-openrouter-api-base-url)
                                       :headers {"Authorization" (str "Bearer " k)}})
                                    ai-proxy?)
@@ -132,7 +132,7 @@
                          :display_name (or (:name model) (:id model))})
                       (reverse (sort-by :created (get-in res [:body :data]))))})
      (catch Exception e
-       (core/rethrow-api-error! "openrouter" openrouter-errors e)))))
+       (core/rethrow-api-error! "openrouter" openrouter-error-msg e)))))
 
 ;;; Streaming response → AISDK v5 chunks
 
@@ -193,7 +193,6 @@
                ;; For new tool calls, the id comes from the chunk; for deltas
                ;; on the same tool, we keep current-id.
                chunk-id      (or (:id tool-call) @current-id (core/mkid))]
-
            (cond-> result
              ;; Emit :start on first chunk
              (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
@@ -305,7 +304,7 @@
                                      :url      "/v1/chat/completions"
                                      :request  req})))
         (catch Exception e
-          (core/rethrow-api-error! "openrouter" openrouter-errors e))))))
+          (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))))
 
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."

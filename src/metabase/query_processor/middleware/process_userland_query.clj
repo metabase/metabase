@@ -5,13 +5,14 @@
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.view-log.events.view-log]]."
-  (:refer-clojure :exclude [every? empty? get-in])
+  (:refer-clojure :exclude [every? empty? get-in not-empty])
   (:require
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
+   [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
@@ -23,7 +24,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? empty? get-in]]
+   [metabase.util.performance :refer [every? empty? get-in not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -40,43 +41,52 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
-;; in the completing arity of the rf
-;;
-;; Async seems like it makes sense from a performance standpoint, but should we have some sort of shared threadpool
-;; for other places where we would want to do async saves (such as results-metadata for Cards?)
+(def ^:private save-execution-metadata-interval-seconds 20)
+
+(def ^:private save-execution-metadata-queue-capacity 500)
+
 (defn- save-execution-metadata!*
-  "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
+  "Save a batch of `QueryExecution`s and update the average execution times for the corresponding `Query`s."
+  [query-executions]
   (tracing/with-span :db-app "db-app.save-query-execution" {}
-    (when-not (:cache_hit query-execution)
-      (query/save-query-and-update-average-execution-time! query query-hash running-time))
-    (if-not context
-      (log/warn "Cannot save QueryExecution, missing :context")
-      (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query)))))
+    (log/tracef "Saving %d QueryExecutions" (count query-executions))
+    (when-let [entries (not-empty
+                        (for [{query :json_query, query-hash :hash, running-time :running_time, :as query-execution} query-executions
+                              :when (and (not (:cache_hit query-execution)) query-hash running-time)]
+                          {:query query, :query-hash query-hash, :execution-time-ms running-time}))]
+      (try
+        (query/save-queries-and-update-average-execution-times! entries)
+        (catch Throwable e
+          (log/error e "Error updating query average execution times"))))
+    (try
+      (let [{with-context true, no-context false} (group-by (comp some? :context) query-executions)]
+        (when (seq no-context)
+          (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
+        (when (seq with-context)
+          (t2/insert! :model/QueryExecution (map #(dissoc % :json_query) with-context))))
+      (catch Throwable e
+        (log/error e "Error saving query execution info")))))
+
+(defonce ^:private save-execution-metadata-queue
+  (delay (grouper/start!
+          #'save-execution-metadata!*
+          :capacity save-execution-metadata-queue-capacity
+          :interval (* save-execution-metadata-interval-seconds 1000))))
 
 (defn- save-execution-metadata!
-  "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
+  "Save a `QueryExecution` row containing `execution-info`. Saves are batched and written asynchronously, so they may
+  not be visible for up to [[save-execution-metadata-interval-seconds]] (and may be lost on non-graceful shutdown);
+  this is analytics data, so we consider that an acceptable trade for not paying for an INSERT per query execution.
+  Tests can bind [[qp.util/*execute-async?*]] to `false` to save synchronously on the current thread."
   [execution-info]
-  (let [;; Capture SDK info now, on the request thread, because `with-execute-async` below intentionally
-        ;; does not convey dynamic var bindings to the background thread (to avoid holding DB connections).
-        ;; `include-sdk-info` also runs in the `before-insert` hook as a safety net for any code path
-        ;; that inserts QueryExecution directly (where dynamic vars would still be bound).
-        execution-info' (analytics.core/include-sdk-info execution-info)]
-    (qp.util/with-execute-async
-      ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
-      ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
-      ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
-      ;;
-      ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
-      ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
-      ;;    attempt to use closed DB connections
-      (fn []
-        (log/trace "Saving QueryExecution info")
-        (try
-          (save-execution-metadata!* (add-running-time execution-info'))
-          (catch Throwable e
-            (log/error e "Error saving query execution info")))))))
+  (let [;; Capture SDK info and compute the running time now, on the query execution thread: by the time the batch is
+        ;; processed the request (and its dynamic bindings and clock) is long gone. `include-sdk-info` also runs in
+        ;; the `before-insert` hook as a safety net for any code path that inserts QueryExecution directly (where
+        ;; dynamic vars would still be bound).
+        execution-info' (add-running-time (analytics.core/include-sdk-info execution-info))]
+    (if qp.util/*execute-async?*
+      (grouper/submit! @save-execution-metadata-queue execution-info')
+      (save-execution-metadata!* [execution-info']))))
 
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution
@@ -175,16 +185,49 @@
      :result_rows       0
      :start_time_millis (System/currentTimeMillis)}))
 
-(defn- enrich-with-execution-context
-  "Adds fields derived from postprocessing-middleware dynamic vars (`*impersonation-role*`,
-  `*destination-database-id*`) to `execution-info`. Must be called from inside the postprocessing rff, before the
-  async dispatch in [[save-execution-metadata!]] drops dynamic bindings."
-  [execution-info]
+(defn- snapshot-execution-context
+  "Reads the postprocessing-middleware dynamic vars (`*impersonation-role*`, `*destination-database-id*`) and
+  returns a map of fields to merge into the QueryExecution row."
+  []
   (let [destination-db-id (qp.middleware.enterprise/currently-destination-database-id)]
-    (cond-> (assoc execution-info
-                   :is_impersonated (qp.middleware.enterprise/currently-impersonated?)
-                   :is_db_routed    (qp.middleware.enterprise/currently-db-routed?))
+    (cond-> {:is_impersonated (qp.middleware.enterprise/currently-impersonated?)
+             :is_db_routed    (qp.middleware.enterprise/currently-db-routed?)}
       destination-db-id (assoc :database_id destination-db-id))))
+
+(def ^:dynamic ^:private *execution-context-ref*
+  "Bound to an atom by [[process-userland-query-middleware]] for each userland query.
+  [[capture-execution-context-middleware]] writes the snapshotted impersonation/db-routing context here while the
+  EE postprocessing `binding` blocks are still on the stack. The around middleware reads it in both the
+  success-path rff and the error-path catch — the latter is the whole point, since by the time control reaches
+  that catch the EE bindings have already been popped during exception unwind.
+
+  Why a shared mutable ref (atom) instead of just `set!` on the dynamic var: the QP can run on a thread spawned
+  by the streaming response (via `bound-fn` / `binding-conveyor-fn`), and conveyed bindings on that thread are a
+  snapshot — `set!` would mutate only the spawned thread's frame, not the caller's. A shared mutable cell that
+  any thread holding a reference can read/write makes the value flow back to the caller correctly."
+  nil)
+
+(defn capture-execution-context-middleware
+  "Execute middleware. Snapshots impersonation/db-routing dynamic-var values into [[*execution-context-ref*]] (if
+  bound) and forwards. Must be positioned FIRST in the execute middleware list so it runs INNERMOST — i.e. inside
+  the `binding` blocks established by `swap-destination-db-middleware` and
+  `apply-impersonation-postprocessing-middleware`. See the comment block in
+  [[metabase.query-processor.execute/middleware]] explaining the reduce order."
+  [qp]
+  (fn [query rff]
+    (when *execution-context-ref*
+      (reset! *execution-context-ref* (snapshot-execution-context)))
+    (qp query rff)))
+
+(defn- enrich-with-execution-context
+  "Merges the snapshotted execution context (from [[*execution-context-ref*]]) into `execution-info`. Always
+  includes `:is_impersonated` and `:is_db_routed` (defaulting to `false`) so the QueryExecution row has a stable
+  shape even when the snapshot didn't run (e.g. tests that bypass [[capture-execution-context-middleware]])."
+  [execution-info]
+  (merge {:is_impersonated false
+          :is_db_routed    false}
+         execution-info
+         (some-> *execution-context-ref* deref)))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.
@@ -206,27 +249,27 @@
     (analytics/set-gauge! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
     (if-not (qp.util/userland-query? query)
       (qp query rff)
-      (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
-            execution-info (query-execution-info query)]
-        (letfn [(rff* [metadata]
-                  (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                        result (rff (dissoc metadata :preprocessed_query))
-                        ;; Enrich here, while the impersonation / db-routing dynamic var bindings established by
-                        ;; postprocessing middleware are still in effect. Doing this at the top of the around
-                        ;; middleware was wrong — preprocessing hadn't run yet and the bindings weren't set.
-                        execution-info (enrich-with-execution-context execution-info)]
-                    (add-and-save-execution-metadata-xform! execution-info result)))]
-          (try
-            (qp query rff*)
-            (catch Throwable e
-              ;; Same enrichment for the error path: we're still inside `(qp query rff*)` so the postprocessing
-              ;; bindings are in effect.
-              (let [execution-info (enrich-with-execution-context execution-info)]
-                (save-failed-query-execution!
-                 execution-info
-                 (or
-                  (some-> e ex-cause ex-message)
-                  (ex-message e)))
-                (throw (ex-info (ex-message e)
-                                {:query-execution execution-info}
-                                e))))))))))
+      ;; The atom is written from inside [[capture-execution-context-middleware]] (positioned in the execute
+      ;; chain inside the EE postprocessing bindings) and read in both the success-path rff and the error-path
+      ;; catch below. Reading the EE dynamic vars directly from the catch block does NOT work — Clojure pops the
+      ;; EE `binding` blocks during stack unwind, so by the time control reaches the catch the values are gone.
+      (binding [*execution-context-ref* (atom nil)]
+        (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
+              execution-info (query-execution-info query)]
+          (letfn [(rff* [metadata]
+                    (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
+                          result         (rff (dissoc metadata :preprocessed_query))
+                          execution-info (enrich-with-execution-context execution-info)]
+                      (add-and-save-execution-metadata-xform! execution-info result)))]
+            (try
+              (qp query rff*)
+              (catch Throwable e
+                (let [execution-info (enrich-with-execution-context execution-info)]
+                  (save-failed-query-execution!
+                   execution-info
+                   (or
+                    (some-> e ex-cause ex-message)
+                    (ex-message e)))
+                  (throw (ex-info (ex-message e)
+                                  {:query-execution execution-info}
+                                  e)))))))))))

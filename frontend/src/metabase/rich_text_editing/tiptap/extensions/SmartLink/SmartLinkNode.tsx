@@ -20,22 +20,20 @@ import {
   useGetTransformQuery,
   useListMentionsQuery,
 } from "metabase/api";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Link } from "metabase/common/components/Link";
-import {
-  type IconModel,
-  type ObjectWithModel,
-  getIcon,
-} from "metabase/common/utils/icon";
-import { updateMentionsCache } from "metabase/documents/documents.slice";
+import type { IconModel, ObjectWithModel } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import {
   METABSE_PROTOCOL_MD_LINK,
   parseMetabaseProtocolMarkdownLink,
 } from "metabase/metabot/utils/links";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Icon } from "metabase/ui";
-import { modelToUrl } from "metabase/utils/urls/modelToUrl";
-import { extractEntityId } from "metabase/utils/urls/utils";
+import { modelToUrl } from "metabase/urls/modelToUrl";
+import { extractEntityId } from "metabase/urls/utils";
 import type {
   Card,
   CardDisplayType,
@@ -441,6 +439,7 @@ export const useEntityData = (
 
 export const SmartLinkComponent = memo(
   ({ node, updateAttributes }: NodeViewProps) => {
+    const getIcon = useGetIcon();
     const { entityId, model, label } = node.attrs;
 
     const {
@@ -452,14 +451,15 @@ export const SmartLinkComponent = memo(
     const entity = networkEntity || cachedEntity;
 
     const dispatch = useDispatch();
+    const host = useEditorHost();
     useEffect(() => {
       if (entity) {
         const name =
           "display_name" in entity ? entity.display_name : entity?.name;
         updateAttributes({ label: name });
-        dispatch(updateMentionsCache({ entityId, model, name }));
+        dispatch(host.actions.updateMentionsCache({ entityId, model, name }));
       }
-    }, [updateAttributes, dispatch, entity, entityId, model]);
+    }, [updateAttributes, dispatch, host, entity, entityId, model]);
 
     const showLoading = isLoading && !entity;
     if (showLoading) {
@@ -532,7 +532,7 @@ export const SmartLinkComponent = memo(
           className={styles.smartLink}
         >
           <span className={styles.smartLinkInner}>
-            <Icon name={iconData.name} className={styles.icon} />
+            <EntityIcon {...iconData} className={styles.icon} />
             {getName(entity)}
           </span>
         </Link>

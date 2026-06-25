@@ -46,6 +46,7 @@ export type EntityPickerModalProps = {
   value?: OmniPickerValue;
   onClose: () => void;
   recentsContext?: RecentContexts[];
+  disableRecentLogging?: boolean;
   options?: EntityPickerOptions;
 } & Omit<
   EntityPickerProps,
@@ -64,6 +65,7 @@ export function EntityPickerModal({
   options,
   onClose,
   onChange,
+  disableRecentLogging,
   ...rest
 }: EntityPickerModalProps) {
   const [modalContentMinWidth, setModalContentMinWidth] = useState(920);
@@ -97,9 +99,12 @@ export function EntityPickerModal({
         return;
       }
       await onChange(item);
-      tryLogRecentItem(item);
+
+      if (!disableRecentLogging) {
+        tryLogRecentItem(item);
+      }
     },
-    [isDialogOpen, onChange, tryLogRecentItem],
+    [disableRecentLogging, isDialogOpen, onChange, tryLogRecentItem],
   );
 
   useWindowEvent(
@@ -169,7 +174,12 @@ export function EntityPickerModal({
         maw="80vw"
         ref={modalContentCallbackRef}
       >
-        <Modal.Header px="1.5rem" pt="1rem" pb="1rem" bg="background-primary">
+        <Modal.Header
+          px="1.5rem"
+          pt="1rem"
+          pb="1rem"
+          bg="background_page-primary"
+        >
           <Modal.Title id={titleId} fz="lg">
             {title}
           </Modal.Title>

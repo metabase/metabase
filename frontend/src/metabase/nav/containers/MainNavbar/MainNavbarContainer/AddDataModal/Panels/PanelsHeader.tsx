@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { Box, Group, Modal } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import S from "../AddDataModal.module.css";
 
@@ -19,7 +19,7 @@ export const PanelsHeader = ({
   onAddDataModalClose,
 }: HeaderProps) => {
   const HeaderLink = ({ to, text }: { to: string; text: string }) => (
-    <Box component={Link} to={to} fw="bold" c="brand">
+    <Box component={Link} to={to} fw="bold" c="core-brand">
       {text}
     </Box>
   );

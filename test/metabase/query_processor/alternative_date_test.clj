@@ -1,12 +1,15 @@
 (ns ^:mb/driver-tests metabase.query-processor.alternative-date-test
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.alternative-date-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.alternative-date-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -423,7 +426,6 @@
                  :bigquery-cloud-sdk
                  :clickhouse
                  :databricks
-                 :druid
                  :snowflake
                  :sparksql
                  :sqlserver
@@ -638,3 +640,30 @@
                                :Coercion/ISO8601Bytes->Temporal]]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not support"
                             (sql.qp/cast-temporal-byte driver/*driver* coercion-strategy nil))))))
+
+(deftest ^:parallel unix-timestamp-columns-stay-temporal-in-saved-question-metadata-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions/date :nested-queries)
+    (mt/dataset sad-toucan-incidents
+      (let [mp (mt/metadata-provider)
+            timestamp (lib.metadata/field mp (mt/id :incidents :timestamp))
+            source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :incidents)))
+                             (lib/expression "day" (lib/date timestamp)))
+            source-metadata (-> (qp/process-query source-query) :data :results_metadata :columns)
+            card-metadata {:cards [{:id 1
+                                    :dataset-query source-query
+                                    :result-metadata source-metadata}]}
+            card-mp (lib.tu/mock-metadata-provider mp card-metadata)
+            card-query     (lib/query card-mp (lib.metadata/card card-mp 1))
+            temporal-col-names (fn [cols]
+                                 (into #{}
+                                       (for [col   cols
+                                             :let  [col-name (u/lower-case-en (:name col))]
+                                             :when (and (#{"timestamp" "day"} col-name)
+                                                        (isa? (:effective_type col) :type/Temporal))]
+                                         col-name)))]
+        (testing "the result metadata on the source query should keep the temporal types"
+          (is (= #{"timestamp" "day"}
+                 (temporal-col-names source-metadata))))
+        (testing "a query using the source query as its source should return temporal columns"
+          (is (= #{"timestamp" "day"}
+                 (temporal-col-names (mt/cols (qp/process-query card-query))))))))))

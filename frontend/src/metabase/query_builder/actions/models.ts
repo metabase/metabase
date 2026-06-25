@@ -47,7 +47,8 @@ export const turnQuestionIntoModel =
     dispatch(
       addUndo({
         message: t`This is a model now.`,
-        actions: [apiUpdateQuestion(question, { rerunQuery: true })],
+        action: () =>
+          dispatch(apiUpdateQuestion(question, { rerunQuery: true })),
       }),
     );
   };
@@ -70,7 +71,7 @@ export const turnModelIntoQuestion =
     dispatch(
       addUndo({
         message: t`This is a question now.`,
-        actions: [apiUpdateQuestion(model)],
+        action: () => dispatch(apiUpdateQuestion(model)),
       }),
     );
   };

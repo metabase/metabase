@@ -1,17 +1,17 @@
 import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
-import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
-import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
 import { Link } from "metabase/common/components/Link/Link";
+import type { QuestionNotificationListItem } from "metabase/notifications/types";
 import {
   canArchive,
+  formatCreatorMessage,
   formatNotificationSchedule,
   formatTitle,
   getNotificationEnabledChannelsMap,
 } from "metabase/notifications/utils";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { User } from "metabase-types/api";
 
 import S from "./DashboardNotificationCard.module.css";
@@ -34,10 +34,12 @@ export const NotificationCard = ({
   const { item } = listItem;
   const hasArchive = canArchive(listItem.item, user);
 
-  const entityLink = Urls.question({
-    id: item.payload.card_id,
-    card_id: item.payload.card_id,
-  });
+  const entityLink = item.payload
+    ? Urls.card({
+        id: item.payload.card_id,
+        card_id: item.payload.card_id,
+      })
+    : undefined;
 
   const enabledChannelsMap = getNotificationEnabledChannelsMap(item);
 
@@ -58,12 +60,16 @@ export const NotificationCard = ({
       align="center"
       px="lg"
       py="md"
-      bg="background-primary"
+      bg="background_page-primary"
     >
       <Box flex="1 1 auto">
-        <Link variant="brandBold" to={entityLink}>
-          {formatTitle(listItem)}
-        </Link>
+        {entityLink ? (
+          <Link variant="brandBold" to={entityLink}>
+            {formatTitle(listItem)}
+          </Link>
+        ) : (
+          formatTitle(listItem)
+        )}
         <Flex wrap="wrap" mt="xs">
           <Text
             component="span"

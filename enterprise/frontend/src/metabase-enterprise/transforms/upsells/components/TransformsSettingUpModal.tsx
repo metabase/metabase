@@ -49,10 +49,10 @@ export const TransformsSettingUpModal = ({
             justify="center"
             h="100%"
             w="100%"
-            bg="background-secondary"
+            bg="background_page-secondary"
             style={{ borderRadius: "50%" }}
           >
-            <Icon name="table2" size={48} c="brand" />
+            <Icon name="table2" size={48} c="core-brand" />
           </Flex>
 
           {isSettingUp && (

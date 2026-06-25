@@ -1,13 +1,13 @@
 import { useState } from "react";
 
-import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import { FilterPickerBody } from "metabase/common/metrics/components/FilterPicker/FilterPickerBody";
 import {
   trackMetricsViewerFilterEdited,
   trackMetricsViewerFilterRemoved,
 } from "metabase/metrics-viewer/analytics";
-import type { IconName } from "metabase/ui";
 import { Badge, Flex, Popover, Text } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
 
 import { MetricsFilterPill } from "./MetricsFilterPill";
 import { getFilterDisplayParts } from "./utils";
@@ -75,7 +75,7 @@ export function MetricsFilterPillPopover({
                 {(metricCount ?? 0) > 1 && (
                   <Badge
                     circle
-                    color="filter"
+                    color="core-filter"
                     // override background from Badge.config.tsx
                     styles={{ root: { background: "var(--badge-bg)" } }}
                     ml="xs"

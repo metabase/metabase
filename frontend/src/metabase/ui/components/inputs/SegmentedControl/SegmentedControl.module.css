@@ -7,7 +7,7 @@
   line-height: 1;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 
   &[data-disabled] {
@@ -27,7 +27,7 @@
 
 .SegmentedControl_Control {
   &:not(:first-of-type) {
-    border-color: var(--mb-color-border);
+    border-color: var(--mb-color-border-neutral);
   }
 }
 

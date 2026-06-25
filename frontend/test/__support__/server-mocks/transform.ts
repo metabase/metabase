@@ -3,11 +3,14 @@ import fetchMock from "fetch-mock";
 import type {
   Dataset,
   InspectorLensId,
+  ListTransformJobRunsResponse,
   ListTransformRunsResponse,
   Transform,
   TransformId,
   TransformJob,
   TransformJobId,
+  TransformJobRunId,
+  TransformRunForJobRun,
   TransformTag,
 } from "metabase-types/api";
 
@@ -54,12 +57,34 @@ export function setupGetTransformJobEndpoint(job: TransformJob) {
   fetchMock.get(`path:/api/transform-job/${job.id}`, job);
 }
 
+export function setupListTransformJobRunsEndpoint(
+  jobId: TransformJobId,
+  response: ListTransformJobRunsResponse | (() => ListTransformJobRunsResponse),
+) {
+  fetchMock.get(`path:/api/transform-job/${jobId}/runs`, response);
+}
+
+export function setupListJobRunTransformRunsEndpoint(
+  jobId: TransformJobId,
+  runId: TransformJobRunId,
+  runs: TransformRunForJobRun[] | (() => TransformRunForJobRun[]),
+) {
+  fetchMock.get(
+    `path:/api/transform-job/${jobId}/runs/${runId}/transform-runs`,
+    runs,
+  );
+}
+
 export function setupCreateTransformJobEndpoint(job: TransformJob) {
   fetchMock.post("path:/api/transform-job", job);
 }
 
 export function setupUpdateTransformJobEndpoint(job: TransformJob) {
   fetchMock.put(`path:/api/transform-job/${job.id}`, job);
+}
+
+export function setupBulkUpdateTransformJobsActiveEndpoint(updated: number) {
+  fetchMock.put("path:/api/transform-job/active", { updated });
 }
 
 export function setupRunTransformJobEndpoint(jobId: TransformJobId) {

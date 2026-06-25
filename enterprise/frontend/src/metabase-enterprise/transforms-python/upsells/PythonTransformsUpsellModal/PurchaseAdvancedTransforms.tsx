@@ -6,7 +6,6 @@ import { trackUpsellClicked } from "metabase/common/components/upsells/component
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Stack, Text } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import * as Urls from "metabase/utils/urls";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
 import type { ICloudAddOnProduct } from "metabase-types/api/store";
@@ -14,15 +13,17 @@ import type { ICloudAddOnProduct } from "metabase-types/api/store";
 import { CAMPAIGN, LOCATION } from "./constants";
 
 type PurchaseAdvancedTransformsProps = {
-  handleModalClose: VoidFunction;
+  handleModalClose?: VoidFunction;
   addOn: ICloudAddOnProduct;
   freeUnitsIncluded: boolean;
+  onSuccess: () => void;
 };
 
 export const PurchaseAdvancedTransforms = ({
   handleModalClose,
   addOn,
   freeUnitsIncluded,
+  onSuccess,
 }: PurchaseAdvancedTransformsProps) => {
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
@@ -37,17 +38,18 @@ export const PurchaseAdvancedTransforms = ({
       await purchaseCloudAddOn({
         product_type: "transforms-advanced-metered",
       }).unwrap();
-      window.location.href = Urls.transformList(); // On success, do a full-page redirect to transforms list
+      onSuccess();
     } catch {
       sendErrorToast(
         t`It looks like something went wrong. Please refresh the page and try again.`,
       );
     } finally {
       settingUpModalHandlers.close();
-      handleModalClose();
+      handleModalClose?.();
     }
   }, [
     handleModalClose,
+    onSuccess,
     purchaseCloudAddOn,
     sendErrorToast,
     settingUpModalHandlers,

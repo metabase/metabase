@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.api
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.impl :as impl]
@@ -8,16 +9,36 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- check-branch-matches-setting!
+  "Compare-and-swap guard against the multi-tab staleness hole: the client sends the branch it
+  believes it is operating on, and we reject the request when that disagrees with the authoritative
+  `remote-sync-branch` setting — e.g. another session switched branches since this client last loaded
+  its settings. The setting stays the source of truth; `requested-branch` is only an assertion.
+
+  Throws a 409 carrying `:branch_mismatch true` and the current `:current_branch` so the client can
+  refresh its view and retry. Returns the (now-validated) branch on success."
+  [requested-branch]
+  (let [current (settings/remote-sync-branch)]
+    (when-not (= requested-branch current)
+      (throw (ex-info (format "The sync branch changed to '%s' in another session. Refresh and try again."
+                              current)
+                      {:status-code     409
+                       :branch_mismatch true
+                       :current_branch  current})))
+    requested-branch))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Import Metabase content from configured Remote Sync source.
@@ -32,16 +53,25 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [branch force]} :- [:map [:branch {:optional true} ms/NonBlankString]
-                              [:force {:optional true} :boolean]]]
+   {:keys [branch force merge expected_branch]}
+   :- [:map [:branch {:optional true} ms/NonBlankString]
+       [:force {:optional true} :boolean]
+       [:merge {:optional true} :boolean]
+       ;; the branch the client believes is currently active; rejected if it disagrees with the
+       ;; remote-sync-branch setting (a pull/switch from a stale tab). `branch` is the operational
+       ;; target (it differs from this on a branch switch); `expected_branch` is only the assertion.
+       [:expected_branch ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
+  (check-branch-matches-setting! expected_branch)
   (let [branch-name (or branch (settings/remote-sync-branch))
-        {task-id :id :as task} (impl/async-import! branch-name force {})]
-    (events/publish-event! :event/remote-sync-import
-                           {:object task
-                            :details {:branch branch-name}
-                            :user-id api/*current-user-id*})
+        user-id     api/*current-user-id*
+        {task-id :id}
+        (impl/async-import!
+         branch-name force {}
+         :merge?     (or merge false)
+         :on-success (fn [task-id _result]
+                       (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
     {:status :success
      :task_id task-id
      :message (when-not task-id "No changes since last import")}))
@@ -68,10 +98,11 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [result (impl/has-remote-changes? {:force-refresh? force-refresh})]
-    {:has_changes (:has-changes? result)
-     :remote_version (:remote-version result)
-     :local_version (:local-version result)
-     :cached (:cached? result)}))
+    (cond-> {:has_changes (:has-changes? result)
+             :remote_version (:remote-version result)
+             :local_version (:local-version result)
+             :cached (:cached? result)}
+      (:branch-missing? result) (assoc :branch_missing true))))
 
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
   "Return all models with changes that have not been pushed to the remote sync source in any
@@ -96,37 +127,112 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch force]}] :- [:map
-                                       [:message {:optional true} ms/NonBlankString]
-                                       [:branch {:optional true} ms/NonBlankString]
-                                       [:force {:optional true} :boolean]]
+   {:keys [message branch force merge]} :- [:map
+                                            [:message {:optional true} ms/NonBlankString]
+                                            [:branch ms/NonBlankString]
+                                            [:force {:optional true} :boolean]
+                                            [:merge {:optional true} :boolean]]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
-  (let [branch-name (or branch (settings/remote-sync-branch))
-        {task-id :id :as task} (impl/async-export! branch-name
-                                                   (or force false)
-                                                   (or message "Exported from Metabase"))]
-    (events/publish-event! :event/remote-sync-export
-                           {:object task
-                            :details {:branch branch-name}
-                            :user-id api/*current-user-id*})
+  (let [branch-name (check-branch-matches-setting! branch)
+        user-id     api/*current-user-id*
+        {task-id :id}
+        (impl/async-export!
+         branch-name
+         (or force false)
+         (or message "Exported from Metabase")
+         :merge?     (or merge false)
+         :on-success (fn [task-id _result]
+                       (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))]
     {:message "Export task started"
      :task_id task-id}))
+
+(api.macros/defendpoint :get "/export-preflight" :- remote-sync.schema/ExportPreflightResponse
+  "Dry-run preview of what pushing the current state would do given the live remote branch, without
+  writing anything. Drives the UI's push decision (force / new branch / merge).
+
+  Returns:
+  - has_changes: whether the remote branch has advanced beyond the last synced version
+  - clean: whether a 3-way merge would apply with no conflicts
+  - conflicts: human-readable labels of the entities that conflict (empty when clean)
+  - summary: counts of remote changes a merge would fold in
+  - force_push_casualties: remote content a force push (rather than a merge) would discard, as
+    `{:deleted [labels] :overwritten [labels]}`
+  - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists
+
+  Requires superuser permissions."
+  [_route
+   {:keys [branch]} :- [:map [:branch ms/NonBlankString]]]
+  (api/check-superuser)
+  (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
+  (let [branch-name (check-branch-matches-setting! branch)
+        {:keys [diverged? clean? conflicts summary force-push-casualties reason]}
+        (impl/preview-export-merge branch-name)]
+    {:has_changes            diverged?
+     :clean                  clean?
+     :conflicts              conflicts
+     :summary                summary
+     :force_push_casualties  force-push-casualties
+     :reason                 (some-> reason name)}))
 
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
   []
+  (api/check-superuser)
   (when-let [task (remote-sync.task/most-recent-task)]
     (t2/hydrate task :status)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
   []
+  (api/check-superuser)
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))
     (t2/hydrate (remote-sync.task/most-recent-task) :status)))
+
+(api.macros/defendpoint :post "/test-connection" :- remote-sync.schema/TestConnectionResponse
+  "Test whether the Remote Sync credentials can reach the git repository.
+
+  When called with an empty body, validates the currently saved URL and token. When the body provides
+  `remote-sync-url` or `remote-sync-token`, those override the saved values — useful for verifying a
+  new Personal Access Token before saving. An obfuscated token (matching the existing token's masked
+  representation) is treated as \"unchanged\" and the stored token value is used for the test.
+
+  Only validates connection and authentication; branch existence is not checked here.
+
+  Returns `{:status :success}` on success. On failure, returns a 400 with a user-friendly error
+  message describing the connection problem.
+
+  Requires superuser permissions."
+  [_route-params
+   _query-params
+   {:keys [remote-sync-url remote-sync-token] :as body}
+   :- [:map
+       [:remote-sync-url {:optional true} [:maybe :string]]
+       [:remote-sync-token {:optional true} [:maybe :string]]]]
+  (api/check-superuser)
+  (let [current-token   (settings/remote-sync-token)
+        obfuscated?     (and remote-sync-token
+                             (= remote-sync-token (setting/obfuscate-value current-token)))
+        effective-token (if (or obfuscated? (not (contains? body :remote-sync-token)))
+                          current-token
+                          remote-sync-token)
+        effective-url   (or remote-sync-url (settings/remote-sync-url))]
+    (api/check-400 (not (str/blank? effective-url)) "Remote sync is not configured.")
+    (try
+      ;; Runs the URL protocol check; branch/type omitted so the branch-existence path is skipped.
+      (settings/check-git-settings! {:remote-sync-url   effective-url
+                                     :remote-sync-token effective-token})
+      ;; Force a fresh lsRemote so a rotated token is detected on every click, even when the
+      ;; cached JGit instance would otherwise short-circuit.
+      (-> (source.git/git-source effective-url "HEAD" effective-token nil)
+          source.git/branches)
+      {:status :success}
+      (catch Exception e
+        (throw (ex-info (impl/source-error-message e)
+                        {:status-code 400} e))))))
 
 (api.macros/defendpoint :put "/settings" :- remote-sync.schema/SettingsUpdateResponse
   "Update Remote Sync related settings. You must be a superuser to do this."
@@ -160,6 +266,12 @@
     (let [effective-type (or remote-sync-type (settings/remote-sync-type))]
       (api/check-400 (not (and (seq collections) (= :read-only effective-type)))
                      "Cannot change synced collections when remote-sync-type is read-only."))
+    (try
+      (settings/check-and-update-remote-settings! (dissoc settings :collections))
+      (catch Exception e
+        (throw (ex-info (or (ex-message e) "Invalid settings")
+                        {:error       (ex-message e)
+                         :status-code 400} e))))
     (when (seq collections)
       (try
         (remote-sync.core/bulk-set-remote-sync collections)
@@ -167,12 +279,6 @@
           (throw (ex-info (or (ex-message e) "Invalid collection settings")
                           {:error       (ex-message e)
                            :status-code 400} e)))))
-    (try
-      (settings/check-and-update-remote-settings! (dissoc settings :collections))
-      (catch Exception e
-        (throw (ex-info (or (ex-message e) "Invalid settings")
-                        {:error       (ex-message e)
-                         :status-code 400} e))))
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})
@@ -207,13 +313,11 @@
    _query
    {:keys [name]} :- [:map [:name ms/NonBlankString]]]
   (api/check-superuser)
-  (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))
-        source (source/source-from-settings)]
-    (api/check-400 source "Source not configured")
+  (let [base-branch (or (remote-sync.task/last-version) (settings/remote-sync-branch))]
+    (api/check-400 (source/source-from-settings) "Source not configured")
     (api/check-400 base-branch "Base commit not found")
     (try
-      (source.p/create-branch source name base-branch)
-      (settings/remote-sync-branch! name)
+      (impl/create-branch! name base-branch)
       (events/publish-event! :event/remote-sync-create-branch
                              {:details {:branch_name name
                                         :base_branch base-branch}
@@ -234,21 +338,18 @@
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)
   (api/check-400 (= (settings/remote-sync-type) :read-write) "Stash is only allowed when remote-sync-type is set to 'read-write'")
-  (let [source (source/source-from-settings)]
-    (api/check-400 source  "Source not configured")
-    (try
-      (source.p/create-branch source new-branch (settings/remote-sync-branch))
-      (let [{task-id :id :as task} (impl/async-export! new-branch false message)]
-        (events/publish-event! :event/remote-sync-stash
-                               {:object task
-                                :details {:branch new-branch}
-                                :user-id api/*current-user-id*})
-        {:status "success"
-         :message (str "Stashing to " new-branch)
-         :task_id task-id})
-      (catch Exception e
-        (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
-                        {:status-code 400}))))))
+  (api/check-400 (source/source-from-settings) "Source not configured")
+  (try
+    (let [user-id       api/*current-user-id*
+          {task-id :id} (impl/stash! new-branch message
+                                     :on-success (fn [task-id _result]
+                                                   (impl/publish-sync-event! :event/remote-sync-stash task-id {:branch new-branch} user-id)))]
+      {:status "success"
+       :message (str "Stashing to " new-branch)
+       :task_id task-id})
+    (catch Exception e
+      (throw (ex-info (format "Failed to stash changes to branch: %s" (ex-message e))
+                      {:status-code 400})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

@@ -12,6 +12,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
@@ -20,7 +21,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -32,6 +32,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -94,7 +95,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    target-field-clause   :- ::lib.schema.parameter/target]
   ;; parameter targets still use legacy field refs for whatever wacko reason
-  (when-let [field-id (lib.util.match/match-lite target-field-clause
+  (when-let [field-id (match/match-one target-field-clause
                         [:field (field-id :guard pos-int?) _opts] field-id)]
     (:base-type (lib.metadata/field metadata-providerable field-id))))
 
@@ -239,38 +240,50 @@
   We probably should have had this error from day 1 but now there are sandboxes in the wild that do this so I guess we
   just have to work around them going forward."
   [metadata-providerable sandbox-query original-table-id]
-  (let [sandbox-cols (lib/returned-columns sandbox-query)
-        table-cols   (lib.metadata/fields metadata-providerable original-table-id)
-        fixed-cols   (remove (fn [{:keys [table-id], :as sandbox-col}]
-                               (b/cond
-                                 (and table-id
-                                      (not= table-id original-table-id))
-                                 (do
-                                   (log/errorf (str "Sandboxes can only include columns from the original Table (%d),"
-                                                    " query included %s from Table %d. This is unsupported and may not"
-                                                    " work in the future.")
-                                               original-table-id
-                                               (pr-str (:name sandbox-col))
-                                               table-id)
-                                   true)
+  (let [sandbox-cols       (lib/returned-columns sandbox-query)
+        table-cols         (lib.metadata/fields metadata-providerable original-table-id)
+        ;; `dissoc nil` guards against the rare case of a table-col without `:id` shadowing the name lookup for
+        ;; sandbox cols (e.g. native) that also have no `:id`.
+        table-by-id        (dissoc (m/index-by :id table-cols) nil)
+        table-by-name      (m/index-by :name table-cols)
+        ;; For nested fields (e.g. Mongo objects), the sandbox col's `:name` comes from
+        ;; `add-parent-column-metadata` as `parent.child.leaf`, while `table-cols` carry the raw leaf `:name`.
+        ;; Index table-cols by their parent-qualified name so name-only matching (native sandboxes, no `:id`)
+        ;; still finds nested fields. See #75305.
+        table-by-flat-name (m/index-by #(lib.field.util/parent-qualified-name metadata-providerable %)
+                                       table-cols)
+        find-table-col     (fn [{col-id :id, col-name :name}]
+                             (or (get table-by-id col-id)
+                                 (get table-by-name col-name)
+                                 (get table-by-flat-name col-name)))
+        fixed-cols         (remove (fn [{:keys [table-id], :as sandbox-col}]
+                                     (b/cond
+                                       (and table-id
+                                            (not= table-id original-table-id))
+                                       (do
+                                         (log/errorf (str "Sandboxes can only include columns from the original Table (%d),"
+                                                          " query included %s from Table %d. This is unsupported and may not"
+                                                          " work in the future.")
+                                                     original-table-id
+                                                     (pr-str (:name sandbox-col))
+                                                     table-id)
+                                         true)
 
-                                 :let [matching-table-col (m/find-first #(= (:name %)
-                                                                            (:name sandbox-col))
-                                                                        table-cols)]
-                                 (not matching-table-col)
-                                 (do
-                                   (log/errorf (str "Sandboxes can only include columns from the original Table,"
-                                                    " but query included %s. This is unsupported and may not work in"
-                                                    " the future.")
-                                               (pr-str (:name sandbox-col)))
-                                   true)
+                                       :let [matching-table-col (find-table-col sandbox-col)]
+                                       (not matching-table-col)
+                                       (do
+                                         (log/errorf (str "Sandboxes can only include columns from the original Table,"
+                                                          " but query included %s. This is unsupported and may not work in"
+                                                          " the future.")
+                                                     (pr-str (:name sandbox-col)))
+                                         true)
 
-                                 :else
-                                 (do
-                                   ;; this will throw an exception if types don't match up
-                                   (sandbox/check-column-types-match sandbox-col matching-table-col)
-                                   false)))
-                             sandbox-cols)]
+                                       :else
+                                       (do
+                                         ;; this will throw an exception if types don't match up
+                                         (sandbox/check-column-types-match sandbox-col matching-table-col)
+                                         false)))
+                                   sandbox-cols)]
     (if (= fixed-cols sandbox-cols)
       sandbox-query
       (do
@@ -291,6 +304,39 @@
                     (assoc :qp/native-sandbox-column.force-coercion-strategy (:coercion-strategy table-col)
                            :qp/native-sandbox-column.propagate-coercion?     true)))))
         original-table-cols))
+
+(defn- sandbox-exposed-field-ids
+  "Set of original-table field-ids the sandbox actually returns. MBQL GTAPs' returned columns carry `:id` from the
+  original table, so we take those ids directly. Native GTAPs' columns have only `:name` (no id), so bridge through
+  the original table's `:name → :id` mapping. The `:name` fallback is degenerate for tables with same-name columns —
+  those are unreachable through normal sync but we accept any matching id."
+  [sandbox-query original-table-id]
+  (let [sandbox-cols      (lib/returned-columns sandbox-query)
+        direct-ids        (into #{} (keep :id) sandbox-cols)
+        unresolved-names  (into #{}
+                                (comp (remove :id) (keep :name))
+                                sandbox-cols)
+        name-resolved-ids (when (seq unresolved-names)
+                            (into #{}
+                                  (keep (fn [{col-name :name id :id}]
+                                          (when (and id (contains? unresolved-names col-name))
+                                            id)))
+                                  (lib.metadata/fields sandbox-query original-table-id)))]
+    (into direct-ids name-resolved-ids)))
+
+(defn- filter-stage-fields-to-sandbox
+  "When wrapping a sandbox subquery with a stage that carries a `:fields` clause from before the swap, drop any
+  field-id refs the sandbox no longer exposes (e.g., a native GTAP that omits a column). Field refs by string name
+  refer to the previous stage's output and are preserved. See #73339."
+  [stage sandbox-field-ids]
+  (m/update-existing stage :fields
+                     (fn [fields]
+                       (filterv (fn [field-ref]
+                                  (let [[tag _opts id-or-name] field-ref]
+                                    (or (not= tag :field)
+                                        (not (integer? id-or-name))
+                                        (contains? sandbox-field-ids id-or-name))))
+                                fields))))
 
 (mu/defn- apply-sandbox-to-stage :- [:and
                                      [:sequential {:min 1} ::lib.schema/stage]
@@ -328,8 +374,16 @@
                                 (empty? (->> (keys stage)
                                              (remove #{:source-table :fields})
                                              (remove qualified-keyword?))))
+        ;; #73339: an implicit-join sub-stage gets `:fields` populated by the post-implicit-joins
+        ;; `add-implicit-clauses` pass *from the original table's column set*, then we land here and swap
+        ;; `:source-table` for the sandbox subquery. Any field-id refs the sandbox doesn't expose (e.g., a column
+        ;; the native GTAP drops) would compile to `SELECT __mb_source.<dropped>` and fail at the DB. Filter them out.
+        wrapper-stage      (when-not skip-final-stage?
+                             (filter-stage-fields-to-sandbox
+                              (dissoc stage :source-table)
+                              (sandbox-exposed-field-ids sandbox-query source-table)))
         replacement-stages (cond-> new-source-stages
-                             (not skip-final-stage?) (conj (dissoc stage :source-table)))]
+                             wrapper-stage (conj wrapper-stage))]
     (log/tracef "Applied Sandbox: replaced stage\n\n%s\n\nwith stages\n\n%s"
                 (u/cprint-to-str stage)
                 (u/cprint-to-str replacement-stages))
@@ -409,7 +463,7 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (boolean (lib.util.match/match-lite query
+    (let [metadata (assoc metadata :is_sandboxed (boolean (match/match-one query
                                                             {:query-permissions/sandboxed-table &truthy} true)))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)

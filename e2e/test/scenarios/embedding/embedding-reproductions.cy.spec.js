@@ -3,7 +3,8 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
 import { defer } from "metabase/utils/promise";
-const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, FEEDBACK, FEEDBACK_ID } =
+  SAMPLE_DATABASE;
 
 describe("issue 15860", { tags: "@skip" }, () => {
   const q1IdFilter = {
@@ -1407,10 +1408,52 @@ describe("issue 51934 (EMB-189)", () => {
     const QA_DB_NAME = "QA Postgres12";
     const DATA_SOURCE_NAME = "Orders";
 
+    // Before the picker can auto-navigate into the data source's collection it
+    // resolves the target path asynchronously: a card-metadata fetch plus one
+    // `listCollectionItems` request per collection level (root -> Model
+    // Collection). On a throttled CI runner that serial chain routinely outlasts
+    // Cypress's default 4 s command timeout, so the picker is still showing the
+    // parent (root) collections when a default-timeout query gives up — the
+    // dominant "cannot find menuitem '...' (only the root collections are
+    // present)" flake. Wait for the loader to clear, then give the item lookup a
+    // generous timeout so it waits for the path to finish resolving, and assert
+    // it is visible (positive anchor) before clicking.
+    const PICKER_ITEM_TIMEOUT = 15000;
+    const clickPickerItem = (name) => {
+      cy.get('[data-testid="mini-picker-list-loader"]').should("not.exist");
+      cy.findByRole("menuitem", { name }, { timeout: PICKER_ITEM_TIMEOUT })
+        .should("be.visible")
+        .click();
+    };
+
+    // The data-source picker and the join picker are both rendered by the same
+    // embedding DataSourceSelector, so a generic popover query could not tell
+    // them apart. When a click swaps one for the other they can briefly overlap
+    // (the outgoing one is still in its close transition while the incoming one
+    // is already mounted), which made matching ambiguous and flaky on slow CI
+    // runners.
+    //
+    // Each picker now carries its trigger's label as the dropdown's accessible
+    // name (`aria-label`), so we can target each popover deterministically by
+    // name regardless of any transition overlap. `.filter(":visible").last()`
+    // guards against a same-named popover that is still animating closed.
+    const pickerPopover = (name) =>
+      cy
+        .get(`[data-element-id=mantine-popover][aria-label="${name}"]`)
+        .filter(":visible")
+        .should("have.length.at.least", 1)
+        .last();
+    const dataSourcePopover = () => pickerPopover("Pick your starting data");
+    const joinPopover = () => pickerPopover("Pick data to join");
+
     cy.log("select a table as a data source");
-    H.popover().within(() => {
+    dataSourcePopover().within(() => {
       cy.findByText("Raw Data").click();
+    });
+    dataSourcePopover().within(() => {
       cy.findByRole("heading", { name: QA_DB_NAME }).click();
+    });
+    dataSourcePopover().within(() => {
       cy.findByRole("option", { name: DATA_SOURCE_NAME }).click();
     });
     H.getNotebookStep("data").button("Join data").click();
@@ -1418,7 +1461,7 @@ describe("issue 51934 (EMB-189)", () => {
     cy.log(
       'select the "Join" step when the data source is a table will open a table in the same database',
     );
-    H.popover().within(() => {
+    joinPopover().within(() => {
       cy.findByText(QA_DB_NAME).should("be.visible");
       cy.findByRole("option", { name: "Orders" }).should("be.visible");
     });
@@ -1429,22 +1472,26 @@ describe("issue 51934 (EMB-189)", () => {
     H.getNotebookStep("data").findByText(DATA_SOURCE_NAME).click();
 
     cy.log('go back to the "Bucket" step');
-    H.popover().within(() => {
+    dataSourcePopover().within(() => {
       cy.icon("chevronleft").click();
+    });
+    dataSourcePopover().within(() => {
       cy.icon("chevronleft").click();
     });
 
     cy.log(
       "select a question as a data source should open the saved question step in the same collection as the data source (metabase#58357)",
     );
-    H.popover().within(() => {
+    dataSourcePopover().within(() => {
       cy.findByText("Saved Questions").click();
-      cy.findByRole("menuitem", { name: COLLECTION_NAME }).click();
-      cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME }).click();
     });
+    dataSourcePopover().within(() => clickPickerItem(COLLECTION_NAME));
+    dataSourcePopover().within(() =>
+      clickPickerItem(QUESTION_IN_COLLECTION_NAME),
+    );
 
     cy.log("the join popover is automatically opened");
-    H.popover().within(() => {
+    joinPopover().within(() => {
       cy.log("the collection of the data source should be selected");
       cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
         "have.css",
@@ -1452,9 +1499,7 @@ describe("issue 51934 (EMB-189)", () => {
         // brand color
         "rgb(80, 158, 226)",
       );
-      cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME })
-        .should("be.visible")
-        .click();
+      clickPickerItem(QUESTION_IN_COLLECTION_NAME);
     });
 
     cy.log(
@@ -1462,18 +1507,18 @@ describe("issue 51934 (EMB-189)", () => {
     );
     H.getNotebookStep("data").findByText(QUESTION_IN_COLLECTION_NAME).click();
 
-    H.popover().within(() => {
-      // Go back to the "Bucket" step
+    // Go back to the "Bucket" step
+    dataSourcePopover().within(() => {
       cy.findByText("Saved Questions").click();
-
-      // We're now at the "Bucket" step
-      cy.findByText("Models").click();
-      cy.findByRole("menuitem", { name: COLLECTION_NAME }).click();
-      cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME }).click();
     });
+    // We're now at the "Bucket" step
+    dataSourcePopover().within(() => {
+      cy.findByText("Models").click();
+    });
+    dataSourcePopover().within(() => clickPickerItem(MODEL_IN_COLLECTION_NAME));
 
     cy.log("the join popover is automatically opened");
-    H.popover().within(() => {
+    joinPopover().within(() => {
       cy.log("the collection of the data source should be selected");
       cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
         "have.css",
@@ -1481,21 +1526,17 @@ describe("issue 51934 (EMB-189)", () => {
         // brand color
         "rgb(80, 158, 226)",
       );
-      cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME })
-        .should("be.visible")
-        .click();
+      clickPickerItem(MODEL_IN_COLLECTION_NAME);
     });
 
     cy.log(
       "select a data source after selecting a join step should refresh the data picker on the join step",
     );
     H.getNotebookStep("data").findByText(MODEL_IN_COLLECTION_NAME).click();
-    H.popover().within(() => {
-      cy.findByRole("menuitem", { name: "Our analytics" }).click();
-      cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).click();
-    });
+    dataSourcePopover().within(() => clickPickerItem("Our analytics"));
+    dataSourcePopover().within(() => clickPickerItem(MODEL_IN_ROOT_NAME));
 
-    H.popover().within(() => {
+    joinPopover().within(() => {
       cy.log("the collection of the new data source should be selected");
       cy.findByRole("menuitem", { name: "Our analytics" }).should(
         "have.css",
@@ -1557,6 +1598,89 @@ describe("issue 63687", () => {
 
     cy.wait("@getTiles").then(({ response: tileResponse }) => {
       expect(tileResponse?.statusCode).to.equal(200);
+    });
+  });
+});
+
+describe("issue 57028", () => {
+  const lockedContainsBodyFilter = {
+    name: "locked_contains_body",
+    slug: "locked_contains_body",
+    id: "e6588080",
+    type: "string/contains",
+    sectionId: "string",
+    isMultiSelect: true,
+    values_query_type: "none",
+  };
+
+  const emailFilter = {
+    name: "Email",
+    slug: "email",
+    id: "d31e550f",
+    type: "string/=",
+    sectionId: "string",
+    values_query_type: "list",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("static embedded editable filter should load dropdown values when a string/contains locked param has multiple values (metabase#57028)", () => {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Feedback",
+        query: { "source-table": FEEDBACK_ID },
+      },
+      dashboardDetails: {
+        parameters: [lockedContainsBodyFilter, emailFilter],
+        enable_embedding: true,
+        embedding_params: {
+          [lockedContainsBodyFilter.slug]: "locked",
+          [emailFilter.slug]: "enabled",
+        },
+      },
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      H.addOrUpdateDashboardCard({
+        dashboard_id,
+        card_id,
+        card: {
+          parameter_mappings: [
+            {
+              card_id,
+              parameter_id: lockedContainsBodyFilter.id,
+              target: ["dimension", ["field", FEEDBACK.BODY, null]],
+            },
+            {
+              card_id,
+              parameter_id: emailFilter.id,
+              target: ["dimension", ["field", FEEDBACK.EMAIL, null]],
+            },
+          ],
+        },
+      });
+
+      cy.intercept(
+        "GET",
+        `/api/embed/dashboard/*/params/${emailFilter.id}/values`,
+      ).as("emailValues");
+
+      H.visitEmbeddedPage({
+        resource: { dashboard: dashboard_id },
+        params: {
+          [lockedContainsBodyFilter.slug]: ["March", "damp", "somewhat"],
+        },
+      });
+    });
+
+    H.filterWidget().contains("Email").click();
+
+    cy.wait("@emailValues").its("response.statusCode").should("eq", 200);
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Search the list").should("be.visible");
+      cy.findAllByRole("checkbox").its("length").should("be.greaterThan", 0);
     });
   });
 });

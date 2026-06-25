@@ -17,9 +17,15 @@ function getJvmOptsFromDepsEdn(alias = "e2e") {
 // Ensure that the only two required env vars have values
 process.env.MB_DB_FILE = process.env.MB_DB_FILE || tempDbPath;
 process.env.MB_JETTY_PORT = process.env.MB_JETTY_PORT || 4000;
+process.env.MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED =
+  process.env.MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED || "true";
 
 // Expose the `en-ZZ` pseudo-locale in the Cypress backend's language pickers and API validation.
 process.env.MB_ENABLE_TEST_LOCALES = "true";
+
+// Use the H2 sample database in E2E tests. Production ships SQLite, but the test suite was written
+// against the H2 sample data; this defers migrating the tests to SQLite until after the release.
+process.env.MB_SAMPLE_DATABASE_ENGINE = "h2";
 
 if (!process.env.CI) {
   // Use a temporary copy of the sample db so it won't use and lock the db used for local development

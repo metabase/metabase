@@ -2,13 +2,15 @@ import type { JSX } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
-import type { DashboardSubscriptionListItem } from "metabase/account/notifications/types";
 import { Link } from "metabase/common/components/Link";
-import { formatTitle } from "metabase/notifications/utils";
+import type { DashboardSubscriptionListItem } from "metabase/notifications/types";
+import {
+  formatCreatorMessage,
+  formatTitle,
+} from "metabase/notifications/utils";
 import { canArchiveLegacyAlert, formatChannel } from "metabase/pulse";
 import { Box, Flex, Icon, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Channel, User } from "metabase-types/api";
 
 import S from "./DashboardNotificationCard.module.css";
@@ -49,7 +51,7 @@ export const DashboardNotificationCard = ({
       align="center"
       px="lg"
       py="md"
-      bg="background-primary"
+      bg="background_page-primary"
     >
       <Box flex="1 1 auto">
         {dashboardEntityLink ? (

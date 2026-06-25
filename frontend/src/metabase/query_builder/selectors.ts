@@ -5,10 +5,9 @@ import dayjs from "dayjs";
 import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
+import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
-import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
-import { Timelines } from "metabase/entities/timelines";
 import {
   isQuestionDirty,
   isQuestionRunnable,
@@ -37,6 +36,7 @@ import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
+import { createRawSeries } from "metabase/visualizations/lib/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -60,7 +60,8 @@ import type {
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
-import { createRawSeries, getWritableColumnProperties } from "./utils";
+import { cleanIndexFlags } from "./model-indexes/actions";
+import { getWritableColumnProperties } from "./utils";
 
 // This selector can be called from public questions / dashboards, which do not have state.qb
 export const getUiControls = (state: State) => state.qb?.uiControls;
@@ -112,7 +113,6 @@ export const getParameterValues = (state: State) => state.qb.parameterValues;
 
 export const getMetadataDiff = (state: State) => state.qb.metadataDiff;
 
-export const getEntities = (state: State) => state.entities;
 export const getVisibleTimelineEventIds = (state: State) =>
   state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = (state: State) =>
@@ -595,7 +595,11 @@ export const getCanZoomPreviousRow = createSelector(
 export const getCanZoomNextRow = createSelector(
   [getQueryResults, getZoomedObjectRowIndex],
   (queryResults, rowIndex) => {
-    if (!Array.isArray(queryResults) || !queryResults.length) {
+    if (
+      !Array.isArray(queryResults) ||
+      !queryResults.length ||
+      !queryResults[0].data
+    ) {
       return;
     }
     const rowCount = queryResults[0].data.rows.length;
@@ -829,12 +833,13 @@ export const getTimeseriesXDomain = createSelector(
   },
 );
 
+const selectListTimelines = timelineApi.endpoints.listTimelines.select({
+  include: "events",
+});
+
 export const getFetchedTimelines = createSelector(
-  [getEntities],
-  (entities): Timeline[] => {
-    const entityQuery = { include: "events" };
-    return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
-  },
+  [selectListTimelines],
+  (result): Timeline[] => result.data ?? [],
 );
 
 export const getTransformedTimelines = createSelector(

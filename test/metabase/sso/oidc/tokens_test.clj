@@ -115,9 +115,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (true? (:valid? result)))
           (is (some? (:claims result)))
@@ -132,9 +132,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -155,9 +155,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -178,9 +178,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -201,9 +201,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -224,9 +224,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -247,9 +247,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (true? (:valid? result))))))))
 
@@ -260,8 +260,8 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               (throw (ex-info "Network error" {})))]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (throw (ex-info "Network error" {})))]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -273,9 +273,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body @test-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (some? (:error result))))))))
@@ -286,10 +286,10 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
   (testing "Uses cached JWKS when cache is fresh (not expired)"
     (oidc.tokens/clear-jwks-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body @test-jwks})]
         ;; First call should fetch
         (let [result1 (oidc.tokens/get-jwks "https://provider.com/jwks")]
           (is (some? result1))
@@ -303,20 +303,18 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
   (testing "Re-fetches JWKS when cache entry is expired"
     (oidc.tokens/clear-jwks-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body @test-jwks})]
         ;; First call should fetch
         (oidc.tokens/get-jwks "https://github.com/jwks")
         (is (= 1 @fetch-count))
-
         ;; Manually expire the cache entry by setting fetched-at to 2 hours ago
         (let [two-hours-ago (t/to-millis-from-epoch (t/minus (t/instant) (t/hours 2)))]
           (swap! @#'oidc.tokens/jwks-cache
                  assoc "https://github.com/jwks"
                  {:jwks test-jwks :fetched-at two-hours-ago}))
-
         ;; Next call should re-fetch because cache is expired
         (oidc.tokens/get-jwks "https://github.com/jwks")
         (is (= 2 @fetch-count))))))
@@ -325,17 +323,15 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
   (testing "invalidate-jwks-cache! removes cache entry for specific URI"
     (oidc.tokens/clear-jwks-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body @test-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body @test-jwks})]
         ;; Populate cache
         (oidc.tokens/get-jwks "https://provider.com/jwks")
         (is (= 1 @fetch-count))
-
         ;; Invalidate the cache entry
         (oidc.tokens/invalidate-jwks-cache! "https://provider.com/jwks")
-
         ;; Next call should re-fetch
         (oidc.tokens/get-jwks "https://provider.com/jwks")
         (is (= 2 @fetch-count))))))
@@ -348,19 +344,15 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
       (testing "Rejects internal addresses (localhost)"
         (oidc.tokens/clear-jwks-cache!)
         (is (nil? (oidc.tokens/get-jwks "http://localhost/jwks"))))
-
       (testing "Rejects internal addresses (127.0.0.1)"
         (oidc.tokens/clear-jwks-cache!)
         (is (nil? (oidc.tokens/get-jwks "http://127.0.0.1/jwks"))))
-
       (testing "Rejects cloud metadata endpoint"
         (oidc.tokens/clear-jwks-cache!)
         (is (nil? (oidc.tokens/get-jwks "http://169.254.169.254/jwks"))))
-
       (testing "Rejects private network addresses (192.168.x.x)"
         (oidc.tokens/clear-jwks-cache!)
         (is (nil? (oidc.tokens/get-jwks "http://192.168.1.1/jwks"))))
-
       (testing "Rejects private network addresses (10.x.x.x)"
         (oidc.tokens/clear-jwks-cache!)
         (is (nil? (oidc.tokens/get-jwks "http://10.0.0.1/jwks")))))))
@@ -389,9 +381,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body @test-ec-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body @test-ec-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (true? (:valid? result)))
           (is (some? (:claims result)))
@@ -418,9 +410,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body unsupported-jwks})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body unsupported-jwks})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (false? (:valid? result)))
           (is (= "JWT signature verification failed" (:error result))))))))
@@ -445,9 +437,9 @@ h0ccjghRm1/Az8L/HL+gdQmtY0NdB4Ml2mZHCVsPYf5WzIirTpjY0EzKDA==
           config {:jwks-uri "https://provider.com/jwks"
                   :issuer-uri "https://provider.com"
                   :client-id "test-client-id"}]
-      (with-redefs [http/get (fn [_url _opts]
-                               {:status 200
-                                :body jwks-without-alg})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             {:status 200
+                                              :body jwks-without-alg})]
         (let [result (oidc.tokens/validate-id-token token config "test-nonce")]
           (is (true? (:valid? result)))
           (is (some? (:claims result)))

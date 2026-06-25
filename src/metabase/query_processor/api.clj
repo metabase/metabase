@@ -34,6 +34,7 @@
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [not-empty get-in]]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
 
@@ -84,9 +85,13 @@
                               (:constraints query))]
             (qp.pivot/run-pivot-query (-> query
                                           (assoc :constraints constraints)
+                                          ;; Use assoc rather than merge so :info comes entirely from the
+                                          ;; server-built map. :info carries :card-id and similar fields the
+                                          ;; server derives, so we replace it rather than combining it with
+                                          ;; whatever was on the incoming query.
                                           (assoc :info info))
                                       rff))
-          (qp/process-query (update query :info merge info) rff))))))
+          (qp/process-query (assoc query :info info) rff))))))
 
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
@@ -181,30 +186,36 @@
              [:database ms/PositiveInt]
              [:settings {:optional true} [:maybe [:map
                                                   [:include_sensitive_fields {:optional true} :boolean]]]]]]
-  (lib-be/with-metadata-provider-cache
-    (queries/batch-fetch-query-metadata
-     [query]
-     (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
-       {:include-sensitive-fields? include-sensitive-fields}))))
+  (queries/batch-fetch-query-metadata
+   [query]
+   (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
+     {:include-sensitive-fields? include-sensitive-fields})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/native"
-  "Fetch a native version of an MBQL query."
+  "Fetch a native version of an MBQL query.
+
+  Display path: workspace remapping is suppressed via
+  [[ws.table-remapping/with-display-context]] so the user sees canonical-schema SQL
+  in the 'Show me the SQL' panel. The query still executes against the workspace
+  isolation schema at warehouse time (separate code path); this endpoint only
+  affects what the user reads."
   [_route-params
    _query-params
    {:keys [database pretty] :as query} :- [:map
                                            [:database ms/PositiveInt]
                                            [:pretty   {:default true} [:maybe :boolean]]]]
-  (model-persistence/with-persisted-substituion-disabled
-    (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (let [driver (driver.u/database->driver database)
-          prettify (partial driver/prettify-native-form driver)
-          compiled (qp.compile/compile-with-inline-parameters query)]
-      (cond-> compiled
-        pretty (update :query prettify)))))
+  (ws.table-remapping/with-display-context
+    (model-persistence/with-persisted-substituion-disabled
+      (qp.perms/check-current-user-has-adhoc-native-query-perms query)
+      (let [driver (driver.u/database->driver database)
+            prettify (partial driver/prettify-native-form driver)
+            compiled (qp.compile/compile-with-inline-parameters query)]
+        (cond-> compiled
+          pretty (update :query prettify))))))
 
 (api.macros/defendpoint :post "/pivot"
   :- (server/streaming-response-schema ::qp.schema/query-result)

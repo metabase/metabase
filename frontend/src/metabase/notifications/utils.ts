@@ -1,14 +1,14 @@
 import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import type { NotificationListItem } from "metabase/account/notifications/types";
 import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
+import type { NotificationListItem } from "metabase/notifications/types";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { getEmailDomain, isEmail } from "metabase/utils/email";
-import { formatDateTimeWithUnit } from "metabase/utils/formatting/date";
 import { formatTimeWithUnit } from "metabase/utils/formatting/time";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
@@ -149,8 +149,31 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
     case "pulse":
       return item.name;
     case "question-notification":
-      return item.payload.card?.name || t`Alert`;
+      return item.payload?.card?.name || t`Alert`;
   }
+};
+
+export const formatCreatorMessage = (
+  item: NotificationListItem["item"],
+  userId: UserId,
+) => {
+  let creatorString = "";
+  const options = MetabaseSettings.formattingOptions();
+
+  if (userId === item.creator?.id) {
+    creatorString += t`Created by you`;
+  } else if (item.creator?.common_name) {
+    creatorString += t`Created by ${item.creator.common_name}`;
+  } else {
+    creatorString += t`Created`;
+  }
+
+  if (item.created_at) {
+    const createdAt = formatDateTimeWithUnit(item.created_at, "day", options);
+    creatorString += t` on ${createdAt}`;
+  }
+
+  return creatorString;
 };
 
 const getRecipientIdentity = (recipient: NotificationRecipient) => {
@@ -258,7 +281,7 @@ function hasProperGoalForAlert({
   visualizationSettings,
 }: {
   question: Question | undefined;
-  visualizationSettings: VisualizationSettings;
+  visualizationSettings?: VisualizationSettings;
 }): boolean {
   if (!question) {
     return false;
@@ -281,7 +304,7 @@ export function getAlertTriggerOptions({
   visualizationSettings,
 }: {
   question: Question | undefined;
-  visualizationSettings: VisualizationSettings;
+  visualizationSettings?: VisualizationSettings;
 }): NotificationCardSendCondition[] {
   const hasValidGoal = hasProperGoalForAlert({
     question,

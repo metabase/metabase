@@ -12,7 +12,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Flex, Icon, Modal, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
 import type { Database, DatabaseData } from "metabase-types/api";
 
@@ -120,10 +120,10 @@ export const DestinationDatabaseConnectionModal = ({
             px="md"
             mx="xl"
             my="md"
-            bg="background-secondary"
+            bg="background_page-secondary"
             align="center"
             justify="space-between"
-            bd="1px solid border"
+            bd="1px solid border-neutral"
             style={{ borderRadius: ".5rem" }}
           >
             <Text>{t`You can also add databases programmatically via the API.`}</Text>

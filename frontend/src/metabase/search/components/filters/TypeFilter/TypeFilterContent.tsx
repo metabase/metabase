@@ -1,10 +1,10 @@
 import { useState } from "react";
 
-import { useSearchListQuery } from "metabase/common/hooks";
+import { useSearchQuery } from "metabase/api";
+import { enabledSearchTypes } from "metabase/common/search/constants";
+import type { SearchFilterDropdown } from "metabase/common/search/types";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
-import { enabledSearchTypes } from "metabase/search/constants";
-import type { SearchFilterDropdown } from "metabase/search/types";
 import { Checkbox, Stack } from "metabase/ui";
 import type { EnabledSearchModel } from "metabase-types/api";
 
@@ -12,19 +12,18 @@ const EMPTY_SEARCH_QUERY = {
   models: ["dataset" as const],
   limit: 1,
   calculate_available_models: true as const,
+  context: "type-filter" as const,
 };
 
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =
   ({ value, onChange, width }) => {
-    const { metadata, isLoading } = useSearchListQuery({
-      query: EMPTY_SEARCH_QUERY,
-    });
+    const { data: response, isLoading } = useSearchQuery(EMPTY_SEARCH_QUERY);
 
     const [selectedTypes, setSelectedTypes] = useState<EnabledSearchModel[]>(
       value ?? [],
     );
 
-    const availableModels = (metadata && metadata.available_models) ?? [];
+    const availableModels = response?.available_models ?? [];
     const typeFilters = enabledSearchTypes.filter((type) =>
       availableModels.includes(type),
     );

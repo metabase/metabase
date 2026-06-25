@@ -7,19 +7,23 @@ import {
   useListGlossaryQuery,
   useUpdateGlossaryMutation,
 } from "metabase/api";
+import S from "metabase/common/components/Glossary/Glossary.module.css";
+import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/redux";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import { Card, Group, Stack, Text } from "metabase/ui";
-
-import S from "./Glossary.module.css";
-import { GlossaryTable } from "./GlossaryTable";
 
 export function GlossaryContainer() {
   const { data: glossary = [] } = useListGlossaryQuery();
   const [createGlossary] = useCreateGlossaryMutation();
   const [updateGlossary] = useUpdateGlossaryMutation();
   const [deleteGlossary] = useDeleteGlossaryMutation();
+  const isAdmin = useSelector(getUserIsAdmin);
+  const isAnalyst = useSelector(getUserIsAnalyst);
+  const canManage = isAdmin || isAnalyst;
 
   return (
     <SidebarLayout
@@ -47,6 +51,7 @@ export function GlossaryContainer() {
             <GlossaryTable
               className={S.table}
               glossary={glossary}
+              readOnly={!canManage}
               onCreate={async (term, definition) => {
                 await createGlossary({ term, definition });
               }}

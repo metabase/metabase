@@ -17,8 +17,10 @@ import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import { useSelector } from "metabase/redux";
+import type { ChecklistItemValue } from "metabase/redux/store";
 import {
   getDocsUrl,
+  getIsHosted,
   getIsPaidPlan,
   getSetting,
 } from "metabase/selectors/settings";
@@ -27,7 +29,6 @@ import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
-import { getIsHosted } from "metabase/setup/selectors";
 import {
   Accordion,
   Box,
@@ -39,14 +40,13 @@ import {
   Title,
   rem,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import S from "./Onboarding.module.css";
 import {
   trackChecklistItemCTAClicked,
   trackChecklistItemExpanded,
 } from "./analytics";
-import type { ChecklistItemValue } from "./types";
 
 export const Onboarding = () => {
   const applicationName = useSelector(getApplicationName);
@@ -536,7 +536,7 @@ export const Onboarding = () => {
                         className={S.inlineIcon}
                       />
                     )} ${(
-                      <b key="sharing">{t`Sharing`}</b>
+                      <b key="sharing">{t`Share`}</b>
                     )} icon on the top bar, then click on ${(
                       <Icon
                         key="subscription-icon"

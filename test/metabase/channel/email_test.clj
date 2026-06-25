@@ -14,6 +14,7 @@
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u :refer [prog1]]
    [metabase.util.retry :as retry]
    [postal.core :as postal]
@@ -251,8 +252,8 @@
 (defn temp-csv
   [file-basename content]
   (prog1 (File/createTempFile file-basename ".csv")
-         (with-open [file (io/writer <>)]
-           (.write ^java.io.Writer file ^String content))))
+    (with-open [file (io/writer <>)]
+      (.write ^java.io.Writer file ^String content))))
 
 (defn mock-send-email!
   "To stub out email sending, instead returning the would-be email contents as a string"
@@ -298,7 +299,7 @@
     (testing "error metrics collection"
       (tu/with-prometheus-system! [_ system]
         (binding [retry/*test-time-config-hook* #(assoc % :max-retries 0)]
-          (with-redefs [email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+          (dynamic-redefs/with-dynamic-fn-redefs [email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
             (email/send-message!
              :subject      "101 Reasons to use Metabase"
              :recipients   ["test@test.com"]
@@ -353,27 +354,32 @@
                  (m/mapply email/send-message! params)
                  (@inbox recipient)))))
         (testing "it does not wrap long, non-ASCII filenames"
-          (with-redefs [email/send-email! mock-send-email!]
-            (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
-                  csv-file                     (temp-csv basename csv-contents)
-                  params-with-problematic-file (-> params
-                                                   (assoc-in [:message 1 :file-name] (str basename ".csv"))
-                                                   (assoc-in [:message 1 :content] csv-file))]
-              ;; Bad string (ignore the linebreak):
-              ;; Content-Disposition: attachment; filename="=?UTF-8?Q?this-is-quite-long-and-ha?= =?UTF-8?Q?s-non-
-              ;; =C3=82\"; filename*1=\"=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
-              ;;           ^-- this is the problem
-              ;; Acceptable string (again, ignore the linebreak):
-              ;; Content-Disposition: attachment; filename= "=?UTF-8?Q?this-is-quite-long-and-ha?=
-              ;; =?UTF-8?Q?s-non-=C3=82=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
-
-              (is (re-find
-                   #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
-                   (m/mapply email/send-message! params-with-problematic-file))))))))))
+          ;; Capture the rendered message via the `send-email!` redef rather than the return value of
+          ;; `send-message!` — `send-message-or-throw!` sends each recipient batch for its side effect and does not
+          ;; return the message.
+          (let [sent (atom nil)]
+            (with-redefs [email/send-email! (fn [credentials email-details]
+                                              (reset! sent (mock-send-email! credentials email-details)))]
+              (let [basename                     "this-is-quite-long-and-has-non-Âſçïı-characters"
+                    csv-file                     (temp-csv basename csv-contents)
+                    params-with-problematic-file (-> params
+                                                     (assoc-in [:message 1 :file-name] (str basename ".csv"))
+                                                     (assoc-in [:message 1 :content] csv-file))]
+                ;; Bad string (ignore the linebreak):
+                ;; Content-Disposition: attachment; filename="=?UTF-8?Q?this-is-quite-long-and-ha?= =?UTF-8?Q?s-non-
+                ;; =C3=82\"; filename*1=\"=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
+                ;;           ^-- this is the problem
+                ;; Acceptable string (again, ignore the linebreak):
+                ;; Content-Disposition: attachment; filename= "=?UTF-8?Q?this-is-quite-long-and-ha?=
+                ;; =?UTF-8?Q?s-non-=C3=82=C5=BF=C3=A7=C3=AF=C4=B1-characters.csv?="
+                (m/mapply email/send-message! params-with-problematic-file)
+                (is (re-find
+                     #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
+                     @sent))))))))))
 
 (deftest send-message!-cloud-test
   (premium-features.test-util/with-premium-features [:cloud-custom-smtp]
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (dynamic-redefs/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (tu/with-temporary-setting-values [email-from-address "standard@metabase.com"
                                          email-from-name "From Name"
                                          email-reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
@@ -413,82 +419,136 @@
                    (@inbox "test@test.com"))))))))))
 
 (deftest throttle-test
-  (let [send-email (fn [recipients]
-                     (with-redefs [postal/send-message (fn [& args] (last args))]
-                       (email/send-email!
-                        {}
-                        (merge {:from    "awesome@metabase.com"
-                                :subject "101 Reasons to use Metabase"
-                                :body    "101. Metabase will make you a better person"}
-                               recipients))))]
-    (tu/with-temporary-setting-values
-      [email-smtp-host "fake_smtp_host"
-       email-smtp-port 587]
-      (testing "throttle based on the number of recipients"
-        (testing "with 3 separate emails"
-          (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
-            (testing "ok if there is no recipient"
-              (is (some? (send-email {}))))
-            (is (some? (send-email {:to ["1@metabase.com"]})))
-            (is (some? (send-email {:bcc ["2@metabase.com"]})))
-            (is (some? (send-email {:to ["3@metabase.com"]})))
-            (is (thrown-with-msg?
-                 Exception
-                 #"Too many attempts!.*"
-                 (send-email {:to ["4@metabase.com"]})))
-            (testing "still ok if there is no recipient"
-              (is (some? (send-email {})))))
-
-          (testing "with 1 small then 1 big event"
-            (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
-              (is (some? (send-email {:to ["1@metabase.com"]})))
-              (is (some? (send-email {:bcc ["2@metabase.com"]
-                                      :to ["3@metabase.com"]})))
-              (is (thrown-with-msg?
-                   Exception
-                   #"Too many attempts!.*"
-                   (send-email {:to ["4@metabase.com"]})))))))
-
-      (testing "if an email has # of recipients greater than the limit"
-        (testing "we skip throttle check if we haven't reached the limit"
-          (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
-            (is (some? (send-email {:to ["1@metabase.com"]})))
-            ;; this one got through because we haven't reached the limit
-            (is (some? (send-email {:to ["2@metabase.com" "3@metabase.com"]
-                                    :bcc ["4@metabase.com" "5@metabase.com"]})))
-            (testing "senidng another will fail because we maxed-out the limit"
-              (is (thrown-with-msg?
-                   Exception
-                   #"Too many attempts!.*"
-                   (send-email {:to ["6@metabase.com"]}))))))
-
-        (testing "still throttle if we already at limit"
-          (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
-            ;; mx otu the limit
-            (is (some? (send-email {:to ["1@metabase.com" "2@metabase.com" "3@metabase.com"]})))
-            (testing "but still max-out the limit"
-              (is (thrown-with-msg?
-                   Exception
-                   #"Too many attempts!.*"
-                   (send-email {:to ["4@metabase.com" "5@metabase.com" "6@metabase.com" "7@metabase.com"]})))))))
-
-      (testing "keep retrying will eventually send the email"
-        (with-redefs [email/email-throttler (throttle/make-throttler
-                                             :email
-                                             :attempt-ttl-ms     100
-                                             :initial-delay-ms   100
-                                             :attempts-threshold 3)]
-          (is (some? (send-email {:to ["1@metabase.com" "2@metabase.com" "3@metabase.com"]})))
+  ;; The throttle is applied once per logical message in send-message-or-throw!; check-email-throttle is the unit
+  ;; that does the recipient accounting, so we exercise it directly (no actual sending involved).
+  (let [throttle (fn [recipients] (email/check-email-throttle recipients) :ok)]
+    (testing "throttle based on the number of recipients"
+      (testing "with 3 separate emails"
+        (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+          (testing "ok if there is no recipient"
+            (is (= :ok (throttle {}))))
+          (is (= :ok (throttle {:to ["1@metabase.com"]})))
+          (is (= :ok (throttle {:bcc ["2@metabase.com"]})))
+          (is (= :ok (throttle {:to ["3@metabase.com"]})))
           (is (thrown-with-msg?
                Exception
                #"Too many attempts!.*"
-               (send-email {:to ["4@metabase.com"]})))
-          (is (some? (u/poll {:thunk       (fn [] (try (send-email {:to ["4@metabase.com"]})
-                                                       (catch Exception _
-                                                         nil)))
-                              :done?       some?
-                              :timeout-ms  200
-                              :interval-ms 10}))))))))
+               (throttle {:to ["4@metabase.com"]})))
+          (testing "still ok if there is no recipient"
+            (is (= :ok (throttle {})))))
+        (testing "with 1 small then 1 big event"
+          (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+            (is (= :ok (throttle {:to ["1@metabase.com"]})))
+            (is (= :ok (throttle {:bcc ["2@metabase.com"]
+                                  :to ["3@metabase.com"]})))
+            (is (thrown-with-msg?
+                 Exception
+                 #"Too many attempts!.*"
+                 (throttle {:to ["4@metabase.com"]})))))))
+    (testing "if an email has # of recipients greater than the limit"
+      (testing "we skip throttle check if we haven't reached the limit"
+        (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+          (is (= :ok (throttle {:to ["1@metabase.com"]})))
+          ;; this one got through because we haven't reached the limit
+          (is (= :ok (throttle {:to ["2@metabase.com" "3@metabase.com"]
+                                :bcc ["4@metabase.com" "5@metabase.com"]})))
+          (testing "senidng another will fail because we maxed-out the limit"
+            (is (thrown-with-msg?
+                 Exception
+                 #"Too many attempts!.*"
+                 (throttle {:to ["6@metabase.com"]}))))))
+      (testing "still throttle if we already at limit"
+        (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+          ;; max out the limit
+          (is (= :ok (throttle {:to ["1@metabase.com" "2@metabase.com" "3@metabase.com"]})))
+          (testing "but still max-out the limit"
+            (is (thrown-with-msg?
+                 Exception
+                 #"Too many attempts!.*"
+                 (throttle {:to ["4@metabase.com" "5@metabase.com" "6@metabase.com" "7@metabase.com"]})))))))
+    (testing "keep retrying will eventually send the email"
+      (with-redefs [email/email-throttler (throttle/make-throttler
+                                           :email
+                                           :attempt-ttl-ms     100
+                                           :initial-delay-ms   100
+                                           :attempts-threshold 3)]
+        (is (= :ok (throttle {:to ["1@metabase.com" "2@metabase.com" "3@metabase.com"]})))
+        (is (thrown-with-msg?
+             Exception
+             #"Too many attempts!.*"
+             (throttle {:to ["4@metabase.com"]})))
+        (is (some? (u/poll {:thunk       (fn [] (try (throttle {:to ["4@metabase.com"]})
+                                                     (catch Exception _
+                                                       nil)))
+                            :done?       some?
+                            :timeout-ms  200
+                            :interval-ms 10})))))))
+
+(deftest ^:parallel partition-recipients-test
+  (let [recipients ["1@x.com" "2@x.com" "3@x.com" "4@x.com" "5@x.com"]]
+    (testing "splits into consecutive batches of at most max-per-message, keeping the trailing short batch"
+      (is (= [["1@x.com" "2@x.com"] ["3@x.com" "4@x.com"] ["5@x.com"]]
+             (map vec (email/partition-recipients recipients 2)))))
+    (testing "fewer recipients than the cap => a single batch"
+      (is (= [recipients] (map vec (email/partition-recipients recipients 50)))))
+    (testing "nil or non-positive max-per-message => no splitting"
+      (is (= [recipients] (email/partition-recipients recipients nil)))
+      (is (= [recipients] (email/partition-recipients recipients 0)))
+      (is (= [recipients] (email/partition-recipients recipients -3))))
+    (testing "empty recipients => no batch, so no message is produced"
+      (is (= [] (email/partition-recipients [] 50)))
+      (is (= [] (email/partition-recipients nil 50))))))
+
+(deftest send-message-or-throw!-throttles-per-message-not-per-batch-test
+  (testing "an over-limit message split into batches sends every batch exactly once without the throttle
+            aborting mid-message (a mid-message throw makes the caller's retry resend already-sent batches,
+            which is what duplicated the transform job-failure emails)"
+    (let [sent (atom [])]
+      ;; stub the actual network send, NOT send-email!, so the real throttle still runs
+      (dynamic-redefs/with-dynamic-fn-redefs [postal/send-message (fn [& args]
+                                                                    (let [m (last args)]
+                                                                      (swap! sent conj (or (:to m) (:bcc m)))))]
+        (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
+          (tu/with-temporary-setting-values [email-smtp-host                  "fake_smtp_host"
+                                             email-smtp-port                  587
+                                             email-max-recipients-per-message 2]
+            (let [recipients (mapv #(str % "@metabase.com") (range 5))]
+              (is (nil? (email/send-message-or-throw! {:subject      "Job failed"
+                                                       :recipients   recipients
+                                                       :message-type :text
+                                                       :message      "uh oh"
+                                                       :bcc?         true}))
+                  "the send completes without throwing even though 5 recipients > the limit of 3")
+              (is (= 3 (count @sent)) "one message per batch")
+              (is (= recipients (vec (mapcat identity @sent)))
+                  "every recipient covered exactly once, in order — no batch dropped or duplicated"))))))))
+
+(deftest send-message-or-throw!-splits-large-recipient-lists-test
+  (let [sent (atom [])]
+    (with-redefs [email/send-email! (fn [_ email-details]
+                                      (swap! sent conj (or (:to email-details) (:bcc email-details))))]
+      (tu/with-temporary-setting-values [email-smtp-host                   "fake_smtp_host"
+                                         email-smtp-port                   587
+                                         email-max-recipients-per-message  2]
+        (let [recipients (mapv #(str % "@metabase.com") (range 5))]
+          (testing "a 5-recipient email is split into 3 messages of at most 2 recipients each"
+            (reset! sent [])
+            (email/send-message-or-throw! {:subject "Job failed" :recipients recipients
+                                           :message-type :text :message "uh oh" :bcc? true})
+            (is (= 3 (count @sent)) "sends one message per batch")
+            (is (every? #(<= (count %) 2) @sent) "no message exceeds the cap")
+            (is (= recipients (vec (mapcat identity @sent))) "every recipient is covered exactly once, in order")))))
+    (testing "with the cap unset, all recipients go in a single message (unchanged behavior)"
+      (with-redefs [email/send-email! (fn [_ email-details]
+                                        (swap! sent conj (or (:to email-details) (:bcc email-details))))]
+        (tu/with-temporary-setting-values [email-smtp-host                   "fake_smtp_host"
+                                           email-smtp-port                   587
+                                           email-max-recipients-per-message  nil]
+          (reset! sent [])
+          (email/send-message-or-throw! {:subject "Job failed" :recipients ["a@x.com" "b@x.com" "c@x.com"]
+                                         :message-type :text :message "uh oh" :bcc? true})
+          (is (= 1 (count @sent)))
+          (is (= 3 (count (first @sent)))))))))
 
 (def ^:private mb-to-smtp-override-settings
   {:email-smtp-host-override     :host

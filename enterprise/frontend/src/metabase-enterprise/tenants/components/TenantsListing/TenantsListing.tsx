@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { SearchFilter } from "metabase/admin/people/components/SearchFilter";
 import {
   ACTIVE_STATUS,
   type ActiveStatus,
 } from "metabase/admin/people/constants";
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
@@ -103,7 +103,7 @@ export const TenantsListing = ({
                   user={{ first_name: tenant.name }}
                   bg={tenantIdToColor(tenant.id)}
                 />
-                <Box component="span" fw={700} c="brand">
+                <Box component="span" fw={700} c="core-brand">
                   {tenant.name}
                 </Box>
               </Flex>

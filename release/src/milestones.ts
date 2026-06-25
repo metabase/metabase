@@ -20,6 +20,8 @@ import {
   getMajorVersion,
   getVersionFromReleaseBranch,
   ignorePatches,
+  isPatchVersion,
+  isPreReleaseVersion,
   versionSort,
 } from "./version-helpers";
 
@@ -237,7 +239,7 @@ export async function setMilestoneForCommits({
   // figure out milestone
   const branchVersion = getVersionFromReleaseBranch(branchName);
   const majorVersion = getMajorVersion(branchVersion);
-  const openMilestones = await getMilestones({ github, owner, repo });
+  const openMilestones = await getMilestones({ github, owner, repo, state: 'open' });
   const nextMilestone = getNextMilestone({ openMilestones, majorVersion });
 
   if (!nextMilestone) {
@@ -253,7 +255,10 @@ export async function setMilestoneForCommits({
       .filter(isNotNull)
   );
   if (!PRsToCheck.length) {
-    throw new Error('No PRs found in commit messages');
+    // Not every commit on a release branch is a squash-merged PR (e.g. the
+    // version-bump commit from cutting the branch). Nothing to backfill here.
+    console.log('No PRs found in commit messages, skipping milestone backfill');
+    return;
   }
 
   console.log(`Checking ${PRsToCheck.length} PRs for issues to tag`);
@@ -297,6 +302,36 @@ export async function checkMilestoneForRelease({
   version,
   commitHash,
 }: GithubProps & { version: string, commitHash: string }) {
+  // Nothing to audit pre-release, for two reasons:
+  //  - Patches don't have their own milestone — they share the parent minor's.
+  //  - A major's `.0` is, by convention, only ever cut as a pre-release
+  //    (beta/RC); we never tag a `.0` as a standalone stable build. So a
+  //    pre-release is always the first build of a new major and has no prior
+  //    stable release *in the same major* to diff against — and we never
+  //    compare across majors.
+  // Bail here so we skip the milestone API calls entirely (and never compare
+  // against an `undefined` base ref).
+  if (isPatchVersion(version) || isPreReleaseVersion(version)) {
+    console.log(`Skipping milestone check for ${version}`);
+    return;
+  }
+
+  const lastTag = await getLastReleaseTag({
+    github,
+    owner,
+    repo,
+    version,
+    ignorePatches: true, // ignore patch versions since we don't release notes for them
+    ignorePreReleases: true, // ignore pre-releases because we want cumulative notes for them
+  });
+
+  // Safety net: by convention, a `.0` should never be a standalone release.
+  // If someone breaks that, this check exits early.
+  if (!lastTag) {
+    console.log(`No prior release tag found for ${version}, skipping milestone check`);
+    return;
+  }
+
   const releaseMilestone = await findMilestone({ github, owner, repo, version });
 
   if (!releaseMilestone) {
@@ -308,15 +343,6 @@ export async function checkMilestoneForRelease({
   });
   const openMilestoneIssues = await getMilestoneIssues({
     github, owner, repo, version, state: 'open', milestoneStatus: 'open',
-  });
-
-  const lastTag = await getLastReleaseTag({
-    github,
-    owner,
-    repo,
-    version,
-    ignorePatches: true, // ignore patch versions since we don't release notes for them
-    ignorePreReleases: true, // ignore pre-releases because we want cumulative notes for them
   });
 
   const compareResponse = await github.rest.repos.compareCommitsWithBasehead({

@@ -16,6 +16,13 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
+;; NOTE: the `use_verified_content` column now means "use only verified OR curated content" — when on,
+;; Metabot search is restricted via the precomputed `curated` flag (see metabase.collections.curation),
+;; which covers verified items, official collections, and library/published content, not just verified
+;; cards. The column keeps its original name on purpose: renaming it would need an appdb migration and
+;; would break the serdes `:copy`/`:defaults` contract and the API/FE field, for no behavioural gain.
+;; The user-facing label ("Verified or curated content") carries the broadened meaning instead.
+
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Metabot :prompts]
@@ -35,8 +42,9 @@
   [:name])
 
 (defmethod serdes/dependencies "Metabot"
-  [{:keys [prompts]}]
-  (set (mapcat serdes/dependencies prompts)))
+  [{:keys [collection_id prompts]}]
+  (cond-> (set (mapcat serdes/dependencies prompts))
+    collection_id (conj [{:model "Collection" :id collection_id}])))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]
   [(serdes/infer-self-path "Metabot" metabot)])

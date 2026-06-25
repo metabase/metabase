@@ -1,38 +1,21 @@
 import type { PopoverDropdownProps } from "@mantine/core";
 import { Popover as MantinePopover } from "@mantine/core";
 import cx from "classnames";
-import { type Ref, forwardRef, useEffect } from "react";
+import { type Ref, forwardRef } from "react";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { PreventEagerPortal } from "metabase/ui";
-import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced-content-close-handler";
+import { OverlayStackItem } from "metabase/ui/components/overlays/overlay-stack";
 
 export type { PopoverProps } from "@mantine/core";
 export { popoverOverrides } from "./Popover.config";
 
 const MantinePopoverDropdown = MantinePopover.Dropdown;
 
-type ExtendedPopoverDropdownProps = PopoverDropdownProps & {
-  // Prevent parent TippyPopover from closing when selecting an item
-  // TODO: remove when TippyPopover is no longer used
-  setupSequencedCloseHandler?: boolean;
-};
-
 const PopoverDropdown = forwardRef(function PopoverDropdown(
-  props: ExtendedPopoverDropdownProps,
+  { children, ...props }: PopoverDropdownProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const { setupCloseHandler, removeCloseHandler } =
-    useSequencedContentCloseHandler();
-
-  useEffect(() => {
-    if (!props.setupSequencedCloseHandler) {
-      return;
-    }
-    setupCloseHandler(document.body, () => undefined);
-    return () => removeCloseHandler();
-  }, [setupCloseHandler, removeCloseHandler, props.setupSequencedCloseHandler]);
-
   return (
     <PreventEagerPortal {...props}>
       <MantinePopoverDropdown
@@ -40,15 +23,17 @@ const PopoverDropdown = forwardRef(function PopoverDropdown(
         className={cx(props.className, ZIndex.Overlay)}
         data-element-id="mantine-popover"
         ref={ref}
-      />
+      >
+        <OverlayStackItem />
+        {children}
+      </MantinePopoverDropdown>
     </PreventEagerPortal>
   );
 });
 
-// @ts-expect-error -- our types are better
-PopoverDropdown.displayName = MantinePopoverDropdown.displayName;
-// @ts-expect-error -- our types are better
-MantinePopover.Dropdown = PopoverDropdown;
-
-export const Popover = MantinePopover;
+export const Popover = Object.assign(MantinePopover, {
+  Dropdown: Object.assign(PopoverDropdown, {
+    displayName: MantinePopoverDropdown.displayName,
+  }),
+});
 export { DEFAULT_POPOVER_Z_INDEX } from "./Popover.config";

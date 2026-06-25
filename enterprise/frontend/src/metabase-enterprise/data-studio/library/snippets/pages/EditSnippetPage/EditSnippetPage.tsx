@@ -15,13 +15,13 @@ import { EntityCreationInfo } from "metabase/common/components/EntityCreationInf
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useToast } from "metabase/common/hooks";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
 import { SnippetHeader } from "../../components/SnippetHeader";

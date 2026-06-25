@@ -6,14 +6,18 @@ import type { Location } from "history";
 import { useEffect, useMemo } from "react";
 import { useAsync, useMount } from "react-use";
 
+import { publicApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { DocumentEditorHostProvider } from "metabase/documents/components/Editor/DocumentEditorHost";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
-import { PublicDocumentProvider } from "metabase/public/contexts/PublicDocumentContext";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
+import { ExternalCardDataProvider } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/ExternalCardDataContext";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
 import { MetabotNode } from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed";
@@ -22,7 +26,6 @@ import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLin
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { getSetting } from "metabase/selectors/settings";
-import { PublicApi } from "metabase/services";
 import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
 import type { Document } from "metabase-types/api";
@@ -51,9 +54,13 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
     loading,
     error,
   } = useAsync(async () => {
-    const doc = await PublicApi.document({ uuid });
+    const doc = await runRtkEndpoint(
+      { uuid },
+      dispatch,
+      publicApi.endpoints.getPublicDocument,
+    );
     return doc as Document;
-  }, [uuid]);
+  }, [uuid, dispatch]);
 
   useEffect(() => {
     if (error) {
@@ -120,41 +127,50 @@ export const PublicDocument = ({ location, params }: PublicDocumentProps) => {
     initializeIframeResizer();
   });
 
+  const externalCardDataValue = useMemo(
+    () => ({
+      cards: document?.cards ?? {},
+      documentUuid: uuid,
+    }),
+    [document?.cards, uuid],
+  );
+
   return (
-    <EmbedFrame
-      theme={theme}
-      titled={false}
-      className={S.container}
-      contentClassName={S.documentArea}
-      background={false}
-      withFooter={hasEmbedBranding}
-    >
-      <LoadingAndErrorWrapper
-        loading={loading}
-        noBackground
-        style={{
-          display: "flex",
-          flex: 1,
-          flexDirection: "column",
-        }}
+    <EmbeddingEntityContextProvider uuid={uuid} token={null}>
+      <EmbedFrame
+        theme={theme}
+        titled={false}
+        className={S.container}
+        contentClassName={S.documentArea}
+        background={false}
+        withFooter={hasEmbedBranding}
       >
-        {document && editor && (
-          <PublicDocumentProvider
-            value={{
-              publicDocumentUuid: uuid,
-              publicDocument: document,
-              publicDocumentCards: document.cards,
-            }}
-          >
-            <Box maw={900} mx="auto" p="xl" w="100%">
-              <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
-              <div className={S.editorContent}>
-                <EditorContent data-testid="document-content" editor={editor} />
-              </div>
-            </Box>
-          </PublicDocumentProvider>
-        )}
-      </LoadingAndErrorWrapper>
-    </EmbedFrame>
+        <LoadingAndErrorWrapper
+          loading={loading}
+          noBackground
+          style={{
+            display: "flex",
+            flex: 1,
+            flexDirection: "column",
+          }}
+        >
+          {document && editor && (
+            <DocumentEditorHostProvider>
+              <ExternalCardDataProvider value={externalCardDataValue}>
+                <Box maw={900} mx="auto" p="xl" w="100%">
+                  <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
+                  <div className={S.editorContent}>
+                    <EditorContent
+                      data-testid="document-content"
+                      editor={editor}
+                    />
+                  </div>
+                </Box>
+              </ExternalCardDataProvider>
+            </DocumentEditorHostProvider>
+          )}
+        </LoadingAndErrorWrapper>
+      </EmbedFrame>
+    </EmbeddingEntityContextProvider>
   );
 };

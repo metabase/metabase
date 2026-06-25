@@ -5,9 +5,11 @@ import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
-import { Modal } from "metabase/common/components/Modal";
+import CreateCollectionModal, {
+  type CreateCollectionModalOwnProps,
+} from "metabase/common/collections/containers/CreateCollectionModal";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import {
@@ -15,25 +17,23 @@ import {
   type LegacyStaticEmbeddingModalProps,
 } from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
 import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
-import { Collections } from "metabase/entities/collections/collections";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
-import * as Urls from "metabase/utils/urls";
+import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
 export const NewModals = withRouter((props: WithRouterProps) => {
   const { pathname } = useLocation();
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
-    getCurrentOpenModalState,
+    getCurrentOpenModalState<CreateCollectionModalOwnProps>,
   );
   const dispatch = useDispatch();
-  const collectionId = useSelector((state) =>
-    Collections.selectors.getInitialCollectionId(state, props),
-  );
+  const collectionId = useInitialCollectionId(props) ?? undefined;
 
   const handleActionCreated = useCallback(
     (action: WritebackAction) => {
@@ -69,13 +69,17 @@ export const NewModals = withRouter((props: WithRouterProps) => {
   );
 
   switch (currentNewModalId) {
-    case "collection":
+    case "collection": {
+      const collectionProps = currentNewModalProps || null;
+
       return (
         <CreateCollectionModal
           onClose={handleModalClose}
-          collectionId={collectionId}
+          {...collectionProps}
+          collectionId={collectionProps?.collectionId ?? collectionId}
         />
       );
+    }
 
     case "dashboard":
       return (
@@ -87,7 +91,14 @@ export const NewModals = withRouter((props: WithRouterProps) => {
       );
     case "action":
       return (
-        <Modal wide onClose={handleModalClose} enableTransition={false}>
+        <Modal
+          {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
+          opened
+          onClose={handleModalClose}
+          size="95%"
+          withCloseButton={false}
+          padding={0}
+        >
           <ActionCreator
             onClose={handleModalClose}
             onSubmit={handleActionCreated}

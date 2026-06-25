@@ -1,10 +1,5 @@
-import type {
-  EmbeddingParameters,
-  EmbeddingType,
-} from "metabase/public/lib/types";
-import type { IconName } from "metabase/ui";
 import type { CurrencyStyle } from "metabase/utils/formatting";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { ClickBehavior } from "./click-behavior";
@@ -12,12 +7,14 @@ import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
   DashCardId,
   Dashboard,
+  DashboardCardSize,
   DashboardId,
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
+import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { ModerationReview } from "./moderation";
@@ -33,7 +30,11 @@ import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
-import type { SmartScalarComparison } from "./visualization-settings";
+import type {
+  PieRow,
+  SmartScalarComparison,
+  TreemapRow,
+} from "./visualization-settings";
 
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -358,6 +359,16 @@ export type VisualizationSettings = {
   "sankey.show_edge_labels"?: boolean;
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
 
+  // Treemap settings
+  "treemap.grouping"?: string;
+  "treemap.sub_grouping"?: string | null;
+  "treemap.value"?: string;
+  "treemap.rows"?: TreemapRow[];
+  "treemap.show_parent_labels"?: boolean;
+  "treemap.show_parent_values"?: boolean;
+  "treemap.show_leaf_labels"?: boolean;
+  "treemap.show_leaf_values"?: boolean;
+
   // BoxPlot settings
   "boxplot.whisker_type"?: BoxPlotWhiskerType;
   "boxplot.points_mode"?: BoxPlotPointsMode;
@@ -430,6 +441,7 @@ export interface CreateCardRequest {
   collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
+  size?: DashboardCardSize;
 }
 
 export interface CreateCardFromCsvRequest {
@@ -453,7 +465,7 @@ export interface UpdateCardRequest {
   collection_id?: CollectionId | null;
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
-  collection_position?: number;
+  collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number;
   collection_preview?: boolean;

@@ -2,14 +2,9 @@
 import { css } from "@emotion/react";
 
 import GlobalDashboardS from "metabase/css/dashboard.module.css";
-import DashboardGridS from "metabase/dashboard/components/DashboardGrid.module.css";
-import {
-  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
-  DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME,
-} from "metabase/dashboard/constants";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isStorybookActive } from "metabase/env";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { utf8_to_b64 } from "metabase/utils/encoding";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 
@@ -35,17 +30,11 @@ export const saveDomImageStyles = css`
       overflow: visible;
     }
 
-    .${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME} {
-      legend {
-        top: -9px;
-      }
-    }
-
-    .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} {
+    [data-dashcard-key].${GlobalDashboardS.Card} {
       /* the renderer we use for saving to image/pdf doesn't support box-shadow
         so we replace it with a border */
       box-shadow: none;
-      border: 1px solid var(--mb-color-border);
+      border: 1px solid var(--mb-color-border-neutral);
     }
 
     /* the renderer for saving to image/pdf does not support text overflow
@@ -53,12 +42,44 @@ export const saveDomImageStyles = css`
      this is a workaround to make sure the text is not clipped vertically */
     ${isEmbeddingSdk() &&
     css`
-      .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} * {
+      [data-dashcard-key].${GlobalDashboardS.Card} * {
         overflow: visible !important;
       }
     `};
   }
 `;
+
+const SVG_VAR_PAINT_ATTRIBUTES = [
+  "fill",
+  "stroke",
+  "stop-color",
+  "flood-color",
+  "lighting-color",
+];
+
+// html2canvas serializes <svg> to a standalone image where :root custom props are out of
+// scope, so var() paint (e.g. white pie-slice borders) is lost. Bake in the resolved value.
+export const resolveSvgVarPaint = (root: HTMLElement) => {
+  root.querySelectorAll<SVGElement>("svg, svg *").forEach((el) => {
+    SVG_VAR_PAINT_ATTRIBUTES.forEach((attr) => {
+      const value = el.getAttribute(attr);
+      if (value?.includes("var(")) {
+        const resolved = getComputedStyle(el).getPropertyValue(attr);
+        if (resolved) {
+          el.setAttribute(attr, resolved);
+        }
+      }
+    });
+  });
+};
+
+// html2canvas's clone wipes inline styles off SVG nodes (empty computed cssText in Chrome),
+// dropping overflow:visible so nested label <svg>s clip their text. Restore it for export.
+export const restoreNestedSvgOverflow = (root: HTMLElement) => {
+  root.querySelectorAll<SVGElement>("svg svg").forEach((svg) => {
+    svg.style.overflow = "visible";
+  });
+};
 
 export const getDomToCanvas = async (
   element: HTMLElement,
@@ -77,7 +98,11 @@ export const getDomToCanvas = async (
     width: options.width,
     height: options.height,
     scale: options.scale,
-    onclone: options.onclone,
+    onclone: (doc, node) => {
+      options.onclone?.(doc, node);
+      resolveSvgVarPaint(node);
+      restoreNestedSvgOverflow(node);
+    },
   });
 };
 
@@ -87,6 +112,16 @@ export const canvasToBlob = (
 ): Promise<Blob | null> => {
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), type);
+  });
+};
+
+// html2canvas renders fieldset legends shifted down; nudge them back up in the
+// cloned parameter bar before capture.
+export const fixParameterLegendOffsetForExport = (
+  parametersNode: HTMLElement,
+) => {
+  parametersNode.querySelectorAll<HTMLElement>("legend").forEach((el) => {
+    el.style.top = "-9px";
   });
 };
 
@@ -100,19 +135,18 @@ export interface DashboardRenderSetup {
 }
 
 export const setupDashboardForRendering = (
-  selector: string,
+  dashboardRoot: HTMLElement,
+  getParametersNode: (dashboardRoot: HTMLElement) => HTMLElement | null,
 ): DashboardRenderSetup | undefined => {
-  const dashboardRoot = document.querySelector(selector);
-  const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
+  const gridNode = dashboardRoot.querySelector(".react-grid-layout");
 
   if (!gridNode || !(gridNode instanceof HTMLElement)) {
-    console.warn("No dashboard content found", selector);
+    console.warn("No dashboard content found");
     return undefined;
   }
 
-  const pageHeaderParametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
-    ?.cloneNode(true);
+  const pageHeaderParametersNode =
+    getParametersNode(dashboardRoot)?.cloneNode(true);
 
   let parametersHeight = 0;
   if (pageHeaderParametersNode instanceof HTMLElement) {
@@ -146,8 +180,17 @@ export const setupDashboardForRendering = (
 
 export const getDashboardImage = async (
   selector: string,
+  parametersNodeSelector: string,
 ): Promise<string | undefined> => {
-  const setup = setupDashboardForRendering(selector);
+  const dashboardRoot = document.querySelector(selector);
+  if (!(dashboardRoot instanceof HTMLElement)) {
+    console.warn("No dashboard root found", selector);
+    return undefined;
+  }
+
+  const setup = setupDashboardForRendering(dashboardRoot, (root) =>
+    root.querySelector<HTMLElement>(parametersNodeSelector),
+  );
   if (!setup) {
     return undefined;
   }
@@ -168,6 +211,7 @@ export const getDashboardImage = async (
       node.style.height = `${contentHeight}px`;
       node.style.backgroundColor = backgroundColor;
       if (parametersNode) {
+        fixParameterLegendOffsetForExport(parametersNode);
         node.insertBefore(parametersNode, node.firstChild);
       }
     },

@@ -1,16 +1,11 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import { Databases } from "metabase/entities/databases";
-import type { State } from "metabase/redux/store";
-import type { Database } from "metabase-types/api";
+import { getMetadata } from "metabase/selectors/metadata";
 
-const getDatabasesListDefaultValue: Database[] = [];
-
-export const getDatabasesList = (state: State): Database[] =>
-  Databases.selectors.getList(state, {
-    entityQuery: { include: "tables", saved: true },
-  }) || getDatabasesListDefaultValue;
+export const getDatabasesList = createSelector([getMetadata], (metadata) =>
+  metadata.databasesList(),
+);
 
 export const getSampleDatabaseId = createSelector(
   [getDatabasesList],

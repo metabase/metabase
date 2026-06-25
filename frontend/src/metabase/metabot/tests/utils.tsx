@@ -22,14 +22,15 @@ import {
 } from "metabase/api/ai-streaming/test-utils";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { User } from "metabase-types/api";
+import type { MetabotInfo, User } from "metabase-types/api";
 import {
+  createMockMetabotInfo,
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
-import { FIXED_METABOT_IDS } from "../constants";
+import { FIXED_METABOT_ENTITY_IDS, FIXED_METABOT_IDS } from "../constants";
 import { MetabotProvider } from "../context";
 import {
   type MetabotAgentId,
@@ -129,11 +130,15 @@ export const lastReqBody = async (
   agentSpy: ReturnType<typeof mockAgentEndpoint>,
 ) => {
   await waitFor(() => expect(agentSpy).toHaveBeenCalled());
-  return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
+  // The client calls `fetch(new Request(url, init))`, so the body lives on the
+  // Request object rather than a separate init arg.
+  const [request] = agentSpy.mock.lastCall ?? [];
+  return JSON.parse(await (request as Request).clone().text());
 };
 
 // Common mock response fixtures
 export const whoIsYourFavoriteResponse = [
+  `f:{"messageId":"msg_test_favorite"}`,
   `0:"You, but don't tell anyone."`,
   `2:{"type":"state","version":1,"value":{"queries":{}}}`,
   `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
@@ -150,6 +155,29 @@ export const adminQuotaLimitErroredResponse = [
   `d:{"finishReason":"error","usage":{}}`,
 ];
 
+type DefaultMetabotOverrides = {
+  default?: Partial<MetabotInfo>;
+  embedded?: Partial<MetabotInfo>;
+};
+
+export function buildDefaultMetabots(
+  overrides: DefaultMetabotOverrides = {},
+): MetabotInfo[] {
+  return [
+    createMockMetabotInfo({
+      id: FIXED_METABOT_IDS.DEFAULT,
+      entity_id: FIXED_METABOT_ENTITY_IDS.DEFAULT,
+      ...overrides.default,
+    }),
+    createMockMetabotInfo({
+      id: FIXED_METABOT_IDS.EMBEDDED,
+      entity_id: FIXED_METABOT_ENTITY_IDS.EMBEDDED,
+      name: "Embedded Metabot",
+      ...overrides.embedded,
+    }),
+  ];
+}
+
 // Setup function for metabot tests
 export function setup(
   options: {
@@ -157,14 +185,13 @@ export function setup(
     metabotInitialState?: MetabotState;
     currentUser?: User | null | undefined;
     promptSuggestions?: { prompt: string }[];
-    isHosted?: boolean;
     storeInitialState?: RenderWithProvidersOptions["storeInitialState"];
     customReducers?: RenderWithProvidersOptions["customReducers"];
+    isConfigured?: boolean;
   } | void,
 ) {
   const settings = mockSettings({
-    "llm-metabot-configured?": true,
-    "is-hosted?": options?.isHosted ?? false,
+    "llm-metabot-configured?": options?.isConfigured ?? true,
   });
 
   setupEnterprisePlugins();

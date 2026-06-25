@@ -3,18 +3,18 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
-import { getCollectionName } from "metabase/collections/utils";
+import { getCollectionName } from "metabase/common/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
-import { QuestionPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
 import { Box, Flex, FixedSizeIcon as Icon, Loader, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import type Question from "metabase-lib/v1/Question";
 
 import SidebarStyles from "./QuestionInfoSidebar.module.css";
+import { QuestionPublicLinkPopover } from "./QuestionPublicLinkPopover/QuestionPublicLinkPopover";
 import { QuestionSources } from "./components/QuestionSources";
 
 export const QuestionDetails = ({ question }: { question: Question }) => {
@@ -61,10 +61,10 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
         )}
       </SidesheetCardSection>
       <SidesheetCardSection title={t`Saved in`}>
-        <Flex gap="sm" align="top" c="brand">
+        <Flex gap="sm" align="top" c="core-brand">
           <Icon
             name={isDashboardQuestion ? "dashboard" : "folder"}
-            c="brand"
+            c="core-brand"
             className={SidebarStyles.IconMargin}
           />
           <Text>
@@ -109,7 +109,7 @@ function SharingDisplay({ question }: { question: Question }) {
     <SidesheetCardSection title={t`Visibility`}>
       {publicUUID && (
         <Flex gap="sm" align="center">
-          <Icon name="globe" c="brand" />
+          <Icon name="globe" c="core-brand" />
           <Text>{t`Shared publicly`}</Text>
 
           <QuestionPublicLinkPopover

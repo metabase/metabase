@@ -1,21 +1,19 @@
 import type { Store } from "@reduxjs/toolkit";
+import fetchMock from "fetch-mock";
 import _ from "underscore";
 
-import { getStore } from "__support__/entities-store";
+import { getMainStore } from "__support__/entities-store";
 import {
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { Api } from "metabase/api";
-import { mainReducers } from "metabase/reducers-main";
 import type { State, StoreDashcard } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { CardApi } from "metabase/services";
 import type {
   CardId,
   DashCardId,
@@ -178,10 +176,8 @@ function setup({
     dashcards: _.indexBy(dashcards, "id"),
   });
 
-  const store = getStore(
-    { ...mainReducers, [Api.reducerPath]: Api.reducer },
+  const store = getMainStore(
     createMockState({ dashboard: dashboardState }),
-    [Api.middleware],
   ) as Store<State>;
 
   return { store };
@@ -259,17 +255,17 @@ describe("dashboard/actions/cards", () => {
     });
 
     it("should run a new card query", async () => {
-      const { cardQueryEndpointSpy } = await runReplaceCardAction({
+      await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
         nextCardId: ORDERS_LINE_CHART_CARD.id,
       });
 
       // It's important to ensure the `/card/:id/query` endpoint is called
       // Regular dashcard query endpoint won't work with a new `card_id`
-      expect(cardQueryEndpointSpy).toHaveBeenCalledWith(
-        { cardId: ORDERS_LINE_CHART_CARD.id },
-        expect.anything(), // abort signal
+      const queryCalls = fetchMock.callHistory.calls(
+        `path:/api/card/${ORDERS_LINE_CHART_CARD.id}/query`,
       );
+      expect(queryCalls).toHaveLength(1);
     });
 
     it("should not auto-wire parameters", async () => {
@@ -338,7 +334,6 @@ async function runReplaceCardAction({
   const { store } = setup(opts);
 
   const dispatchSpy = jest.spyOn(store, "dispatch");
-  const cardQueryEndpointSpy = jest.spyOn(CardApi, "query");
 
   await replaceCard({ dashcardId, nextCardId })(store.dispatch, store.getState);
   const nextState = store.getState();
@@ -346,7 +341,6 @@ async function runReplaceCardAction({
   return {
     nextDashCard: getDashCardById(nextState, dashcardId),
     dispatchSpy,
-    cardQueryEndpointSpy,
   };
 }
 
@@ -362,7 +356,7 @@ async function runAddCardToDashboard({
     dashId,
     tabId,
     cardId,
-  })(store.dispatch, store.getState);
+  })(store.dispatch);
   const nextState = store.getState();
 
   const tempDashCardId =

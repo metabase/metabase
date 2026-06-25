@@ -7,8 +7,6 @@ redirect_from:
 
 # Embedding introduction
 
-{% include shared/in-page-promo-embedding-workshop.html %}
-
 You can embed Metabase tables, charts, and dashboards—even Metabase's query builder—in your website or application. Here are the different ways you can embed Metabase:
 
 - [Modular embedding](#modular-embedding)
@@ -95,6 +93,14 @@ The modular embeds that you can set up in the [in-app wizard](./modular-embeddin
 ## Resources for AI agents
 
 If you're using an AI agent to help you embed Metabase in your app, check out [AI agent resources](./ai-agent-resources.md).
+
+## Tracking embed usage
+
+{% include plans-blockquote.html feature="Tracking embed usage" %}
+
+[Usage Analytics](../usage-and-performance-tools/usage-analytics.md) tracks embed usage, including embedding context, authentication methods, hostname, and other metadata. Check out the [Embedding usage dashboard](../usage-and-performance-tools/usage-analytics-reference.md#embedding-usage).
+
+For information about the anonymous usage data Metabase collects from embedded components, see [Embedding telemetry](../installation-and-operation/information-collection.md#embedding-telemetry).
 
 ## Further reading
 

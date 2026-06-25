@@ -341,6 +341,38 @@ describe("documents", () => {
       .should("have.attr", "contenteditable", "false");
   });
 
+  it("should default the save modal to a selectable collection when Library is enabled (#73538)", () => {
+    H.activateToken("pro-self-hosted");
+    H.createLibrary();
+    cy.intercept("POST", "/api/document").as("createDocument");
+
+    cy.visit("/");
+
+    H.newButton("Document").click();
+    cy.findByRole("textbox", { name: "Document Title" }).type(
+      "Document in default collection",
+    );
+    H.documentContent().type(
+      "This document should save without changing folders",
+    );
+
+    cy.findByRole("button", { name: "Save" }).click();
+
+    H.entityPickerModal().within(() => {
+      cy.findByTestId("entity-picker-select-button").should("be.enabled");
+    });
+    cy.findByTestId("entity-picker-select-button").click();
+
+    cy.wait("@createDocument").then(({ request }) => {
+      expect(request.body).not.to.have.property("collection_id");
+    });
+    cy.location("pathname").should("match", /^\/document\/\d+/);
+    cy.findByRole("textbox", { name: "Document Title" }).should(
+      "have.value",
+      "Document in default collection",
+    );
+  });
+
   it("should focus the start of the document body when pressing Enter on the title input", () => {
     cy.visit("/document/new");
 
@@ -1822,6 +1854,8 @@ describe("documents", () => {
       cy.findByTestId("toast-undo")
         .should("be.visible")
         .and("contain.text", "Document saved");
+      // dismiss after asserting so toasts don't stack into later lookups
+      H.undoToast().icon("close").click({ force: true });
 
       cy.log("Make another change");
       H.documentContent().click();
@@ -1830,6 +1864,7 @@ describe("documents", () => {
       cy.contains('[data-testid="toast-undo"]', "Document saved").should(
         "be.visible",
       );
+      H.undoToast().icon("close").click({ force: true });
 
       cy.log("Open revision history");
       cy.findByLabelText("More options").click();
@@ -1866,6 +1901,20 @@ describe("documents", () => {
       cy.findByTestId("document-history-list")
         .findByText(/reverted to an earlier version/)
         .should("be.visible");
+
+      cy.log("Surface backend error when a revert fails (UXW-310)");
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing document" },
+      }).as("failedRevert");
+
+      cy.findByTestId("document-history-list")
+        .findAllByTestId("question-revert-button")
+        .first()
+        .click();
+      cy.wait("@failedRevert");
+
+      H.undoToast().should("contain.text", "Cannot revert: missing document");
     });
   });
 });

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
@@ -74,10 +75,16 @@
 
   Note: Unlike searchable-text, transformation functions in search-terms
   (e.g., explode-camel-case) are NOT applied. Transformations like camel-case
-  explosion are specific to full-text search optimization."
+  explosion are specific to full-text search optimization.
+
+  Fields listed in the spec's `:embedding-exclude` set are kept out of the
+  embedding text entirely (but remain in `searchable-text`)."
   [m]
-  (let [search-terms (:search-terms (search.spec/spec (:model m)))
-        field-keys   (cond-> search-terms (map? search-terms) keys)
+  (let [spec         (search.spec/spec (:model m))
+        search-terms (:search-terms spec)
+        excluded     (:embedding-exclude spec #{})
+        field-keys   (->> (cond-> search-terms (map? search-terms) keys)
+                          (remove excluded))
         header       (str "[" (:model m) "]")
         fields        (keep (fn [k]
                               (let [v (get m k)]
@@ -140,10 +147,17 @@
                         (update :archived boolean)
                         (assoc
                          :display_data (display-data m)
-                         :legacy_input (json/encode (dissoc m :pinned :view_count :last_viewed_at :native_query :dataset_query))
                          :searchable_text (searchable-text m)
-                         :embeddable_text (embeddable-text m)))]
-    (merge fn-results sql-results)))
+                         :embeddable_text (embeddable-text m)))
+        document (merge fn-results sql-results)
+        curated  (collections.curation/curated? document)]
+    ;; Both production engines reconstruct results from legacy_input (appdb rehydrate, semantic
+    ;; legacy-input-with-score), so curated must live there to reach the search response, not just in the
+    ;; search_index column used for filtering. data_layer rides along once it leaves the excluded set.
+    (assoc document
+           :curated curated
+           :legacy_input (json/encode (assoc (apply dissoc m search.spec/legacy-input-excluded-keys)
+                                             :curated curated)))))
 
 (defn- attrs->select-items [attrs]
   (for [[k v] attrs
@@ -192,16 +206,38 @@
       (sql.helpers/where where-clause)))
 
 (defn- spec-index-reducible [search-model & [where-clause]]
+  ;; Joins in the spec (e.g. card → revision on most_recent = true) can produce duplicate rows when the
+  ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
+  ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
   (->> (spec-index-query-where search-model where-clause)
        mdb/streaming-reducible-query
-       (eduction (cond-> (map #(assoc % :model search-model))
-                   ;; It's possible to get redundant entries from the indexed-entities table.
-                   ;; We deduplicate only that model to avoid an unbounded set over all documents.
-                   (= "indexed-entity" search-model)
-                   (comp (m/distinct-by (juxt :id :model)))))))
+       (eduction (comp (map #(assoc % :model search-model))
+                       (m/distinct-by (juxt :id :model))))))
 
 (defn- search-items-reducible []
   (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
+
+(defn indexable-row?
+  "Whether the row identified by `search-model` + `id` would be indexed, i.e. it satisfies the spec's `:where`.
+  `id` is the toucan PK of the underlying model (not the compound `indexed-entity` id). Returns:
+
+  - `:no-spec`   the model is not searchable
+  - `:not-found` no such row exists in the underlying table
+  - `:excluded`  the row exists but the spec's `:where` filters it out
+  - `:indexable` ingestion would index it"
+  [search-model id]
+  (if-not (contains? (set search.spec/search-models) search-model)
+    :no-spec
+    (let [spec      (search.spec/spec search-model)
+          indexed?  (-> (spec-index-query-where search-model [:= :this.id id])
+                        (assoc :select [[[:inline 1] :one]] :limit 1)
+                        t2/query
+                        seq
+                        boolean)]
+      (cond
+        indexed?                              :indexable
+        (t2/exists? (:model spec) :id id)     :excluded
+        :else                                 :not-found))))
 
 (def ^:private max-document-error-logs 10)
 
@@ -221,7 +257,11 @@
                ([result m]
                 (if-let [doc (try
                                (->document m)
-                               (catch Throwable t
+                               (catch InterruptedException ie
+                                 (.interrupt (Thread/currentThread))
+                                 (throw ie))
+                               (catch Exception t
+                                 (analytics/inc! :metabase-search/index-documents-skipped {:model (:model m)})
                                  (let [n (vswap! failures inc)]
                                    (cond
                                      (<= n max-document-error-logs)
@@ -323,7 +363,6 @@
               ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
               ;; Long-term, we should find a better approach to knowing what to purge.
               to-delete (remove indexed-pairs passed-documents)]
-
           (update! documents to-delete))
         {}))))
 

@@ -1,16 +1,14 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
+import type { NotificationType } from "metabase/notifications/types";
 import { formatChannelRecipients } from "metabase/pulse";
-import { Box, Stack } from "metabase/ui";
-import { formatDateTimeWithUnit } from "metabase/utils/formatting";
+import { Box, Button, Stack } from "metabase/ui";
 import Settings from "metabase/utils/settings";
+import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
-
-import type { NotificationType } from "../../types";
 
 type ArchiveModalProps = {
   item: Alert | DashboardSubscription;
@@ -51,7 +49,12 @@ function ArchiveNotificationModal({
         <Button key="cancel" onClick={onClose}>
           {getCancelMessage(hasUnsubscribed)}
         </Button>,
-        <Button key="submit" warning onClick={handleArchiveClick}>
+        <Button
+          key="submit"
+          variant="filled"
+          color="error"
+          onClick={handleArchiveClick}
+        >
           {getSubmitMessage(type, hasUnsubscribed)}
         </Button>,
       ]}

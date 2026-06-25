@@ -11,7 +11,7 @@ export const Root = styled.div`
   justify-content: center;
   text-align: center;
   padding: 0.5rem;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 export const SlowQueryMessageContainer = styled.div`

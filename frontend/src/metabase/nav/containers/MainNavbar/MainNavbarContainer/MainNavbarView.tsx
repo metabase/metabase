@@ -5,33 +5,32 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   isExamplesCollection,
   isLibraryCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
-import { NavbarLibrarySection } from "metabase/data-studio/nav/components/NavbarLibrarySection";
-import type { CollectionTreeItem } from "metabase/entities/collections";
+import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
-} from "metabase/home/selectors";
-import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+} from "metabase/selectors/onboarding";
 import {
   getIsTenantUser,
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
-import * as Urls from "metabase/utils/urls";
 import type { Bookmark, Collection } from "metabase-types/api";
 
 import {
@@ -328,9 +327,6 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
-          <div>
-            <WhatsNewNotification />
-          </div>
         </div>
       </SidebarContentRoot>
 

@@ -100,15 +100,55 @@ describe("Google Drive > DB Menu", () => {
     expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
   });
 
-  it("shows a menu in error state", async () => {
+  it("shows the hard error when erroring and never synced", async () => {
+    // No last_sync_at => never synced successfully => a real setup error.
     setup({ status: "error" });
 
     await openMenu();
+    expect(
+      await screen.findByText("Couldn't sync Google Sheets"),
+    ).toBeInTheDocument();
     expect(
       await screen.findByText(
         "Please check that the folder is shared with the Metabase Service Account.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("retrying when erroring but synced within the last hour", async () => {
+    setup({
+      status: "error",
+      last_sync_at: dayjs().subtract(10, "minute").unix(),
+    });
+
+    await openMenu();
+    expect(await screen.findByText("Retrying shortly")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Last synced 10 minutes ago. Your data is up to date as of the last sync.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Couldn't sync Google Sheets"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("delay warning when erroring and last synced over an hour ago", async () => {
+    setup({
+      status: "error",
+      last_sync_at: dayjs().subtract(2, "hour").unix(),
+    });
+
+    await openMenu();
+    expect(await screen.findByText("Sync delayed")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Last synced 2 hours ago. Your data may be a bit behind. We're retrying the sync.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Couldn't sync Google Sheets"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a menu when loading", async () => {
@@ -191,13 +231,13 @@ describe("Google Drive > DB Menu", () => {
     expect(await screen.findByText("Next sync soon™")).toBeInTheDocument();
   });
 
-  it("should call the sync API when clicking sync now", async () => {
+  it("should call the sync API when clicking sync", async () => {
     setup({ status: "active" });
 
     await openMenu();
 
     const syncButton = await screen.findByRole("menuitem", {
-      name: /sync now/i,
+      name: /sync icon sync/i,
     });
     expect(syncButton).toBeEnabled();
 

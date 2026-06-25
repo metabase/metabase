@@ -4,8 +4,9 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { dismissUndo } from "metabase/redux/undo";
+import { canAccessSettings } from "metabase/selectors/user";
 import {
   Button,
   Flex,
@@ -15,7 +16,7 @@ import {
   Text,
 } from "metabase/ui";
 
-import { MetabotSetupInner } from "./MetabotAdmin/MetabotSetup";
+import { AIProviderConfigurationForm } from "./AIProviderConfigurationForm";
 
 const METABOT_MANAGED_PROVIDER_LIMIT_TOAST_ID =
   "metabot-managed-provider-limit";
@@ -32,6 +33,7 @@ export const MetabotManagedProviderLimitActions = ({
   onConfigureClose,
   ...rest
 }: MetabotManagedProviderLimitActionsProps) => {
+  const canConfigureAi = useSelector(canAccessSettings);
   const [isOpen, { open, close }] = useDisclosure(false, {
     onClose: onConfigureClose,
   });
@@ -41,16 +43,30 @@ export const MetabotManagedProviderLimitActions = ({
 
   const configureModal = (
     <Modal
-      title="Connect to an AI provider"
+      title={t`Connect to an AI provider`}
       onClose={close}
       opened={isOpen}
       size="lg"
     >
-      <MetabotSetupInner isModal onClose={close} />
+      <AIProviderConfigurationForm isModal onClose={close} />
     </Modal>
   );
 
   const storeUrl = useStoreUrl("account/manage/plans");
+
+  if (!canConfigureAi) {
+    return (
+      <Flex
+        direction={inline ? "row" : "column"}
+        align={inline ? "center" : "start"}
+        {...rest}
+      >
+        <Text c="text-secondary" fz="sm" lh="1rem">
+          {t`Ask your admin to switch AI providers or start a paid subscription.`}
+        </Text>
+      </Flex>
+    );
+  }
 
   if (inline) {
     return (

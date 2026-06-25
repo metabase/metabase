@@ -14,6 +14,8 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.self.azure :as azure]
+   [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
@@ -29,6 +31,8 @@
   ;; a `case` inside of function instead of a map so that with-redefs work well
   (case provider
     "anthropic"  claude/claude
+    "azure"      azure/azure
+    "bedrock"    bedrock/bedrock
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -38,6 +42,8 @@
   ;; a `case` inside of function instead of a map so that with-redefs work well
   (case provider
     "anthropic"  claude/list-models
+    "azure"      azure/list-models
+    "bedrock"    bedrock/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -51,8 +57,9 @@
      :ai-proxy?  (provider-util/metabase-provider? s)}))
 
 (defn list-models
-  "List available models for a provider using its configured API key,
-  or an override API key when provided."
+  "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
+  The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes
+  AWS key material and region (see [[bedrock/list-models]])."
   ([provider]
    ((resolve-model-lister provider)))
   ([provider opts]
@@ -133,10 +140,17 @@
        jitter)))
 
 (defn- report-aisdk-errors-xf
-  "Transducer that increments the llm-errors counter for :error parts in the aisdk stream."
+  "Transducer that logs and increments the llm-errors counter for :error parts in the aisdk stream."
   [tracking-opts]
   (map (fn [part]
          (when (= (:type part) :error)
+           ;; A streamed `:error` part means the provider failed mid-response (e.g. an OpenAI
+           ;; `response.failed`) without throwing, so nothing else logs it. Surface it here so it
+           ;; shows up in the server logs alongside the metric and the persisted turn error.
+           (log/error "Metabot LLM stream returned an error"
+                      {:model  (:model tracking-opts "unknown")
+                       :source (:tag tracking-opts "none")
+                       :error  (:error part)})
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
@@ -160,35 +174,41 @@
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
-             (let [usage      (:usage part)
-                   model      (or model (:model part) "unknown")
-                   prompt     (:promptTokens usage 0)
-                   completion (:completionTokens usage 0)]
+             (let [usage           (:usage part)
+                   model           (or model (:model part) "unknown")
+                   prompt          (:promptTokens usage 0)
+                   completion      (:completionTokens usage 0)
+                   cache-creation  (:cacheCreationTokens usage 0)
+                   cache-read      (:cacheReadTokens usage 0)]
                (analytics.core/track-token-usage!
                 ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
-                {:prometheus          true
-                 :snowplow            (some? request-id)
-                 :profile             (some-> profile-id name)
-                 :model-id            model
-                 :prompt-tokens       prompt
-                 :completion-tokens   completion
-                 :total-tokens        (+ prompt completion)
-                 :estimated-costs-usd 0.0
-                 :duration-ms         (long (u/since-ms start-ms))
-                 :user-id             api/*current-user-id*
-                 :request-id          (some-> request-id analytics.core/uuid->ai-service-hex-uuid)
-                 :session-id          session-id
-                 :source              source
-                 :tag                 tag})
+                {:prometheus            true
+                 :snowplow              (some? request-id)
+                 :profile               (some-> profile-id name)
+                 :model-id              model
+                 :prompt-tokens         prompt
+                 :completion-tokens     completion
+                 :cache-creation-tokens cache-creation
+                 :cache-read-tokens     cache-read
+                 :total-tokens          (+ prompt completion)
+                 :estimated-costs-usd   0.0
+                 :duration-ms           (long (u/since-ms start-ms))
+                 :user-id               api/*current-user-id*
+                 :request-id            (some-> request-id analytics.core/uuid->ai-service-hex-uuid)
+                 :session-id            session-id
+                 :source                source
+                 :tag                   tag})
                (usage/log-ai-usage!
-                {:source            (or tag source "unknown")
-                 :model             model
-                 :prompt-tokens     prompt
-                 :completion-tokens completion
-                 :conversation-id   session-id
-                 :profile-id        profile-id
-                 :request-id        request-id
-                 :ai-proxied        (boolean ai-proxy?)})))
+                {:source                (or source tag "unknown")
+                 :model                 model
+                 :prompt-tokens         prompt
+                 :completion-tokens     completion
+                 :cache-creation-tokens cache-creation
+                 :cache-read-tokens     cache-read
+                 :conversation-id       session-id
+                 :profile-id            profile-id
+                 :request-id            request-id
+                 :ai-proxied            (boolean ai-proxy?)})))
            part))))
 
 (defn- report-tool-usage-xf

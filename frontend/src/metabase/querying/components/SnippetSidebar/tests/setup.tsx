@@ -45,6 +45,7 @@ export async function setup({
   });
 
   const state = createMockState({
+    currentUser: createMockUser(user),
     settings: mockSettings({
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
@@ -54,18 +55,19 @@ export async function setup({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  renderWithProviders(
+  const utils = renderWithProviders(
     <SnippetSidebar
       onClose={() => null}
       setModalSnippet={() => null}
       openSnippetModalWithSelectedText={() => null}
       insertSnippet={() => null}
       snippetCollectionId={null}
-      user={createMockUser(user)}
     />,
     {
       storeInitialState: state,
     },
   );
   await waitForLoaderToBeRemoved();
+
+  return utils;
 }

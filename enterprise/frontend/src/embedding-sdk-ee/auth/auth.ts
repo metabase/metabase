@@ -24,14 +24,16 @@ import type {
   SdkStoreState,
 } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
-import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
+import { api } from "metabase/api/client";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,
+  isEmbeddingMcpApp,
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
@@ -39,7 +41,6 @@ import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
-import api from "metabase/utils/api";
 import MetabaseSettings from "metabase/utils/settings";
 import type { Settings } from "metabase-types/api";
 
@@ -54,6 +55,11 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
   { dispatch }: { dispatch: SdkDispatch },
 ) => {
+  // MCP Apps inject a session token directly and manage user/settings themselves.
+  if (isEmbeddingMcpApp()) {
+    return;
+  }
+
   const { metabaseInstanceUrl, apiKey, isLocalHost } = authConfig;
 
   // remove any stale tokens that might be there from a previous session
@@ -273,8 +279,7 @@ function getSdkRequestHeaders(hash?: string): Record<string, string> {
     "X-Metabase-Client": "embedding-sdk-react",
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     "X-Metabase-Client-Version":
-      getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ??
-      EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
+      getSdkPackageVersion() ?? EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
   };

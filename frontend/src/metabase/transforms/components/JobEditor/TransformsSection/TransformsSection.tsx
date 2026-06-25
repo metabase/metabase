@@ -6,13 +6,12 @@ import { t } from "ttag";
 import { useListTransformJobTransformsQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Transform, TransformJobId } from "metabase-types/api";
-
-import { TitleSection } from "../../TitleSection";
 
 import { getColumns } from "./utils";
 

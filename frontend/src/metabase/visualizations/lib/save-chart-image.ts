@@ -1,5 +1,5 @@
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isStorybookActive } from "metabase/env";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 
 import {
@@ -7,6 +7,7 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
+import { resolveSvgVarPaint, restoreNestedSvgOverflow } from "./image-exports";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
@@ -71,6 +72,9 @@ export const saveChartImage = async ({
 
         node.appendChild(branding);
       }
+
+      resolveSvgVarPaint(node);
+      restoreNestedSvgOverflow(node);
     },
   });
 

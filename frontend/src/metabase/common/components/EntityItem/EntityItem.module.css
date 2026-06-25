@@ -1,0 +1,13 @@
+.menuItem {
+  font-weight: 700;
+}
+
+.menuItem:hover:not([data-disabled="true"]) {
+  color: var(--mb-color-brand) !important;
+  background-color: var(--mb-color-background_page-secondary) !important;
+}
+
+.dangerItem:hover:not([data-disabled="true"]) {
+  color: var(--mb-color-danger) !important;
+  background-color: var(--mb-color-background_surface-error) !important;
+}

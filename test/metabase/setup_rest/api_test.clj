@@ -18,7 +18,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -88,6 +87,24 @@
                         :model    "User"
                         :details  {}}
                        (mt/latest-audit-log-entry :user-joined user-id)))))))))))
+
+(deftest setup-token-cleared-after-use-test
+  (testing "POST /api/setup clears the setup token once the first user is created (UXW-4359)"
+    (let [body {:token (setup/create-token!)
+                :prefs {:site_locale "en"
+                        :site_name   (mt/random-name)}
+                :user  {:first_name (mt/random-name)
+                        :last_name  (mt/random-name)
+                        :email      (mt/random-email)
+                        :password   "p@ssword1"}}]
+      (do-with-setup!*
+       body
+       (fn []
+         (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
+           (is (=? {:id string/valid-uuid?}
+                   (client/client :post 200 "setup" body)))
+           (testing "the now-unusable token is cleared out of Settings"
+             (is (nil? (setup/setup-token))))))))))
 
 (deftest setup-settings-test
   (testing "POST /api/setup"
@@ -228,28 +245,21 @@
 
 (deftest create-superuser-only-once-test
   (testing "POST /api/setup"
-    (testing "Check that we cannot create a new superuser via setup-token when a user exists"
-      (let [token          (setup/create-token!)
-            body           {:token token
-                            :prefs {:site_locale "es_MX"
-                                    :site_name   (mt/random-name)}
-                            :user  {:first_name (mt/random-name)
-                                    :last_name  (mt/random-name)
-                                    :email      (mt/random-email)
-                                    :password   "p@ssword1"}}
-            has-user-setup (atom false)]
-        (with-redefs [setup/has-user-setup (fn [] @has-user-setup)]
-          (is (not (setup/has-user-setup)))
-          (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
-            (is (malli= [:map {:closed true} [:id ms/NonBlankString]]
-                        (client/client :post 200 "setup" body))))
-          ;; In the non-test context, this is 'set' iff there is one or more users, and doesn't have to be toggled
-          (reset! has-user-setup true)
-          (is (setup/has-user-setup))
-          ;; use do-with-setup!* to delete the random user that was created
-          (do-with-setup!* body
-                           #(is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
-                                   (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))))
+    (testing "A second superuser cannot be created once a user exists -- even if the caller presents a valid setup token"
+      ;; Simulate the attacker's ideal preconditions directly: a user already exists, and the supplied token passes
+      ;; validation (i.e. they somehow got hold of a valid setup token). The "a user already exists" guard must still
+      ;; reject the request -- this is the real safeguard, independent of whether a token happens to exist.
+      (mt/with-dynamic-fn-redefs [setup/has-user-setup (constantly true)
+                                  setup/token-match?   (constantly true)]
+        (let [body {:token "any-valid-looking-token"
+                    :prefs {:site_locale "es_MX"
+                            :site_name   (mt/random-name)}
+                    :user  {:first_name (mt/random-name)
+                            :last_name  (mt/random-name)
+                            :email      (mt/random-email)
+                            :password   "p@ssword1"}}]
+          (is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
+                 (client/client :post 403 "setup" body))))))))
 
 (deftest transaction-test
   (testing "POST /api/setup/"

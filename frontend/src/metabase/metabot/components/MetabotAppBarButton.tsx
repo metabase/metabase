@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import {
+  useIsAskPage,
   useMetabotAgent,
   useMetabotName,
   useUserMetabotPermissions,
@@ -20,11 +21,12 @@ export function MetabotAppBarButton({
   className,
   ...rest
 }: MetabotAppBarButtonProps) {
-  const { canUseMetabot } = useUserMetabotPermissions();
+  const { hasMetabotAccess } = useUserMetabotPermissions();
   const metabot = useMetabotAgent("omnibot");
   const metabotName = useMetabotName();
+  const isAskPage = useIsAskPage();
 
-  if (!canUseMetabot) {
+  if (!hasMetabotAccess) {
     return null;
   }
 
@@ -43,14 +45,16 @@ export function MetabotAppBarButton({
       <ActionIcon
         className={className}
         variant="subtle"
-        c="text-primary"
-        bd="1px solid var(--mb-color-border)"
+        c={isAskPage ? "text-tertiary" : "text-primary"}
+        opacity={isAskPage ? 0.5 : undefined}
+        bd="1px solid var(--mb-color-border-neutral)"
         p="sm"
         h="2.25rem"
         w="2.25rem"
         aria-label={label}
         onClick={handleClick}
         {...rest}
+        disabled={isAskPage}
       >
         <MetabotIcon />
       </ActionIcon>

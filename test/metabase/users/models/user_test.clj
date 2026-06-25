@@ -78,7 +78,18 @@
 (def ^:private default-invitor
   {:email "crowberto@metabase.com", :is_active true, :first_name "Crowberto"})
 
-;; admin shouldn't get email saying user joined until they accept the invite (i.e., reset their password)
+;; Admins are notified of new joins via `all-admin-recipients`, which excludes admins who haven't yet accepted their
+;; own invitation (i.e. `last_login` is still nil). These tests therefore construct fresh admin users with explicit
+;; `last_login` state — relying on seeded users like `:crowberto` is fragile because their `last_login` is set as a
+;; side effect of earlier tests authenticating as them.
+
+(defn- with-fresh-accepted-admin!
+  "Create a temp admin User with `last_login` set (representing an admin who has accepted their invitation), pass them
+  to `f`, then let `mt/with-temp` clean them up."
+  [f]
+  (mt/with-temp [:model/User admin {:is_superuser true, :email "accepted-admin@example.com"}]
+    (t2/update! :model/User (:id admin) {:last_login :%now})
+    (f admin)))
 
 (deftest new-user-invite-email-test
   (notification.tu/with-send-notification-sync
@@ -89,71 +100,99 @@
 (deftest admin-email-on-user-acceptance-test
   (notification.tu/with-send-notification-sync
     (testing "admin should get an email when a new user joins"
-      (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
-              "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
-             (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
-                 (select-keys ["<New User>" "crowberto@metabase.com"])))))))
+      (with-fresh-accepted-admin!
+        (fn [admin]
+          (is (= {"<New User>"     ["You're invited to join Metabase's Metabase"]
+                  (:email admin)   ["<New User> accepted their Metabase invite"]}
+                 (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
+                     (select-keys ["<New User>" (:email admin)])))))))))
 
 (deftest admin-email-with-site-admin-test
   (notification.tu/with-send-notification-sync
     (testing "site admin should also get email when user joins"
-      (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
-        (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
-                "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]
-                "cam2@metabase.com"      ["<New User> accepted their Metabase invite"]}
-               (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
-                   (select-keys ["<New User>" "crowberto@metabase.com" "cam2@metabase.com"]))))))))
+      (with-fresh-accepted-admin!
+        (fn [admin]
+          (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
+            (is (= {"<New User>"          ["You're invited to join Metabase's Metabase"]
+                    (:email admin)        ["<New User> accepted their Metabase invite"]
+                    "cam2@metabase.com"   ["<New User> accepted their Metabase invite"]}
+                   (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
+                       (select-keys ["<New User>" (:email admin) "cam2@metabase.com"]))))))))))
 
 (deftest inactive-admin-no-email-test
   (notification.tu/with-send-notification-sync
     (testing "inactive admin should not get email when user joins"
-      (mt/with-temp [:model/User inactive-admin {:is_superuser true, :is_active false}]
-        (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
-                "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
-               (-> (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))
-                   (select-keys ["<New User>" "crowberto@metabase.com" (:email inactive-admin)]))))))))
+      (with-fresh-accepted-admin!
+        (fn [admin]
+          (mt/with-temp [:model/User inactive-admin {:is_superuser true, :is_active false}]
+            (is (= {"<New User>"   ["You're invited to join Metabase's Metabase"]
+                    (:email admin) ["<New User> accepted their Metabase invite"]}
+                   (-> (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))
+                       (select-keys ["<New User>" (:email admin) (:email inactive-admin)]))))))))))
+
+(deftest pending-admin-no-email-test
+  (notification.tu/with-send-notification-sync
+    (testing "an admin who hasn't yet accepted their own invitation should not receive user-joined emails"
+      (with-fresh-accepted-admin!
+        (fn [accepted-admin]
+          (mt/with-temp [:model/User pending-admin {:is_superuser true
+                                                    :email        "pending-admin@example.com"}]
+            ;; pending-admin keeps last_login = nil — they've been invited but haven't accepted.
+            (let [inboxes (invite-user-accept-and-check-inboxes! :invitor default-invitor)]
+              (is (nil? (get inboxes (:email pending-admin)))
+                  "pending admin should not be notified")
+              (is (= ["<New User> accepted their Metabase invite"]
+                     (get inboxes (:email accepted-admin)))
+                  "accepted admin should still be notified"))))))))
 
 (deftest google-auth-admin-emails-test
   (notification.tu/with-send-notification-sync
-    (testing "for google auth, all admins should get an email"
+    (testing "for google auth, all accepted admins should get an email"
       (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
-        (mt/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-          (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
-                  "some_other_admin@metabase.com" ["<New User> created a Metabase account"]}
+        (mt/with-temp [:model/User admin-1 {:is_superuser true, :email "accepted-admin-1@example.com"}
+                       :model/User admin-2 {:is_superuser true, :email "accepted-admin-2@example.com"}]
+          (t2/update! :model/User (:id admin-1) {:last_login :%now})
+          (t2/update! :model/User (:id admin-2) {:last_login :%now})
+          (is (= {(:email admin-1) ["<New User> created a Metabase account"]
+                  (:email admin-2) ["<New User> created a Metabase account"]}
                  (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                     (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))
+                     (select-keys [(:email admin-1) (:email admin-2)])))))))))
 
 (deftest google-auth-site-admin-email-test
   (notification.tu/with-send-notification-sync
     (testing "for google auth, site admin should also get email"
       (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
         (mt/with-temporary-raw-setting-values [admin-email "cam2@metabase.com"]
-          (mt/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-            (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
-                    "some_other_admin@metabase.com" ["<New User> created a Metabase account"]
-                    "cam2@metabase.com"             ["<New User> created a Metabase account"]}
-                   (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                       (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "cam2@metabase.com"]))))))))))
+          (with-fresh-accepted-admin!
+            (fn [admin]
+              (is (= {(:email admin)      ["<New User> created a Metabase account"]
+                      "cam2@metabase.com" ["<New User> created a Metabase account"]}
+                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                         (select-keys [(:email admin) "cam2@metabase.com"])))))))))))
 
 (deftest google-auth-inactive-admin-no-email-test
   (notification.tu/with-send-notification-sync
     (testing "for google auth, inactive admin should not get email"
       (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
-        (mt/with-temp [:model/User user {:is_superuser true, :is_active false}]
-          (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
-                 (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                     (select-keys ["crowberto@metabase.com" (:email user)])))))))))
+        (with-fresh-accepted-admin!
+          (fn [admin]
+            (mt/with-temp [:model/User inactive {:is_superuser true, :is_active false}]
+              (is (= {(:email admin) ["<New User> created a Metabase account"]}
+                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                         (select-keys [(:email admin) (:email inactive)])))))))))))
 
 (deftest google-auth-setting-disabled-test
   (notification.tu/with-send-notification-sync
     (testing "for google auth, no emails sent if setting is disabled"
       (mt/with-premium-features #{:sso-ldap}
         (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
-          (mt/with-temp [:model/User _ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-            (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
-                                                "some_other_admin@metabase.com" ["<New User> created a Metabase account"]})
-                   (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                       (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"]))))))))))
+          (with-fresh-accepted-admin!
+            (fn [admin]
+              (is (= (if config/ee-available?
+                       {}
+                       {(:email admin) ["<New User> created a Metabase account"]})
+                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                         (select-keys [(:email admin)])))))))))))
 
 (deftest sso-login-link-email-test
   (notification.tu/with-send-notification-sync
@@ -228,10 +267,10 @@
                  (zipmap (map :first_name users)
                          (map (comp group-names :group_ids) users)))))))
     (testing "should be the hydrate function for `:group_ids`"
-      (with-redefs [user/group-ids     (constantly '(user/group-ids <user>))
-                    user/add-group-ids (fn [users]
-                                         (for [user users]
-                                           (assoc user :group_ids '(user/add-group-ids <users>))))]
+      (mt/with-dynamic-fn-redefs [user/group-ids     (constantly '(user/group-ids <user>))
+                                  user/add-group-ids (fn [users]
+                                                       (for [user users]
+                                                         (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
                  (-> (t2/hydrate (t2/select-one :model/User :id (mt/user->id :lucky)) :group_ids)
@@ -546,7 +585,7 @@
 
 (deftest add-attributes-merges-tenant-attributes-test
   (testing "add-attributes should merge tenant attributes"
-    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {"user_attr" "user_value"}
                   :email "test@example.com"}
             result (user/add-attributes user)]
@@ -557,7 +596,7 @@
 
 (deftest add-attributes-tenant-handles-nil-login-attributes-test
   (testing "add-attributes with tenant attributes should handle nil login_attributes"
-    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:email "test@example.com"}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"}
@@ -565,7 +604,7 @@
 
 (deftest add-attributes-tenant-handles-empty-login-attributes-test
   (testing "add-attributes with tenant attributes should handle empty login_attributes"
-    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {}
                   :email "test@example.com"}
             result (user/add-attributes user)]
@@ -574,7 +613,7 @@
 
 (deftest add-attributes-handles-nil-tenant-attributes-test
   (testing "add-attributes should handle nil tenant attributes"
-    (with-redefs [tenants/login-attributes (constantly nil)]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly nil)]
       (let [user {:login_attributes {"user_attr" "user_value"}
                   :email "test@example.com"}
             result (user/add-attributes user)]
@@ -583,7 +622,7 @@
 
 (deftest add-attributes-handles-both-nil-tenant-and-user-attributes-test
   (testing "add-attributes should handle both nil tenant and user attributes"
-    (with-redefs [tenants/login-attributes (constantly nil)]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly nil)]
       (let [user {:email "test@example.com"}
             result (user/add-attributes user)]
         (is (= {}
@@ -591,8 +630,8 @@
 
 (deftest add-attributes-user-overrides-tenant-test
   (testing "add-attributes: user attributes should override tenant attributes with same keys"
-    (with-redefs [tenants/login-attributes (constantly {"shared_key" "tenant_value"
-                                                        "tenant_only" "tenant_val"})]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"shared_key" "tenant_value"
+                                                                      "tenant_only" "tenant_val"})]
       (let [user {:login_attributes {"shared_key" "user_value"
                                      "user_only" "user_val"}
                   :email "test@example.com"}
@@ -604,7 +643,7 @@
 
 (deftest add-attributes-tenant-preserves-user-fields-test
   (testing "add-attributes with tenant attributes should preserve all other user fields"
-    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:id 123
                   :email "test@example.com"
                   :first_name "John"

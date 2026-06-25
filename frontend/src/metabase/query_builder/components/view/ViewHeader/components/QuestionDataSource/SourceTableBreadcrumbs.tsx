@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -59,22 +59,21 @@ export function SourceTableBreadcrumbs({
       variant={variant}
       divider={divider}
       parts={[
-        <HeadBreadcrumbs.Badge
+        <HeadBreadcrumbs.Breadcrumb
           key="collection"
           to={Urls.collection(collection)}
           icon="repository"
-          inactiveColor="text-tertiary"
         >
           {collection.name}
-        </HeadBreadcrumbs.Badge>,
-        <HeadBreadcrumbs.Badge
+        </HeadBreadcrumbs.Breadcrumb>,
+        <HeadBreadcrumbs.Breadcrumb
           key="name"
           to={
             hasTableLink
               ? Urls.queryBuilderTable(table.id, table.db_id)
               : undefined
           }
-          inactiveColor={isSubhead ? "text-tertiary" : "text-primary"}
+          color={isSubhead ? "text-tertiary" : "text-primary"}
         >
           <span>
             {table.display_name}
@@ -90,7 +89,7 @@ export function SourceTableBreadcrumbs({
               </span>
             )}
           </span>
-        </HeadBreadcrumbs.Badge>,
+        </HeadBreadcrumbs.Breadcrumb>,
       ]}
     />
   );

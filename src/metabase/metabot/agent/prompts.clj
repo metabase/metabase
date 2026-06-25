@@ -3,18 +3,29 @@
 
   Handles:
   - System prompt templates from resources/metabot/prompts/system/
-  - SQL dialect instructions from resources/metabot/prompts/dialects/
-  - Tool-specific prompts from resources/metabot/prompts/tools/
   - Template rendering with context variables
-  - Template caching for performance"
+  - Template caching for performance
+
+  SQL dialect bodies are owned by `metabase.metabot.skills` (loaded as on-demand skills), not
+  here."
   (:require
    [clojure.java.io :as io]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.skills :as skills]
    [metabase.util.log :as log]
    [selmer.parser :as selmer]))
 
 (set! *warn-on-reflection* true)
+
+;; Kept local rather than required from metabase.metabot.tools to avoid a prompts->tools cycle;
+;; mirrors the SQL entries in metabase.metabot.tools/query-generation-tool-names.
+(def ^:private sql-generation-tool-names
+  "SQL-writing tools.
+  Their presence in the capability-filtered tool set — not the `:permission/metabot-sql-generation`
+  permission alone — is what lets the model write SQL, since they're gated by the
+  `permission:write_sql_queries` capability."
+  #{"create_sql_query" "edit_sql_query" "replace_sql_query"})
 
 ;;; Template Loading
 
@@ -35,37 +46,13 @@
           (log/warn "System prompt template not found:" path)
           nil))))
 
-(defn load-dialect-instructions
-  "Load SQL dialect instructions from resources/metabot/prompts/dialects/.
-
-  Example: (load-dialect-instructions \"postgresql\")
-  Returns nil if dialect not found."
-  [dialect-name]
-  (when dialect-name
-    (let [path (str "metabot/prompts/dialects/" dialect-name ".md")]
-      (or (load-resource path)
-          (do
-            (log/debug "Dialect instructions not found:" path)
-            nil)))))
-
-(defn load-tool-prompt-template
-  "Load a tool-specific prompt template from resources/metabot/prompts/tools/.
-
-  Example: (load-tool-prompt-template \"query-datasource/system.selmer\")"
-  [template-path]
-  (let [path (str "metabot/prompts/tools/" template-path)]
-    (or (load-resource path)
-        (do
-          (log/debug "Tool prompt template not found:" path)
-          nil))))
-
-(defn load-llm-representations-template
-  "Load the LLM representations template from resources/metabot/prompts/."
+(defn load-llm-shape-template
+  "Load the LLM-shape (output-side XML) template from resources/metabot/prompts/."
   [template-name]
   (let [path (str "metabot/prompts/" template-name)]
     (or (load-resource path)
         (do
-          (log/warn "LLM representations template not found:" path)
+          (log/warn "LLM-shape template not found:" path)
           nil))))
 
 ;;; Template Rendering
@@ -92,17 +79,6 @@
     (catch Exception e
       (log/error e "Error rendering system prompt template")
       ;; Return template as-is on error
-      template)))
-
-(defn render-tool-prompt
-  "Render a tool-specific prompt template with context variables.
-
-  Similar to render-system-prompt but for tool-level prompts."
-  [template context]
-  (try
-    (selmer/render template context)
-    (catch Exception e
-      (log/error e "Error rendering tool prompt template")
       template)))
 
 ;;; Template Caching
@@ -137,61 +113,24 @@
   [template-name]
   (:template (cached-load-template "system" template-name load-system-prompt-template)))
 
-(defn get-cached-dialect-instructions
-  "Get dialect instructions from cache or load them.
-  Returns instructions string or nil."
-  [dialect-name]
-  (when dialect-name
-    (:template (cached-load-template "dialect" dialect-name load-dialect-instructions))))
-
-(defn get-cached-tool-prompt
-  "Get tool prompt template from cache or load it.
-  Returns template string or nil."
-  [template-path]
-  (:template (cached-load-template "tool" template-path load-tool-prompt-template)))
-
-(defn get-cached-llm-representations-template
-  "Get the LLM representations template from cache or load it."
+(defn get-cached-llm-shape-template
+  "Get the LLM-shape (output-side XML) template from cache or load it."
   []
-  (:template (cached-load-template "llm-representations"
-                                   "llm_representations.selmer"
-                                   load-llm-representations-template)))
+  (:template (cached-load-template "llm-shape"
+                                   "llm_shape.selmer"
+                                   load-llm-shape-template)))
 
 (defn get-cached-message-injection-template
   "Get the message injection template from cache or load it."
   []
   (:template (cached-load-template "message-injection"
                                    "message_injection.selmer"
-                                   load-llm-representations-template)))
+                                   load-llm-shape-template)))
 
 (defn clear-cache!
   "Clear the template cache. Useful for development/testing."
   []
   (reset! template-cache {}))
-
-;;; Tool Instructions Extraction
-
-(defn extract-tool-instructions
-  "Extract system instructions from tool definitions by loading prompt files.
-
-  For each tool, loads a markdown prompt file from `resources/metabot/prompts/tools/`.
-  The filename is determined by:
-  1. `:prompt` key in the tool definition map (if present), or
-  2. `\"<tool-name>.md\"` as default.
-
-  Only tools with a corresponding prompt resource file are included.
-
-  Returns vector of maps: [{:tool_name \"search\" :instructions \"...\"}]"
-  [tools]
-  (vec
-   (for [[tool-name tool-def] tools
-         :let [fname  (or (:prompt tool-def)
-                          (str tool-name ".md"))
-               prompt (some-> (io/resource (str "metabot/prompts/tools/" fname))
-                              slurp)]
-         :when prompt]
-     {:tool_name tool-name
-      :instructions prompt})))
 
 ;;; High-Level API
 
@@ -201,18 +140,23 @@
   Parameters:
   - profile: Profile map with :prompt-template key
   - context: Agent context map with user info, viewing context, etc.
-  - tools: Tool registry map
+  - tools: Tool registry map (name -> tool def/var)
+  - capabilities: Sequence of capability strings/keywords for the request, used to
+    gate which skills appear in the manifest.
+
+  Tool-specific instructions are no longer embedded in the prompt; instead a
+  skills manifest (one line per available skill) is rendered, and bodies are
+  loaded on demand via the `load_skill` tool. SQL dialect instructions are
+  preloaded into the message stream (see `metabase.metabot.skills`), not here.
 
   Returns rendered system message string."
-  [{:keys [prompt-template]} context tools]
+  [{:keys [prompt-template] :as profile} context tools capabilities]
   (let [template-name (or prompt-template "internal.selmer")
         template      (get-cached-system-prompt template-name)]
     (if template
       (let [sql-dialect          (or (get context :sql_dialect)
                                      (get context :sql-dialect))
-            dialect-instructions (when sql-dialect
-                                   (get-cached-dialect-instructions sql-dialect))
-            tool-instructions    (extract-tool-instructions tools)
+            {:keys [always-on catalog]} (skills/build-skill-manifest profile (keys tools) capabilities)
             current-user-info    (or (get context :current_user_info)
                                      (get context :current-user-info))
             current-time         (or (get context :current_time)
@@ -225,15 +169,24 @@
                                      (get context :recent-views))
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
-            has-sql?             (= :yes (:permission/metabot-sql-generation perms))
+            ;; The SQL guidance tells the model to load SQL skills and use the SQL tools, so gate it
+            ;; on those tools actually being active — the permission can be `:yes` while the request
+            ;; lacks the `permission:write_sql_queries` capability that registers them.
+            has-sql?             (and (= :yes (:permission/metabot-sql-generation perms))
+                                      (boolean (some sql-generation-tool-names (keys tools))))
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
                                   :current_time             current-time
                                   :current_user_info        current-user-info
                                   :first_day_of_week        first-day-of-week
                                   :sql_dialect              sql-dialect
-                                  :sql_dialect_instructions dialect-instructions
-                                  :tool_instructions        tool-instructions
+                                  :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
+                                  ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
+                                  ;; an empty vector as truthy, which would render the "# Available
+                                  ;; skills … load the skill(s) you need" header with nothing to
+                                  ;; load, nudging the model into pointless `load_skill` calls.
+                                  :skill_catalog            (not-empty catalog)
+                                  :skill_always_on          (mapv :body always-on)
                                   :viewing_context          viewing-context
                                   :recent_views             recent-views
                                   :has_sql_generation       has-sql?
@@ -273,11 +226,5 @@
   (render-system-prompt template {:current-time "2024-01-15 14:30:00"
                                   :sql-dialect "postgresql"})
 
-  ;; Load dialect instructions
-  (load-dialect-instructions "postgresql")
-
   ;; Clear cache during development
-  (clear-cache!)
-
-  ;; Extract tool instructions
-  (extract-tool-instructions {"search" #'some-tool-var}))
+  (clear-cache!))

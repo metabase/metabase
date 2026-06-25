@@ -1,4 +1,5 @@
 (ns metabase.lib-be.metadata.jvm-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.lib-be.metadata.jvm-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
@@ -248,16 +249,16 @@
         {:lib/type :metadata/table, :name #{"Table"}}
         {:lib/type :metadata/column, :id #{1}}
         {:lib/type :metadata/column, :name #{"Field"}}
-        {:lib/type :metadata/column, :table-id 1}
+        {:lib/type :metadata/column, :table-ids #{1}}
         {:lib/type :metadata/card, :id #{1}}
         {:lib/type :metadata/card, :name #{"Card"}}
         {:lib/type :metadata/metric, :id #{1}}
         {:lib/type :metadata/metric, :name #{"Metric"}}
-        {:lib/type :metadata/metric, :table-id 1}
-        {:lib/type :metadata/metric, :card-id 1}
+        {:lib/type :metadata/metric, :table-ids #{1}}
+        {:lib/type :metadata/metric, :card-ids #{1}}
         {:lib/type :metadata/segment, :id #{1}}
         {:lib/type :metadata/segment, :name #{"Segment"}}
-        {:lib/type :metadata/segment, :table-id 1}
+        {:lib/type :metadata/segment, :table-ids #{1}}
         {:lib/type :metadata/native-query-snippet, :id #{1}}
         {:lib/type :metadata/native-query-snippet, :name #{"Snippet"}}))))
 

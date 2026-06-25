@@ -1,4 +1,5 @@
 (ns metabase.xrays.automagic-dashboards.core-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.xrays.automagic-dashboards.core-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -10,7 +11,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -22,6 +22,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as comparison]
    [metabase.xrays.automagic-dashboards.core :as magic]
@@ -623,7 +624,7 @@
                             :let     [query (get-in dashcard [:card :dataset_query])]
                             :when    query
                             :let     [breakouts (lib/breakouts query)]
-                            id       (lib.util.match/match-many breakouts
+                            id       (match/match-many breakouts
                                        [:field {:binning &truthy} (id :guard pos-int?)]
                                        id)]
                         id)))))))))))
@@ -657,7 +658,7 @@
                                            :let     [query (get-in dashcard [:card :dataset_query])]
                                            :when    query
                                            :let     [breakouts (lib/breakouts query)]
-                                           id       (lib.util.match/match-many breakouts
+                                           id       (match/match-many breakouts
                                                       [:field {:temporal-unit &truthy} (id :guard pos-int?)]
                                                       id)]
                                        id)]
@@ -823,12 +824,11 @@
   (testing "Dashcard parameter mappings have valid targets when X-raying models (#58214)"
     (mt/dataset test-data
       (mt/with-temp
-        [:model/Card {model-id :id} {:table_id      (mt/id :orders)
-                                     :dataset_query (mt/mbql-query orders)
-                                     :type          :model}]
-        (is (vector? (-> (qp.card-test/run-query-for-card model-id) :data :results_metadata :columns)))
-        (let [model-card (t2/select-one :model/Card model-id)
-              dashboard (magic/automagic-analysis model-card nil)
+        [:model/Card model-card {:table_id      (mt/id :orders)
+                                 :dataset_query (mt/mbql-query orders)
+                                 :type          :model}]
+        (is (vector? (-> (qp.card-test/run-query-for-card model-card) :data :results_metadata :columns)))
+        (let [dashboard (magic/automagic-analysis model-card nil)
               parameter-mappings (eduction (comp (keep :parameter_mappings) cat) (:dashcards dashboard))
               dimension? (mr/validator ::mbql.s/dimension)]
           (is (every? (comp dimension? :target) parameter-mappings)))))))
@@ -1318,7 +1318,7 @@
                                      {"Lat" {:field_type [:type/Latitude], :score 90}}
                                      {"Lat" {:field_type [:entity/GenericTable :type/Latitude], :score 100}}
                                      {"Lat" {:field_type [:entity/UserTable :type/Latitude], :score 100}}]
-                            ;; These will be matched in our tests since this is a generic table entity.
+                ;; These will be matched in our tests since this is a generic table entity.
                 bindable-dimensions (remove
                                      #(-> % vals first :field_type first #{:entity/UserTable})
                                      dimensions)

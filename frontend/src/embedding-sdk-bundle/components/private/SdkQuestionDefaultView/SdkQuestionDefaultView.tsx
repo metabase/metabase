@@ -66,6 +66,11 @@ export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
    * Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.
    */
   withChartTypeSelector?: boolean;
+
+  /**
+   * Determines whether the editor button is shown. Only relevant when using the default layout.
+   */
+  withEditorButton?: boolean;
 }
 
 export const SdkQuestionDefaultView = ({
@@ -75,6 +80,7 @@ export const SdkQuestionDefaultView = ({
   style,
   title,
   withChartTypeSelector,
+  withEditorButton = true,
 }: SdkQuestionDefaultViewProps): ReactElement => {
   const { isLocaleLoading } = useLocale();
   const {
@@ -120,29 +126,18 @@ export const SdkQuestionDefaultView = ({
     question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   useEffect(() => {
-    const isNewQuestion = originalId === "new" || originalId === "new-native";
-    const isExistingQuestion =
-      question &&
+    if (
       !isQuestionLoading &&
       question?.isSaved() &&
-      !isNewQuestion &&
-      queryResults;
-
-    const onNavigate = onNavigateBack ?? onReset ?? undefined;
-
-    if (isNewQuestion) {
-      reportLocation({
-        type: "question",
-        id: originalId,
-        name: "New question",
-        onNavigate,
-      });
-    } else if (isExistingQuestion) {
+      originalId !== "new" &&
+      originalId !== "new-native" &&
+      queryResults
+    ) {
       reportLocation({
         type: "question",
         id: question.id(),
         name: question.displayName() || "Question",
-        onNavigate,
+        onNavigate: onNavigateBack ?? onReset ?? undefined,
       });
     }
   }, [
@@ -210,7 +205,7 @@ export const SdkQuestionDefaultView = ({
               <DefaultViewTitle title={title} />
             </Stack>
           </RenderIfHasContent>
-          {showSaveButton && <SaveButton onClick={openSaveModal} />}
+          {showSaveButton && <SaveButton onClick={openSaveModal} ml="auto" />}
         </RenderIfHasContent>
         {queryResults && (
           <RenderIfHasContent
@@ -221,7 +216,7 @@ export const SdkQuestionDefaultView = ({
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
-                  c="brand"
+                  c="core-brand"
                   fz="md"
                   ml="sm"
                 >
@@ -241,7 +236,7 @@ export const SdkQuestionDefaultView = ({
                           mx="xs"
                           orientation="vertical"
                           style={{
-                            color: "var(--mb-color-border) !important",
+                            color: "var(--mb-color-border-neutral) !important",
                           }}
                         />
                       )}
@@ -265,7 +260,9 @@ export const SdkQuestionDefaultView = ({
                   <QuestionAlertsButton />
                 </>
               )}
-              <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
+              {withEditorButton && (
+                <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
+              )}
             </RenderIfHasContent>
           </RenderIfHasContent>
         )}
@@ -311,6 +308,7 @@ const DefaultViewSaveModal = ({
     onSave,
     isSaveEnabled,
     targetCollection,
+    initialCollection,
   } = useSdkQuestionContext();
 
   if (!isSaveEnabled || !isOpen || !question) {
@@ -330,6 +328,7 @@ const DefaultViewSaveModal = ({
         close();
       }}
       targetCollection={targetCollection}
+      initialCollectionId={initialCollection}
     />
   );
 };

@@ -12,6 +12,7 @@ import type {
   MetabotSettingsResponse,
   MetabotTenantLimit,
   PurchaseCloudAddOnRequest,
+  RegenerateSuggestedMetabotPromptsResponse,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotSettingsRequest,
@@ -106,10 +107,14 @@ export function setupRemoveMetabotPromptSuggestionEndpoint(
 export function setupRegenerateMetabotPromptSuggestionsEndpoint(
   metabotId: MetabotId,
   options?: UserRouteConfig,
+  body: RegenerateSuggestedMetabotPromptsResponse = {
+    status: "generated",
+    prompt_count: 1,
+  },
 ) {
   fetchMock.post(
     `path:/api/metabot/metabot/${metabotId}/prompt-suggestions/regenerate`,
-    { status: 204 },
+    { status: 200, body },
     options,
   );
 }

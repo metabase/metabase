@@ -6,7 +6,6 @@ export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 export const FIXED_METABOT_IDS = {
   DEFAULT: 1 as const,
   EMBEDDED: 2 as const,
-  SLACKBOT: 3 as const,
 };
 
 export const METABOT_REQUEST_IDS = {
@@ -16,14 +15,72 @@ export const METABOT_REQUEST_IDS = {
 export const FIXED_METABOT_ENTITY_IDS = {
   DEFAULT: "metabotmetabotmetabot" as const,
   EMBEDDED: "embeddedmetabotmetabo" as const,
-  SLACKBOT: "slackbotmetabotmetabo" as const,
 };
+
+export const METABOT_PROFILES = {
+  internal: {
+    get label() {
+      return t`Internal`;
+    },
+  },
+  embedding_next: {
+    get label() {
+      return t`Embedding`;
+    },
+  },
+  nlq: {
+    get label() {
+      return t`NLQ`;
+    },
+  },
+  sql: {
+    get label() {
+      return t`SQL`;
+    },
+  },
+  // deprecated
+  slack: {
+    get label() {
+      return t`Slackbot`;
+    },
+  },
+  slackbot: {
+    get label() {
+      return t`Slackbot`;
+    },
+  },
+  transforms_codegen: {
+    get label() {
+      return t`Transforms codegen`;
+    },
+  },
+  "document-generate-content": {
+    get label() {
+      return t`Documents`;
+    },
+  },
+} as const;
+
+export type MetabotProfileId = keyof typeof METABOT_PROFILES;
+
+export function isMetabotProfileId(id: string): id is MetabotProfileId {
+  return id in METABOT_PROFILES;
+}
+
+export function getMetabotProfileLabel(id: MetabotProfileId): string {
+  return METABOT_PROFILES[id].label;
+}
+
+export function renderMetabotProfileLabel(id: string): string {
+  return isMetabotProfileId(id) ? getMetabotProfileLabel(id) : id;
+}
 
 export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
+  NLQ: "nlq",
   SQL: "sql",
   TRANSFORMS_CODEGEN: "transforms_codegen",
-};
+} as const satisfies Record<string, MetabotProfileId | undefined>;
 
 export const METABOT_ERR_MSG = {
   get default() {

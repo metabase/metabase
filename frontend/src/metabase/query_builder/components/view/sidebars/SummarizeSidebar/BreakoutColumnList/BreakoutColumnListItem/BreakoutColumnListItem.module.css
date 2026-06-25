@@ -16,15 +16,17 @@
 }
 
 .RemoveButton {
-  color: var(--mb-color-text-primary-inverse);
-  background-color: transparent;
-  opacity: 0.6;
-  transition: all 100ms;
-
-  &:hover {
+  &[data-variant="subtle"] {
     color: var(--mb-color-text-primary-inverse);
     background-color: transparent;
-    opacity: 1;
+    opacity: 0.6;
+    transition: all 100ms;
+
+    &:hover {
+      color: var(--mb-color-text-primary-inverse);
+      background-color: transparent;
+      opacity: 1;
+    }
   }
 }
 
@@ -55,7 +57,7 @@
   &.isSelected {
     .Content,
     .ColumnTypeIcon {
-      background-color: var(--mb-color-summarize);
+      background-color: var(--mb-color-core-summarize);
       color: var(--mb-color-text-primary-inverse);
     }
 
@@ -84,12 +86,12 @@
       .AddButton,
       .Content,
       .ColumnTypeIcon {
-        color: var(--mb-color-summarize);
-        background-color: var(--mb-color-background-secondary);
+        color: var(--mb-color-core-summarize);
+        background-color: var(--mb-color-background_page-secondary);
       }
 
       .AddButton:hover {
-        background-color: var(--mb-color-background-tertiary);
+        background-color: var(--mb-color-background_page-tertiary);
       }
 
       .BucketTriggerButton {

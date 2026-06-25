@@ -170,6 +170,9 @@
   (init-status/set-progress! 0.2)
   ;; Ensure the classloader is installed as soon as possible.
   (classloader/the-classloader)
+  ;; Set up Prometheus
+  (log/info "Setting up prometheus metrics")
+  (analytics.core/setup!)
   ;; Initialize OpenTelemetry tracing early (before plugins, no DB dependency)
   (tracing/init!)
   ;; load any plugins as needed
@@ -190,9 +193,7 @@
   (when (cloud-migration/read-only-mode)
     (cloud-migration/read-only-mode! false))
   (init-status/set-progress! 0.4)
-  ;; Set up Prometheus
-  (log/info "Setting up prometheus metrics")
-  (analytics.core/setup!)
+  (analytics.core/observe-initial-values)
   (init-status/set-progress! 0.5)
   (task/init-scheduler!)
   (analytics.core/add-listeners-to-scheduler!)
@@ -202,20 +203,25 @@
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
     (config-from-file/init-from-file-if-code-available!)
     (init-status/set-progress! 0.6)
-    (when new-install?
-      (log/info "Looks like this is a new installation ... preparing setup wizard")
-      ;; create setup token
-      (create-setup-token-and-log-setup-url!)
-      ;; publish install event
-      (events/publish-event! :event/install {}))
+    (if new-install?
+      (do
+        (log/info "Looks like this is a new installation ... preparing setup wizard")
+        ;; create setup token
+        (create-setup-token-and-log-setup-url!)
+        ;; publish install event
+        (events/publish-event! :event/install {}))
+      ;; The instance is already set up. Clear out any stale setup token.
+      (setup/clear-token!))
     (init-status/set-progress! 0.7)
     ;; deal with our sample database as needed
-    (when (config/load-sample-content?)
-      (if new-install?
-        ;; add the sample database DB for fresh installs
-        (sample-data/extract-and-sync-sample-database!)
-        ;; otherwise update if appropriate
-        (sample-data/update-sample-database-if-needed!)))
+    (if new-install?
+      ;; add the sample database DB for fresh installs (only when sample content is enabled)
+      (when (config/load-sample-content?)
+        (sample-data/extract-and-sync-sample-database!))
+      ;; On existing installs always reconcile: if the bundled engine changed (H2 <-> SQLite) the old
+      ;; sample database must be cleaned up and replaced regardless of whether sample content is
+      ;; currently enabled. Otherwise just refresh its connection details.
+      (sample-data/update-sample-database-if-needed!))
     (init-status/set-progress! 0.8))
   (ensure-audit-db-installed!)
   (notification/seed-notification!)

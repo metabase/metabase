@@ -1,7 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
+import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import { Box, type BoxProps } from "metabase/ui";
-import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
 import type { GroupInfo } from "metabase-types/api";
 
 interface GroupSummaryProps extends BoxProps {
@@ -23,12 +23,12 @@ export const GroupSummary = ({
   if (adminGroup && selectedGroupIds.includes(adminGroup.id)) {
     return (
       <Box component="span" {...props}>
-        <Box component="span" c="filter">
+        <Box component="span" c="core-filter">
           {t`Admin`}
         </Box>
         {otherGroups.length > 0 && " " + t`and` + " "}
         {otherGroups.length > 0 && (
-          <Box component="span" c="brand">
+          <Box component="span" c="core-brand">
             {((n) => ngettext(msgid`${n} other group`, `${n} other groups`, n))(
               otherGroups.length,
             )}
@@ -38,13 +38,13 @@ export const GroupSummary = ({
     );
   } else if (otherGroups.length === 1) {
     return (
-      <Box component="span" c="brand" {...props}>
+      <Box component="span" c="core-brand" {...props}>
         {otherGroups[0].name}
       </Box>
     );
   } else if (otherGroups.length > 1) {
     return (
-      <Box component="span" c="brand" {...props}>
+      <Box component="span" c="core-brand" {...props}>
         {((n) => ngettext(msgid`${n} other group`, `${n} other groups`, n))(
           otherGroups.length,
         )}

@@ -4,7 +4,8 @@
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
                        {:discouraged-var {metabase.test/with-temp           {:level :off}
-                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}
+                        :deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.card-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -29,92 +30,76 @@
 
 (defn run-query-for-card
   "Run query for Card synchronously."
-  [card-id]
+  [card]
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
   ;; stuff doesn't belong in the Dashboard QP namespace
   (mt/as-admin
     (qp.card/process-query-for-card
-     card-id :api
+     card :api
      :make-run (constantly
                 (fn [query info]
                   (qp/process-query (assoc query :info info)))))))
 
 (defn field-filter-query
-  "A query with a Field Filter parameter"
+  "An MBQL 5 native query with a Field Filter (`:dimension`) parameter."
   []
-  {:database (mt/id)
-   :type     :native
-   :native   {:template-tags {"date" {:id           "_DATE_"
-                                      :name         "date"
-                                      :display-name "Check-In Date"
-                                      :type         :dimension
-                                      :dimension    [:field (mt/id :checkins :date) nil]
-                                      :widget-type  :date/all-options}}
-              :query         "SELECT count(*)\nFROM CHECKINS\nWHERE {{date}}"}})
+  (-> (lib/native-query (mt/metadata-provider) "SELECT count(*)\nFROM CHECKINS\nWHERE {{date}}")
+      (lib/with-template-tags {"date" {:id           "_DATE_"
+                                       :name         "date"
+                                       :display-name "Check-In Date"
+                                       :type         :dimension
+                                       :dimension    (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :checkins :date)))
+                                       :widget-type  :date/all-options}})))
 
 (defn field-filter-query-between
-  "A query with a Field Filter 'between' parameter"
+  "An MBQL 5 native query with a Field Filter 'between' parameter."
   []
-  {:database (mt/id)
-   :type     :native
-   :native   {:template-tags {"quantities" {:id           "_QUANTITIES_"
-                                            :name         "quantities"
-                                            :display-name "Quantity Range"
-                                            :type         :dimension
-                                            :dimension    [:field (mt/id :orders :quantity) nil]
-                                            :widget-type  :number/between}}
-              :query         "SELECT count(*)\nFROM ORDERS\n[[WHERE {{quantities}}]]"}})
+  (-> (lib/native-query (mt/metadata-provider) "SELECT count(*)\nFROM ORDERS\n[[WHERE {{quantities}}]]")
+      (lib/with-template-tags {"quantities" {:id           "_QUANTITIES_"
+                                             :name         "quantities"
+                                             :display-name "Quantity Range"
+                                             :type         :dimension
+                                             :dimension    (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :quantity)))
+                                             :widget-type  :number/between}})))
 
 (defn non-field-filter-query
-  "A query with a parameter that is not a Field Filter"
+  "An MBQL 5 native query with a parameter that is not a Field Filter."
   []
-  {:database (mt/id)
-   :type     :native
-   :native   {:template-tags {"id"
-                              {:id           "_ID_"
-                               :name         "id"
-                               :display-name "Order ID"
-                               :type         :number
-                               :required     true
-                               :default      "1"}}
-              :query         "SELECT *\nFROM ORDERS\nWHERE id = {{id}}"}})
+  (-> (lib/native-query (mt/metadata-provider) "SELECT *\nFROM ORDERS\nWHERE id = {{id}}")
+      (lib/with-template-tags {"id" {:id           "_ID_"
+                                     :name         "id"
+                                     :display-name "Order ID"
+                                     :type         :number
+                                     :required     true
+                                     :default      "1"}})))
 
 (defn non-parameter-template-tag-query
-  "A query with template tags that aren't parameters"
+  "An MBQL 5 native query whose template tags include a source-card reference and a snippet (neither of which is a
+  parameter)."
   []
-  (assoc (non-field-filter-query)
-         "abcdef"
-         {:id           "abcdef"
-          :name         "#1234"
-          :display-name "#1234"
-          :type         :card
-          :card-id      1234}
-
-         "xyz"
-         {:id           "xyz"
-          :name         "snippet: My Snippet"
-          :display-name "Snippet: My Snippet"
-          :type         :snippet
-          :snippet-name "My Snippet"
-          :snippet-id   1}))
+  (-> (lib/native-query (mt/metadata-provider)
+                        "SELECT *\nFROM ORDERS\nWHERE id = {{id}} AND {{#1234}} AND {{snippet: My Snippet}}")
+      (lib/with-template-tags {"id" {:id           "_ID_"
+                                     :name         "id"
+                                     :display-name "Order ID"
+                                     :type         :number
+                                     :required     true
+                                     :default      "1"}})))
 
 (deftest ^:parallel card-template-tag-parameters-test
   (testing "Card with a Field filter parameter"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
-      (is (= {"date" :date/all-options}
-             (#'qp.card/card-template-tag-parameters card-id))))))
+    (is (= {"date" :date/all-options}
+           (#'qp.card/card-template-tag-parameters (field-filter-query))))))
 
 (deftest ^:parallel card-template-tag-parameters-test-2
   (testing "Card with a non-Field-filter parameter"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (non-field-filter-query)}]
-      (is (= {"id" :number}
-             (#'qp.card/card-template-tag-parameters card-id))))))
+    (is (= {"id" :number}
+           (#'qp.card/card-template-tag-parameters (non-field-filter-query))))))
 
 (deftest ^:parallel card-template-tag-parameters-test-3
   (testing "Should ignore native query snippets and source card IDs"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (non-parameter-template-tag-query)}]
-      (is (= {"id" :number}
-             (#'qp.card/card-template-tag-parameters card-id))))))
+    (is (= {"id" :number}
+           (#'qp.card/card-template-tag-parameters (non-parameter-template-tag-query))))))
 
 (deftest ^:parallel infer-parameter-name-test
   (is (= "my_param"
@@ -130,10 +115,10 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\""
-           (#'qp.card/validate-card-parameters card-id [{:id    "_FAKE_"
-                                                         :name  "fake"
-                                                         :type  :date/single
-                                                         :value "2016-01-01"}]))))))
+           (#'qp.card/validate-card-parameters card-id (field-filter-query) [{:id    "_FAKE_"
+                                                                              :name  "fake"
+                                                                              :type  :date/single
+                                                                              :value "2016-01-01"}]))))))
 
 (deftest ^:parallel validate-card-parameters-test-2
   (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
@@ -152,10 +137,10 @@
   (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters with types not allowed for the widget type"
       (letfn [(validate [param-type]
-                (#'qp.card/validate-card-parameters card-id [{:id    "_DATE_"
-                                                              :name  "date"
-                                                              :type  param-type
-                                                              :value "2016-01-01"}]))]
+                (#'qp.card/validate-card-parameters card-id (field-filter-query) [{:id    "_DATE_"
+                                                                                   :name  "date"
+                                                                                   :type  param-type
+                                                                                   :value "2016-01-01"}]))]
         (testing "allowed types"
           (doseq [allowed-type #{:date/all-options :date :date/single :date/range}]
             (testing allowed-type
@@ -224,25 +209,25 @@
 
 (deftest ^:parallel bad-viz-settings-should-still-work-test
   (testing "We should still be able to run a query that has Card bad viz settings referencing a column not in the query (#34950)"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query
-                                              (mt/mbql-query venues
-                                                {:aggregation [[:count]]})
+    (mt/with-temp [:model/Card card {:dataset_query
+                                     (mt/mbql-query venues
+                                       {:aggregation [[:count]]})
 
-                                              :visualization_settings
-                                              {:column_settings {(json/encode
-                                                                  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]])
-                                                                 {:date_abbreviate true
-                                                                  :some_other_key  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]
+                                     :visualization_settings
+                                     {:column_settings {(json/encode
+                                                         [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]])
+                                                        {:date_abbreviate true
+                                                         :some_other_key  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]
       (is (= [[100]]
-             (mt/rows (run-query-for-card card-id)))))))
+             (mt/rows (run-query-for-card card)))))))
 
 (deftest ^:parallel pivot-tables-should-not-override-the-run-function
   (testing "Pivot tables should not override the run function (#44160)"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query
-                                              (mt/mbql-query venues
-                                                {:aggregation [[:count]]})
-                                              :display :pivot}]
-      (let [result (run-query-for-card card-id)]
+    (mt/with-temp [:model/Card card {:dataset_query
+                                     (mt/mbql-query venues
+                                       {:aggregation [[:count]]})
+                                     :display :pivot}]
+      (let [result (run-query-for-card card)]
         (is (=? {:status :completed}
                 result))
         (is (= [[100]] (mt/rows result)))))))
@@ -268,7 +253,7 @@
           (mt/with-test-user :rasta
             (letfn [(process-query-for-card [card]
                       (qp.card/process-query-for-card
-                       (u/the-id card) :api
+                       card :api
                        :make-run (constantly
                                   (fn [query info]
                                     (let [info (assoc info :query-hash (byte-array 0))]
@@ -296,7 +281,7 @@
                                                           :display_name "Name"
                                                           :base_type    :type/Text}]}]
         (mt/with-metadata-provider (mt/id)
-          (run-query-for-card (u/the-id card))
+          (run-query-for-card card)
           (is (= [{:name         "NAME"
                    :display_name "Name"
                    :base_type    :type/Text}]
@@ -339,8 +324,8 @@
                                                 mp     (mt/metadata-provider)]
                                             {:dataset_query (lib/query mp (lib.metadata/card mp (:id card-1)))
                                              :result_metadata (:result-metadata card-2)})]
-          (doseq [[card-type card-id] {"model"                     (:id card-1)
-                                       "card with model as source" (:id card-2)}]
+          (doseq [[card-type card] {"model"                     card-1
+                                    "card with model as source" card-2}]
             (testing card-type
               (is (=? [{:name "ID",          :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
                        {:name "NAME",        :description "user description", :display_name "user display name", :semantic_type :type/Name}
@@ -348,7 +333,7 @@
                        {:name "LATITUDE",    :description "user description", :display_name "user display name", :semantic_type :type/Cost}
                        {:name "LONGITUDE",   :description "user description", :display_name "user display name", :semantic_type :type/Cost}
                        {:name "PRICE",       :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
-                      (mt/cols (run-query-for-card card-id)))))))))))
+                      (mt/cols (run-query-for-card card)))))))))))
 
 (def card-download-filename-cases
   [["My Public Report" "my_public_report"]

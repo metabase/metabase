@@ -4,7 +4,6 @@ const { H } = cy;
 const { TablePicker } = H.DataModel;
 
 interface MetadataResponse {
-  updated_at: string;
   data_layer: string;
   view_count: number;
 }
@@ -45,12 +44,10 @@ describe("Table editing", () => {
     TablePicker.getTable("Orders").click();
 
     cy.wait<MetadataResponse>("@metadata").then(({ response }) => {
-      const updatedAt = response?.body.updated_at ?? "";
-      const expectedDate = new Date(updatedAt).toLocaleString();
       const viewCount = response?.body.view_count ?? 0;
 
       cy.findByLabelText("Name in the database").should("have.text", "ORDERS");
-      cy.findByLabelText("Last updated at").should("have.text", expectedDate);
+      cy.findByLabelText("Last updated at").should("exist"); // Testing the actual value is done in TableMetadata.unit.spec.tsx
       cy.findByLabelText("View count").should("have.text", viewCount);
       cy.findByLabelText("Est. row count").should("not.exist");
       cy.findByLabelText("Dependencies").should("have.text", "0");
@@ -121,18 +118,37 @@ describe("Table editing", () => {
       .blur();
     cy.wait("@updateTable");
     TablePicker.getTable("Renamed Orders").should("be.visible");
+    H.undoToast().findByRole("img", { name: /Close/i }).click();
 
     H.selectHasValue("Owner", "No owner").click();
     H.selectDropdown().contains("Bobby Tables").click();
+
     H.undoToastListContainer()
       .findByText("Table owner updated")
       .should("be.visible");
+    H.undoToast().findByRole("img", { name: /Close/i }).click();
 
     H.selectHasValue("Visibility layer", "Internal").click();
     H.selectDropdown().contains("Final").click();
     H.undoToastListContainer()
       .findByText("Table visibility layer updated")
       .should("be.visible");
+
+    cy.log(
+      "undo the change and verify the table updates to the reverted value",
+    );
+    H.undoToastListContainer()
+      .findByText("Table visibility layer updated")
+      .closest("[data-testid='toast-undo']")
+      .button("Undo")
+      .click();
+    cy.wait("@updateTable");
+    H.undoToastListContainer().findByText("Change undone").should("be.visible");
+    H.undoToast().findByRole("img", { name: /Close/i }).click();
+    H.selectHasValue("Visibility layer", "Internal");
+    TablePicker.getTable("Orders")
+      .findByTestId("table-data-layer")
+      .should("have.text", "Internal");
 
     H.selectHasValue("Entity type", "Transaction").click();
     H.selectDropdown().contains("Person").click();
@@ -151,7 +167,7 @@ describe("Table editing", () => {
     TablePicker.getTable("Renamed Orders").click();
 
     H.selectHasValue("Owner", "Bobby Tables");
-    H.selectHasValue("Visibility layer", "Final");
+    H.selectHasValue("Visibility layer", "Internal");
     H.selectHasValue("Entity type", "Person");
     H.selectHasValue("Source", "Ingested");
   });

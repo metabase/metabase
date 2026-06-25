@@ -229,7 +229,7 @@
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (queries/model? card) (t2/hydrate :persisted
-                                              ;; can_manage_db determines whether we should enable model persistence settings
+                                           ;; can_manage_db determines whether we should enable model persistence settings
                                            :can_manage_db)))))
 
 (defn- get-card
@@ -370,12 +370,18 @@
 
 (def ^:private supported-series-display-type (set (keys (methods series-are-compatible?))))
 
-(defn- fetch-compatible-series*
+(mu/defn- fetch-compatible-series* :- [:sequential :map]
   "Implementation of `fetch-compatible-series`.
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
-  [card database-id->metadata-provider {:keys [query last-cursor page-size exclude-ids] :as _options}]
+  [card    :- :map
+   {:keys [query last-cursor page-size exclude-ids] :as _options}
+   :- [:map {:closed true}
+       [:query       {:optional true} [:maybe ms/NonBlankString]]
+       [:last-cursor {:optional true} [:maybe ms/PositiveInt]]
+       [:page-size   {:optional true} [:maybe ms/PositiveInt]]
+       [:exclude-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (let [matching-cards  (t2/select :model/Card
                                    :archived false
                                    :display [:in supported-series-display-type]
@@ -396,26 +402,17 @@
                                      ;; this is just a heuristic, but it should be good enough
                                      page-size
                                      (assoc :limit (+ 10 page-size))))
-        database-ids (set (keys database-id->metadata-provider))
-        database-id->metadata-provider (->> matching-cards
-                                            (filter #(or (nil? (get-in % [:visualization_settings :graph.metrics]))
-                                                         (nil? (get-in % [:visualization_settings :graph.dimensions]))))
-                                            (keep :database_id)
-                                            (set)
-                                            (remove #(contains? database-ids %))
-                                            (into database-id->metadata-provider
-                                                  (map (juxt identity lib-be/application-database-metadata-provider))))
         compatible-cards (->> matching-cards
                               (filter mi/can-read?)
                               (filter #(or
-                                         ;; columns name on native query are not match with the column name in viz-settings. why??
-                                         ;; so we can't use series-are-compatible? to filter out incompatible native cards.
-                                         ;; => we assume all native queries are compatible and FE will figure it out later
+                                        ;; columns name on native query are not match with the column name in viz-settings. why??
+                                        ;; so we can't use series-are-compatible? to filter out incompatible native cards.
+                                        ;; => we assume all native queries are compatible and FE will figure it out later
                                         (= (:query_type %) :native)
                                         (series-are-compatible? card %))))]
     (if page-size
-      [database-id->metadata-provider (take page-size compatible-cards)]
-      [database-id->metadata-provider compatible-cards])))
+      (take page-size compatible-cards)
+      compatible-cards)))
 
 (defn- fetch-compatible-series
   "Fetch a list of compatible series for `card`.
@@ -426,14 +423,10 @@
   - last-cursor: the id of the last card from the previous page
   - page-size:   is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
   ([card options]
-   (fetch-compatible-series
-    card
-    options
-    {(:database_id card) (lib-be/application-database-metadata-provider (:database_id card))}
-    []))
+   (fetch-compatible-series card options []))
 
-  ([card {:keys [page-size] :as options} database-id->metadata-provider current-cards]
-   (let [[database-id->metadata-provider cards] (fetch-compatible-series* card database-id->metadata-provider options)
+  ([card {:keys [page-size] :as options} current-cards]
+   (let [cards     (fetch-compatible-series* card options)
          new-cards (concat current-cards cards)]
      ;; if the total card fetches is less than page-size and there are still more, continue fetching
      (if (and (some? page-size)
@@ -443,7 +436,6 @@
                                 (merge options
                                        {:page-size   (- page-size (count cards))
                                         :last-cursor (:id (last cards))})
-                                database-id->metadata-provider
                                 new-cards)
        new-cards))))
 
@@ -492,7 +484,7 @@
   [dataset-query :- [:maybe ::queries.schema/query]
    card-type     :- [:maybe ::queries.schema/card-type]]
   (when (and (seq dataset-query) (= card-type :metric))
-    (when-not (lib/can-save dataset-query card-type)
+    (when-not (lib/can-save? dataset-query card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
                       {:type        card-type
                        :status-code 400})))))
@@ -530,7 +522,7 @@
    [:name                   ms/NonBlankString]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:dataset_query          ms/Map]
-                            ;; TODO: Make entity_id a NanoID regex schema?
+   ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
    [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
    [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
@@ -542,7 +534,19 @@
    [:result_metadata        {:optional true} [:maybe analyze/ResultsMetadata]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:size                   {:optional true} [:maybe [:map
+                                                      [:size_x ms/PositiveInt]
+                                                      [:size_y ms/PositiveInt]]]]])
+
+(defn- normalize-dataset-query-or-400
+  "Strictly normalize an incoming `:dataset_query` from an API request, converting any normalization
+  failure into a 400 Bad Request."
+  [query]
+  (try
+    (lib-be/normalize-query nil query {:strict? true})
+    (catch Throwable e
+      (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -554,13 +558,17 @@
    _query-params
    {card-type :type, collection-id :collection_id, :as card} :- CardCreateSchema]
   (let [card (-> card
-                 (update :dataset_query lib-be/normalize-query)
+                 (update :dataset_query normalize-dataset-query-or-400)
                  (cond-> (some? collection-id)
+                   ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
+                   ;; from being written into the DB (#74615).
                    (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
-    ;; check that we have permissions to run the query that we're trying to save
-    (query-perms/check-run-permissions-for-query query)
+    ;; check that we have permissions to run the query that we're trying to save.
+    ;; Strip :query-permissions/perms first -- it is populated internally by the QP
+    ;; middleware, so any value already on the incoming query is dropped here.
+    (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
     ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
@@ -568,9 +576,15 @@
       (lib/check-card-overwrite ::no-id query)
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400)))))
-    (-> (queries/create-card! card @api/*current-user*)
-        hydrate-card-details
-        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
+    (let [created-card (queries/create-card! card @api/*current-user*)]
+      (when (and (some? (:result_metadata card))
+                 (= (name (:type created-card)) "question"))
+        (events/publish-event! :event/card-create-with-result-metadata
+                               {:card-id (:id created-card)
+                                :user-id api/*current-user-id*}))
+      (-> created-card
+          hydrate-card-details
+          (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -594,7 +608,7 @@
   [card-before-updates :- ::queries.schema/card
    card-updates        :- ::queries.schema/card]
   (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-    (query-perms/check-run-permissions-for-query (:dataset_query card-updates))))
+    (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
@@ -662,7 +676,9 @@
   [id :- ::lib.schema.id/card
    {metadata :result_metadata, card-type :type, :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
-  (let [card-updates (m/update-existing card-updates :dataset_query lib-be/normalize-query)
+  ;; Strict check to prevent a malformed query (coerced to `{}` by [[lib-be/normalize-query]])
+  ;; from being written into the DB (#74615).
+  (let [card-updates (m/update-existing card-updates :dataset_query normalize-dataset-query-or-400)
         query        (:dataset_query card-updates)]
     (check-if-card-can-be-saved query card-type)
     (when-some [query (:dataset_query card-updates)]
@@ -760,9 +776,8 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (lib-be/with-metadata-provider-cache
-    (let [resolved-id (eid-translation/->id-or-404 :card id)]
-      (queries/batch-fetch-card-metadata [(get-card resolved-id)]))))
+  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+    (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -793,7 +808,6 @@
                                            :collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
-
     ;; This is using `map` but more like a `doseq` with multiple seqs. Wrapping this in a `doall` as we don't want it
     ;; to be lazy and we're just going to discard the results
     (doall
@@ -830,7 +844,6 @@
       ;; ...and check that we have write permissions for the old collections if applicable
       (doseq [old-collection-id (set (filter identity (map :collection_id cards)))]
         (api/write-check :model/Collection old-collection-id))
-
       ;; Ensure all of the card updates occur in a transaction. Read committed (the default) really isn't what we want
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
@@ -840,7 +853,6 @@
         ;; are gone and update the position in the new collection
         (when-let [cards-with-position (seq (filter :collection_position cards))]
           (update-collection-positions! new-collection-id-or-nil cards-with-position))
-
         ;; ok, everything checks out. Set the new `collection_id` for all the Cards that haven't been updated already
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
@@ -849,7 +861,7 @@
                       {:id [:in (set cards-without-position)]}
                       {:collection_id new-collection-id-or-nil}))
         (doseq [card cards]
-          (collection/check-non-remote-synced-dependencies card)))))
+          (collection/check-for-remote-sync-update card)))))
 
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
@@ -892,7 +904,7 @@
   ;; endpoint instead. Or error in that situation? We're not even validating that you have access to this Dashboard.
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
     (qp.card/process-query-for-card
-     resolved-card-id :api
+     (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
      :parameters parameters
      :ignore-cache ignore_cache
      :dashboard-id dashboard_id
@@ -932,7 +944,7 @@
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
-   card-id export-format
+   (api/check-404 (t2/select-one :model/Card card-id)) export-format
    :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
@@ -1006,7 +1018,7 @@
    {:keys [parameters ignore_cache]
     :or   {ignore_cache false}} :- [:map
                                     [:ignore_cache {:optional true} [:maybe :boolean]]]]
-  (qp.card/process-query-for-card card-id :api
+  (qp.card/process-query-for-card (api/check-404 (t2/select-one :model/Card card-id)) :api
                                   :parameters   parameters
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
