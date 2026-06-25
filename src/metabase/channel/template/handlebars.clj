@@ -27,11 +27,7 @@
 (defn classpath-loader
   "Create a ClassPathTemplateLoader with a prefix and postfix."
   [prefix postfix]
-  (proxy [ClassPathTemplateLoader] [prefix postfix]
-    (validatePrefixSuffix [_prefix _suffix]
-      ;; handlebars 4.4+ rejects ("/" "") as potentially unsafe; Metabase enforces
-      ;; safe paths via validate-template-path! so the library check is redundant.
-      nil)))
+  (ClassPathTemplateLoader. prefix postfix))
 
 (defn- wrap-context
   [context]
