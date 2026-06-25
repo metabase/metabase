@@ -1,20 +1,24 @@
-import { isTableFieldSchema } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
-import type { BreakoutClause, ColumnMetadata, Query } from "metabase-lib";
+import {
+  isMetricReference,
+  isTableFieldSchema,
+} from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import type { ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import { isObject } from "metabase-types/guards";
 
+import {
+  isCountAggregation,
+  isFieldAggregation,
+  isMeasureSchema,
+} from "../guards";
 import type { ColumnReferenceInput } from "../input-types";
-import { normalizeSort } from "../input-utils";
-
-import { findLibColumn } from "./column";
+import { getFieldId, normalizeSort } from "../input-utils";
 
 const STAGE_INDEX = 0;
-
-type Orderable = ColumnMetadata | BreakoutClause;
 
 export function applySorts(
   query: Query,
   sorts: readonly unknown[] | undefined,
+  aggregationOrder: readonly unknown[],
 ): Query | null {
   let nextQuery = query;
 
@@ -25,68 +29,70 @@ export function applySorts(
       return null;
     }
 
-    const orderable = findOrderable(nextQuery, column);
+    const orderableColumn = findOrderableColumn(
+      nextQuery,
+      column,
+      aggregationOrder,
+    );
 
-    if (!orderable) {
+    if (!orderableColumn) {
       return null;
     }
 
-    nextQuery = Lib.orderBy(nextQuery, STAGE_INDEX, orderable, direction);
+    nextQuery = Lib.orderBy(nextQuery, STAGE_INDEX, orderableColumn, direction);
   }
 
   return nextQuery;
 }
 
-// Resolves the sort target from clauses already present in the query rather than
-// from `Lib.orderableColumns`. `orderableColumns` eagerly computes metadata for
-// every column, including metric/measure aggregations — but the data-app's
-// synthetic metadata provider does not carry their inner definitions, so it
-// throws. Ordering by an existing breakout/aggregation clause avoids that and
-// keeps the order-by ref aligned with the breakout (temporal bucket, binning).
-function findOrderable(query: Query, column: unknown): Orderable | null {
-  if (typeof column === "string" || isTableFieldSchema(column)) {
-    return findDimensionOrderable(query, column);
-  }
-
-  return findAggregationOrderable(query, column);
-}
-
-function findDimensionOrderable(
-  query: Query,
-  column: ColumnReferenceInput,
-): Orderable | null {
-  const name = typeof column === "string" ? column : column.name;
-
-  const breakoutClause = findClauseByName(
-    query,
-    Lib.breakouts(query, STAGE_INDEX),
-    name,
-  );
-
-  if (breakoutClause) {
-    return breakoutClause;
-  }
-
-  // Non-aggregated query: order by the raw field, resolved by field id.
-  return findLibColumn(query, column);
-}
-
-function findAggregationOrderable(
+// Resolves the sort target to one of the query's orderable columns — the same
+// path the notebook uses. `orderableColumns` returns the query's breakout and
+// aggregation columns (bucketed breakouts keep their temporal unit / binning).
+function findOrderableColumn(
   query: Query,
   column: unknown,
-): Orderable | null {
-  const name = getAggregationColumnName(column);
+  aggregationOrder: readonly unknown[],
+): ColumnMetadata | null {
+  const orderableColumns = Lib.orderableColumns(query, STAGE_INDEX);
 
-  if (!name) {
-    return null;
+  if (typeof column === "string" || isTableFieldSchema(column)) {
+    return findDimensionColumn(query, orderableColumns, column);
   }
 
-  // Ordering by an aggregation needs its column metadata. Computing it fails
-  // when the query contains a metric/measure whose definition the data-app
-  // metadata provider lacks, so guard it and fail the build (clear error)
-  // rather than crash.
-  const orderableColumns = getOrderableColumns(query);
-  const lowerName = name.toLowerCase();
+  return findAggregationColumn(
+    query,
+    orderableColumns,
+    column,
+    aggregationOrder,
+  );
+}
+
+function findDimensionColumn(
+  query: Query,
+  orderableColumns: ColumnMetadata[],
+  column: ColumnReferenceInput,
+): ColumnMetadata | null {
+  // Field references match by field id first: `orderableColumns` can include
+  // implicitly-joinable columns from other tables that share a name (`id`,
+  // `name`, ...), so a name-only match could pick the wrong column.
+  if (isTableFieldSchema(column)) {
+    const fieldId = getFieldId(column);
+
+    if (fieldId != null) {
+      const columnByFieldId = orderableColumns.find(
+        (orderableColumn) =>
+          Lib.fieldValuesSearchInfo(query, orderableColumn).fieldId === fieldId,
+      );
+
+      if (columnByFieldId) {
+        return columnByFieldId;
+      }
+    }
+  }
+
+  const name = (
+    typeof column === "string" ? column : column.name
+  ).toLowerCase();
 
   return (
     orderableColumns.find(
@@ -95,60 +101,64 @@ function findAggregationOrderable(
           query,
           STAGE_INDEX,
           orderableColumn,
-        ).name?.toLowerCase() === lowerName,
+        ).name?.toLowerCase() === name,
     ) ?? null
   );
 }
 
-function getOrderableColumns(query: Query): ColumnMetadata[] {
-  try {
-    return Lib.orderableColumns(query, STAGE_INDEX);
-  } catch {
-    return [];
-  }
-}
-
-function findClauseByName<TClause extends BreakoutClause>(
+// Aggregation columns appear in `orderableColumns` in aggregation order, so the
+// sort target's position among the query's aggregations selects its column.
+function findAggregationColumn(
   query: Query,
-  clauses: TClause[],
-  name: string,
-): TClause | null {
-  const lowerName = name.toLowerCase();
-
-  return (
-    clauses.find(
-      (clause) =>
-        Lib.displayInfo(query, STAGE_INDEX, clause).name?.toLowerCase() ===
-        lowerName,
-    ) ?? null
+  orderableColumns: ColumnMetadata[],
+  target: unknown,
+  aggregationOrder: readonly unknown[],
+): ColumnMetadata | null {
+  const aggregationIndex = aggregationOrder.findIndex((aggregation) =>
+    aggregationsMatch(target, aggregation),
   );
-}
 
-function getAggregationColumnName(column: unknown): string | null {
-  if (isObject(column) && column.type === "count") {
-    return "count";
-  }
-
-  if (
-    isObject(column) &&
-    Array.isArray(column.columns) &&
-    isObject(column.columns[0]) &&
-    typeof column.columns[0].name === "string"
-  ) {
-    return column.columns[0].name;
-  }
-
-  return null;
-}
-
-export function applyLimit(query: Query, limit: unknown): Query | null {
-  if (limit == null) {
-    return query;
-  }
-
-  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 0) {
+  if (aggregationIndex < 0) {
     return null;
   }
 
-  return Lib.limit(query, STAGE_INDEX, limit);
+  const aggregationColumns = orderableColumns.filter(
+    (orderableColumn) =>
+      Lib.displayInfo(query, STAGE_INDEX, orderableColumn).isAggregation,
+  );
+
+  return aggregationColumns[aggregationIndex] ?? null;
+}
+
+function aggregationsMatch(target: unknown, aggregation: unknown): boolean {
+  if (target === aggregation) {
+    return true;
+  }
+
+  if (isMeasureSchema(target) && isMeasureSchema(aggregation)) {
+    return target.id === aggregation.id;
+  }
+
+  if (isMetricReference(target) && isMetricReference(aggregation)) {
+    return target.id === aggregation.id;
+  }
+
+  if (isCountAggregation(target) && isCountAggregation(aggregation)) {
+    return true;
+  }
+
+  if (isFieldAggregation(target) && isFieldAggregation(aggregation)) {
+    return (
+      target.type === aggregation.type &&
+      sameDimension(target.dimension, aggregation.dimension)
+    );
+  }
+
+  return false;
+}
+
+function sameDimension(left: unknown, right: unknown): boolean {
+  const leftId = getFieldId(left);
+
+  return leftId != null && leftId === getFieldId(right);
 }

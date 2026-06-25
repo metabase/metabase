@@ -526,20 +526,19 @@ const { data } = useMetabaseQuery<OrdersTable>({
   table: ordersTable,
   aggregations: [ordersTable.measures.totalAmount],
   breakouts: [breakout(ordersTable.fields.status)],
-  // Order the groups by status, A→Z.
-  sorts: [sort(ordersTable.fields.status, "asc")],
+  // Highest revenue first.
+  sorts: [sort(ordersTable.measures.totalAmount, "desc")],
 });
 ```
 
 - `sort(column, direction?)` builds one sort entry; `direction` is `"asc"` (default) or `"desc"`.
-- Sort `column` must be a breakout dimension or a table field — pass the same generated schema objects you pass to `breakouts`; do not pass raw column-name strings.
-- Sorting by a measure or by a metric's aggregation is not supported in data-app queries (the generated schema doesn't carry their definitions, so an aggregate sort fails the query). To rank by an aggregate value, sort and slice `data.rows` in React after the query instead.
+- Sort `column` can be a breakout dimension, a table field, a generated measure, or the query's metric — pass the same generated schema objects you pass to `breakouts`/`aggregations`/`measures`/`metric`. Do not pass raw column-name strings. The sort target should already be part of the query.
 - Results are not ordered unless you sort. For time-series charts, add an ascending time sort: `sort(table.fields.createdAt, "asc")`.
 - Prefer sorting in the query over sorting `data.rows` in React, so charts stay ordered.
 
 ## Limiting Rows
 
-Add `limit` to cap how many rows the query returns. Works on table and metric queries, and on `useMetabaseQuery` and `useMetabaseQueryObject`. It is independent of `sorts`, but pair the two with a dimension sort for "latest N" / "first N" lists.
+Add `limit` to cap how many rows the query returns. Works on table and metric queries, and on `useMetabaseQuery` and `useMetabaseQueryObject`. It is independent of `sorts`, but pair the two for ranked "top N" lists.
 
 ```ts
 const ordersTable = schema.tables.orders;
@@ -547,14 +546,15 @@ type OrdersTable = typeof ordersTable;
 
 const { data } = useMetabaseQuery<OrdersTable>({
   table: ordersTable,
-  sorts: [sort(ordersTable.fields.createdAt, "desc")],
-  limit: 10, // 10 most recent orders.
+  aggregations: [ordersTable.measures.totalAmount],
+  breakouts: [breakout(ordersTable.fields.status)],
+  sorts: [sort(ordersTable.measures.totalAmount, "desc")],
+  limit: 5, // Top 5 statuses by revenue.
 });
 ```
 
 - `limit` is a whole, non-negative row count. When combined with `sorts`, it is applied after sorting.
 - Prefer limiting in the query over slicing `data.rows` in React, so the result set stays bounded.
-- "Top N by an aggregate" can't be expressed server-side here (aggregate sorts are unsupported); fetch the grouped rows and take the top N in React.
 
 ## Result Shape And Charts
 

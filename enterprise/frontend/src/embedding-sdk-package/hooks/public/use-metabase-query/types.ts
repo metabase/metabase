@@ -364,10 +364,13 @@ type SortableDimension<TEntity> = [DimensionValues<TEntity>] extends [never]
   ? DimensionInput<TEntity>
   : DimensionValues<TEntity>;
 
-// Measures and metric aggregations are intentionally excluded: these hooks
-// always build queries with the data-app's synthetic metadata provider, which
-// can't compute aggregate column metadata for ordering. Sort by a dimension.
-type SortableColumn<TEntity> = SortableDimension<TEntity> | AnyAggregation;
+// Sort targets: a dimension (breakout/field), an aggregation helper, or a
+// generated measure/metric the query already aggregates by.
+type SortableColumn<TEntity> =
+  | SortableDimension<TEntity>
+  | AnyAggregation
+  | MeasureReference
+  | MetricReference;
 
 /**
  * @notExported SortableColumn

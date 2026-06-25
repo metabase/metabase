@@ -13,7 +13,7 @@ import type {
 import type { Metadata as MetadataInput, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { TableId } from "metabase-types/api";
+import type { DatasetQuery, TableId } from "metabase-types/api";
 
 import {
   isDimensionFilter,
@@ -37,6 +37,8 @@ import { getFieldBaseType, getFieldEffectiveType } from "./query-utils";
 
 type TableMetadataSource = Omit<TableSchema, "id"> & { id: TableId };
 type QueryMetadataInput = TableQueryInput | MetricQueryInput;
+
+const STAGE_INDEX = 0;
 
 export function createLibQuery(
   metadata: MetadataInput,
@@ -69,7 +71,7 @@ export function createTableMetadata(
   const segments = getTableSegments(table, query);
   const measures = getTableMeasures(table, query);
 
-  return {
+  const metadata: MetadataInput = {
     databases: { [databaseId]: createDatabaseMetadata(databaseId) },
     tables: { [table.id]: createTableMetadataRecord(table, databaseId) },
     fields: Object.fromEntries(
@@ -84,12 +86,11 @@ export function createTableMetadata(
         createSegmentMetadataRecord(segment, table.id),
       ]),
     ),
-    measures: Object.fromEntries(
-      measures.map((measure) => [
-        measure.id,
-        createMeasureMetadataRecord(measure, table.id),
-      ]),
-    ),
+  };
+
+  return {
+    ...metadata,
+    measures: createMeasureMetadataRecords(measures, metadata, databaseId),
   };
 }
 
@@ -122,16 +123,7 @@ export function createMetricMetadata(
     ),
   };
 
-  const measures = Object.fromEntries(
-    input.measures
-      ?.filter(isMeasureSchema)
-      .map((measure) => [
-        measure.id,
-        createMeasureMetadataRecord(measure, measure.tableId),
-      ]) ?? [],
-  );
-
-  const questionMetadata =
+  const sourceCardQuestion =
     sourceCardId == null
       ? {}
       : {
@@ -141,18 +133,28 @@ export function createMetricMetadata(
           ),
         };
 
-  return {
+  // `createTableMetadata` already builds the metric's measures (from
+  // `input.measures`) against each measure's own table id, so they don't need to
+  // be rebuilt here — we only add the source card and the metric card itself.
+  const metadata: MetadataInput = {
     ...createTableMetadata(table, databaseId, input),
+    questions: sourceCardQuestion,
+  };
+
+  return {
+    ...metadata,
     questions: {
-      [metricId]: createMetricCardMetadataRecord({
-        metricId,
-        databaseId,
-        sourceTableId: sourceTableId == null ? null : Number(sourceTableId),
-        sourceCardId: sourceCardId == null ? null : Number(sourceCardId),
-      }),
-      ...questionMetadata,
+      ...metadata.questions,
+      [metricId]: createMetricCardMetadataRecord(
+        {
+          metricId,
+          databaseId,
+          sourceTableId: sourceTableId == null ? null : Number(sourceTableId),
+          sourceCardId: sourceCardId == null ? null : Number(sourceCardId),
+        },
+        buildPlaceholderAggregationQuery(metadata, databaseId, sourceId),
+      ),
     },
-    measures,
   };
 }
 
@@ -205,6 +207,58 @@ const createMeasureMetadataRecord = (
   table_id: tableId,
 });
 
+// The generated schema ships a measure's output column, not its aggregation, but
+// metabase-lib needs a definition to resolve the aggregation column when ordering
+// by the measure. Each record gets a placeholder definition (built from the
+// assembled metadata) that only makes the column orderable; the executed query
+// references the measure by id, so it never reaches it. The definition depends
+// only on the source table, so it's built once per table and shared.
+const createMeasureMetadataRecords = (
+  measures: readonly MeasureReferenceInput[],
+  metadata: MetadataInput,
+  databaseId: number,
+) => {
+  const definitionByTableId = new Map<TableId, DatasetQuery | undefined>();
+
+  const placeholderDefinition = (tableId: TableId) => {
+    if (!definitionByTableId.has(tableId)) {
+      definitionByTableId.set(
+        tableId,
+        buildPlaceholderAggregationQuery(metadata, databaseId, tableId),
+      );
+    }
+
+    return definitionByTableId.get(tableId);
+  };
+
+  return Object.fromEntries(
+    measures.map((measure) => [
+      measure.id,
+      {
+        ...createMeasureMetadataRecord(measure, measure.tableId),
+        definition: placeholderDefinition(measure.tableId),
+      },
+    ]),
+  );
+};
+
+const buildPlaceholderAggregationQuery = (
+  metadata: MetadataInput,
+  databaseId: number,
+  sourceId: TableId,
+): DatasetQuery | undefined => {
+  try {
+    return Lib.toJsQuery(
+      Lib.aggregateByCount(
+        createLibQuery(metadata, databaseId, sourceId),
+        STAGE_INDEX,
+      ),
+    );
+  } catch {
+    return undefined;
+  }
+};
+
 const createQuestionMetadataRecord = (cardId: number, databaseId: number) => ({
   id: cardId,
   name: `Question ${cardId}`,
@@ -217,17 +271,19 @@ const createQuestionMetadataRecord = (cardId: number, databaseId: number) => ({
   },
 });
 
-const createMetricCardMetadataRecord = ({
-  metricId,
-  databaseId,
-  sourceTableId,
-  sourceCardId,
-}: {
-  metricId: number;
-  databaseId: number;
-  sourceTableId: number | null;
-  sourceCardId: number | null;
-}) => ({
+const createMetricCardMetadataRecord = (
+  {
+    metricId,
+    sourceTableId,
+    sourceCardId,
+  }: {
+    metricId: number;
+    databaseId: number;
+    sourceTableId: number | null;
+    sourceCardId: number | null;
+  },
+  datasetQuery: DatasetQuery | undefined,
+) => ({
   id: metricId,
   name: `Metric ${metricId}`,
   display: "scalar",
@@ -235,16 +291,7 @@ const createMetricCardMetadataRecord = ({
   table_id: sourceTableId,
   source_card_id: sourceCardId,
   archived: false,
-  dataset_query: {
-    type: "query",
-    database: databaseId,
-    query: {
-      "source-table":
-        sourceTableId == null
-          ? getQuestionVirtualTableId(sourceCardId)
-          : sourceTableId,
-    },
-  },
+  dataset_query: datasetQuery,
 });
 
 const getTableFields = (

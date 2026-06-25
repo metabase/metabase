@@ -21,17 +21,10 @@ const STAGE_INDEX = 0;
 export function applyAggregations(
   query: Query,
   aggregations: readonly unknown[] | undefined,
-  options: { addDefaultCount?: boolean } = {},
 ): Query | null {
-  if (!aggregations?.length) {
-    return options.addDefaultCount
-      ? Lib.aggregateByCount(query, STAGE_INDEX)
-      : query;
-  }
-
   let nextQuery = query;
 
-  for (const aggregation of aggregations) {
+  for (const aggregation of aggregations ?? []) {
     const aggregationClause = buildLibAggregation(nextQuery, aggregation);
 
     if (!aggregationClause) {

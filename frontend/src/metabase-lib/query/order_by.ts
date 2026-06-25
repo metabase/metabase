@@ -2,7 +2,6 @@ import * as ML from "cljs/metabase.lib.js";
 
 import { removeClause } from "./query";
 import type {
-  BreakoutClause,
   ColumnMetadata,
   OrderByClause,
   OrderByDirection,
@@ -23,10 +22,10 @@ export function orderBys(query: Query, stageIndex: number): OrderByClause[] {
 export function orderBy(
   query: Query,
   stageIndex: number,
-  orderable: ColumnMetadata | OrderByClause | BreakoutClause,
+  column: ColumnMetadata | OrderByClause,
   direction?: OrderByDirection,
 ): Query {
-  return ML.order_by(query, stageIndex, orderable, direction);
+  return ML.order_by(query, stageIndex, column, direction);
 }
 
 export function orderByClause(

@@ -6,6 +6,7 @@ import {
   getTableIdFromInput,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-accessors";
 import type { TableSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
+import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 
@@ -22,12 +23,30 @@ import {
   buildLibMetricFilter,
   buildLibTableFilter,
 } from "./filters";
+import { applyLimit } from "./limit";
 import {
   createLibQuery,
   createMetricMetadata,
   createTableMetadata,
 } from "./metadata";
-import { applyLimit, applySorts } from "./sorts";
+import { applySorts } from "./sorts";
+
+type QueryStep = (query: Query) => Query | null;
+
+// Runs each step in order, short-circuiting to null as soon as a step fails.
+function pipeQuery(query: Query, ...steps: QueryStep[]): Query | null {
+  let current: Query | null = query;
+
+  for (const step of steps) {
+    if (current == null) {
+      return null;
+    }
+
+    current = step(current);
+  }
+
+  return current;
+}
 
 export function buildTableDatasetQueryFromInput(
   input: TableQueryInput,
@@ -41,53 +60,21 @@ export function buildTableDatasetQueryFromInput(
   }
 
   const metadata = createTableMetadata(table, Number(databaseId), input);
-  let libQuery = createLibQuery(metadata, Number(databaseId), Number(tableId));
 
-  const queryWithFilters = applyFilters(
-    libQuery,
-    input.filters,
-    buildLibTableFilter,
+  // Single source of truth for the table's aggregations, so the applied
+  // aggregations and the sort-target lookup can't drift apart.
+  const aggregations = getTableAggregations(input);
+
+  const query = pipeQuery(
+    createLibQuery(metadata, Number(databaseId), Number(tableId)),
+    (q) => applyFilters(q, input.filters, buildLibTableFilter),
+    (q) => applyAggregations(q, aggregations),
+    (q) => applyBreakouts(q, input.breakouts),
+    (q) => applySorts(q, input.sorts, aggregations),
+    (q) => applyLimit(q, input.limit),
   );
 
-  if (!queryWithFilters) {
-    return null;
-  }
-
-  libQuery = queryWithFilters;
-
-  const queryWithAggregations = applyAggregations(
-    libQuery,
-    input.aggregations ?? input.measures,
-    { addDefaultCount: Boolean(input.breakouts?.length) },
-  );
-
-  if (!queryWithAggregations) {
-    return null;
-  }
-
-  libQuery = queryWithAggregations;
-
-  const queryWithBreakouts = applyBreakouts(libQuery, input.breakouts);
-
-  if (!queryWithBreakouts) {
-    return null;
-  }
-
-  libQuery = queryWithBreakouts;
-
-  const queryWithSorts = applySorts(libQuery, input.sorts);
-
-  if (!queryWithSorts) {
-    return null;
-  }
-
-  const queryWithLimit = applyLimit(queryWithSorts, input.limit);
-
-  if (!queryWithLimit) {
-    return null;
-  }
-
-  return Lib.toJsQuery(queryWithLimit);
+  return query == null ? null : Lib.toJsQuery(query);
 }
 
 export function buildMetricDatasetQueryFromInput(
@@ -102,55 +89,39 @@ export function buildMetricDatasetQueryFromInput(
   }
 
   const metadata = createMetricMetadata(input, Number(databaseId));
-  let libQuery = createLibQuery(metadata, Number(databaseId), sourceId);
 
-  const queryWithMetric = applyMetricAggregation(libQuery, Number(metricId));
+  // The metric aggregation is applied first, then the measures; `aggregations`
+  // mirrors that order so a sort target can be matched to its aggregation index.
+  const aggregations = getMetricAggregations(input);
 
-  if (!queryWithMetric) {
-    return null;
-  }
-
-  libQuery = queryWithMetric;
-
-  const queryWithMeasures = applyMetricMeasures(libQuery, input.measures);
-
-  if (!queryWithMeasures) {
-    return null;
-  }
-
-  libQuery = queryWithMeasures;
-
-  const queryWithFilters = applyFilters(
-    libQuery,
-    input.filters,
-    buildLibMetricFilter,
+  const query = pipeQuery(
+    createLibQuery(metadata, Number(databaseId), sourceId),
+    (q) => applyMetricAggregation(q, Number(metricId)),
+    (q) => applyMetricMeasures(q, input.measures),
+    (q) => applyFilters(q, input.filters, buildLibMetricFilter),
+    (q) => applyBreakouts(q, input.breakouts),
+    (q) => applySorts(q, input.sorts, aggregations),
+    (q) => applyLimit(q, input.limit),
   );
 
-  if (!queryWithFilters) {
-    return null;
+  return query == null ? null : Lib.toJsQuery(query);
+}
+
+// `applyAggregations` adds a default count when there are breakouts but no
+// explicit aggregations; this mirrors that so the applied aggregations and the
+// sort-target lookup share one ordered list.
+const DEFAULT_COUNT_AGGREGATION = { type: "count" };
+
+function getTableAggregations(input: TableQueryInput): readonly unknown[] {
+  const aggregations = input.aggregations ?? input.measures;
+
+  if (aggregations?.length) {
+    return aggregations;
   }
 
-  libQuery = queryWithFilters;
+  return input.breakouts?.length ? [DEFAULT_COUNT_AGGREGATION] : [];
+}
 
-  const queryWithBreakouts = applyBreakouts(libQuery, input.breakouts);
-
-  if (!queryWithBreakouts) {
-    return null;
-  }
-
-  libQuery = queryWithBreakouts;
-
-  const queryWithSorts = applySorts(libQuery, input.sorts);
-
-  if (!queryWithSorts) {
-    return null;
-  }
-
-  const queryWithLimit = applyLimit(queryWithSorts, input.limit);
-
-  if (!queryWithLimit) {
-    return null;
-  }
-
-  return Lib.toJsQuery(queryWithLimit);
+function getMetricAggregations(input: MetricQueryInput): readonly unknown[] {
+  return [input.metric, ...(input.measures ?? [])];
 }

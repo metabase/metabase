@@ -554,11 +554,12 @@ const _invalidTableSortDirectionQuery = {
   sorts: [sort(TEST_SCHEMA.tables.orders.fields.status, "ascending")],
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
-const _invalidTableSortByMeasureQuery = {
+const _validTableSortByMeasureQuery = {
   table: TEST_SCHEMA.tables.orders,
   aggregations: [TEST_SCHEMA.tables.orders.measures.revenue],
-  // @ts-expect-error sorting by a measure is unsupported; sort by a dimension
+  breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
   sorts: [sort(TEST_SCHEMA.tables.orders.measures.revenue, "desc")],
+  limit: 5,
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
 const _validMetricSortAndLimitQuery = {
@@ -611,6 +612,20 @@ describe("useMetabaseQuery", () => {
         }),
       ],
     });
+
+  // The pMBQL DatasetQuery is opaque to TS; these read its stage/clauses for
+  // assertions that need the actual aggregation uuids.
+  type RawClause = [string, Record<string, string>, ...unknown[]];
+  type RawStage = {
+    aggregation: RawClause[];
+    "order-by"?: RawClause[];
+    limit?: number;
+  };
+
+  const getStage = (query: unknown): RawStage =>
+    (query as { stages: RawStage[] }).stages[0];
+
+  const aggregationUuid = (clause: RawClause): string => clause[1]["lib/uuid"];
 
   beforeEach(() => {
     ensureMetabaseProviderPropsStore().cleanup();
@@ -1146,21 +1161,72 @@ describe("useMetabaseQuery", () => {
       );
     });
 
-    it("fails gracefully when sorting by a measure aggregation", () => {
-      // Ordering by a measure needs its column metadata, which the data-app
-      // metadata provider cannot compute. This must fail the build with a clear
-      // error instead of throwing a raw metabase-lib error.
-      expect(() =>
-        createMetabaseQuery({
-          table: TEST_SCHEMA.tables.orders,
-          aggregations: [TEST_SCHEMA.tables.orders.measures.revenue],
-          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
-          // @ts-expect-error measure sorts are a type error; this guards the runtime path for untyped callers
-          sorts: [sort(TEST_SCHEMA.tables.orders.measures.revenue, "desc")],
-        }),
-      ).toThrow(
-        "Table query object creation requires a table reference with id and databaseId.",
-      );
+    it("sorts a table query by a generated measure", () => {
+      const result = createMetabaseQuery({
+        table: TEST_SCHEMA.tables.orders,
+        aggregations: [TEST_SCHEMA.tables.orders.measures.revenue],
+        breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        sorts: [sort(TEST_SCHEMA.tables.orders.measures.revenue, "desc")],
+        limit: 5,
+      });
+
+      const stage = getStage(result);
+      const measureClause = stage.aggregation[0];
+
+      expect(measureClause[0]).toBe("measure");
+      expect(stage["order-by"]).toEqual([
+        [
+          "desc",
+          mbqlOptions(),
+          ["aggregation", mbqlOptions(), aggregationUuid(measureClause)],
+        ],
+      ]);
+      expect(stage.limit).toBe(5);
+    });
+
+    it("sorts a metric query by the metric aggregation", () => {
+      const result = createMetabaseQuery({
+        metric: TEST_SCHEMA.metrics.orderCount,
+        breakouts: [
+          breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
+        ],
+        sorts: [sort(TEST_SCHEMA.metrics.orderCount, "desc")],
+      });
+
+      const stage = getStage(result);
+      const metricClause = stage.aggregation[0];
+
+      expect(metricClause[0]).toBe("metric");
+      expect(stage["order-by"]).toEqual([
+        [
+          "desc",
+          mbqlOptions(),
+          ["aggregation", mbqlOptions(), aggregationUuid(metricClause)],
+        ],
+      ]);
+    });
+
+    it("sorts a metric query by a measure aggregation", () => {
+      const result = createMetabaseQuery({
+        metric: TEST_SCHEMA.metrics.orderCount,
+        measures: [TEST_SCHEMA.tables.orders.measures.revenue],
+        breakouts: [
+          breakout(TEST_SCHEMA.metrics.orderCount.dimensions.orders.status),
+        ],
+        sorts: [sort(TEST_SCHEMA.tables.orders.measures.revenue, "desc")],
+      });
+
+      const stage = getStage(result);
+      const measureClause = stage.aggregation[1];
+
+      expect(measureClause[0]).toBe("measure");
+      expect(stage["order-by"]).toEqual([
+        [
+          "desc",
+          mbqlOptions(),
+          ["aggregation", mbqlOptions(), aggregationUuid(measureClause)],
+        ],
+      ]);
     });
 
     it("throws on an unknown sort direction instead of defaulting to asc", () => {
