@@ -95,7 +95,7 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer :document})
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
 
 (def attr-types
   "The abstract types of each attribute."
