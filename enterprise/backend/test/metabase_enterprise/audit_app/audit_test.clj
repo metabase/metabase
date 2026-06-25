@@ -320,12 +320,13 @@
                (t2/select-one-fn :name :model/Field :id single-field-id)))))))
 
 (defn- audit-view-table
-  "The single active `metabase_table` row for audit view `view-name` (matched case-insensitively),
-   or nil. Used to locate the same view across host engines whose schema/name casing differs."
+  "The single active `metabase_table` row for audit view `view-name` (a lower-cased name), or nil.
+   Matched case-insensitively so it finds the same view across host engines whose name casing differs."
   [view-name]
-  (->> (t2/select [:model/Table :id :name :schema :active] :db_id audit/audit-db-id :active true)
-       (filter #(= view-name (u/lower-case-en (:name %))))
-       first))
+  (t2/select-one [:model/Table :id :name :schema :active]
+                 :db_id audit/audit-db-id
+                 :active true
+                 {:where [:= [:lower :name] view-name]}))
 
 (deftest audit-db-self-heals-duplicate-rows-from-stale-schema-test
   ;; GHY-3974 Mode A: when an interrupted or raced `adjust-audit-db-to-host!` leaves an audit
@@ -355,8 +356,9 @@
                 "the row the customer card points at is retired"))
           (testing "ensure-audit-db-installed! self-heals the duplicate"
             (ee-audit/ensure-audit-db-installed!)
-            (let [rows (->> (t2/select [:model/Table :id :name :active] :db_id audit/audit-db-id)
-                            (filter #(= "v_content" (u/lower-case-en (:name %)))))]
+            (let [rows (t2/select [:model/Table :id :name :active]
+                                  :db_id audit/audit-db-id
+                                  {:where [:= [:lower :name] "v_content"]})]
               (is (= 1 (count rows)) "exactly one metabase_table row per view after heal")
               (is (every? :active rows) "the surviving row is active"))
             (testing "the customer card still points at an active table"
