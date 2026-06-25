@@ -40,6 +40,23 @@
                         :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
+(deftest ^:parallel claude-text-id-from-content-block-index-test
+  (testing "text blocks (no provider id) take their id from the content-block index, matching @ai-sdk/anthropic"
+    (let [raw    [{:type "message_start" :message {:id "msg-1" :model "claude-haiku-4-5"}}
+                  {:type "content_block_start" :index 0 :content_block {:type "text"}}
+                  {:type "content_block_delta" :index 0 :delta {:type "text_delta" :text "Hello"}}
+                  {:type "content_block_stop" :index 0}
+                  {:type "content_block_start" :index 1 :content_block {:type "text"}}
+                  {:type "content_block_delta" :index 1 :delta {:type "text_delta" :text "world"}}
+                  {:type "content_block_stop" :index 1}
+                  {:type "message_stop"}]
+          chunks (into [] (claude/claude->aisdk-chunks-xf) raw)]
+      (is (= [["text-start" "0"] ["text-delta" "0"] ["text-end" "0"]
+              ["text-start" "1"] ["text-delta" "1"] ["text-end" "1"]]
+             (->> chunks
+                  (filter #(#{:text-start :text-delta :text-end} (:type %)))
+                  (mapv (juxt (comp name :type) :id))))))))
+
 (deftest ^:parallel claude-error-event-uses-canonical-error-shape-test
   (testing "an `error` SSE event becomes an :error part keyed by :error (read by the wire serializer + persistence)"
     (let [raw   [{:type "message_start" :message {:id "msg_1" :model "claude-haiku-4-5"}}
