@@ -44,8 +44,8 @@
                         (mapv #(update % :granularity long)))}))
 
 (defn- snowflake-clustering
-  "Read a Snowflake table's clustering key back as a vector of column names in order, or [] when unclustered.
-  `CLUSTERING_KEY` is a string like `LINEAR(category, price)`; strip the wrapper and split on top-level commas."
+  "Read a Snowflake table's clustering key back as an ordered vector of column names, or [] when unclustered.
+  `CLUSTERING_KEY` comes back as a string like `LINEAR(category, price)`."
   [database schema table]
   (let [clustering-key (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                                        [(str "SELECT clustering_key FROM information_schema.tables "
@@ -85,8 +85,7 @@
                 :expected         {:sorting-key  "(category)"
                                    :skip-indexes [{:name "by_price" :type "minmax" :expr "(price)" :granularity 1}]}
                 :physical-indexes clickhouse-indexes}
-   ;; Snowflake: a single standalone clustering key (no secondary indexes). The `:name` is Metabase-side only;
-   ;; the warehouse reports it unnamed, so we read back just the clustered columns.
+   ;; Snowflake: a single standalone clustering key, reported unnamed, so we read back just the clustered columns.
    :snowflake  {:indexes          [{:kind :clustering :name "by_category" :columns [{:name "category"}]}]
                 :expected         ["category"]
                 :physical-indexes snowflake-clustering}})

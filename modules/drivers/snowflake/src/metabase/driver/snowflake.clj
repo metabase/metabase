@@ -1018,8 +1018,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Snowflake's only physical "index" is the table's single clustering key (`CLUSTER BY`); there are no secondary
-;; indexes. We model it as a standalone `:clustering` kind whose `:name` is Metabase-side only -- the warehouse keeps
-;; clustering keys unnamed, so `fetch-table-indexes` reports `:name nil` and reconcile matches by kind + columns.
+;; indexes, so it's a standalone `:clustering` kind. The `:name` is Metabase-side only: the warehouse keeps clustering
+;; keys unnamed, so fetch reports `:name nil` and reconcile matches by kind + columns.
 
 (defmethod driver/supported-index-methods :snowflake
   [_driver _database]
@@ -1028,7 +1028,7 @@
 
 (defmethod driver/compile-create-index :snowflake
   [driver schema table {:keys [columns]}]
-  ;; One clustering key per table; re-issuing the same ALTER is harmless, so no IF NOT EXISTS is needed.
+  ;; Re-issuing the same CLUSTER BY is a no-op, so no IF NOT EXISTS needed.
   (let [target (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))
         cols   (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
     [[(format "ALTER TABLE %s CLUSTER BY (%s)" target cols)]]))
@@ -1048,8 +1048,8 @@
       (conj acc (subs s start)))))
 
 (defn- unquote-ident
-  "Strip the double-quotes off a quoted identifier (doubled quotes unescaped), matching the bare column name the
-  managed side stores. Leaves bare names and expressions untouched."
+  "Strip surrounding double-quotes off a quoted identifier (unescaping doubled quotes); leaves bare names and
+  expressions untouched."
   [^String s]
   (if (and (> (count s) 1) (str/starts-with? s "\"") (str/ends-with? s "\""))
     (str/replace (subs s 1 (dec (count s))) "\"\"" "\"")
@@ -1060,16 +1060,13 @@
   in order. Returns nil for a table with no clustering key."
   [clustering-key]
   (when-let [s (not-empty (some-> clustering-key str/trim))]
-    ;; the wrapper is `LINEAR(...)`; drop it down to the inner column list.
     (let [inner (or (second (re-matches #"(?is)\s*LINEAR\s*\((.*)\)\s*" s)) s)]
       (->> (split-top-level-commas inner)
            (map (comp unquote-ident str/trim))
            (remove str/blank?)
            vec))))
 
-;; Snowflake clustering keys are unnamed in the catalog, so the single `:clustering` row is emitted with `:name nil`
-;; and reconciled by kind + key columns. `CLUSTERING_KEY` lives in the current database's INFORMATION_SCHEMA; a blank
-;; schema falls back to the connection's `current_schema()`.
+;; `CLUSTERING_KEY` lives in the current database's INFORMATION_SCHEMA; a blank schema falls back to `current_schema()`.
 (defmethod driver/fetch-table-indexes :snowflake
   [_driver database schema table]
   (let [clustering-key (-> (jdbc/query
