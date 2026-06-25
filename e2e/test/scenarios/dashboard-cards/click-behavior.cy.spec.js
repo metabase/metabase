@@ -2709,7 +2709,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").button("Done").click();
 
       H.saveDashboard({ awaitRequest: false });
-      cy.wait("@saveDashboard-getDashboard");
+      cy.wait("@saveDashboard-getDashboardMetadata");
 
       clickLineChartPoint();
 

@@ -91,7 +91,8 @@ export function saveDashboard({
   cy.intercept("PUT", "/api/dashboard/*").as(
     "saveDashboard-saveDashboardCards",
   );
-  cy.intercept("GET", "/api/dashboard/*").as("saveDashboard-getDashboard");
+  // Saving no longer re-fetches the dashboard with a GET: the save response is
+  // reused to rebuild state. We still refresh the query metadata.
   cy.intercept("GET", "/api/dashboard/*/query_metadata*").as(
     "saveDashboard-getDashboardMetadata",
   );
@@ -101,7 +102,6 @@ export function saveDashboard({
 
   if (awaitRequest) {
     cy.wait("@saveDashboard-saveDashboardCards");
-    cy.wait("@saveDashboard-getDashboard");
     cy.wait("@saveDashboard-getDashboardMetadata");
   }
 

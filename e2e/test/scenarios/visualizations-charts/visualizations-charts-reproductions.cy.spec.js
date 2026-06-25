@@ -656,7 +656,6 @@ describe("issue 21665", () => {
     });
 
     H.saveDashboard();
-    cy.wait("@getDashboard");
   });
 
   it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
