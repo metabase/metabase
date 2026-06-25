@@ -223,7 +223,7 @@ describe("Actions > ActionForm", () => {
         },
       });
 
-      expect(screen.getByRole("combobox")).toBeInTheDocument();
+      expect(screen.getByRole("textbox")).toBeInTheDocument();
     });
 
     it("can submit form field values", async () => {
