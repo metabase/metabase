@@ -3458,6 +3458,7 @@
            collections
            config
            connection-pool
+           events
            llm
            metabot
            models

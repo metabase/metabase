@@ -7,9 +7,9 @@ import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
+import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
+import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import type { ModalName } from "metabase/redux/store/modal";

@@ -200,7 +200,13 @@ describe("pivot tables", () => {
     QSHelpers.getFilter("Number").click();
     verifyNumberMappingOptions();
 
-    cy.button("Save").click();
+    // This test only inspects parameter mapping options without changing any
+    // mappings, so saving issues no dashboard PUT. Use awaitRequest: false so we
+    // deterministically exit to view mode (edit bar gone) without waiting on a
+    // saveDashboardCards request that never fires — while still guaranteeing the
+    // subsequent legend-caption drill lands in view mode, where it triggers the
+    // pivot query.
+    H.saveDashboard({ awaitRequest: false });
 
     cy.log("filter picker");
 

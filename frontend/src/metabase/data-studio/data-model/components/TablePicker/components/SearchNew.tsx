@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
-import { trackDataStudioTablePickerSearchPerformed } from "metabase/data-studio/analytics";
+import { trackDataStudioTablePickerSearchPerformed } from "metabase/common/data-studio/analytics";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Flex, Loader, Text } from "metabase/ui";
 import type { Table } from "metabase-types/api";
