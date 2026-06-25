@@ -40,7 +40,7 @@
 (t2/define-after-select :model/DashboardCard
   [dashcard]
   (if (contains? dashcard :visualization_settings)
-    (update dashcard :visualization_settings serdes/import-visualizer-settings)
+    (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
     dashcard))
 
 (declare series)

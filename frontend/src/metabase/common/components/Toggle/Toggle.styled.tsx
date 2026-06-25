@@ -27,7 +27,7 @@ const getBackgroundColor = ({
   if (checked) {
     return currentColor ?? color("core-brand");
   } else {
-    return "var(--mb-color-background-tertiary)";
+    return "var(--mb-color-background_page-tertiary)";
   }
 };
 
@@ -48,7 +48,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   &[disabled] {
     cursor: not-allowed;
     opacity: 0.5;
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_page-tertiary);
   }
 
   &:after {
@@ -59,7 +59,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
     position: absolute;
     top: 1px;
     transform: translateX(${getTranslateX});
-    background-color: var(--mb-color-background-primary);
+    background-color: var(--mb-color-background_page-primary);
     transition: transform 0.3s;
     box-shadow: 2px 2px 6px var(--mb-color-shadow);
   }

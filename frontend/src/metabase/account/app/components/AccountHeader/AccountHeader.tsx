@@ -48,7 +48,7 @@ export const AccountHeader = ({
       direction="column"
       justify="center"
       align="center"
-      bg="background-primary"
+      bg="background_page-primary"
       pt={{ base: "sm", sm: "md" }}
     >
       <Flex direction="column" align="center" p={{ base: "md", md: rem(64) }}>

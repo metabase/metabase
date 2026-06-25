@@ -161,7 +161,7 @@ export function CustomVizPage({ params }: Props) {
       <SettingsSection>
         <Box
           bdrs="md"
-          bg="background-primary"
+          bg="background_page-primary"
           data-testid="custom-viz-settings-form"
         >
           <FormProvider

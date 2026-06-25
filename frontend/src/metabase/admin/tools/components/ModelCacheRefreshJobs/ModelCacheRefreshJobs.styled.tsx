@@ -5,7 +5,7 @@ export const ErrorBox = styled.div`
   padding: 0.5rem 1rem;
   border-radius: 4px;
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   font-family: var(--mb-default-monospace-font-family, monospace);
   font-weight: 400;
   font-size: 12px;

@@ -17,7 +17,7 @@ export const DatabaseRoutingStepContent = () => {
         {t`Follow the steps in the documentation to manage data permissions with database routing.`}
       </Text>
 
-      <Paper bg="background-brand" p="lg" radius="md" withBorder>
+      <Paper bg="background_surface-brand-subtle" p="lg" radius="md" withBorder>
         <Stack gap="sm">
           <Title order={4} c="text-primary">
             {t`Manage data permissions with database routing`}

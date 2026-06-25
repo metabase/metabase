@@ -45,10 +45,10 @@ import S from "./DataComplexityCards.module.css";
 type RatingColorKey = DataComplexityRating | "default";
 
 const RATING_BADGE_BACKGROUND_COLORS = {
-  low: "background-success-secondary",
-  medium: "background-warning-secondary",
-  high: "background-error",
-  default: "background-tertiary",
+  low: "feedback-positive-selected",
+  medium: "background_surface-warning-strong",
+  high: "background_surface-error",
+  default: "background_page-tertiary",
 } satisfies Record<RatingColorKey, MetabaseColorKey>;
 
 const RATING_BADGE_TEXT_COLORS = {
@@ -282,7 +282,12 @@ function DataComplexityComponentItem({
     .exhaustive();
 
   return (
-    <Accordion.Item value={componentId} bg="background-secondary" bd="0" mt={0}>
+    <Accordion.Item
+      value={componentId}
+      bg="background_page-secondary"
+      bd="0"
+      mt={0}
+    >
       <Accordion.Control>
         <Flex align="center" gap="sm" w="100%">
           <Text c="text-primary" fw={500} truncate>

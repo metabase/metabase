@@ -86,7 +86,7 @@ function AdminConnectionInfoPageBody({
     <Flex
       direction="row"
       h="100%"
-      bg="background-secondary"
+      bg="background_page-secondary"
       data-testid="admin-connection-info-page"
     >
       <Box h="100%" w="100%" component={ScrollArea}>

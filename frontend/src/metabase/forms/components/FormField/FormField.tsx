@@ -71,7 +71,11 @@ export const FormField = forwardRef(function FormField(
                     {infoLabel}
                   </Text>
                 ) : (
-                  <Icon c="background-tertiary-inverse" ml="sm" name="info" />
+                  <Icon
+                    c="background_page-tertiary-inverse"
+                    ml="sm"
+                    name="info"
+                  />
                 )}
               </Tooltip>
             )}

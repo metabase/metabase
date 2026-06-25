@@ -23,7 +23,7 @@
   line-height: 1.125rem;
   border: 1px solid var(--mb-color-core-brand);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
   overflow-wrap: break-word;
 }
 

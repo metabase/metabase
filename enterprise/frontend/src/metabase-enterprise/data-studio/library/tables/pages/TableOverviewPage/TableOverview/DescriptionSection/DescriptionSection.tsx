@@ -188,7 +188,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
       </Box>
 
       {/* Metadata Sections */}
-      <Card mx="lg" bg="background-secondary" shadow="none" radius="1rem">
+      <Card mx="lg" bg="background_page-secondary" shadow="none" radius="1rem">
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
             <Icon name="pencil" c="core-brand" />

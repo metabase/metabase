@@ -1,8 +1,8 @@
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useDocsUrl } from "metabase/common/hooks";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { FormSelect } from "metabase/forms";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";

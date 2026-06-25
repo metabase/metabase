@@ -194,6 +194,7 @@
                 clause-shape?]]
    ::join     [:map
                {:closed false}
+               ["lib/type"   [:= "mbql/join"]]
                ["stages"     [:sequential {:min 1} [:ref ::stage]]]
                ["conditions" [:sequential {:min 1} [:ref ::clause]]]
                ["alias"      :string]

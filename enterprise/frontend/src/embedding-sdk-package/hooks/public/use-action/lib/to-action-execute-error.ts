@@ -5,7 +5,7 @@ import type { ActionExecuteError } from "../types";
 
 /**
  * Adapter at the public-API boundary: takes whatever the underlying network
- * client throws (legacy-client's wrapped response body, a native `Error`
+ * client throws (`api.request`'s wrapped response body, a native `Error`
  * from a transport failure, anything else) and produces a clean
  * `ActionExecuteError`. The public type must NOT leak the internal shape
  * (`via`, `cause`, `trace`, etc.) — this helper drops it.
