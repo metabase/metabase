@@ -6,6 +6,7 @@
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Comment [_model] :comment)
@@ -49,31 +50,38 @@
 
 (defn- exploration-comment-url
   "Build URL for an exploration comment using child_target_id (group ID) and context (JSON map with timeline etc.)."
-  [base comment]
-  (let [child   (:child_target_id comment)
+  [exploration_id comment]
+  (let [base    (channel.urls/exploration-path exploration_id)
+        child   (:child_target_id comment)
         context (:context comment)]
     (if child
-      (let [path        (format "%s/group/%s" base child)
-            ;; Build query params from context map plus comments=true
-            params      (cond-> (if (map? context) context {})
-                          true (assoc :comments "true"))
-            query-str   (->> params
-                             (map (fn [[k v]] (format "%s=%s" (name k) v)))
-                             (str/join "&"))]
-        (format "%s?%s#comment-%s" path query-str (:id comment)))
+      (let [path      (str base "/group/" (codec/url-encode (str child)))
+            params    (cond-> (if (map? context) context {})
+                        true (assoc :comments "true"))
+            query-str (->> params
+                           (map (fn [[k v]] (str (codec/url-encode (name k))
+                                                 "="
+                                                 (codec/url-encode (str v)))))
+                           (str/join "&"))]
+        (str path "?" query-str "#comment-" (:id comment)))
       base)))
 
 (defn url
   "Generate a URL to an entity anchored to a comment."
   [entity comment]
-  (let [base (case (t2/model entity)
-               :model/Document    (channel.urls/document-path (:id entity))
-               :model/Exploration (channel.urls/exploration-path (:id entity)))]
-    (case (t2/model entity)
-      :model/Document    (if-let [child (:child_target_id comment)]
-                           (format "%s/comments/%s#comment-%s" base child (:id comment))
-                           (format "%s#comment-%s" base (:id comment)))
-      :model/Exploration (exploration-comment-url base comment))))
+  (case (t2/model entity)
+    :model/Document (if (:child_target_id comment)
+                      (format "/document/%s/comments/%s#comment-%s"
+                              (:id entity)
+                              (:child_target_id comment)
+                              (:id comment))
+                      ;; NOTE: not used at the time of writing the code, but given that child_target_id is optional I
+                      ;; feel the need to have this clause
+                      (format "/document/%s#comment-%s"
+                              (:id entity)
+                              (:id comment)))
+
+    :model/Exploration (exploration-comment-url (:id entity) comment)))
 
 (defn mentions
   "Find mentioned users inside of a comment content"

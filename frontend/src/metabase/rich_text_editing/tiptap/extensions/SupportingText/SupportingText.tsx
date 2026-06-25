@@ -16,7 +16,7 @@ import { t } from "ttag";
 
 import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
 import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
-import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
+import { useUnresolvedDocumentCommentsCount } from "metabase/documents/hooks/use-unresolved-document-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
@@ -142,7 +142,7 @@ const SupportingTextComponent = ({
   const childTargetId = useSelector(getChildTargetId);
   const document = useSelector(getCurrentDocument);
   const { _id } = node.attrs;
-  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+  const unresolvedCommentsCount = useUnresolvedDocumentCommentsCount(_id, {
     skip: !isInViewport,
   });
   const isOpen = childTargetId === _id;

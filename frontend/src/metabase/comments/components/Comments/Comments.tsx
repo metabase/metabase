@@ -48,6 +48,7 @@ interface CommentsProps {
   showCloseButton?: boolean;
   context?: CommentContext;
   renderExtra?: CommentExtraRenderer;
+  disableAutoFocus?: boolean;
 }
 
 export const Comments = ({
@@ -59,6 +60,7 @@ export const Comments = ({
   showCloseButton = true,
   context,
   renderExtra,
+  disableAutoFocus = false,
 }: CommentsProps) => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<SidesheetTab | null>("open");
@@ -266,7 +268,7 @@ export const Comments = ({
           {childTargetId !== "all" && (
             <Box px="lg" py={activeComments.length === 0 ? "lg" : "xs"}>
               <CommentEditor
-                autoFocus={activeComments.length === 0}
+                autoFocus={activeComments.length === 0 && !disableAutoFocus}
                 data-testid="new-thread-editor"
                 placeholder={t`Add a comment…`}
                 onChange={(document) => setNewComment(document)}

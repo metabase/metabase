@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
@@ -51,9 +51,18 @@ export function DiscussionComment({
   const [isEditing, editingHandler] = useDisclosure(false);
   const location = useLocation();
   const hash = location.hash?.substring(1);
-  const isTarget = hash === getCommentNodeId(comment);
+  const commentNodeId = getCommentNodeId(comment);
+  const isTarget = hash === commentNodeId;
   const isCurrentUsersComment =
     currentUser && currentUser.id === comment.creator?.id;
+
+  useEffect(() => {
+    if (isTarget) {
+      document.getElementById(commentNodeId)?.scrollIntoView({
+        block: "center",
+      });
+    }
+  }, [isTarget, commentNodeId]);
 
   const handleEditClick = useCallback(() => {
     editingHandler.open();
@@ -76,7 +85,7 @@ export function DiscussionComment({
           }),
           itemBullet: S.commentBulletDeleted,
         }}
-        id={getCommentNodeId(comment)}
+        id={commentNodeId}
         mt="1.25rem"
         bullet={<Icon name="trash" />}
         aria-current={isTarget ? "location" : undefined}
@@ -107,7 +116,7 @@ export function DiscussionComment({
       bullet={<Avatar name={comment.creator?.common_name} />}
       aria-current={isTarget ? "location" : undefined}
       data-testid="discussion-comment"
-      id={getCommentNodeId(comment)}
+      id={commentNodeId}
     >
       {!isEditing && (
         <DiscussionActionPanel

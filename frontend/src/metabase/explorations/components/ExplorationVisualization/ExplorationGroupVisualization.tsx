@@ -8,7 +8,17 @@ import { Comments } from "metabase/comments/components/Comments";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Box, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Ellipsified,
+  Group,
+  Icon,
+  type IconProps,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
+import { is403Error } from "metabase/utils/errors";
 import { isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
@@ -25,7 +35,6 @@ import type {
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import { ActionToolbar, type CommentDrafts } from "./ActionToolbar";
-import { ExplorationChartError } from "./ExplorationChartError";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
@@ -43,33 +52,23 @@ interface ExplorationGroupVisualizationProps {
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   isCommentsSidebarOpen: boolean;
+  wasCommentsSidebarOpen: boolean;
 }
 
-const STACK_PANEL_HEIGHT = 64;
-
-function ErrorComponent() {
-  return (
-    <Stack
-      align="center"
-      justify="center"
-      flex={1}
-      gap="sm"
-      ta="center"
-      role="alert"
-      aria-live="polite"
-    >
-      <Icon name="warning" c="error" size={32} />
-      <Text fw="bold">{t`Something’s gone wrong.`}</Text>
-    </Stack>
-  );
+interface ExplorationGroupVisualizationWithGroupNameProps
+  extends ExplorationGroupVisualizationProps {
+  groupName: string;
 }
 
 export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
+  const { group, queries } = props;
+  const groupName = queries[0]?.name ?? group.name ?? t`Group`;
+
   return (
     <Stack flex={1} h="100%" pb="3rem" pr="1rem" align="center">
-      <Stack
+      <Box
         flex={1}
         w="100%"
         bg="background-primary"
@@ -77,78 +76,52 @@ export function ExplorationGroupVisualization(
         bdrs="md"
         h="100%"
       >
-        <ErrorBoundary errorComponent={ErrorComponent}>
-          <ExplorationGroupVisualizationBody {...props} />
+        <ErrorBoundary
+          errorComponent={() => (
+            <Message
+              groupName={groupName}
+              message={t`Something’s gone wrong.`}
+              iconProps={{ name: "warning", c: "error", size: 32 }}
+            />
+          )}
+        >
+          <ExplorationGroupVisualizationBody groupName={groupName} {...props} />
         </ErrorBoundary>
-      </Stack>
+      </Box>
     </Stack>
   );
 }
 
 function ExplorationGroupVisualizationBody(
-  props: ExplorationGroupVisualizationProps,
+  props: ExplorationGroupVisualizationWithGroupNameProps,
 ) {
-  const { group, queries } = props;
-  const groupName = queries[0]?.name ?? group.name ?? t`Group`;
+  const { groupName, queries } = props;
 
   if (queries.length === 0) {
     // Defensive: a `page` group should always carry queries, but if BE
     // shape ever drifts, render a friendly empty state instead of crashing.
     return (
-      <>
-        <ExplorationVisualizationHeader name={groupName} />
-        <Stack
-          align="center"
-          justify="center"
-          flex={1}
-          gap="sm"
-          ta="center"
-          role="status"
-          aria-live="polite"
-        >
-          <Text c="text-secondary">{t`No charts in this group.`}</Text>
-        </Stack>
-      </>
+      <Message groupName={groupName} message={t`No charts in this group.`} />
     );
   }
 
   if (queries.some((q) => q.status === "error")) {
     return (
-      <>
-        <ExplorationVisualizationHeader name={groupName} />
-        <Stack
-          align="center"
-          justify="center"
-          flex={1}
-          gap="sm"
-          ta="center"
-          role="alert"
-          aria-live="polite"
-        >
-          <Icon name="warning" c="error" size={32} />
-          <Text fw="bold">{t`We couldn't generate one or more of these charts.`}</Text>
-        </Stack>
-      </>
+      <Message
+        groupName={groupName}
+        message={t`We couldn't generate one or more of these charts.`}
+        iconProps={{ name: "warning", c: "error" }}
+      />
     );
   }
 
   if (queries.some((q) => q.status === "canceled")) {
     return (
-      <>
-        <ExplorationVisualizationHeader name={groupName} />
-        <Stack
-          align="center"
-          justify="center"
-          flex={1}
-          gap="sm"
-          ta="center"
-          role="alert"
-          aria-live="polite"
-        >
-          <Icon name="octagon_alert" c="icon-primary" size={32} />
-          <Text fw="bold">{t`Research was stopped.`}</Text>
-        </Stack>
-      </>
+      <Message
+        groupName={groupName}
+        message={t`Research was stopped.`}
+        iconProps={{ name: "octagon_alert", c: "icon-primary" }}
+      />
     );
   }
 
@@ -173,7 +146,8 @@ function ExplorationGroupVisualizationChart({
   commentDrafts,
   setCommentDrafts,
   isCommentsSidebarOpen,
-}: ExplorationGroupVisualizationProps & { groupName: string }) {
+  wasCommentsSidebarOpen,
+}: ExplorationGroupVisualizationWithGroupNameProps) {
   const dispatch = useDispatch();
   const queryIds = useMemo(() => queries.map((q) => q.id), [queries]);
 
@@ -214,8 +188,11 @@ function ExplorationGroupVisualizationChart({
   }, [queries, selectedTimelineId, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
-    return seriesGroups?.some((group) => group.isTimeseries);
-  }, [seriesGroups]);
+    return (
+      seriesGroups?.some((group) => group.isTimeseries) &&
+      availableTimelines.length > 0
+    );
+  }, [seriesGroups, availableTimelines]);
 
   const CommentTimelineBadge = useCallback(
     (comment: Comment) => {
@@ -228,88 +205,92 @@ function ExplorationGroupVisualizationChart({
         return null;
       }
       return (
-        <Box
-          w="fit-content"
+        <UnstyledButton
           bd="0.5px solid border"
           bdrs="lg"
           py="xs"
           px="sm"
-          bg="background-secondary"
           c="text-secondary"
-          mt="xs"
+          mt="0.375rem"
+          className={S.commentTimelineBadge}
+          onClick={() => {
+            onSelectTimelineId(timelineId);
+          }}
         >
           {timeline.name}
-        </Box>
+        </UnstyledButton>
       );
     },
-    [availableTimelines],
+    [availableTimelines, onSelectTimelineId],
   );
 
   if (!seriesGroups) {
     if (datasetError) {
-      return <ExplorationChartError name={groupName} error={datasetError} />;
+      if (is403Error(datasetError)) {
+        return (
+          <Message
+            groupName={groupName}
+            message={t`You don't have permission to view these results.`}
+            iconProps={{ name: "lock", c: "text-secondary" }}
+          />
+        );
+      }
+      return (
+        <Message
+          groupName={groupName}
+          message={t`This chart couldn't be loaded.`}
+          iconProps={{ name: "warning", c: "error" }}
+        />
+      );
     }
     return <ExplorationChartSkeleton name={groupName} />;
   }
 
   if (seriesGroups.length === 0) {
     return (
-      <>
-        <ExplorationVisualizationHeader name={groupName} />
-        <Stack
-          align="center"
-          justify="center"
-          flex={1}
-          gap="sm"
-          ta="center"
-          role="alert"
-          aria-live="polite"
-        >
-          <Icon name="warning" c="error" size={32} />
-          <Text fw="bold">{t`We couldn't find any data to display.`}</Text>
-        </Stack>
-      </>
+      <Message
+        groupName={groupName}
+        message={t`We couldn't find any data to display.`}
+        iconProps={{ name: "warning", c: "error" }}
+      />
     );
   }
 
   return (
-    <Group flex={1} gap={0} mih={0}>
+    <Group flex={1} gap={0} h="100%">
       <Stack flex={1} p="lg" className={S.chartGridContainer} h="100%">
         <ExplorationVisualizationHeader
           name={groupName}
           explorationId={explorationId}
           groupId={group.id}
-          availableTimelines={availableTimelines}
-          selectedTimelineId={selectedTimelineId}
-          onSelectTimelineId={onSelectTimelineId}
-          showTimelineDropdown={showTimelineDropdown}
-          interestingTimelineIds={interestingTimelineIds}
           isCommentsSidebarOpen={isCommentsSidebarOpen}
+          showCommentsButton={true}
         />
         <Box className={S.chartGrid} data-testid="exploration-chart-grid">
-          {seriesGroups.map(({ series, stackCount, chartLabel, legendItems }) =>
-            isCartesianChart(series[0].card.display) ? (
-              <ExplorationCartesianChart
-                key={series[0].card.id}
-                series={series}
-                stackCount={stackCount}
-                label={chartLabel}
-              />
-            ) : series[0].card.display === "table" ? (
-              <ExplorationHeatMap
-                key={series[0].card.id}
-                series={series}
-                stackCount={stackCount}
-                label={chartLabel}
-              />
-            ) : (
-              <ExplorationMap
-                key={series[0].card.id}
-                series={series}
-                label={chartLabel}
-                legendItems={legendItems}
-              />
-            ),
+          {seriesGroups.map(
+            ({ series, stackCount, chartLabel, legendItems }) =>
+              isCartesianChart(series[0].card.display) ? (
+                <ExplorationCartesianChart
+                  key={series[0].card.id}
+                  series={series}
+                  stackCount={stackCount}
+                  label={chartLabel}
+                />
+              ) : series[0].card.display === "table" ? (
+                <ExplorationHeatMap
+                  key={series[0].card.id}
+                  series={series}
+                  stackCount={stackCount}
+                  label={chartLabel}
+                />
+              ) : (
+                <ExplorationMap
+                  key={series[0].card.id}
+                  series={series}
+                  label={chartLabel}
+                  legendItems={legendItems}
+                />
+              ),
           )}
         </Box>
         <ActionToolbar
@@ -317,12 +298,20 @@ function ExplorationGroupVisualizationChart({
           groupId={group.id}
           commentDrafts={commentDrafts}
           setCommentDrafts={setCommentDrafts}
+          showTimelineDropdown={showTimelineDropdown ?? false}
+          availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}
+          onSelectTimelineId={onSelectTimelineId}
+          interestingTimelineIds={interestingTimelineIds}
         />
       </Stack>
       {isCommentsSidebarOpen && (
         <Box w="23rem" h="100%" className={S.commentsSidebar}>
           <Comments
+            // since ExplorationGroupVisualization is keyed on the group, Comments remounts whenever the group changes
+            // but autofocus can steal the focus and prevent keyboard nav from working
+            // so we only allow autofocus is the sidebar is truly opening, not just Comments remounting
+            disableAutoFocus={wasCommentsSidebarOpen}
             commentTarget={{
               target_id: explorationId,
               target_type: "exploration",
@@ -348,14 +337,10 @@ interface ExplorationCartesianChartProps {
 
 function ExplorationCartesianChart({
   series,
-  stackCount,
   label,
 }: ExplorationCartesianChartProps) {
   return (
-    <Stack
-      gap="sm"
-      mih={stackCount ? stackCount * STACK_PANEL_HEIGHT : "10rem"}
-    >
+    <Stack gap="sm">
       {label && <Text size="lg">{label}</Text>}
       <Box flex={1} mih={0}>
         <ExplorationVisualization rawSeries={series} className={S.chart} />
@@ -459,5 +444,31 @@ export function ExplorationVisualization({
         onUpdateWarnings={setWarnings}
       />
     </Box>
+  );
+}
+
+interface MessageProps {
+  groupName: string;
+  message: string;
+  iconProps?: IconProps;
+}
+
+function Message({ groupName, message, iconProps }: MessageProps) {
+  return (
+    <Stack p="lg" h="100%">
+      <ExplorationVisualizationHeader name={groupName} />
+      <Stack
+        align="center"
+        justify="center"
+        flex={1}
+        gap="sm"
+        ta="center"
+        role="alert"
+        aria-live="polite"
+      >
+        {iconProps && <Icon size={32} {...iconProps} />}
+        <Text fw="bold">{message}</Text>
+      </Stack>
+    </Stack>
   );
 }
