@@ -64,6 +64,10 @@ databaseChangeLog:
       id: v62.2026-06-06T00:00:02
       author: qnkhuat
       comment: Backfill task_run.notification_id for the last 90 days (Postgres/MySQL; H2 ages out)
+      # This backfill is best-effort and non-critical: never let it block an upgrade. failOnError
+      # skips the changeset on any failure instead of aborting init.
+      failOnError: false
+      validCheckSum: ANY
       changes:
         - sql:
             dbms: postgresql
@@ -85,10 +89,11 @@ databaseChangeLog:
               UPDATE task_run tr
               JOIN task_history th ON th.run_id = tr.id
               SET tr.notification_id = CAST(COALESCE(
-                    JSON_UNQUOTE(JSON_EXTRACT(th.task_details, '$.notification_id')),
-                    JSON_UNQUOTE(JSON_EXTRACT(th.task_details, '$."original-info".notification_id'))
+                    NULLIF(JSON_UNQUOTE(JSON_EXTRACT(th.task_details, '$.notification_id')), 'null'),
+                    NULLIF(JSON_UNQUOTE(JSON_EXTRACT(th.task_details, '$."original-info".notification_id')), 'null')
                   ) AS UNSIGNED)
               WHERE th.task = 'notification-send'
+                AND JSON_VALID(th.task_details)
                 AND tr.run_type IN ('alert', 'subscription')
                 AND tr.notification_id IS NULL
                 AND tr.started_at > now() - interval 90 day;
