@@ -105,11 +105,9 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const isTransformsSetupComplete = useSetting("transforms-setup-complete");
   const areTransformsEnabled = useSetting("transforms-enabled");
 
+  const canUseTransforms = canAccessTransforms && areTransformsEnabled;
   // if transform setup isn't complete, we still show transforms - that's where the upsell/enable pages are
-  const shouldShowTransforms =
-    (canAccessTransforms && areTransformsEnabled) || !isTransformsSetupComplete;
-  const shouldShowJobs = canAccessTransforms && areTransformsEnabled;
-  const shouldShowRuns = canAccessTransforms && areTransformsEnabled;
+  const shouldShowTransforms = canUseTransforms || !isTransformsSetupComplete;
 
   const settings = useDataStudioSettings();
 
@@ -225,7 +223,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          {shouldShowJobs && (
+          {canUseTransforms && (
             <DataStudioTab
               label={t`Jobs`}
               icon="clock"
@@ -234,7 +232,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          {shouldShowRuns && (
+          {canUseTransforms && (
             <DataStudioTab
               label={t`Runs`}
               icon="play_outlined"

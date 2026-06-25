@@ -14,7 +14,7 @@ export function useLocalSetting<
 >(key: K, value: V) {
   const [localValue, setLocalValue] = useState<V>(value);
   const previousValueRef = useRef<V>(value);
-  const [updateSetting] = useUpdateSettingMutation();
+  const [updateSetting, { isLoading: isUpdating }] = useUpdateSettingMutation();
   const [sendToast] = useToast();
 
   const handleChange = useCallback(
@@ -38,5 +38,6 @@ export function useLocalSetting<
   return {
     value: localValue,
     handleChange,
+    isUpdating,
   };
 }
