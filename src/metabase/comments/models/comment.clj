@@ -56,7 +56,8 @@
         context (:context comment)]
     (if child
       (let [path      (str base "/group/" (codec/url-encode (str child)))
-            params    (cond-> (if (map? context) context {})
+            params    (cond-> {}
+                        (:timeline_id context) (assoc :timeline (:timeline_id context))
                         true (assoc :comments "true"))
             query-str (->> params
                            (map (fn [[k v]] (str (codec/url-encode (name k))

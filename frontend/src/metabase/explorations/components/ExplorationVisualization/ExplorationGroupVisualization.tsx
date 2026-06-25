@@ -27,7 +27,6 @@ import type {
   ExplorationId,
   ExplorationQuery,
   ExplorationQueryGroup,
-  ExplorationThread,
   SingleSeries,
   Timeline,
   TimelineId,
@@ -38,13 +37,12 @@ import { ActionToolbar, type CommentDrafts } from "./ActionToolbar";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationGroupVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
-import { type LegendItem, buildSeriesGroups } from "./utils";
+import { type LegendItem, buildSeriesGroup } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
   group: ExplorationQueryGroup;
   queries: ExplorationQuery[];
-  explorationThread: ExplorationThread;
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
   onSelectTimelineId: (timelineId: TimelineId | null) => void;
@@ -169,16 +167,17 @@ function ExplorationGroupVisualizationChart({
   const datasets = datasetQueries.map((q) => q.data);
   const datasetError = datasetQueries.find((q) => q.error)?.error;
 
-  const { seriesGroups } = useMemo(() => {
+  const seriesGroup = useMemo(() => {
     const filteredDatasets = datasets.filter((d) => d !== undefined);
-    if (filteredDatasets.length < datasets.length) {
-      return {
-        seriesGroups: undefined,
-      };
+    if (filteredDatasets.length !== queries.length) {
+      return undefined;
     }
-    return buildSeriesGroups({
-      queries,
-      datasets: filteredDatasets,
+    const queriesWithDatasets = queries.map((q, i) => ({
+      ...q,
+      dataset: filteredDatasets[i],
+    }));
+    return buildSeriesGroup({
+      queriesWithDatasets,
       selectedTimelineId,
     });
     // datasets are reconstructed every render but its identity-stable
@@ -188,11 +187,8 @@ function ExplorationGroupVisualizationChart({
   }, [queries, selectedTimelineId, ...datasets]);
 
   const showTimelineDropdown = useMemo(() => {
-    return (
-      seriesGroups?.some((group) => group.isTimeseries) &&
-      availableTimelines.length > 0
-    );
-  }, [seriesGroups, availableTimelines]);
+    return seriesGroup?.isTimeseries && availableTimelines.length > 0;
+  }, [seriesGroup, availableTimelines]);
 
   const CommentTimelineBadge = useCallback(
     (comment: Comment) => {
@@ -224,7 +220,7 @@ function ExplorationGroupVisualizationChart({
     [availableTimelines, onSelectTimelineId],
   );
 
-  if (!seriesGroups) {
+  if (!seriesGroup) {
     if (datasetError) {
       if (is403Error(datasetError)) {
         return (
@@ -246,15 +242,7 @@ function ExplorationGroupVisualizationChart({
     return <ExplorationChartSkeleton name={groupName} />;
   }
 
-  if (seriesGroups.length === 0) {
-    return (
-      <Message
-        groupName={groupName}
-        message={t`We couldn't find any data to display.`}
-        iconProps={{ name: "warning", c: "error" }}
-      />
-    );
-  }
+  const { series, stackCount, legendItems } = seriesGroup;
 
   return (
     <Group flex={1} gap={0} h="100%">
@@ -267,30 +255,24 @@ function ExplorationGroupVisualizationChart({
           showCommentsButton={true}
         />
         <Box className={S.chartGrid} data-testid="exploration-chart-grid">
-          {seriesGroups.map(
-            ({ series, stackCount, chartLabel, legendItems }) =>
-              isCartesianChart(series[0].card.display) ? (
-                <ExplorationCartesianChart
-                  key={series[0].card.id}
-                  series={series}
-                  stackCount={stackCount}
-                  label={chartLabel}
-                />
-              ) : series[0].card.display === "table" ? (
-                <ExplorationHeatMap
-                  key={series[0].card.id}
-                  series={series}
-                  stackCount={stackCount}
-                  label={chartLabel}
-                />
-              ) : (
-                <ExplorationMap
-                  key={series[0].card.id}
-                  series={series}
-                  label={chartLabel}
-                  legendItems={legendItems}
-                />
-              ),
+          {isCartesianChart(series[0].card.display) ? (
+            <ExplorationCartesianChart
+              key={series[0].card.id}
+              series={series}
+              stackCount={stackCount}
+            />
+          ) : series[0].card.display === "table" ? (
+            <ExplorationHeatMap
+              key={series[0].card.id}
+              series={series}
+              stackCount={stackCount}
+            />
+          ) : (
+            <ExplorationMap
+              key={series[0].card.id}
+              series={series}
+              legendItems={legendItems}
+            />
           )}
         </Box>
         <ActionToolbar
@@ -332,55 +314,34 @@ function ExplorationGroupVisualizationChart({
 interface ExplorationCartesianChartProps {
   series: SingleSeries[];
   stackCount?: number;
-  label?: string;
 }
 
-function ExplorationCartesianChart({
-  series,
-  label,
-}: ExplorationCartesianChartProps) {
-  return (
-    <Stack gap="sm">
-      {label && <Text size="lg">{label}</Text>}
-      <Box flex={1} mih={0}>
-        <ExplorationVisualization rawSeries={series} className={S.chart} />
-      </Box>
-    </Stack>
-  );
+function ExplorationCartesianChart({ series }: ExplorationCartesianChartProps) {
+  return <ExplorationVisualization rawSeries={series} className={S.chart} />;
 }
 
 interface ExplorationHeatMapProps {
   series: SingleSeries[];
   stackCount?: number;
-  label?: string;
 }
 
-function ExplorationHeatMap({
-  series,
-  stackCount,
-  label,
-}: ExplorationHeatMapProps) {
+function ExplorationHeatMap({ series, stackCount }: ExplorationHeatMapProps) {
   const tableHeight = HEADER_HEIGHT + (stackCount ?? 1) * ROW_HEIGHT;
   return (
-    <Stack gap="sm">
-      {label && <Text size="lg">{label}</Text>}
-      <Box h={tableHeight}>
-        <ExplorationVisualization rawSeries={series} className={S.chart} />
-      </Box>
-    </Stack>
+    <Box h={tableHeight}>
+      <ExplorationVisualization rawSeries={series} className={S.chart} />
+    </Box>
   );
 }
 
 interface ExplorationMapProps {
   series: SingleSeries[];
-  label?: string;
   legendItems: LegendItem[];
 }
 
-function ExplorationMap({ series, label, legendItems }: ExplorationMapProps) {
+function ExplorationMap({ series, legendItems }: ExplorationMapProps) {
   return (
     <Stack gap="md">
-      {label && <Text size="lg">{label}</Text>}
       {legendItems.length > 1 && (
         <Group gap="0.75rem" wrap="nowrap" role="list" aria-label={t`Legend`}>
           {legendItems.map(({ name, color }, i) => {

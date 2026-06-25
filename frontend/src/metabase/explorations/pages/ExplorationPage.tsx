@@ -431,7 +431,6 @@ export function ExplorationPage({
               explorationId={exploration.id}
               group={selectedGroup.group}
               queries={selectedGroup.queries}
-              explorationThread={selectedGroup.thread}
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={handleSelectTimelineId}
