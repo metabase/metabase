@@ -82,18 +82,12 @@
    ns-decls))
 
 (def ^:private drivers-excluded-from-aot
-  "Names of `modules/drivers/*` driver modules whose JDBC dependencies are not bundled due to licensing restrictions
-  (users must supply the JDBC driver JAR themselves). These drivers are included as source on the classpath and
-  compiled lazily at runtime when their JDBC driver is present in the plugins directory."
-  #{"oracle" "vertica"})
-
-(def ^:private core-driver-namespaces-excluded-from-aot
-  "Driver namespaces that live in `src/` (not `modules/drivers/`) but, like [[drivers-excluded-from-aot]], must NOT be
-  AOT-compiled because their JDBC dependency may be absent from the build classpath. `metabase.driver.h2` `:import`s
-  `org.h2.*` classes, and the H2 JDBC JAR is bundled only in OSS builds -- AOT-compiling it during an EE build (where
-  H2 is absent) would fail. Instead it ships as source (see [[add-non-aot-driver-sources!]]) and is compiled lazily at
-  runtime when H2 is present. See `metabase.config.core/h2-available?`."
-  #{'metabase.driver.h2})
+  "Names of `modules/drivers/*` driver modules whose JDBC dependency may be absent from the build classpath, so they
+  must NOT be AOT-compiled (their ns forms `:import` JDBC classes that aren't present). They ship as source (see
+  [[add-non-aot-driver-sources!]]) and are compiled lazily at runtime once their JDBC driver is on the classpath.
+  `oracle`/`vertica` JARs are user-supplied due to licensing; the `h2` JAR is bundled in OSS builds but EE-supplied
+  (see `metabase.config.core/h2-available?`)."
+  #{"h2" "oracle" "vertica"})
 
 (defn- all-drivers []
   (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
@@ -115,10 +109,8 @@
                         ns.deps/topo-sort
                         (filter ns-symbols))
         orphans    (remove (set sorted) ns-symbols)
-        all        (->> (concat orphans sorted (all-drivers))
-                        (remove core-driver-namespaces-excluded-from-aot))]
+        all        (concat orphans sorted (all-drivers))]
     (assert (contains? (set all) 'metabase.core.bootstrap))
-    (assert (not-any? core-driver-namespaces-excluded-from-aot all))
     (when (contains? ns-symbols 'metabase-enterprise.core.dummy-namespace)
       (assert (contains? (set all) 'metabase-enterprise.core.dummy-namespace)))
     all))
@@ -246,22 +238,11 @@
     (Files/createDirectories (.getParent target) (misc/varargs java.nio.file.attribute.FileAttribute))
     (Files/copy (.toPath f) target (misc/varargs java.nio.file.CopyOption))))
 
-(defn- ns-sym->source-file
-  "Resolve a namespace symbol to its `.clj` source file under `src-dir` (e.g. `metabase.driver.h2` ->
-  `<src-dir>/metabase/driver/h2.clj`)."
-  ^File [^File src-dir ns-sym]
-  (let [rel (-> (name ns-sym) (str/replace \. \/) (str/replace \- \_) (str ".clj"))]
-    (io/file src-dir rel)))
-
 (defn- add-non-aot-driver-sources!
-  "Inject source files for drivers excluded from AOT directly into the uberjar.
-  These drivers can't be AOT-compiled (their ns forms reference JDBC classes not bundled due to licensing), so they
-  ship as source and are compiled lazily at runtime. We add them after b/uber because uber strips all .clj files from
-  class-dir.
-
-  Two cases: driver *modules* under `modules/drivers/*` (see [[drivers-excluded-from-aot]]), and core driver
-  namespaces that live in `src/` (see [[core-driver-namespaces-excluded-from-aot]], currently just
-  `metabase.driver.h2`)."
+  "Inject source files for the [[drivers-excluded-from-aot]] driver modules directly into the uberjar.
+  These drivers can't be AOT-compiled (their ns forms `:import` JDBC classes that may be absent from the build
+  classpath), so they ship as source and are compiled lazily at runtime. We add them after b/uber because uber strips
+  all .clj files from class-dir."
   []
   (u/step "Add non-AOT driver sources to uberjar"
     (u/with-open-jar-file-system [fs uberjar-filename]
@@ -271,12 +252,6 @@
         (u/step (format "Add source for %s" driver)
           (doseq [^File f (file-seq src-dir)
                   :when (.isFile f)]
-            (copy-source-file-into-jar! fs src-dir f))))
-      (let [src-dir (io/file (u/filename u/project-root-directory "src"))]
-        (doseq [ns-sym core-driver-namespaces-excluded-from-aot
-                :let [f (ns-sym->source-file src-dir ns-sym)]]
-          (u/step (format "Add source for %s" ns-sym)
-            (assert (.isFile f) (format "Expected source file for %s at %s" ns-sym f))
             (copy-source-file-into-jar! fs src-dir f)))))))
 
 (defn update-manifest!
