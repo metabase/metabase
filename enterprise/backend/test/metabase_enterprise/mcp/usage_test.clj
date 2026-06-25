@@ -28,15 +28,30 @@
     (is (= "claude"        (usage/detect-client "Claude")))
     (is (= "chatgpt"       (usage/detect-client "ChatGPT")))
     (is (= "chatgpt"       (usage/detect-client "openai-mcp")))
-    (is (= "cursor-vscode" (usage/detect-client "Cursor"))))
+    (is (= "cursor-vscode" (usage/detect-client "Cursor")))
+    (is (= "vscode"        (usage/detect-client "Visual Studio Code")))
+    (is (= "vscode"        (usage/detect-client "Visual Studio Code - Insiders")))
+    (is (= "zed"           (usage/detect-client "Zed"))))
+  (testing "the mcp-remote wrapper is stripped before classifying"
+    (is (= "zed"    (usage/detect-client "Zed (via mcp-remote 0.1.37)")))
+    (is (= "claude" (usage/detect-client "Claude Code (via mcp-remote 0.1.37)"))))
   (testing "unknown / missing names fall back to \"other\""
     (is (= "other" (usage/detect-client "Some Random Client")))
     (is (= "other" (usage/detect-client "")))
     (is (= "other" (usage/detect-client nil))))
   (testing "every value produced is a supported key or the \"other\" fallback"
-    (doseq [n ["claude-ai" "ChatGPT" "Cursor" "whatever" nil]]
+    (doseq [n ["claude-ai" "ChatGPT" "Cursor" "Visual Studio Code" "Zed" "whatever" nil]]
       (is (contains? (conj usage/supported-client-keys "other")
                      (usage/detect-client n))))))
+
+(deftest proxy-probe?-test
+  (testing "mcp-remote's throwaway transport-probe handshake is recognized (case-insensitive)"
+    (is (true? (usage/proxy-probe? "mcp-remote-fallback-test")))
+    (is (true? (usage/proxy-probe? "MCP-Remote-Fallback-Test"))))
+  (testing "real clients (including mcp-remote-wrapped ones) are not probes"
+    (is (not (usage/proxy-probe? "Zed (via mcp-remote 0.1.37)")))
+    (is (not (usage/proxy-probe? "claude-ai")))
+    (is (not (usage/proxy-probe? nil)))))
 
 ;;; ------------------------------------------- record-mcp-session! -----------------------------------------
 
@@ -100,6 +115,17 @@
             (is (= "claude" (:client_name row)))
             (is (= "1" (:client_version row)))
             (is (= (mt/user->id :rasta) (:user_id row))))
+          (finally (cleanup! sid)))))))
+
+(deftest record-mcp-session!-ignores-mcp-remote-probe-test
+  (testing "mcp-remote's fallback-probe handshake is never recorded as a session"
+    (mt/with-premium-features #{:audit-app}
+      (let [sid (str "test-probe-" (mt/random-name))]
+        (try
+          (usage/record-mcp-session!
+           {:session-id sid :user-id (mt/user->id :rasta)
+            :client-info {:name "mcp-remote-fallback-test" :version "0.0.0"}})
+          (is (nil? (t2/select-one :model/McpSessionLog :id sid)))
           (finally (cleanup! sid)))))))
 
 ;;; ----------------------------------------- record-mcp-session-end! ---------------------------------------

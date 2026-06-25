@@ -35,7 +35,10 @@
   :feature :none
   [{:keys [session-id user-id tenant-id client-info user-agent ip-address]}]
   (try
-    (when (and session-id (not (t2/exists? :model/McpSessionLog :id session-id)))
+    (when (and session-id
+               ;; mcp-remote fires a throwaway transport-probe handshake; never record it
+               (not (mcp.usage/proxy-probe? (:name client-info)))
+               (not (t2/exists? :model/McpSessionLog :id session-id)))
       (let [;; `pii-fields-from` returns the gated PII columns only when
             ;; `analytics-pii-retention-enabled` is on (nil otherwise). We keep only
             ;; user_agent / ip_address — embedding_* and sanitized_user_agent are not collected.

@@ -35,6 +35,8 @@ SELECT
         WHEN 'claude'        THEN 'Claude'
         WHEN 'chatgpt'       THEN 'ChatGPT'
         WHEN 'cursor-vscode' THEN 'Cursor'
+        WHEN 'vscode'        THEN 'VS Code'
+        WHEN 'zed'           THEN 'Zed'
         WHEN 'other'         THEN 'Other'
         ELSE s.client_name
     END                                                        AS client_display_name,

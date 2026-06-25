@@ -18,24 +18,42 @@
    [metabase.util :as u]))
 
 (def supported-client-keys
-  "Canonical MCP client keys we classify into for analytics. Kept in sync with the keys of
-  `mcp-client-apps-sandbox-domains` in `metabase.mcp.settings` (the CORS-enabled set)."
-  #{"claude" "chatgpt" "cursor-vscode"})
+  "Canonical MCP client keys [[detect-client]] classifies into for analytics. Keep in sync with
+  the `client_name` CASE in the `v_mcp_tool_calls` view SQL (the enum-<->-CASE sync footgun)."
+  #{"claude" "chatgpt" "cursor-vscode" "vscode" "zed"})
 
 (def ^:private client-name-matchers
   "Ordered `[substring canonical-key]` pairs matched against the lowercased handshake
-  `clientInfo.name`. First match wins."
-  [["claude"  "claude"]
-   ["chatgpt" "chatgpt"]
-   ["openai"  "chatgpt"]
-   ["cursor"  "cursor-vscode"]])
+  `clientInfo.name` (after stripping any mcp-remote wrapper). First match wins."
+  [["claude"             "claude"]
+   ["chatgpt"            "chatgpt"]
+   ["openai"             "chatgpt"]
+   ["cursor"             "cursor-vscode"]
+   ["visual studio code" "vscode"]
+   ["zed"                "zed"]])
+
+(def ^:private proxy-wrapper-re
+  "`mcp-remote` rewrites the handshake name to `\"<name> (via mcp-remote x.y.z)\"`; this strips
+  that suffix so the real client name is what gets classified."
+  #"\s*\(via mcp-remote[^)]*\)\s*$")
+
+(def ^:private proxy-probe-client-name
+  "`mcp-remote` opens a throwaway probe connection under this exact name while negotiating
+  transports. It is never a real client and must not be recorded as a session."
+  "mcp-remote-fallback-test")
+
+(defn proxy-probe?
+  "True when the `initialize` handshake is `mcp-remote`'s transport-probe connection, which is
+  not a real client session and should be ignored for analytics."
+  [client-info-name]
+  (= (some-> client-info-name u/lower-case-en) proxy-probe-client-name))
 
 (defn detect-client
   "Classify the `initialize`-handshake `clientInfo` name into a canonical client key (one of
-  [[supported-client-keys]]), or `\"other\"` when nothing matches. Identity comes from the
-  handshake name, never User-Agent parsing."
+  [[supported-client-keys]]), or `\"other\"` when nothing matches. The `mcp-remote` wrapper is
+  stripped first. Identity comes from the handshake name, never User-Agent parsing."
   [client-info-name]
-  (let [n (some-> client-info-name u/lower-case-en)]
+  (let [n (some-> client-info-name u/lower-case-en (str/replace proxy-wrapper-re ""))]
     (or (when n
           (some (fn [[needle k]] (when (str/includes? n needle) k)) client-name-matchers))
         "other")))
