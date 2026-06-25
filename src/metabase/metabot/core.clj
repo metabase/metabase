@@ -19,6 +19,7 @@
   agent-query-construct
   agent-query-execute
   agent-question-create
+  agent-question-run
   agent-question-update
   agent-resource-read
   agent-search

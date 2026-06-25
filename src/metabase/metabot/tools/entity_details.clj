@@ -12,6 +12,7 @@
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -397,6 +398,12 @@
                          (lib/query metadata-provider (lib-be/normalize-query dataset-query))
                          shared.content-store/default-store))
           :related_tables related-tables
+          ;; Filters/template-tag values the LLM can override when re-running this card via
+          ;; `run_question` (see `qp.card/enrich-parameters-from-card`, which matches overrides
+          ;; back to these by `:id`). Trimmed to the fields a caller needs to construct an
+          ;; override -- admin-only config like `values_source_config` is omitted.
+          :parameters (not-empty (mapv #(select-keys % [:id :type :target :name :default])
+                                       (qp.card/combined-parameters-and-template-tags base)))
           :metrics (when with-metrics?
                      (not-empty (mapv #(convert-metric % metadata-provider options)
                                       (lib/available-metrics card-query))))

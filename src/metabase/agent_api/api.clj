@@ -27,6 +27,7 @@
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -921,6 +922,60 @@
      :collection_path (collection-path (:collection_id updated))
      :description     (:description updated)
      :archived        (boolean (:archived updated))}))
+
+;;; ------------------------------------------------- Run Question --------------------------------------------------
+
+(mr/def ::question-run-parameter
+  "Runtime override for one of the question's existing parameters/template tags.
+  :type and :target are auto-filled from the question's own declaration when omitted
+  (see `metabase.query-processor.card/enrich-parameters-from-card`) -- this can only override
+  an existing filter's value, not add a new one. Find valid `:id`s via `read_resource` on
+  `metabase://question/{id}`, which lists the question's overridable parameters."
+  [:map
+   [:id     ms/NonBlankString]
+   [:value  {:optional true} [:maybe :any]]
+   [:type   {:optional true} [:maybe ms/NonBlankString]]
+   [:target {:optional true} [:maybe :any]]])
+
+(mr/def ::run-question-request
+  [:map
+   [:parameters   {:optional true} [:maybe [:sequential ::question-run-parameter]]]
+   [:ignore_cache {:optional true} [:maybe :boolean]]])
+
+(api.macros/defendpoint :post "/v1/question/:id/query"
+  :- (streaming-response/streaming-response-schema ::execute-query-response)
+  "Run a saved question (card) by ID and return its results.
+
+  Optionally override the question's existing filters/template-tag values via `parameters`
+  ({id, value}). Response format matches /v1/execute."
+  {:scope metabot/agent-question-run
+   :tool  {:name "run_question"
+           :title "Run Saved Question"
+           :description (str "Re-execute an existing saved question by its numeric ID and return raw "
+                             "results with column metadata. Use this to refresh a card or run it again "
+                             "with different filter values, instead of rebuilding the query with "
+                             "construct_query. Pass `parameters` ({id, value}) to override the question's "
+                             "existing filter values -- find valid ids by reading metabase://question/{id}. "
+                             "This can only change values for filters the question already declares.")
+           :annotations {:read-only? true :idempotent? true}}}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [parameters ignore_cache]} :- ::run-question-request]
+  (let [card       (api/check-404 (t2/select-one :model/Card :id id))
+        ;; `qp.card/enrich-parameters-from-card` fills in :type/:target by matching :id
+        ;; against the card's own declared parameters, then validates the merged result
+        ;; against the *stored-parameter* schema (which requires :type) -- an :id with no
+        ;; match merges to a bare {:id, :value} and fails that validation with a 500. Drop
+        ;; unrecognized ids here so an override the card doesn't declare is a no-op, not a
+        ;; crash, matching the tool's documented "only overrides existing filters" contract.
+        known-ids  (into #{} (map :id) (qp.card/combined-parameters-and-template-tags card))
+        parameters (filterv (comp known-ids :id) parameters)]
+    (qp.card/process-query-for-card
+     card :api
+     :parameters   parameters
+     :ignore-cache (boolean ignore_cache)
+     :context      :question
+     :middleware   {:process-viz-settings? false})))
 
 ;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
 

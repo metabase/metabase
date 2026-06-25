@@ -490,6 +490,31 @@ Response:
 }
 ```
 
+### POST /v1/question/{id}/query
+
+Run a saved question (card) by ID and return its results, without
+reconstructing the query. Use this to refresh a card or re-run it with
+different filter values.
+
+Optionally pass `parameters` to override the question's existing filter or
+template-tag values by `id`. `type` and `target` are auto-filled from the
+question's own declaration when omitted - find valid `id`s (and their
+`type`/`target`/`default`) in the `parameters` array returned by
+`POST /v1/read-resource` for `metabase://question/{id}`. This can only
+override values for filters the question already declares; it does not add
+new filters.
+
+Request:
+
+```json
+{
+  "parameters": [{ "id": "_DATE_", "value": "past30days" }],
+  "ignore_cache": false
+}
+```
+
+Response: identical shape to `/v1/execute`.
+
 ### POST /v1/dashboard
 
 Create a new dashboard, optionally populated with saved questions.
@@ -587,6 +612,9 @@ Response:
    bundle questions into a dashboard; POST /v1/collection to create a
    collection
 6. **Iterate** - Adjust the query and repeat steps 3-4
+7. **Re-run a saved question (optional)** - Already have a card ID instead
+   of a fresh query? Skip straight to POST /v1/question/{id}/query instead
+   of repeating steps 2-4; pass `parameters` to change its filter values
 
 ## Error handling
 

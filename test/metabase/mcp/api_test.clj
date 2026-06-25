@@ -279,6 +279,7 @@
     "query"
     "read_resource"
     "render_drill_through"
+    "run_question"
     "search"
     "update_dashboard"
     "update_question"
@@ -661,7 +662,7 @@
   #{"search" "construct_query" "query" "execute_query" "execute_sql"
     "read_resource"
     "create_question" "create_dashboard"
-    "update_question" "update_dashboard" "create_collection"})
+    "update_question" "run_question" "update_dashboard" "create_collection"})
 
 (deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
@@ -719,6 +720,8 @@
                     _              (call-tool session-id "update_question"
                                               {:id          (:id question-data)
                                                :description "Smoke updated description"})
+                    _              (call-tool session-id "run_question"
+                                              {:id (:id question-data)})
                     dash-data      (call-tool session-id "create_dashboard"
                                               {:name "Smoke Dashboard"})
                     _              (reset! dash-id (:id dash-data))
@@ -1426,7 +1429,18 @@
                                           {:id card-id :name "Nope"}))]
         (is (=? {:isError true} result))
         (is (str/includes? (-> result :content first :text) "Insufficient scope")
-            "Scope enforcement error from defendpoint middleware"))))
+            "Scope enforcement error from defendpoint middleware")))
+    (testing "run_question requires its own scope (agent:question:run), not just agent:question:update"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (mcp.tools/call-tool #{"agent:question:update"} nil "run_question"
+                                          {:id card-id}))]
+        (is (=? {:isError true} result))
+        (is (str/includes? (-> result :content first :text) "Insufficient scope"))))
+    (testing "run_question succeeds with its own scope"
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (mcp.tools/call-tool #{"agent:question:run"} nil "run_question"
+                                          {:id card-id}))]
+        (is (not (:isError result))))))
   (testing "scope failures take precedence over missing client extensions"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
                    (mcp.tools/call-tool #{} nil "visualize_query" {:query "card__1"} {:supports-mcp-ui? false}))

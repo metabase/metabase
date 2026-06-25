@@ -962,6 +962,57 @@
             (is (= (mt/id :orders) (some :source-table (:stages persisted)))
                 "dataset_query should not have been swapped")))))))
 
+;;; ---------------------------------------------------- Run Question Tests ----------------------------------------
+
+(defn- id-filter-query
+  "A native query with a non-field-filter template tag parameter (`id`), required with a
+  default of \"1\". Used to verify that /v1/question/{id}/query both runs a card unmodified
+  and applies a runtime `parameters` override to an existing template tag."
+  []
+  (-> (lib/native-query (mt/metadata-provider) "SELECT id FROM ORDERS WHERE id = {{id}}")
+      (lib/with-template-tags {"id" {:id           "_ID_"
+                                     :name         "id"
+                                     :display-name "Order ID"
+                                     :type         :number
+                                     :required     true
+                                     :default      "1"}})))
+
+(deftest run-question-test
+  (testing "Runs a saved question by id with no overrides, using the template tag's default value"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Run Question Default"
+                                              :dataset_query (id-filter-query)
+                                              :display       :table}]
+      (is (=? {:status    "completed"
+               :row_count 1
+               :data      {:rows [[1]]}}
+              (mt/user-http-request :rasta :post 202 (str "agent/v1/question/" card-id "/query") {})))))
+  (testing "Overrides an existing parameter's value by :id"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Run Question Override"
+                                              :dataset_query (id-filter-query)
+                                              :display       :table}]
+      (is (=? {:status    "completed"
+               :row_count 1
+               :data      {:rows [[2]]}}
+              (mt/user-http-request :rasta :post 202 (str "agent/v1/question/" card-id "/query")
+                                    {:parameters [{:id "_ID_" :value "2"}]})))))
+  (testing "An override :id the card doesn't declare is ignored rather than erroring"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Run Question Unknown Param"
+                                              :dataset_query (id-filter-query)
+                                              :display       :table}]
+      (is (=? {:status    "completed"
+               :row_count 1
+               :data      {:rows [[1]]}}
+              (mt/user-http-request :rasta :post 202 (str "agent/v1/question/" card-id "/query")
+                                    {:parameters [{:id "not_a_declared_param" :value "99"}]})))))
+  (testing "Returns 404 when the card does not exist"
+    (mt/user-http-request :rasta :post 404 "agent/v1/question/999999/query" {}))
+  (testing "Returns 403 when the caller lacks data permissions for the card"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Run Question No Data Perms"
+                                                :dataset_query (id-filter-query)
+                                                :display       :table}]
+        (mt/user-http-request :rasta :post 403 (str "agent/v1/question/" card-id "/query") {})))))
+
 ;;; ---------------------------------------------- Update Dashboard Tests ------------------------------------------
 
 (deftest update-dashboard-test

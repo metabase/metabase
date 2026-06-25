@@ -39,6 +39,9 @@
   (deferred-tru "Create saved questions"))
 (api-scope/defscope agent-question-update "agent:question:update"
   (deferred-tru "Update saved questions"))
+;; todo readme
+(api-scope/defscope agent-question-run "agent:question:run"
+  (deferred-tru "Run saved questions"))
 
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
