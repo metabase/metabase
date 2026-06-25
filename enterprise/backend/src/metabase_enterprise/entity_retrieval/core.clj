@@ -71,17 +71,22 @@
 (defn- start-reconcile!
   "Spawn the reconcile future, first awaiting `predecessor` (nil to begin at once) so a queued follow-up
   reflects writes made after the predecessor began.
+  The datasource and embedding model are resolved inside the future just before the run, so a follow-up
+  that executes after a config change reconciles with the current model, not a stale one captured at queue
+  time.
   Its value is {:index <diff> :execution {:waited_ms _ :ran_ms _}} — index mutations alongside how long the
   run sat queued and then ran.
   On completion it promotes the queued follow-up, if any, to the current run under the lock."
-  [ds model predecessor]
+  [predecessor]
   (future
     (let [scheduled (System/nanoTime)]
       (when predecessor
         ;; A failed predecessor must not block the follow-up — its writes still need reconciling.
         (try @predecessor (catch Throwable _ nil)))
       (try
-        (let [started (System/nanoTime)
+        (let [ds      (semantic.db.datasource/ensure-initialized-data-source!)
+              model   (embedding/get-configured-model)
+              started (System/nanoTime)
               diff    (reconcile/reconcile! ds model)]
           {:index     diff
            :execution {:waited_ms (elapsed-ms scheduled started)
@@ -101,19 +106,17 @@
   Across nodes the run waits for the reconcile advisory lock (see [[reconcile/reconcile!]]).
   Callers must have checked [[available?]]."
   []
-  (let [ds    (semantic.db.datasource/ensure-initialized-data-source!)
-        model (embedding/get-configured-model)
-        ;; Claim under the lock (creation and the slot write are one atomic step); block on the deref
-        ;; outside it so a joiner never holds the lock while a reconcile runs.
-        run   (locking run-lock
-                (cond
-                  (nil? @current-run) (let [f (start-reconcile! ds model nil)]
-                                        (reset! current-run f)
-                                        f)
-                  (nil? @next-run)    (let [f (start-reconcile! ds model @current-run)]
-                                        (reset! next-run f)
-                                        f)
-                  :else               @next-run))]
+  ;; Claim under the lock (creation and the slot write are one atomic step); block on the deref outside it
+  ;; so a joiner never holds the lock while a reconcile runs.
+  (let [run (locking run-lock
+              (cond
+                (nil? @current-run) (let [f (start-reconcile! nil)]
+                                      (reset! current-run f)
+                                      f)
+                (nil? @next-run)    (let [f (start-reconcile! @current-run)]
+                                      (reset! next-run f)
+                                      f)
+                :else               @next-run))]
     @run))
 
 (defenterprise force-reconcile!

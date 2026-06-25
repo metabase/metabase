@@ -82,10 +82,14 @@
   "Implementation for [[with-library]]."
   [f]
   (if-let [library (collection/library-collection)]
-    ;; A library already exists — reuse it and its sub-collections (looked up by type), touching nothing.
-    (f {:library library
-        :data    (t2/select-one :model/Collection :type collection/library-data-collection-type)
-        :metrics (t2/select-one :model/Collection :type collection/library-metrics-collection-type)})
+    ;; A library already exists — reuse it and its sub-collections, scoped to its location so a same-typed
+    ;; collection elsewhere can't be picked up (the library sub-collection types aren't unique).
+    (let [loc (str "/" (:id library) "/")]
+      (f {:library library
+          :data    (t2/select-one :model/Collection
+                                  :type collection/library-data-collection-type :location loc)
+          :metrics (t2/select-one :model/Collection
+                                  :type collection/library-metrics-collection-type :location loc)}))
     ;; None exists — create a temporary tree (root + Data + Metrics) that with-temp cleans up afterward.
     (mt/with-temp [:model/Collection library {:name "Library" :type collection/library-collection-type
                                               :location "/"}

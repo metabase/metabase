@@ -242,13 +242,15 @@
   Serialized across nodes by the reconcile advisory lock — a concurrent node makes this wait, not skip.
   See the namespace docstring."
   [pgvector embedding-model]
-  (index-table/ensure-tables! pgvector embedding-model)
   (with-open [conn (jdbc/get-connection pgvector)]
     ;; Session-level pg_advisory_lock, not the transaction-scoped pg_advisory_xact_lock that index-table and
     ;; semantic-search use: the run commits per batch and tolerates partial failure across runs, so it must
     ;; not be wrapped in one transaction. Blocking acquire — wait out a concurrent node rather than skip.
     (jdbc/execute! conn [(format "SELECT pg_advisory_lock(%d)" reconcile-lock-id)])
     (try
+      ;; Under the lock too: ensure-tables! can drop+rebuild the vectors table on a model change, which
+      ;; would otherwise pull the table out from under a concurrent node's in-flight run.
+      (index-table/ensure-tables! pgvector embedding-model)
       (reconcile-against-appdb! pgvector embedding-model)
       (finally
         (jdbc/execute! conn [(format "SELECT pg_advisory_unlock(%d)" reconcile-lock-id)])))))
