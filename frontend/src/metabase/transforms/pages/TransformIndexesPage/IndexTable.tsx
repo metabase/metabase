@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useListUsersQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import CS from "metabase/css/core/index.css";
@@ -27,6 +28,7 @@ import type {
   TableIndexRequestStatus,
   RequestableIndexes,
   TableId,
+  UserId,
 } from "metabase-types/api";
 
 import { DeleteIndexModal } from "./DeleteIndexModal";
@@ -138,6 +140,13 @@ function IndexColumnsCell({ columns }: { columns: string[] }) {
   );
 }
 
+function IndexUserCell({ userName }: { userName: string | undefined }) {
+  if (!userName) {
+    return EMPTY_CELL_PLACEHOLDER;
+  }
+  return <Ellipsified>{userName}</Ellipsified>;
+}
+
 type IndexActionsCellProps = {
   onEdit: () => void;
   onDelete: () => void;
@@ -167,6 +176,7 @@ type GetColumnsOptions = {
   isTransformRunning: boolean;
   applicationName: string;
   readOnly: boolean;
+  getUserName: (userId: UserId | null | undefined) => string | undefined;
   onEdit: (index: TableIndexEntry) => void;
   onDelete: (index: TableIndexEntry) => void;
 };
@@ -175,6 +185,7 @@ function getColumns({
   isTransformRunning,
   applicationName,
   readOnly,
+  getUserName,
   onEdit,
   onDelete,
 }: GetColumnsOptions): TreeTableColumnDef<IndexRow>[] {
@@ -239,6 +250,18 @@ function getColumns({
       ),
     },
     {
+      id: "created_by",
+      header: t`Created by`,
+      minWidth: "auto",
+      maxAutoWidth: 240,
+      accessorFn: (index) => getUserName(index.request?.created_by) ?? "",
+      cell: ({ row }) => (
+        <IndexUserCell
+          userName={getUserName(row.original.request?.created_by)}
+        />
+      ),
+    },
+    {
       id: "last_executed_at",
       header: t`Last run`,
       width: "auto",
@@ -293,7 +316,18 @@ export function IndexTable({
   readOnly = false,
 }: IndexTableProps) {
   const applicationName = useSelector(getApplicationName);
+  const { data: usersData } = useListUsersQuery({});
   const [action, setAction] = useState<IndexAction>();
+
+  const getUserName = useCallback(
+    (userId: UserId | null | undefined) => {
+      if (userId == null) {
+        return undefined;
+      }
+      return usersData?.data.find((user) => user.id === userId)?.common_name;
+    },
+    [usersData],
+  );
 
   const handleEdit = useCallback((index: TableIndexEntry) => {
     setAction({ type: "edit", index });
@@ -309,10 +343,18 @@ export function IndexTable({
         isTransformRunning,
         applicationName,
         readOnly,
+        getUserName,
         onEdit: handleEdit,
         onDelete: handleDelete,
       }),
-    [isTransformRunning, applicationName, readOnly, handleEdit, handleDelete],
+    [
+      isTransformRunning,
+      applicationName,
+      readOnly,
+      getUserName,
+      handleEdit,
+      handleDelete,
+    ],
   );
   const data = useMemo<IndexRow[]>(
     () => indexes.map((index) => ({ ...index, id: getRowId(index) })),
