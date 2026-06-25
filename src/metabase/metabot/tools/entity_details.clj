@@ -317,6 +317,32 @@
                                                       (lib/available-segments table-query)))))
            (merge (related-tables-result related)))))))
 
+(defn- fk-related-table-groups
+  "Sorted, distinct `[target-table-id fk-field-id]` pairs for every direct FK from `query`'s source table.
+
+  The FK paths that become [[related-tables]]. Each pair means \"`fk-field-id` points at `target-table-id`\", so a
+  table reachable through several FKs appears once per FK.
+
+  This deliberately does NOT `:include-implicitly-joinable?` when calling `lib/visibile-columns` to find related
+  tables: that fetches and caches the full column set of every FK-target table, even though we only
+  expand [[max-related-tables]] of them (metabase#76493). Instead we read the source table's own FK columns and do a
+  single bulk lookup of just the target fields (not their sibling columns) to map each FK to its table."
+  [query]
+  (let [source-cols        (lib/visible-columns query -1 {:include-implicitly-joinable? false})
+        existing-table-ids (into #{} (keep :table-id) source-cols)
+        fk-cols            (filter (every-pred :fk-target-field-id (comp number? :id)) source-cols)
+        id->target-field   (m/index-by :id (lib.metadata/bulk-metadata
+                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-cols)))]
+    (->> fk-cols
+         (keep (fn [{fk-field-id :id, :keys [fk-target-field-id]}]
+                 ;; the target field might not exist; skip self/already-joined tables
+                 (when-let [target (id->target-field fk-target-field-id)]
+                   (when-not (contains? existing-table-ids (:table-id target))
+                     [(:table-id target) fk-field-id]))))
+         distinct
+         ;; sort for a deterministic selection when we cap, so the same tables are kept
+         sort)))
+
 (defn related-tables
   "FK-related-table context for `query`. Each distinct FK path (a `[table-id fk-field-id]` pair) is a
    separate related table, so the same table reachable through multiple foreign keys appears once per FK.
@@ -329,17 +355,9 @@
      :total   total number of FK-related tables before capping.
      :refs    lightweight list `{:id :name :description :related_by}` of related tables, capped at
               [[max-related-table-truncated-refs]] (ids/names only, no column fetch). Lets the LLM see
-              which related tables exist beyond the detailed ones and look any of them up individually.
-
-   Capping bounds the metadata fetched and formatted for the LLM context — without it a highly-connected
-   schema fetches and pins an unbounded number of columns for the request's lifetime (metabase#76493)."
+              which related tables exist beyond the detailed ones and look any of them up individually."
   [query with-fields? field-values-fn]
-  (let [fk-groups (->> (lib/visible-columns query)
-                       (filter :fk-field-id)
-                       (group-by (juxt :table-id :fk-field-id))
-                       keys
-                       ;; sort for a deterministic selection when we cap, so the same tables are kept
-                       sort)
+  (let [fk-groups (fk-related-table-groups query)
         total     (count fk-groups)]
     (when (pos? total)
       (when (> total max-related-tables)
