@@ -298,8 +298,8 @@
 ;;; ---------------------------------------------------------------------------
 
 (deftest known-variants-cover-validator-rules-test
-  (testing "Every variant the validator names is in the dispatch table"
+  (testing "Every variant the LLM validator names is in the dispatch table"
     (let [validator-vars #{"default" "temporal-pattern-day" "temporal-pattern-hour"
                            "time-facet" "top-n-other" "per-value-time-series"
                            "filtered-subset"}]
-      (is (= validator-vars variants/known-variants)))))
+      (is (every? variants/known-variants validator-vars)))))

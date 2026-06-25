@@ -641,7 +641,8 @@
                                    :effective_type "type/DateTime"}]}
             queries (-> (create-exploration! u body)
                         :threads first :queries)]
-        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"}
+        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"
+                 "cumulative" "offset-yoy" "pct-change"}
                (query-types queries)))
         (is (every? #(= "created" (:dimension_id %)) queries))))))
 
@@ -659,7 +660,9 @@
                                    :effective_type "type/Date"}]}
             queries (-> (create-exploration! u body)
                         :threads first :queries)]
-        (is (= #{"default" "temporal-pattern-day"} (query-types queries)))))))
+        (is (= #{"default" "temporal-pattern-day"
+                 "cumulative" "offset-mom" "offset-yoy" "pct-change"}
+               (query-types queries)))))))
 
 (deftest exploration-create-time-facet-test
   (testing "POST / with a low-cardinality categorical dim + metric with default temporal breakout emits default + time-facet"
@@ -674,7 +677,9 @@
             queries (-> (create-exploration! u body)
                         :threads first :queries)
             facet   (first (filter #(= "time-facet" (:query_type %)) queries))]
-        (is (= #{"default" "time-facet"} (query-types queries)))
+        (is (= #{"default" "time-facet"
+                 "cumulative" "offset-yoy" "pct-change"}
+               (query-types queries)))
         (is (= "line" (:display facet))
             "time-facet variant explicitly sets :display \"line\"")
         (is (= "Sales by Category over time" (:name facet)))))))
@@ -736,7 +741,7 @@
             (is (empty? (segment-filters (:dataset_query (first (get by-type "time-facet"))))))))))))
 
 (deftest exploration-create-segments-multiply-every-variant-test
-  (testing "Segment fan-out applies uniformly to each candidate variant"
+  (testing "Segment fan-out applies uniformly to each segment-eligible variant (transforms are exempt)"
     (mt/with-temp [:model/User u {:email "seg-multiply@example.com"}
                    :model/Card metric (assoc (venues-metric-card (:id u)) :name "Revenue")
                    :model/Segment s {:name       "cheap"
@@ -753,11 +758,15 @@
             queries (-> (create-exploration! u body)
                         :threads first :queries)
             by-seg  (group-by (comp boolean :segment_id) queries)]
-        (is (= 6 (count queries)) "3 variants × (1 base + 1 segment) = 6")
+        (is (= 9 (count queries))
+            "3 fanning variants × (1 base + 1 segment) = 6, plus 3 transforms (no segment fan-out) = 9")
+        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"
+                 "cumulative" "offset-yoy" "pct-change"}
+               (set (map :query_type (get by-seg false))))
+            "base rows carry the fanning variants plus the segment-exempt transforms")
         (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"}
-               (set (map :query_type (get by-seg false)))))
-        (is (= #{"default" "temporal-pattern-day" "temporal-pattern-hour"}
-               (set (map :query_type (get by-seg true)))))
+               (set (map :query_type (get by-seg true))))
+            "only the fanning variants get a segment copy")
         (is (every? #(= (:id s) (:segment_id %)) (get by-seg true)))))))
 
 (deftest exploration-create-variants-share-one-sidebar-leaf-test
@@ -777,9 +786,9 @@
             queries (:queries thread)
             leaves  (filter #(= "page" (:display_type %)) (:groups thread))
             page    (first leaves)]
-        (is (= 3 (count queries)))
-        (is (= 1 (count leaves)) "all 3 variants collapse into one page leaf")
-        (is (= 3 (count (:query_ids page))))
+        (is (= 6 (count queries)))
+        (is (= 1 (count leaves)) "all 6 variants collapse into one page leaf")
+        (is (= 6 (count (:query_ids page))))
         (is (= (set (map :id queries)) (set (:query_ids page))))))))
 
 (deftest exploration-create-without-selections-test

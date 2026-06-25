@@ -13,6 +13,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ---------------------------------------------------------------------------
 ;;; Fixture helpers (mirror mechanical-test — hand-built metric-dim-ctx)
 ;;; ---------------------------------------------------------------------------
@@ -43,7 +45,7 @@
                                                     [did {:target [:field 1 nil] :dim d}]))
                                              dim-map)}))
 
-(defn- plan-via
+(defn- plan-via!
   "Dispatch `planner` over explicit group contexts, returning the `:plan` items."
   [planner-instance groups]
   (:plan (planner/plan! planner-instance {:metric-dim-ctx {:groups groups}})))
@@ -71,8 +73,8 @@
                   {:group-id 2 :type "metric"
                    :metrics  [(metric-with-dims 20 {"x" (text-dim "x" 12)})
                               (metric-with-dims 21 {"y" (text-dim "y" 30)})]}]]
-      (is (= (plan-via qp.mech/planner groups)
-             (plan-via qp.adaptive/planner groups))))))
+      (is (= (plan-via! qp.mech/planner groups)
+             (plan-via! qp.adaptive/planner groups))))))
 
 (deftest skip-when-empty-test
   (testing "no applicable pairs → :skip-not-applicable (matches mechanical's soft exit)"
@@ -225,7 +227,7 @@
                                           {:value "b" :metric 10 :count 500}])
           weak   (qp.adaptive/split-gain [{:value "a" :metric 52 :count 500}
                                           {:value "b" :metric 48 :count 500}])]
-      (is (not (Double/isNaN strong)))
+      (is (not (NaN? strong)))
       (is (> strong weak)))))
 
 (deftest split-gain-regression-263-test
@@ -623,11 +625,12 @@
 (defn- n-dim-metric [metric-id n]
   (metric-ctx metric-id (map #(text-dim (str "d" %) 5) (range n))))
 
-(def ^:private always-expand
+(defn- always-expand
   "A measurement that always wants to descend: a high-gain split with two
   strongly-deviating, min-support-eligible children."
-  (fn [_ _ _] {:cells [{:value "x" :metric 1000 :count 200}
-                       {:value "y" :metric 0    :count 200}]}))
+  [_ _ _]
+  {:cells [{:value "x" :metric 1000 :count 200}
+           {:value "y" :metric 0    :count 200}]})
 
 (deftest budget-bounds-executions-test
   (testing "total measurement executions per anchor are bounded by the budget"
