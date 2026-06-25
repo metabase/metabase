@@ -3167,6 +3167,7 @@
               jnull-orig (new-run! recent "alert"       "failed")    ; JSON-null id under original-info (GDGT-2680)
               no-id     (new-run! recent "alert"        "success")   ; no notification_id key at all
               no-id-orig (new-run! recent "alert"       "failed")    ; original-info present but no notification_id key
+              invalid   (new-run! recent "alert"        "success")   ; non-JSON task_details — MySQL only (GDGT-2680)
               other     (new-run! recent "sync"         "success")]  ; neither alert nor subscription
           (new-th! success    "notification-send" "success" "{\"notification_id\":101}")
           (new-th! failed     "notification-send" "failed"  "{\"status\":\"failed\",\"message\":\"boom\",\"original-info\":{\"notification_id\":102}}")
@@ -3181,6 +3182,10 @@
           (new-th! no-id      "notification-send" "success" "{\"status\":\"skipped\"}")
           (new-th! no-id-orig "notification-send" "failed"  "{\"status\":\"failed\",\"original-info\":{\"status\":\"started\"}}")
           (new-th! other      "notification-send" "success" "{\"notification_id\":106}")
+          ;; MySQL-only: invalid JSON is skipped by the JSON_VALID guard. Postgres' ::jsonb cast has no
+          ;; such guard and would throw on a non-JSON row, so this case can't run there.
+          (when (= :mysql (mdb/db-type))
+            (new-th! invalid "notification-send" "success" "not-json"))
           (migrate!)
           (let [nid #(t2/select-one-fn :notification_id :task_run :id %)]
             (testing "attributed from a notification-send child in the window"
@@ -3204,4 +3209,7 @@
                 (is (nil? (nid jnull-orig))))
               (testing "task_details with no notification_id key stays null"
                 (is (nil? (nid no-id)))
-                (is (nil? (nid no-id-orig)))))))))))
+                (is (nil? (nid no-id-orig))))
+              (when (= :mysql (mdb/db-type))
+                (testing "invalid JSON task_details is skipped by JSON_VALID, run stays null (GDGT-2680)"
+                  (is (nil? (nid invalid))))))))))))
