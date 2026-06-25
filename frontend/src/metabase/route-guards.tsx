@@ -2,6 +2,7 @@ import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
+import { canAccessMonitor } from "metabase/common/monitor/selectors";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { metabaseReduxContext } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -127,6 +128,15 @@ const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
   context: metabaseReduxContext,
 });
 
+const UserCanAccessMonitor = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessMonitor",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) => canAccessMonitor(state),
+  redirectAction: routerActions.replace,
+  context: metabaseReduxContext,
+});
+
 const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessTransforms",
   redirectPath: "/unauthorized",
@@ -159,6 +169,13 @@ export const CanAccessOnboarding = UserCanAccessOnboarding(
 export const CanAccessDataStudio = MetabaseIsSetup(
   UserIsAuthenticated(
     UserCanAccessDataStudio(AvailableInEmbedding(({ children }) => children)),
+  ),
+);
+
+// Must be in sync with canAccessMonitor in frontend/src/metabase/common/monitor/selectors.ts
+export const CanAccessMonitor = MetabaseIsSetup(
+  UserIsAuthenticated(
+    UserCanAccessMonitor(AvailableInEmbedding(({ children }) => children)),
   ),
 );
 

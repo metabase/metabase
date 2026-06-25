@@ -13,5 +13,9 @@ export const useGetCurrentApp = () => {
       (path) => path.startsWith("/data-studio"),
       () => "data-studio",
     )
+    .when(
+      (path) => path.startsWith("/monitor"),
+      () => "monitor",
+    )
     .otherwise(() => "main");
 };

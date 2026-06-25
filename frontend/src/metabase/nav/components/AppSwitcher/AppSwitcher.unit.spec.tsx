@@ -30,7 +30,7 @@ const REGULAR_ITEMS = [
 const ADMIN_ITEMS = [...REGULAR_ITEMS, "Main app", "Admin"];
 const HOSTED_ITEMS = [...ADMIN_ITEMS];
 
-const WITH_DATA_STUDIO = [...ADMIN_ITEMS, "Data studio"];
+const WITH_SPACES = [...ADMIN_ITEMS, "Data studio", "Monitor"];
 
 const adminNavItem = {
   name: `People`,
@@ -75,6 +75,7 @@ async function setup({
       <Route path="/" component={AppSwitcher} />
       <Route path="/admin" component={AppSwitcher} />
       <Route path="/data-studio" component={AppSwitcher} />
+      <Route path="/monitor" component={AppSwitcher} />
     </>,
     {
       withRouter: true,
@@ -159,6 +160,10 @@ describe("ProfileLink", () => {
       await openProfileLink();
       await assertActiveApp("data-studio");
 
+      await userEvent.click(await getMonitorMenuItem());
+      await openProfileLink();
+      await assertActiveApp("monitor");
+
       await userEvent.click(await getMainAppMenuItem());
       await openProfileLink();
       await assertActiveApp("main");
@@ -184,11 +189,11 @@ describe("ProfileLink", () => {
     });
   });
 
-  describe("with data studio", () => {
-    it("should show data studio app when apropriate", async () => {
+  describe("with spaces", () => {
+    it("should show data studio and monitor apps when appropriate", async () => {
       await setup({ isAdmin: true });
 
-      WITH_DATA_STUDIO.forEach((title) => {
+      WITH_SPACES.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
     });
@@ -305,7 +310,9 @@ const openProfileLink = async () => {
 const openHelpSubmenu = async () =>
   await userEvent.click(await screen.findByRole("menuitem", { name: "Help" }));
 
-const assertActiveApp = async (current: "main" | "admin" | "data-studio") => {
+const assertActiveApp = async (
+  current: "main" | "admin" | "data-studio" | "monitor",
+) => {
   expect(
     await within(await getMainAppMenuItem()).findByRole("img", {
       name: current === "main" ? /check_filled/i : /dashboard/i,
@@ -321,6 +328,11 @@ const assertActiveApp = async (current: "main" | "admin" | "data-studio") => {
       name: current === "data-studio" ? /check_filled/i : /table/i,
     }),
   ).toBeInTheDocument();
+  expect(
+    await within(await getMonitorMenuItem()).findByRole("img", {
+      name: current === "monitor" ? /check_filled/i : /gauge/i,
+    }),
+  ).toBeInTheDocument();
 };
 
 const getMainAppMenuItem = () =>
@@ -329,3 +341,5 @@ const getAdminMenuItem = () =>
   screen.findByRole("menuitem", { name: /admin/i });
 const getDataStudioMenuItem = () =>
   screen.findByRole("menuitem", { name: /data studio/i });
+const getMonitorMenuItem = () =>
+  screen.findByRole("menuitem", { name: /monitor/i });

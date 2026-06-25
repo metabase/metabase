@@ -1,0 +1,241 @@
+import cx from "classnames";
+import type { ReactNode } from "react";
+import { t } from "ttag";
+
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import {
+  ActionIcon,
+  Box,
+  Center,
+  FixedSizeIcon,
+  Flex,
+  Group,
+  Loader,
+  Stack,
+  Text,
+  Tooltip,
+} from "metabase/ui";
+import { isMac } from "metabase/utils/browser";
+import type { IconName } from "metabase-types/api";
+
+import S from "./SpaceLayout.module.css";
+
+const TOOLTIP_OPEN_DELAY = 1000;
+
+type SpaceLayoutProps = {
+  /** The space logo shown at the top of the sidebar (image or icon). */
+  logo: ReactNode;
+  /** `data-testid` for the sidebar nav, e.g. `data-studio-nav`. */
+  testId: string;
+  isLoading: boolean;
+  isNavbarOpened: boolean;
+  onNavbarToggle: (isOpened: boolean) => void;
+  /** Controls rendered next to the logo while the sidebar is expanded. */
+  headerControls?: ReactNode;
+  /** Primary navigation items, rendered as the top (scrollable) group. */
+  upperNav: ReactNode;
+  /** Secondary navigation items, pinned to the bottom of the sidebar. */
+  lowerNav?: ReactNode;
+  /** Extra nodes (e.g. modals) rendered inside the nav container. */
+  navExtras?: ReactNode;
+  /** Page content rendered to the right of the sidebar. */
+  children?: ReactNode;
+};
+
+/**
+ * Shared shell for top-level "spaces" (Data Studio, Monitor, …): a collapsible
+ * left navigation sidebar plus a content area. Purely presentational — the
+ * owning layout supplies the open/close state, nav items, and gating.
+ */
+export function SpaceLayout({
+  logo,
+  testId,
+  isLoading,
+  isNavbarOpened,
+  onNavbarToggle,
+  headerControls,
+  upperNav,
+  lowerNav,
+  navExtras,
+  children,
+}: SpaceLayoutProps) {
+  // Toggle the sidebar with "[" or Ctrl/Cmd + "." — the latter matches both the
+  // tooltip hint and the main app navbar shortcut. Overriding `shortcut` here
+  // (rather than in the global def) keeps the main app's AppBar toggle on "["
+  // only, so its dedicated Ctrl/Cmd + "." handler doesn't double-fire.
+  useRegisterShortcut(
+    [
+      {
+        id: "toggle-navbar",
+        shortcut: ["[", "$mod+."],
+        perform: () => onNavbarToggle(!isNavbarOpened),
+      },
+    ],
+    [isNavbarOpened, onNavbarToggle],
+  );
+
+  if (isLoading) {
+    return (
+      <Center h="100%">
+        <Loader />
+      </Center>
+    );
+  }
+
+  return (
+    <Flex h="100%">
+      <Stack
+        className={cx(S.nav, { [S.opened]: isNavbarOpened })}
+        h="100%"
+        p="0.75rem"
+        justify="space-between"
+        data-testid={testId}
+      >
+        <Stack gap="0.75rem" flex={1} mih={0} className={S.upperGroup}>
+          <SpaceNavbarHeader
+            logo={logo}
+            headerControls={headerControls}
+            isNavbarOpened={isNavbarOpened}
+            onNavbarToggle={onNavbarToggle}
+          />
+          {upperNav}
+        </Stack>
+        {lowerNav && <Stack gap="0.75rem">{lowerNav}</Stack>}
+        {navExtras}
+      </Stack>
+      <Box h="100%" flex={1} miw={0}>
+        {children}
+      </Box>
+    </Flex>
+  );
+}
+
+type SpaceTabProps = {
+  label: string;
+  icon: IconName;
+  to: string;
+  isSelected?: boolean;
+  showLabel: boolean;
+  rightSection?: ReactNode;
+  isGated?: boolean;
+};
+
+export function SpaceTab({
+  label,
+  icon,
+  to,
+  isSelected,
+  showLabel,
+  rightSection,
+  isGated,
+}: SpaceTabProps) {
+  const upsellGem = isGated ? <UpsellGem.New size={14} /> : null;
+  const effectiveRightSection = rightSection ?? upsellGem;
+
+  return (
+    <Tooltip
+      label={label}
+      position="right"
+      openDelay={TOOLTIP_OPEN_DELAY}
+      disabled={showLabel}
+    >
+      <Flex
+        className={cx(S.tab, { [S.selected]: isSelected })}
+        component={ForwardRefLink}
+        to={to}
+        p="sm"
+        gap="sm"
+        bdrs="md"
+        aria-label={label}
+        justify={showLabel ? "start" : "center"}
+      >
+        <FixedSizeIcon name={icon} display="block" className={S.icon} />
+        {showLabel && <Text lh="sm">{label}</Text>}
+        {effectiveRightSection && (
+          <Box
+            className={showLabel ? undefined : S.badgeOverlay}
+            ml={showLabel ? "auto" : undefined}
+          >
+            {effectiveRightSection}
+          </Box>
+        )}
+      </Flex>
+    </Tooltip>
+  );
+}
+
+type SpaceNavbarHeaderProps = {
+  logo: ReactNode;
+  headerControls?: ReactNode;
+  isNavbarOpened: boolean;
+  onNavbarToggle: (isOpened: boolean) => void;
+};
+
+function SpaceNavbarHeader({
+  logo,
+  headerControls,
+  isNavbarOpened,
+  onNavbarToggle,
+}: SpaceNavbarHeaderProps) {
+  return (
+    <Flex
+      align="center"
+      justify={isNavbarOpened ? "space-between" : "center"}
+      mb="0.75rem"
+      mt="sm"
+    >
+      <Group gap="sm">
+        <Box
+          className={cx(S.logoWrapper, { [S.navbarClosed]: !isNavbarOpened })}
+        >
+          <Box className={S.logo}>{logo}</Box>
+          {!isNavbarOpened && (
+            <ToggleActionIcon
+              isNavbarOpened={isNavbarOpened}
+              onNavbarToggle={onNavbarToggle}
+            />
+          )}
+        </Box>
+        {isNavbarOpened && headerControls}
+      </Group>
+      {isNavbarOpened && (
+        <ToggleActionIcon isNavbarOpened onNavbarToggle={onNavbarToggle} />
+      )}
+    </Flex>
+  );
+}
+
+const getSidebarTooltipLabel = (isNavbarOpened: boolean) => {
+  const message = isNavbarOpened ? t`Close sidebar` : t`Open sidebar`;
+  const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
+  return `${message} ${shortcut}`;
+};
+
+type ToggleActionIconProps = {
+  isNavbarOpened: boolean;
+  onNavbarToggle: (isOpened: boolean) => void;
+};
+
+function ToggleActionIcon({
+  isNavbarOpened,
+  onNavbarToggle,
+}: ToggleActionIconProps) {
+  const label = getSidebarTooltipLabel(isNavbarOpened);
+
+  return (
+    <Tooltip label={label} openDelay={TOOLTIP_OPEN_DELAY}>
+      <ActionIcon
+        aria-label={label}
+        className={S.toggle}
+        onClick={() => onNavbarToggle(!isNavbarOpened)}
+      >
+        <FixedSizeIcon
+          name={isNavbarOpened ? "sidebar_closed" : "sidebar_open"}
+          c="text-secondary"
+        />
+      </ActionIcon>
+    </Tooltip>
+  );
+}

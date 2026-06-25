@@ -42,6 +42,7 @@ import { getMetricRoutes } from "metabase/metrics/routes";
 import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
+import { getMonitorRoutes } from "metabase/monitor/routes";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_LANDING_PAGE,
@@ -74,6 +75,7 @@ import { trackPageView } from "./analytics";
 import {
   CanAccessDataModel,
   CanAccessDataStudio,
+  CanAccessMonitor,
   CanAccessOnboarding,
   CanAccessSettings,
   CanAccessTransforms,
@@ -399,6 +401,9 @@ export const getRoutes = (store: AppStore) => {
             CanAccessTransforms,
             IsAdmin,
           )}
+
+          {/* MONITOR */}
+          {getMonitorRoutes(CanAccessMonitor)}
         </Route>
       </Route>
 
@@ -428,6 +433,16 @@ export const getRoutes = (store: AppStore) => {
       {/* Transforms moved from /admin to /data-studio */}
       <Redirect from="/admin/transforms" to="/data-studio/transforms" />
       <Redirect from="/admin/transforms/*" to="/data-studio/transforms/*" />
+
+      {/* Dependency diagnostics moved from /data-studio to /monitor */}
+      <Redirect
+        from="/data-studio/dependency-diagnostics"
+        to="/monitor/dependency-diagnostics"
+      />
+      <Redirect
+        from="/data-studio/dependency-diagnostics/*"
+        to="/monitor/dependency-diagnostics/*"
+      />
 
       {/* MISC */}
       <Route path="/unsubscribe" component={UnsubscribePage} />
