@@ -211,7 +211,7 @@ export function ActionToolbar({
       )}
       <ToolbarButton
         icon="star"
-        tooltipLabel={t`Mark as interesting`}
+        tooltipLabel={t`Star as interesting`}
         iconProps={{ size: "1.125rem" }}
         onClick={handleMarkAsInteresting}
       />

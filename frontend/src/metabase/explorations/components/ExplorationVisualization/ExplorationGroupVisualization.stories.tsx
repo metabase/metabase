@@ -7,7 +7,6 @@ import { Api } from "metabase/api";
 import {
   createGroup,
   createQuery,
-  createThread,
 } from "metabase/explorations/test-utils";
 import { mainReducers } from "metabase/reducers-main"; // eslint-disable-line boundaries/element-types
 import { createMockState } from "metabase/redux/store/mocks";
@@ -607,11 +606,6 @@ function buildScenario(configs: QueryConfig[]) {
     query_ids: queries.map((q) => q.id),
   });
 
-  const thread = createThread({
-    queries,
-    groups: [group],
-  });
-
   const handlers = [
     http.get("*/api/exploration/query/:id", ({ params }) => {
       const id = Number(params.id);
@@ -623,7 +617,7 @@ function buildScenario(configs: QueryConfig[]) {
     }),
   ];
 
-  return { queries, group, thread, handlers };
+  return { queries, group, handlers };
 }
 
 // ---------------------------------------------------------------------------
@@ -639,7 +633,7 @@ function ScenarioStory({
   description: string;
   configs: QueryConfig[];
 }) {
-  const { queries, group, thread, handlers } = buildScenario(configs);
+  const { queries, group, handlers } = buildScenario(configs);
 
   return {
     render: () => (
@@ -657,11 +651,13 @@ function ScenarioStory({
             explorationId={1}
             group={group}
             queries={queries}
-            explorationThread={thread}
             availableTimelines={[]}
             selectedTimelineId={null}
             onSelectTimelineId={() => {}}
-            locationSearch=""
+            commentDrafts={{}}
+            setCommentDrafts={() => {}}
+            isCommentsSidebarOpen={false}
+            wasCommentsSidebarOpen={false}
           />
         </Stack>
       </StoryWrapper>

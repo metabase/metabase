@@ -75,7 +75,7 @@ function setup(
     <ExplorationDocument
       explorationId={1}
       document={{ ...mockDocument, ...documentOverrides }}
-      isCommentsSidebarOpen={false}
+      isCommentsSidesheetOpen={false}
       route={{} as Route}
       locationSearch="?timeline=1"
     />,
