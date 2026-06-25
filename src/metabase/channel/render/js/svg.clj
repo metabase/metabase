@@ -17,7 +17,6 @@
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
-   (java.util ArrayList)
    (java.util.concurrent TimeUnit)
    (org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument)
    (org.apache.batik.transcoder TranscoderInput TranscoderOutput)
@@ -200,14 +199,14 @@
   java.awt.Color/WHITE)
 
 (defn- reusing-buffers-transcoder
-  "A [[PNGTranscoder]] whose output ARGB raster is borrowed from [[metabase.channel.render.image-buffer]] instead of
-  freshly allocated. Batik calls `createImage` to mint the (often ~1 MB+) result buffer; we hand it a pooled one and
-  record it in `acquired` so the caller can release it after `transcode` finishes."
-  ^PNGTranscoder [^ArrayList acquired]
+  "A [[PNGTranscoder]] whose output ARGB raster is borrowed from the shared [[metabase.channel.render.image-buffer]]
+  pool instead of freshly allocated. Batik calls `createImage` once to mint the (often several-MB) result buffer; we
+  hand it a pooled one and record it in `acquired` (a 1-element atom) so the caller can release it after `transcode`."
+  ^PNGTranscoder [acquired]
   (proxy [PNGTranscoder] []
     (createImage [w h]
       (let [img (image-buffer/acquire w h)]
-        (.add acquired img)
+        (reset! acquired img)
         img))))
 
 (defn- render-svg
@@ -217,7 +216,7 @@
     (let [^SVGOMDocument fixed-svg-doc (post-process svg-document fix-fill clear-style-node)
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
-          acquired                     (ArrayList. 1)
+          acquired                     (atom nil)
           transcoder                   (reusing-buffers-transcoder acquired)
           ;; `:scale` (default 1) supersamples the raster only -- the SVG is laid out at the
           ;; logical :width/:height but rasterized to scale-times more pixels.
@@ -232,8 +231,8 @@
       (try
         (.transcode transcoder in out)
         (finally
-          (doseq [img acquired]
-            (image-buffer/release img)))))
+          ;; Return the borrowed buffer to the pool. Guarded so a release failure can't mask a transcode error.
+          (try (image-buffer/release @acquired) (catch Throwable _)))))
     (.toByteArray os)))
 
 (defn svg-string->bytes
