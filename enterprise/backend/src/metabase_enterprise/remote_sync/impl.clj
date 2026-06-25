@@ -1071,21 +1071,23 @@
             force?
             (full-export! snapshot task-id message sync-timestamp)
 
-            (and diverged? (not merge?))
+            (and diverged? merge?)
+            (cond
+              (nil? base-snapshot)
+              {:status    :conflict
+               :version   remote-version
+               :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+               :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
+
+              :else
+              (export-merged! src snapshot base-snapshot task-id message sync-timestamp
+                              (spec/extract-entities-for-export)))
+
+            diverged? ;; and not merge? option
             {:status    :conflict
              :version   remote-version
              :conflicts []
              :message   "The remote branch has changed since your last sync. Choose how to proceed."}
-
-            (and diverged? (nil? base-snapshot))
-            {:status    :conflict
-             :version   remote-version
-             :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
-             :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
-
-            diverged? ;; merge? = true, base-snapshot = some
-            (export-merged! src snapshot base-snapshot task-id message sync-timestamp
-                            (spec/extract-entities-for-export))
 
             ;; There's nothing to export: no dirty rows and no stale files.
             (and (empty? @dirty-rows) (empty? @disabled-files))
@@ -1094,14 +1096,11 @@
               {:status :success
                :outcome {:kind "push-skipped"}})
 
-            ;; A dirty row can't be applied incrementally → full re-serialize.
-            (= @plan :remote-sync/incremental-not-possible)
-            (full-export! snapshot task-id message sync-timestamp)
+            (not= @plan :remote-sync/incremental-not-possible)
+            (incremental-export! @plan @disabled-files task-id snapshot message sync-timestamp)
 
-            ;; Incremental fast-path: write only the changed entities, deleting their old paths plus files left behind
-            ;; in now-disabled content dirs, preserving every other.
-            :else
-            (incremental-export! @plan @disabled-files task-id snapshot message sync-timestamp))))
+            :else ;; fall back to full
+            (full-export! snapshot task-id message sync-timestamp))))
       (catch Exception e
         ;; handle-task-result! records the failure on this result, and skips entirely when the task
         ;; was already cancelled (ended_at set) — so cancellation needs no special case here.
