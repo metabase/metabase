@@ -205,11 +205,13 @@
                   (let [by-key (into {} (map (juxt (juxt :type :id) identity))
                                      (tools.search/entity-refs->search-results
                                       [{:model "measure" :id measure-id} {:model "segment" :id segment-id}]))]
+                    ;; portable_entity_id (the NanoID) lets the agent reference the measure/segment in a
+                    ;; [measure|segment, {}, <id>] clause, the way a metric carries its own.
                     (is (=? {:type "measure" :id measure-id :name "Order Revenue"
-                             :database_id (mt/id) :base_table_id orders}
+                             :database_id (mt/id) :base_table_id orders :portable_entity_id string?}
                             (get by-key ["measure" measure-id])))
                     (is (=? {:type "segment" :id segment-id :name "Big Orders"
-                             :database_id (mt/id) :base_table_id orders}
+                             :database_id (mt/id) :base_table_id orders :portable_entity_id string?}
                             (get by-key ["segment" segment-id])))))))))))))
 
 (deftest ^:sequential failed-insert-spares-only-that-entitys-orphans-test

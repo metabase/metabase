@@ -127,3 +127,17 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v63.2026-06-25T00:00:01
+      author: christruter
+      comment: Enforce one ai_context row per entity
+      changes:
+        - addUniqueConstraint:
+            tableName: osi_ai_context
+            columnNames: entity_type, entity_local_id
+            constraintName: uq_osi_ai_context_entity
+      rollback:
+        - dropUniqueConstraint:
+            tableName: osi_ai_context
+            constraintName: uq_osi_ai_context_entity

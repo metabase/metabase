@@ -376,20 +376,23 @@
           fetch   (fn [model ids]
                     (when-let [ids (not-empty (distinct ids))]
                       (filter mi/can-read?
-                              (t2/select [model :id :name :description :table_id] :id [:in ids]))))
+                              (t2/select [model :id :name :description :table_id :entity_id] :id [:in ids]))))
           rows    (concat (map #(assoc % :type "measure") (fetch :model/Measure (map :id (get by-type "measure"))))
                           (map #(assoc % :type "segment") (fetch :model/Segment (map :id (get by-type "segment")))))
           tbl-ids (not-empty (distinct (keep :table_id rows)))
           id->tbl (when tbl-ids
                     (into {} (map (juxt :id identity))
                           (t2/select [:model/Table :id :name :schema :db_id] :id [:in tbl-ids])))]
-      (for [{:keys [id type name description table_id]} rows
+      (for [{:keys [id type name description table_id entity_id]} rows
             :let [t (get id->tbl table_id)]]
         (cond-> {:id id :type type :name name :description description}
-          t (assoc :database_id       (:db_id t)
-                   :base_table_id      (:id t)
-                   :base_table_name    (:name t)
-                   :base_table_schema  (:schema t)))))))
+          ;; the measure/segment's NanoID — used in a [measure|segment, {}, <id>] clause the way a metric
+          ;; uses its portable_entity_id (carded types get theirs in enrich-with-portable-entity-ids).
+          entity_id (assoc :portable_entity_id entity_id)
+          t         (assoc :database_id       (:db_id t)
+                           :base_table_id      (:id t)
+                           :base_table_name    (:name t)
+                           :base_table_schema  (:schema t)))))))
 
 (defn- enrich-with-measure-segment-base-tables
   "Assemble `:base_table_portable_fk [database_name schema table]` for measure/segment results once

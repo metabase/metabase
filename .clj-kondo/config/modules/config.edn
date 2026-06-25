@@ -1488,6 +1488,7 @@
   {:team "Metabot"
    :api  #{metabase.osi.ai-context.api}
    :uses #{api
+           app-db
            entity-retrieval
            models
            request

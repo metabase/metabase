@@ -4,6 +4,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as app-db]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
@@ -71,7 +72,9 @@
 (api.macros/defendpoint :post "/"
   :- Entry
   "Create (or replace) the ai_context for an entity. One row per entity: if the entity already has an
-  ai_context row it is updated in place rather than duplicated."
+  ai_context row it is updated in place rather than duplicated.
+  The unique `(entity_type, entity_local_id)` constraint plus an upsert keep two concurrent creates from
+  racing in a duplicate row."
   [_route-params
    _query-params
    {:keys [entity_type entity_local_id ai_context]}
@@ -80,11 +83,10 @@
        [:entity_local_id ms/PositiveInt]
        [:ai_context      AiContext]]]
   (api/check-superuser)
-  (let [row {:entity_type entity_type :entity_local_id entity_local_id :ai_context ai_context}]
-    (if-let [existing (find-by-entity entity_type entity_local_id)]
-      (do (t2/update! :model/OsiAiContext (:id existing) row)
-          (t2/select-one :model/OsiAiContext :id (:id existing)))
-      (t2/insert-returning-instance! :model/OsiAiContext row))))
+  (let [pk (app-db/update-or-insert! :model/OsiAiContext
+                                     {:entity_type entity_type :entity_local_id entity_local_id}
+                                     (constantly {:ai_context ai_context}))]
+    (t2/select-one :model/OsiAiContext :id pk)))
 
 (api.macros/defendpoint :put "/:id"
   :- Entry
