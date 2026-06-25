@@ -479,51 +479,27 @@
                   (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
 
 (defn- import-merged!
-  "Local-only merge for the pull path. Performs an entity-identity 3-way merge of local state against the
-  remote tip and, on a clean merge, applies the merged result to the LOCAL app DB only — it does not push.
-  Remote-originated changes end up 'synced'; the un-pushed local changes are preserved as dirty so they
-  can be pushed later. Sets the last version to the remote tip (so the branch is no longer 'behind').
+  "Import in merge mode. Should only be called when you have a base-snapshot and its version differs from snaphot's version.
 
-  On a genuine same-entity conflict, returns `:conflict` without touching local state.
-
-  `base-snapshot` is nil only when no safe 3-way merge is possible (no prior sync, or the base commit was
-  orphaned by a force-push/rebase) — that surfaces as a conflict. When the remote has not advanced past
-  the base, there is nothing to fold in, so it is a no-op success that keeps local changes dirty."
+  Entity-identity 3-way merge of local state against the remote tip:
+  - on same-entity conflict, returns `:conflict` without touching local state;
+  - on a clean merge, applies the merged result to the LOCAL app DB only (no push).
+    - Marks remote changes synced
+    - Local changes stay dirty
+    - Sets version to remote tip"
   [snapshot base-snapshot task-id sync-timestamp]
-  (let [merge-result (delay (source/compute-merge (spec/extract-entities-for-export) snapshot base-snapshot task-id))]
-    (cond
-      (nil? base-snapshot)
-      {:status    :conflict
-       :version   (source.p/version snapshot)
-       :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
-       :message   "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
-
-      ;; The remote hasn't advanced past the merge base — nothing to fold in. Keep local changes as-is (still
-      ;; dirty, to be pushed later); a no-op success, not a spurious "history was rewritten" conflict.
-      (= (source.p/version base-snapshot) (source.p/version snapshot))
-      (do
-        (log/info "Pull merge: remote has not advanced; keeping local changes unchanged")
-        {:status        :success
-         :version       (source.p/version snapshot)
-         :merge-summary {:added 0 :updated 0 :removed 0}
-         :outcome       {:kind "pull-skipped"}})
-
-      (seq (:conflicts @merge-result))
-      (let [conflicts (mapv remote-sync.merge/conflict-label (:conflicts @merge-result))]
-        (log/infof "Pull merge conflict on %d entit(ies): %s"
-                   (count conflicts) (str/join ", " conflicts))
+  (let [{:keys [conflicts merged summary]} (source/compute-merge (spec/extract-entities-for-export) snapshot base-snapshot task-id)]
+    (if (seq conflicts)
+      (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
+        (log/infof "Pull merge conflict on %d entit(ies): %s" (count labels) (str/join ", " labels))
         {:status    :conflict
          :version   (source.p/version snapshot)
-         :conflicts conflicts
+         :conflicts labels
          :message   "Import blocked: the same content was changed both locally and on the remote branch."})
-
-      :else
-      ;; Capture the local (un-pushed) changes before loading; the clean merge guarantees they are
-      ;; disjoint from the remote changes, so restoring them reproduces exactly the local diff vs remote.
-      ;; Restore + set-version run inside the load's transaction so that a crash can't leave the dirty
-      ;; markers overwritten by the load (which would lose them — a retry captures nothing).
-      (let [{:keys [merged summary]} @merge-result
-            dirty-objects (capture-dirty-objects)]
+      ;; Capture the local (un-pushed) changes before loading; the clean merge guarantees they are disjoint
+      ;; from the remote changes, so restoring them reproduces exactly the local diff vs remote. Restore +
+      ;; set-version run inside the load's transaction so a crash can't leave the dirty markers overwritten.
+      (let [dirty-objects (capture-dirty-objects)]
         (load-snapshot! (source/specs->snapshot merged) task-id sync-timestamp
                         :finalize! (fn []
                                      (restore-dirty-objects! dirty-objects sync-timestamp)
@@ -531,39 +507,29 @@
         (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
                    (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
                    (count dirty-objects))
-        {:status :success
-         :version (source.p/version snapshot)
+        {:status        :success
+         :version       (source.p/version snapshot)
          :merge-summary summary
-         :outcome {:kind "pulled"
-                   :count (apply + (vals summary))
-                   :branch (settings/remote-sync-branch)}}))))
+         :outcome       {:kind "pulled"
+                         :count (apply + (vals summary))
+                         :branch (settings/remote-sync-branch)}}))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
 
   Takes a non-nil SourceSnapshot instance, a RemoteSyncTask ID for progress tracking, and optional keyword arguments:
+  - :merge? - perform a local-only 3-way merge (keep un-pushed local changes) instead of overwriting local
+    - :base-snapshot - the merge base (last synced version), required when :merge? is set
   - :force? - forces import even when the snapshot version matches the last imported version or has first-import conflicts
   - :force-deletion? - forces past deletion conflicts (unsynced local transforms the import would delete); defaults
-    to :force?. Kept separate so the setup/enable flow can force past version/dirty guards (force? true) while still
-    surfacing transform-deletion as a conflict the admin must confirm (force-deletion? false) — see GHY-3900.
-  - :merge? - perform a local-only 3-way merge (keep un-pushed local changes) instead of overwriting local
-  - :base-snapshot - the merge base (last synced version), required when :merge? is set
-  - :pre-task-branch - the value of `remote-sync-branch` at scheduling time; if it differs
-    from the current setting at task start, the import aborts with `:error` to protect data
-    integrity (the load mutates the app DB, so we refuse to proceed when state has drifted)
+    to :force?.
 
   Loads serialized entities, removes entities not in the import, syncs the remote-sync-object table, and
   optionally creates a remote-synced collection.
 
   Returns a map with :status (either :success or :error), :version, and :message keys. Various exceptions may be
-  thrown during import and are caught and converted to error status maps."
-  [^SourceSnapshot snapshot task-id & {:keys [force? force-deletion? merge? base-snapshot pre-task-branch]}]
-  (when (branch-changed-since-scheduling? pre-task-branch)
-    (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
-               pre-task-branch (settings/remote-sync-branch))
-    (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
-                    {:pre-task-branch pre-task-branch
-                     :current-branch  (settings/remote-sync-branch)})))
+  thrown during import."
+  [^SourceSnapshot snapshot task-id & {:keys [force? force-deletion? merge? base-snapshot]}]
   (log/info "Reloading remote entities from the remote source")
   (analytics/inc! :metabase-remote-sync/imports)
   (let [sync-timestamp (t/instant)]
@@ -590,22 +556,62 @@
                                      (into (:deletion-conflicts @conflicts)))))
             incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))]
         (cond
+          ;; --- Merge mode: fold remote changes into local, keeping un-pushed local changes. ---
           merge?
-          (import-merged! snapshot base-snapshot task-id sync-timestamp)
+          (cond
+            ;; No safe merge base (no prior sync, or base orphaned by a force-push/rebase) — can't 3-way merge.
+            (nil? base-snapshot)
+            {:status    :conflict
+             :version   snapshot-version
+             :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+             :message   "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
 
-          ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted
-          (and (not force?) (= last-imported-version snapshot-version))
+            ;; Remote hasn't advanced past the merge base — nothing to fold in; keep local changes dirty.
+            (= (source.p/version base-snapshot) snapshot-version)
+            (do
+              (log/info "Pull merge: remote has not advanced; keeping local changes unchanged")
+              {:status        :success
+               :version       snapshot-version
+               :merge-summary {:added 0 :updated 0 :removed 0}
+               :outcome       {:kind "pull-skipped"}})
+
+            :else
+            (import-merged! snapshot base-snapshot task-id sync-timestamp))
+
+          ;; --- Forced reload: bypasses the no-op/incremental guards. Deletion conflicts (when
+          ;; force-deletion? is false) still block; otherwise a full reload. ---
+          force?
+          (cond
+            (seq @blocking-conflicts)
+            (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
+              (log/info message)
+              {:status :conflict
+               :version snapshot-version
+               :conflicts (into #{} (map :category) @blocking-conflicts)
+               :conflict-details @blocking-conflicts
+               :message message})
+
+            :else
+            (let [imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
+              (log/info "Successfully reloaded entities from git repository")
+              {:status :success
+               :version snapshot-version
+               :outcome {:kind "pulled"
+                         :count (pulled-change-count imported-data)
+                         :branch (settings/remote-sync-branch)}}))
+
+          ;; --- Normal pull ---
+          ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted.
+          (= last-imported-version snapshot-version)
           (do
             (log/infof "Skipping import: snapshot version %s matches last imported version" snapshot-version)
             {:status :success
              :version snapshot-version
              :outcome {:kind "pull-skipped"}})
 
-          ;; Incremental fast-path: not forced, no local drift, and the change is incrementally loadable.
-          ;; Touches only changed files, so it can't wholesale-delete unsynced transforms — no conflict scan,
-          ;; and only the cheap O(changes) diff is computed (never the full-tree get-conflicts read).
-          (and (not force?)
-               (not (remote-sync.object/dirty?))
+          ;; Incremental fast-path: no local drift and the change is incrementally loadable. Tested before the
+          ;; conflict. It touches only changed files, so it can't wholesale-delete unsynced transforms.
+          (and (not (remote-sync.object/dirty?))
                (not= :remote-sync/incremental-not-possible @incremental-plan))
           (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
 
@@ -618,8 +624,7 @@
              :conflict-details @blocking-conflicts
              :message message})
 
-          ;; No blocking conflicts: do the full reload.
-          :else
+          :else ;; fall back to full import
           (let [imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
             (log/info "Successfully reloaded entities from git repository")
             {:status :success
@@ -1044,19 +1049,10 @@
   - :source - the Source the snapshot came from, used to resolve the merge base and the merged result
   - :base-snapshot - a snapshot of the last synced version (the merge base), supplied when the remote
     branch has advanced and a 3-way merge is required
-  - :pre-task-branch - the value of `remote-sync-branch` at scheduling time; if it differs
-    from the current setting at task start, the export aborts with `:error` (defense-in-depth
-    against any path that mutates the setting between scheduling and the work running).
 
   Returns a map with :status (`:success`, `:conflict`, or `:error`), and optionally :message, :version,
   and :merge-summary keys. Various exceptions are caught and converted to error status maps."
-  [^SourceSnapshot snapshot task-id message & {:keys [force? merge? base-snapshot pre-task-branch] src :source}]
-  (when (branch-changed-since-scheduling? pre-task-branch)
-    (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
-               pre-task-branch (settings/remote-sync-branch))
-    (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
-                    {:pre-task-branch pre-task-branch
-                     :current-branch  (settings/remote-sync-branch)})))
+  [^SourceSnapshot snapshot task-id message & {:keys [force? merge? base-snapshot] src :source}]
   (let [sync-timestamp (t/instant)]
     (try
       (analytics/inc! :metabase-remote-sync/exports)
@@ -1356,13 +1352,18 @@
                        :conflicts true})))
     (run-async! "import" branch
                 (fn [task-id]
+                  (when (branch-changed-since-scheduling? pre-task-branch)
+                    (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
+                               pre-task-branch (settings/remote-sync-branch))
+                    (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
+                                    {:pre-task-branch pre-task-branch
+                                     :current-branch  (settings/remote-sync-branch)})))
                   (import! snapshot task-id
                            (assoc import-args
                                   :force?           force?
                                   :force-deletion?  force-deletion?
                                   :merge?           merge?
-                                  :base-snapshot    base-snapshot
-                                  :pre-task-branch  pre-task-branch)))
+                                  :base-snapshot    base-snapshot)))
                 :on-success on-success)))
 
 (defn async-export!
@@ -1398,12 +1399,17 @@
                                  (source.p/snapshot-at source last-task-version))]
     (run-async! "export" branch
                 (fn [task-id]
+                  (when (branch-changed-since-scheduling? pre-task-branch)
+                    (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
+                               pre-task-branch (settings/remote-sync-branch))
+                    (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
+                                    {:pre-task-branch pre-task-branch
+                                     :current-branch  (settings/remote-sync-branch)})))
                   (export! snapshot task-id message
                            :force?          force?
                            :merge?          merge?
                            :source          source
-                           :base-snapshot   base-snapshot
-                           :pre-task-branch pre-task-branch))
+                           :base-snapshot   base-snapshot))
                 :on-success on-success)))
 
 (defn preview-export-merge
