@@ -18,6 +18,7 @@ import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import {
+  Box,
   Button,
   Ellipsified,
   Image,
@@ -257,8 +258,10 @@ interface GeoJsonPropertySelectProps {
   dataTestId: string;
 }
 
-const SampleValues = ({ values }: { values: any[] }) => (
-  <Ellipsified mt="sm" fz="0.75em" fw="bold" maw={250}>
+const DROPDOWN_WIDTH = 300;
+
+const SampleValues = ({ values }: { values: string[] }) => (
+  <Ellipsified mt="sm" fz="0.75rem" fw="bold">
     {t`Sample values:`} {values.join(", ")}
   </Ellipsified>
 );
@@ -293,6 +296,7 @@ const GeoJsonPropertySelect = ({
       <Select
         value={value}
         placeholder={t`Select…`}
+        comboboxProps={{ width: DROPDOWN_WIDTH, position: "bottom-start" }}
         data={Object.keys(options).map((name) => ({
           value: name,
           label: name,
@@ -303,15 +307,19 @@ const GeoJsonPropertySelect = ({
           }
         }}
         renderOption={(item) => (
-          <SelectItem selected={item.checked}>
-            <div>
-              <div style={{ textAlign: "left" }}>{item.option.label}</div>
+          <SelectItem selected={item.checked} w="100%">
+            <Stack gap={0} w="100%">
+              <Ellipsified>{item.option.label}</Ellipsified>
               <SampleValues values={options[item.option.value] ?? []} />
-            </div>
+            </Stack>
           </SelectItem>
         )}
       />
-      {selectedValues && <SampleValues values={selectedValues} />}
+      {selectedValues && (
+        <Box w={0} miw="100%">
+          <SampleValues values={selectedValues} />
+        </Box>
+      )}
     </div>
   );
 };
