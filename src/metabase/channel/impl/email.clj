@@ -24,6 +24,7 @@
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.channel.urls :as urls]
    [metabase.notification.models :as models.notification]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -110,7 +111,7 @@
     :text
     (let [inline-params   (:inline_parameters part)
           rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))]
-      {:content (str (markdown/process-markdown (:text part) :html)
+      {:content (str (markdown/process-markdown (:text part) :html (system/site-url))
                      rendered-params)})
 
     :heading
@@ -121,7 +122,7 @@
       {:content (str (html [:h2 {:style style} heading-text])
                      rendered-params)})
     :tab-title
-    {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
+    {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html (system/site-url))}))
 
 (defn- render-body
   [{:keys [details] :as _template} payload]
@@ -358,7 +359,7 @@
                                                                           (some-> (seq parameters)
                                                                                   (impl.util/remove-inline-parameters dashboard_parts)
                                                                                   (render.util/render-parameters)))})
-                                  (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
+                                  (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html (system/site-url)))))]
     (construct-emails template message-context-fn attachments recipients)))
 
 ;; ------------------------------------------------------------------------------------------------;;

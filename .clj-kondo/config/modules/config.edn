@@ -526,7 +526,7 @@
   {:team "DevEx"
    :api  #{metabase.classloader.core
            metabase.classloader.init}
-   :uses #{util}}
+   :uses #{}}
 
   cloud-migration
   {:team "UX West"
@@ -2556,8 +2556,7 @@
    :api  :any
    :uses #{classloader
            config
-           settings
-           system}}
+           settings}}
 
   version
   {:team "UX West"

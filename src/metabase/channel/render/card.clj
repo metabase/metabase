@@ -9,6 +9,7 @@
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -83,7 +84,7 @@
        :content [:div {:style (style/style {:color style/color-text-medium
                                             :font-size :12px
                                             :margin-bottom :8px})}
-                 (markdown/process-markdown description :html)]})))
+                 (markdown/process-markdown description :html (system/site-url))]})))
 
 (defn- has-lat-lng-columns?
   "True when the result has both a Latitude and a Longitude column (a coordinate-based map)."

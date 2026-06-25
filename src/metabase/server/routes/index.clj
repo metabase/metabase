@@ -100,7 +100,7 @@
      :applicationName        (hiccup.util/escape-html (appearance/application-name))
      :uri                    (hiccup.util/escape-html uri)
      :baseHref               (hiccup.util/escape-html (base-href))
-     :embedCode              (when embeddable? (embed/head uri))
+     :embedCode              (when embeddable? (embed/head (system/site-url) uri))
      :enableGoogleAuth       (boolean google-auth-client-id)
      :enableAnonTracking     (boolean anon-tracking-enabled)}))
 
