@@ -83,7 +83,8 @@
                             :data_version 2}
                            {:total_tokens pos-int?
                             :role         :assistant
-                            :data         [{:type "text" :text "Hello from native agent!"}]
+                            :data         [{:type "step-start"}
+                                           {:type "text" :text "Hello from native agent!" :state "done"}]
                             :data_version 2}]
                           messages)))))))))))
 

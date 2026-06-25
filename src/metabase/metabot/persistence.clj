@@ -64,7 +64,7 @@
                (keep (fn [part]
                        (case (:type part)
                          :start {:type "step-start"}
-                         :text {:type "text" :text (:text part)}
+                         :text {:type "text" :text (:text part) :state "done"}
                          :tool-input
                          (let [output (get outputs (:id part))
                                error  (:error output)]

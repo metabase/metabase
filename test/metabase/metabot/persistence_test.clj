@@ -186,7 +186,7 @@
             {:type "tool-search" :toolCallId "c1" :state "output-available"
              :input {:q "x"} :output "rows"}
             {:type "step-start"}
-            {:type "text" :text "done"}]
+            {:type "text" :text "done" :state "done"}]
            (metabot-persistence/parts->storable-content
             [{:type :start :id "m1"}
              {:type :tool-input :id "c1" :function "search" :arguments {:q "x"}}
@@ -309,7 +309,7 @@
             (is (= created-at-before (:created_at row)) "created_at is not changed on UPDATE")
             (is (true? (:finished row))            "default :finished? is true")
             (is (nil? (:error row)))
-            (is (= [{:type "text" :text "Hello"}] (:data row)))
+            (is (= [{:type "text" :text "Hello" :state "done"}] (:data row)))
             (is (= 15 (:total_tokens row)))))))))
 
 (deftest finalize-assistant-turn-passes-through-aborted-and-errored-test
