@@ -97,28 +97,15 @@
   [content]
   (n/string (sort-root (r.parser/parse-string-all content))))
 
-(defn- sorted-content
-  []
-  (let [path    (str u/project-root-directory "/" config-path)
-        content (slurp path)]
-    [path content (sort-string content)]))
-
 (defn sort-config
-  "CLI entry point. Sorts the modules config file in place.
-
-  With `--check`, makes no changes: exits 1 if the file is not already sorted, 0 otherwise. Use
-  this in CI so an unsorted config fails the lint step instead of the slower backend test suite."
-  [{:keys [options] :as _parsed}]
-  (let [[path content sorted] (sorted-content)
-        sorted? (= content sorted)]
-    (if (:check options)
-      (if sorted?
-        (println (c/green "Modules config is sorted."))
-        (do (println (c/red (str config-path " is not sorted. Run: ./bin/mage sort-modules-config")))
-            (u/exit 1)))
-      (do
-        (println (c/cyan (str "Sorting " config-path "...")))
-        (if sorted?
-          (println (c/green "Modules config already sorted."))
-          (do (spit path sorted)
-              (println (c/green "Sorted modules config."))))))))
+  "CLI entry point. Sorts the modules config file in place. Run this when
+  `metabase.core.modules-test` complains the config is not sorted."
+  [_parsed]
+  (println (c/cyan (str "Sorting " config-path "...")))
+  (let [path    (str u/project-root-directory "/" config-path)
+        content (slurp path)
+        sorted  (sort-string content)]
+    (if (= content sorted)
+      (println (c/green "Modules config already sorted."))
+      (do (spit path sorted)
+          (println (c/green "Sorted modules config."))))))
