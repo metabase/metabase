@@ -24,6 +24,7 @@
   org.apache.arrow/arrow-vector          {:mvn/version "18.3.0"}
   ;; was 1.71.0. bumping to 77
   io.grpc/grpc-netty-shaded              {:mvn/version "1.77.0"}
+  io.opentelemetry/opentelemetry-api     {:mvn/version "1.62.0"}             ; pinned: grpc-netty-shaded pulls 1.54.1 (W3CBaggagePropagator DoS vuln)
   ;; Netty 4.2.x — latest patched release. grpc-netty-shaded bundles its own
   ;; shaded netty, but these modules are still pulled through arrow-memory-netty
   ;; and must be pinned for security scanning.
