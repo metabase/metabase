@@ -240,6 +240,15 @@
 
 (declare related-tables)
 
+(def ^:private max-related-tables
+  "Maximum number of FK-related tables to expand when building entity context for the LLM.
+
+  Each related table re-fetches and formats its full column set, so on a database with a very large
+  / highly-connected schema an unbounded FK fan-out fetches and pins an unbounded number of columns
+  for the request's lifetime, exhausting the heap (metabase#76493). The LLM context window can't usefully
+  hold hundreds of related tables anyway, so we cap the fan-out."
+  20)
+
 (defn- table-details
   ([id] (table-details id nil))
   ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?
@@ -303,14 +312,23 @@
 
 (defn related-tables
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
-   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys."
+   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys.
+
+   The number of related tables is capped at [[max-related-tables]] to bound the amount of metadata
+   fetched and formatted for the LLM context — without the cap a highly-connected schema can fetch
+   and pin an unbounded number of columns for the request's lifetime (metabase#76493)."
   [query with-fields? field-values-fn]
   (let [all-main-cols (lib/visible-columns query)
         fk-cols       (filter :fk-field-id all-main-cols)
-        grouped-fks   (group-by (juxt :table-id :fk-field-id) fk-cols)]
-    (when (seq grouped-fks)
+        grouped-fks   (group-by (juxt :table-id :fk-field-id) fk-cols)
+        ;; sort for a deterministic selection when we cap, so the same tables are kept across calls
+        fk-groups     (sort (keys grouped-fks))]
+    (when (seq fk-groups)
+      (when (> (count fk-groups) max-related-tables)
+        (log/warnf "Capping MetaBot related-table expansion to %d of %d FK-related tables (metabase#76493)."
+                   max-related-tables (count fk-groups)))
       (mapv
-       (fn [[[table-id fk-field-id] _]]
+       (fn [[table-id fk-field-id]]
          (let [base-details   (table-details table-id
                                              {:with-fields?         with-fields?
                                               :field-values-fn      field-values-fn
@@ -319,7 +337,7 @@
                base-table-col (lib.metadata/field query fk-field-id)
                fk-field-name  (:name base-table-col)]
            (assoc base-details :related_by fk-field-name)))
-       grouped-fks))))
+       (take max-related-tables fk-groups)))))
 
 (defn- card-details
   "Get details for a card."

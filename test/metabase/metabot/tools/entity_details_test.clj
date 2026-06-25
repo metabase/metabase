@@ -520,3 +520,22 @@
                            :structured-output)]
             (is (map? (:query_json output)))
             (is (= "mbql/query" (get-in output [:query_json "lib/type"])))))))))
+
+(deftest related-tables-capped-test
+  (testing (str "FK-related-table expansion is capped at `max-related-tables` so a table with a very "
+                "large / highly-connected schema can't fetch and pin an unbounded number of columns "
+                "during a single MetaBot context build (metabase#76493)")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [related-count (fn []
+                              (-> (entity-details/get-table-details {:entity-type :table
+                                                                     :entity-id (mt/id :orders)})
+                                  :structured-output
+                                  :related_tables
+                                  count))]
+          (testing "Orders has more than one FK-related table by default (Products + People)"
+            (is (> (related-count) 1)))
+          (testing "with the cap lowered, no more than `max-related-tables` related tables are expanded"
+            (with-redefs-fn {#'entity-details/max-related-tables 1}
+              (fn []
+                (is (= 1 (related-count)))))))))))
