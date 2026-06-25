@@ -225,7 +225,7 @@ saved later when it is ready."
            (log/debug "Not inferring result metadata for Card: query was not updated")
            card)
 
-         (and mi/*deserializing?* (= (:type card) :model) query (seq metadata))
+         (and mi/*deserializing?* (= (:type card) :model) query (seq metadata) (not-any? :id metadata))
          (assoc card :result_metadata (or (infer-metadata-with-model-overrides query card) metadata))
 
          ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
