@@ -91,7 +91,12 @@ export function createTableMetadata(
 
   return {
     ...metadata,
-    measures: createMeasureMetadataRecords(measures, metadata, databaseId),
+    measures: createMeasureMetadataRecords(
+      measures,
+      metadata,
+      databaseId,
+      table.id,
+    ),
   };
 }
 
@@ -149,7 +154,6 @@ export function createMetricMetadata(
       [metricId]: createMetricCardMetadataRecord(
         {
           metricId,
-          databaseId,
           sourceTableId: sourceTableId == null ? null : Number(sourceTableId),
           sourceCardId: sourceCardId == null ? null : Number(sourceCardId),
         },
@@ -210,35 +214,27 @@ const createMeasureMetadataRecord = (
 
 // The generated schema ships a measure's output column, not its aggregation, but
 // metabase-lib needs a definition to resolve the aggregation column when ordering
-// by the measure. Each record gets a placeholder definition (built from the
-// assembled metadata) that only makes the column orderable; the executed query
-// references the measure by id, so it never reaches it. The definition depends
-// only on the source table, so it's built once per table and shared.
+// by the measure. Each record gets a placeholder definition that only makes the
+// column orderable (a numeric count); the executed query references the measure
+// by id, so it never reaches it. It's built on the metadata's source table — the
+// one table guaranteed to resolve — so it works even for measures from mapped
+// tables not otherwise present in the metadata, and it's built once and shared.
 const createMeasureMetadataRecords = (
   measures: readonly MeasureReferenceInput[],
   metadata: MetadataInput,
   databaseId: number,
+  sourceTableId: TableId,
 ) => {
-  const definitionByTableId = new Map<TableId, DatasetQuery | undefined>();
-
-  const placeholderDefinition = (tableId: TableId) => {
-    if (!definitionByTableId.has(tableId)) {
-      definitionByTableId.set(
-        tableId,
-        buildPlaceholderAggregationQuery(metadata, databaseId, tableId),
-      );
-    }
-
-    return definitionByTableId.get(tableId);
-  };
+  const definition = buildPlaceholderAggregationQuery(
+    metadata,
+    databaseId,
+    sourceTableId,
+  );
 
   return Object.fromEntries(
     measures.map((measure) => [
       measure.id,
-      {
-        ...createMeasureMetadataRecord(measure, measure.tableId),
-        definition: placeholderDefinition(measure.tableId),
-      },
+      { ...createMeasureMetadataRecord(measure, measure.tableId), definition },
     ]),
   );
 };
@@ -279,7 +275,6 @@ const createMetricCardMetadataRecord = (
     sourceCardId,
   }: {
     metricId: number;
-    databaseId: number;
     sourceTableId: number | null;
     sourceCardId: number | null;
   },

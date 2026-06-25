@@ -969,6 +969,27 @@ describe("useMetabaseQuery", () => {
       );
     });
 
+    it("sorts by a string-dimension aggregation", () => {
+      const result = createMetabaseQuery({
+        table: TEST_SCHEMA.tables.orders,
+        aggregations: [sum("amount")],
+        breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        sorts: [sort(sum("amount"), "desc")],
+      });
+
+      const stage = getStage(result);
+      const sumClause = stage.aggregation[0];
+
+      expect(sumClause[0]).toBe("sum");
+      expect(stage["order-by"]).toEqual([
+        [
+          "desc",
+          mbqlOptions(),
+          ["aggregation", mbqlOptions(), aggregationUuid(sumClause)],
+        ],
+      ]);
+    });
+
     it("sorts table queries by a breakout dimension and limits rows", () => {
       expect(
         createMetabaseQuery({

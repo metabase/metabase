@@ -532,7 +532,7 @@ const { data } = useMetabaseQuery<OrdersTable>({
 ```
 
 - `sort(column, direction?)` builds one sort entry; `direction` is `"asc"` (default) or `"desc"`.
-- Sort `column` can be a breakout dimension, a table field, a generated measure, or the query's metric — pass the same generated schema objects you pass to `breakouts`/`aggregations`/`measures`/`metric`. Do not pass raw column-name strings. The sort target should already be part of the query.
+- Sort `column` can be a breakout dimension, a table field, a generated measure, or the query's metric — pass the same generated schema objects you pass to `breakouts`/`aggregations`/`measures`/`metric`. Do not pass raw column-name strings. Sorting by a measure or metric requires it to be part of the query; a table field can be sort-only (it doesn't have to also be a filter/breakout/aggregation).
 - Results are not ordered unless you sort. For time-series charts, add an ascending time sort: `sort(table.fields.createdAt, "asc")`.
 - Prefer sorting in the query over sorting `data.rows` in React, so charts stay ordered.
 

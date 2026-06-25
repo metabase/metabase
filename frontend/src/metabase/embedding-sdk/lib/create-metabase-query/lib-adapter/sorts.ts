@@ -158,6 +158,10 @@ function aggregationsMatch(target: unknown, aggregation: unknown): boolean {
 }
 
 function sameDimension(left: unknown, right: unknown): boolean {
+  if (typeof left === "string" || typeof right === "string") {
+    return left === right;
+  }
+
   const leftId = getFieldId(left);
 
   return leftId != null && leftId === getFieldId(right);
