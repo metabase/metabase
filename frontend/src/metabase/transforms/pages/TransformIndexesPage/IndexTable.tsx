@@ -165,14 +165,19 @@ function IndexColumnsCell({ index }: { index: TableIndexEntry }) {
         const direction = directions.get(name);
         return (
           <Code key={name}>
-            <span>{name}</span>
-            {direction && (
-              <Tooltip label={getDirectionLabel(direction)}>
-                <Box component="span" ml={2} c="text-secondary">
-                  {DIRECTION_ARROWS[direction]}
-                </Box>
-              </Tooltip>
-            )}
+            <Tooltip
+              label={direction ? getDirectionLabel(direction) : undefined}
+              disabled={!direction}
+            >
+              <Box>
+                <span>{name}</span>
+                {direction && (
+                  <Box component="span" ml={2} c="text-secondary">
+                    {direction && DIRECTION_ARROWS[direction]}
+                  </Box>
+                )}
+              </Box>
+            </Tooltip>
           </Code>
         );
       })}
