@@ -287,6 +287,25 @@
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
 
+(deftest metric-on-natively-sandboxed-table-test
+  (testing "A :metric reference on a natively-sandboxed table should succeed (#76044)"
+    (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+      (let [mp           (mt/metadata-provider)
+            metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                             (lib/aggregate (lib/count)))]
+        ;; the sandboxing path needs a real Card in the app DB; a mock MP wouldn't trigger the sandboxing middleware
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (mt/with-temp [:model/Card {metric-id :id} {:name          "Sandboxed Venues Count"
+                                                    :type          :metric
+                                                    :database_id   (mt/id)
+                                                    :table_id      (mt/id :venues)
+                                                    :dataset_query metric-query}]
+          (let [mp         (mt/metadata-provider)
+                user-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                               (lib/aggregate (lib.metadata/metric mp metric-id)))]
+            (is (= [[10]]
+                   (mt/format-rows-by [int] (mt/rows (qp/process-query user-query)))))))))))
+
 (deftest e2e-test-2
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is MBQL"
