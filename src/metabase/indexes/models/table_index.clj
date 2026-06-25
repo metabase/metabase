@@ -43,7 +43,7 @@
   #{:create-pending :update-pending :deletion-pending :running})
 
 (def ^:private runnable-statuses
-  #{:create-pending :update-pending :failed})
+  #{:create-pending :update-pending :running :failed})
 
 (def ^:private defaults
   {:status :create-pending})
@@ -108,6 +108,25 @@
                      :transform_id transform-id
                      {:order-by [[:index_name :asc]]})))
 
+(defn select-for-verification
+  "Rows the current execution can update while verifying indexes.
+
+  `index-request-ids` is the applicable request id set hydrated at execution start. Only rows still `:running` are
+  settled; if a request is edited mid-run, its pending status is left for the next rebuild. Deletion-pending rows are
+  also included so a successful full rebuild can remove rows for physical indexes that disappeared."
+  [transform-id index-request-ids]
+  (concat
+   (when (seq index-request-ids)
+     (t2/select :model/TableIndex
+                :transform_id transform-id
+                :id [:in index-request-ids]
+                :status :running
+                {:order-by [[:id :asc]]}))
+   (t2/select :model/TableIndex
+              :transform_id transform-id
+              :status :deletion-pending
+              {:order-by [[:id :asc]]})))
+
 (defn select-applicable-by-id
   "Fetch a single applicable index request by id."
   [id]
@@ -123,15 +142,15 @@
            (t2/select :model/TableIndex :transform_id transform-id)))))
 
 (defn mark-runnable-indexes-running!
-  "Mark applicable index requests that this run will apply as running.
+  "Mark hydrated index requests that this run will apply as running.
 
-  Returns the ids marked running so callers can fail rows that verification cannot move to `:succeeded` or `:failed`."
-  [transform-id]
-  (let [ids (t2/select-fn-set :id :model/TableIndex
-                              :transform_id transform-id
-                              :status [:in runnable-statuses])]
-    (doseq [id ids]
-      (t2/update! :model/TableIndex id {:status :running}))
+  Returns the ids so callers can fail rows that verification cannot move to `:succeeded` or `:failed`."
+  [index-request-ids]
+  (let [ids (set index-request-ids)]
+    (when (seq ids)
+      (t2/update! :model/TableIndex
+                  {:id [:in ids] :status [:in runnable-statuses]}
+                  {:status :running}))
     ids))
 
 (defn mark-unverified-running-indexes-failed!

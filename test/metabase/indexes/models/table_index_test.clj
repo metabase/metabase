@@ -64,20 +64,47 @@
                                                     :error_message "old failure"
                                                     :structured   {:kind :btree :name "failed_idx"
                                                                    :columns [{:name "c"}]}}
+                 :model/TableIndex {running-id :id} {:transform_id transform-id
+                                                     :index_name   "running_idx"
+                                                     :status       :running
+                                                     :structured   {:kind :btree :name "running_idx"
+                                                                    :columns [{:name "e"}]}}
                  :model/TableIndex {deleted-id :id} {:transform_id transform-id
                                                      :index_name   "deleted_idx"
                                                      :status       :deletion-pending
                                                      :structured   {:kind :btree :name "deleted_idx"
                                                                     :columns [{:name "d"}]}}]
-    (let [ids (table-index/mark-runnable-indexes-running! transform-id)]
-      (is (= #{create-id update-id failed-id} ids))
+    (let [ids (table-index/mark-runnable-indexes-running! [create-id update-id failed-id running-id])]
+      (is (= #{create-id update-id failed-id running-id} ids))
       (is (= :running (t2/select-one-fn :status :model/TableIndex create-id)))
       (is (= :running (t2/select-one-fn :status :model/TableIndex update-id)))
       (is (= :running (t2/select-one-fn :status :model/TableIndex failed-id)))
+      (is (= :running (t2/select-one-fn :status :model/TableIndex running-id)))
       (is (= :deletion-pending (t2/select-one-fn :status :model/TableIndex deleted-id)))
       (t2/update! :model/TableIndex create-id {:status :succeeded})
       (table-index/mark-unverified-running-indexes-failed! ids "not verified")
       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex create-id)))
       (is (= :failed (t2/select-one-fn :status :model/TableIndex update-id)))
       (is (= :failed (t2/select-one-fn :status :model/TableIndex failed-id)))
+      (is (= :failed (t2/select-one-fn :status :model/TableIndex running-id)))
       (is (= "not verified" (t2/select-one-fn :error_message :model/TableIndex update-id))))))
+
+(deftest select-for-verification-test
+  (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)
+                 :model/TableIndex {running-id :id} {:transform_id transform-id
+                                                     :index_name   "running_idx"
+                                                     :status       :running
+                                                     :structured   {:kind :btree :name "running_idx"
+                                                                    :columns [{:name "a"}]}}
+                 :model/TableIndex {pending-id :id} {:transform_id transform-id
+                                                     :index_name   "pending_idx"
+                                                     :status       :update-pending
+                                                     :structured   {:kind :btree :name "pending_idx"
+                                                                    :columns [{:name "b"}]}}
+                 :model/TableIndex {deleted-id :id} {:transform_id transform-id
+                                                     :index_name   "deleted_idx"
+                                                     :status       :deletion-pending
+                                                     :structured   {:kind :btree :name "deleted_idx"
+                                                                    :columns [{:name "c"}]}}]
+    (is (= #{running-id deleted-id}
+           (set (map :id (table-index/select-for-verification transform-id [running-id pending-id])))))))

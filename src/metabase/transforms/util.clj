@@ -181,7 +181,8 @@
             (when full-create?
               ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
               ;; stays a full rebuild that re-attempts the index).
-              (let [running-indexes (table-index/mark-runnable-indexes-running! (:id transform))]
+              (let [running-indexes (table-index/mark-runnable-indexes-running!
+                                     (:index-request-ids (:target transform)))]
                 (try
                   (transforms-base.u/apply-target-indexes! transform)
                   (transforms-base.u/verify-managed-indexes! transform)

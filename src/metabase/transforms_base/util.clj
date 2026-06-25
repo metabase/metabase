@@ -614,36 +614,40 @@
   Only runs on full-create runs (same guard as [[apply-target-indexes!]])."
   [transform]
   (when (full-create-run? transform)
-    (when-let [managed (seq (t2/select :model/TableIndex :transform_id (:id transform)))]
-      (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
-            {:keys [schema] table-name :name} (:target transform)
-            deletion-pending (filter #(= :deletion-pending (:status %)) managed)]
-        ;; An empty fetch is ambiguous (no indexes vs couldn't introspect -- both degrade to []), so leave statuses
-        ;; untouched rather than mark everything failed; warn so a stuck pending state stays traceable.
-        (if-let [warehouse-indexes (seq (reconcile/fetch-warehouse-indexes database schema table-name))]
-          (let [present-keys (into #{} (map reconcile/match-key) warehouse-indexes)
-                by-outcome   (group-by (fn [row]
-                                         (let [present? (contains? present-keys (reconcile/managed-match-key row))]
-                                           (cond
-                                             (and (table-index/applicable? row) present?) :succeeded
-                                             (table-index/applicable? row)                :failed
-                                             present?                                    :deletion-pending
-                                             :else                                       :delete-row)))
-                                       managed)]
-            ;; one update per outcome rather than per row
-            (doseq [[status rows] by-outcome]
-              (if (= :delete-row status)
-                (t2/delete! :model/TableIndex :id [:in (map :id rows)])
-                (t2/update! :model/TableIndex :id [:in (map :id rows)]
-                            {:status           status
-                             :last_executed_at :%now}))))
-          (do
-            ;; The full rebuild succeeded and deletion-pending rows were deliberately excluded from table creation, so the
-            ;; old physical index is gone even when the driver reports no remaining indexes.
-            (when (seq deletion-pending)
-              (t2/delete! :model/TableIndex :id [:in (map :id deletion-pending)]))
-            (log/warnf "verify-managed-indexes!: no indexes read back for %s.%s; leaving %d applicable request(s) unchanged"
-                       schema table-name (- (count managed) (count deletion-pending)))))))))
+    (let [target  (:target transform)
+          managed (if (contains? target :index-request-ids)
+                    (table-index/select-for-verification (:id transform) (:index-request-ids target))
+                    (table-index/select-for-transform (:id transform)))]
+      (when-let [managed (seq managed)]
+        (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
+              {:keys [schema] table-name :name} (:target transform)
+              deletion-pending (filter #(= :deletion-pending (:status %)) managed)]
+          ;; An empty fetch is ambiguous (no indexes vs couldn't introspect -- both degrade to []), so leave statuses
+          ;; untouched rather than mark everything failed; warn so a stuck pending state stays traceable.
+          (if-let [warehouse-indexes (seq (reconcile/fetch-warehouse-indexes database schema table-name))]
+            (let [present-keys (into #{} (map reconcile/match-key) warehouse-indexes)
+                  by-outcome   (group-by (fn [row]
+                                           (let [present? (contains? present-keys (reconcile/managed-match-key row))]
+                                             (cond
+                                               (and (table-index/applicable? row) present?) :succeeded
+                                               (table-index/applicable? row)                :failed
+                                               present?                                    :deletion-pending
+                                               :else                                       :delete-row)))
+                                         managed)]
+              ;; one update per outcome rather than per row
+              (doseq [[status rows] by-outcome]
+                (if (= :delete-row status)
+                  (t2/delete! :model/TableIndex :id [:in (map :id rows)])
+                  (t2/update! :model/TableIndex :id [:in (map :id rows)]
+                              {:status           status
+                               :last_executed_at :%now}))))
+            (do
+              ;; The full rebuild succeeded and deletion-pending rows were deliberately excluded from table creation, so the
+              ;; old physical index is gone even when the driver reports no remaining indexes.
+              (when (seq deletion-pending)
+                (t2/delete! :model/TableIndex :id [:in (map :id deletion-pending)]))
+              (log/warnf "verify-managed-indexes!: no indexes read back for %s.%s; leaving %d applicable request(s) unchanged"
+                         schema table-name (- (count managed) (count deletion-pending))))))))))
 
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.

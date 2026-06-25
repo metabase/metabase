@@ -201,15 +201,17 @@
                                                :source             {:type "query"}
                                                :source_database_id (mt/id)
                                                :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
-                   :model/TableIndex _ {:transform_id tid :index_name "b_idx"
-                                        :structured {:kind :btree :name "b_idx" :columns [{:name "x"}]}}
-                   :model/TableIndex _ {:transform_id tid :index_name "a_idx"
-                                        :structured {:kind :btree :name "a_idx" :columns [{:name "y"}]}}
+                   :model/TableIndex {b-id :id} {:transform_id tid :index_name "b_idx"
+                                                 :structured {:kind :btree :name "b_idx" :columns [{:name "x"}]}}
+                   :model/TableIndex {a-id :id} {:transform_id tid :index_name "a_idx"
+                                                 :structured {:kind :btree :name "a_idx" :columns [{:name "y"}]}}
                    :model/TableIndex _ {:transform_id tid :index_name "deleted_idx"
                                         :status :deletion-pending
                                         :structured {:kind :btree :name "deleted_idx" :columns [{:name "z"}]}}]
       (is (= ["a_idx" "b_idx"]
-             (map :name (transforms.execute/hydrate-transform-indexes {:id tid})))))))
+             (map :name (transforms.execute/hydrate-transform-indexes {:id tid}))))
+      (is (= [a-id b-id]
+             (transforms.execute/hydrate-transform-index-ids {:id tid}))))))
 
 (deftest ^:synchronized verify-managed-indexes!-test
   (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
@@ -253,6 +255,29 @@
                                           {:transform_id tid
                                            :index_name   "deleted_idx"
                                            :structured   {:kind :btree :name "deleted_idx" :columns [{:name "z"}]}}))))))
+
+(deftest ^:synchronized verify-managed-indexes!-only-verifies-hydrated-indexes-test
+  (mt/with-temp [:model/Transform {tid :id :as transform} {:name               (mt/random-name)
+                                                           :source             {:type "query"}
+                                                           :source_database_id (mt/id)
+                                                           :target             {:database (mt/id)
+                                                                                :type     "table"
+                                                                                :schema   "public"
+                                                                                :name     "t"}}
+                 :model/TableIndex {hydrated-id :id} {:transform_id tid :index_name "hydrated_idx"
+                                                      :status :running
+                                                      :structured {:kind :btree :name "hydrated_idx"
+                                                                   :columns [{:name "x"}]}}
+                 :model/TableIndex {concurrent-id :id} {:transform_id tid :index_name "concurrent_idx"
+                                                        :structured {:kind :btree :name "concurrent_idx"
+                                                                     :columns [{:name "y"}]}}]
+    (with-redefs [driver/fetch-table-indexes (fn [& _] [(warehouse-btree "hydrated_idx" "x")])]
+      (transforms-base.u/verify-managed-indexes!
+       (-> transform
+           (assoc-in [:target :indexes] [{:kind :btree :name "hydrated_idx" :columns [{:name "x"}]}])
+           (assoc-in [:target :index-request-ids] [hydrated-id])))
+      (is (= :succeeded (t2/select-one-fn :status :model/TableIndex hydrated-id)))
+      (is (= :create-pending (t2/select-one-fn :status :model/TableIndex concurrent-id))))))
 
 (deftest ^:synchronized verify-managed-indexes!-keeps-deletion-pending-row-when-present-test
   (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
