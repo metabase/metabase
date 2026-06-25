@@ -787,7 +787,8 @@
   (testing "when the roster itself is capped, the note says so"
     (let [xml (llm-shape/table->xml (assoc base-table-with-truncated-related
                                            :related_table_refs_truncated true))]
-      (is (str/includes? xml "itself truncated")))))
+      (is (str/includes? xml "itself truncated: 97 more related tables exist")
+          "the note reports how many related tables were truncated (total 99 minus the 2 shown)"))))
 
 (deftest ^:parallel table->xml-no-truncation-note-test
   (testing "an un-truncated related-tables list renders no truncation note"

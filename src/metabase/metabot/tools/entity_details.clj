@@ -250,7 +250,7 @@
   20)
 
 (def ^:private max-related-table-truncated-refs
-  "Maximum number of FK-related tables to list by id/name in the truncation list (see [[related-tables]]).  
+  "Maximum number of FK-related tables to list by id/name in the truncation list (see [[related-tables]]).
 
   This list is cheap (ids/names/description only, no column fetch), so it can be longer than
   [[max-related-tables]].  It lets the LLM see which related tables were excluded."
@@ -344,24 +344,26 @@
          sort)))
 
 (defn related-tables
-  "FK-related-table context for `query`. Each distinct FK path (a `[table-id fk-field-id]` pair) is a
-   separate related table, so the same table reachable through multiple foreign keys appears once per FK.
+  "Context about tables related to `query` via a foreign key.
 
-   Returns nil when the query has no FK-related tables, otherwise a map:
+  Each distinct FK path (a `[table-id fk-field-id]` pair) is a separate related table, so the same table reachable
+  through multiple foreign keys appears once per FK.
 
-     :tables  vector of detailed related-table maps (one per FK path), each with its fields, capped at
-              [[max-related-tables]]. This is the expensive part — each entry re-fetches and formats the
-              target table's full column set.
-     :total   total number of FK-related tables before capping.
-     :refs    lightweight list `{:id :name :description :related_by}` of related tables, capped at
-              [[max-related-table-truncated-refs]] (ids/names only, no column fetch). Lets the LLM see
-              which related tables exist beyond the detailed ones and look any of them up individually."
+  Returns nil when the query has no FK-related tables, otherwise a map:
+
+    :tables vector of detailed related-table maps (one per FK path), each optionally with its fields, capped at
+            [[max-related-tables]]. This is the expensive part — each entry re-fetches and formats the
+            target table's full column set.
+    :total  total number of FK-related tables before capping.
+    :refs   list of `{:id :name :description :related_by}` of related tables, capped at
+            [[max-related-table-truncated-refs]] (ids/names only, no column fetch). Lets the LLM see
+            which related tables were excluded from `:tables` above."
   [query with-fields? field-values-fn]
   (let [fk-groups (fk-related-table-groups query)
         total     (count fk-groups)]
     (when (pos? total)
       (when (> total max-related-tables)
-        (log/warnf "Capping MetaBot related-table expansion to %d of %d FK-related tables (metabase#76493)."
+        (log/infof "Capping metabot related-table expansion to %d of %d FK-related tables."
                    max-related-tables total))
       {:total  total
        :tables (mapv
@@ -375,7 +377,6 @@
                 (take max-related-tables fk-groups))
        :refs   (mapv
                 (fn [[table-id fk-field-id]]
-                  ;; table metadata is just the table row (name/schema/description) — no visible-columns fetch
                   (let [table (lib.metadata/table query table-id)]
                     {:id          table-id
                      :name        (:name table)
@@ -384,11 +385,14 @@
                 (take max-related-table-truncated-refs fk-groups))})))
 
 (defn- related-tables-result
-  "Convert the map returned by [[related-tables]] (or nil) into the subset of entity-detail result keys
-   that describe related tables: the detailed `:related_tables` list, plus — when that list was capped —
-   a `:related_tables_truncated` flag, the `:related_tables_total` count, and the `:related_table_refs`
-   roster (with its own `:related_table_refs_truncated` flag) so the LLM knows more related tables exist
-   and can look them up individually."
+  "Convert the map returned by [[related-tables]] into the entity-detail result.
+
+  - `:related_tables` list of related tables with full details
+  - `:related_tables_truncated` (optional) true when `:related_tables` was truncated by [[max-related-tables]]
+  - `:related_tables_total` (optional) count of total related tables, before truncation. Only present when truncation
+     occurred.
+  - `:related_table_refs` (optional) list of id/name/description. Only present when truncation occurred, so the LLM
+     knows more related tables exist and can look them up individually."
   [related]
   (when-let [{:keys [tables total refs]} related]
     (let [truncated?      (> total (count tables))

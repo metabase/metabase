@@ -284,7 +284,7 @@
   512)
 
 (defn- related-table-ref->xml
-  "One entry in the related-tables truncation roster — a related table the LLM can look up by id."
+  "One entry in the related-tables truncation list."
   [{:keys [id name description related_by]}]
   (str "<related-table-ref"
        (when (some? id) (str " id=\"" id "\""))
@@ -295,13 +295,13 @@
        "/>"))
 
 (defn- related-tables->xml
-  "Render the related-tables block for a table/model: each detailed related table, plus — when the
-   detailed list was capped — a note that more related tables exist and a roster of their ids/names, so
-   the LLM doesn't assume the detailed list is exhaustive and can look any of the others up individually.
+  "Render the related-tables block for a table/model.
 
-   `truncated?`/`total`/`refs`/`refs-truncated?` come from the entity-detail result built by
-   [[metabase.metabot.tools.entity-details/related-tables-result]]. Returns nil when there is nothing to
-   render."
+  Render each detailed related table, plus — when the detailed list was truncated — a note that more related tables
+  exist and a list of their ids/names/description, so the LLM doesn't assume the detailed list is exhaustive and can
+  look any of the others up individually.
+
+  Returns nil when there is nothing to render."
   [related-tables {:keys [truncated? total refs refs-truncated?]}]
   (let [detailed (when (seq related-tables)
                    (str/join "" (map related-table->xml related-tables)))
@@ -311,11 +311,11 @@
                         "Only the related tables above are shown with full column details; this entity "
                         "has more FK-related tables than are shown here.\n"
                         (when (seq refs)
-                          (str "Complete list of related tables (use entity_details by id to fetch the "
-                               "columns of any not detailed above):\n"
+                          (str "List of related tables:\n"
                                (str/join "\n" (map related-table-ref->xml refs)) "\n"))
                         (when refs-truncated?
-                          "(This list is itself truncated — even more related tables exist.)\n")
+                          (format "(This list is itself truncated: %d more related tables exist.)\n"
+                                  (- total (count refs))))
                         "</related-tables-truncated>"))]
     (when (or detailed note)
       (str detailed (when (and detailed note) "\n") note))))
