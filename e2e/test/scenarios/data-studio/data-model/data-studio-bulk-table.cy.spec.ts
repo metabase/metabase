@@ -317,16 +317,27 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.modal().findByText("Publish these tables").click();
     cy.wait("@publishTables");
 
-    // The post-publish re-render auto-expands the database via the active-path effect,
-    // so clicking the (already-expanded, active) row only collapses it again — the
-    // schema fetch never re-fires and the table rows disappear. Re-open Data Studio for
-    // a clean, collapsed tree, then expand the database to reliably load its schema.
-    H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
-    cy.wait("@getSchema");
+    // The post-publish re-render can auto-expand the database, so an unconditional row
+    // click would toggle it shut again and hide the tables. Deselect the database, then
+    // expand it via its toggle only if it is still collapsed — so the tree updates in
+    // place and we can assert the inherited attributes without reloading the page.
+    TablePicker.getDatabase("Writable Postgres12")
+      .find('input[type="checkbox"]')
+      .uncheck();
+    TablePicker.getDatabaseToggle("Writable Postgres12").then(($toggle) => {
+      if ($toggle.attr("aria-expanded") !== "true") {
+        cy.wrap($toggle).click();
+      }
+    });
+    TablePicker.getDatabaseToggle("Writable Postgres12").should(
+      "have.attr",
+      "aria-expanded",
+      "true",
+    );
 
     cy.findAllByTestId("tree-item")
       .filter('[data-type="table"]')
+      .should("have.length.greaterThan", 0)
       .each((table) => {
         cy.wrap(table)
           .findByTestId("table-owner")
