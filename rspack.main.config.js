@@ -357,7 +357,15 @@ if (shouldEnableHotRefresh) {
     // tweak stats to make the output in the console more legible
     devMiddleware: {
       stats: { preset: "errors-warnings", timings: true },
-      writeToDisk: true,
+      // Write durable bundle assets to disk (the Clojure backend serves the
+      // embedding SDK bundle from disk, not from this dev server), but keep
+      // ephemeral HMR delta files in memory. Otherwise every recompile leaks
+      // a uniquely-hashed *.hot-update.{js,json}(.map) to disk that nothing
+      // ever cleans up — see EMB-1921 (resources/frontend_client/app/embedding-sdk
+      // had grown to ~1.9GB / 890 files). The browser still fetches deltas
+      // over HTTP from the dev server, so HMR keeps working.
+      writeToDisk: (filePath) =>
+        !/\.hot-update\.(js|json)(\.map)?$/.test(filePath),
       // if webpack doesn't reload UI after code change in development
       // watchOptions: {
       //     aggregateTimeout: 300,
