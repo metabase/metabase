@@ -42,7 +42,7 @@ export const knownDataPartTypes = [
   "data-generated_entity",
   "data-adhoc_viz",
   "data-static_viz",
-];
+] as const satisfies readonly KnownDataPart["type"][];
 
 export type AdhocVizValue = {
   query: unknown;
@@ -72,10 +72,16 @@ export type GeneratedEntity = GeneratedCard;
 
 export type KnownDataPart =
   | { type: "data-navigate_to"; data: string }
-  | { type: "data-state"; data: Record<string, any> }
+  | { type: "data-state"; data: Record<string, unknown> }
   | { type: "data-todo_list"; data: MetabotTodoItem[] }
   | { type: "data-transform_suggestion"; data: SuggestedTransform }
   | { type: "data-code_edit"; data: MetabotCodeEdit }
   | { type: "data-generated_entity"; data: GeneratedEntity }
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
   | { type: "data-static_viz"; data: StaticVizValue };
+
+export const isKnownDataPart = (part: {
+  type: string;
+  data: unknown;
+}): part is KnownDataPart =>
+  (knownDataPartTypes as readonly string[]).includes(part.type);

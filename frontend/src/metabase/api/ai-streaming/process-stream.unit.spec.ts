@@ -1,4 +1,5 @@
 import { processChatResponse } from "./process-stream";
+import { parseSSEStream } from "./sse-stream";
 import type { SSEEvent } from "./sse-types";
 import { createMockReadableStream, createMockSSEStream } from "./test-utils";
 
@@ -113,6 +114,73 @@ describe("processChatResponse", () => {
     expect(config.onError).not.toHaveBeenCalled();
   });
 
+  it("should record a tool-output-error against the matching tool call", async () => {
+    const config = getMockedCallbacks();
+    const result = await processChatResponse(
+      createMockSSEStream([
+        {
+          type: "tool-input-available",
+          toolCallId: "x",
+          toolName: "x",
+          input: {},
+        },
+        { type: "tool-output-error", toolCallId: "x", errorText: "boom" },
+      ]),
+      config,
+    );
+
+    expect(config.onToolErrorPart).toHaveBeenCalledWith({
+      type: "tool-output-error",
+      toolCallId: "x",
+      errorText: "boom",
+    });
+    expect(result.toolCalls).toEqual([
+      {
+        toolCallId: "x",
+        toolName: "x",
+        state: "result",
+        value: undefined,
+        error: "boom",
+      },
+    ]);
+    expect(result.history).toContainEqual({
+      role: "tool",
+      content: "boom",
+      tool_call_id: "x",
+    });
+  });
+
+  it("should call onToolInputStart for tool-input-start events", async () => {
+    const config = getMockedCallbacks();
+    await processChatResponse(
+      createMockSSEStream([
+        { type: "tool-input-start", toolCallId: "x", toolName: "x" },
+      ]),
+      config,
+    );
+    expect(config.onToolInputStart).toHaveBeenCalledWith({
+      type: "tool-input-start",
+      toolCallId: "x",
+      toolName: "x",
+    });
+  });
+
+  it("should surface a standalone message-metadata event", async () => {
+    const config = getMockedCallbacks();
+    const metadata = {
+      usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+    };
+    const result = await processChatResponse(
+      createMockSSEStream([
+        { type: "message-metadata", messageMetadata: metadata },
+      ]),
+      config,
+    );
+
+    expect(config.onMessageMetadata).toHaveBeenCalledWith(metadata);
+    expect(result.messageMetadata).toEqual(metadata);
+  });
+
   it("should error if a tool result is returned without a preceding tool call", async () => {
     const mockStream = createMockSSEStream([
       { type: "tool-output-available", toolCallId: "x", output: "" },
@@ -181,5 +249,30 @@ describe("processChatResponse", () => {
         expectNoStreamedError,
       ),
     ).rejects.toThrow(error);
+  });
+});
+
+describe("parseSSEStream", () => {
+  it("should stop at the [DONE] sentinel and ignore trailing events", async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const encode = (payload: string) =>
+          controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+        encode(JSON.stringify({ type: "text-delta", id: "t1", delta: "hi" }));
+        encode("[DONE]");
+        encode(
+          JSON.stringify({ type: "text-delta", id: "t1", delta: "ignored" }),
+        );
+        controller.close();
+      },
+    });
+
+    const events: SSEEvent[] = [];
+    for await (const event of parseSSEStream(stream)) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([{ type: "text-delta", id: "t1", delta: "hi" }]);
   });
 });

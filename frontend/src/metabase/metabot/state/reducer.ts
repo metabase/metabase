@@ -11,7 +11,7 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-import { type MetabotProfileId, TOOL_CALL_MESSAGES } from "../constants";
+import type { MetabotProfileId } from "../constants";
 
 import { sendAgentRequest } from "./actions";
 import {
@@ -23,6 +23,7 @@ import {
   findLastToolCallMessage,
   getMetabotInitialState,
   getRequestConversation,
+  pushNewToolCall,
   resetReactionState,
 } from "./reducer-utils";
 import type {
@@ -143,20 +144,7 @@ export const metabot = createSlice({
         if (convo.activeToolCalls.some((tc) => tc.id === toolCallId)) {
           return;
         }
-        convo.messages.push({
-          id: toolCallId,
-          role: "agent",
-          type: "tool_call",
-          name: toolName,
-          args,
-          status: "started",
-        });
-        convo.activeToolCalls.push({
-          id: toolCallId,
-          name: toolName,
-          message: TOOL_CALL_MESSAGES[toolName],
-          status: "started",
-        });
+        pushNewToolCall(convo, { toolCallId, toolName, args });
       },
     ),
     toolCallArgs: convoReducer(
@@ -175,20 +163,7 @@ export const metabot = createSlice({
           // update the existing tool call record to include the args received
           existingMsg.args = args;
         } else {
-          convo.messages.push({
-            id: toolCallId,
-            role: "agent",
-            type: "tool_call",
-            name: toolName,
-            args,
-            status: "started",
-          });
-          convo.activeToolCalls.push({
-            id: toolCallId,
-            name: toolName,
-            message: TOOL_CALL_MESSAGES[toolName],
-            status: "started",
-          });
+          pushNewToolCall(convo, { toolCallId, toolName, args });
         }
       },
     ),
@@ -197,7 +172,7 @@ export const metabot = createSlice({
         convo,
         action: ConvoPayloadAction<{
           toolCallId: string;
-          result?: any;
+          result?: string;
           isError?: boolean;
         }>,
       ) => {

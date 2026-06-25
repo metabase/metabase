@@ -5,7 +5,7 @@ import type { MetabotHistory } from "metabase-types/api";
 import {
   type KnownDataPart,
   dataEventSchema,
-  knownDataPartTypes,
+  isKnownDataPart,
   toolInputAvailableSchema,
   toolOutputAvailableSchema,
   toolOutputErrorSchema,
@@ -175,8 +175,8 @@ export async function processChatResponse(
           const dataPart: DataPart = { type: e.type, data: e.data };
           result.data.push(dataPart);
 
-          if (knownDataPartTypes.includes(e.type)) {
-            config.onDataPart?.(dataPart as KnownDataPart);
+          if (isKnownDataPart(dataPart)) {
+            config.onDataPart?.(dataPart);
           } else {
             console.warn("Skipping unknown data part:", dataPart);
           }

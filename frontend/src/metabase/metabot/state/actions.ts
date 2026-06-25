@@ -501,7 +501,10 @@ export const sendAgentRequest = createAsyncThunk<
             dispatch(
               toolCallEnd({
                 toolCallId: event.toolCallId,
-                result: event.output,
+                result:
+                  typeof event.output === "string"
+                    ? event.output
+                    : JSON.stringify(event.output),
                 agentId,
               }),
             );

@@ -3,7 +3,10 @@ import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
 
-import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
+import {
+  METABOT_PROFILE_OVERRIDES,
+  TOOL_CALL_MESSAGES,
+} from "metabase/metabot/constants";
 import { uuid } from "metabase/utils/uuid";
 
 import type {
@@ -28,6 +31,30 @@ export const findLastToolCallMessage = (
     (m): m is MetabotDebugToolCallMessage =>
       m.type === "tool_call" && m.id === toolCallId,
   );
+
+export const pushNewToolCall = (
+  convo: WritableDraft<MetabotConverstationState>,
+  {
+    toolCallId,
+    toolName,
+    args,
+  }: { toolCallId: string; toolName: string; args?: string },
+) => {
+  convo.messages.push({
+    id: toolCallId,
+    role: "agent",
+    type: "tool_call",
+    name: toolName,
+    args,
+    status: "started",
+  });
+  convo.activeToolCalls.push({
+    id: toolCallId,
+    name: toolName,
+    message: TOOL_CALL_MESSAGES[toolName],
+    status: "started",
+  });
+};
 
 export const getRequestConversation = (
   state: WritableDraft<MetabotState>,
