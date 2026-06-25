@@ -82,6 +82,8 @@ import bug_component from "./bug.svg?component";
 import bug_source from "./bug.svg?source";
 import burger_component from "./burger.svg?component";
 import burger_source from "./burger.svg?source";
+import cake_component from "./cake.svg?component";
+import cake_source from "./cake.svg?source";
 import calendar_component from "./calendar.svg?component";
 import calendar_source from "./calendar.svg?source";
 import camera_component from "./camera.svg?component";
@@ -180,6 +182,8 @@ import empty_component from "./empty.svg?component";
 import empty_source from "./empty.svg?source";
 import enter_or_return_component from "./enter_or_return.svg?component";
 import enter_or_return_source from "./enter_or_return.svg?source";
+import event_component from "./event.svg?component";
+import event_source from "./event.svg?source";
 import exit_component from "./exit.svg?component";
 import exit_source from "./exit.svg?source";
 import expand_component from "./expand.svg?component";
@@ -318,6 +322,8 @@ import lock_filled_component from "./lock_filled.svg?component";
 import lock_filled_source from "./lock_filled.svg?source";
 import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
+import mail_at_component from "./mail_at.svg?component";
+import mail_at_source from "./mail_at.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
 import mcp_component from "./mcp.svg?component";
@@ -739,6 +745,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: burger_component,
       source: burger_source,
     },
+    cake: {
+      component: cake_component,
+      source: cake_source,
+    },
     calendar: {
       component: calendar_component,
       source: calendar_source,
@@ -918,6 +928,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     enter_or_return: {
       component: enter_or_return_component,
       source: enter_or_return_source,
+    },
+    event: {
+      component: event_component,
+      source: event_source,
     },
     exit: {
       component: exit_component,
@@ -1198,6 +1212,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     mail: {
       component: mail_component,
       source: mail_source,
+    },
+    mail_at: {
+      component: mail_at_component,
+      source: mail_at_source,
     },
     mail_filled: {
       component: mail_filled_component,
@@ -1749,10 +1767,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     scalar: {
       component: number_component,
       source: number_source,
-    },
-    cake: {
-      component: birthday_component,
-      source: birthday_source,
     },
     external: { component: share_component, source: share_source },
     collection: { component: folder_component, source: folder_source },
