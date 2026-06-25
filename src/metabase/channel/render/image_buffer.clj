@@ -8,19 +8,25 @@
    (java.awt AlphaComposite)
    (java.awt.image BufferedImage)
    (java.lang.ref SoftReference)
-   (java.util.concurrent ConcurrentHashMap)))
+   (java.util.concurrent ConcurrentHashMap ConcurrentLinkedQueue)
+   (java.util.function Function)))
 
 (set! *warn-on-reflection* true)
 
+;; [width height] -> ConcurrentLinkedQueue<SoftReference<BufferedImage>>: any number of idle buffers per size.
 (defonce ^:private pool (ConcurrentHashMap.))
 
-(mu/defn- cache-key :- [:tuple :int :int]
-  "Pool key for a `w` x `h` buffer. `w`/`h` are coerced to `long` so the key is type-stable: `acquire` is called with
-  longs but `release` reads ints off the image, and a Clojure vector key compares elements with Java `.equals`, where
-  `(long 5)` != `(int 5)`."
+(def ^:private new-queue
+  (reify Function (apply [_ _] (ConcurrentLinkedQueue.))))
+
+(mu/defn- queue-for :- (ms/InstanceOfClass ConcurrentLinkedQueue)
+  "The queue of idle buffers for `w` x `h`, creating it on first use.
+
+  `w`/`h` are coerced to `long` so the key is type-stable: `acquire` is called with longs but `release` reads ints
+  off the image, and a Clojure vector key compares elements with Java `.equals`, where `(long 5)` != `(int 5)`."
   [w :- :int
    h :- :int]
-  [(long w) (long h)])
+  (.computeIfAbsent ^ConcurrentHashMap pool [(long w) (long h)] new-queue))
 
 (mu/defn- clear!
   "Reset every pixel of `img` to fully transparent so a reused buffer never shows the previous render's pixels."
@@ -33,22 +39,22 @@
         (.dispose g)))))
 
 (mu/defn acquire :- (ms/InstanceOfClass BufferedImage)
-  "Return a cleared `TYPE_INT_ARGB` [[BufferedImage]] of exactly `w` x `h`, reusing the pooled buffer for that size if
-  the GC hasn't reclaimed it. Pass the result to [[release]] when finished so it can be reused."
+  "Return a cleared `TYPE_INT_ARGB` [[BufferedImage]] of exactly `w` x `h`, reusing an idle pooled buffer of that size
+  when one is available. Pass the result to [[release]] when finished so it can be reused."
   [w :- :int
    h :- :int]
-  ;; `remove` takes ownership: a concurrent render of the same size won't get the same buffer, it'll allocate its own.
-  (let [ref (.remove ^ConcurrentHashMap pool (cache-key w h))
-        img (some-> ^SoftReference ref .get)]
+  (let [q   (queue-for w h)
+        ;; poll soft refs until we find one whose buffer the GC hasn't reclaimed, discarding the cleared ones.
+        img (loop []
+              (when-let [ref (.poll ^ConcurrentLinkedQueue q)]
+                (or (.get ^SoftReference ref) (recur))))]
     (if img
       (do (clear! img) img)
       (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB))))
 
 (mu/defn release
-  "Return `img` to the pool so it can be reused, replacing any current idle buffer of its size. Safe to call with
-  `nil`."
+  "Return `img` to the pool so it can be reused. Safe to call with `nil`."
   [img :- [:maybe (ms/InstanceOfClass BufferedImage)]]
   (when img
-    (.put ^ConcurrentHashMap pool
-          (cache-key (.getWidth ^BufferedImage img) (.getHeight ^BufferedImage img))
-          (SoftReference. img))))
+    (.offer ^ConcurrentLinkedQueue (queue-for (.getWidth ^BufferedImage img) (.getHeight ^BufferedImage img))
+            (SoftReference. img))))
