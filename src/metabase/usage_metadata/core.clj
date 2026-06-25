@@ -14,7 +14,8 @@
 (p/import-vars
  [metabase.usage-metadata.interestingness
   breakout-counts-by-field
-  breakout-count-baseline])
+  breakout-usage
+  with-breakout-usage])
 
 (mu/defn implicit-segments :- [:sequential ::usage-metadata.schema/implicit-segment]
   "Filter predicates users have run ad-hoc that aren't already saved as Segments — surface candidates

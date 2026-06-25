@@ -6,7 +6,6 @@
    step runs after the daily usage-metadata batch, injecting each field's real-world breakout
    usage into the scorer so the usage signal stays current independent of the sync cadence."
   (:require
-   [clojure.set :as set]
    [metabase.interestingness.core :as interestingness]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -47,16 +46,44 @@
   [counts]
   (long (or (percentile 0.95 (vals counts)) 0)))
 
-(mu/defn breakout-count-baseline :- :int
-  "The p95 scaling baseline of per-field breakout-execution totals across the whole instance — the
-   value the usage interestingness signal is scored against. Returns 0 when there's no usage yet.
-   Always instance-wide (not scoped to any table).
+(defn- compute-breakout-usage
+  "Run the instance-wide breakout-usage scan: `{:counts {field-id total} :baseline <p95>}`."
+  []
+  (let [counts (breakout-counts-by-field)]
+    {:counts counts, :baseline (baseline-of counts)}))
 
-   [[breakout-counts-by-field]] is a full-instance aggregate scan, so the no-arg arity is expensive:
-   prefer the `counts` arity, passing a `{field-id count}` map already scanned once for this sync, so
-   the global read isn't repeated per table/field."
-  ([] (breakout-count-baseline (breakout-counts-by-field)))
-  ([counts :- [:map-of :int :int]] (baseline-of counts)))
+(def ^:dynamic *breakout-usage*
+  "Sync-scoped cache of [[compute-breakout-usage]] so the instance-wide aggregate and its
+   p95 are computed once per sync instead of once per table.
+   nil means there's no active sync scope, so [[breakout-usage]] scans on demand."
+  nil)
+
+(mu/defn breakout-usage :- [:map [:counts [:map-of :int :int]] [:baseline :int]]
+  "Instance-wide breakout usage as `{:counts {field-id total} :baseline <p95>}`. `:baseline` is the
+   value the usage interestingness signal is scored against (0 when there's no usage yet). Reuses the
+   sync-scoped [[*breakout-usage*]] cache when bound, otherwise runs the scan now.
+
+   The scan ([[breakout-counts-by-field]]) is a full-instance aggregate, so callers that touch many
+   tables (sync) must run under [[with-breakout-usage]] to avoid an O(tables) read."
+  []
+  (if-let [cached *breakout-usage*]
+    @cached
+    (compute-breakout-usage)))
+
+(defn do-with-breakout-usage
+  "Functional impl of [[with-breakout-usage]]."
+  [thunk]
+  (if *breakout-usage*
+    (thunk)                                            ; reuse an enclosing scope — nesting is safe
+    (binding [*breakout-usage* (delay (compute-breakout-usage))]
+      (thunk))))
+
+(defmacro with-breakout-usage
+  "Run `body` with a sync-scoped breakout-usage cache so per-table scoring shares a single
+   instance-wide scan instead of re-running it per table. The scan is lazy (nothing runs until the
+   first [[breakout-usage]] call) and nesting reuses the outer cache."
+  [& body]
+  `(do-with-breakout-usage (^:once fn* [] ~@body)))
 
 (def ^:dynamic *update-partition-size*
   "Max number of fields persisted per `t2/update!` call when rescoring. Dynamic for testing."
@@ -87,11 +114,8 @@
    must be reset, otherwise a stale boost would freeze until the next sync re-fingerprint."
   ([] (rescore-dimension-interestingness! nil))
   ([pruned-field-ids :- [:maybe [:set :int]]]
-   (let [counts    (breakout-counts-by-field)
-         baseline  (baseline-of counts)
-         ;; pruned candidates with no surviving usage → reset to usage-less score (count 0)
-         decayed   (set/difference (set pruned-field-ids) (set (keys counts)))
-         field-ids (into (set (keys counts)) decayed)]
+   (let [{:keys [counts baseline]} (breakout-usage)
+         field-ids                 (into (set (keys counts)) pruned-field-ids)]
      (when (seq field-ids)
        (let [score-by-id (into {}
                                (map (fn [field]

@@ -66,9 +66,8 @@
   "Score interestingness for all qualifying Fields in `database`."
   [database        :- i/DatabaseInstance
    log-progress-fn]
-  (let [tables   (sync-util/reducible-sync-tables database)
-        counts   (usage-metadata/breakout-counts-by-field)
-        baseline (usage-metadata/breakout-count-baseline counts)]
+  (let [tables                    (sync-util/reducible-sync-tables database)
+        {:keys [counts baseline]} (usage-metadata/breakout-usage)]
     (transduce (map (fn [table]
                       (let [result (score-fields! table counts baseline)]
                         (log-progress-fn "score-interestingness" table)

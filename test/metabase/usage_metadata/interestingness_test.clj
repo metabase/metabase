@@ -107,6 +107,6 @@
             (let [n        (get expected-counts (:id field))
                   expected (interestingness/dimension-interestingness
                             (assoc field :usage {:breakout-count          n
-                                                 :baseline-breakout-count (usage-metadata.interestingness/breakout-count-baseline)}))]
+                                                 :baseline-breakout-count (:baseline (usage-metadata.interestingness/breakout-usage))}))]
               (is (= expected
                      (t2/select-one-fn :dimension_interestingness :model/Field :id (:id field)))))))))))

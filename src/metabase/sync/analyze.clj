@@ -77,8 +77,9 @@
   (sync.fingerprint/fingerprint-table! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)
-  (let [counts (usage-metadata/breakout-counts-by-field)]
-    (sync.interestingness/score-fields! table counts (usage-metadata/breakout-count-baseline counts)))
+  (usage-metadata/with-breakout-usage
+    (let [{:keys [counts baseline]} (usage-metadata/breakout-usage)]
+      (sync.interestingness/score-fields! table counts baseline)))
   (update-fields-last-analyzed! table))
 
 (defn- maybe-log-progress [progress-bar-fn]
@@ -121,9 +122,10 @@
   "Shared core of [[analyze-db!]] and [[analyze-db-explicit!]]: the analysis work, without the
   surrounding `*-sync-operation` wrapper (which is what applies the eligibility gating)."
   [database :- i/DatabaseInstance]
-  (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 4 (sync-util/sync-tables-count database)))]
-    (u/prog1 (sync-util/run-sync-operation "analyze" database (make-analyze-steps (maybe-log-progress emoji-progress-bar)))
-      (update-fields-last-analyzed-for-db! database))))
+  (usage-metadata/with-breakout-usage
+    (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 4 (sync-util/sync-tables-count database)))]
+      (u/prog1 (sync-util/run-sync-operation "analyze" database (make-analyze-steps (maybe-log-progress emoji-progress-bar)))
+        (update-fields-last-analyzed-for-db! database)))))
 
 (mu/defn analyze-db!
   "Perform in-depth analysis on the data for all Tables in a given `database`. This is dependent on what each database
