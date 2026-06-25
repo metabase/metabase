@@ -4,11 +4,9 @@
   Per-driver cases and helpers live in [[metabase.transforms.index-test-util]]. Each test stubs
   [[metabase.transforms.execute/hydrate-transform-indexes]] to inject its case."
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -166,14 +164,10 @@
     (sql.tx/session-schema driver)))
 
 (defn- run-fetch-ddl!
-  "Run raw fetch-case DDL. sql-jdbc drivers go over a pooled JDBC connection; bigquery has no JDBC, so it uses the
-  generic execute-raw-queries! seam."
+  "Run raw fetch-case DDL through execute-raw-queries! (both sql-jdbc and bigquery implement it). Each statement is
+  wrapped as `[sql]` because the seam expects `[sql & params]` vectors, not bare strings."
   [driver db stmts]
-  (if (isa? driver/hierarchy driver :sql-jdbc)
-    (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
-      (doseq [stmt stmts]
-        (jdbc/execute! spec [stmt])))
-    (driver/execute-raw-queries! driver (driver/connection-spec driver db) (vec stmts))))
+  (driver/execute-raw-queries! driver (driver/connection-spec driver db) (mapv vector stmts)))
 
 (deftest ^:synchronized fetch-table-indexes-correctness-test
   (testing "fetch-table-indexes reports each driver's popular index kinds in the normalized cross-driver shape"
