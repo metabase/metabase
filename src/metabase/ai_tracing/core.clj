@@ -19,20 +19,20 @@
     - In an eval run, the harness binds [[*capture*]] (via [[capturing]]) and the spans fire
       regardless of whether production tracing is on.
 
-  ## What it does today (iteration v1)
+  ## What it captures
 
-  Captures into an in-memory trace tree that the eval/scoring harness reads back. Nesting is
-  tracked through [[*parent*]], a dynamic binding that Clojure conveys across the agent's
-  virtual-thread tool execution (`bound-fn*`), so concurrent tool spans nest under the right
-  parent. May reuse helpers from `metabase.tracing.core` (e.g. SQL sanitization).
+  An in-memory trace tree (`agent.turn → llm.call → tool.*`) with prompts, completions, tool
+  I/O, durations, and custom spans. Nesting is tracked through [[*parent*]], a dynamic binding
+  Clojure conveys across the agent's virtual-thread tool execution (`bound-fn*`), so concurrent
+  tool spans nest under the right parent. The harness reads the tree back via [[capturing]] /
+  [[capture-reducible]] (in-process) or the `eval_trace` SSE data part (API path).
 
-  ## What slots in later (the seam)
+  ## Export
 
-  Exporting the same spans to an external eval backend (e.g. Confident AI) over OTLP is a
-  one-place change at the marked seam below — attach a DEDICATED OTel TracerProvider (never
-  the production one) and the domain→semconv attribute mapping. Call sites do not change.
-
-  Kept as a single namespace during iteration; will be split/hardened later."
+  The same tree is also replayed to an external eval backend (Confident AI / Langfuse / Phoenix)
+  over OTLP by `metabase.ai-tracing.export` — a DEDICATED provider, isolated from the production
+  tracing sink. Opt-in via `MB_AI_EVAL_OTLP_ENDPOINT`; the domain→wire-schema mapping lives in
+  one chokepoint there, so swapping vendors never touches call sites."
   (:require
    [metabase.ai-tracing.export :as ai-tracing.export]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
@@ -205,18 +205,3 @@
   "Re-export of `metabase.tracing.core/best-effort-sanitize-sql` — use for any SQL placed in
   span attributes so values become `?` placeholders."
   tracing/best-effort-sanitize-sql)
-
-;;;; ----------------------------------------- OTLP export sink (SEAM) --------------------------------------
-;;
-;; Not wired during iteration. The in-memory tree above is what the scorer reads today.
-;;
-;; To ALSO export eval spans to an external backend (Confident AI / Langfuse / Phoenix) over
-;; OTLP, attach a DEDICATED OTel TracerProvider here — initialized separately from
-;; `metabase.tracing` so eval spans never reach the production sink and production spans
-;; never reach the eval backend. Use a SimpleSpanProcessor + force-flush per eval case for
-;; lossless capture (the production BatchSpanProcessor drops on overflow).
-;;
-;; The domain → semantic-convention attribute mapping (e.g. :ai/model -> "gen_ai.request.model",
-;; OpenInference span kinds) belongs in ONE private fn here — it is the single schema
-;; chokepoint. Swapping eval vendors is then an exporter-config change; changing the wire
-;; schema is one edit; neither touches call sites.

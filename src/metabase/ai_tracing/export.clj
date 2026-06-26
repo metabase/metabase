@@ -15,6 +15,7 @@
   an endpoint/header change; wire-schema changes live solely in [[node->semconv-attrs]]."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
@@ -36,9 +37,9 @@
   "The text of the last non-blank LLM output in this subtree — the agent's final answer."
   [node]
   (->> (tree-seq :children :children node)
-       (filter #(= :llm (:type %)))
-       (keep #(let [o (get-in % [:attributes :ai/output-text])]
-                (when-not (str/blank? (str o)) o)))
+       (filter (comp #{:llm} :type))
+       (keep (comp :ai/output-text :attributes))
+       (remove (comp str/blank? str))
        last))
 
 (defn- node->semconv-attrs
@@ -47,43 +48,47 @@
   conventions here, never at call sites. `confident.span.input`/`output`/`metadata` are
   JSON strings (matching DeepEval's `json.dumps` convention)."
   [{:keys [type attributes] :as node}]
-  (let [a       attributes
-        ;; Small scalars only — NEVER dump large payloads here (they go in span.input/output).
-        ;; Dumping the full attrs map (system prompt etc.) blew Confident's ingest size limit.
-        meta    (select-keys a [:ai/iteration :ai/model :ai/tool-count :ai/profile-id
-                                :ai/msg-count :ai/tool-call-id])
-        ;; trace-level output = the agent's final answer = last non-blank LLM output in the turn
-        trace-out (when (= type :turn) (final-llm-output node))]
-    (cond-> (case type
-              :turn {"confident.span.type" "agent"}
-              :llm  {"confident.span.type" "llm"}
-              :tool {"confident.span.type" "tool"}
-              {})                                  ;; generic span -> Confident "Custom"
-      (seq meta)           (assoc "confident.span.metadata" (json/encode meta))
-      ;; trace-level input/output/name — set on the root agent turn, drive Confident's trace overview
-      (and (= type :turn)
-           (:ai/user-input a)) (assoc "confident.trace.input" (json/encode (:ai/user-input a)))
-      trace-out            (assoc "confident.trace.output" (json/encode trace-out))
-      (and (= type :turn)
-           (:ai/profile-id a)) (assoc "confident.agent.name" (str (:ai/profile-id a))
-                                      "confident.trace.name"  (str (:ai/profile-id a)))
-      ;; names / model
-      (:ai/tool-name a)    (assoc "confident.tool.name" (str (:ai/tool-name a)))
-      (:ai/model a)        (assoc "confident.llm.model" (str (:ai/model a)))
-      ;; input / output (JSON strings)
-      (:ai/input-parts a)  (assoc "confident.span.input"  (json/encode (:ai/input-parts a)))
-      (:ai/output-text a)  (assoc "confident.span.output" (json/encode (:ai/output-text a)))
-      (:ai/tool-args a)    (assoc "confident.span.input"  (json/encode (:ai/tool-args a)))
-      (:ai/tool-output a)  (assoc "confident.span.output" (json/encode (:ai/tool-output a))))))
+  (let [{:ai/keys [model profile-id user-input input-parts output-text tool-args tool-name tool-output]} attributes
+        turn?  (= type :turn)
+        ;; Scalars only — large payloads belong in span.input/output. Dumping the full attrs
+        ;; map (system prompt etc.) once blew past Confident's ingest size limit.
+        scalars (not-empty (select-keys attributes [:ai/iteration :ai/model :ai/tool-count
+                                                    :ai/profile-id :ai/msg-count :ai/tool-call-id]))]
+    (m/assoc-some
+     {}
+     "confident.span.type"     (case type :turn "agent" :llm "llm" :tool "tool" nil)
+     "confident.span.metadata" (some-> scalars json/encode)
+     "confident.span.input"    (some-> (or input-parts tool-args) json/encode)
+     "confident.span.output"   (some-> (or output-text tool-output) json/encode)
+     "confident.tool.name"     (some-> tool-name str)
+     "confident.llm.model"     (some-> model str)
+     ;; trace-level attrs drive Confident's trace overview; only meaningful on the root turn
+     "confident.trace.input"   (when turn? (some-> user-input json/encode))
+     "confident.trace.output"  (when turn? (some-> (final-llm-output node) json/encode))
+     "confident.trace.name"    (when turn? (some-> profile-id str))
+     "confident.agent.name"    (when turn? (some-> profile-id str)))))
+
+;;;; ----------------------------------------- Java interop helpers -----------------------------------------
 
 (defn- set-attr!
-  [^SpanBuilder b ^String k v]
+  "Set `v` on `builder` as the right OTel primitive type."
+  [^SpanBuilder builder ^String k v]
   (cond
-    (string? v)  (.setAttribute b k ^String v)
-    (boolean? v) (.setAttribute b k (boolean v))
-    (integer? v) (.setAttribute b k (long v))
-    (number? v)  (.setAttribute b k (double v))
-    :else        (.setAttribute b k ^String (str v))))
+    (string? v)  (.setAttribute builder k ^String v)
+    (boolean? v) (.setAttribute builder k (boolean v))
+    (integer? v) (.setAttribute builder k (long v))
+    (number? v)  (.setAttribute builder k (double v))
+    :else        (.setAttribute builder k ^String (str v))))
+
+(defn- event->attributes
+  "Build OTel event attributes from an event map's non-`:event` fields (e.g. an error :message),
+  so the backend shows WHAT happened, not just that an event occurred."
+  ^Attributes [event]
+  (.build ^AttributesBuilder
+   (reduce-kv (fn [^AttributesBuilder b k v]
+                (.put b ^String (name k) ^String (str v)))
+              (Attributes/builder)
+              (dissoc event :event))))
 
 ;;;; ----------------------------------------- Dedicated provider (lazy) ------------------------------------
 
@@ -94,56 +99,58 @@
 (defn- parse-headers
   "Parse a `\"k=v,k2=v2\"` header string (e.g. an API key) into a map."
   [s]
-  (->> (str/split (or s "") #",")
-       (map str/trim)
-       (remove str/blank?)
-       (map #(str/split % #"=" 2))
-       (filter #(= 2 (count %)))
-       (into {} (map (fn [[k v]] [(str/trim k) (str/trim v)])))))
+  (into {} (for [pair  (str/split (or s "") #",")
+                 :let  [[k v] (str/split (str/trim pair) #"=" 2)]
+                 :when (and (not (str/blank? k)) (some? v))]
+             [(str/trim k) (str/trim v)])))
 
 (defn- build-provider!
   [^String endpoint headers ^String service-name]
-  (let [exporter (let [b (OtlpHttpSpanExporter/builder)]
-                   (.setEndpoint b endpoint)
-                   (doseq [[k v] headers] (.addHeader b k v))
-                   (.build b))
+  (let [exporter (let [builder (doto (OtlpHttpSpanExporter/builder)
+                                 (.setEndpoint endpoint))]
+                   (doseq [[k v] headers]
+                     (.addHeader builder k v))
+                   (.build builder))
         provider (-> (SdkTracerProvider/builder)
                      (.addSpanProcessor (SimpleSpanProcessor/create exporter))
                      (.build))
+        ;; NOT set as global — fully isolated from production tracing.
         sdk      (-> (OpenTelemetrySdk/builder)
-                     ;; NOT set as global — fully isolated from production tracing.
                      (.setTracerProvider provider)
                      (.build))]
     {:sdk sdk :provider provider :tracer (.getTracer sdk service-name) :endpoint endpoint}))
 
 (defn- ensure-provider!
-  "Return the dedicated eval provider state, lazily building it. nil when no endpoint is set
-  (export disabled) or the configured endpoint changed."
+  "Return the dedicated eval provider state, lazily (re)building it on first use or when the
+  configured endpoint changes. nil when no endpoint is set (export disabled)."
   []
-  (let [endpoint (ai-tracing.settings/ai-eval-otlp-endpoint)]
+  (let [endpoint (ai-tracing.settings/ai-eval-otlp-endpoint)
+        fresh?   (fn [st] (and st (= endpoint (:endpoint st))))]
     (when-not (str/blank? endpoint)
-      (let [st @provider-state]
-        (if (and st (= endpoint (:endpoint st)))
-          st
+      (or (let [st @provider-state] (when (fresh? st) st))
           (locking provider-state
             (let [st @provider-state]
-              (if (and st (= endpoint (:endpoint st)))
+              (if (fresh? st)
                 st
                 (reset! provider-state
                         (build-provider! endpoint
                                          (parse-headers (ai-tracing.settings/ai-eval-otlp-headers))
-                                         (ai-tracing.settings/ai-eval-otlp-service-name)))))))))))
+                                         (ai-tracing.settings/ai-eval-otlp-service-name))))))))))
 
 (defn shutdown!
   "Flush and shut down the dedicated eval provider, if any."
   []
   (when-let [{:keys [^SdkTracerProvider provider]} @provider-state]
-    (try (.shutdown provider) (catch Exception e (log/warn e "Error shutting down eval OTLP provider")))
+    (try
+      (.shutdown provider)
+      (catch Exception e
+        (log/warn e "Error shutting down eval OTLP provider")))
     (reset! provider-state nil)))
 
 ;;;; ----------------------------------------- Replay tree -> spans -----------------------------------------
 
 (defn- emit-node!
+  "Recursively replay a captured span `node` (and its children) as OTel spans under `parent-ctx`."
   [^Tracer tracer ^Context parent-ctx node]
   (let [^SpanBuilder builder (.spanBuilder tracer ^String (:name node))]
     (.setParent builder parent-ctx)
@@ -155,12 +162,7 @@
           ctx        (.with parent-ctx span)]
       (try
         (doseq [ev (:events node)]
-          ;; carry the event's other fields (e.g. an error :message) as attributes so the
-          ;; backend shows WHAT happened, not just that an event occurred.
-          (let [^AttributesBuilder ab (Attributes/builder)]
-            (doseq [[k v] (dissoc ev :event)]
-              (.put ab ^String (name k) ^String (str v)))
-            (.addEvent span ^String (str (:event ev)) (.build ab))))
+          (.addEvent span ^String (str (:event ev)) (event->attributes ev)))
         (doseq [child (:children node)]
           (emit-node! tracer ctx child))
         (finally
@@ -176,10 +178,8 @@
   (when (seq roots)
     (try
       (when-let [{:keys [^Tracer tracer ^SdkTracerProvider provider endpoint]} (ensure-provider!)]
-        (let [root-ctx (Context/root)]
-          (doseq [n roots]
-            (emit-node! tracer root-ctx n)))
-        (let [rc (-> (.forceFlush provider) (.join 10 TimeUnit/SECONDS))]
+        (run! #(emit-node! tracer (Context/root) %) roots)
+        (let [rc (.join (.forceFlush provider) 10 TimeUnit/SECONDS)]
           ;; Surface failures loudly — a swallowed 401/oversize is otherwise invisible (nothing
           ;; in the UI, nothing in logs). Common causes: wrong auth header, endpoint, or an
           ;; attribute exceeding the backend's size limit.
