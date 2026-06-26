@@ -48,6 +48,16 @@
               :name        index_name
               :key-columns (mapv :name (:columns structured))}))
 
+(defn warehouse-key-set
+  "Set of [[match-key]]s for the warehouse indexes, to test managed requests against with [[present-in-warehouse?]]."
+  [warehouse-maps]
+  (into #{} (map match-key) warehouse-maps))
+
+(defn present-in-warehouse?
+  "Whether managed request `row`'s index is one of `present-keys` (a [[warehouse-key-set]])."
+  [present-keys row]
+  (contains? present-keys (managed-match-key row)))
+
 (defn- observed-fields
   "The observation fields of a warehouse `::table-index` map, snake-cased for the API."
   [wh]
@@ -86,7 +96,7 @@
   [rows           :- [:sequential :map]
    warehouse-maps :- [:sequential :map]]
   (let [by-key       (u/index-by managed-match-key rows)
-        present-keys (into #{} (map match-key) warehouse-maps)
+        present-keys (warehouse-key-set warehouse-maps)
         present      (for [wh warehouse-maps
                            :let [row (get by-key (match-key wh))]]
                        (merge (observed-fields wh)
@@ -94,7 +104,7 @@
                                :present_in_warehouse true}
                               (when row (request-fields row))))
         absent       (for [row   rows
-                           :when (not (contains? present-keys (managed-match-key row)))]
+                           :when (not (present-in-warehouse? present-keys row))]
                        (merge (declared-fields row)
                               {:metabase_managed     true
                                :present_in_warehouse false}

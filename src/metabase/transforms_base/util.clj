@@ -656,8 +656,8 @@
         ;; An empty fetch is ambiguous (no indexes vs couldn't introspect -- both degrade to []), so leave statuses
         ;; untouched rather than mark everything failed; warn so a stuck :pending stays traceable.
         (if-let [warehouse-indexes (seq (reconcile/fetch-warehouse-indexes database schema table-name))]
-          (let [present-keys (into #{} (map reconcile/match-key) warehouse-indexes)
-                by-present   (group-by #(contains? present-keys (reconcile/managed-match-key %)) managed)]
+          (let [present-keys (reconcile/warehouse-key-set warehouse-indexes)
+                by-present   (group-by #(reconcile/present-in-warehouse? present-keys %) managed)]
             ;; one update per outcome rather than per row
             (doseq [[present? rows] by-present]
               (t2/update! :model/TableIndex :id [:in (map :id rows)]
