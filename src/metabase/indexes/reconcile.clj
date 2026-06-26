@@ -12,9 +12,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private unnamed-inline-kinds
-  "Index kinds with no physical name (warehouse `:name` is nil); matched by kind + key columns instead. `:distkey` is
-  excluded until a driver fetches one: it stores a single `:column`, so it can't be column-keyed."
-  #{:sortkey :order-by})
+  "Index kinds with no physical name (warehouse `:name` is nil); matched by kind + key columns instead."
+  #{:sortkey :order-by :distkey :clustering})
 
 (mr/def ::match-key
   "Join key for reconciling a managed request with a warehouse index: a `:name` string for named kinds, else a
@@ -48,6 +47,16 @@
   (match-key {:kind        (:kind structured)
               :name        index_name
               :key-columns (mapv :name (:columns structured))}))
+
+(defn warehouse-key-set
+  "Set of [[match-key]]s for the warehouse indexes, to test managed requests against with [[present-in-warehouse?]]."
+  [warehouse-maps]
+  (into #{} (map match-key) warehouse-maps))
+
+(defn present-in-warehouse?
+  "Whether managed request `row`'s index is one of `present-keys` (a [[warehouse-key-set]])."
+  [present-keys row]
+  (contains? present-keys (managed-match-key row)))
 
 (defn- observed-fields
   "The observation fields of a warehouse `::table-index` map, snake-cased for the API."
@@ -87,7 +96,7 @@
   [rows           :- [:sequential :map]
    warehouse-maps :- [:sequential :map]]
   (let [by-key       (u/index-by managed-match-key rows)
-        present-keys (into #{} (map match-key) warehouse-maps)
+        present-keys (warehouse-key-set warehouse-maps)
         present      (for [wh warehouse-maps
                            :let [row (get by-key (match-key wh))]]
                        (merge (observed-fields wh)
@@ -95,7 +104,7 @@
                                :present_in_warehouse true}
                               (when row (request-fields row))))
         absent       (for [row   rows
-                           :when (not (contains? present-keys (managed-match-key row)))]
+                           :when (not (present-in-warehouse? present-keys row))]
                        (merge (declared-fields row)
                               {:metabase_managed     true
                                :present_in_warehouse false}

@@ -39,7 +39,7 @@
    [:map
     [:kind    [:= :distkey]]
     [:style   [:enum :key :all :even :auto]]
-    [:columns {:optional true} [:vector {:min 1} ::column]]]
+    [:columns {:optional true} [:vector {:min 1 :max 1} ::column]]]
    [:fn {:error/message "a :key distkey requires a column"}
     (fn [{:keys [style columns]}] (or (not= style :key) (seq columns)))]])
 
