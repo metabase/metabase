@@ -1,8 +1,13 @@
 import {
+  buildFileGraph,
   buildModuleGraph,
+  buildNodes,
+  getAffectedFiles,
   getAffectedModules,
+  getAffectedModulesFromFiles,
   getChangedModules,
   mapFileToModule,
+  parseCruiseModules,
 } from "./affected-modules";
 
 const ELEMENTS = [
@@ -31,6 +36,7 @@ const RULES = [
   { from: ["app/*"], allow: ["lib/*", "feature/*", "app/*"] },
 ];
 
+const nodes = buildNodes(ELEMENTS);
 const graph = buildModuleGraph(ELEMENTS, RULES);
 
 describe("affected modules", () => {
@@ -49,19 +55,19 @@ describe("affected modules", () => {
       ["external/lib/foo.ts", "feature/external"],
       ["src/embed.tsx", "app/main"],
     ])("should map %s to %s", (path, expected) => {
-      expect(mapFileToModule(graph, path)).toBe(expected);
+      expect(mapFileToModule(nodes, path)).toBe(expected);
     });
 
     it("should return null for files outside any pattern", () => {
-      expect(mapFileToModule(graph, "docs/foo.md")).toBe(null);
-      expect(mapFileToModule(graph, "README.md")).toBe(null);
-      expect(mapFileToModule(graph, "external/notlib/foo.ts")).toBe(null);
+      expect(mapFileToModule(nodes, "docs/foo.md")).toBe(null);
+      expect(mapFileToModule(nodes, "README.md")).toBe(null);
+      expect(mapFileToModule(nodes, "external/notlib/foo.ts")).toBe(null);
     });
   });
 
   describe("getChangedModules", () => {
     it("should return the unique set of modules whose files changed", () => {
-      const result = getChangedModules(graph, [
+      const result = getChangedModules(nodes, [
         "src/utils/colors.ts",
         "src/foo/x.ts",
         "src/foo/y.ts",
@@ -71,11 +77,83 @@ describe("affected modules", () => {
     });
 
     it("should return an empty set when no file maps to a module", () => {
-      expect(getChangedModules(graph, ["docs/foo.md"]).size).toBe(0);
+      expect(getChangedModules(nodes, ["docs/foo.md"]).size).toBe(0);
     });
   });
 
-  describe("getAffectedModules", () => {
+  describe("parseCruiseModules", () => {
+    it("should flatten to source + resolved-paths and drop unresolved deps", () => {
+      expect(
+        parseCruiseModules([
+          {
+            source: "src/foo/foo.tsx",
+            dependencies: [
+              { resolved: "src/utils/colors.ts" },
+              { resolved: "ambient/types", couldNotResolve: true },
+            ],
+          },
+          { source: "src/bar/bar.tsx" }, // no dependencies key
+        ]),
+      ).toEqual([
+        { source: "src/foo/foo.tsx", dependencies: ["src/utils/colors.ts"] },
+        { source: "src/bar/bar.tsx", dependencies: [] },
+      ]);
+    });
+  });
+
+  // Hub-merging scenario: app/main contains BOTH an entry point (app.js) that
+  // imports feature/foo AND a widely-imported file (embed.tsx) that feature/bar
+  // imports. A module-level graph would manufacture feature/foo -> app/main ->
+  // feature/bar; walking files first does not, because nothing imports app.js.
+  const FILE_DEPS = [
+    { source: "src/app.js", dependencies: ["src/foo/foo.tsx"] },
+    { source: "src/bar/bar.tsx", dependencies: ["src/embed.tsx"] },
+    { source: "src/foo/foo.tsx", dependencies: ["src/utils/colors.ts"] },
+  ];
+  const fileGraph = buildFileGraph(ELEMENTS, FILE_DEPS);
+
+  describe("getAffectedFiles", () => {
+    it("should return the changed file and everything that imports it", () => {
+      expect(
+        [...getAffectedFiles(fileGraph, ["src/utils/colors.ts"])].sort(),
+      ).toEqual(["src/app.js", "src/foo/foo.tsx", "src/utils/colors.ts"]);
+    });
+
+    it("should include a changed file with no importers (itself only)", () => {
+      // Nothing imports the app.js entry point.
+      expect([...getAffectedFiles(fileGraph, ["src/app.js"])]).toEqual([
+        "src/app.js",
+      ]);
+    });
+  });
+
+  describe("getAffectedModulesFromFiles", () => {
+    it("should expand affected files to their owning modules", () => {
+      expect(
+        [
+          ...getAffectedModulesFromFiles(fileGraph, ["src/utils/colors.ts"]),
+        ].sort(),
+      ).toEqual(["app/main", "feature/foo", "lib/utils"]);
+    });
+
+    it("should NOT pull in feature/bar via the app/main hub", () => {
+      // The bug a module-level graph has: feature/bar imports embed.tsx (app/main)
+      // and app.js (app/main) imports feature/foo, but those are different files.
+      const affected = getAffectedModulesFromFiles(fileGraph, [
+        "src/foo/foo.tsx",
+      ]);
+      expect([...affected].sort()).toEqual(["app/main", "feature/foo"]);
+      expect(affected.has("feature/bar")).toBe(false);
+    });
+
+    it("should return empty when no file maps to a module", () => {
+      expect(getAffectedModulesFromFiles(fileGraph, ["docs/foo.md"]).size).toBe(
+        0,
+      );
+    });
+  });
+
+  describe("getAffectedModules (rules-graph fallback)", () => {
     it("should affect feature/super and app/main but not feature/bar when feature/foo changes", () => {
       const result = getAffectedModules(graph, ["src/foo/x.ts"]);
       expect([...result].sort()).toEqual([

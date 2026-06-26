@@ -1,34 +1,39 @@
-// This script is used in .github/workflows/run-tests.yml.
-// It uploads the test-plan stats row produced by create-test-plan.js to
-// the stats.metabase.com tracking table.
+// Appends the test-plan stats row produced by create-test-plan.ts to the
+// "FE Affected Tests" table on stats.metabase.com.
 // Reads STATS_JSON, PR_NUMBER, HEAD_SHA, BASE_SHA, API_KEY from env.
 
 const { uploadCsvToMb } = require("./csv-to-mb.js");
 
-const stats = JSON.parse(process.env.STATS_JSON);
-console.log("stats", stats);
+// "FE Affected Tests" uploaded table on stats.metabase.com.
+const TABLE_ID = 79730;
+
+const s = JSON.parse(process.env.STATS_JSON);
+console.log("stats", s);
 
 const row = {
   Date: new Date().toISOString(),
   PR: Number(process.env.PR_NUMBER),
   "Head SHA": process.env.HEAD_SHA,
   "Base SHA": process.env.BASE_SHA,
-  "Modules changed": stats.modules_changed,
-  "Modules affected": stats.modules_affected,
-  "FE Unit specs total": stats.fe_unit_specs_total,
-  "FE Unit specs run": stats.fe_unit_specs_run,
-  "FE Unit specs skipped": stats.fe_unit_specs_skipped,
-  "Loki stories total": stats.loki_stories_total,
-  "Loki stories run": stats.loki_stories_run,
-  "Loki stories skipped": stats.loki_stories_skipped,
-  "E2E specs total": stats.e2e_specs_total,
-  "E2E specs run": stats.e2e_specs_run,
-  "E2E specs skipped": stats.e2e_specs_skipped,
+  "FE Files Changed": s.fe_files_changed,
+  "BE Files Changed": s.be_files_changed,
+  "FE Modules Changed": s.fe_modules_changed,
+  "FE Modules Affected (Rules)": s.fe_modules_affected_rules,
+  "FE Modules Affected (Usage)": s.fe_modules_affected_usage,
+  "Unit Specs All": s.unit_specs_all,
+  "Unit Specs To Run (Rules)": s.unit_specs_to_run_rules,
+  "Unit Specs To Run (Usage)": s.unit_specs_to_run_usage,
+  "Loki Stories All": s.loki_stories_all,
+  "Loki Stories To Run (Rules)": s.loki_stories_to_run_rules,
+  "Loki Stories To Run (Usage)": s.loki_stories_to_run_usage,
+  "E2E Specs All": s.e2e_specs_all,
+  "E2E Specs To Run (Rules)": s.e2e_specs_to_run_rules,
+  "E2E Specs To Run (Usage)": s.e2e_specs_to_run_usage,
 };
 
 uploadCsvToMb({
   baseUrl: "https://stats.metabase.com",
-  tableId: 77008, // "Affected Tests Stats" table on stats.metabase.com
+  tableId: TABLE_ID,
   jsonData: [row],
   mode: "append",
 })
