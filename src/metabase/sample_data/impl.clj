@@ -165,9 +165,9 @@
                                                       rows))]
                           :when (seq remapped)]
                       [group-id perm-type remapped])]
-    (doseq [[[group-id perm-type] perm-value] db-perms]
+    (doseq [[group-id perm-type perm-value] db-perms]
       (perms/set-database-permission! group-id new-db-id perm-type perm-value))
-    (doseq [[[group-id perm-type] one-table-perms] table-perms]
+    (doseq [[group-id perm-type one-table-perms] table-perms]
       (perms/set-table-permissions! group-id perm-type one-table-perms))))
 
 (defn- replace-sample-database!
