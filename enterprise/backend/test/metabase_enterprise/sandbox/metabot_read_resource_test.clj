@@ -3,9 +3,7 @@
   serdes pipeline, which does NOT apply data sandboxing, so the metabot/MCP layer redacts the
   sandbox-revealing pieces (a card's `:dataset_query` / `:result_metadata`, and individual
   Field bodies) for sandboxed users. These tests pin that behavior with a real GTAP and a
-  NON-admin sandboxed user — an admin would bypass sandboxing and hide the bug.
-
-  See ~/dv/mb/ai-reports/mbr-read-resource-sandbox-leak.md."
+  NON-admin sandboxed user — an admin would bypass sandboxing and hide the bug."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as mt.tu]

@@ -139,7 +139,7 @@
   "Card MBR keys that name the underlying warehouse tables/columns. Serdes extracts them
    unfiltered (it is an admin-export pipeline), so for a user with a data sandbox on any table
    the card touches we withhold them — otherwise the MBR would leak column/table names the
-   sandbox hides. See `~/dv/mb/ai-reports/mbr-read-resource-sandbox-leak.md`."
+   sandbox hides."
   [:dataset_query :result_metadata])
 
 (defn redact-sandboxed
