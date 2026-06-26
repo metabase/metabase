@@ -171,7 +171,7 @@ If you want the MCP server to return an inline chart, ask it to "show" or "visua
 
 ![Show me the stuff](./images/mcp-chart.png)
 
-An inline chart renders the question's default visualization, whatever type makes sense for the data (like a bar, line, area, or pie chart), and includes a picker so you can switch between that default, a bar or line chart, and a table view. You can drill through the charts, change time granularity, or explore them in Metabase.
+Inline charts are limited to bar, line, or table charts (which you can toggle between). You can drill through the charts (which will give you a link to your Metabase), change time granularity, or explore them in Metabase.
 
 If your client is connected to other MCP servers, you can ask questions that combine data from multiple sources. For example, you can ask a question about your customers that combines data from Metabase, your CRM, and your support ticket platform (Though maybe you should put all that data into your Metabase).
 
