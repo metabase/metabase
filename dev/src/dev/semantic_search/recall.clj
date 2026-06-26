@@ -37,7 +37,7 @@
   (some #(when (= :semantic-distance (:name %)) (:score %)) (:all-scores result)))
 
 (defn- topn
-  "Set of the top-`n` results' [model id] keys, ranked by `key-fn` descending (nils last)."
+  "Set of the top-`n` results' [model id] keys, ranked by `key-fn` descending (nil keys dropped)."
   [key-fn n results]
   (->> results
        (filter key-fn)
@@ -46,8 +46,16 @@
        (map (juxt :model :id))
        set))
 
-(defn- recall [ground hit]
-  (when (seq ground) (double (/ (count (filter ground hit)) (count ground)))))
+(defn- recall
+  "Fraction of the `ground`-truth keys also present in `hit` (both sets), or nil when `ground` is empty."
+  [ground hit]
+  (when (seq ground)
+    (double (/ (count (filter ground hit)) (count ground)))))
+
+(defn- pct
+  "Round a 0..1 ratio to an integer percent string; nil passes through."
+  [r]
+  (when r (str (Math/round (* 100.0 r)) "%")))
 
 (defn- query!
   "Run the full scored pipeline for `search-context` as `user-id`, returning the scored results."
@@ -109,10 +117,8 @@
                  :strategy     strat
                  :returned     (count res)
                  :pool         (count gt)
-                 :nn-recall    (when-let [r (recall gt-nn (topn distance-score top-n res))]
-                                 (str (Math/round (double (* 100 r))) "%"))
-                 :score-recall (when-let [r (recall gt-score (topn :score top-n res))]
-                                 (str (Math/round (double (* 100 r))) "%"))}))]
+                 :nn-recall    (pct (recall gt-nn (topn distance-score top-n res)))
+                 :score-recall (pct (recall gt-score (topn :score top-n res)))}))]
     (println (format "\nRecall report: top-%d, candidate cap=%d, exhaustive GT pool per query, %d probes"
                      top-n result-limit (count search-strings)))
     (pprint/print-table [:query :strategy :returned :pool :nn-recall :score-recall] rows)

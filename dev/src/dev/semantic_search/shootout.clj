@@ -33,6 +33,20 @@
   [jdbc-url]
   (jdbc/get-datasource jdbc-url))
 
+(def ^:private result-opts
+  "next.jdbc result-set options used everywhere here: unqualified, lower-cased column keywords."
+  {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+
+(defn- where-sql
+  "Render a raw SQL filter as a ` WHERE ...` clause, or \"\" when blank."
+  [where]
+  (if (str/blank? where) "" (str " WHERE " where)))
+
+(defn- set-recall
+  "Set-overlap recall: fraction of ground-truth set `gt` recovered in `found` (0.0 when `gt` is empty)."
+  [gt found]
+  (/ (count (filter gt found)) (double (max 1 (count gt)))))
+
 ;;; ------------------------------------------------ Query building -------------------------------------------------
 
 (defn- query-embedding-literal
@@ -43,7 +57,7 @@
   (cond
     query-vector (format "'[%s]'::vector" (str/join "," query-vector))
     query-id     (let [e (:e (jdbc/execute-one! ds [(format "SELECT embedding::text AS e FROM %s WHERE id = ?" table) query-id]
-                                                {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+                                                result-opts))]
                    (when-not e
                      (throw (ex-info (format "No row id=%s in %s to take a probe vector from" query-id table) {})))
                    (format "'%s'::vector" e))
@@ -53,7 +67,7 @@
   "Generate the raw SQL for a variant `shape` over `table`, with the probe-vector literal `elit`, the optional
   raw SQL `where` fragment, the distance `cutoff` and result `limit`."
   [shape table elit where cutoff limit]
-  (let [where-clause (if (str/blank? where) "" (str " WHERE " where))]
+  (let [where-clause (where-sql where)]
     (case shape
       ;; filter-first full scan, exact: the MATERIALIZED CTE has no ORDER BY ... LIMIT so the index is skipped
       :brute-force
@@ -138,7 +152,7 @@
   [ds gucs force-index? sql]
   (with-session ds gucs force-index?
     (fn [conn]
-      (mapv :id (jdbc/execute! conn [sql] {:builder-fn jdbc.rs/as-unqualified-lower-maps})))))
+      (mapv :id (jdbc/execute! conn [sql] result-opts)))))
 
 (defn- run-rows
   "Run `sql` under the variant's session and return [{:id :distance}] in the order the query returns them."
@@ -146,14 +160,13 @@
   (with-session ds gucs force-index?
     (fn [conn]
       (mapv #(select-keys % [:id :distance])
-            (jdbc/execute! conn [sql] {:builder-fn jdbc.rs/as-unqualified-lower-maps})))))
+            (jdbc/execute! conn [sql] result-opts)))))
 
 (defn- count-where
   "Count rows in `table` matching the raw SQL `where` (or all rows when blank)."
   [ds table where]
-  (-> (jdbc/execute-one! ds [(format "SELECT count(*) AS n FROM %s%s"
-                                     table (if (str/blank? where) "" (str " WHERE " where)))]
-                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+  (-> (jdbc/execute-one! ds [(format "SELECT count(*) AS n FROM %s%s" table (where-sql where))]
+                         result-opts)
       :n))
 
 ;;; ---------------------------------------------------- Variants ---------------------------------------------------
@@ -221,15 +234,13 @@
         total      (count-where datasource table nil)
         pool       (count-where datasource table where)
         results    (mapv #(measure-variant datasource table elit where cutoff limit repeats warmup %) variants)
-        ground     (:ids (first (filter #(= "brute-force" (:label %)) results)))
         baseline   (first (filter #(= "brute-force" (:label %)) results))
-        recall     (fn [ids] (when (and ground (seq ground))
-                               (double (/ (count (filter ground ids)) (count ground)))))
+        ground     (:ids baseline)
         speed-mult (fn [base this] (when (and base this (pos? this)) (format "%.1fx" (double (/ base this)))))
         rows       (mapv (fn [{:keys [label rows ids inner-ms total-ms tuples-scanned node-type index-name]}]
                            {:variant label
                             :rows    rows
-                            :recall  (when-let [r (recall ids)] (str (Math/round (double (* 100 r))) "%"))
+                            :recall  (when (seq ground) (str (Math/round (* 100.0 (set-recall ground ids))) "%"))
                             :inner-ms (some->> inner-ms (format "%.1f"))
                             :total-ms (some->> total-ms (format "%.1f"))
                             :inner%   (when (and inner-ms total-ms (pos? total-ms))
@@ -279,10 +290,14 @@
   `probe-where`)."
   [ds table probe-where n]
   (mapv :id (jdbc/execute! ds [(format "SELECT id FROM %s%s ORDER BY md5(id::text) LIMIT %d"
-                                       table (if (str/blank? probe-where) "" (str " WHERE " probe-where)) n)]
-                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+                                       table (where-sql probe-where) n)]
+                           result-opts)))
 
-(defn- mean [xs] (let [v (keep identity xs)] (when (seq v) (/ (reduce + v) (count v)))))
+(defn- mean
+  "Mean of `xs`, ignoring nils; nil when nothing is left."
+  [xs]
+  (when-let [v (seq (keep identity xs))]
+    (double (/ (reduce + v) (count v)))))
 
 (defn ndcg-report
   "Average recall@k and NDCG@k of each strategy's embedding retrieval over a deterministic probe sample.
@@ -345,14 +360,14 @@
   [ds table]
   (-> (jdbc/execute-one! ds [(str "SELECT indexname FROM pg_indexes WHERE tablename = ? "
                                   "AND indexdef ILIKE '%using hnsw%' LIMIT 1") table]
-                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                         result-opts)
       :indexname))
 
 (defn- vector-dims
   "Embedding dimensionality of `table`."
   [ds table]
   (-> (jdbc/execute-one! ds [(format "SELECT vector_dims(embedding) AS d FROM %s LIMIT 1" table)]
-                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                         result-opts)
       :d))
 
 (defn index-size-report
@@ -366,7 +381,7 @@
                                              "pg_table_size('%s') AS table_bytes, "
                                              "pg_size_pretty(pg_total_relation_size('%s')) AS total_size")
                                         idx idx table table table)]
-                               {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+                               result-opts)]
     (println (format "\nHNSW index %s on %s:" idx table))
     (println (format "  index %s | table %s | total %s | index is %.0f%% of the table heap"
                      (:index_size row) (:table_size row) (:total_size row)
@@ -399,7 +414,7 @@
                                            scratch table n))
             build       (timed! ds (format "CREATE INDEX %s ON %s USING hnsw (embedding vector_cosine_ops)" idx scratch))
             idx-size    (jdbc/execute-one! ds [(format "SELECT pg_size_pretty(pg_relation_size('%s')) AS s, pg_relation_size('%s') AS b" idx idx)]
-                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                                           result-opts)
             insert-warm (timed! ds (format "INSERT INTO %s (id, model, embedding) SELECT id, model, embedding FROM %s OFFSET %d LIMIT %d"
                                            scratch table n n))
             vacuum      (timed! ds (format "VACUUM (ANALYZE) %s" scratch))
@@ -442,8 +457,7 @@
                   (jdbc/with-transaction [tx ds]
                     (jdbc/execute! tx ["SET LOCAL enable_seqscan = off"])
                     (set (mapv :id (jdbc/execute! tx [(format "SELECT id FROM %s ORDER BY embedding <=> %s ASC LIMIT %d" scratch elit limit)]
-                                                  {:builder-fn jdbc.rs/as-unqualified-lower-maps})))))
-        recall  (fn [gt ap] (double (/ (count (filter gt ap)) (max 1 (count gt)))))]
+                                                  result-opts)))))]
     (jdbc/execute! ds [(format "DROP TABLE IF EXISTS %s" scratch)])
     (jdbc/execute! ds [(format "CREATE TABLE %s (id bigint primary key, model text, embedding vector(%d))" scratch dims)])
     (try
@@ -454,19 +468,19 @@
       (let [gt          (jdbc/with-transaction [tx ds]
                           (jdbc/execute! tx ["SET LOCAL enable_indexscan = off"])
                           (set (mapv :id (jdbc/execute! tx [(format "SELECT id FROM %s ORDER BY embedding <=> %s ASC LIMIT %d" scratch elit limit)]
-                                                        {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+                                                        result-opts))))
             _           (jdbc/execute! ds [(format "CREATE INDEX %s ON %s USING hnsw (embedding vector_cosine_ops)" idx scratch)])
-            recall-fresh (recall gt (approx))
+            recall-fresh (set-recall gt (approx))
             churn-n     (long (* churn-frac n))
             ;; churn: re-write a slice in place. Because `embedding` is indexed this is a non-HOT update --
             ;; each touched row gets a fresh HNSW graph entry and leaves the old one dead.
             _           (jdbc/execute! ds [(format "UPDATE %s SET embedding = embedding WHERE id IN (SELECT id FROM %s ORDER BY id LIMIT %d)"
                                                    scratch scratch churn-n)])
-            recall-churned (recall gt (approx))
+            recall-churned (set-recall gt (approx))
             _           (jdbc/execute! ds [(format "VACUUM (ANALYZE) %s" scratch)])
-            recall-vacuumed (recall gt (approx))
+            recall-vacuumed (set-recall gt (approx))
             _           (jdbc/execute! ds [(format "REINDEX INDEX %s" idx)])
-            recall-reindexed (recall gt (approx))]
+            recall-reindexed (set-recall gt (approx))]
         (println (format "\nStaleness vs recall on %s (scratch %s, %,d rows, churned %,d, top-%d):" table scratch n churn-n limit))
         (println (format "  recall fresh build   : %.2f" recall-fresh))
         (println (format "  recall after churn   : %.2f" recall-churned))
@@ -482,7 +496,7 @@
   [ds setting sql]
   (jdbc/with-transaction [tx ds]
     (jdbc/execute! tx [setting])
-    (set (mapv :id (jdbc/execute! tx [sql] {:builder-fn jdbc.rs/as-unqualified-lower-maps})))))
+    (set (mapv :id (jdbc/execute! tx [sql] result-opts)))))
 
 (defn rotation-report!
   "Measure the rotation win: how much recall a fresh index rebuild buys on a degraded `table`, and what it
@@ -500,10 +514,8 @@
         rotated   (str table "_rotated")
         cur-idx   (hnsw-index-name ds table)
         probe-ids (mapv :id (jdbc/execute! ds [(format "SELECT id FROM %s ORDER BY id LIMIT %d" table n-probes)]
-                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
-        topk      (fn [tbl elit] (format "SELECT id FROM %s ORDER BY embedding <=> %s ASC LIMIT %d" tbl elit limit))
-        recall    (fn [gt ap] (double (/ (count (filter gt ap)) (max 1 (count gt)))))
-        mean      (fn [ms] (/ (reduce + ms) (max 1 (count ms))))]
+                                           result-opts))
+        topk      (fn [tbl elit] (format "SELECT id FROM %s ORDER BY embedding <=> %s ASC LIMIT %d" tbl elit limit))]
     (jdbc/execute! ds [(format "DROP TABLE IF EXISTS %s" rotated)])
     (try
       ;; rotate: copy rows -- reusing the existing embeddings, no re-embedding -- into a fresh table + graph
@@ -514,15 +526,15 @@
                                                          "pg_size_pretty(pg_relation_size('%s_hnsw')) rot_pretty, "
                                                          "pg_relation_size('%s_hnsw') rot_b")
                                                     cur-idx cur-idx rotated rotated)]
-                                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                                        result-opts)
             per-probe (vec (for [pid probe-ids]
                              (let [elit (query-embedding-literal ds table {:query-id pid})
                                    gt   (ids-with-setting ds "SET LOCAL enable_indexscan = off" (topk table elit))
                                    cur  (ids-with-setting ds "SET LOCAL enable_seqscan = off"   (topk table elit))
                                    rot  (ids-with-setting ds "SET LOCAL enable_seqscan = off"   (topk rotated elit))]
                                {:probe pid
-                                :current (recall gt cur)
-                                :rotated (recall gt rot)})))]
+                                :current (set-recall gt cur)
+                                :rotated (set-recall gt rot)})))]
         (println (format "\nRotation win on %s (top-%d, %d probes):" table limit (count probe-ids)))
         (pprint/print-table [:probe :current :rotated]
                             (mapv (fn [r] (-> r (update :current #(format "%.2f" %)) (update :rotated #(format "%.2f" %)))) per-probe))
