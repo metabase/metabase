@@ -39,6 +39,8 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
@@ -186,12 +188,6 @@
   [card]
   (get-in card [:dataset_query :database]))
 
-(defn- card-native?
-  "True when the card's dataset_query is a native (SQL) query."
-  [card]
-  (let [qtype (get-in card [:dataset_query :type])]
-    (= "native" (if (keyword? qtype) (name qtype) (str qtype)))))
-
 (defn- card-table-infos
   "Resolve the physical tables a card's query reads to table-info maps."
   [card]
@@ -210,13 +206,16 @@
   [card db-id drv mapping input-tables]
   (let [backend   (sql-tools/parser-backend)
         dataset-q (:dataset_query card)
+        ;; Build the lib query to detect native vs MBQL and extract native SQL — a
+        ;; stored card's `:dataset_query` is lib-normalized (no raw `:type`/`:native`
+        ;; keys), so go through the lib API rather than peeking at the raw map.
+        query     (lib/query (lib-be/application-database-metadata-provider db-id) dataset-q)
         final-sql
-        (if (card-native? card)
+        (if (lib/native-only-query? query)
           ;; Native path: rewrite the SQL string to scratch names.
           ;; Limitation: table-qualified column refs may produce dangling qualifiers
           ;; that `resolve/verify` rejects. Keep native cards free of `table.col` qualifiers.
-          (let [raw-sql (get-in dataset-q [:native :query])]
-            (resolve/rewrite-native-sql drv raw-sql mapping backend))
+          (resolve/rewrite-native-sql drv (lib/raw-native-query query) mapping backend)
           ;; MBQL path: compile under the override-provider so the compiler
           ;; emits scratch-qualified SQL without any string rewriting.
           ;; Precondition: card's source tables must be synced (have a Table id)

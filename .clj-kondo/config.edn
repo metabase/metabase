@@ -454,6 +454,8 @@
   metabase.transforms.test-run.core-test/with-temp-csvs                                 clojure.core/let
   metabase.transforms.test-run.e2e-test/with-temp-csv-files                             clojure.core/let
   metabase.transforms.test-run.chain-test/with-temp-csv-files                           clojure.core/let
+  metabase.transforms.test-run.chain-test/with-enrich-card                              clojure.core/fn
+  metabase.transforms.test-run.chain-test/with-enrich-mbql-card                         clojure.core/fn
   metabase.transforms.test-run.card-chain-test/with-temp-csv-files                      clojure.core/let
   metabase.transforms.test-run.card-chain-test/with-enrich-topology                     clojure.core/fn
   metabase.transforms-rest.api.transform-test/with-temp-csv-files                       clojure.core/let

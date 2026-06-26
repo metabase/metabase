@@ -2407,7 +2407,8 @@
   {:team "Gadget"
    :api  #{metabase.transforms-rest.api.transform
            metabase.transforms-rest.api.transform-job
-           metabase.transforms-rest.api.transform-tag}
+           metabase.transforms-rest.api.transform-tag
+           metabase.transforms-rest.api.transform-test-run}
    :uses #{api
            models
            request

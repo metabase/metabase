@@ -8,11 +8,11 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
+   [metabase.transforms-rest.api.util :as api-util]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -321,165 +321,6 @@
 ;;; Test-run endpoint helpers
 ;;; ---------------------------------------------------------------------------
 
-(def ^:private test-run-error-http-status
-  "Maps `:error-type` keywords from the test-run pipeline to HTTP status codes.
-
-  400 — caller error (bad input): the caller can fix by changing the request.
-  422 — unprocessable: the transform or its environment prevents a test run;
-        the caller may need to change the transform definition.
-  500 — internal error: unexpected failure; the caller cannot fix this.
-
-  Any unrecognised `:error-type` is re-thrown (→ 500 from the framework). A
-  statement timeout throws an untyped exception (no `:error-type`), so it is not
-  in this map and currently surfaces as a generic 500."
-  {;; Fixture errors — 400: caller supplied wrong CSV content.
-   :metabase.transforms.test-run.fixtures/header-mismatch        400
-   :metabase.transforms.test-run.fixtures/unparseable-cell        400
-   ;; Diff errors — 400: caller supplied bad options.
-   :metabase.transforms.test-run.diff/unknown-ignore-columns      400
-   :metabase.transforms.test-run.diff/unsupported-option          400
-   ;; Input resolution errors — 400 or 422.
-   :metabase.transforms.test-run.inputs/missing-fixtures          400
-   :metabase.transforms.test-run.inputs/unknown-fixture-keys      400
-   :metabase.transforms.test-run.inputs/unsupported-transform-type 422
-   :metabase.transforms.test-run.inputs/cannot-determine-inputs   422
-   :metabase.transforms.test-run.inputs/table-not-found           422
-   :metabase.transforms.test-run.inputs/transform-dep-not-supported 422
-   ;; Resolve errors — 422.
-   :metabase.transforms.test-run.resolve/cannot-test-run          422
-   :metabase.transforms.test-run.resolve/unsupported-transform-type 422
-   ;; Execution errors — 500.
-   :metabase.transforms.test-run.scratch/seed-failed              500
-   :metabase.transforms.test-run.core/missing-database-id         422
-   :metabase.transforms.test-run.execute/pre-execution-guard-failed 500
-   :metabase.transforms.test-run.execute/execution-failed         500
-   ;; Chained (sub-graph) test-run errors.
-   :metabase.transforms.test-run.subgraph/sources-not-ancestors   400
-   :metabase.transforms.test-run.subgraph/cycle                   422
-   :metabase.transforms.test-run.chain/cross-database-subgraph    422
-   :metabase.transforms.test-run.chain/target-not-found           422
-   :metabase.transforms.test-run.chain/missing-database-id        422})
-
-(defn- parse-input-table-ids
-  "Extract input fixture files from the multipart params.
-
-  Returns `{table-id File}` for every `input-<table-id>` part. Reserved parts
-  (`expected`, `options`, plus any `extra-reserved`) are skipped; anything else
-  throws a 400 naming the offending part."
-  ([multipart-params]
-   (parse-input-table-ids multipart-params #{}))
-  ([multipart-params extra-reserved]
-   (let [reserved (into #{"expected" "options"} extra-reserved)]
-     (reduce-kv
-      (fn [acc k v]
-        (cond
-          ;; Reserved keys handled separately — skip.
-          (contains? reserved k)
-          acc
-
-          ;; input-<positive-int> pattern.
-          (re-matches #"input-(\d+)" k)
-          (let [[_ id-str] (re-matches #"input-(\d+)" k)
-                table-id   (parse-long id-str)]
-            (if (and table-id (pos? table-id))
-              (assoc acc table-id (:tempfile v))
-              (throw (ex-info (tru "Malformed multipart part name: ''{0}''. Table id must be a positive integer." k)
-                              {:status-code 400
-                               :part-name   k}))))
-
-          ;; Anything else is unknown.
-          :else
-          (throw (ex-info (tru "Unknown multipart part: ''{0}''. Expected: ''expected'', ''options'', ''sources'', or ''input-<table-id>''." k)
-                          {:status-code 400
-                           :part-name   k}))))
-      {}
-      multipart-params))))
-
-(defn- parse-test-run-options
-  "Parse the optional `options` JSON multipart part.
-
-  Returns a map with:
-  - `:ignore-columns` — set of column name strings (default `#{}`).
-
-  Throws 400 on malformed JSON or unknown keys."
-  [options-part]
-  (if (nil? options-part)
-    {}
-    (let [raw  (if (map? options-part) (:tempfile options-part) options-part)
-          text (if (instance? java.io.File raw) (slurp raw) (str raw))
-          opts (try
-                 (json/decode text true)
-                 (catch Exception _
-                   (throw (ex-info (tru "Malformed ''options'' part: not valid JSON.")
-                                   {:status-code 400
-                                    :raw-text    text}))))]
-      (when-let [unknown (seq (remove #{:ignore_columns} (keys opts)))]
-        (throw (ex-info (tru "Unknown option keys: {0}. Supported: ignore_columns." (pr-str unknown))
-                        {:status-code 400
-                         :unknown-keys unknown})))
-      (cond-> {}
-        (:ignore_columns opts)
-        (assoc :ignore-columns (set (:ignore_columns opts)))))))
-
-(defn- parse-source-ids
-  "Parse the `sources` multipart part — a JSON array of selected source transform
-  ids — into a set of positive integers. Missing part → `#{}` (a target-only
-  selection — the degenerate case equivalent to a single-transform test run).
-  Throws 400 on malformed JSON or a non-positive-int element."
-  [sources-part]
-  (if (nil? sources-part)
-    #{}
-    (let [raw  (if (map? sources-part) (:tempfile sources-part) sources-part)
-          text (if (instance? java.io.File raw) (slurp raw) (str raw))
-          ids  (try
-                 (json/decode text)
-                 (catch Exception _
-                   (throw (ex-info (tru "Malformed ''sources'' part: not valid JSON.")
-                                   {:status-code 400
-                                    :raw-text    text}))))]
-      (when-not (and (sequential? ids) (every? #(and (int? %) (pos? %)) ids))
-        (throw (ex-info (tru "''sources'' must be a JSON array of positive transform ids.")
-                        {:status-code 400
-                         :sources     ids})))
-      (set ids))))
-
-(defn- run-record->response
-  "Convert a successful run-record (from `run-test!`) to the HTTP response body.
-
-  Status keywords are converted to strings (`\"passed\"` / `\"failed\"`) for
-  JSON serialisation. `:test_run_id` is nil (reserved for a future async polling
-  variant)."
-  [record]
-  {:status       (name (:status record))
-   :diff         (:diff record)
-   :test_run_id  nil})
-
-(defn- error->response
-  "Convert a typed ex-info from the test-run pipeline to a run-record shaped
-  error response body.
-
-  Carries the human-readable text at the top level as `:message` (in addition to
-  the structured `:error` map) so generic API clients — which look for a top-level
-  message and don't know our envelope shape — surface the real reason instead of a
-  bare status code."
-  [e]
-  (let [data (ex-data e)]
-    {:status      "error"
-     :message     (ex-message e)
-     :error       {:type    (pr-str (:error-type data))
-                   :message (ex-message e)}
-     :test_run_id nil}))
-
-(def ^:private TestRunResponse
-  "Malli schema for the test-run HTTP response body.
-
-  Covers three shapes:
-  - passed/failed: {:status \"passed\"|\"failed\", :diff <report>, :test_run_id nil}
-  - error:         {:status \"error\",             :error <map>,   :test_run_id nil}"
-  [:map {:closed false}
-   [:status      [:enum "passed" "failed" "error"]]
-   [:test_run_id [:maybe pos-int?]]])
-
 (defn- run-test-run!
   "Execute a test run for `transform` from parsed multipart params.
 
@@ -495,58 +336,27 @@
       (throw (ex-info (tru "Missing required multipart part: ''expected''.")
                       {:status-code 400})))
     (let [expected-file     (:tempfile expected-part)
-          fixtures-by-id    (parse-input-table-ids multipart-params)
-          opts              (parse-test-run-options (get multipart-params "options"))
+          fixtures-by-id    (api-util/parse-input-table-ids multipart-params)
+          opts              (api-util/parse-test-run-options (get multipart-params "options"))
           ;; The transform value for run-test! is built from the DB row's :source + :target.
           transform-value   {:source (:source transform)
                              :target (:target transform)}]
       (try
         (let [record (transforms.core/run-test! transform-value fixtures-by-id expected-file opts)]
           {:status 200
-           :body   (run-record->response record)})
+           :body   (api-util/run-record->response record)})
         (catch clojure.lang.ExceptionInfo e
           (let [error-type (:error-type (ex-data e))
-                http-status (get test-run-error-http-status error-type)]
+                http-status (get api-util/test-run-error-http-status error-type)]
             (if http-status
               {:status http-status
-               :body   (error->response e)}
+               :body   (api-util/error->response e)}
               ;; Unknown error-type — re-throw so the framework returns 500.
-              (throw e))))))))
-
-(defn- run-subgraph-test-run!
-  "Execute a chained (sub-graph) test run for target transform `target-id` from
-  parsed multipart params.
-
-  Reads the `expected` file part, the `sources` JSON part (selected boundary
-  source ids), the `input-<id>` leaf fixtures, and the `options` JSON part, then
-  delegates to `transforms.core/run-chain-test!`.
-
-  Returns the HTTP response map directly. Never throws — typed errors are mapped
-  via `test-run-error-http-status`; unknown errors become 500."
-  [target-id multipart-params]
-  (let [expected-part (get multipart-params "expected")]
-    (when-not expected-part
-      (throw (ex-info (tru "Missing required multipart part: ''expected''.")
-                      {:status-code 400})))
-    (let [expected-file  (:tempfile expected-part)
-          source-ids     (parse-source-ids (get multipart-params "sources"))
-          fixtures-by-id (parse-input-table-ids multipart-params #{"sources"})
-          opts           (parse-test-run-options (get multipart-params "options"))]
-      (try
-        (let [record (transforms.core/run-chain-test! target-id source-ids fixtures-by-id expected-file opts)]
-          {:status 200
-           :body   (run-record->response record)})
-        (catch clojure.lang.ExceptionInfo e
-          (let [error-type  (:error-type (ex-data e))
-                http-status (get test-run-error-http-status error-type)]
-            (if http-status
-              {:status http-status
-               :body   (error->response e)}
               (throw e))))))))
 
 (api.macros/defendpoint :post "/:id/test-run" :- [:map
                                                   [:status pos-int?]
-                                                  [:body TestRunResponse]]
+                                                  [:body api-util/TestRunResponse]]
   "Run a synchronous test run for a transform.
 
   Accepts a multipart/form-data request with the following parts:
@@ -596,26 +406,13 @@
 ;;; GET /:id/test-run/inputs — required input tables for the test-run UI
 ;;; ---------------------------------------------------------------------------
 
-(def ^:private InputTableResponse
-  "Malli schema for a single entry in the inputs response.
-
-  `:table_id` — app-DB Table id (integer); the key to use in `input-<table-id>` multipart parts.
-  `:schema`   — DB schema string (e.g. \"public\").
-  `:name`     — physical table name string (e.g. \"orders\").
-  `:columns`  — ordered list of column name strings the fixture CSV header must contain."
-  [:map {:closed true}
-   [:table_id pos-int?]
-   [:schema   :string]
-   [:name     :string]
-   [:columns  [:sequential :string]]])
-
 (api.macros/defendpoint :get "/:id/test-run/inputs" :- [:map
                                                         [:status pos-int?]
                                                         ;; Success → a vector of input-table descriptors; error paths
                                                         ;; (402/403/422) → the run-record error envelope. The body must
                                                         ;; admit both shapes or the framework coerces errors to 400.
                                                         [:body [:or
-                                                                [:sequential InputTableResponse]
+                                                                [:sequential api-util/InputTableResponse]
                                                                 [:map [:status [:= "error"]]]]]]
   "Return the required input tables for a transform's test run.
 
@@ -637,102 +434,13 @@
                              :target (:target transform)}
             tables          (transforms.core/required-input-tables transform-value)]
         {:status 200
-         :body   (mapv (fn [t]
-                         {:table_id (:id t)
-                          :schema   (:schema t)
-                          :name     (:name t)
-                          :columns  (mapv :name (:columns t))})
-                       tables)})
+         :body   (mapv api-util/input-table->response tables)})
       (catch clojure.lang.ExceptionInfo e
         (let [error-type  (:error-type (ex-data e))
-              http-status (get test-run-error-http-status error-type)]
+              http-status (get api-util/test-run-error-http-status error-type)]
           (if http-status
             {:status http-status
-             :body   (error->response e)}
-            (throw e)))))))
-
-;;; ---------------------------------------------------------------------------
-;;; Chained (sub-graph) test run — POST /:id/test-run/subgraph
-;;;                                GET  /:id/test-run/subgraph-inputs
-;;; ---------------------------------------------------------------------------
-
-(api.macros/defendpoint :post "/:id/test-run/subgraph" :- [:map
-                                                           [:status pos-int?]
-                                                           [:body TestRunResponse]]
-  "Run a synchronous *chained* (sub-graph) test run whose target is transform `id`.
-
-  Accepts a multipart/form-data request with these parts:
-
-  - `sources` (optional): a JSON array of selected boundary *source* transform ids.
-    Every node between a source and the target runs; an omitted/empty array makes
-    the target the sole node (equivalent to `POST /:id/test-run`).
-
-  - `input-<table-id>` (required, one per leaf): a CSV fixture for each boundary
-    leaf table. The set of required leaves is what `GET .../subgraph-inputs`
-    returns for the same `(target, sources)` selection.
-
-  - `expected` (required): a CSV of the expected output rows of the target.
-
-  - `options` (optional): JSON object; supported key `ignore_columns` (array).
-
-  Error → HTTP status mapping adds, on top of the single-transform endpoint:
-  - 400: a selected source does not feed the target (`sources-not-ancestors`).
-  - 422: a cycle in the sub-graph; a cross-database sub-graph; a leaf that is an
-         unmaterialized upstream/sibling output.
-
-  Response shape matches `POST /:id/test-run`."
-  {:multipart true}
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   _query-params
-   _body
-   {{:as multipart-params} :multipart-params}]
-  (let [transform (api/read-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
-    (api/check (not (transforms.core/transform-locked? transform))
-               [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
-                     :error-code "metabase_transforms_locked"}])
-    (run-subgraph-test-run! id multipart-params)))
-
-(api.macros/defendpoint :get "/:id/test-run/subgraph-inputs" :- [:map
-                                                                 [:status pos-int?]
-                                                                 [:body [:or
-                                                                         [:sequential InputTableResponse]
-                                                                         [:map [:status [:= "error"]]]]]]
-  "Return the boundary leaf input tables for a chained test run whose target is
-  transform `id` and whose selected sources are given by the `sources` query
-  param (repeatable, e.g. `?sources=1&sources=2`).
-
-  The response is a vector of table descriptors — one per leaf the caller must
-  supply a fixture CSV for (raw source tables and any sibling outputs not covered
-  by the selected sources). The chained analogue of `GET /:id/test-run/inputs`.
-
-  Error → HTTP status mapping:
-  - 400: a selected source does not feed the target.
-  - 402/403: feature off / no read access.
-  - 422: cycle; cross-database sub-graph; a leaf that is an unmaterialized
-         upstream/sibling output; referenced table not synced."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [sources]} :- [:map
-                         [:sources {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]]]
-  (let [transform (api/read-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
-    (try
-      (let [tables (transforms.core/subgraph-input-tables id (set sources) (t2/select :model/Transform))]
-        {:status 200
-         :body   (mapv (fn [t]
-                         {:table_id (:id t)
-                          :schema   (:schema t)
-                          :name     (:name t)
-                          :columns  (mapv :name (:columns t))})
-                       tables)})
-      (catch clojure.lang.ExceptionInfo e
-        (let [error-type  (:error-type (ex-data e))
-              http-status (get test-run-error-http-status error-type)]
-          (if http-status
-            {:status http-status
-             :body   (error->response e)}
+             :body   (api-util/error->response e)}
             (throw e)))))))
 
 (def ^{:arglists '([request respond raise])} routes

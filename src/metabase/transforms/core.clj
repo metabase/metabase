@@ -93,4 +93,6 @@
   required-input-tables]
  [metabase.transforms.test-run.chain
   run-chain-test!
-  subgraph-input-tables])
+  subgraph-input-tables
+  run-card-chain-test!
+  card-subgraph-input-tables])

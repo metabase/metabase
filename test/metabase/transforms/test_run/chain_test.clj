@@ -1,7 +1,8 @@
 (ns ^:mb/driver-tests metabase.transforms.test-run.chain-test
   "End-to-end tests for the chained (sub-graph) test-run orchestrator
-  ([[metabase.transforms.test-run.chain/run-chain-test!]]) and its HTTP endpoints
-  (`POST /:id/test-run/subgraph`, `GET /:id/test-run/subgraph-inputs`).
+  ([[metabase.transforms.test-run.chain/run-chain-test!]]) and the generalized HTTP
+  endpoints (`POST /api/transform-test/:target-type/:id/subgraph`,
+  `GET /api/transform-test/:target-type/:id/subgraph-inputs`).
 
   Builds a 2-node native chain on the test-data schema:
 
@@ -194,8 +195,10 @@
 (def ^:private multipart-content-type
   {:request-options {:headers {"content-type" "multipart/form-data"}}})
 
-(defn- subgraph-inputs-url [id] (format "transform/%d/test-run/subgraph-inputs" id))
-(defn- subgraph-test-run-url [id] (format "transform/%d/test-run/subgraph" id))
+(defn- subgraph-inputs-url [id] (format "transform-test/transform/%d/subgraph-inputs" id))
+(defn- subgraph-test-run-url [id] (format "transform-test/transform/%d/subgraph" id))
+(defn- card-subgraph-inputs-url [id] (format "transform-test/card/%d/subgraph-inputs" id))
+(defn- card-subgraph-test-run-url [id] (format "transform-test/card/%d/subgraph" id))
 
 (deftest subgraph-inputs-endpoint-test
   (testing "GET subgraph-inputs returns the leaf input tables for (target, sources)"
@@ -289,6 +292,240 @@
                   (testing "error envelope is returned"
                     (is (= "error" (:status resp)))
                     (is (string? (get-in resp [:error :message])))))))))))))
+
+;;; ===========================================================================
+;;; HTTP endpoints: card target (generalized /api/transform-test/card/…)
+;;;
+;;; The card reads `enriched` — a synced table produced by transform t1 — so the
+;;; slice is {t1} with leaves {orders, people}: the transform-target tests with a
+;;; card swapped in for the target node. (A card over a raw table with no transform
+;;; in the slice — "just supply input tables" — is a separate, deferred case.)
+;;; ===========================================================================
+
+(defmacro ^:private with-enrich-card
+  "Bind `t1-sym` to the enrich transform and `card-sym` to a native card that
+  aggregates t1's (synced) output table by state."
+  [[t1-sym card-sym] & body]
+  `(let [enriched-name# (mt/random-name)
+         db-id#         (mt/id)
+         mp#            (mt/metadata-provider)]
+     (mt/with-temp [:model/Table tbl#
+                    {:db_id db-id# :schema "public" :name enriched-name# :active true}
+                    :model/Transform ~t1-sym
+                    {:source          {:type :query :query (lib/native-query mp# enrich-sql)}
+                     :target          {:schema "public" :type "table" :name enriched-name#}
+                     :target_table_id (:id tbl#)}
+                    :model/Card ~card-sym
+                    {:dataset_query {:database db-id# :type "native"
+                                     :native   {:query (aggregate-sql enriched-name#)}}}]
+       ~@body)))
+
+(deftest card-subgraph-inputs-endpoint-test
+  (testing "GET card subgraph-inputs returns the card's boundary leaf tables"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [orders-id (mt/id :orders)
+                people-id (mt/id :people)]
+            (with-enrich-card [t1 card]
+              (let [resp (mt/user-http-request :crowberto :get 200 (card-subgraph-inputs-url (:id card))
+                                               :sources (:id t1))]
+                (testing "both leaves (orders, people) are returned"
+                  (is (= #{orders-id people-id} (set (map :table_id resp)))))
+                (testing "each descriptor carries schema, name, and column headers"
+                  (is (every? (fn [d] (and (string? (:schema d))
+                                           (string? (:name d))
+                                           (seq (:columns d))))
+                              resp)))))))))))
+
+(deftest card-subgraph-test-run-endpoint-passed-test
+  (testing "POST card subgraph runs a card target over the chain → 200 passed"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id          (mt/id)
+                schema         "public"
+                orders-id      (mt/id :orders)
+                people-id      (mt/id :people)
+                before-scratch (count-test-scratch-tables db-id schema)]
+            (with-enrich-card [t1 card]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f correct-expected-csv]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 200 (card-subgraph-test-run-url (:id card))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             (str "input-" people-id) people-f
+                             "expected"               expected-f
+                             "sources"                (json/encode [(:id t1)])})]
+                  (testing "status is passed"
+                    (is (= "passed" (:status resp))
+                        (str "Expected passed; body: " (pr-str resp))))
+                  (testing "no scratch tables remain"
+                    (is (= before-scratch (count-test-scratch-tables db-id schema)))))))))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Native card, failed case (endpoint)
+;;; ---------------------------------------------------------------------------
+
+(deftest card-subgraph-test-run-endpoint-failed-test
+  (testing "POST card subgraph with wrong expected CSV → 200 failed"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [orders-id (mt/id :orders)
+                people-id (mt/id :people)]
+            (with-enrich-card [t1 card]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f wrong-expected-csv]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 200 (card-subgraph-test-run-url (:id card))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             (str "input-" people-id) people-f
+                             "expected"               expected-f
+                             "sources"                (json/encode [(:id t1)])})]
+                  (testing "status is failed"
+                    (is (= "failed" (:status resp))
+                        (str "Expected failed; body: " (pr-str resp)))))))))))))
+
+;;; ===========================================================================
+;;; HTTP endpoints: card target — stored MBQL card
+;;;
+;;; The MBQL card is stored via `mt/with-temp :model/Card`, so its
+;;; `dataset_query` is lib-normalized (pMBQL form) when the endpoint reads it
+;;; back — the path W2 fixed but that was only verified for native stored cards.
+;;;
+;;; Topology: same t1 (enrich) slice as native tests; card does COUNT(*) over
+;;; the enriched scratch table via MBQL source-table → 4 rows → count = 4.
+;;; Fields are created on the temp Table so the MBQL metadata provider can
+;;; build a valid query stage.
+;;; ===========================================================================
+
+(defmacro ^:private with-enrich-mbql-card
+  "Bind `t1-sym` to the enrich transform and `card-sym` to a *stored* MBQL card
+  (persisted via `mt/with-temp :model/Card`) that does COUNT(*) over t1's
+  (synced) output table. Adds two `:model/Field` rows so the MBQL metadata
+  provider can build a valid query stage."
+  [[t1-sym card-sym] & body]
+  (let [f-total (gensym "field-total")
+        f-state (gensym "field-state")]
+    `(let [enriched-name# (mt/random-name)
+           db-id#         (mt/id)
+           mp#            (mt/metadata-provider)]
+       (mt/with-temp [:model/Table tbl#
+                      {:db_id db-id# :schema "public" :name enriched-name# :active true}
+                      :model/Field ~f-total
+                      {:table_id  (:id tbl#) :name "total"
+                       :base_type :type/Float :position 0 :active true}
+                      :model/Field ~f-state
+                      {:table_id  (:id tbl#) :name "state"
+                       :base_type :type/Text  :position 1 :active true}
+                      :model/Transform ~t1-sym
+                      {:source          {:type :query :query (lib/native-query mp# enrich-sql)}
+                       :target          {:schema "public" :type "table" :name enriched-name#}
+                       :target_table_id (:id tbl#)}
+                      :model/Card ~card-sym
+                      {:database_id   db-id#
+                       :dataset_query {:database db-id#
+                                       :type     "query"
+                                       :query    {:source-table (:id tbl#)
+                                                  :aggregation  [[:count]]}}}]
+         ~@body))))
+
+;;; 4 fixture orders → enriched has 4 rows → COUNT = 4
+(def ^:private mbql-card-expected-csv "count\n4\n")
+(def ^:private mbql-card-wrong-csv    "count\n99\n")
+
+(deftest card-mbql-subgraph-inputs-endpoint-test
+  (testing "GET card/subgraph-inputs for a stored MBQL card returns the leaf tables"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [orders-id (mt/id :orders)
+                people-id (mt/id :people)]
+            (with-enrich-mbql-card [t1 card]
+              (let [resp (mt/user-http-request :crowberto :get 200 (card-subgraph-inputs-url (:id card))
+                                               :sources (:id t1))]
+                (testing "both leaves (orders, people) are returned"
+                  (is (= #{orders-id people-id} (set (map :table_id resp)))))
+                (testing "each descriptor carries schema, name, and column headers"
+                  (is (every? (fn [d] (and (string? (:schema d))
+                                           (string? (:name d))
+                                           (seq (:columns d))))
+                              resp)))))))))))
+
+(deftest card-mbql-subgraph-test-run-endpoint-passed-test
+  (testing "POST card/subgraph for a stored MBQL card → 200 passed"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id          (mt/id)
+                orders-id      (mt/id :orders)
+                people-id      (mt/id :people)
+                before-scratch (count-test-scratch-tables db-id "public")]
+            (with-enrich-mbql-card [t1 card]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f mbql-card-expected-csv]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 200 (card-subgraph-test-run-url (:id card))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             (str "input-" people-id) people-f
+                             "expected"               expected-f
+                             "sources"                (json/encode [(:id t1)])})]
+                  (testing "status is passed"
+                    (is (= "passed" (:status resp))
+                        (str "Expected passed; body: " (pr-str resp))))
+                  (testing "no scratch tables remain"
+                    (is (= before-scratch (count-test-scratch-tables db-id "public")))))))))))))
+
+(deftest card-mbql-subgraph-test-run-endpoint-failed-test
+  (testing "POST card/subgraph for a stored MBQL card with wrong expected CSV → 200 failed"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id          (mt/id)
+                orders-id      (mt/id :orders)
+                people-id      (mt/id :people)
+                before-scratch (count-test-scratch-tables db-id "public")]
+            (with-enrich-mbql-card [t1 card]
+              (with-temp-csv-files [orders-f   orders-rows
+                                    people-f   people-rows
+                                    expected-f mbql-card-wrong-csv]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 200 (card-subgraph-test-run-url (:id card))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             (str "input-" people-id) people-f
+                             "expected"               expected-f
+                             "sources"                (json/encode [(:id t1)])})]
+                  (testing "status is failed"
+                    (is (= "failed" (:status resp))
+                        (str "Expected failed; body: " (pr-str resp))))
+                  (testing "no scratch tables remain even on failure"
+                    (is (= before-scratch (count-test-scratch-tables db-id "public")))))))))))))
+
+(deftest card-target-read-check-test
+  (testing "card target enforces read-check :model/Card — no collection access → 403"
+    (mt/with-temp [:model/Collection coll {}
+                   :model/Card card {:collection_id (:id coll)
+                                     :dataset_query {:database (mt/id)
+                                                     :type     "native"
+                                                     :native   {:query "SELECT 1 AS n"}}}]
+      (mt/with-non-admin-groups-no-collection-perms coll
+        (with-temp-csv-files [expected-f "n\n1\n"]
+          (mt/user-http-request
+           :rasta :post 403 (card-subgraph-test-run-url (:id card))
+           multipart-content-type
+           {"expected" expected-f}))))))
+
+(deftest metric-target-rejected-test
+  (testing "metric target-type is rejected with 422 (no defined standalone rowset to diff)"
+    (is (some? (mt/user-http-request :crowberto :get 422 "transform-test/metric/1/subgraph-inputs")))))
 
 ;;; ===========================================================================
 ;;; Contract: cleanup! runs inside the transform connection context
