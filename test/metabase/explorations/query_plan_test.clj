@@ -56,7 +56,7 @@
     (is (= :mechanical (explorations.settings/explorations-query-planner)))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Materialization stamps group_id (mechanical planner, end-to-end through the DB)
+;;; Page reconciliation (mechanical planner, end-to-end through the DB)
 ;;; ---------------------------------------------------------------------------
 
 (defn- count-metric-query []
@@ -64,66 +64,6 @@
    (let [mp (mt/metadata-provider)]
      (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
          (lib/aggregate (lib/count))))))
-
-(deftest materialize-stamps-group-id-test
-  (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
-    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
-                   :model/Exploration e {:name "x"}
-                   :model/ExplorationThread t {:exploration_id (:id e)}]
-      (let [cid      (:id metric)
-            mappings [{:dimension_id "d1" :table_id (mt/id :venues)
-                       :target ["field" {} (mt/id :venues :price)]}
-                      {:dimension_id "d2" :table_id (mt/id :venues)
-                       :target ["field" {} (mt/id :venues :name)]}]
-            mk-group (fn [dim-id disp etype]
-                       (first (t2/insert-returning-instances!
-                               :model/ExplorationBlock
-                               {:exploration_thread_id (:id t)
-                                :metrics               [{:card_id cid :dimension_mappings mappings}]
-                                :dimensions            [{:dimension_id dim-id :display_name disp
-                                                         :effective_type etype}]
-                                :position              0})))
-            g1       (mk-group "d1" "Price" "type/Number")
-            g2       (mk-group "d2" "Name" "type/Text")]
-        (is (= :ok (query-plan/generate-query-plan! (:id t))))
-        (let [rows     (t2/select [:model/ExplorationQuery :group_id :card_id :dimension_id]
-                                  :exploration_thread_id (:id t))
-              by-group (group-by :group_id rows)]
-          (testing "every materialized row carries a group_id"
-            (is (every? :group_id rows))
-            (is (= #{(:id g1) (:id g2)} (set (keys by-group)))))
-          (testing "each group's rows only reference that group's (metric, dim) pair"
-            (is (every? #(= "d1" (:dimension_id %)) (by-group (:id g1))))
-            (is (every? #(= "d2" (:dimension_id %)) (by-group (:id g2))))
-            (is (every? #(= cid (:card_id %)) rows))))))))
-
-(deftest duplicate-pair-across-groups-materializes-once-per-group-test
-  (testing "the same (metric, dim) in two groups produces rows under each group"
-    (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
-      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
-                     :model/Exploration e {:name "x"}
-                     :model/ExplorationThread t {:exploration_id (:id e)}]
-        (let [cid      (:id metric)
-              mappings [{:dimension_id "d1" :table_id (mt/id :venues)
-                         :target ["field" {} (mt/id :venues :price)]}]
-              dims     [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}]
-              mk       (fn [] (first (t2/insert-returning-instances!
-                                      :model/ExplorationBlock
-                                      {:exploration_thread_id (:id t)
-                                       :metrics    [{:card_id cid :dimension_mappings mappings}]
-                                       :dimensions dims :position 0})))
-              g1       (mk)
-              g2       (mk)]
-          (is (= :ok (query-plan/generate-query-plan! (:id t))))
-          (let [by-group (group-by :group_id (t2/select [:model/ExplorationQuery :group_id :dimension_id]
-                                                        :exploration_thread_id (:id t)))]
-            (is (= #{(:id g1) (:id g2)} (set (keys by-group))) "rows under both groups")
-            (is (pos? (count (by-group (:id g1)))))
-            (is (pos? (count (by-group (:id g2)))))))))))
-
-;;; ---------------------------------------------------------------------------
-;;; Page reconciliation (mechanical planner, end-to-end through the DB)
-;;; ---------------------------------------------------------------------------
 
 (defn- mk-block!
   "Insert a one-metric, one-dimension block on `tid` and return its instance."
@@ -137,6 +77,54 @@
              :dimensions            [{:dimension_id dim-id :display_name disp :effective_type etype}]
              :position              0}))))
 
+(defn- block-of
+  "The block id a query belongs to, via its page. `page-by-id` indexes ExplorationPage by id."
+  [page-by-id q]
+  (:exploration_block_id (page-by-id (:page_id q))))
+
+(deftest materialize-assigns-pages-by-block-test
+  (testing "every query is stamped with a page under the right block; blocks stay isolated"
+    (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
+      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                     :model/Exploration e {:name "x"}
+                     :model/ExplorationThread t {:exploration_id (:id e)}]
+        (let [cid (:id metric)
+              g1  (mk-block! (:id t) cid "d1" "Price" "type/Number")
+              g2  (mk-block! (:id t) cid "d2" "Name" "type/Text")]
+          (is (= :ok (query-plan/generate-query-plan! (:id t))))
+          (let [qrows  (t2/select [:model/ExplorationQuery :id :page_id :card_id :dimension_id]
+                                  :exploration_thread_id (:id t))
+                page-> (u/index-by :id (t2/select :model/ExplorationPage
+                                                  :exploration_block_id [:in [(:id g1) (:id g2)]]))
+                blk    (partial block-of page->)]
+            (testing "every query carries a page under one of the thread's blocks"
+              (is (every? :page_id qrows))
+              (is (= #{(:id g1) (:id g2)} (set (map blk qrows)))))
+            (testing "each block's queries only reference that block's (metric, dim) pair"
+              (is (every? #(= "d1" (:dimension_id %)) (filter #(= (:id g1) (blk %)) qrows)))
+              (is (every? #(= "d2" (:dimension_id %)) (filter #(= (:id g2) (blk %)) qrows)))
+              (is (every? #(= cid (:card_id %)) qrows)))))))))
+
+(deftest duplicate-pair-across-blocks-materializes-once-per-block-test
+  (testing "the same (metric, dim) in two blocks produces a page (and rows) under each block"
+    (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
+      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                     :model/Exploration e {:name "x"}
+                     :model/ExplorationThread t {:exploration_id (:id e)}]
+        (let [cid (:id metric)
+              g1  (mk-block! (:id t) cid "d1" "Price" "type/Number")
+              g2  (mk-block! (:id t) cid "d1" "Price" "type/Number")]
+          (is (= :ok (query-plan/generate-query-plan! (:id t))))
+          (let [by-blk (group-by :exploration_block_id
+                                 (t2/select :model/ExplorationPage
+                                            :exploration_block_id [:in [(:id g1) (:id g2)]]))
+                qcount (fn [block-id]
+                         (t2/count :model/ExplorationQuery
+                                   :page_id [:in (map :id (by-blk block-id))]))]
+            (is (= #{(:id g1) (:id g2)} (set (keys by-blk))) "a page under each block")
+            (is (pos? (qcount (:id g1))))
+            (is (pos? (qcount (:id g2))))))))))
+
 (deftest reconcile-creates-pages-and-stamps-page-id-test
   (testing "every query is stamped with a page; one page per (block, card, dim, query_type)"
     (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
@@ -147,23 +135,26 @@
               g1  (mk-block! (:id t) cid "d1" "Price" "type/Number")
               g2  (mk-block! (:id t) cid "d2" "Name" "type/Text")]
           (is (= :ok (query-plan/generate-query-plan! (:id t))))
-          (let [qrows (t2/select [:model/ExplorationQuery :id :page_id :group_id :card_id
+          (let [qrows (t2/select [:model/ExplorationQuery :id :page_id :card_id
                                   :dimension_id :query_type]
                                  :exploration_thread_id (:id t))
                 pages (t2/select :model/ExplorationPage :exploration_block_id [:in [(:id g1) (:id g2)]])
                 by-id (u/index-by :id pages)]
             (is (every? :page_id qrows) "every query carries a page_id")
-            (is (= (count (distinct (map (juxt :group_id :card_id :dimension_id :query_type) qrows)))
+            (is (= (count (distinct (map #(vector (:page_id %) (:card_id %)
+                                                  (:dimension_id %) (:query_type %))
+                                         qrows)))
                    (count pages))
-                "exactly one page per distinct (block, card, dim, query_type)")
+                "exactly one page per distinct (page, card, dim, query_type)")
             (is (every? (fn [q]
                           (let [p (by-id (:page_id q))]
-                            (and (= (:group_id q)     (:exploration_block_id p))
-                                 (= (:card_id q)      (:card_id p))
+                            (and (= (:card_id q)      (:card_id p))
                                  (= (:dimension_id q) (:dimension_id p))
                                  (= (:query_type q)   (:query_type p)))))
                         qrows)
-                "each query's page matches the query's (block, card, dim, query_type)")))))))
+                "each query's page matches the query's (card, dim, query_type)")
+            (is (= #{(:id g1) (:id g2)} (set (map :exploration_block_id pages)))
+                "pages sit under the thread's blocks")))))))
 
 (deftest reconcile-preserves-page-ids-across-rerun-test
   (testing "a rerun with unchanged selection reuses the same page ids"

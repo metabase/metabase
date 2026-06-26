@@ -1688,3 +1688,52 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_exploration_query_page_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v63.expqdropgroupfk
+      author: johnswanson
+      comment: Drop FK exploration_query.group_id -> exploration_block; queries reach their block via their page now
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: exploration_query
+            constraintName: fk_exploration_query_group_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: group_id
+            referencedTableName: exploration_block
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_group_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v63.expqdropgroupidx
+      author: johnswanson
+      comment: Drop index on exploration_query.group_id before dropping the column
+      changes:
+        - dropIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_group_id
+      rollback:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_group_id
+            columns:
+              - column:
+                  name: group_id
+
+  - changeSet:
+      id: v63.expqdropgroupcol
+      author: johnswanson
+      comment: Drop exploration_query.group_id (replaced by page_id)
+      changes:
+        - dropColumn:
+            tableName: exploration_query
+            columnName: group_id
+      rollback:
+        - addColumn:
+            tableName: exploration_query
+            columns:
+              - column:
+                  name: group_id
+                  type: int

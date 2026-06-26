@@ -14,7 +14,7 @@
   iterate on prompt engineering."
   (:require
    [clojure.string :as str]
-   [metabase.explorations.groups :as explorations.groups]
+   [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib-be.core :as lib-be]
@@ -221,7 +221,7 @@
                           :numeric-max    (get-in dim [:fingerprint :type :type/Number :max])
                           :applicable-to  (vec (get applicable-to dim-id []))}))]
     {:group-id      (:id group)
-     :name          (explorations.groups/group-display-name
+     :name          (explorations.blocks/block-display-name
                      group (update-vals cards :name))
      :metrics       metrics
      :dimensions    dimensions
@@ -264,19 +264,23 @@
   can't be loaded.
 
   Looks up the metric Card, derives the metadata provider, finds the dim's
-  target via the row's group's metric `:dimension_mappings`, resolves any
+  target via the row's block's metric `:dimension_mappings`, resolves any
   selected segment, and — for `per-value-time-series` rows that carry
   `:params.temporal_dimension_id` — also resolves the override temporal
   axis. The metric selection + dim snapshot are read from the row's
-  `ExplorationBlock` (the group the planner stamped on the row), not from
+  `ExplorationBlock`, reached via the row's `ExplorationPage`, not from
   per-thread metric/dimension tables. The runner calls this per claimed row."
-  [{:keys [card_id dimension_id segment_id params group_id]}]
+  [{:keys [card_id dimension_id segment_id params page_id]}]
   (let [card       (t2/select-one :model/Card :id card_id)
-        group      (when group_id (t2/select-one :model/ExplorationBlock :id group_id))
-        metric     (some #(when (= card_id (:card_id %)) %) (:metrics group))
-        dim-by-id  (u/index-by :dimension_id (:dimensions group))
+        block      (when page_id
+                     (t2/select-one :model/ExplorationBlock
+                                    {:join  [[:exploration_page :p]
+                                             [:= :p.exploration_block_id :exploration_block.id]]
+                                     :where [:= :p.id page_id]}))
+        metric     (some #(when (= card_id (:card_id %)) %) (:metrics block))
+        dim-by-id  (u/index-by :dimension_id (:dimensions block))
         thread-dim (get dim-by-id dimension_id)]
-    (when (and card group metric thread-dim)
+    (when (and card block metric thread-dim)
       (let [mp           (lib-be/application-database-metadata-provider (:database_id card))
             mappings     (:dimension_mappings metric)
             target       (qp.mbql/find-dimension-target dimension_id mappings)

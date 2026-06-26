@@ -168,7 +168,12 @@
                       :params                (:params recipe)
                       :status                "pending"}))
         key->page (reconcile-pages! rows)
-        rows*     (mapv #(assoc % :page_id (key->page (page-key %))) rows)]
+        ;; `:group_id` is only here to compute the page key; the queries reach their block
+        ;; through their page now, so it isn't persisted on the query row.
+        rows*     (mapv #(-> %
+                             (assoc :page_id (key->page (page-key %)))
+                             (dissoc :group_id))
+                        rows)]
     (when (seq rows*)
       (t2/insert! :model/ExplorationQuery
                   (map-indexed (fn [i r] (assoc r :position i)) rows*)))

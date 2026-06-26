@@ -85,8 +85,11 @@
                                                :collection_id (:id coll)}
                    :model/ExplorationThread t {:exploration_id (:id e)}
                    :model/ExplorationBlock g {:exploration_thread_id (:id t)}
+                   :model/ExplorationPage p {:exploration_block_id (:id g)
+                                             :card_id (:id card) :dimension_id "d1"
+                                             :query_type "default"}
                    :model/ExplorationQuery  q {:exploration_thread_id (:id t)
-                                               :group_id     (:id g)
+                                               :page_id      (:id p)
                                                :card_id      (:id card)
                                                :dimension_id "d1"
                                                :dataset_query (venues-count-query)}]
@@ -144,10 +147,13 @@
                                                        :dimension_mappings [{:dimension_id "d1"
                                                                              :table_id 1
                                                                              :target ["field" {} 1]}]}]}
+                 :model/ExplorationPage p {:exploration_block_id (:id m)
+                                           :card_id (:id metric) :dimension_id "d1"
+                                           :query_type "default"}
                  :model/ExplorationQuery q {:exploration_thread_id (:id t)
                                             :card_id (:id metric)
                                             :dimension_id "d1"
-                                            :group_id (:id m)
+                                            :page_id (:id p)
                                             :dataset_query {:database 1 :type :query}}]
     (testing "ExplorationBlock.metrics dimension_mappings round-trips through JSON"
       (let [reread (t2/select-one :model/ExplorationBlock :id (:id m))]

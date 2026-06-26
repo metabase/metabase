@@ -11,8 +11,8 @@
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.explorations.ai-summary :as ai-summary]
+   [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.core :as explorations]
-   [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.models.exploration :as expl.model]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.models.exploration-query-result :as eqr]
@@ -98,9 +98,9 @@
       (str group-dn " → " dn)
       dn)))
 
-(defn- groups-by-thread-id
-  "The persisted Research-plan groups (`ExplorationBlock`) for `thread-ids`, in authoring
-   order, grouped by `:exploration_thread_id`."
+(defn- blocks-by-thread-id
+  "The persisted blocks (`ExplorationBlock`) for `thread-ids`, in authoring order, grouped by
+   `:exploration_thread_id`."
   [thread-ids]
   (when (seq thread-ids)
     (group-by :exploration_thread_id
@@ -108,24 +108,24 @@
                          :exploration_thread_id [:in thread-ids]
                          {:order-by [[:position :asc] [:id :asc]]}))))
 
-(defn- enrich-group-dimensions
-  "Attach each group dimension's `:group` (source) label from `card-dim-by-id` so the read tree
+(defn- enrich-block-dimensions
+  "Attach each block dimension's `:group` (source) label from `card-dim-by-id` so the read tree
   can qualify same-named dimension headings by their source."
-  [groups card-dim-by-id]
-  (mapv (fn [group]
-          (update group :dimensions
+  [blocks card-dim-by-id]
+  (mapv (fn [block]
+          (update block :dimensions
                   (fn [dims]
                     (mapv #(block/enrich-with-card-group % card-dim-by-id) dims))))
-        groups))
+        blocks))
 
 (defn- attach-query-dimension-labels
   "Attach `:dimension_name` to each query on `thread`. Dimension snapshots come from the
-  thread's `groups` (deduped by id); each is enriched with `:group` looked up from
+  thread's `blocks` (deduped by id); each is enriched with `:group` looked up from
   `card-dim-by-id` (the metric Cards' snapshotted `:dimensions`, the only place that group
   metadata lives), then `exploration-query-dim-label` is applied with ambiguity scoped to the
   thread's dimensions."
-  [thread groups card-dim-by-id]
-  (let [thread-dims   (vals (u/index-by :dimension_id (mapcat :dimensions groups)))
+  [thread blocks card-dim-by-id]
+  (let [thread-dims   (vals (u/index-by :dimension_id (mapcat :dimensions blocks)))
         enriched-dims (mapv #(block/enrich-with-card-group % card-dim-by-id)
                             thread-dims)
         dim-by-id     (u/index-by :dimension_id enriched-dims)
@@ -142,32 +142,40 @@
                                         (exploration-query-dim-label dim ambiguous?))))))))))
 
 (defn- attach-thread-read-data
-  "Compute the read-side `:groups` tree and per-query `:dimension_name` labels for `thread` from
-  its pre-fetched `groups` and the shared metric-Card lookup maps (`card-name-by-id` for leaf and
-  heading names, `card-dim-by-id` for dimension source metadata)."
-  [thread groups card-name-by-id card-dim-by-id]
-  (let [enriched-groups (enrich-group-dimensions groups card-dim-by-id)
-        ;; Label queries first so group-tree can name metric-anchored leaves "By <dimension>".
-        labeled         (attach-query-dimension-labels thread enriched-groups card-dim-by-id)]
-    (assoc labeled :groups (explorations.groups/group-tree
-                            enriched-groups (:queries labeled) card-name-by-id))))
+  "Compute the read-side nested `:blocks` (each with its `:pages`) and per-query
+  `:dimension_name` labels for `thread` from its pre-fetched `blocks`, `pages`, and the shared
+  metric-Card lookup maps (`card-name-by-id` for page/heading names, `card-dim-by-id` for
+  dimension source metadata)."
+  [thread blocks pages card-name-by-id card-dim-by-id]
+  (let [enriched-blocks (enrich-block-dimensions blocks card-dim-by-id)
+        ;; Label queries first so blocks-tree can name metric-anchored pages "By <dimension>".
+        labeled         (attach-query-dimension-labels thread enriched-blocks card-dim-by-id)]
+    (assoc labeled :blocks (explorations.blocks/blocks-tree
+                            enriched-blocks pages card-name-by-id (:queries labeled)))))
 
 (defn- attach-threads-read-data
-  "Batch [[attach-thread-read-data]] across `threads`: select every thread's groups and the
-  metric Cards they reference in two queries total (not two per thread, which N+1s), then
-  enrich each thread in memory."
+  "Batch [[attach-thread-read-data]] across `threads`: select every thread's blocks, their
+  pages, and the metric Cards they reference in a fixed number of queries (not per thread,
+  which N+1s), then enrich each thread in memory."
   [threads]
-  (let [groups-by-thread (groups-by-thread-id (map :id threads))
-        all-groups       (mapcat val groups-by-thread)
-        card-ids         (distinct (mapcat #(map :card_id (:metrics %)) all-groups))
+  (let [blocks-by-thread (blocks-by-thread-id (map :id threads))
+        all-blocks       (mapcat val blocks-by-thread)
+        block-ids        (map :id all-blocks)
+        pages-by-block   (when (seq block-ids)
+                           (group-by :exploration_block_id
+                                     (t2/select :model/ExplorationPage
+                                                :exploration_block_id [:in block-ids])))
+        card-ids         (distinct (mapcat #(map :card_id (:metrics %)) all-blocks))
         cards            (when (seq card-ids)
                            (t2/select [:model/Card :id :name :dimensions] :id [:in card-ids]))
         card-name-by-id  (into {} (map (juxt :id :name)) cards)
         card-dim-by-id   (into {}
                                (mapcat (fn [c] (map (juxt :id identity) (:dimensions c))))
                                cards)]
-    (mapv #(attach-thread-read-data % (get groups-by-thread (:id %) [])
-                                    card-name-by-id card-dim-by-id)
+    (mapv (fn [thread]
+            (let [blocks (get blocks-by-thread (:id thread) [])
+                  pages  (mapcat #(get pages-by-block (:id %) []) blocks)]
+              (attach-thread-read-data thread blocks pages card-name-by-id card-dim-by-id)))
           threads)))
 
 (defn- hydrate-exploration [exploration]
@@ -256,8 +264,8 @@
   "One Research-plan area on the FE — either a metric area (one primary metric + chosen dimensions)
    or a dimension area (the dimension's group + referencing metrics). Persisted verbatim as one
    `ExplorationBlock` row; the planners cross this group's metrics with this group's
-   dimensions only. The sidebar heading is computed read-side (see `group_name` in
-   `ExplorationQueryGroup`), not supplied here."
+   dimensions only. The sidebar heading is computed read-side (the `:name` of an
+   `ExplorationBlockNode`), not supplied here."
   [:map
    ;; Whether the block is anchored on its metric or its dimension. The read side
    ;; uses this to build the sidebar heading + sub-item names.
@@ -296,32 +304,26 @@
                                                                  [:timeline_id           ms/PositiveInt]
                                                                  [:interestingness_score {:optional true} [:maybe number?]]]]]]])
 
-(mr/def ::ExplorationQueryGroup
-  "Schema for an auto-derived group bundling related queries on a single thread.
-   `:query_ids` references queries that exist on the same thread. `:parent_group_id`
-   references another group's `:id` within the same `:groups` list (nil = top
-   level). Type is just `auto` for now but will allow for user-defined groups at some
-   point down the road.
-
-   `:display_type` tells the FE how to render the group:
-     - `\"singleton\"` — exactly one query; sidebar shows it as a single row
-     - `\"page\"`      — multiple queries to render together on one page when opened
-     - `\"sidebar\"`   — group expands/collapses inline as a dropdown in the sidebar
-
-   The current heuristic emits a two-level tree: one `\"sidebar\"` group per metric
-   (top level, `:parent_group_id = nil`, `:query_ids = []` — its queries live on the
-   linked children below) and the existing `(card, dim)` `\"singleton\"`/`\"page\"`
-   leaves as children pointing at their metric via `:parent_group_id`."
+(mr/def ::ExplorationPageNode
+  "A page within a block: the bundle of queries for one (card, dimension, query_type) under the
+   page's stable id. `:query_ids` reference queries on the same thread, sorted by interestingness.
+   `:position` is the page's 0-indexed slot among its block's pages."
   [:map
-   [:id              :string]
-   [:parent_group_id [:maybe :string]]
-   [:position        ms/IntGreaterThanOrEqualToZero]
-   [:type            [:enum "auto"]]
-   [:display_type    [:enum "page" "singleton" "sidebar"]]
-   [:name            [:maybe :string]]
-   ;; Presentation heading for a `"sidebar"` group node ("By <dimension>" or the metric name).
-   [:group_name      {:optional true} [:maybe :string]]
-   [:query_ids       [:sequential ms/PositiveInt]]])
+   [:id        ms/PositiveInt]
+   [:name      [:maybe :string]]
+   [:position  ms/IntGreaterThanOrEqualToZero]
+   [:query_ids [:sequential ms/PositiveInt]]])
+
+(mr/def ::ExplorationBlockNode
+  "A block (the FE's sidebar group): a heading plus its pages. `:type` is whether the block is
+   anchored on its metric or its dimension; `:name` is the computed heading (the metric name, or
+   `By <dimension>`). `:position` is the block's 0-indexed authoring slot."
+  [:map
+   [:id       ms/PositiveInt]
+   [:type     [:enum "metric" "dimension"]]
+   [:name     [:maybe :string]]
+   [:position ms/IntGreaterThanOrEqualToZero]
+   [:pages    [:sequential ::ExplorationPageNode]]])
 
 (mr/def ::ExplorationDocument
   "Schema for a document attached to an exploration thread."
@@ -346,7 +348,7 @@
    [:completed_at               {:optional true} [:maybe :any]]
    [:ai_summary_document_id     {:optional true} [:maybe ms/PositiveInt]]
    [:queries                    {:optional true} [:maybe [:sequential ::ExplorationQuerySummary]]]
-   [:groups                     {:optional true} [:maybe [:sequential ::ExplorationQueryGroup]]]
+   [:blocks                     {:optional true} [:maybe [:sequential ::ExplorationBlockNode]]]
    [:documents                  {:optional true} [:maybe [:sequential ::ExplorationDocument]]]
    [:timelines                  {:optional true}
     [:maybe [:sequential
@@ -867,11 +869,7 @@
              {:display                display
               :visualization-settings visualization_settings})
             exp-id     (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread-id)
-            chart-href (explorations.groups/chart-page-url
-                        exp-id (:group_id primary-eq)
-                        (:card_id primary-eq)
-                        (:dimension_id primary-eq)
-                        (:query_type primary-eq))
+            chart-href (explorations.blocks/page-url exp-id (:page_id primary-eq))
             new-body (-> (:document doc)
                          (append-chart-nodes card-id stored-result-id chart-href)
                          documents/add-ids-to-nodes)]

@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.explorations.ai-summary :as ai-summary]
-   [metabase.explorations.groups :as explorations.groups]
+   [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.interestingness :as explorations.interestingness]
    [metabase.interestingness.core :as interestingness]
    [metabase.lib.core :as lib]
@@ -145,10 +145,15 @@
                        :dataset_query oq}))
         group-id (t2/insert-returning-pk! :model/ExplorationBlock
                                           {:exploration_thread_id thread-id})
+        page-id  (t2/insert-returning-pk! :model/ExplorationPage
+                                          {:exploration_block_id group-id
+                                           :card_id              (:id card)
+                                           :dimension_id         "d1"
+                                           :query_type           "default"})
         eq    (first (t2/insert-returning-instances!
                       :model/ExplorationQuery
                       {:exploration_thread_id thread-id
-                       :group_id              group-id
+                       :page_id               page-id
                        :card_id               (:id card)
                        :database_id           (mt/id)
                        :dimension_id          "d1"
@@ -254,14 +259,17 @@
                    :model/ExplorationThread t {:exploration_id (:id e)
                                                :prompt         "How is revenue trending?"
                                                :position       0}
-                   :model/ExplorationBlock grp {:exploration_thread_id (:id t)}]
+                   :model/ExplorationBlock grp {:exploration_thread_id (:id t)}
+                   :model/ExplorationPage pg {:exploration_block_id (:id grp)
+                                              :card_id (:id card) :dimension_id "d1"
+                                              :query_type "default"}]
       (let [qp-result    (fixture-qp-result)
             query        (first (t2/insert-returning-instances!
                                  :model/ExplorationQuery
                                  {:exploration_thread_id (:id t)
                                   :card_id               (:id card)
                                   :database_id           (mt/id)
-                                  :group_id              (:id grp)
+                                  :page_id               (:id pg)
                                   :name                  "Revenue by Month"
                                   :dimension_id          "d1"
                                   :dataset_query         (lib/->legacy-MBQL
@@ -341,6 +349,6 @@
                   (is (= 1 (count cards)) "one Card is materialized for the static cardEmbed")
                   (is (= [(:id (first cards))] embed-ids)
                       "cardEmbed.attrs.id is the materialized card id")
-                  (is (= [(explorations.groups/chart-page-url (:id e) (:id grp) (:id card) "d1" "default")]
+                  (is (= [(explorations.blocks/page-url (:id e) (:id pg))]
                          embed-hrefs)
-                      "cardEmbed.attrs.chart_href deep-links back to the source chart's group page"))))))))))
+                      "cardEmbed.attrs.chart_href deep-links back to the source chart's page"))))))))))

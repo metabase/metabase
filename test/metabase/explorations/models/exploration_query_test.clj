@@ -20,15 +20,18 @@
                    :model/Exploration e {}
                    :model/ExplorationThread th {:exploration_id (:id e)}
                    :model/ExplorationBlock g {:exploration_thread_id (:id th)}
+                   :model/ExplorationPage p {:exploration_block_id (:id g)
+                                             :card_id (:id metric) :dimension_id "d1"
+                                             :query_type "default"}
                    :model/ExplorationQuery q-seg  {:exploration_thread_id (:id th)
                                                    :card_id    (:id metric)
-                                                   :group_id   (:id g)
+                                                   :page_id    (:id p)
                                                    :dimension_id "d1"
                                                    :segment_id (:id s)
                                                    :position   0}
                    :model/ExplorationQuery q-bare {:exploration_thread_id (:id th)
                                                    :card_id    (:id metric)
-                                                   :group_id   (:id g)
+                                                   :page_id    (:id p)
                                                    :dimension_id "d1"
                                                    :position   1}]
       (let [hyd (t2/hydrate (t2/select :model/ExplorationQuery
