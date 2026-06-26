@@ -263,8 +263,8 @@
   (let [drv  (keyword (:engine db))
         drop (fn [schema table-name]
                (try
-                 ;; drop-table! takes the table NAME as a schema-qualified keyword
-                 ;; (keyword schema table-name) — NOT the full table-schema map used
+                 ;; drop-table! takes the table name as a schema-qualified keyword
+                 ;; (keyword schema table-name) — not the full table-schema map used
                  ;; by create-table-from-schema!. Passing the map causes ClassCastException.
                  (driver/drop-table! drv db-id (keyword schema table-name))
                  (catch Exception e
@@ -314,7 +314,7 @@
 
   Safe by construction:
   - Young test tables (timestamp < min-age) are skipped.
-  - Non-test names never parse and are never touched (see ns docstring naming convention).
+  - Non-test names never parse and are never touched.
   - Drop is best-effort (logs, continues).
 
   Arguments:

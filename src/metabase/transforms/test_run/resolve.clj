@@ -201,7 +201,7 @@
   "True when `token` survives in `sql` as a whole identifier (identifier-boundary
   aware: underscore is an identifier char), matched case-sensitively.
 
-  String-literal occurrences (`WHERE x = 'orders'`) fail closed by design — the
+  String-literal occurrences (`WHERE x = 'orders'`) fail closed — the
   caller names this guard explicitly for that reason. Case-sensitive matching
   avoids false-positives on case-different quoted identifiers; genuine dangling
   qualifiers are caught precisely by [[dangling-qualifier-tokens]]."

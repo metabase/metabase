@@ -125,7 +125,7 @@
            :parser-backend (:parser-backend artifact)
            :output-table   (:table output-spec)})
         (finally
-          ;; Cleanup runs on ALL paths: success, error, timeout. Must be inside
+          ;; Cleanup runs on all paths: success, error, timeout. Must be inside
           ;; with-transform-connection so DROP TABLE executes under write-data
           ;; credentials.
           (scratch/cleanup! db-id db

@@ -23,7 +23,7 @@
 
   Expected fixture columns are matched by name (exact) to actual columns.
   Missing/extra columns → `:column-issues` in the report; row comparison is skipped.
-  Column ORDER is irrelevant; both sides are re-ordered to match `actual-cols` order."
+  Column order is irrelevant; both sides are re-ordered to match `actual-cols` order."
   (:require
    [clojure.string :as str])
   (:import
@@ -225,7 +225,7 @@
 (defn- row-key
   "Multiset comparison key for a canonical row: the display-form vector.
   BigDecimals become plain strings via [[canonical->report-str]] — but note
-  `.toPlainString` is scale-SENSITIVE (`3.5` ≠ `3.50`), so BigDecimals are
+  `.toPlainString` is scale-sensitive (`3.5` ≠ `3.50`), so BigDecimals are
   scale-normalized first with `.stripTrailingZeros`. Everything else is already
   in canonical comparable form."
   [canonical-row]
@@ -242,7 +242,7 @@
 (defn- multiset-diff
   "Compare actual and expected canonicalized rows using multiset semantics.
   Returns `{:missing [[...] ...] :extra [[...] ...]}` where each entry is a
-  CANONICAL ROW (not a multiset key — keys are internal and must never leak
+  canonical row (not a multiset key — keys are internal and must never leak
   into the report)."
   [actual-canonical expected-canonical]
   (let [actual-groups   (group-by row-key actual-canonical)

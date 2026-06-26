@@ -72,7 +72,7 @@
   bare `table`. This is required for drivers where the catalog must appear in
   emitted SQL (BigQuery, SQL Server).
 
-  Schema and table are IDENTIFIERS, not values — they must be driver-quoted, not
+  Schema and table are identifiers, not values — they must be driver-quoted, not
   passed as JDBC parameters.  `sql.u/quote-name` produces the driver-appropriate
   quoting (double quotes for Postgres/ANSI, backticks for MySQL, etc.)."
   [db-id drv output-target]

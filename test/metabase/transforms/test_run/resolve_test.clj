@@ -421,11 +421,11 @@
           (is (= ::resolve/unsupported-transform-type (:error-type (ex-data e)))))))))
 
 ;;; ===========================================================================
-;;; Minor-2 regression — Guard 1 must not reject zero-input transforms
+;;; Regression — Guard 1 must not reject zero-input transforms
 ;;; ===========================================================================
 
 (deftest guard-1-passes-zero-table-transform-test
-  ;; Minor-2 regression: the old Guard 1 fired whenever refs was empty, regardless
+  ;; Regression: the old Guard 1 fired whenever refs was empty, regardless
   ;; of whether mapping was also empty.  A zero-table transform (SELECT 1 AS x, no
   ;; real input tables) has an empty mapping AND yields empty refs from
   ;; referenced-tables-raw.  Guard 1 must only fire when mapping is non-empty AND
