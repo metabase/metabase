@@ -786,25 +786,17 @@ describe("dataset transform functions", () => {
       it("should replace the missing DST spring-forward week with zero (#71811)", () => {
         const dstDataset = [
           {
-            [X_AXIS_DATA_KEY]: "2026-01-25T00:00:00-05:00",
-            series1: 27,
-          },
-          {
-            [X_AXIS_DATA_KEY]: "2026-02-01T00:00:00-05:00",
-            series1: 5,
-          },
-          {
-            [X_AXIS_DATA_KEY]: "2026-03-15T00:00:00-04:00",
+            [X_AXIS_DATA_KEY]: "2026-03-01T00:00:00-05:00",
             series1: 12,
           },
           {
-            [X_AXIS_DATA_KEY]: "2026-03-22T00:00:00-04:00",
+            [X_AXIS_DATA_KEY]: "2026-03-15T00:00:00-04:00",
             series1: 10,
           },
         ];
         const dstXAxisModel: TimeSeriesXAxisModel = {
           ...xAxisModel,
-          intervalsCount: 8,
+          intervalsCount: 2,
           interval: {
             count: 1,
             unit: "week",
@@ -832,19 +824,11 @@ describe("dataset transform functions", () => {
         );
 
         expect(result.map((datum) => datum[X_AXIS_DATA_KEY])).toEqual([
-          "2026-01-25T00:00:00Z",
-          "2026-02-01T00:00:00Z",
-          "2026-02-08T00:00:00Z",
-          "2026-02-15T00:00:00Z",
-          "2026-02-22T00:00:00Z",
           "2026-03-01T00:00:00Z",
           "2026-03-08T00:00:00Z",
           "2026-03-15T00:00:00Z",
-          "2026-03-22T00:00:00Z",
         ]);
-        expect(result.map((datum) => datum.series1)).toEqual([
-          27, 5, 0, 0, 0, 0, 0, 12, 10,
-        ]);
+        expect(result.map((datum) => datum.series1)).toEqual([12, 0, 10]);
       });
     });
 

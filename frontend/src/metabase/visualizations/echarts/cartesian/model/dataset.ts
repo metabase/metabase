@@ -24,7 +24,6 @@ import type {
   SeriesExtents,
   SeriesModel,
   StackModel,
-  TimeSeriesInterval,
   TimeSeriesXAxisModel,
   XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -51,7 +50,7 @@ import {
 } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
-import { normalizeDate, tryGetDate } from "../utils/timeseries";
+import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
 import { getAggregatedOtherSeriesValue } from "./other-series";
@@ -647,65 +646,6 @@ function getHistogramDataset(
 
 const MAX_FILL_COUNT = 10000;
 
-type CalendarIntervalUnit = Extract<
-  TimeSeriesInterval["unit"],
-  "day" | "week" | "month" | "quarter" | "year"
->;
-
-function isCalendarIntervalUnit(
-  unit: TimeSeriesInterval["unit"],
-): unit is CalendarIntervalUnit {
-  switch (unit) {
-    case "day":
-    case "week":
-    case "month":
-    case "quarter":
-    case "year":
-      return true;
-    default:
-      return false;
-  }
-}
-
-function addTimeSeriesInterval(
-  date: Dayjs,
-  axisModel: TimeSeriesXAxisModel,
-): Dayjs {
-  const { count, unit } = axisModel.interval;
-  const nextDate = date.add(count, unit);
-
-  if (axisModel.timezone != null && isCalendarIntervalUnit(unit)) {
-    return nextDate.tz(axisModel.timezone, true);
-  }
-
-  return nextDate;
-}
-
-function getCalendarIntervalBucketStart(
-  date: Dayjs,
-  unit: CalendarIntervalUnit,
-  timezone: string,
-): Dayjs {
-  return normalizeDate(date.tz(timezone).startOf(unit));
-}
-
-function isBeforeTimeSeriesIntervalEnd(
-  date: Dayjs,
-  end: Dayjs,
-  axisModel: TimeSeriesXAxisModel,
-) {
-  const { unit } = axisModel.interval;
-  const { timezone } = axisModel;
-
-  if (timezone != null && isCalendarIntervalUnit(unit)) {
-    return getCalendarIntervalBucketStart(date, unit, timezone).isBefore(
-      getCalendarIntervalBucketStart(end, unit, timezone),
-    );
-  }
-
-  return date.isBefore(end, unit);
-}
-
 const interpolateTimeSeriesData = (
   dataset: ChartDataset,
   axisModel: TimeSeriesXAxisModel,
@@ -714,7 +654,22 @@ const interpolateTimeSeriesData = (
     return dataset;
   }
 
+  const { count, unit } = axisModel.interval;
+  const timezone = axisModel.timezone;
   const result = [];
+
+  const addInterval = (date: Dayjs) => {
+    const nextDate = date.add(count, unit);
+    return timezone != null && unit === "week"
+      ? nextDate.tz(timezone, true)
+      : nextDate;
+  };
+
+  const isBeforeEnd = (date: Dayjs, end: Dayjs) => {
+    return timezone != null && unit === "week"
+      ? date.isBefore(end)
+      : date.isBefore(end, unit);
+  };
 
   for (let i = 0; i < dataset.length; i++) {
     const datum = dataset[i];
@@ -727,15 +682,15 @@ const interpolateTimeSeriesData = (
     const end = parseTimestamp(dataset[i + 1][X_AXIS_DATA_KEY]);
 
     let start = parseTimestamp(datum[X_AXIS_DATA_KEY]);
-    let interpolatedValue = addTimeSeriesInterval(start, axisModel);
+    let interpolatedValue = addInterval(start);
 
-    while (isBeforeTimeSeriesIntervalEnd(interpolatedValue, end, axisModel)) {
+    while (isBeforeEnd(interpolatedValue, end)) {
       result.push({
         [X_AXIS_DATA_KEY]: interpolatedValue.toISOString(),
       });
 
       start = interpolatedValue;
-      interpolatedValue = addTimeSeriesInterval(start, axisModel);
+      interpolatedValue = addInterval(start);
     }
   }
 
