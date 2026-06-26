@@ -28,7 +28,7 @@ import {
   dashboard as getDashboardUrl,
   publicDashboard as getPublicDashboardUrl,
 } from "metabase/urls";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, InviteTarget } from "metabase-types/api";
 
 import { DashboardPublicLinkPopover } from "../../../DashboardInfoSidebar/DashboardPublicLinkPopover/DashboardPublicLinkPopover";
 
@@ -75,6 +75,11 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const isAnalytics =
     dashboard.collection && isInstanceAnalyticsCollection(dashboard.collection);
   const canShare = !isAnalytics;
+  // x-ray dashboards have string ids and can't be invite targets.
+  const inviteTarget: InviteTarget | undefined =
+    typeof dashboard.id === "number"
+      ? { type: "dashboard", id: dashboard.id, name: dashboard.name }
+      : undefined;
 
   return (
     <Flex>
@@ -106,6 +111,7 @@ function AdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
         <InviteToViewModal
           title={t`Invite someone to view this dashboard`}
           shareUrl={`${siteUrl}${getDashboardUrl(dashboard)}`}
+          inviteTarget={inviteTarget}
           onClose={closeInvite}
         />
       )}

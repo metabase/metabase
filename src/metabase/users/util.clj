@@ -59,7 +59,8 @@
   [{:keys [email
            user-group-memberships
            source
-           tenant-id]
+           tenant-id
+           invite-target]
     :as   attributes} :- [:map
                           [:source {:optional true, :default :admin} [:enum :setup :admin]]]]
   (api/check-superuser)
@@ -81,7 +82,8 @@
                                                 :login-attributes       :login_attributes
                                                 :tenant-id              :tenant_id}))
                           @api/*current-user*
-                          (= source :setup))))]
+                          (= source :setup)
+                          invite-target)))]
       (maybe-set-user-group-memberships! new-user-id user-group-memberships)
       (when (= source :setup)
         (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))
