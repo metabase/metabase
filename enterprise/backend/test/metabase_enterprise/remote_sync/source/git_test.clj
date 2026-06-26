@@ -274,9 +274,9 @@
                                                   (str subdir "remove.yaml") "delete me"})]
         (testing "apply-changes! overwrites/adds upserts, removes delete-paths, and PRESERVES every other file"
           (apply-changes! (source.p/snapshot master) "Incremental"
-                                   [{:path (str subdir "edit.yaml") :content "new content"}
-                                    {:path (str subdir "new.yaml") :content "brand new"}]
-                                   [(str subdir "remove.yaml")])
+                          [{:path (str subdir "edit.yaml") :content "new content"}
+                           {:path (str subdir "new.yaml") :content "brand new"}]
+                          [(str subdir "remove.yaml")])
           (is (= ["Incremental" "Initial commit"] (map :message (git/log master))))
           (let [snap (source.p/snapshot master)]
             (is (= [(str subdir "edit.yaml")
@@ -304,8 +304,8 @@
                                                    "collections/b/edit.yaml"             "old"
                                                    "notes.txt"                           "root note"})]
         (apply-changes! (source.p/snapshot master) "Incremental deep"
-                                 [{:path "collections/b/edit.yaml" :content "new"}]
-                                 [])
+                        [{:path "collections/b/edit.yaml" :content "new"}]
+                        [])
         (let [snap (source.p/snapshot master)]
           (is (= "new" (source.p/read-file snap "collections/b/edit.yaml")))
           (is (= "deep keep" (source.p/read-file snap "collections/a/deep/nested/keep.yaml"))
@@ -337,8 +337,8 @@
       (let [[master _remote] (init-source! "master" remote-dir
                                            :files {"collections/a/keep.yaml" "keep"})]
         (apply-changes! (source.p/snapshot master) "Delete missing + add"
-                                 [{:path "collections/a/new.yaml" :content "new"}]
-                                 ["collections/a/gone.yaml"])
+                        [{:path "collections/a/new.yaml" :content "new"}]
+                        ["collections/a/gone.yaml"])
         (let [snap (source.p/snapshot master)]
           (is (= ["collections/a/keep.yaml" "collections/a/new.yaml"] (source.p/list-files snap)))
           (is (= "new" (source.p/read-file snap "collections/a/new.yaml")))
@@ -354,9 +354,9 @@
                                                    "deep/nested/keep.txt" "deep unchanged"})
             from-version (:version (source.p/snapshot master))]
         (apply-changes! (source.p/snapshot master) "Change set"
-                                 [{:path "edit.txt" :content "new content"}
-                                  {:path "add.txt"  :content "brand new"}]
-                                 ["remove.txt"])
+                        [{:path "edit.txt" :content "new content"}
+                         {:path "add.txt"  :content "brand new"}]
+                        ["remove.txt"])
         (let [snap (source.p/snapshot master)]
           (testing "added / modified / deleted are reported in their own buckets"
             (is (= {:added    #{"add.txt"}

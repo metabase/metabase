@@ -24,7 +24,7 @@
                   :managed-dirs #{"collections"})
           snapshot (source.p/snapshot source)]
       (write-files! snapshot "Write only abc"
-                             [{:path "collections/abc/file1.yaml" :content "new-content1"}])
+                    [{:path "collections/abc/file1.yaml" :content "new-content1"}])
       (is (= #{"collections/abc/file1.yaml" "other/file4.yaml"}
              (set (source.p/list-files snapshot)))
           "Only written files in managed dirs should remain; unmanaged dirs untouched"))))
@@ -37,7 +37,7 @@
                   :managed-dirs #{"collections"})
           snapshot (source.p/snapshot source)]
       (write-files! snapshot "Write collections"
-                             [{:path "collections/abc/file1.yaml" :content "new-content"}])
+                    [{:path "collections/abc/file1.yaml" :content "new-content"}])
       (is (= #{"collections/abc/file1.yaml" "unmanaged/file2.yaml"}
              (set (source.p/list-files snapshot)))
           "Unmanaged directory files should be preserved"))))
@@ -51,7 +51,7 @@
           snapshot (source.p/snapshot source)]
       ;; Write only to collections, nothing to snippets
       (write-files! snapshot "Write only collections"
-                             [{:path "collections/abc/file1.yaml" :content "new-content"}])
+                    [{:path "collections/abc/file1.yaml" :content "new-content"}])
       (is (= #{"collections/abc/file1.yaml"}
              (set (source.p/list-files snapshot)))
           "Snippets dir should be cleaned even though no snippet files were written"))))
