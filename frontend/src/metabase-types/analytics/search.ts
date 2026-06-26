@@ -31,7 +31,8 @@ type ValidateEvent<
 > = T;
 
 // The snowplow `search` schema's `content_type` enum; keep in sync with
-// snowplow/iglu-client-embedded/schemas/com.metabase/search/jsonschema/1-1-3
+// snowplow/iglu-client-embedded/schemas/com.metabase/search/jsonschema/1-1-4
+// "other" (kept last) is the catch-all bucket for models that aren't tracked content types.
 const SNOWPLOW_CONTENT_TYPES = [
   "dashboard",
   "card",
@@ -46,47 +47,52 @@ const SNOWPLOW_CONTENT_TYPES = [
   "indexed-entity",
   "document",
   "transform",
+  "schema",
+  "other",
 ] as const;
 
 type SearchContentType = (typeof SNOWPLOW_CONTENT_TYPES)[number];
 
 const SNOWPLOW_CONTENT_TYPE_SET = new Set<string>(SNOWPLOW_CONTENT_TYPES);
 
-// Maps a search request's `models` to snowplow `content_type`, de-duplicating and dropping any model
-// that isn't a tracked content type. Today every `SearchModel` is a tracked content type, so nothing is
-// dropped; the follow-up that adds the `"other"` bucket (and schema 1-1-4) will route untracked there.
+// Maps a search request's `models` to snowplow `content_type`, bucketing untracked values into "other"
+// and de-duplicating. The `SearchContentType[]` return type doubles as a compile-time guard.
 export const toSnowplowContentTypes = (
   models: SearchModel[] | null | undefined,
 ): SearchContentType[] | null =>
   models == null
     ? null
-    : Array.from(new Set(models)).filter((model): model is SearchContentType =>
-        SNOWPLOW_CONTENT_TYPE_SET.has(model),
+    : Array.from(
+        new Set(
+          models.map((model) =>
+            SNOWPLOW_CONTENT_TYPE_SET.has(model) ? model : "other",
+          ),
+        ),
       );
 
 // The snowplow `search` schema's `context` enum; keep in sync with
-// snowplow/iglu-client-embedded/schemas/com.metabase/search/jsonschema/1-1-3
-// Only the surfaces already in the schema are published. Every other `SearchContext` is listed in
-// `PENDING_CONTEXTS` and suppressed (emitted as `null`) until the iglu schema is widened — see the
-// stacked follow-up that adds schema 1-1-4 and an `"other"` catch-all bucket.
+// snowplow/iglu-client-embedded/schemas/com.metabase/search/jsonschema/1-1-4
+// A new UI context must be added here (and the iglu schema), or listed in `PENDING_CONTEXTS` to bucket
+// it as `"other"` until the schema catches up. Non-null in the event types below though the wire schema
+// allows null — keeping the schema nullable avoids a MODEL version bump that forks events to a new table.
 type SnowplowSearchContext =
+  | "basic-actions"
+  | "browse"
   | "command-palette"
+  | "data-picker"
+  | "dependencies"
+  | "document"
+  | "embedding-setup"
   | "entity-picker"
+  | "library"
+  | "model-migration"
   | "search-app"
-  | "search-bar";
+  | "search-bar"
+  | "type-filter"
+  | "other"; // catch-all, kept last rather than alphabetized with the real surfaces
 
-// `SearchContext`s not yet in the snowplow enum; suppressed (emitted as `null`) until the schema catches up.
-const PENDING_CONTEXTS = [
-  "basic-actions",
-  "browse",
-  "data-picker",
-  "dependencies",
-  "document",
-  "embedding-setup",
-  "library",
-  "model-migration",
-  "type-filter",
-] as const satisfies readonly SearchContext[];
+// Frontend contexts not yet in the snowplow enum, emitted as `"other"` until the iglu schema catches up.
+const PENDING_CONTEXTS = [] as const satisfies readonly SearchContext[];
 
 // Compile-time guard: every `SearchContext` must be in the snowplow enum or in `PENDING_CONTEXTS`.
 const _allContextsHandled: Exclude<
@@ -97,22 +103,20 @@ const _allContextsHandled: Exclude<
   : "Add the missing SearchContext to the snowplow enum or to PENDING_CONTEXTS" =
   true;
 
-// Maps a `SearchContext` to its snowplow `context`, or `null` for a pending/absent context (the wire
-// schema's `context` is nullable). A `null` result also gates request tracking — see api/search.ts.
 export const toSnowplowContext = (
-  context: SearchContext | null | undefined,
-): SnowplowSearchContext | null =>
-  context == null ||
+  context: SearchContext,
+): SnowplowSearchContext =>
   (PENDING_CONTEXTS as readonly SearchContext[]).includes(context)
-    ? null
-    : (context as SnowplowSearchContext);
+    ? "other"
+    : // safe: the guard above proves every non-pending context is in the snowplow enum
+      (context as SnowplowSearchContext);
 
 export type SearchQueryEvent = ValidateEvent<{
   event: "search_query";
   search_term_hash: string | null;
   search_term: string | null;
   runtime_milliseconds: number;
-  context: SnowplowSearchContext | null;
+  context: SnowplowSearchContext;
   total_results: number;
   page_results: number | null;
   content_type: SearchContentType[] | null;
@@ -132,7 +136,7 @@ export type SearchClickEvent = ValidateEvent<{
   event: "search_click";
   position: number;
   target_type: "item" | "view_more";
-  context: SnowplowSearchContext | null;
+  context: SnowplowSearchContext;
   search_engine: string | null;
   request_id: string | null;
   entity_model: string | null;
