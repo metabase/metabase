@@ -23,7 +23,16 @@ export function makeDistortionCallback(
   targetWindow: Window & typeof globalThis,
   allowedHosts: string[],
 ) {
-  const shared = makeSandboxDistortionCallback(`data-app ${label}`);
+  const shared = makeSandboxDistortionCallback(
+    `data-app ${label}`,
+    (message) => {
+      // The thrown error usually reaches the developer only as an opaque
+      // cross-realm `#<Object>` (an unhandled async rejection), so log the real
+      // reason here — at the block point, where the console stack still points at
+      // the data-app code that called the blocked API.
+      console.error(message);
+    },
+  );
   const sandboxFetch = makeSandboxFetch(targetWindow, allowedHosts, label);
   const sandboxXhr = makeSandboxXhr(targetWindow, allowedHosts, label);
 

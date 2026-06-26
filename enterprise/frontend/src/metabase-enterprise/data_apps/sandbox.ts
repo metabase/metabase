@@ -1,10 +1,7 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
-import * as React from "react";
-import * as ReactJsxRuntime from "react/jsx-runtime";
+import type * as React from "react";
 
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
-import * as sdkExports from "embedding-sdk-package";
-import * as dataAppExports from "embedding-sdk-package/data-app";
 
 import { makeDistortionCallback } from "./sandbox/distortions";
 
@@ -33,15 +30,54 @@ export type DataAppFactory = () => {
   providerProps?: DataAppMetabaseProviderProps;
 };
 
+/**
+ * The realm objects the sandbox exposes to the bundle as globals.
+ *
+ * These are injected by the caller rather than imported here so the sandbox
+ * stays decoupled from any single SDK instance: the host passes its own realm's
+ * React/SDK, and the data-app template's dev harness passes the React/SDK from
+ * its installed `@metabase/embedding-sdk-react` — in both cases the bundle runs
+ * against exactly one SDK instance. (Importing them here would bundle a second
+ * SDK copy into the published `data-app-dev` entry.)
+ */
+export interface DataAppSandboxEndowments {
+  /** Endowed as the `React` global the bundle externalizes `react` to. */
+  React: unknown;
+  /** Endowed as `__react_jsx_runtime__` (the `react/jsx-runtime` external). */
+  reactJsxRuntime: unknown;
+  /**
+   * Endowed as `__react_jsx_dev_runtime__` (the `react/jsx-dev-runtime`
+   * external). Only a development-mode bundle references it (jsxDEV), so the
+   * production host can omit it.
+   */
+  reactJsxDevRuntime?: unknown;
+  /** Endowed as `__metabase_sdk__` (the `@metabase/embedding-sdk-react` external). */
+  sdkExports: object;
+  /** Endowed as `__metabase_data_app__` (the `.../data-app` external). */
+  dataAppExports: object;
+}
+
+export interface CreateDataAppSandboxOptions {
+  /** Human-readable label used in sandbox diagnostics, e.g. the app slug. */
+  label?: string;
+  /** Realm the membrane binds to. Defaults to the current `window`. */
+  targetWindow?: Window;
+  /** Origins the bundle may fetch/XHR; empty keeps the default hard block. */
+  allowedHosts?: string[];
+  /** The realm's React/SDK exposed to the bundle. See [[DataAppSandboxEndowments]]. */
+  endowments: DataAppSandboxEndowments;
+}
+
 function isLiveTarget(target: object): boolean {
   return target instanceof CSSStyleDeclaration;
 }
 
-export function createDataAppSandbox(
-  label: string = "",
-  targetWindow: Window = window,
-  allowedHosts: string[] = [],
-) {
+export function createDataAppSandbox({
+  label = "",
+  targetWindow = window,
+  allowedHosts = [],
+  endowments,
+}: CreateDataAppSandboxOptions) {
   let captured: unknown;
 
   const env = createVirtualEnvironment(
@@ -54,14 +90,17 @@ export function createDataAppSandbox(
       ),
       liveTargetCallback: isLiveTarget,
       endowments: Object.getOwnPropertyDescriptors({
-        React,
-        __react_jsx_runtime__: ReactJsxRuntime,
+        React: endowments.React,
+        __react_jsx_runtime__: endowments.reactJsxRuntime,
+        ...(!!endowments.reactJsxDevRuntime && {
+          __react_jsx_dev_runtime__: endowments.reactJsxDevRuntime,
+        }),
         __metabase_sdk__: {
-          ...sdkExports,
+          ...endowments.sdkExports,
           // Below we can set fallbacks to `sdkExports` exports that were renamed/removed to prevent breaking changes
         },
         __metabase_data_app__: {
-          ...dataAppExports,
+          ...endowments.dataAppExports,
           // Below we can set fallbacks to `dataAppExports` exports that were renamed/removed to prevent breaking changes
         },
         get __dataAppFactory__() {
