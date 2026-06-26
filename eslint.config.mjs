@@ -83,6 +83,10 @@ const configs = [
       "e2e/tmp/**",
       "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "**/custom-viz/fixtures/example_custom_viz_plugin/**",
+      // The data-app dev harness is served verbatim to the consumer's Vite (it
+      // imports `@metabase/embedding-sdk-react/*` + a virtual config module), so
+      // it can't be resolved/linted in this repo.
+      "enterprise/frontend/src/embedding-sdk-package/data-app-dev-server/harness.ts",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",

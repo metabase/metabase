@@ -40,6 +40,9 @@
   ],
   "exclude": [
     "node_modules",
+    // Served verbatim to the consumer's Vite (imports `@metabase/embedding-sdk-react/*`
+    // + a virtual config module), so it can't resolve/type-check in this repo.
+    "enterprise/frontend/src/embedding-sdk-package/data-app-dev-server/harness.ts",
     "enterprise/frontend/src/custom-viz",
     // Vendored custom-viz plugin bundles (pre-built UMD) — opaque to
     // type-checking; the surrounding story/helper handles the typing.

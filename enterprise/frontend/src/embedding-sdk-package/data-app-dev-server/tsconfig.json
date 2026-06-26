@@ -1,0 +1,26 @@
+{
+  // Scoped config so the IDE (and `tsc -p` here) type-checks the dev harness,
+  // which imports the *published* package paths + `import.meta`. We map those
+  // names to the SDK's built type rollups (`resources/embedding-sdk/dist`) so the
+  // harness is checked against the real public API a consumer sees — and so we
+  // don't drag the whole SDK source into this subset program. Build the SDK
+  // (`build-embedding-sdk-package`, or just the dts) once for these to resolve.
+  // The root tsconfig excludes `harness.ts` (it can't resolve these paths there).
+  "extends": "../../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["vite/client"],
+    "paths": {
+      "@metabase/embedding-sdk-react": [
+        "../../../../../resources/embedding-sdk/dist/index.d.ts"
+      ],
+      "@metabase/embedding-sdk-react/data-app": [
+        "../../../../../resources/embedding-sdk/dist/data-app.d.ts"
+      ],
+      "@metabase/embedding-sdk-react/data-app-dev": [
+        "../../../../../resources/embedding-sdk/dist/data-app-dev.d.ts"
+      ]
+    }
+  },
+  "include": ["**/*.ts"]
+}
