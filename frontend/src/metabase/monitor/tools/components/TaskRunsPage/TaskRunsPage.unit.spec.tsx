@@ -15,7 +15,7 @@ import { createMockTaskRun } from "metabase-types/api/mocks";
 
 import { TaskRunsPage } from "./TaskRunsPage";
 
-const PATHNAME = Urls.adminToolsTasksRuns();
+const PATHNAME = Urls.monitorTasksRuns();
 
 interface SetupOpts {
   taskRunsResponse?: ListTaskRunsResponse;

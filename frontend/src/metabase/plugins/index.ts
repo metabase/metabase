@@ -56,7 +56,6 @@ export {
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
-  PLUGIN_ADMIN_TOOLS,
   PLUGIN_SELECTORS,
   PLUGIN_FORM_WIDGETS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
@@ -154,7 +153,7 @@ export {
   PLUGIN_DEPENDENCIES,
   type DependencyGraphPageContextType,
 } from "./oss/dependencies";
-export { PLUGIN_MONITOR } from "./oss/monitor";
+export { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "./oss/monitor";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
 export {

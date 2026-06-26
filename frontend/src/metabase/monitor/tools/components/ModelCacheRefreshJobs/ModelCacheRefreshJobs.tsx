@@ -61,7 +61,7 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
     }
     if (job.state === "error") {
       return (
-        <Link to={`/admin/tools/model-caching/${job.id}`}>
+        <Link to={Urls.monitorModelCacheRefreshJob(job.id)}>
           <ErrorBox>{job.error}</ErrorBox>
         </Link>
       );

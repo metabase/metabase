@@ -13,6 +13,7 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { Ellipsified, Flex, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Job } from "metabase-types/api";
 
 interface SchedulerInfoProps {
@@ -37,7 +38,7 @@ const JobsTable = ({ jobs }: JobsTableProps) => {
   const dispatch = useDispatch();
 
   const onClickJob = (job: Job) => {
-    dispatch(push(`/admin/tools/jobs/${job.key}`));
+    dispatch(push(Urls.monitorJobTriggers(job.key)));
   };
 
   return (
