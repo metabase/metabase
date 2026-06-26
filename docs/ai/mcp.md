@@ -41,7 +41,7 @@ Replace `{your-metabase-url}` with your Metabase address.
 
 4. Select the Metabase MCP server.
 
-5. Click **Authenticate**, and authenticate with your Metabase.
+5. Click **Authenticate**, and authenticate with your Metabase. (You may first need to **Enable** the Metabase MCP server).
 
 Once authenticated, ask your agent about your Metabase. You should see your agent use Metabase tools to interact with your Metabase.
 
