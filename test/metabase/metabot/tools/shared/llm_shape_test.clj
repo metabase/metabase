@@ -745,8 +745,8 @@
    :related_tables [{:id 20 :name "products" :fully_qualified_name "public.products"
                      :related_by "product_id" :fields []}]
    :related_tables_total 3
-   :related_table_refs [{:id 20 :name "products" :related_by "product_id"}
-                        {:id 21 :name "people" :related_by "user_id"}]})
+   :related_table_refs [{:id 21 :name "people" :related_by "user_id"}
+                        {:id 22 :name "reviews" :related_by "review_id"}]})
 
 (deftest ^:parallel table->xml-related-tables-truncation-test
   (testing "a capped related-tables list renders a truncation note plus a roster of related-table ids/names"
@@ -756,19 +756,19 @@
       (is (str/includes? xml "<related-tables-truncated")
           "a truncation marker tells the LLM the list is incomplete")
       (is (str/includes? xml "total=\"3\""))
-      (is (str/includes? xml "<related-table-ref id=\"20\" name=\"products\" related_by=\"product_id\"/>"))
-      (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by=\"user_id\"/>")
-          "the roster lists every related table by id/name so the LLM can look them up"))))
+      (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by=\"user_id\"/>"))
+      (is (str/includes? xml "<related-table-ref id=\"22\" name=\"reviews\" related_by=\"review_id\"/>")
+          "the roster lists every non-expanded related table by id/name so the LLM can look them up"))))
 
 (deftest ^:parallel table->xml-related-table-ref-description-test
   (testing "a related-table-ref surfaces the table's description when present, and omits it when absent"
     (let [xml (llm-shape/table->xml
                (assoc base-table-with-truncated-related
-                      :related_table_refs [{:id 20 :name "products" :related_by "product_id"
-                                            :description "All the products we sell"}
+                      :related_table_refs [{:id 22 :name "reviews" :related_by "review_id"
+                                            :description "All the reviews customers left"}
                                            {:id 21 :name "people" :related_by "user_id"}]))]
-      (is (str/includes? xml (str "<related-table-ref id=\"20\" name=\"products\" "
-                                  "related_by=\"product_id\" description=\"All the products we sell\"/>")))
+      (is (str/includes? xml (str "<related-table-ref id=\"22\" name=\"reviews\" "
+                                  "related_by=\"review_id\" description=\"All the reviews customers left\"/>")))
       (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by=\"user_id\"/>")
           "a ref with no description renders no description attribute")))
   (testing "a long related-table-ref description is capped and gets an ellipsis"
@@ -776,7 +776,7 @@
           cap-len   @#'llm-shape/max-related-table-ref-description-length
           xml       (llm-shape/table->xml
                      (assoc base-table-with-truncated-related
-                            :related_table_refs [{:id 20 :name "products" :related_by "product_id"
+                            :related_table_refs [{:id 22 :name "reviews" :related_by "review_id"
                                                   :description long-desc}]))]
       (is (str/includes? xml (str "description=\"" (apply str (repeat cap-len "x")) "...\"")))
       (is (not (str/includes? xml (apply str (repeat (inc cap-len) "x"))))
@@ -786,8 +786,9 @@
   (testing "when the refs is capped, the note says so"
     (let [xml (llm-shape/table->xml (assoc base-table-with-truncated-related
                                            :related_tables_total 99))]
-      (is (str/includes? xml "itself truncated: 97 more related tables exist")
-          "the note reports how many related tables were truncated (total 99 minus the 2 shown)"))))
+      (is (str/includes? xml "itself truncated: 96 more related tables exist")
+          (str "the note reports related tables neither shown in detail nor listed in the roster "
+               "(total 99 minus the 1 shown minus the 2 listed refs)")))))
 
 (deftest ^:parallel table->xml-no-truncation-note-test
   (testing "an un-truncated related-tables list renders no truncation note"

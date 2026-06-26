@@ -542,8 +542,8 @@
 
 (deftest related-tables-truncation-tracking-test
   (testing (str "when the FK-related-table list is capped, the result reports the truncation and a "
-                "lightweight roster of all related tables (id/name) so the LLM knows more exist and can "
-                "look them up individually (metabase#76493)")
+                "lightweight roster of the remaining related tables (id/name) so the LLM knows more exist and "
+                "can look them up individually (metabase#76493)")
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (let [details (fn []
@@ -563,13 +563,14 @@
                   ;; :related_tables_total > (count :related_tables) signals the detailed list was truncated
                   (is (= 2 (:related_tables_total output)))
                   (is (> (:related_tables_total output) (count (:related_tables output))))
-                  (testing "roster lists only the related tables excluded from :related_tables, by id and name"
+                  (testing "roster lists the FK paths not expanded into :related_tables, by id and name"
                     (is (= 1 (count (:related_table_refs output))))
                     (is (every? :id (:related_table_refs output)))
                     (is (every? :name (:related_table_refs output)))
-                    (testing "the expanded table is not repeated in the roster"
-                      (let [shown-ids (into #{} (map :id) (:related_tables output))]
-                        (is (not-any? (comp shown-ids :id) (:related_table_refs output))))))
+                    (testing ":related_tables and the roster are disjoint FK paths"
+                      (let [shown-paths (into #{} (map (juxt :id :related_by)) (:related_tables output))]
+                        (is (not-any? (comp shown-paths (juxt :id :related_by))
+                                      (:related_table_refs output))))))
                   (testing "refs fits under its own cap: total accounts for the shown table plus the full refs list"
                     (is (= (:related_tables_total output)
                            (+ (count (:related_tables output))

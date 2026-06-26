@@ -357,12 +357,10 @@
     :related_tables_total (optional) total number of FK-related tables before capping. Only present when truncation
                           occurred, so callers infer that `:related_tables` was truncated by comparing it against
                           the length of `:related_tables`.
-    :related_table_refs   (optional) list of `{:id :name :description :related_by}` for related tables *not* expanded
+    :related_table_refs   (optional) list of `{:id :name :description :related_by}` for the FK paths *not* expanded
                           into `:related_tables` (ids/names only, no column fetch), so the LLM knows more related
-                          tables exist and can look them up individually. Capped at
-                          [[max-related-table-truncated-refs]]; tables already present in `:related_tables` are
-                          excluded so the roster only surfaces tables the LLM hasn't already seen in full. Only
-                          present when truncation occurred."
+                          tables exist and can look them up individually. This is list is also capped at
+                          [[max-related-table-truncated-refs]]. Only present when truncation occurred."
   [query with-fields? field-values-fn]
   (let [fk-groups (fk-related-table-groups query)
         total     (count fk-groups)]
@@ -370,9 +368,8 @@
       (when (> total max-related-tables)
         (log/infof "Capping metabot related-table expansion to %d of %d FK-related tables."
                    max-related-tables total))
-      (let [included-groups (take max-related-tables fk-groups)
-            included-ids    (into #{} (map first) included-groups)
-            excluded-groups (remove (comp included-ids first) fk-groups)
+      (let [[included-groups rest-groups] (split-at max-related-tables fk-groups)
+            excluded-groups (take max-related-table-truncated-refs rest-groups)
             related-tables  (mapv
                              (fn [[table-id fk-field-id]]
                                (-> (table-details table-id
@@ -392,7 +389,7 @@
                                              :name        (:name table)
                                              :description (:description table)
                                              :related_by  (:name (lib.metadata/field query fk-field-id))}))
-                                        (take max-related-table-truncated-refs excluded-groups))))))))
+                                        excluded-groups)))))))
 
 (defn- card-details
   "Get details for a card."

@@ -324,7 +324,7 @@
         :related_tables_total                total
         :related_tables_refs_xml             refs-xml
         :related_tables_refs_truncated       refs-truncated?
-        :related_tables_refs_truncated_count (when refs-truncated? (- total (count refs)))}))))
+        :related_tables_refs_truncated_count (when refs-truncated? (- total shown (count refs)))}))))
 
 (defn- dimension-source-table
   "Human-readable `schema.table` for a queryable dimension, derived from its portable FK, plus
