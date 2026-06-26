@@ -309,6 +309,15 @@
   separate `case` (with an `:hnsw` default) and must be updated by hand when adding a strategy."
   [:hnsw :brute-force])
 
+(def query-embedders
+  "Valid `query_embedder` API-param values, as keywords. Selects which embedder turns the search string into
+  the query vector for the semantic engine. `:voyage` embeds via the Voyage embeddings API (model/dimensions
+  from the `ee-voyage-embedding-*` settings) so the query shares a Voyage-embedded index table's vector space;
+  `:arctic`/`:ai-service` are explicit no-ops naming the default. Absent param ⇒ the active index's own
+  configured embedder (today's behavior). Mastered here so the OSS search API param and the EE query path
+  ([[metabase-enterprise.semantic-search.index/query-index]]) share one definition."
+  [:voyage :arctic :ai-service])
+
 (def PartitionConfig
   "Schema for the semantic-engine federated-retrieval partition config (the `partition_config`
   API param, sent as a JSON object). `:partitions` lists per-partition candidate generation: each
@@ -411,8 +420,13 @@
                              relevance -- kept for completeness).
    - `:rerank_fusion`     -- like `:rerank_then_boost`, but the reranked pool is selected rank-fusion-free
                              (best arm rank) rather than from the RRF-ordered `total_score` list.
+   - `:rerank_rrf`        -- final order = RRF of the weighted-score rank and the cross-encoder rank over the
+                             pool (`wa/(k+weighted_rank) + wb/(k+rerank_rank)`). Rank-space fusion: neither axis
+                             dominates, and the metadata boosts tip via the weighted-rank arm (they set the
+                             `total_score` that orders the pool) rather than via an uncalibrated additive term.
+                             Tuned by the `:rrf-weighted`/`:rrf-rerank`/`:rrf-k` keys (ignored by other blends).
   Mastered here so the OSS API param and the EE rerank step share one definition."
-  [:rerank_only :rerank_then_boost :rerank_as_scorer :rerank_fusion])
+  [:rerank_only :rerank_then_boost :rerank_as_scorer :rerank_fusion :rerank_rrf])
 
 (def RerankerConfig
   "Schema for the semantic-engine Voyage cross-encoder rerank config (the `reranker_config` API param, sent as
@@ -431,13 +445,29 @@
   the eval with `disable_fallback`, so truncation never spuriously trips the appdb fallback); `:weight` is the
   rerank-score weight in the `:rerank_then_boost`/`:rerank_as_scorer`/`:rerank_fusion` blends (default mirrors
   the dominant `:rrf` static weight). Mastered here so the OSS API param and the EE query builder share one
-  definition."
+  definition.
+
+  The `:rerank_rrf` blend adds three rank-space fusion knobs (ignored by the additive blends): `:rrf-weighted`
+  (`wa`, the weighted-rank arm weight, default 1.0), `:rrf-rerank` (`wb`, the cross-encoder-rank arm weight,
+  default 2.0 -- the best NDCG@10/recall point from the offline sweep; `wa=wb=1.0` was best for MRR, so both
+  are reachable), and `:rrf-k` (the fusion constant, default 60). An optional `:gate` skips the cross-encoder
+  entirely when retrieval is already confident (the head is an exact name match, or the rank-1 cosine distance
+  is within the margin), spending Voyage tokens only on the uncertain queries reranking actually helps."
   [:map {:closed true}
    [:model  {:optional true} :string]                         ; default = ee-reranking-model setting
    [:pool   {:optional true} pos-int?]                        ; N candidates reranked (default 50)
    [:top-k  {:optional true} pos-int?]                        ; results kept after rerank (default = pool)
    [:weight {:optional true} [:double {:min 0.0}]]            ; rerank-score weight in D1/D2/D3 (default 500.0)
-   [:blend  {:optional true} (into [:enum] rerank-blend-modes)]]) ; default :rerank_then_boost
+   [:blend  {:optional true} (into [:enum] rerank-blend-modes)] ; default :rerank_then_boost
+   ;; :rerank_rrf rank-space fusion knobs (ignored by the additive blends)
+   [:rrf-weighted {:optional true} [:double {:min 0.0}]]      ; wa, weighted-rank arm weight (default 1.0)
+   [:rrf-rerank   {:optional true} [:double {:min 0.0}]]      ; wb, rerank-rank arm weight (default 2.0)
+   [:rrf-k        {:optional true} pos-int?]                  ; fusion k (default 60)
+   ;; Confidence gate: skip the cross-encoder when retrieval is already confident.
+   [:gate {:optional true}
+    [:map {:closed true}
+     [:exact           {:optional true} :boolean]             ; skip when the top result is an exact name match
+     [:semantic-margin {:optional true} [:double {:min 0.0}]]]]]) ; skip when rank-1 cosine distance <= this
 
 (def TrigramConfig
   "Schema for the semantic-engine pg_trgm typo-tolerance config (the `trigram_config` API param, sent as a
@@ -560,6 +590,9 @@
    ;; Semantic-engine vector-search strategy (:hnsw or :brute-force). When absent, the engine uses its
    ;; configured default setting.
    [:vector-search-strategy {:optional true} [:maybe keyword?]]
+   ;; Semantic-engine query embedder override. `:voyage` embeds the query via the Voyage API (shares a
+   ;; Voyage-embedded table's vector space); absent/`:arctic`/`:ai-service` ⇒ the active index's own embedder.
+   [:query-embedder     {:optional true} [:maybe (into [:enum] query-embedders)]]
    ;; Semantic-engine cosine-distance cut-off override. When absent, the engine uses its hardcoded default.
    [:max-cosine-distance {:optional true} [:maybe number?]]
    ;; Semantic-engine federated-retrieval partition config. When absent, the engine uses a single global KNN.

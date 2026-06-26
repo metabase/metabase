@@ -265,6 +265,7 @@
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
    [:vector-search-strategy              {:optional true} [:maybe string?]]
+   [:query-embedder                      {:optional true} [:maybe string?]]
    [:max-cosine-distance                 {:optional true} [:maybe number?]]
    [:partition-config                    {:optional true} [:maybe search.config/PartitionConfig]]
    [:multi-view-config                   {:optional true} [:maybe search.config/MultiViewConfig]]
@@ -313,6 +314,7 @@
            offset
            search-engine
            vector-search-strategy
+           query-embedder
            max-cosine-distance
            partition-config
            multi-view-config
@@ -369,6 +371,7 @@
                  (some? limit)                               (assoc :limit-int limit)
                  (some? offset)                              (assoc :offset-int offset)
                  (not (str/blank? vector-search-strategy))    (assoc :vector-search-strategy (keyword vector-search-strategy))
+                 (not (str/blank? query-embedder))           (assoc :query-embedder (keyword query-embedder))
                  (some? max-cosine-distance)                 (assoc :max-cosine-distance max-cosine-distance)
                  (some? partition-config)                    (assoc :partition-config partition-config)
                  (some? multi-view-config)                   (assoc :multi-view-config multi-view-config)

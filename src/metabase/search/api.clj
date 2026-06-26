@@ -154,18 +154,32 @@
   closed schema accepts it.
 
   Shape: `{\"model\": .., \"pool\": N, \"top_k\": N, \"weight\": W,
-  \"blend\": \"rerank_only\"|\"rerank_then_boost\"|\"rerank_as_scorer\"|\"rerank_fusion\"}`."
+  \"blend\": \"rerank_only\"|\"rerank_then_boost\"|\"rerank_as_scorer\"|\"rerank_fusion\"|\"rerank_rrf\",
+  \"rrf_weighted\": Wa, \"rrf_rerank\": Wb, \"rrf_k\": K, \"gate\": {\"exact\": true, \"semantic_margin\": D}}`."
   [reranker-config]
   (when-not (str/blank? reranker-config)
     (try
-      (let [{:keys [model pool weight blend] :as cfg} (json/decode+kw reranker-config)
-            top-k (or (:top-k cfg) (:top_k cfg))]
+      (let [{:keys [model pool weight blend gate] :as cfg} (json/decode+kw reranker-config)
+            top-k   (or (:top-k cfg)        (:top_k cfg))
+            rrf-wtd (or (:rrf-weighted cfg) (:rrf_weighted cfg))
+            rrf-rrk (or (:rrf-rerank cfg)   (:rrf_rerank cfg))
+            rrf-k   (or (:rrf-k cfg)        (:rrf_k cfg))
+            ;; `:gate` arrives keywordized; normalize the underscore sub-key like `top_k` -> `:top-k`.
+            margin  (when gate (or (:semantic-margin gate) (:semantic_margin gate)))
+            gate*   (when gate
+                      (cond-> {}
+                        (some? (:exact gate)) (assoc :exact (boolean (:exact gate)))
+                        (some? margin)        (assoc :semantic-margin (double margin))))]
         (cond-> {}
-          model         (assoc :model model)
-          pool          (assoc :pool pool)
-          (some? top-k) (assoc :top-k top-k)
+          model          (assoc :model model)
+          pool           (assoc :pool pool)
+          (some? top-k)  (assoc :top-k top-k)
           (some? weight) (assoc :weight (double weight))
-          blend         (assoc :blend (keyword blend))))
+          blend          (assoc :blend (keyword blend))
+          (some? rrf-wtd) (assoc :rrf-weighted (double rrf-wtd))
+          (some? rrf-rrk) (assoc :rrf-rerank   (double rrf-rrk))
+          (some? rrf-k)   (assoc :rrf-k        rrf-k)
+          (seq gate*)     (assoc :gate gate*)))
       (catch Exception e
         (log/warn "Failed to parse reranker_config:" (ex-message e))
         nil))))
@@ -329,6 +343,7 @@
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
   - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines
+  - `query_embedder`: for the semantic engine, set to `voyage` to embed the incoming search terms via the Voyage embeddings API (so the query vector shares the active table's Voyage-embedded vector space) instead of the active index's own embedder; the Voyage model/dimensions come from the `ee-voyage-embedding-*` settings. Omit (or `arctic`/`ai-service`) to use the active index's configured embedder. Ignored by other engines
   - `max_cosine_distance`: for the semantic engine, the cosine-distance cut-off above which vector candidates are discarded (default 0.7); ignored by other engines
   - `partition_config`: for the semantic engine, a JSON object enabling federated/partitioned retrieval (per-partition model set, candidate quota `k`, cosine cutoff, and vector strategy); omit for a single global KNN. Ignored by other engines
   - `multi_view_config`: for the semantic engine, a JSON object enabling multi-view-embedding retrieval (per-view embedding column + candidate quota `k`, pooled by min cosine distance, with a single cosine cutoff); omit for a single global KNN. Ignored by other engines
@@ -366,6 +381,7 @@
     model-ancestors                     :model_ancestors
     search-engine                       :search_engine
     vector-search-strategy              :vector_search_strategy
+    query-embedder                      :query_embedder
     max-cosine-distance                 :max_cosine_distance
     partition-config                    :partition_config
     multi-view-config                   :multi_view_config
@@ -399,6 +415,7 @@
        [:model_ancestors                     {:default false} [:maybe :boolean]]
        [:search_engine                       {:optional true} [:maybe string?]]
        [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
+       [:query_embedder                      {:optional true} [:maybe (into [:enum] (map name) search.config/query-embedders)]]
        [:max_cosine_distance                 {:optional true} [:maybe [:double {:min 0.0 :max 2.0}]]]
        [:partition_config                    {:optional true} [:maybe :string]]
        [:multi_view_config                   {:optional true} [:maybe :string]]
@@ -440,6 +457,7 @@
                 :offset                              (request/offset)
                 :search-engine                       search-engine
                 :vector-search-strategy              vector-search-strategy
+                :query-embedder                      query-embedder
                 :max-cosine-distance                 max-cosine-distance
                 :partition-config                    (process-partition-config partition-config)
                 :multi-view-config                   (process-multi-view-config multi-view-config)

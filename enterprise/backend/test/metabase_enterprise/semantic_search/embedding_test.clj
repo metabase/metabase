@@ -18,6 +18,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
    [java.nio ByteBuffer ByteOrder]
@@ -373,3 +374,78 @@
                         (t2/select-one :model/SemanticSearchTokenTracking)]
                     (is (= :query request_type))
                     (is (= 13 total_tokens))))))))))))
+
+;;;; Voyage embedding provider (query_embedder=voyage routing)
+
+(def ^:private voyage-model
+  {:provider "voyage" :model-name "voyage-4-large" :vector-dimensions 1024})
+
+(defn- float-array?* [x] (= (Class/forName "[F") (class x)))
+
+(deftest voyage-get-embedding-parses-floats-and-sends-query-input-type-test
+  (testing "the voyage provider posts the asymmetric query input_type + output_dimension and parses float vectors"
+    (mt/with-temporary-setting-values [ee-voyage-embedding-api-key "voyage-mock-key"]
+      (let [response {:data  [{:embedding [0.1 0.2 0.3]}]
+                      :usage {:total_tokens 7}}
+            captured (atom nil)]
+        (with-redefs [http/post (fn [url opts]
+                                  (reset! captured {:url url :body (json/decode+kw (:body opts))})
+                                  {:body (json/encode response)})]
+          (let [result (embedding/get-embedding voyage-model "revenue dashboard"
+                                                {:type :query :record-tokens? false})]
+            (is (float-array?* result) "returns a float-array, not a base64-decoded buffer")
+            (is (= [(float 0.1) (float 0.2) (float 0.3)] (vec result)))
+            (testing "request body carries model, input, query input_type, output_dimension, truncation"
+              (is (= "voyage-4-large" (get-in @captured [:body :model])))
+              (is (= ["revenue dashboard"] (get-in @captured [:body :input])))
+              (is (= "query" (get-in @captured [:body :input_type])))
+              (is (= 1024 (get-in @captured [:body :output_dimension])))
+              (is (true? (get-in @captured [:body :truncation]))))
+            (testing "hits the configured Voyage embeddings endpoint"
+              (is (= "https://api.voyageai.com/v1/embeddings" (:url @captured))))))))))
+
+(deftest voyage-get-embeddings-batch-uses-document-input-type-test
+  (testing "non-query embedding (indexing/default) sends input_type=document"
+    (mt/with-temporary-setting-values [ee-voyage-embedding-api-key "voyage-mock-key"]
+      (let [captured (atom nil)]
+        (with-redefs [http/post (fn [_url opts]
+                                  (reset! captured (json/decode+kw (:body opts)))
+                                  {:body (json/encode {:data  [{:embedding [0.0]} {:embedding [1.0]}]
+                                                       :usage {:total_tokens 2}})})]
+          (let [result (embedding/get-embeddings-batch voyage-model ["a" "b"] {:record-tokens? false})]
+            (is (= 2 (count result)))
+            (is (every? float-array?* result))
+            (is (= "document" (:input_type @captured)))))))))
+
+(deftest voyage-get-embedding-requires-api-key-test
+  (testing "the voyage provider throws when its key is unset (it must never silently fall through)"
+    (mt/with-temporary-setting-values [ee-voyage-embedding-api-key nil]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"ee-voyage-embedding-api-key not set"
+                            (embedding/get-embedding voyage-model "q" {:type :query}))))))
+
+(deftest voyage-retries-transient-error-test
+  (testing "the voyage provider retries a 429 / 5xx and succeeds once the provider recovers"
+    (mt/with-temporary-setting-values [ee-voyage-embedding-api-key "voyage-mock-key"]
+      (binding [retry/*test-time-config-hook* #(assoc % :initial-interval-millis 1 :max-interval-millis 2 :jitter-factor 0.0)]
+        (let [calls (atom 0)]
+          (with-redefs [http/post (fn [_url _opts]
+                                    (let [n (swap! calls inc)]
+                                      (case n
+                                        1 (throw (ex-info "clj-http: status 429" {:status 429}))
+                                        2 (throw (ex-info "clj-http: status 503" {:status 503}))
+                                        {:body (json/encode {:data [{:embedding [0.5]}] :usage {:total_tokens 1}})})))]
+            (let [result (embedding/get-embedding voyage-model "q" {:type :query :record-tokens? false})]
+              (is (= 3 @calls) "retried the 429 then the 503 before the third attempt succeeded")
+              (is (= [(float 0.5)] (vec result))))))))))
+
+(deftest query-embedder-model-resolution-test
+  (let [index-model {:provider "ai-service" :model-name "Snowflake/snowflake-arctic-embed-l-v2.0" :vector-dimensions 1024}]
+    (testing ":voyage resolves to the Voyage embedding-model from settings (shares the table vector space)"
+      (mt/with-temporary-setting-values [ee-voyage-embedding-model "voyage-4-large"
+                                         ee-voyage-embedding-model-dimensions 1024]
+        (is (= {:provider "voyage" :model-name "voyage-4-large" :vector-dimensions 1024}
+               (embedding/query-embedder-model :voyage index-model)))))
+    (testing "absent / :arctic / :ai-service leave the active index's own embedder unchanged (baseline)"
+      (is (= index-model (embedding/query-embedder-model nil index-model)))
+      (is (= index-model (embedding/query-embedder-model :arctic index-model)))
+      (is (= index-model (embedding/query-embedder-model :ai-service index-model))))))

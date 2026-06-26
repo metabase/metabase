@@ -8,7 +8,7 @@
 
 (def ^:private valid-embedding-providers
   "The set of valid embedding provider names."
-  #{"ai-service" "openai" "ollama"})
+  #{"ai-service" "openai" "ollama" "voyage"})
 
 (defsetting ee-embedding-provider
   (deferred-tru "The embedding provider to use (`openai`, `ollama`, or `ai-service`)")
@@ -54,6 +54,46 @@
   :type :positive-integer
   :export? false
   :doc false)
+
+;; ---------------------------------------------------------------------------
+;; Voyage embeddings. Used by the `voyage` embedding provider (direct
+;; api.voyageai.com/v1/embeddings, `Authorization: Bearer`), selected per-request via the `query_embedder`
+;; search API param so a search against a Voyage-embedded index table embeds the query in the same vector
+;; space. Distinct from the Voyage rerank settings below (separate endpoint, separate key).
+
+(defsetting ee-voyage-embedding-base-url
+  (deferred-tru "Base URL for the Voyage embeddings API (direct api.voyageai.com).")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.voyageai.com"
+  :type       :string
+  :export?    false
+  :doc        false)
+
+(defsetting ee-voyage-embedding-api-key
+  (deferred-tru "Voyage API key for the embeddings endpoint (direct api.voyageai.com/v1/embeddings).")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :doc        false)
+
+(defsetting ee-voyage-embedding-model
+  (deferred-tru "Voyage embedding model used when the `query_embedder=voyage` search param is set (e.g. voyage-4-large).")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "voyage-4-large"
+  :type       :string
+  :export?    false
+  :doc        false)
+
+(defsetting ee-voyage-embedding-model-dimensions
+  (deferred-tru "Output dimension requested from the Voyage embedding model; must match the vector column of the Voyage-embedded index table.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    1024
+  :type       :positive-integer
+  :export?    false
+  :doc        false)
 
 (defn openai-api-base-url
   "Get the OpenAI API base url from the existing LLM settings."

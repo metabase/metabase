@@ -12,7 +12,8 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.retry :as retry])
   (:import
    [com.knuddels.jtokkit Encodings]
    [com.knuddels.jtokkit.api Encoding EncodingType]
@@ -361,6 +362,81 @@
 (defmethod pull-model "openai" [_]
   (log/debug "OpenAI provider does not require pulling a model"))
 
+;;;; Voyage provider (direct api.voyageai.com/v1/embeddings)
+
+;; A direct Voyage embeddings client, mirroring the rerank client in
+;; `metabase-enterprise.semantic-search.reranking` (Bearer auth, house exponential-backoff retry). Voyage
+;; handles query/document asymmetry through the `input_type` request field rather than a text prefix, so the
+;; `:type` opt threaded from `query-index` (`:query`) selects it here -- `prefix-search-query` is a no-op for
+;; Voyage models. Used when the `query_embedder=voyage` search param routes the query to this provider so it
+;; shares the active Voyage-embedded table's vector space.
+
+(def ^:private max-voyage-embedding-retries
+  "Retry budget for a rate-limited / transient Voyage embeddings call. Kept small: the query embedding runs
+  synchronously inside a single `/api/search` request, so the cumulative backoff must stay under the client
+  request timeout (cf. the rerank client)."
+  4)
+
+(defn- retryable-voyage-error?
+  "True when a failed Voyage call should be retried: a 429 (rate limit), a 5xx, or a transport-level error
+  (no HTTP status in ex-data). 4xx client errors are not retried."
+  [e]
+  (let [status (:status (ex-data e))]
+    (or (nil? status) (= 429 status) (<= 500 status 599))))
+
+(defn- voyage-input-type
+  "Map the `:type` opt to Voyage's asymmetric-retrieval `input_type`. Queries embed as `\"query\"`, everything
+  else (indexing/default) as `\"document\"`."
+  [type]
+  (if (= :query type) "query" "document"))
+
+(defn- voyage-get-embeddings-batch*
+  "POST a batch of texts to the Voyage embeddings API and return a vector of float-arrays in input order.
+  Voyage returns float lists directly (not base64), so we realize them straight into float-arrays. Records
+  the provider-reported token usage (the billable figure) into analytics + the token-tracking table."
+  [{:keys [model-name vector-dimensions]} texts type record-tokens?]
+  (let [api-key (semantic-settings/ee-voyage-embedding-api-key)]
+    (when (empty? api-key)
+      (throw (ex-info "ee-voyage-embedding-api-key not set" {:provider "voyage"})))
+    (let [url  (str (trim-trailing-slashes (semantic-settings/ee-voyage-embedding-base-url)) "/v1/embeddings")
+          ;; `output_dimension` matches how the document vectors were produced offline (Voyage defaults to
+          ;; float output, as the offline build relied on). `input_type` carries Voyage's query/document
+          ;; asymmetry (the analogue of arctic's `query:` prefix, which is a no-op for Voyage models).
+          body (cond-> {:model      model-name
+                        :input      texts
+                        :input_type (voyage-input-type type)
+                        :truncation true}
+                 vector-dimensions (assoc :output_dimension vector-dimensions))
+          resp (-> (retry/with-retry (assoc (retry/retry-configuration)
+                                            :max-retries max-voyage-embedding-retries
+                                            :retry-if    (fn [_result e]
+                                                           (boolean (and e (retryable-voyage-error? e))))
+                                            :on-retry    (fn [_result e]
+                                                           (log/warn e "Voyage embeddings call failed; retrying")))
+                     (http/post url
+                                {:headers {"Authorization" (str "Bearer " api-key)
+                                           "Content-Type"  "application/json"}
+                                 :body    (json/encode body)}))
+                   :body
+                   (json/decode true))
+          total-tokens (get-in resp [:usage :total_tokens] 0)]
+      (analytics/inc! :metabase-search/semantic-embedding-tokens {:provider "voyage" :model model-name} total-tokens)
+      (when record-tokens?
+        (semantic.models.token-tracking/record-tokens model-name type total-tokens))
+      (log/debug "Voyage embeddings" {:model model-name :documents (count texts) :tokens total-tokens})
+      (mapv (fn [{:keys [embedding]}] (float-array embedding)) (:data resp)))))
+
+(defmethod get-embedding "voyage"
+  [embedding-model text & {:keys [record-tokens? type]}]
+  (first (voyage-get-embeddings-batch* embedding-model [text] type record-tokens?)))
+
+(defmethod get-embeddings-batch "voyage"
+  [embedding-model texts & {:keys [record-tokens? type]}]
+  (voyage-get-embeddings-batch* embedding-model texts type record-tokens?))
+
+(defmethod pull-model "voyage" [_]
+  (log/debug "Voyage provider does not require pulling a model"))
+
 ;;;; Query prefixes for asymmetric retrieval models
 
 (def ^:private model-family-query-prefixes
@@ -396,6 +472,21 @@
   {:provider (semantic-settings/ee-embedding-provider)
    :model-name (semantic-settings/ee-embedding-model)
    :vector-dimensions (semantic-settings/ee-embedding-model-dimensions)})
+
+(defn query-embedder-model
+  "Resolve the embedding-model to use for embedding a *query*, given the `:query-embedder` search-context value
+  (the `query_embedder` API param, keywordized) and the active index's own `embedding-model` (the default).
+
+  `:voyage` returns the Voyage embedding-model built from the `ee-voyage-embedding-*` settings, so the query
+  embeds in the same vector space as a Voyage-embedded index table. `nil` / `:arctic` / `:ai-service` return
+  `index-embedding-model` unchanged -- i.e. today's behavior (embed with whatever the active index declares),
+  so an absent param is byte-identical to baseline."
+  [query-embedder index-embedding-model]
+  (case query-embedder
+    :voyage {:provider          "voyage"
+             :model-name         (semantic-settings/ee-voyage-embedding-model)
+             :vector-dimensions  (semantic-settings/ee-voyage-embedding-model-dimensions)}
+    index-embedding-model))
 
 (defn- calc-token-metrics
   [texts]

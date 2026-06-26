@@ -1220,7 +1220,10 @@
                       :score (:total_score row 1.0)
                       :all-scores (scoring/all-scores weights scorers row))]
     (cond-> result
-      rerank?            (assoc :content (:content row))
+      ;; :semantic_distance is the reranker confidence-gate's margin signal; carried under rerank? and stripped
+      ;; before the wire (strip-rerank-carried-keys). Debug attribution uses :cosine_distance below instead.
+      rerank?            (assoc :content (:content row)
+                                :semantic_distance (:semantic_distance row))
       (or debug? rerank?) (assoc :semantic_rank (:semantic_rank row)
                                  :keyword_rank  (:keyword_rank row))
       debug? (assoc :cosine_distance (:semantic_distance row)
@@ -1444,6 +1447,67 @@
                   :rerank_as_scorer  (+ (:score row 0.0) (* w rr))
                   :rerank_fusion     (+ (* w rr) (metadata-boost-contribution row rerank-relevance-scorers)))))
 
+(defn- reblend-rrf
+  "Rank-space fusion for the `:rerank_rrf` blend: final order = RRF of the weighted-score rank and the
+  cross-encoder rank over the pool. `pool-rows` is in weighted (`:total_score`) order so position `i` = weighted
+  rank `i+1`; `order` is the pool indices best-first per the cross-encoder so position = rerank rank; `scores`
+  maps pool position to the raw cross-encoder score. The RRF magnitude `wa/(k+weighted_rank) + wb/(k+rerank_rank)`
+  is kept verbatim on `:fused_score` (for offline re-derivation, §1.4), and the row's `:score` becomes that
+  magnitude lifted by `offset` -- neither axis dominates, and the metadata boosts tip via the weighted-rank arm
+  (they set the `:total_score` that ordered the pool) rather than an uncalibrated additive term. `:rerank_score`
+  keeps the raw cross-encoder score for attribution.
+
+  `:score` lift: the generic layer re-sorts ALL results by `:score` desc after the engine returns
+  (`metabase.search.scoring/top-results` via `impl/search`), and the un-reranked tail keeps its `:total_score`
+  (boost scale, e.g. 100s). A raw RRF magnitude (~0.03 at k=60) is orders of magnitude smaller, so that re-sort
+  would float the whole tail above the reranked pool and bury the winners. `pool-rows` is `:total_score`-desc,
+  so its head is the largest score in the pool and an upper bound on the tail; offsetting every reranked
+  `:score` by it guarantees the pool outranks the tail in the global re-sort while preserving the fused order
+  within the pool. `:score` is stripped before the wire, so the lift affects only sort position."
+  [wa wb k pool-rows order scores]
+  (let [rerank-rank (into {} (map-indexed (fn [pos pool-idx] [pool-idx (inc pos)]) order))
+        n           (count pool-rows)
+        offset      (double (or (:score (first pool-rows)) (:total_score (first pool-rows)) 0.0))]
+    (mapv (fn [pool-idx]
+            (let [wrank (inc pool-idx)
+                  ;; Voyage ranks every pooled doc, so rrank is always present; fall back to the tail rank
+                  ;; defensively if a pool index is ever missing from `order`.
+                  rrank (get rerank-rank pool-idx n)
+                  fused (+ (/ wa (double (+ k wrank)))
+                           (/ wb (double (+ k rrank))))]
+              (assoc (nth pool-rows pool-idx)
+                     :rerank_score (get scores pool-idx 0.0)
+                     :fused_score  fused
+                     :score        (+ offset fused))))
+          (range n))))
+
+(defn- strip-rerank-carried-keys
+  "Drop the keys `legacy-input-with-score` carries only for the rerank step (`:content` + the transient
+  `:semantic_distance` gate signal) so they never reach the wire; under `debug?` keep the arm ranks and
+  `:rerank_score` for attribution (same policy as the reranked block). `serialize` is a blacklist, so any key
+  left on the row rides straight to the wire."
+  [debug? row]
+  (cond-> (dissoc row :content :semantic_distance :fused_score)
+    (not debug?) (dissoc :semantic_rank :keyword_rank :rerank_score)))
+
+(defn- reranker-gate-fires?
+  "True when retrieval is already confident enough that the cross-encoder should be skipped for this query, per
+  the request's `:gate` config read against the head of the weighted-ordered `results`:
+   - `:exact` -- the top result is an exact name match (the weight-independent `:exact` scorer fired); the
+     strongest known-item signal, where reranking only risks demoting the canonical.
+   - `:semantic-margin` -- the rank-1 `:semantic_distance` (cosine) is within the threshold, i.e. the top hit
+     is semantically very close to the query.
+  Skipping spends Voyage tokens only on the uncertain queries the cross-encoder actually helps. Nil/absent
+  `:gate` => never fires => unchanged from today."
+  [search-context results]
+  (boolean
+   (when-let [{:keys [exact semantic-margin]} (:gate (:reranker-config search-context))]
+     (when-let [top (first results)]
+       (or (and exact
+                (some #(and (= :exact (:name %)) (pos? (or (:score %) 0))) (:all-scores top)))
+           (and semantic-margin (:semantic_distance top)
+                (<= (:semantic_distance top) semantic-margin)))))))
+
 (defn- rerank-results
   "Rerank the top-`pool` of `results` with the Voyage cross-encoder and reblend per the request's
   `:reranker-config` `:blend`. Returns `{:results :tokens :pool :model :stage}` where `:results` is the
@@ -1461,8 +1525,9 @@
     {:results results :tokens 0 :pool 0
      :model (or (:model (:reranker-config search-context)) (semantic-settings/ee-reranking-model))
      :stage {:name "rerank:voyage" :candidates []}}
-    (let [{:keys [model pool top-k weight blend]
-           :or   {pool 50 weight 500.0 blend :rerank_then_boost}} (:reranker-config search-context)
+    (let [{:keys [model pool top-k weight blend rrf-weighted rrf-rerank rrf-k]
+           :or   {pool 50 weight 500.0 blend :rerank_then_boost
+                  rrf-weighted 1.0 rrf-rerank 2.0 rrf-k 60}} (:reranker-config search-context)
           ordered          (if (= blend :rerank_fusion)
                              (sort-by (fn [r] (min (or (:semantic_rank r) ##Inf)
                                                    (or (:keyword_rank r) ##Inf)))
@@ -1471,20 +1536,24 @@
           [pool-rows tail] (split-at pool ordered)
           docs             (mapv #(or (:content %) (:name %) "") pool-rows)
           {:keys [order scores tokens]} (reranking/rerank (:search-string search-context) docs {:model model})
-          reranked         (mapv (fn [i] (reblend blend weight (nth pool-rows i) (get scores i 0.0))) order)
+          ;; :rerank_rrf fuses the two ranks over the whole pool (needs both axes at once, so it can't go
+          ;; through the per-row `reblend`); the additive blends reblend each row in cross-encoder order.
+          reranked         (if (= blend :rerank_rrf)
+                             (reblend-rrf rrf-weighted rrf-rerank rrf-k pool-rows order scores)
+                             (mapv (fn [i] (reblend blend weight (nth pool-rows i) (get scores i 0.0))) order))
           merged           (concat (sort-by :score > reranked) tail)
           kept             (cond->> merged top-k (take top-k))
           stage            {:name "rerank:voyage"
                             :candidates (vec (map-indexed (fn [i r]
                                                             {:model (:model r) :id (:id r)
-                                                             :rank  (inc i) :score (:rerank_score r)})
+                                                             :rank  (inc i) :score (:rerank_score r)
+                                                             ;; rrf carries the raw RRF magnitude on :fused_score
+                                                             ;; (:score is offset-lifted for the global re-sort);
+                                                             ;; additive blends have no :fused_score, so their
+                                                             ;; blended :score is the attribution value.
+                                                             :fused_score (or (:fused_score r) (:score r))})
                                                           kept))}
-          ;; Strip the carried internal keys before return. `serialize` is a blacklist, so :content / the arm
-          ;; ranks would otherwise leak; keep them (plus :rerank_score) only under debug? for attribution.
-          cleaned          (mapv (fn [r]
-                                   (cond-> (dissoc r :content)
-                                     (not debug?) (dissoc :semantic_rank :keyword_rank :rerank_score)))
-                                 kept)]
+          cleaned          (mapv (partial strip-rerank-carried-keys debug?) kept)]
       {:results cleaned
        :tokens  (or tokens 0)
        :pool    (count pool-rows)
@@ -1495,7 +1564,11 @@
   "Query the index for documents similar to the search string.
   Returns a map with :results and :raw-count."
   [db index search-context]
-  (let [{:keys [embedding-model]} index
+  (let [;; The query embedder defaults to the active index's own model, but the `query_embedder` API param
+        ;; can override it (e.g. `:voyage` to embed the query via the Voyage API so it shares a
+        ;; Voyage-embedded table's vector space). Absent param => index's model => byte-identical baseline.
+        embedding-model (embedding/query-embedder-model (:query-embedder search-context)
+                                                        (:embedding-model index))
         search-string (:search-string search-context)]
     (if (str/blank? search-string)
       {:results [] :raw-count 0}
@@ -1552,15 +1625,23 @@
             final-results (->> filtered-results
                                (scoring/with-appdb-scores search-context appdb-scorers weights))
             appdb-scores-time-ms (u/since-ms appdb-scores-timer)
+            ;; Reranker confidence gate: when the request configured a `:gate` and the weighted head is already
+            ;; confident, skip the Voyage call entirely -- the weighted order (canonical at rank 1) is returned.
+            gate-fires? (and rerank? (reranker-gate-fires? search-context final-results))
             ;; Rerank after `with-appdb-scores` so the appdb boosts (:bookmarked / :user-recency) are already
             ;; in :all-scores and the D1/D3 re-blend can include every metadata boost.
-            rerank-timer (when rerank? (u/start-timer))
-            reranked (when rerank?
+            rerank-timer (when (and rerank? (not gate-fires?)) (u/start-timer))
+            reranked (when (and rerank? (not gate-fires?))
                        (tracing/with-span :search "search.semantic.rerank"
                          {:search/query-length (count search-string)}
                          (rerank-results search-context debug? final-results)))
-            rerank-time-ms (when rerank? (u/since-ms rerank-timer))
-            out-results (if rerank? (:results reranked) final-results)
+            rerank-time-ms (when rerank-timer (u/since-ms rerank-timer))
+            ;; When the gate fires, `final-results` still carries the rerank-only keys (:content,
+            ;; :semantic_distance) -- strip them so the gated path matches the reranked path on the wire.
+            out-results (cond
+                          reranked    (:results reranked)
+                          gate-fires? (mapv (partial strip-rerank-carried-keys debug?) final-results)
+                          :else       final-results)
             total-time-ms (u/since-ms timer)]
         (log/debug "Semantic search"
                    {:search-string-length (count search-string)
@@ -1583,8 +1664,9 @@
         (analytics/inc! :metabase-search/semantic-search-ms
                         {:embedding-model (:name embedding-model)}
                         total-time-ms)
-        (when rerank?
+        (when reranked
           ;; Reported usage (Voyage `usage.total_tokens`), not a local estimate, per the billable-cost policy.
+          ;; Skipped when the gate fired (no Voyage call, so no tokens to report).
           (analytics/inc! :metabase-search/semantic-rerank-tokens
                           {:model (:model reranked)}
                           (:tokens reranked))
@@ -1594,8 +1676,12 @@
         (cond-> {:results out-results
                  :raw-count (count raw-results)}
           pipeline (assoc :pipeline (cond-> (assoc pipeline :permission_dropped permission-dropped)
-                                      reranked (-> (update :stages conj (:stage reranked))
-                                                   (assoc :rerank (select-keys reranked [:tokens :pool :model]))))))))))
+                                      reranked    (-> (update :stages conj (:stage reranked))
+                                                      (assoc :rerank (select-keys reranked [:tokens :pool :model])))
+                                      ;; Gate fired: emit a marker stage so "gate skipped rerank" is
+                                      ;; distinguishable from "rerank not configured" in the captures.
+                                      gate-fires? (-> (update :stages conj {:name "rerank:voyage" :gated true :candidates []})
+                                                      (assoc :rerank {:gated true})))))))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))
