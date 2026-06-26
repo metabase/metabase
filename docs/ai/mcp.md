@@ -9,9 +9,11 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
-## Connect a client to your Metabase MCP server
+## Connect a client to your Metabase MCP server's URL
 
-If your admin has turned on [your Metabase's MCP server](#enable-mcp-server), all you need to do is point your MCP client at your Metabase's MCP endpoint, `/api/metabase-mcp`.
+Your Metabase's MCP server is served from the `/api/metabase-mcp` endpoint.
+
+If your admin has turned on [your Metabase's MCP server](#enable-mcp-server), all you need to do is point your MCP client at your Metabase's MCP server's URL.
 
 ```
 https://{your-metabase.example.com}/api/metabase-mcp
@@ -49,7 +51,7 @@ See [Claude Code MCP docs](https://code.claude.com/docs/en/mcp).
 
 ### Connect via Claude web
 
-If you use Claude on the web or Claude Desktop, go to [Claude's connector directory](https://claude.ai/directory/connectors/metabase) and enter your [Metabase's MCP URL](#connect-a-client-to-your-metabase-mcp-server).
+If you use Claude on the web or Claude Desktop, go to [Claude's connector directory](https://claude.ai/directory/connectors/metabase) and enter your [Metabase's MCP URL](#connect-a-client-to-your-metabase-mcp-servers-url).
 
 One of your Metabase admins will still need to have [turned on your Metabase's MCP server](#enable-mcp-server). You'll authenticate against your own Metabase during setup.
 
