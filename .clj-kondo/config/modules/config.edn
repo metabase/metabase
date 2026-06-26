@@ -968,7 +968,10 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -1188,7 +1191,10 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Card :model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   logger
   {:team "DevEx"
@@ -2366,7 +2372,8 @@
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}
-   :model-imports #{:model/Collection
+   :model-imports #{:model/Card
+                    :model/Collection
                     :model/Database
                     :model/Field
                     :model/Table
@@ -2415,7 +2422,8 @@
            transforms
            transforms-base
            util}
-   :model-imports #{:model/Transform
+   :model-imports #{:model/Card
+                    :model/Transform
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformJobTransformTag
@@ -3161,9 +3169,7 @@
            models
            util
            warehouse-schema}
-   :model-imports #{:model/Database
-                    :model/Field
-                    :model/Table}}
+   :model-imports #{:model/Database :model/Field :model/Table}}
 
   enterprise/gsheets
   {:team "Cloud"
@@ -3634,9 +3640,7 @@
            workspaces
            enterprise/serialization}
    :model-exports #{:model/Workspace}
-   :model-imports #{:model/Database
-                    :model/Table
-                    :model/User}}}
+   :model-imports #{:model/Database :model/Table :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

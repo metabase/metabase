@@ -95,7 +95,7 @@
        :order       [transform-ids]    ; topological (upstream first)
        :bad-sources #{transform-ids}}  ; selected sources that are not ancestors of any seed
 
-  The slice is `(closure ∩ descendants-or-self(sources)) ∪ seed-ids`.
+  The slice is `(closure ∩ descendants-or-self(sources)) + seed-ids`.
   `:bad-sources` is non-empty when a selected source does not feed any seed —
   callers should fail closed rather than run a degenerate slice."
   [deps source-ids seed-ids]
@@ -217,7 +217,7 @@
               {:error-type  ::sources-not-ancestors
                :bad-sources bad-sources
                :card-id     (:id card)})))
-    ;; Step 4: fixtures = card's raw boundary tables ∪ slice's leaf deps.
+    ;; Step 4: fixtures = card's raw boundary tables + slice's leaf deps.
     (let [card-fixtures  (into #{} (map (fn [tid] {:table tid})) boundary-table-ids)
           id->transform  (u/index-by :id all-transforms)
           chain-fixtures (leaf-deps slice
