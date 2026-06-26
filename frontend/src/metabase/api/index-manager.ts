@@ -23,7 +23,7 @@ export const indexManagerApi = Api.injectEndpoints({
       {
         query: (params) => ({
           method: "GET",
-          url: "/api/indexes",
+          url: "/api/index",
           params,
         }),
         transformResponse: (response: ListTableIndexesResponse) =>
@@ -34,7 +34,7 @@ export const indexManagerApi = Api.injectEndpoints({
     getTableIndex: builder.query<TableIndexRequest, TableIndexRequestId>({
       query: (id) => ({
         method: "GET",
-        url: `/api/indexes/request/${id}`,
+        url: `/api/index/request/${id}`,
       }),
       providesTags: (index) => (index ? provideTableIndexTags(index) : []),
     }),
@@ -44,7 +44,7 @@ export const indexManagerApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/indexes/request",
+        url: "/api/index/request",
         body,
       }),
       invalidatesTags: (_index, error) =>
@@ -56,7 +56,7 @@ export const indexManagerApi = Api.injectEndpoints({
     >({
       query: ({ id, structured }) => ({
         method: "PUT",
-        url: `/api/indexes/request/${id}`,
+        url: `/api/index/request/${id}`,
         body: { structured },
       }),
       invalidatesTags: (_index, error, { id }) =>
@@ -68,7 +68,7 @@ export const indexManagerApi = Api.injectEndpoints({
     deleteTableIndex: builder.mutation<void, TableIndexRequestId>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/indexes/request/${id}`,
+        url: `/api/index/request/${id}`,
       }),
       invalidatesTags: (_index, error, id) =>
         invalidateTags(error, [

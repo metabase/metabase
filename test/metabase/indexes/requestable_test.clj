@@ -1,6 +1,6 @@
 (ns metabase.indexes.requestable-test
   "Checks that the form descriptors `driver/supported-index-methods` returns stay in sync with `::index-structured`, the
-  schema `POST /api/indexes/request` validates request bodies against."
+  schema `POST /api/index/request` validates request bodies against."
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

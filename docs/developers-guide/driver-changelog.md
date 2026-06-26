@@ -6,10 +6,36 @@ title: Driver interface changelog
 
 ## Metabase 0.63.0
 
-- Added the `:index/fetch` driver feature flag and the `metabase.driver/fetch-table-indexes` method, for drivers that
-  can read the indexes that physically exist on a table. The method returns them as a vector of normalized index maps;
-  drivers declaring the feature implement it (the default implementation throws). Implemented by Postgres, ClickHouse,
-  and Redshift.
+- Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
+  distribution keys, clustering, etc.). New driver feature flags:
+
+  - `:index/fetch` -- the driver can read the indexes that physically exist on a table. Implemented by Postgres,
+    ClickHouse, and Redshift.
+
+  - `:index/standalone-create` -- the driver can create an index on a transform's target table as a standalone
+    statement after the table is created. Implemented by Postgres.
+
+  - `:index/inline-create` -- the driver inlines an index into the table-creation statement itself (e.g. Redshift
+    `SORTKEY`) rather than creating it afterwards. Such drivers render the index from the `:indexes` key of the
+    transform details when they build the creation statement: in `metabase.driver/compile-transform` (the CTAS for a
+    SQL transform) and/or `metabase.driver/create-table!` (the CREATE TABLE for a Python transform). Implemented by
+    Redshift.
+
+  New driver methods:
+
+  - `metabase.driver/fetch-table-indexes` `[driver database schema table]` -- reads a table's physical indexes,
+    returning them as a vector of normalized index maps. Drivers declaring `:index/fetch` implement it; the default
+    implementation throws.
+
+  - `metabase.driver/supported-index-methods` `[driver database]` -- returns the index methods the driver supports as
+    a map of `index-kind` to a metadata map carrying at least `:lifecycle` (`:standalone` or `:inline`). Defaults to
+    `{}`.
+
+  - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
+    the DDL statement(s) that create it.
+
+  - `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]` -- refreshes table
+    statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
 
 - `metabase.driver/describe-table-fks`, deprecated in 0.49.0, has been removed. Please implement
   `metabase.driver/describe-fks` instead. This method is now required for drivers that support
@@ -32,26 +58,6 @@ title: Driver interface changelog
   - The `:describe-fks` driver feature flag has been removed as a feature since it is no longer needed to differentiate
     between the aforementioned FK description methods; you should remove any `metabase.driver/database-supports?`
     implementations for it.
-
-- Added the `:index/standalone-create` driver feature flag, for drivers that can create an index (in the broad
-  sense, including things like clustering or sort keys) on a transform's target table as a standalone statement
-  after the table is created. Postgres supports it.
-
-- Added `metabase.driver/supported-index-methods` `[driver database]`. Returns the index methods the driver supports
-  as a map of `index-kind` to a metadata map carrying at least `:lifecycle` (`:standalone` or `:inline`). Defaults to
-  `{}`.
-
-- Added `metabase.driver/compile-create-index` `[driver schema table structured]`. Compiles a `:standalone` index
-  into the DDL statement(s) that create it.
-
-- Added `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]`. Refreshes table
-  statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
-
-- Added the `:index/inline-create` driver feature flag, for drivers that inline an index into the table-creation
-  statement itself (e.g. Redshift `SORTKEY`) rather than creating it afterwards. Such drivers render the index from
-  the `:indexes` key of the transform details when they build the creation statement: in
-  `metabase.driver/compile-transform` (the CTAS for a SQL transform) and/or `metabase.driver/create-table!` (the
-  CREATE TABLE for a Python transform). Redshift supports it.
 
 ## Metabase 0.62.0
 
