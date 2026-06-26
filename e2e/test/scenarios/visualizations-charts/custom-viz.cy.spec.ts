@@ -1405,6 +1405,15 @@ describe("admin > custom visualizations", () => {
       H.activateToken("bleeding-edge");
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
+
+      // Start a fresh dev server for every attempt. The test stops the server as
+      // its final assertion, and `before` does not re-run on a Cypress retry or
+      // during burn-in, so the server must be (re)started per test.
+      cy.task<{ pid: number }>("startCustomVizDevServer", {
+        cwd: projectDir,
+      }).then(({ pid }) => {
+        devServerPid = pid;
+      });
     });
 
     before(() => {
@@ -1473,27 +1482,21 @@ describe("admin > custom visualizations", () => {
       cy.readFile(pluginSrcPath).then((src) => {
         pristineSrc = src;
       });
-
-      // Start the plugin dev server and keep it running
-      cy.task<{ pid: number }>("startCustomVizDevServer", {
-        cwd: projectDir,
-      }).then(({ pid }) => {
-        devServerPid = pid;
-      });
     });
 
     afterEach(() => {
+      // Stop the dev server started in beforeEach. Idempotent: the test may have
+      // already stopped it as part of its final assertion.
+      if (devServerPid != null) {
+        cy.task("stopCustomVizDevServer", devServerPid);
+        devServerPid = null;
+      }
+
+      // Revert any in-test edits to the plugin source so a retry starts from the
+      // scaffolded default ("Above threshold") instead of a mutated label.
       if (pristineSrc != null) {
         cy.writeFile(pluginSrcPath, pristineSrc);
       }
-    });
-
-    after(() => {
-      if (devServerPid == null) {
-        return;
-      }
-
-      cy.task("stopCustomVizDevServer", devServerPid);
     });
 
     it("should load a dev-only plugin from a local dev server URL and use it in a question", () => {
