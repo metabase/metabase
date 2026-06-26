@@ -277,16 +277,14 @@
                     profile)]
       (assoc profile :model (metabot.settings/llm-metabot-provider)))))
 
-(defn get-tools-for-profile
-  "Get tool registry filtered by profile configuration, user capabilities, and scope.
-  Filters out EE-only tools when the feature is not available, then filters by
-  capabilities, then filters by `*current-user-scope*`. Returns a map of
-  tool-name -> tool-var.
-
-  When the resolved profile exposes at least one skill in its catalog, the
-  `load_skill` tool is injected so the agent can pull skill bodies on demand."
-  [profile-id capabilities]
-  (when-let [profile (get-profile profile-id)]
+(defn profile->tools
+  "Tool registry for an ALREADY-RESOLVED profile, filtered by capabilities and `*current-user-scope*`.
+  Returns a map of tool-name -> tool-var.
+  Takes the resolved profile (not an id) so callers that also need the profile's prompt resolve it once via
+  [[get-profile]] — its nlq availability redirect must be probed a single time, or the prompt and tools
+  could disagree. When the profile exposes any skills, `load_skill` is injected for on-demand loading."
+  [profile capabilities]
+  (when profile
     (let [base     (-> profile
                        :tools
                        (filter-by-capabilities capabilities)
@@ -300,3 +298,10 @@
         ;; synthetic `load_skill` call that must resolve to a registered tool.
         (or (seq (:catalog manifest)) (seq (:always-on manifest)))
         (assoc "load_skill" #'tools/load-skill-tool)))))
+
+(defn get-tools-for-profile
+  "Resolve a profile by id and return its capability/scope-filtered tool registry (see [[profile->tools]]).
+  Convenience for callers that only need the tools; code that also needs the prompt should call
+  [[get-profile]] once and pass the result to [[profile->tools]]."
+  [profile-id capabilities]
+  (profile->tools (get-profile profile-id) capabilities))
