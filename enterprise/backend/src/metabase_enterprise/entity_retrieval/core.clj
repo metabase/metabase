@@ -78,7 +78,6 @@
   (analytics/observe! :metabase-entity-retrieval/reconcile-duration-ms {:scope scope} ran-ms)
   (when (pos? (long (or inserted 0))) (analytics/inc! :metabase-entity-retrieval/docs-inserted (long inserted)))
   (when (pos? (long (or deleted 0)))  (analytics/inc! :metabase-entity-retrieval/docs-deleted  (long deleted)))
-  (when rebuilt? (analytics/inc! :metabase-entity-retrieval/rebuilds))
   (when documents (analytics/set-gauge! :metabase-entity-retrieval/index-documents documents))
   (when entities  (analytics/set-gauge! :metabase-entity-retrieval/index-entities  entities))
   (when (or (pos? (long (or inserted 0))) (pos? (long (or deleted 0))) rebuilt?)

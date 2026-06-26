@@ -457,8 +457,6 @@
                        {:description "Number of documents embedded and inserted into the library entity index."})
    (prometheus/counter :metabase-entity-retrieval/docs-deleted
                        {:description "Number of documents garbage-collected from the library entity index."})
-   (prometheus/counter :metabase-entity-retrieval/rebuilds
-                       {:description "Number of times the library entity index vectors table was dropped and rebuilt (model or doc-format change)."})
    (prometheus/counter :metabase-entity-retrieval/search-degraded
                        {:description "Number of library entity index searches that degraded to no results because the index query errored (e.g. a dimension mismatch before the next reconcile heals it)."})
    (prometheus/gauge :metabase-entity-retrieval/index-documents
