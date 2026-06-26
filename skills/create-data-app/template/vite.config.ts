@@ -32,9 +32,6 @@ export default defineConfig(({ command, mode }) => {
     envDir,
     // use DATA_APP_ prefixed variables only for dev mode
     envPrefix: command === "serve" ? "DATA_APP_" : [],
-    // `dataAppSandboxDevPlugin` only applies in `serve` (dev); it bundles the
-    // app to an IIFE and serves it so the dev harness can run it through the
-    // same Near-Membrane sandbox Metabase uses in production.
     plugins: [react(), dataAppSandboxDevPlugin(allowedHosts)],
     build: {
       outDir: "dist",

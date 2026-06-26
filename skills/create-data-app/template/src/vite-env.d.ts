@@ -4,7 +4,6 @@ interface ImportMetaEnv {
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;
-  /** Vite HMR context (dev only); used for the data-app sandbox soft reload. */
   readonly hot?: {
     on(event: string, callback: (data: unknown) => void): void;
   };
