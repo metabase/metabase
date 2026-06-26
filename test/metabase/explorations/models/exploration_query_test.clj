@@ -19,7 +19,7 @@
                                                             (lib/aggregate (lib/count))))}
                    :model/Exploration e {}
                    :model/ExplorationThread th {:exploration_id (:id e)}
-                   :model/ExplorationThreadGroup g {:exploration_thread_id (:id th)}
+                   :model/ExplorationBlock g {:exploration_thread_id (:id th)}
                    :model/ExplorationQuery q-seg  {:exploration_thread_id (:id th)
                                                    :card_id    (:id metric)
                                                    :group_id   (:id g)

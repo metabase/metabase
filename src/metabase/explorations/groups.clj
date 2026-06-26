@@ -1,6 +1,6 @@
 (ns metabase.explorations.groups
   "Compute the read-side group tree for a thread from its persisted Research-plan groups
-   (`ExplorationThreadGroup`) and materialized query rows.
+   (`ExplorationBlock`) and materialized query rows.
 
    Each persisted group becomes one top-level `\"sidebar\"` node (the sidebar heading —
    id = the group's PK as a string, name = its computed heading). Within a group, the group's
@@ -147,7 +147,7 @@
      ::max-score      nil}))
 
 (defn group-tree
-  "Given a thread's persisted `ExplorationThreadGroup` groups (in authoring order) and its
+  "Given a thread's persisted `ExplorationBlock` groups (in authoring order) and its
    hydrated query rows, return the flat depth-first `ExplorationQueryGroup` vector:
 
        {:id              \"<group-pk>\" | \"auto:<group-pk>:<card_id>:<dim_id>\"

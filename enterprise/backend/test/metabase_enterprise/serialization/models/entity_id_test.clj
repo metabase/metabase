@@ -63,7 +63,7 @@
     :model/ExplorationQueryResult
     :model/ExplorationQueryTimelineInterestingness
     :model/ExplorationThread
-    :model/ExplorationThreadGroup
+    :model/ExplorationBlock
     :model/ExplorationThreadTimeline
     :model/StoredResult
     :model/StoredResultUse

@@ -273,7 +273,7 @@
         (is (= 1 (count (:threads resp))))
         (is (= "break down by region" (:prompt thread)))
         (is (some? (:started_at thread)))
-        (is (= 1 (t2/count :model/ExplorationThreadGroup :exploration_thread_id (:id thread))))
+        (is (= 1 (t2/count :model/ExplorationBlock :exploration_thread_id (:id thread))))
         (is (= 1 (t2/count :model/ExplorationThreadTimeline :exploration_thread_id (:id thread))))
         (is (= 1 (count (:queries thread))))
         (is (= "d1" (:dimension_id q)))
@@ -385,7 +385,7 @@
                                 :groups [(dim-grp users-created 1)]}))))))))))
 
 (deftest exploration-create-persists-groups-verbatim-test
-  (testing "POST / persists each :groups entry as its own ExplorationThreadGroup row — no dedup across groups"
+  (testing "POST / persists each :groups entry as its own ExplorationBlock row — no dedup across groups"
     (mt/with-temp [:model/User u {:email "groups@example.com"}
                    :model/Card metric (valid-metric-card (:id u))
                    :model/Timeline tl {:creator_id (:id u)}]
@@ -409,7 +409,7 @@
                                                 :effective_type "type/Text"}]}]}
             resp   (mt/user-http-request u :post 200 "exploration" body)
             tid    (-> resp :threads first :id)
-            groups (t2/select :model/ExplorationThreadGroup
+            groups (t2/select :model/ExplorationBlock
                               :exploration_thread_id tid {:order-by [[:position :asc]]})]
         (is (= "Grouped create" (:name resp)))
         (is (= 2 (count groups)) "one row per group, no dedup")
@@ -825,10 +825,10 @@
           (is (nil? (:completed_at rerun)) "completion gate cleared")
           (is (empty? (:queries rerun)) "previously generated queries are wiped")
           (testing "selections are preserved"
-            ;; Selections live in the thread's ExplorationThreadGroup rows, which restart does
+            ;; Selections live in the thread's ExplorationBlock rows, which restart does
             ;; NOT delete (only the materialized queries are wiped, so the query-derived
             ;; :groups tree in the response is empty until the planner re-runs below).
-            (let [groups (t2/select :model/ExplorationThreadGroup :exploration_thread_id orig-tid)]
+            (let [groups (t2/select :model/ExplorationBlock :exploration_thread_id orig-tid)]
               (is (= 1 (count groups)) "the Research-plan group survives the restart")
               (is (= 1 (count (:metrics (first groups)))) "its metric selection is preserved")
               (is (= ["d1"] (mapv :dimension_id (:dimensions (first groups))))
@@ -1585,7 +1585,7 @@
             tid  (-> resp :threads first :id)]
         (t2/delete! :model/Exploration :id eid)
         (is (zero? (t2/count :model/ExplorationThread :exploration_id eid)))
-        (is (zero? (t2/count :model/ExplorationThreadGroup :exploration_thread_id tid)))
+        (is (zero? (t2/count :model/ExplorationBlock :exploration_thread_id tid)))
         (is (zero? (t2/count :model/ExplorationThreadTimeline :exploration_thread_id tid)))
         (is (zero? (t2/count :model/ExplorationQuery :exploration_thread_id tid)))))))
 
@@ -1756,7 +1756,7 @@
             thread    (-> resp :threads first)
             queries   (:queries thread)
             groups    (:groups thread)
-            group-id      (str (t2/select-one-pk :model/ExplorationThreadGroup
+            group-id      (str (t2/select-one-pk :model/ExplorationBlock
                                                  :exploration_thread_id (:id thread)))
             group-nodes   (filter #(= "sidebar" (:display_type %)) groups)
             leaf-nodes    (filter #(not= "sidebar" (:display_type %)) groups)]
@@ -2119,7 +2119,7 @@
                                                            {:exploration_id (:id exploration)
                                                             :position       0
                                                             :started_at     (t/offset-date-time)}))
-        group-id    (t2/insert-returning-pk! :model/ExplorationThreadGroup
+        group-id    (t2/insert-returning-pk! :model/ExplorationBlock
                                              {:exploration_thread_id (:id thread)})
         eq-ids      (vec (for [i (range n)]
                            (:id (first (t2/insert-returning-instances! :model/ExplorationQuery
@@ -2184,7 +2184,7 @@
                      :model/ExplorationThread thread {:exploration_id (:id exploration)
                                                       :position       0
                                                       :started_at     (t/offset-date-time)}
-                     :model/ExplorationThreadGroup group {:exploration_thread_id (:id thread)}
+                     :model/ExplorationBlock group {:exploration_thread_id (:id thread)}
                      :model/ExplorationQuery _q {:exploration_thread_id (:id thread)
                                                  :card_id               (:id card)
                                                  :group_id              (:id group)

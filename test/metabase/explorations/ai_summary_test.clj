@@ -143,7 +143,7 @@
                        :visualization_settings {}
                        :creator_id    user-id
                        :dataset_query oq}))
-        group-id (t2/insert-returning-pk! :model/ExplorationThreadGroup
+        group-id (t2/insert-returning-pk! :model/ExplorationBlock
                                           {:exploration_thread_id thread-id})
         eq    (first (t2/insert-returning-instances!
                       :model/ExplorationQuery
@@ -254,7 +254,7 @@
                    :model/ExplorationThread t {:exploration_id (:id e)
                                                :prompt         "How is revenue trending?"
                                                :position       0}
-                   :model/ExplorationThreadGroup grp {:exploration_thread_id (:id t)}]
+                   :model/ExplorationBlock grp {:exploration_thread_id (:id t)}]
       (let [qp-result    (fixture-qp-result)
             query        (first (t2/insert-returning-instances!
                                  :model/ExplorationQuery

@@ -76,7 +76,7 @@
                        :target ["field" {} (mt/id :venues :name)]}]
             mk-group (fn [dim-id disp etype]
                        (first (t2/insert-returning-instances!
-                               :model/ExplorationThreadGroup
+                               :model/ExplorationBlock
                                {:exploration_thread_id (:id t)
                                 :metrics               [{:card_id cid :dimension_mappings mappings}]
                                 :dimensions            [{:dimension_id dim-id :display_name disp
@@ -107,7 +107,7 @@
                          :target ["field" {} (mt/id :venues :price)]}]
               dims     [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}]
               mk       (fn [] (first (t2/insert-returning-instances!
-                                      :model/ExplorationThreadGroup
+                                      :model/ExplorationBlock
                                       {:exploration_thread_id (:id t)
                                        :metrics    [{:card_id cid :dimension_mappings mappings}]
                                        :dimensions dims :position 0})))

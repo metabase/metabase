@@ -14,8 +14,8 @@
    [metabase.explorations.core :as explorations]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.models.exploration :as expl.model]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.models.exploration-query-result :as eqr]
-   [metabase.explorations.models.exploration-thread-group :as thread-group]
    [metabase.queries.core :as queries]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -99,12 +99,12 @@
       dn)))
 
 (defn- groups-by-thread-id
-  "The persisted Research-plan groups (`ExplorationThreadGroup`) for `thread-ids`, in authoring
+  "The persisted Research-plan groups (`ExplorationBlock`) for `thread-ids`, in authoring
    order, grouped by `:exploration_thread_id`."
   [thread-ids]
   (when (seq thread-ids)
     (group-by :exploration_thread_id
-              (t2/select :model/ExplorationThreadGroup
+              (t2/select :model/ExplorationBlock
                          :exploration_thread_id [:in thread-ids]
                          {:order-by [[:position :asc] [:id :asc]]}))))
 
@@ -115,7 +115,7 @@
   (mapv (fn [group]
           (update group :dimensions
                   (fn [dims]
-                    (mapv #(thread-group/enrich-with-card-group % card-dim-by-id) dims))))
+                    (mapv #(block/enrich-with-card-group % card-dim-by-id) dims))))
         groups))
 
 (defn- attach-query-dimension-labels
@@ -126,7 +126,7 @@
   thread's dimensions."
   [thread groups card-dim-by-id]
   (let [thread-dims   (vals (u/index-by :dimension_id (mapcat :dimensions groups)))
-        enriched-dims (mapv #(thread-group/enrich-with-card-group % card-dim-by-id)
+        enriched-dims (mapv #(block/enrich-with-card-group % card-dim-by-id)
                             thread-dims)
         dim-by-id     (u/index-by :dimension_id enriched-dims)
         name-counts   (frequencies (keep :display_name enriched-dims))]
@@ -196,14 +196,14 @@
                  (assoc row :exploration_thread_id thread-id :position i))
                rows))
 
-(defn- insert-thread-groups!
-  "Persist the FE's Research-plan groups verbatim — one `ExplorationThreadGroup` row per
+(defn- insert-blocks!
+  "Persist the FE's Research-plan groups verbatim — one `ExplorationBlock` row per
    group, in payload order. Each group keeps its own `:metrics`/`:dimensions` selection;
    the planners cross metrics with dimensions only within a group. No dedup across groups:
    a metric or dimension appearing in two groups is stored on both."
   [thread-id groups]
   (when (seq groups)
-    (t2/insert! :model/ExplorationThreadGroup
+    (t2/insert! :model/ExplorationBlock
                 (positional-rows thread-id
                                  (map #(select-keys % [:type :metrics :dimensions]) groups)))))
 
@@ -255,7 +255,7 @@
 (def ^:private GroupSelection
   "One Research-plan area on the FE — either a metric area (one primary metric + chosen dimensions)
    or a dimension area (the dimension's group + referencing metrics). Persisted verbatim as one
-   `ExplorationThreadGroup` row; the planners cross this group's metrics with this group's
+   `ExplorationBlock` row; the planners cross this group's metrics with this group's
    dimensions only. The sidebar heading is computed read-side (see `group_name` in
    `ExplorationQueryGroup`), not supplied here."
   [:map
@@ -510,7 +510,7 @@
                                                               :position       0}))
           tid         (:id thread)]
       (insert-thread-default-documents! tid coll-id)
-      (insert-thread-groups! tid groups)
+      (insert-blocks! tid groups)
       (insert-thread-timelines! tid timeline_ids)
       ;; Setting `started_at` is the signal to the background planning worker that this
       ;; thread is ready to plan + execute. The worker's claim predicate matches threads

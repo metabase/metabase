@@ -1526,3 +1526,16 @@ databaseChangeLog:
                   remarks: Optional context metadata about the comment (e.g., active timeline for exploration comments)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v63.renameexpthreadgrouptoblock
+      author: johnswanson
+      comment: Rename exploration_thread_group table to exploration_block (model ExplorationThreadGroup -> ExplorationBlock). Index/FK constraint names keep their original `exploration_thread_group` spellings; they still function after the rename.
+      changes:
+        - renameTable:
+            oldTableName: exploration_thread_group
+            newTableName: exploration_block
+      rollback:
+        - renameTable:
+            oldTableName: exploration_block
+            newTableName: exploration_thread_group

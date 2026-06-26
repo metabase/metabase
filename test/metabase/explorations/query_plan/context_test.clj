@@ -61,7 +61,7 @@
             mappings [{:dimension_id "d1" :table_id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :price)]}]
             group    (first (t2/insert-returning-instances!
-                             :model/ExplorationThreadGroup
+                             :model/ExplorationBlock
                              {:exploration_thread_id (:id t)
                               :metrics               [{:card_id cid :dimension_mappings mappings}]
                               :dimensions            [{:dimension_id "d1" :display_name "Price"

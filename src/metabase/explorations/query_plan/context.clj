@@ -15,7 +15,7 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.groups :as explorations.groups]
-   [metabase.explorations.models.exploration-thread-group :as thread-group]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -147,7 +147,7 @@
   [tm card mp dim-by-id]
   (let [dataset-query        (:dataset_query card)
         card-dims            (u/index-by :id (:dimensions card))
-        enriched-thread-dims (update-vals dim-by-id #(thread-group/enrich-with-card-group % card-dims))
+        enriched-thread-dims (update-vals dim-by-id #(block/enrich-with-card-group % card-dims))
         appl                 (applicability enriched-thread-dims tm mp dataset-query)
         default-temp         (qp.mbql/extract-default-temporal-breakout-col mp dataset-query)]
     {:metric-id                         (:card_id tm)
@@ -170,7 +170,7 @@
   builds the per-dim `:applicable-to` lists — all scoped to this group, so the planners
   only ever cross metrics with dimensions that co-occur in the same group.
 
-  `group` is an `ExplorationThreadGroup` row: `{:id :metrics [...] :dimensions [...]}`,
+  `group` is an `ExplorationBlock` row: `{:id :metrics [...] :dimensions [...]}`,
   where `:metrics` entries carry `{:card_id :dimension_mappings}` and `:dimensions` entries
   carry the dim snapshot."
   [group cards mp-by-db]
@@ -233,7 +233,7 @@
   materialization time. Each group is one Research-plan area; the planners cross a group's
   metrics only with that same group's dimensions.
 
-  `groups` is the thread's `ExplorationThreadGroup` rows
+  `groups` is the thread's `ExplorationBlock` rows
   (`{:id :metrics [...] :dimensions [...]}`). Returns
 
     {:groups [{:group-id      <id>
@@ -268,11 +268,11 @@
   selected segment, and — for `per-value-time-series` rows that carry
   `:params.temporal_dimension_id` — also resolves the override temporal
   axis. The metric selection + dim snapshot are read from the row's
-  `ExplorationThreadGroup` (the group the planner stamped on the row), not from
+  `ExplorationBlock` (the group the planner stamped on the row), not from
   per-thread metric/dimension tables. The runner calls this per claimed row."
   [{:keys [card_id dimension_id segment_id params group_id]}]
   (let [card       (t2/select-one :model/Card :id card_id)
-        group      (when group_id (t2/select-one :model/ExplorationThreadGroup :id group_id))
+        group      (when group_id (t2/select-one :model/ExplorationBlock :id group_id))
         metric     (some #(when (= card_id (:card_id %)) %) (:metrics group))
         dim-by-id  (u/index-by :dimension_id (:dimensions group))
         thread-dim (get dim-by-id dimension_id)]

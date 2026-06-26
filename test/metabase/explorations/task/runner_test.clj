@@ -33,10 +33,10 @@
                                               prompt (assoc :prompt prompt)))))))
 
 (defn- thread-group!
-  "Create a minimal ExplorationThreadGroup for `thread-id` and return its id. Query rows
+  "Create a minimal ExplorationBlock for `thread-id` and return its id. Query rows
   require a non-null group_id (FK to this table)."
   [thread-id]
-  (t2/insert-returning-pk! :model/ExplorationThreadGroup
+  (t2/insert-returning-pk! :model/ExplorationBlock
                            {:exploration_thread_id thread-id}))
 
 (defn- pending-query!

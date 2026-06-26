@@ -201,7 +201,7 @@
   "Build the planner-contract ctx the chosen planner consumes. Pure compute
   modulo the t2 selects for thread / metrics / dims."
   [thread-id]
-  (let [thread-groups  (t2/select :model/ExplorationThreadGroup
+  (let [thread-groups  (t2/select :model/ExplorationBlock
                                   :exploration_thread_id thread-id
                                   {:order-by [[:position :asc] [:id :asc]]})
         metric-dim-ctx (qp.context/metric-and-dim-context thread-groups)
