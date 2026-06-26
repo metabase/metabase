@@ -1,10 +1,12 @@
-// Dev-only diagnostics for the data-app dev harness. Captures errors (including
-// the sandbox's `[data-app …] blocked API call: …` logs, which surface through
-// `console.error`) so the dev toolbar can show what went wrong — the sandbox
-// otherwise reports blocked APIs only as an opaque `#<Object>`.
+// Dev diagnostics store for the data-app dev toolbar. Captures errors —
+// including the sandbox's `[data-app …] blocked API call: …` logs, which surface
+// through `console.error` — so the toolbar can show what went wrong (the sandbox
+// otherwise reports blocked APIs only as an opaque `#<Object>`).
 //
-// This module is imported only by `dev.tsx`, never by `src/index.tsx`, so it is
-// never part of the production bundle.
+// Capture is opt-in: it only patches `console.error` / listens for uncaught
+// errors once `installDevDiagnostics()` is called. Nothing here runs on import,
+// so a host that imports `createDataAppSandbox` from the same entry doesn't pull
+// any of this in unless it's actually used.
 
 export type DevDiagnosticLevel = "error";
 
@@ -65,9 +67,13 @@ export const clearDevDiagnostics = (): void => {
   emit();
 };
 
-/** Wraps `console.error` and listens for uncaught errors. Idempotent. */
+/**
+ * Start capturing errors into the diagnostics store: wraps `console.error` and
+ * listens for uncaught errors / unhandled rejections. Idempotent. Call it before
+ * the sandbox runs so nothing is missed.
+ */
 export const installDevDiagnostics = (): void => {
-  if (installed) {
+  if (installed || typeof window === "undefined") {
     return;
   }
   installed = true;

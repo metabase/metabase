@@ -4,11 +4,13 @@ import * as ReactJsxRuntime from "react/jsx-runtime";
 import type { MetabaseAuthConfig } from "@metabase/embedding-sdk-react";
 import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
-import { createDataAppSandbox } from "@metabase/embedding-sdk-react/data-app-sandbox";
+import {
+  DevToolbar,
+  createDataAppSandbox,
+  installDevDiagnostics,
+} from "@metabase/embedding-sdk-react/data-app-sandbox";
 import { createRoot } from "react-dom/client";
 
-import { DevToolbar } from "./dev/DevToolbar";
-import { installDevDiagnostics } from "./dev/diagnostics";
 import { sdkTheme } from "./theme";
 
 const { MetabaseProvider } = sdkExports;

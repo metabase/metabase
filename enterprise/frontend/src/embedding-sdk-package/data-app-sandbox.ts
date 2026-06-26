@@ -12,3 +12,10 @@ export type {
   DataAppFactory,
   DataAppSandboxEndowments,
 } from "metabase-enterprise/data_apps/sandbox";
+
+// Dev-only diagnostics overlay for a data-app dev harness: a corner button that
+// opens a panel of captured errors (including the sandbox's blocked-API logs).
+// Host-side, self-contained (React + inline styles), never endowed.
+export { DevToolbar } from "./components/public/DevToolbar/DevToolbar";
+export { installDevDiagnostics } from "./components/public/DevToolbar/diagnostics";
+export type { DevDiagnosticEntry } from "./components/public/DevToolbar/diagnostics";

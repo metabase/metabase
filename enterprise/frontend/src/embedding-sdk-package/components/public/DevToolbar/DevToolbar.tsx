@@ -1,3 +1,9 @@
+/* Dev-only diagnostics overlay shown only to developers building a data app,
+   never to end users. It's deliberately self-contained (React + inline styles,
+   no `metabase/ui`) so it stays lean and renders without a theme provider — so
+   its labels aren't localized and its colors are inline literals on purpose. */
+/* eslint-disable i18next/no-literal-string */
+/* eslint-disable metabase/no-color-literals */
 import { type CSSProperties, useState, useSyncExternalStore } from "react";
 
 import {
@@ -6,11 +12,12 @@ import {
   subscribeDevDiagnostics,
 } from "./diagnostics";
 
-// Dev-only overlay: a corner button that opens a diagnostics panel listing
-// captured errors (including the sandbox's blocked-API logs). Self-contained
-// (React + inline styles) so it ships with the template and never touches the
-// production bundle. Later this panel can also list the sandbox's blocked-API
-// allow/deny rules from the distortion callback.
+// A dev-only overlay for data apps: a corner button that opens a diagnostics
+// panel listing captured errors (including the sandbox's blocked-API logs). It's
+// self-contained (React + inline styles), so it needs no theme provider and adds
+// no UI-library dependency. Render it in the dev harness (and, later, the host)
+// after calling `installDevDiagnostics()`. Later this panel can also list the
+// sandbox's blocked-API rules from the distortion callback.
 
 const MAX_Z = 2147483647;
 
