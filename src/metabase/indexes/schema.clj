@@ -79,7 +79,7 @@
 
 (def statuses
   "Valid lifecycle states for a table index request."
-  #{:create-pending :update-pending :deletion-pending :running :succeeded :failed})
+  #{:create-pending :update-pending :delete-pending :running :succeeded :failed})
 
 (defn keywordize-structured
   "Re-keywordize the structured map's enum-valued fields after JSON storage flattened them to strings."

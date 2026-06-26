@@ -36,11 +36,11 @@
    :status     (mi/transform-validator mi/transform-keyword (partial mi/assert-enum schema/statuses))})
 
 (def ^:private non-applicable-statuses
-  #{:deletion-pending})
+  #{:delete-pending})
 
 (def pending-statuses
   "Statuses that require a full incremental rebuild before an index request's physical state can be trusted."
-  #{:create-pending :update-pending :deletion-pending :running})
+  #{:create-pending :update-pending :delete-pending :running})
 
 (def ^:private runnable-statuses
   #{:create-pending :update-pending :running :failed})
@@ -112,7 +112,7 @@
   "Rows the current execution can update while verifying indexes.
 
   `index-request-ids` is the applicable request id set hydrated at execution start. Only rows still `:running` are
-  settled; if a request is edited mid-run, its pending status is left for the next rebuild. Deletion-pending rows are
+  settled; if a request is edited mid-run, its pending status is left for the next rebuild. Delete-pending rows are
   also included so a successful full rebuild can remove rows for physical indexes that disappeared."
   [transform-id index-request-ids]
   (concat
@@ -124,7 +124,7 @@
                 {:order-by [[:id :asc]]}))
    (t2/select :model/TableIndex
               :transform_id transform-id
-              :status :deletion-pending
+              :status :delete-pending
               {:order-by [[:id :asc]]})))
 
 (defn select-applicable-by-id

@@ -71,7 +71,7 @@
                                                                     :columns [{:name "e"}]}}
                  :model/TableIndex {deleted-id :id} {:transform_id transform-id
                                                      :index_name   "deleted_idx"
-                                                     :status       :deletion-pending
+                                                     :status       :delete-pending
                                                      :structured   {:kind :btree :name "deleted_idx"
                                                                     :columns [{:name "d"}]}}]
     (let [ids (table-index/mark-runnable-indexes-running! [create-id update-id failed-id running-id])]
@@ -80,7 +80,7 @@
       (is (= :running (t2/select-one-fn :status :model/TableIndex update-id)))
       (is (= :running (t2/select-one-fn :status :model/TableIndex failed-id)))
       (is (= :running (t2/select-one-fn :status :model/TableIndex running-id)))
-      (is (= :deletion-pending (t2/select-one-fn :status :model/TableIndex deleted-id)))
+      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id)))
       (t2/update! :model/TableIndex create-id {:status :succeeded})
       (table-index/mark-unverified-running-indexes-failed! ids "not verified")
       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex create-id)))
@@ -103,7 +103,7 @@
                                                                     :columns [{:name "b"}]}}
                  :model/TableIndex {deleted-id :id} {:transform_id transform-id
                                                      :index_name   "deleted_idx"
-                                                     :status       :deletion-pending
+                                                     :status       :delete-pending
                                                      :structured   {:kind :btree :name "deleted_idx"
                                                                     :columns [{:name "c"}]}}]
     (is (= #{running-id deleted-id}

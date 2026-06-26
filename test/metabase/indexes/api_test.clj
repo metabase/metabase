@@ -48,7 +48,7 @@
                                               {:structured (assoc btree :columns [{:name "price"}])})]
             (is (= "update-pending" (:status updated)))
             (is (= "price" (-> updated :structured :columns first :name)))))
-        (testing "DELETE marks it deletion-pending until a rebuild drops the warehouse index"
+        (testing "DELETE marks it delete-pending until a rebuild drops the warehouse index"
           (mt/user-http-request :crowberto :delete 204 (str "indexes/request/" (:id created)))
           (with-redefs [metabase.driver/fetch-table-indexes
                         (fn [& _] [{:name "by_cat" :kind :btree :access-method "btree" :is-unique false
@@ -57,7 +57,7 @@
             (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
                                                        (str "indexes?transform-id=" transform-id))]
               (is (= [(:id created)] (map #(get-in % [:request :id]) data)))
-              (is (= "deletion-pending" (-> data first :request :status)))
+              (is (= "delete-pending" (-> data first :request :status)))
               (is (true? (:present_in_warehouse (first data)))))))))))
 
 (deftest merged-list-test

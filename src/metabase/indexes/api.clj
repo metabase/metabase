@@ -25,7 +25,7 @@
    [:index_name ms/NonBlankString]
    ;; The real structured schema (not a bare `:map`) so response coercion doesn't strip its keys.
    [:structured ::schema/index-structured]
-   [:status [:enum :create-pending :update-pending :deletion-pending :running :succeeded :failed]]
+   [:status [:enum :create-pending :update-pending :delete-pending :running :succeeded :failed]]
    [:error_message [:maybe :string]]
    [:created_by [:maybe ms/PositiveInt]]
    [:created_at :any]
@@ -127,5 +127,5 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
-    (t2/update! :model/TableIndex id {:status :deletion-pending}))
+    (t2/update! :model/TableIndex id {:status :delete-pending}))
   api/generic-204-no-content)

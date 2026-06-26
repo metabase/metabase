@@ -41,7 +41,7 @@ databaseChangeLog:
                   name: status
                   type: varchar(20)
                   defaultValue: create-pending
-                  remarks: "Lifecycle status: create-pending, update-pending, deletion-pending, running, succeeded, or failed"
+                  remarks: "Lifecycle status: create-pending, update-pending, delete-pending, running, succeeded, or failed"
                   constraints:
                     nullable: false
               - column:
