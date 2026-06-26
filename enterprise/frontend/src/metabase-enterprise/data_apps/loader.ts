@@ -4,12 +4,12 @@ import { pick } from "underscore";
 
 import * as sdkExports from "embedding-sdk-package";
 import * as dataAppExports from "embedding-sdk-package/data-app";
+import { createDataAppSandbox } from "embedding-sdk-package/data-app-sandbox";
 import { getSubpathSafeUrl } from "metabase/urls";
 
 import {
   DATA_APP_PROVIDER_PROP_KEYS,
   type DataAppMetabaseProviderProps,
-  createDataAppSandbox,
 } from "./sandbox";
 
 export interface LoadedDataApp {
