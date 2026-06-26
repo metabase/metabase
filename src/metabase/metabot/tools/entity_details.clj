@@ -240,20 +240,20 @@
 
 (declare ^:private related-tables)
 
-(def ^:private max-related-tables
-  "Maximum number of FK-related tables to expand when building entity context for the LLM.
+(def ^:private max-related-tables-with-fields
+  "Maximum number of related-tables to expand with their full column set.
 
-  Each related table fetches and formats its full column set, so on a database with a very large / highly-connected
-  schema, an unbounded FK fan-out fetches an unbounded number of columns that are cached for the request's lifetime,
-  exhausting the heap (metabase#76493). The LLM context window can't usefully hold hundreds of related tables anyway,
-  so we limited the number of tables for which we provide column metadata."
+  Each expanded table fetches and formats all of its columns. On a highly-connected schema with wide tables, this can
+  exhaust the heap (metabase#76493). We fetch only this many related tables with column metadata; the rest (up
+  to [[max-related-tables]]) are surfaced without columns."
   10)
 
-(def ^:private max-related-table-truncated-refs
-  "Maximum number of FK-related tables to list by id/name in the truncation list (see [[related-tables]]).
+(def ^:private max-related-tables
+  "Maximum number of related-tables to surface at all.
 
-  This list is cheap (ids/names/description only, no column fetch), so it can be longer than
-  [[max-related-tables]].  It lets the LLM see which related tables were excluded."
+  The first [[max-related-tables-with-fields]] of these carry their columns; the remainder are surfaced by identity
+  only (id/name/description/FK/FQN, no column fetch) so the LLM still knows they exist and can look them up
+  individually. Any related-tables beyond this are dropped with a note presented to the LLM in rendering."
   50)
 
 (defn- table-details
@@ -347,50 +347,42 @@
   "Context about tables related to `query` via a foreign key, as the entity-detail result keys callers merge in.
 
   Each distinct FK path (a `[table-id fk-field-id]` pair) is a separate related table, so the same table reachable
-  through multiple foreign keys appears once per FK.
+  through multiple foreign keys appears once per FK. We surface up to [[max-related-tables]] of them; only the
+  first [[max-related-tables-with-fields]] carry their column set to keep memory usage bounded (metabase#76493).
 
   Returns nil when the query has no FK-related tables, otherwise a map:
 
-    :related_tables       vector of detailed related-table maps (one per FK path), each optionally with its fields,
-                          capped at [[max-related-tables]]. This is the expensive part — each entry re-fetches and
-                          formats the target table's full column set.
-    :related_tables_total (optional) total number of FK-related tables before capping. Only present when truncation
-                          occurred, so callers infer that `:related_tables` was truncated by comparing it against
-                          the length of `:related_tables`.
-    :related_table_refs   (optional) list of `{:id :name :description :related_by}` for the FK paths *not* expanded
-                          into `:related_tables` (ids/names only, no column fetch), so the LLM knows more related
-                          tables exist and can look them up individually. This is list is also capped at
-                          [[max-related-table-truncated-refs]]. Only present when truncation occurred."
+    :related_tables                vector of related-table maps with their fields (if `with-fields?`is true). 
+                                   One per FK path, capped at [[max-related-tables-with-fields]].
+    :related_tables_without_fields (optional) the remaining surfaced FK paths, built the same way but without
+                                   columns. Present only when there are more :related_tables than
+                                   [[max-related-tables-with-fields]], capped so the two lists together hold at most
+                                   [[max-related-tables]].
+    :related_tables_total          (optional) total number of related-tables before capping. Present only when
+                                   that total exceeds [[max-related-tables]] (i.e. some were dropped entirely), so
+                                   the LLM knows the surfaced set is truncated."
   [query with-fields? field-values-fn]
   (let [fk-groups (fk-related-table-groups query)
         total     (count fk-groups)]
     (when (pos? total)
-      (when (> total max-related-tables)
-        (log/infof "Capping metabot related-table expansion to %d of %d FK-related tables."
-                   max-related-tables total))
-      (let [[detail-groups rest-groups] (split-at max-related-tables fk-groups)
-            refs-groups (take max-related-table-truncated-refs rest-groups)
-            details     (mapv
-                         (fn [[table-id fk-field-id fk-field-name]]
-                           (-> (table-details table-id
-                                              {:with-fields?         with-fields?
-                                               :field-values-fn      field-values-fn
-                                               :with-related-tables? false
-                                               :with-metrics?        false})
-                               (assoc :related_by {:id fk-field-id :name fk-field-name})))
-                         detail-groups)
-            refs        (mapv
-                         (fn [[table-id fk-field-id fk-field-name]]
-                           (let [table (lib.metadata/table query table-id)]
-                             {:id          table-id
-                              :name        (:name table)
-                              :description (:description table)
-                              :related_by  {:id fk-field-id :name fk-field-name}}))
-                         refs-groups)]
-        (cond-> {:related_tables details}
-          (> total (count details))
-          (assoc :related_tables_total total
-                 :related_table_refs   refs))))))
+      (when (> total max-related-tables-with-fields)
+        (log/infof "Capping metabot related-table column expansion to %d of %d related-tables (capped to %d total)."
+                   max-related-tables-with-fields total max-related-tables))
+      (let [[with-groups without-groups] (split-at max-related-tables-with-fields
+                                                   (take max-related-tables fk-groups))
+            build (fn [include-fields? [table-id fk-field-id fk-field-name]]
+                    (-> (table-details table-id
+                                       {:metadata-provider    query
+                                        :field-values-fn      field-values-fn
+                                        :with-fields?         include-fields?
+                                        :with-related-tables? false
+                                        :with-metrics?        false})
+                        (assoc :related_by {:id fk-field-id :name fk-field-name})))
+            with-fields    (mapv #(build (boolean with-fields?) %) with-groups)
+            without-fields (mapv #(build false %) without-groups)]
+        (cond-> {:related_tables with-fields}
+          (seq without-fields)         (assoc :related_tables_without_fields without-fields)
+          (> total max-related-tables) (assoc :related_tables_total total))))))
 
 (defn- card-details
   "Get details for a card."

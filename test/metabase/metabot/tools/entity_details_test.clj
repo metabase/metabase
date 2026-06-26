@@ -521,78 +521,79 @@
             (is (map? (:query_json output)))
             (is (= "mbql/query" (get-in output [:query_json "lib/type"])))))))))
 
-(deftest related-tables-capped-test
-  (testing (str "FK-related-table expansion is capped at `max-related-tables` so a table with a very "
-                "large / highly-connected schema can't fetch and pin an unbounded number of columns "
+(deftest related-tables-with-fields-capped-test
+  (testing (str "FK-related-table *column* expansion is capped at `max-related-tables-with-fields` so a table "
+                "with a very large / highly-connected schema can't fetch and pin an unbounded number of columns "
                 "during a single MetaBot context build (metabase#76493)")
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [related-count (fn []
-                              (-> (entity-details/get-table-details {:entity-type :table
-                                                                     :entity-id (mt/id :orders)})
-                                  :structured-output
-                                  :related_tables
-                                  count))]
+        (let [with-fields-tables (fn []
+                                   (-> (entity-details/get-table-details {:entity-type :table
+                                                                          :entity-id (mt/id :orders)})
+                                       :structured-output
+                                       :related_tables))]
           (testing "Orders has more than one FK-related table by default (Products + People)"
-            (is (> (related-count) 1)))
-          (testing "with the cap lowered, no more than `max-related-tables` related tables are expanded"
-            (with-redefs-fn {#'entity-details/max-related-tables 1}
+            (is (> (count (with-fields-tables)) 1)))
+          (testing "with the cap lowered, no more than `max-related-tables-with-fields` related tables carry columns"
+            (with-redefs-fn {#'entity-details/max-related-tables-with-fields 1}
               (fn []
-                (is (= 1 (related-count)))))))))))
+                (let [tables (with-fields-tables)]
+                  (is (= 1 (count tables)))
+                  (is (every? (comp seq :fields) tables)
+                      "the surfaced column-bearing table actually carries its fields"))))))))))
 
-(deftest related-tables-truncation-tracking-test
-  (testing (str "when the FK-related-table list is capped, the result reports the truncation and a "
-                "lightweight roster of the remaining related tables (id/name) so the LLM knows more exist and "
-                "can look them up individually (metabase#76493)")
+(deftest related-tables-without-fields-roster-test
+  (testing (str "FK-related tables beyond the column-expansion cap are still surfaced by identity (no column "
+                "fetch) in :related_tables_without_fields, so the LLM knows they exist and can look them up "
+                "individually (metabase#76493)")
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (let [details (fn []
                         (:structured-output
                          (entity-details/get-table-details {:entity-type :table
                                                             :entity-id (mt/id :orders)})))]
-          (testing "no truncation metadata when nothing was capped"
+          (testing "no without-fields roster when every related table fits under the column cap"
             (let [output (details)]
-              ;; truncation is inferred from the absence of :related_tables_total (only present once capped)
-              (is (nil? (:related_tables_total output)))
-              (is (nil? (:related_table_refs output)))))
-          (testing "capping the detailed list reports truncation + a full roster of related tables"
-            (with-redefs-fn {#'entity-details/max-related-tables 1}
+              (is (nil? (:related_tables_without_fields output)))
+              (is (nil? (:related_tables_total output)))))
+          (testing "lowering the column cap moves the remaining tables into the without-fields roster"
+            (with-redefs-fn {#'entity-details/max-related-tables-with-fields 1}
               (fn []
-                (let [output (details)]
-                  (is (= 1 (count (:related_tables output))))
-                  ;; :related_tables_total > (count :related_tables) signals the detailed list was truncated
-                  (is (= 2 (:related_tables_total output)))
-                  (is (> (:related_tables_total output) (count (:related_tables output))))
-                  (testing "roster lists the FK paths not expanded into :related_tables, by id and name"
-                    (is (= 1 (count (:related_table_refs output))))
-                    (is (every? :id (:related_table_refs output)))
-                    (is (every? :name (:related_table_refs output)))
-                    (testing ":related_tables and the roster are disjoint FK paths"
-                      (let [shown-paths (into #{} (map (juxt :id :related_by)) (:related_tables output))]
-                        (is (not-any? (comp shown-paths (juxt :id :related_by))
-                                      (:related_table_refs output))))))
-                  (testing "refs fits under its own cap: total accounts for the shown table plus the full refs list"
-                    (is (= (:related_tables_total output)
-                           (+ (count (:related_tables output))
-                              (count (:related_table_refs output)))))))))))))))
+                (let [output      (details)
+                      with-fields (:related_tables output)
+                      without     (:related_tables_without_fields output)]
+                  (is (= 1 (count with-fields)))
+                  (is (= 1 (count without)))
+                  (testing "roster entries carry id/name but no columns"
+                    (is (every? :id without))
+                    (is (every? :name without))
+                    (is (every? (comp empty? :fields) without)))
+                  (testing ":related_tables and the roster are disjoint FK paths"
+                    (let [shown-paths (into #{} (map (juxt :id :related_by)) with-fields)]
+                      (is (not-any? (comp shown-paths (juxt :id :related_by)) without))))
+                  (testing "no tables were dropped entirely, so no :related_tables_total"
+                    (is (nil? (:related_tables_total output)))))))))))))
 
-(deftest related-table-refs-truncation-test
-  (testing "the related-table roster is itself capped at `max-related-table-truncated-refs` and flags truncation"
+(deftest related-tables-total-truncation-test
+  (testing (str "FK-related tables beyond `max-related-tables` are dropped entirely and the drop is reported via "
+                ":related_tables_total so the LLM knows the surfaced set is itself truncated (metabase#76493)")
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
-        ;; expand zero tables so both of Orders' FK-related tables land in the (excluded) roster, which the cap of
-        ;; 1 then truncates
-        (with-redefs-fn {#'entity-details/max-related-tables   0
-                         #'entity-details/max-related-table-truncated-refs 1}
+        ;; surface only one of Orders' two FK-related tables; the other is dropped entirely
+        (with-redefs-fn {#'entity-details/max-related-tables 1}
           (fn []
             (let [output (:structured-output
                           (entity-details/get-table-details {:entity-type :table
                                                              :entity-id (mt/id :orders)}))]
-              (is (= 1 (count (:related_table_refs output))))
-              ;; truncation is inferred: total exceeds the shown tables plus the listed refs
+              (is (= 1 (count (:related_tables output))))
+              (is (nil? (:related_tables_without_fields output))
+                  "with only one table surfaced and it carrying fields, the without-fields roster is empty")
+              (is (= 2 (:related_tables_total output))
+                  ":related_tables_total reports the full FK-related count before the cap")
               (is (> (:related_tables_total output)
                      (+ (count (:related_tables output))
-                        (count (:related_table_refs output))))))))))))
+                        (count (:related_tables_without_fields output))))
+                  "total exceeds the surfaced set, signalling tables were dropped"))))))))
 
 (defn- orders+reviews-join-query
   "A query whose source table is Orders with an explicit join to Reviews.
