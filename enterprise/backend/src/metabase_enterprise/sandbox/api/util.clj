@@ -108,10 +108,27 @@
                        {:status-code 403}))))))
 
 (defenterprise card-query-touches-sandboxed-table?
-  "True when the current user has an enforced sandbox on any source table of `card`'s `:dataset_query`. Superusers are
-  never sandboxed; reads the per-request sandbox cache, so it only filters inside a request context."
+  "True when the current user has an enforced sandbox that could redact `card`'s query. Superusers are never sandboxed.
+
+  Reads the per-request sandbox cache, so it only filters inside a request context. Throws a 403 if no current user is
+  bound (and the user isn't a superuser) — matching `sandboxed-user-for-db?` / `sandboxed-user?`, so a missing binding
+  fails CLOSED rather than silently exposing the query.
+
+  Two detection modes:
+  - MBQL: `lib/all-source-table-ids` yields the structural source tables; check for an enforced sandbox on any.
+  - Native: `all-source-table-ids` returns nil (it only sees `:source-table` refs), so fall back to a database-level
+    check — any enforced sandbox on the card's database is treated as touching it, since we can't know which tables the
+    raw SQL reads."
   :feature :sandboxes
   [card]
   (boolean
-   (when-let [table-ids (some-> card :dataset_query not-empty lib/all-source-table-ids not-empty)]
-     (seq (enforced-sandboxes-for-tables table-ids)))))
+   (when-not *is-superuser?*
+     (if *current-user-id*
+       (if-let [table-ids (some-> card :dataset_query not-empty lib/all-source-table-ids not-empty)]
+         (seq (enforced-sandboxes-for-tables table-ids))
+         ;; Native (or otherwise source-table-less) query: can't enumerate tables, so gate on any sandbox in the card's db.
+         (when-let [db-id (:database_id card)]
+           (sandboxed-user-for-db? db-id)))
+       ;; No *current-user-id* bound: can't check sandboxes, so throw rather than return false for a user who may be sandboxed.
+       (throw (ex-info (str (tru "No current user found"))
+                       {:status-code 403}))))))

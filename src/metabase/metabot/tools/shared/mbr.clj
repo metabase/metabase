@@ -152,18 +152,15 @@
    non-sandboxed users / superusers / OSS, `mbr` is returned unchanged.
 
    Relies on the request context: the predicate reads the per-request `*sandboxes-for-user*`
-   cache (bound by `bind-current-user` middleware on the metabot/agent endpoints). It therefore
-   fails OPEN — returns unredacted — if ever called without that binding (e.g. a bare
-   `(binding [*current-user-id* id] ...)`, or future parallelization). read_resource runs on the
-   request thread today, so this holds; a caller that breaks that assumption must rebind the cache.
+   cache (bound by `bind-current-user` middleware on the metabot/agent endpoints). It fails CLOSED
+   — `card-query-touches-sandboxed-table?` throws a 403 if called without a `*current-user-id*`
+   binding (e.g. a bare `(binding [...] ...)` that forgets it, or future parallelization that loses
+   dynamic bindings on worker threads) rather than silently exposing the query.
 
-   Known gap: detection uses `lib/all-source-table-ids`, which only sees `:source-table` refs, so a
-   pure *native* card over a sandboxed table is NOT detected and its `:dataset_query` is exposed.
-   This read path gates only on collection `can-read?`, not native-query perms, so a user with a
-   (row- or column-) sandbox on a table the native SQL references — but collection access to the
-   card — reaches the unredacted query. What leaks is the author-written SQL text (table/column
-   names, literal filter values), not row data. Tracked as a follow-up; the intended fix is to fall
-   back to `sandboxed-user-for-db?` on the card's database when the query is native."
+   Native queries are covered: `lib/all-source-table-ids` only sees `:source-table` refs, so the
+   predicate falls back to a database-level sandbox check (`sandboxed-user-for-db?`) when a query
+   has no structural source tables — any enforced sandbox on the card's database withholds the
+   keys, since the raw SQL's referenced tables can't be enumerated."
   [model instance mbr]
   (if (and (= model "Card")
            (perms/card-query-touches-sandboxed-table? instance))

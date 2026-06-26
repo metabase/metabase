@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
+   [metabase.api.common :as api]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -34,7 +35,27 @@
   (testing "false for an admin (superusers are never sandboxed)"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {:dataset_query (table-query :venues)}]
-        (is (false? (perms/card-query-touches-sandboxed-table? card)))))))
+        (is (false? (perms/card-query-touches-sandboxed-table? card))))))
+  (testing "native query over the sandboxed db is flagged via the db-level fallback (all-source-table-ids sees no tables)"
+    ;; F1: native SQL has no :source-table, so the predicate falls back to sandboxed-user-for-db?.
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
+                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+                      :attributes {:cat 50}}
+      (mt/with-temp [:model/Card native-card {:dataset_query {:database (mt/id)
+                                                              :type     :native
+                                                              :native   {:query "SELECT * FROM venues"}}}]
+        (is (true? (perms/card-query-touches-sandboxed-table? native-card))
+            "native card over the sandboxed database is flagged — its raw SQL could read the sandboxed table"))))
+  (testing "throws 403 (fails closed) when no current user is bound, rather than returning false"
+    ;; F2: matches sandboxed-user-for-db? / sandboxed-user?. A lost binding must not silently disable redaction.
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
+                                            :query      (mt.tu/restricted-column-query (mt/id))}}
+                      :attributes {:cat 50}}
+      (mt/with-temp [:model/Card card {:dataset_query (table-query :venues)}]
+        (binding [api/*current-user-id*   nil
+                  api/*is-superuser?*     false]
+          (is (thrown? clojure.lang.ExceptionInfo
+                       (perms/card-query-touches-sandboxed-table? card))))))))
 
 (deftest read-resource-redacts-sandboxed-card-test
   (testing "a sandboxed user reading a card MBR does NOT get :dataset_query / :result_metadata"
