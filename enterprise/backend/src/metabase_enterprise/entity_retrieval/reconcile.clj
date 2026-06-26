@@ -181,11 +181,13 @@
 (defn- ai-context-by-entity
   "Map of entity [[entity-class]] -> ai_context for every `osi_ai_context` row, so a card's curated context
   is found under its class even when the card's current type differs from the one it was curated under.
-  (A card with both a metric and a model row — created across a flip — collapses last-wins; the API keeps
-  one row per entity in the common case.)"
+  If a card has two rows (a metric and a model — reachable across a relabel, since the API keys uniqueness
+  on the exact type) the most-recently-updated one deterministically wins."
   []
+  ;; ascending order + last-wins index-by => the latest-updated row per class is the one kept.
   (u/index-by entity-class :ai_context
-              (t2/select [:model/OsiAiContext :entity_type :entity_local_id :ai_context])))
+              (t2/select [:model/OsiAiContext :entity_type :entity_local_id :ai_context]
+                         {:order-by [[:updated_at :asc] [:id :asc]]})))
 
 (defn- dedup-by-doc-id [docs]
   ;; distinct-by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice)
@@ -212,7 +214,9 @@
                                    :entity_local_id entity-local-id
                                    :entity_type (if (entity-retrieval/card-entity-types entity-type)
                                                   [:in entity-retrieval/card-entity-types]
-                                                  entity-type))]
+                                                  entity-type)
+                                   ;; latest-updated wins if a relabel left two card rows for this id
+                                   {:order-by [[:updated_at :desc] [:id :desc]]})]
       (dedup-by-doc-id (entity->docs member ai-ctx)))
     []))
 

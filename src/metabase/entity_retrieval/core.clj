@@ -53,10 +53,14 @@
                                    [:= :entity_type t])
                                  [:= :entity_local_id id]]))
                          wanted)
+          ;; ascending order so the most-recently-updated row wins per class (last assoc wins) when a relabel
+          ;; left two card rows for one id; drop blanks *after* collapsing, so clearing the latest row's
+          ;; instructions doesn't resurrect an older row's text.
           by-class (into {} (remove (comp str/blank? val))
                          (t2/select-fn->fn #(entity-class (:entity_type %) (:entity_local_id %))
                                            (comp :instructions :ai_context)
-                                           :model/OsiAiContext {:where clause}))]
+                                           :model/OsiAiContext
+                                           {:where clause :order-by [[:updated_at :asc] [:id :asc]]}))]
       ;; key the result back by the caller's original [type id] ref
       (into {} (keep (fn [[t id]] (when-let [instr (by-class (entity-class t id))] [[t id] instr]))) wanted))
     {}))

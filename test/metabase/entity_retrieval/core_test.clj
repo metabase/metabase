@@ -22,3 +22,16 @@
                (entity-retrieval/ai-context-instructions [{:model "model" :id 4242}]))))
       (testing "a non-card ref of the same id matches exactly, so it finds nothing"
         (is (= {} (entity-retrieval/ai-context-instructions [{:model "table" :id 4242}])))))))
+
+(deftest ai-context-instructions-prefers-latest-row-for-duplicate-card-test
+  (testing "when a relabel left two card rows for one id, the latest-updated row's instructions win"
+    ;; metric row created first (lower id), model row second (higher id) — the id tie-break makes the
+    ;; later row win deterministically even when updated_at is equal.
+    (mt/with-temp [:model/OsiAiContext _ {:entity_type     "metric"
+                                          :entity_local_id 4343
+                                          :ai_context      {:instructions "stale metric guidance"}}
+                   :model/OsiAiContext _ {:entity_type     "model"
+                                          :entity_local_id 4343
+                                          :ai_context      {:instructions "fresh model guidance"}}]
+      (is (= {["model" 4343] "fresh model guidance"}
+             (entity-retrieval/ai-context-instructions [{:model "model" :id 4343}]))))))
