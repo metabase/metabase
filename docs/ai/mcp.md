@@ -49,7 +49,7 @@ See [Claude Code MCP docs](https://code.claude.com/docs/en/mcp).
 
 ## Available tools
 
-Some clients (like Claude Desktop) will ask you to approve each tool the first time it's used. The groups below match the categories your client shows when you approve or block tools.
+Some clients (like Claude Desktop) will ask you to approve each tool the first time it's used. We've grouped the tools below, but your client may simply list the available tools.
 
 ### Interactive tools
 
@@ -62,7 +62,17 @@ These render inline visualizations in your AI client, and only work in clients t
 
 - **Construct query** (`construct_query`): Construct a query against a table or metric. Returns an opaque query handle that can be passed to `execute_query`.
 - **Execute query** (`execute_query`): Execute a previously constructed query and return the results with column metadata, row count, and execution time.
-- **Query tables and metrics** (`query`): Run a query and return results, paging through large result sets with a continuation token. Accepts a query handle from `construct_query`, a fresh query, or a continuation token.
+- **Query tables and metrics** (`query`): Run a query and return results, paging through large result sets with a continuation token. Accepts a query handle from `construct_query`, a fresh query, or a continuation token. Paging returns up to 200 rows per page and 2,000 rows total.
+- **Read resource** (`read_resource`): Read up to five Metabase entities (or lists) per call by `metabase://` URI. List URIs (like a collection's items or a table's fields) return up to 25 items each. Entities available to read include:
+  - collection
+  - dashboard
+  - database
+  - metric
+  - model
+  - question
+  - schema
+  - table
+  - transform
 - **Search tables and metrics** (`search`): Find tables and metrics using keyword or natural language search.
 
 ### Write/delete tools
@@ -70,16 +80,7 @@ These render inline visualizations in your AI client, and only work in clients t
 - **Create collection** (`create_collection`): Create a new collection, optionally nested under a parent collection.
 - **Create dashboard** (`create_dashboard`): Create a new dashboard, optionally populated with saved questions.
 - **Create question** (`create_question`): Save a query as a named question.
-- **Execute SQL** (`execute_sql`): Execute a raw SQL query against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting.
-- **Read resource** (`read_resource`): Read one to five Metabase entities per call by `metabase://` URI. Entities available to read include:
-  - database
-  - schema
-  - table
-  - collection
-  - question
-  - dashboard
-  - metric
-  - transform
+- **Execute SQL** (`execute_sql`): Execute a raw SQL query against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting (enabled by default).
 - **Update dashboard** (`update_dashboard`): Update a dashboard's metadata (name, description, collection, archived).
 - **Update question** (`update_question`): Update a saved question. Setting `collection_id` moves the question to another collection.
 
