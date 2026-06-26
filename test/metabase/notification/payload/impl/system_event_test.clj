@@ -130,20 +130,20 @@
       (check false
              "You're invited to join SuperStar's Metabase"
              [#"Ngoc wants you to join them on Metabase"
-              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]
+              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join Metabase now</a>"]
              "Ngoc")
       (testing "with sso enabled"
         (mt/with-dynamic-fn-redefs [sso.settings/sso-enabled? (constantly true)
                                     session.settings/enable-password-login (constantly false)]
           (check false
                  "You're invited to join SuperStar's Metabase"
-                 [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join now</a>"]
+                 [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join Metabase now</a>"]
                  "Ngoc")))
       (testing "with invitor's first_name not defined"
         (check false
                "You're invited to join SuperStar's Metabase"
                [#"You are invited to join Metabase"
-                #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]
+                #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join Metabase now</a>"]
                nil)))
     (testing "subject is translated"
       (mt/with-mock-i18n-bundles! {"es" {:messages {"You''re invited to join {0}''s {1}"

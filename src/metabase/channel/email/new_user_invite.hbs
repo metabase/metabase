@@ -32,7 +32,7 @@
             {{/if}}
             <span style="vertical-align: middle; margin-left: 8px; font-size: 18px; font-weight: 600; color: #2F3C45;">{{payload.custom.invite_target_name}}</span>
           </div>
-          <p style="margin-bottom: 0; line-height: 24px; color: #656F76; font-size: 15px;">
+          <p style="margin-bottom: 32px; line-height: 24px; color: #656F76; font-size: 15px;">
             {{context.application_name}} is a simple and powerful analytics tool that lets you easily ask questions and get answers about your company’s data.
           </p>
         </div>
@@ -83,9 +83,9 @@
       {{/if}}
       <div style="padding-right: 0; padding-left: 0; text-align: center; width: 100%;">
         <a
-          style="font-size: 15px; padding-top: 16px; padding-bottom: 16px; cursor: pointer; text-decoration: none; font-weight: 700; border-radius: 12px; background-color: #358CD9; color: #fff; line-height: 16px; display: inline-block; margin-left: auto; margin-right: auto; min-width: 200px;"
+          style="font-size: 15px; padding-top: 16px; padding-bottom: 16px; padding-left: 32px; padding-right: 32px; cursor: pointer; text-decoration: none; font-weight: 700; border-radius: 12px; background-color: #358CD9; color: #fff; line-height: 16px; display: inline-block; margin-left: auto; margin-right: auto; min-width: 200px;"
           href="{{payload.custom.user_invited_join_url}}"
-        >Join now</a>
+        >Join {{context.application_name}} now</a>
       </div>
       {{#if payload.event_info.object.is_from_setup}}
         <div style="max-width: 504px; margin-left: auto; margin-right: auto; line-height: 24px; color: #656F76; text-align: center;">
