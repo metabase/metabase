@@ -1,0 +1,94 @@
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.content {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * Hover container for the top chrome. It is pinned to the top edge and does NOT
+ * move between states: the collapsed trigger stays put (so hovering it reliably
+ * toggles), and the panel slides independently as an absolutely-positioned
+ * child. Both live in this one element, so moving the cursor between the trigger
+ * and the open panel never counts as leaving.
+ */
+.zone {
+  --offset: 0px;
+
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+}
+
+/*
+ * Stable hotspot at the very top edge. Its padding enlarges the catch area
+ * around the small visible handle; this box never moves, so the trigger can't
+ * slide out from under the cursor when the panel opens.
+ */
+.trigger {
+  padding: 0 0.75rem 0.5rem;
+}
+
+/*
+ * The handle paints its own surface, border and shadow so it reads on top of any
+ * data-app background. It fades out once the panel is open — the card is then
+ * the affordance.
+ */
+.handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 1.25rem;
+  color: var(--mb-color-text-secondary);
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-top: none;
+  border-radius: 0 0 var(--mantine-radius-md) var(--mantine-radius-md);
+  box-shadow: 0 2px 5px var(--mb-color-shadow);
+  transition: opacity 120ms ease;
+}
+
+.zone.expanded .handle {
+  opacity: 0;
+}
+
+/*
+ * The card slides in from above the top edge. When collapsed it is parked fully
+ * out of view (the handle is the only indicator); when expanded it rests
+ * `--offset` below the edge.
+ */
+.panel {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, calc(-100% - var(--offset)));
+  transition: transform 180ms ease;
+}
+
+.zone.expanded .panel {
+  transform: translate(-50%, var(--offset));
+}
+
+/*
+ * Full-width bridge filling the gap above the open card, so the cursor crossing
+ * between the trigger and the card never falls into a dead zone that would
+ * collapse the panel.
+ */
+.panel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: calc(var(--offset) + 0.75rem);
+}
