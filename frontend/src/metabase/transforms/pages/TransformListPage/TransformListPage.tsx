@@ -55,6 +55,7 @@ import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import {
   buildTreeData,
   getDefaultExpandedIds,
+  useGetNodeSyncColor,
   useGetTransformWarnings,
 } from "./utils";
 
@@ -144,6 +145,7 @@ export const TransformListPage = ({
   );
 
   const warningsByTransformId = useGetTransformWarnings(transforms);
+  const getNodeSyncColor = useGetNodeSyncColor();
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
@@ -192,6 +194,7 @@ export const TransformListPage = ({
             row,
             hasPythonTransformsFeature,
             warningsByTransformId,
+            syncColor: getNodeSyncColor(row.original),
           }),
       },
       {
@@ -265,7 +268,7 @@ export const TransformListPage = ({
           ) : null,
       },
     ];
-  }, [hasPythonTransformsFeature, warningsByTransformId]);
+  }, [hasPythonTransformsFeature, warningsByTransformId, getNodeSyncColor]);
 
   const getRowHref = useCallback((row: Row<TreeNode>) => {
     if (isRowDisabled(row)) {
@@ -375,10 +378,12 @@ function getNameCell({
   row,
   hasPythonTransformsFeature,
   warningsByTransformId,
+  syncColor,
 }: {
   row: Row<TreeNode>;
   hasPythonTransformsFeature: boolean;
   warningsByTransformId: Map<number, string>;
+  syncColor: ColorName | undefined;
 }) {
   const getTooltipProps = (message: string | undefined) => {
     if (!message) {
@@ -409,13 +414,17 @@ function getNameCell({
     row.original.nodeType === "library" && !hasPythonTransformsFeature;
 
   const hasWarning = !!getWarningMessage();
+  const iconColor = hasWarning
+    ? "warning"
+    : (syncColor ?? getNodeIconColor(row.original));
 
   return (
     <Group gap="sm" wrap="nowrap" miw={0}>
       <EntityNameCell
         data-testid="tree-node-name"
         icon={hasWarning ? "warning" : row.original.icon}
-        iconColor={hasWarning ? "warning" : getNodeIconColor(row.original)}
+        iconColor={iconColor}
+        nameColor={syncColor}
         name={row.original.name}
         ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
       />
