@@ -51,9 +51,9 @@ export function DataAppLayout({ params, children }: DataAppLayoutProps) {
   const appOptions = useMemo(
     () =>
       apps
-        .filter((app) => app.enabled)
+        .filter((app) => app.enabled || app.name === name)
         .map((app) => ({ value: app.name, label: app.display_name })),
-    [apps],
+    [apps, name],
   );
 
   const handleGoBack = () => {
