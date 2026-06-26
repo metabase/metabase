@@ -194,3 +194,44 @@
               "orphan page (no queries) was GC'd")
           (is (seq (t2/select-pks-vec :model/ExplorationPage :exploration_block_id (:id g)))
               "pages for the live selection remain"))))))
+
+(defn- comment-on-page!
+  "Anchor an exploration comment on `page-id` (stored as a string in `child_target_id`, the way
+  the FE posts it). Returns the comment id."
+  [exploration-id page-id]
+  (t2/insert-returning-pk! :model/Comment
+                           {:target_type     "exploration"
+                            :target_id       exploration-id
+                            :child_target_id (str page-id)
+                            :creator_id      (mt/user->id :rasta)
+                            :content         {:type "doc"}}))
+
+(deftest reconcile-retains-commented-orphan-page-test
+  (testing "a rerun that drops a page's selection retains the page iff a comment anchors to it,
+            while a no-comment empty page in the same rerun is still GC'd"
+    (mt/with-temporary-setting-values [explorations-query-planner :mechanical]
+      (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                     :model/Exploration e {:name "x"}
+                     :model/ExplorationThread t {:exploration_id (:id e)}]
+        (let [cid       (:id metric)
+              g         (mk-block! (:id t) cid "d1" "Price" "type/Number")
+              ;; two selections the planner won't regenerate: one with a comment, one without.
+              commented (t2/insert-returning-pk! :model/ExplorationPage
+                                                 {:exploration_block_id (:id g)
+                                                  :card_id              cid
+                                                  :dimension_id         "gone-but-commented"
+                                                  :query_type           "default"})
+              bare      (t2/insert-returning-pk! :model/ExplorationPage
+                                                 {:exploration_block_id (:id g)
+                                                  :card_id              cid
+                                                  :dimension_id         "gone-no-comment"
+                                                  :query_type           "default"})
+              cmt       (comment-on-page! (:id e) commented)]
+          (is (= :ok (query-plan/generate-query-plan! (:id t))))
+          (testing "the commented orphan page is retained so the comment still resolves"
+            (is (some? (t2/select-one-pk :model/ExplorationPage :id commented)))
+            (is (= (str commented)
+                   (t2/select-one-fn :child_target_id :model/Comment :id cmt))
+                "the comment still anchors to the surviving page"))
+          (testing "the orphan page with no comment is GC'd as before"
+            (is (nil? (t2/select-one-pk :model/ExplorationPage :id bare)))))))))

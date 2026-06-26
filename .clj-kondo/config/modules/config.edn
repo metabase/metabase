@@ -1041,6 +1041,7 @@
    :model-exports #{:model/Exploration}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/Comment
                     :model/Document
                     :model/Segment
                     :model/StoredResult

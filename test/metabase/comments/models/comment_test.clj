@@ -6,12 +6,12 @@
    [toucan2.core :as t2]))
 
 (deftest exploration-comment-url-test
-  (testing "exploration comment URLs percent-encode path segments and query params"
+  (testing "exploration comment URLs deep-link to the comment's page, with context as query params"
     (let [exploration (t2/instance :model/Exploration {:id 7})
           comment     {:id                42
-                       :child_target_id   "auto:9:42:orders.created_at:default"
+                       :child_target_id   "123"
                        :context           {:timeline_id 3}}]
-      (is (= (str "/question/research/7/group/auto%3A9%3A42%3Aorders.created_at%3Adefault"
+      (is (= (str "/question/research/7/page/123"
                   "?timeline=3&comments=true#comment-42")
              (comment/url exploration comment)))))
   (testing "context keys that are not deep-linked are omitted from the URL"
@@ -19,7 +19,7 @@
           comment     {:id                42
                        :child_target_id   "group-1"
                        :context           {:timeline_id 3 :scroll_y 120}}]
-      (is (= (str "/question/research/7/group/group-1"
+      (is (= (str "/question/research/7/page/group-1"
                   "?timeline=3&comments=true#comment-42")
              (comment/url exploration comment))))))
 

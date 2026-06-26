@@ -130,17 +130,35 @@
         (for [[pos k] (map-indexed vector (distinct (map page-key rows)))]
           [k (find-or-create-page! k pos)])))
 
+(defn- pages-with-comments
+  "Subset of `page-ids` that an exploration comment still anchors to. A comment stores its
+  page's id (as a string) in `child_target_id`, so a page is \"commented\" when some
+  `\"exploration\"`-targeted comment's `child_target_id` equals `(str page-id)`. This is the
+  retention safety-net: such a page must survive a rerun that drops its selection so the
+  comment keeps resolving."
+  [page-ids]
+  (if (seq page-ids)
+    (let [by-str (into {} (map (juxt str identity)) page-ids)]
+      (->> (t2/select-fn-set :child_target_id :model/Comment
+                             :target_type     "exploration"
+                             :child_target_id [:in (keys by-str)])
+           (into #{} (keep by-str))))
+    #{}))
+
 (defn- gc-orphan-pages!
-  "Delete pages of `thread-id`'s blocks that ended up with no queries — e.g. a selection
-  the user removed before a rerun. `used-page-ids` are the pages the current plan kept.
-  (Issue: once comments/stars exist, this becomes anchored-content-aware.)"
+  "Delete pages of `thread-id`'s blocks that ended up with no queries — e.g. a selection the
+  user removed before a rerun — except pages a comment still anchors to, which are retained
+  (out of the active selection but reachable from the comment). `used-page-ids` are the pages
+  the current plan kept."
   [thread-id used-page-ids]
   (let [block-ids (t2/select-pks-vec :model/ExplorationBlock :exploration_thread_id thread-id)
         orphans   (when (seq block-ids)
                     (->> (t2/select-pks-vec :model/ExplorationPage :exploration_block_id [:in block-ids])
-                         (remove (set used-page-ids))))]
-    (when (seq orphans)
-      (t2/delete! :model/ExplorationPage :id [:in orphans]))))
+                         (remove (set used-page-ids))))
+        retained  (pages-with-comments orphans)
+        deletable (remove retained orphans)]
+    (when (seq deletable)
+      (t2/delete! :model/ExplorationPage :id [:in deletable]))))
 
 (defn- insert-plan-rows!
   "Materialize each plan item into row recipes, reconcile each to its persisted

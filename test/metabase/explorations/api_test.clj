@@ -1534,7 +1534,7 @@
                   {:type "doc" :content []}
                   77
                   99
-                  "/question/research/7/group/auto%3A42%3Ad1")
+                  "/question/research/7/page/42")
           embed  (first (:content result))]
       (is (= "doc" (:type result)))
       (is (= 1 (count (:content result))))
@@ -1543,7 +1543,7 @@
                          :attrs {:id 77
                                  :name nil
                                  :stored_result_id 99
-                                 :chart_href "/question/research/7/group/auto%3A42%3Ad1"}}]}
+                                 :chart_href "/question/research/7/page/42"}}]}
              embed))))
   (testing "tolerates a missing/non-doc root by starting from an empty doc"
     (let [result (#'explorations.api/append-chart-nodes nil 1 1 "/x")]
