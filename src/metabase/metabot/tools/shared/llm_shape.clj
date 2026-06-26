@@ -139,6 +139,8 @@
    :is_field (= type :field)
    :is_collection (= type :collection)
    :is_related_table (= type :related_table)
+   :is_related_tables (= type :related_tables)
+   :is_related_table_ref (= type :related_table_ref)
    :is_metric (= type :metric)
    :is_table (= type :table)
    :is_model (= type :model)
@@ -286,13 +288,13 @@
 (defn- related-table-ref->xml
   "One entry in the related-tables truncation list."
   [{:keys [id name description related_by]}]
-  (str "<related-table-ref"
-       (when (some? id) (str " id=\"" id "\""))
-       " name=\"" (escape-xml name) "\""
-       (when related_by (str " related_by=\"" (escape-xml related_by) "\""))
-       (when (not-empty description)
-         (str " description=\"" (escape-xml (truncate description max-related-table-ref-description-length)) "\""))
-       "/>"))
+  (render-llm-template
+   :related_table_ref
+   {:related_table_ref_id          (when (some? id) (str id))
+    :related_table_ref_name        name
+    :related_table_ref_related_by  related_by
+    :related_table_ref_description (when (not-empty description)
+                                     (truncate description max-related-table-ref-description-length))}))
 
 (defn- related-tables->xml
   "Render the related-tables block for a table/model.
@@ -307,24 +309,22 @@
   Returns nil when there is nothing to render."
   [related-tables {:keys [total refs]}]
   (let [shown           (count related-tables)
-        truncated?      (and total (> total shown))
-        refs-truncated? (and total (> total (+ shown (count refs))))
-        detailed (when (seq related-tables)
-                   (str/join "" (map related-table->xml related-tables)))
-        note     (when truncated?
-                   (str "<related-tables-truncated shown=\"" shown "\""
-                        (when total (str " total=\"" total "\"")) ">\n"
-                        "Only the related tables above are shown with full column details; this entity "
-                        "has more FK-related tables than are shown here.\n"
-                        (when (seq refs)
-                          (str "List of related tables:\n"
-                               (str/join "\n" (map related-table-ref->xml refs)) "\n"))
-                        (when refs-truncated?
-                          (format "(This list is itself truncated: %d more related tables exist.)\n"
-                                  (- total (count refs))))
-                        "</related-tables-truncated>"))]
-    (when (or detailed note)
-      (str detailed (when (and detailed note) "\n") note))))
+        truncated?      (boolean (and total (> total shown)))
+        refs-truncated? (boolean (and total (> total (+ shown (count refs)))))
+        detailed        (when (seq related-tables)
+                          (str/join "" (map related-table->xml related-tables)))
+        refs-xml        (when (and truncated? (seq refs))
+                          (str/join "\n" (map related-table-ref->xml refs)))]
+    (when (or detailed truncated?)
+      (render-llm-template
+       :related_tables
+       {:related_tables_detailed_xml         detailed
+        :related_tables_truncated            truncated?
+        :related_tables_shown                shown
+        :related_tables_total                total
+        :related_tables_refs_xml             refs-xml
+        :related_tables_refs_truncated       refs-truncated?
+        :related_tables_refs_truncated_count (when refs-truncated? (- total (count refs)))}))))
 
 (defn- dimension-source-table
   "Human-readable `schema.table` for a queryable dimension, derived from its portable FK, plus

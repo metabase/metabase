@@ -27,6 +27,16 @@
 <related-table{% if related_table_id %} id="{{related_table_id}}"{% endif %} name="{{related_table_name}}"{% if related_table_related_by %} related_by="{{related_table_related_by}}"{% endif %}{% if related_table_database_name %} database_name="{{related_table_database_name}}"{% endif %} fully_qualified_name="{{related_table_fqn}}">{% if related_table_fields_xml %}
 {{related_table_fields_xml|safe}}{% endif %}</related-table>
 {% endif %}
+{% if is_related_table_ref %}
+<related-table-ref{% if related_table_ref_id %} id="{{related_table_ref_id}}"{% endif %} name="{{related_table_ref_name}}"{% if related_table_ref_related_by %} related_by="{{related_table_ref_related_by}}"{% endif %}{% if related_table_ref_description %} description="{{related_table_ref_description}}"{% endif %}/>
+{% endif %}
+{% if is_related_tables %}{% if related_tables_detailed_xml %}{{related_tables_detailed_xml|safe}}
+{% endif %}{% if related_tables_truncated %}<related-tables-truncated shown="{{related_tables_shown}}"{% if related_tables_total %} total="{{related_tables_total}}"{% endif %}>
+Only the related tables above are shown with full column details; this entity has more FK-related tables than are shown here.
+{% if related_tables_refs_xml %}List of related tables:
+{{related_tables_refs_xml|safe}}
+{% endif %}{% if related_tables_refs_truncated %}(This list is itself truncated: {{related_tables_refs_truncated_count}} more related tables exist.)
+{% endif %}</related-tables-truncated>{% endif %}{% endif %}
 {% if is_metric %}
 <metric id="{{metric_id}}", name="{{metric_name}}" is_verified="{{metric_verified}}"{% if metric_database_name %} database_name="{{metric_database_name}}"{% endif %}{% if metric_base_table_fqn %} base_table_fully_qualified_name="{{metric_base_table_fqn}}"{% endif %}{% if metric_portable_entity_id %} portable_entity_id="{{metric_portable_entity_id}}"{% endif %}>
 {% if metric_collection_xml %}
