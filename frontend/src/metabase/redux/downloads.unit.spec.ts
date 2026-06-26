@@ -8,6 +8,7 @@ import {
   getChartFileName,
   getDatasetDownloadUrl,
   getDatasetParams,
+  readDownloadBlob,
 } from "./downloads";
 
 describe("getDatasetResponse", () => {
@@ -147,6 +148,37 @@ describe("getDatasetParams - public question (uuid-based)", () => {
     const url = new URLSearchParams(downloadParams.params);
     expect(url.get("format_rows")).toBe("true");
     expect(url.get("pivot_results")).toBe("true");
+  });
+
+  it("requests the UTF-8 BOM so exports open correctly in Excel", () => {
+    const downloadParams = getDatasetParams({
+      type: "csv",
+      question,
+      result,
+      uuid: PUBLIC_UUID,
+    });
+
+    const url = new URLSearchParams(downloadParams.params);
+    expect(url.get("csv_include_bom")).toBe("true");
+  });
+});
+
+describe("readDownloadBlob", () => {
+  it("returns the blob when the response reads to completion", async () => {
+    const blob = new Blob(["a,b,c"], { type: "text/csv" });
+    const response = { blob: () => Promise.resolve(blob) } as Response;
+
+    await expect(readDownloadBlob(response)).resolves.toBe(blob);
+  });
+
+  it("surfaces a localized error when the stream was aborted mid-download", async () => {
+    const response = {
+      blob: () => Promise.reject(new TypeError("Failed to fetch")),
+    } as unknown as Response;
+
+    await expect(readDownloadBlob(response)).rejects.toThrow(
+      "The download was interrupted and the file may be incomplete. Please try again.",
+    );
   });
 });
 

@@ -745,7 +745,9 @@ describe("Remote Sync", () => {
       it("should disable sync toggles in read-only mode", () => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
-        H.configureGit("read-only");
+        // Wait for the read-only import to finish before creating the tenant collection: racing
+        // their two implicit collection-permission revision bumps triggers a primary-key 500.
+        H.configureGitAndPullChanges("read-only");
 
         // Create a tenant collection
         H.createSharedTenantCollection("Read Only Tenant Collection");

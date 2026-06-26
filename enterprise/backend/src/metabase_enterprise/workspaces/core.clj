@@ -31,6 +31,7 @@
          │                                                ▼
          └──────────────────────────────────────── provisioned"
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -38,6 +39,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
@@ -222,10 +224,59 @@
           (provisioning/provision-single! wsd-id))
         (workspace/get-workspace (:id ws))))))
 
+(defn- orphaned-resources-message
+  [workspace-id failures]
+  (str (format "Workspace %d was deleted, but warehouse cleanup failed for %d database(s). "
+               workspace-id (count failures))
+       "These resources were left in place and may need to be removed manually:\n"
+       (str/join "\n"
+                 (for [{:keys [database_id driver schema user reason]} failures]
+                   (format "  - database %d (%s): schema \"%s\", user \"%s\" — not removed because: %s"
+                           database_id (name driver) schema user reason)))))
+
+(defn- pending-database?
+  "True for a WorkspaceDatabase that is mid-provision/deprovision — a state we can't
+  safely tear down because warehouse work may still be in flight on another node."
+  [wsd]
+  (contains? #{:provisioning :deprovisioning} (:status wsd)))
+
 (defn delete-workspace!
-  "Deprovision all databases (blocking), then delete the workspace."
-  [id]
-  (let [ws (assert-workspace-exists id)]
-    (when (some #(= :provisioned (:status %)) (:databases ws))
-      (provisioning/deprovision-workspace! id))
-    (workspace/delete-workspace! id)))
+  "Tear down each `:provisioned` database's warehouse isolation (best-effort,
+  blocking), then delete the workspace.
+
+  `ignore-pending?` (default false) controls databases still `:provisioning` or
+  `:deprovisioning`: when false, refuses with a 409 (`:pending_databases` lists
+  them) since their warehouse work may be in flight; when true, those databases are
+  left untouched in the warehouse and only their app-DB rows are removed.
+
+  Returns `{:deleted true}` on clean teardown, or
+  `{:deleted true :orphaned_resources [...] :message ..}` when the warehouse was
+  unreachable for some `:provisioned` rows and inert schema/user objects were left
+  behind. App-DB `TableRemapping` rows are always cleared, so query routing is never
+  left dangling."
+  ([id] (delete-workspace! id false))
+  ([id ignore-pending?]
+   (let [ws       (assert-workspace-exists id)
+         databases (:databases ws)
+         pending  (filter pending-database? databases)
+         active   (filter #(= :provisioned (:status %)) databases)]
+     (when (and (seq pending) (not ignore-pending?))
+       (throw (ex-info "Cannot delete a workspace while some of its databases are still provisioning or deprovisioning"
+                       {:status-code       409
+                        :workspace_id      id
+                        :pending_databases (mapv (fn [wsd]
+                                                   {:database_id (:database_id wsd)
+                                                    :name        (:name (:database wsd))
+                                                    :status      (:status wsd)})
+                                                 pending)})))
+     (let [results  (mapv #(provisioning/force-teardown-for-delete!
+                            % provisioning/dispatching-provisioner)
+                          active)
+           failures (filterv #(= :failure (:status %)) results)]
+       (run! provisioning/ignore-pending-database! pending)
+       (workspace/delete-workspace! id)
+       (if (seq failures)
+         (let [message (orphaned-resources-message id failures)]
+           (log/warn message)
+           {:deleted true :orphaned_resources failures :message message})
+         {:deleted true})))))

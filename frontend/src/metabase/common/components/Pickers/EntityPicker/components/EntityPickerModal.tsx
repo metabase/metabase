@@ -174,7 +174,12 @@ export function EntityPickerModal({
         maw="80vw"
         ref={modalContentCallbackRef}
       >
-        <Modal.Header px="1.5rem" pt="1rem" pb="1rem" bg="background-primary">
+        <Modal.Header
+          px="1.5rem"
+          pt="1rem"
+          pb="1rem"
+          bg="background_page-primary"
+        >
           <Modal.Title id={titleId} fz="lg">
             {title}
           </Modal.Title>

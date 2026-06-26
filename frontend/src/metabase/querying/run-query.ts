@@ -108,9 +108,9 @@ export function runAdhocDatasetQuery(
 }
 
 // Dispatches the RTK saved-card query endpoint, picking the card vs. dashcard
-// route (and their pivot variants). Guest embeds rely on the legacy-client
-// `onBeforeRequest` middleware (which RTK requests still pass through) rewriting
-// the card route to `/api/embed/card/:token/query` when `token` is in the body.
+// route (and their pivot variants). Guest embeds rely on the `onBeforeRequest`
+// middleware (which RTK requests pass through) rewriting the card route to
+// `/api/embed/card/:token/query` when `token` is in the body.
 let savedCardQueryCounter = 0;
 function runSavedCardQuery(
   dispatch: Dispatch,
@@ -140,9 +140,9 @@ function runSavedCardQuery(
     // before it hits the server. Mirrors `runAdhocDatasetQuery`.
     _refetchDeps: ++savedCardQueryCounter,
     // `token` and `cardId` identify the card in mutually exclusive ways, so we
-    // send only one (mirroring the original services.js behavior). Guest and
-    // embedded requests carry a `token`: the legacy `onBeforeRequest` middleware
-    // rewrites the request to the matching `/api/embed/...` route, discarding
+    // send only one. Guest and embedded requests carry a `token`: the
+    // `onBeforeRequest` middleware rewrites the request to the matching
+    // `/api/embed/...` route, discarding
     // the `:cardId` path segment. Authenticated requests carry a `cardId`.
     // The casts below are needed because the shared request types require
     // `cardId`; we keep that contract strict for every other (authenticated)

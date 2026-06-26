@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
-import { Ellipsified, Icon } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
 export const HeaderLink = styled.div`
@@ -16,12 +16,6 @@ export const HeaderLink = styled.div`
   &:hover {
     color: ${(props) => props.onClick && color("core-brand")};
   }
-`;
-
-export const HeaderTitle = styled(Ellipsified)`
-  font-size: 1.25rem;
-  line-height: 1.5rem;
-  font-weight: bold;
 `;
 
 export const HeaderBackIcon = styled(Icon)`

@@ -36,6 +36,29 @@ describe("computeSplit", () => {
       Object.keys(extents).length,
     );
   });
+
+  it("should not isolate a constant (zero-range) series and force dissimilar series onto the same axis (#36908)", () => {
+    const extentsWithZeroRange: SeriesExtents = {
+      count: [50, 600],
+      zeroes: [0, 0],
+      tax: [3, 7],
+    };
+
+    const [left, right] = computeSplit(extentsWithZeroRange);
+    const onSameAxis = (a: string, b: string) =>
+      (left.includes(a) && left.includes(b)) ||
+      (right.includes(a) && right.includes(b));
+
+    // The dissimilar large/small ranges must be split across axes, otherwise the
+    // small-range series gets squashed flat against the axis.
+    expect(onSameAxis("count", "tax")).toBe(false);
+
+    // The constant series must not be isolated on its own axis — it should share
+    // with another series instead of driving the split.
+    expect(
+      left.includes("zeroes") ? left.length : right.length,
+    ).toBeGreaterThan(1);
+  });
 });
 
 describe("getXAxisModel", () => {

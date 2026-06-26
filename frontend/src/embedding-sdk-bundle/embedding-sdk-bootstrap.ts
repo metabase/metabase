@@ -24,6 +24,15 @@ const scriptUrl =
   (document.currentScript as HTMLScriptElement | null)?.src || "";
 const baseUrl = new URL("./", scriptUrl).href;
 
+// Expose the SDK asset directory so the chunked entry can set webpack's
+// runtime publicPath for on-demand chunks (e.g. PDF/image export). The entry
+// executes asynchronously, after chunks load, so document.currentScript is no
+// longer reliable there — we resolve the base here while it still is.
+window.METABASE_EMBEDDING_SDK_ASSET_BASE_URL = new URL(
+  "embedding-sdk/",
+  baseUrl,
+).href;
+
 function loadScript(filename: string): Promise<string> {
   const url = `${baseUrl}${filename}`;
   return new Promise((resolve, reject) => {

@@ -56,21 +56,21 @@ const getCellBackgroundColor = ({
 
   if (isEmphasized) {
     if (isDarkMode) {
-      return color("background-primary-inverse");
+      return color("background_page-primary-inverse");
     }
 
     if (backgroundColor) {
       return adjustBrightness(backgroundColor, 0.15, 0.05);
     }
 
-    return alpha("border", 0.25);
+    return alpha("border-neutral", 0.25);
   }
 
   if (isDarkMode) {
-    return alpha("background-primary-inverse", 0.1);
+    return alpha("background_page-primary-inverse", 0.1);
   }
 
-  return color(backgroundColor ?? "background-primary");
+  return color(backgroundColor ?? "background_page-primary");
 };
 
 const getCellHoverBackground = (
@@ -79,7 +79,7 @@ const getCellHoverBackground = (
   const { cell: cellTheme } = props.theme.other.table;
 
   if (!cellTheme.backgroundColor) {
-    return "var(--mb-color-border)";
+    return "var(--mb-color-border-neutral)";
   }
 
   const backgroundColor = getCellBackgroundColor(props);
@@ -102,7 +102,7 @@ const borderRight = css`
     top: 0;
     right: 0;
     height: 100%;
-    border-right: 1px solid ${color("border-subtle")};
+    border-right: 1px solid ${color("border-neutral-subtle")};
   }
 `;
 
@@ -120,7 +120,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   border-bottom: 1px solid
     ${(props) =>
     props.isBorderedHeader
-      ? "var(--mb-color-border)"
+      ? "var(--mb-color-border-neutral)"
       : "var(--mb-color-table-border)"};
   background-color: ${getCellBackgroundColor};
   ${(props) =>
@@ -128,7 +128,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
     css`
       /* compensate the top border */
       line-height: ${CELL_HEIGHT - 1}px;
-      border-top: 1px solid ${color("border-subtle")};
+      border-top: 1px solid ${color("border-neutral-subtle")};
     `}
 
   &:hover {
@@ -163,7 +163,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
   ${(props) =>
     props.isDashboard
       ? css`
-          border-top: 1px solid ${color("border-subtle")};
+          border-top: 1px solid ${color("border-neutral-subtle")};
         `
       : null}
 

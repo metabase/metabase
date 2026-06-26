@@ -35,7 +35,6 @@ import type {
 import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
-import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 import type { SandboxMode } from "./sandbox";
@@ -217,7 +216,6 @@ export function useAutoLoadCustomVizPlugin(
     if (!plugin) {
       return;
     }
-    trackCustomVizSelected();
     load(plugin);
   }, [display, plugins, load]);
 

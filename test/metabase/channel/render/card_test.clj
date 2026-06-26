@@ -293,6 +293,17 @@
                                                     :rows [["apple" 3]
                                                            ["banana" 4]]})))))
 
+(deftest ^:parallel detect-pulse-chart-type-test-8b
+  (testing "Treemap charts are correctly identified and return `:javascript_visualization`."
+    (is (= :javascript_visualization
+           (channel.render/detect-pulse-chart-type {:display :treemap}
+                                                   nil
+                                                   {:cols [{:base_type :type/Text}
+                                                           {:base_type :type/Text}
+                                                           {:base_type :type/Number}]
+                                                    :rows [["apple" "fuji" 3]
+                                                           ["banana" "cavendish" 4]]})))))
+
 (deftest ^:parallel detect-pulse-chart-type-test-9
   (testing "Dashboard Cards can return `:multiple`."
     (is (= :javascript_visualization

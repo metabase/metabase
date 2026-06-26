@@ -27,6 +27,7 @@ import { NodeListTitleText } from "../NodeList";
 import type {
   DataReferencePaneProps,
   DataReferenceQuestionItem,
+  UniqueFieldId,
 } from "../types";
 
 import S from "./QuestionPane.module.css";
@@ -144,7 +145,9 @@ export const QuestionPane = ({
               onItemClick({
                 type: "field",
                 id:
-                  typeof field.id === "number" ? field.id : field.getUniqueId(),
+                  typeof field.id === "number"
+                    ? field.id
+                    : (field.getUniqueId() as UniqueFieldId),
               });
             }}
           />

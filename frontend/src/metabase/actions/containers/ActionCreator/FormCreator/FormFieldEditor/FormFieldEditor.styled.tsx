@@ -6,8 +6,8 @@ import { Radio } from "metabase/common/components/Radio";
 import { darken } from "metabase/ui/colors";
 
 export const FormFieldContainer = styled.div`
-  background-color: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-spacing-sm);
   overflow: hidden;
 `;
@@ -56,8 +56,8 @@ export const Subtitle = styled.div`
 `;
 
 export const PreviewContainer = styled(ContentContainer)`
-  background-color: var(--mb-color-background-secondary);
-  border-top: 1px solid ${() => darken("background-secondary", 0.1)};
+  background-color: var(--mb-color-background_page-secondary);
+  border-top: 1px solid ${() => darken("background_page-secondary", 0.1)};
   padding: 1rem 1rem 2rem 1rem;
 
   ${FormField.Root} {

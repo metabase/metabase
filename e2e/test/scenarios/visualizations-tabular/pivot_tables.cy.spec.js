@@ -665,7 +665,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         cy.button("Add filter").click();
       });
       // Pre-fix this rendered a blank pivot; the grand-total row hid the emptiness.
-      H.getDashboardCard(0).findByText("No results!").should("be.visible");
+      H.getDashboardCard(0).findByText("No results").should("be.visible");
 
       cy.log("Enabling 'hide if empty' removes the now-empty card");
       H.editDashboard();
