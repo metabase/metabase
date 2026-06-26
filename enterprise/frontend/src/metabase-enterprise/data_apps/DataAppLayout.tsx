@@ -45,7 +45,7 @@ export function DataAppLayout({ params, children }: DataAppLayoutProps) {
 
   // Click-outside within this document: anything but the toolbar (the dropdown
   // is rendered inside it, so its options count as inside) collapses it.
-  const zoneRef = useClickOutside<HTMLDivElement>(collapse);
+  const zoneRef = useClickOutside(collapse);
 
   // A click inside the data-app iframe never reaches this document, so the
   // click-outside above can't see it. Focus moving into the iframe blurs the top
@@ -129,7 +129,12 @@ export function DataAppLayout({ params, children }: DataAppLayoutProps) {
         </Paper>
       </div>
 
-      <Box className={S.content}>{children}</Box>
+      {/* Key on the app slug so switching apps via the selector remounts the
+          host (and its iframe) with the new app. Sub-path mirroring keeps the
+          same `:name`, so internal navigation never triggers a reload. */}
+      <Box key={name} className={S.content}>
+        {children}
+      </Box>
     </Box>
   );
 }
