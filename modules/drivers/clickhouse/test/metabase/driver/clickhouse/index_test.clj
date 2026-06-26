@@ -13,6 +13,8 @@
    [metabase.driver :as driver]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.indexes.requestable-test :as requestable]
+   [metabase.indexes.schema :as schema]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]))
 
@@ -33,8 +35,15 @@
       (is (= ["columns"] (map :name (get-in methods [:order-by :fields]))))
       (is (= ["name" "columns" "type" "granularity"]
              (map :name (get-in methods [:skip-index :fields]))))
-      (is (= #{"minmax" "set" "bloom_filter" "ngrambf_v1" "tokenbf_v1"}
+      (is (= #{"minmax" "bloom_filter"}
              (set (map :value (:options type-field))))))))
+
+(deftest ^:parallel every-advertised-option-is-requestable-test
+  (testing "every value ClickHouse advertises in supported-index-methods builds a schema-valid index request"
+    (doseq [[kind {:keys [fields]}] (driver/supported-index-methods :clickhouse nil)
+            body                    (requestable/advertised-bodies kind fields)]
+      (is (mr/validate ::schema/index-structured body)
+          (str kind " body should validate: " (pr-str body))))))
 
 ;;; --- inline ORDER BY at both creation seams ---
 

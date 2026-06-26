@@ -11,21 +11,27 @@
 (comment metabase.driver.postgres/keep-me)
 
 (defn- sample-value
-  "A representative value for a descriptor field, the way the FE would fill the form."
-  [{:keys [type options]}]
+  "A representative value for a non-select descriptor field, the way the FE would fill the form. One column suits every
+  kind: kinds that take many allow a single one, and a `:distkey` allows only one."
+  [{:keys [type]}]
   (case type
     :string  "idx_sample"
     :boolean true
     :integer 1
-    :columns [{:name "a"} {:name "b"}]
-    :select  (-> options first :value)))
+    :columns [{:name "a"}]))
 
-(defn- body-from-fields
-  "Assemble a structured index body from ONLY the kind + its descriptor fields, then re-keywordize enum values the way
-  the POST path does."
+(defn advertised-bodies
+  "Every request body the form can build for `kind` from its descriptor `fields`: the cartesian product over each
+  field's candidate values (a `:select` contributes one body per option, so every advertised option is covered),
+  re-keywordized the way the POST path does."
   [kind fields]
-  (-> (into {:kind kind} (map (fn [{nm :name :as f}] [(keyword nm) (sample-value f)])) fields)
-      schema/keywordize-structured))
+  (let [field-values (fn [{:keys [type options] :as f}]
+                       (if (= type :select) (map :value options) [(sample-value f)]))
+        combos       (reduce (fn [acc vs] (for [row acc, v vs] (conj row v)))
+                             [[]] (map field-values fields))]
+    (for [combo combos]
+      (schema/keywordize-structured
+       (into {:kind kind} (map vector (map (comp keyword :name) fields) combo))))))
 
 (deftest return-conforms-to-schema-test
   (testing "the supported-index-methods return validates against ::driver/supported-index-methods"
@@ -34,11 +40,11 @@
       (is (mr/validate ::driver/supported-index-methods (driver/supported-index-methods :h2 nil))))))
 
 (deftest postgres-descriptors-match-schema-test
-  (testing "a body built from each advertised kind's descriptors validates against ::index-structured"
-    (doseq [[kind {:keys [fields]}] (driver/supported-index-methods :postgres nil)]
-      (let [body (body-from-fields kind fields)]
-        (is (mr/validate ::schema/index-structured body)
-            (str "descriptor body for " kind " should validate: " (pr-str body)))))))
+  (testing "every value Postgres advertises in supported-index-methods builds a body that validates against ::index-structured"
+    (doseq [[kind {:keys [fields]}] (driver/supported-index-methods :postgres nil)
+            body                    (advertised-bodies kind fields)]
+      (is (mr/validate ::schema/index-structured body)
+          (str "descriptor body for " kind " should validate: " (pr-str body))))))
 
 (deftest postgres-lifecycle-matches-feature-flag-test
   (testing ":standalone <=> :index/standalone-create, :inline <=> :index/inline-create"

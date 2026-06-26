@@ -57,13 +57,13 @@
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::skip-index
-  "ClickHouse data-skipping index, standalone."
+  "ClickHouse data-skipping index, standalone. Only the argument-free types are offered; the parameterized ones
+  (set/ngrambf_v1/tokenbf_v1) need type-args the request form can't supply yet."
   [:map
    [:kind [:= :skip-index]]
    [:name :string]
    [:columns [:vector {:min 1} ::column]]
-   [:type [:enum :minmax :set :bloom_filter :ngrambf_v1 :tokenbf_v1]]
-   [:type-args {:optional true} [:vector :any]]
+   [:type [:enum :minmax :bloom_filter]]
    [:granularity {:optional true} pos-int?]])
 
 (mr/def ::index-structured
