@@ -296,16 +296,19 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 
 ### Blocked APIs
 
-The Near Membrane sandbox throws at runtime on these globals. Use the endowed alternative instead:
+The Near Membrane sandbox throws at runtime on these globals. Use the endowed replacement instead:
 
-- **Network** (`fetch`, `XMLHttpRequest`, `WebSocket`) → for Metabase data, the data hooks for reads and `useAction` for writes — never raw `fetch`. Raw `fetch`/`XHR` work **only** for external origins explicitly listed in `data_app.yml`'s `allowed_hosts` (see Step 4); everything else (including the Metabase origin) throws. `WebSocket` is always blocked.
-- **UI dialogs** (`alert`, `confirm`, `prompt`) → render a React modal in your own tree.
-- **Storage** (`localStorage`, `sessionStorage`, `indexedDB`, `document.cookie`) → treat the Data App as stateless across reloads; persist via a Metabase action.
-- **Window / history navigation** (`window.open`, `history.pushState`, `history.replaceState`) → `useDataAppLocation().navigate` for in-app, `<a target="_blank" rel="noopener">` for external.
-- **`navigator.*` device APIs** (`clipboard`, `geolocation`, etc.) → not available.
-- **Global event listeners on `document` / `window`** for typing or clipboard events (`keydown`, `keyup`, `keypress`, `beforeinput`, `input`, `paste`, `copy`, `cut`, `before*paste/copy/cut`, `compositionstart/update/end`, `storage`) → attach the listener to your own element instead, or use the React event handler (`onKeyDown`, `onPaste`, …) on the specific input/container that needs it. Same listener on a script-owned element still works.
+| Blocked | Use instead |
+|---|---|
+| **Network** — `fetch`, `XMLHttpRequest`, `WebSocket` | Data hooks for reads, `useAction` for writes — never raw `fetch`. Raw `fetch`/`XHR` reach **only** the external origins listed in `data_app.yml`'s `allowed_hosts` (Step 4); everything else (including the Metabase origin) throws. `WebSocket` is always blocked. |
+| **UI dialogs** — `alert`, `confirm`, `prompt` | Render a React modal in your own tree. |
+| **Storage** — `localStorage`, `sessionStorage`, `indexedDB`, `document.cookie` | Treat the data app as stateless across reloads; persist via a Metabase action. |
+| **Window / history navigation** — `window.open`, `history.pushState`, `history.replaceState` | `useDataAppLocation().navigate` for in-app; `<a target="_blank" rel="noopener">` for external. |
+| **Clipboard** — `document.execCommand("copy")`, `navigator.clipboard` | `copy` (write-only): `import { copy } from "@metabase/embedding-sdk-react/data-app"`, then `await copy(text)` from a user event. There is **no** read/paste API — that would let a bundle exfiltrate whatever the user copied. |
+| **Other `navigator.*` device APIs** — `geolocation`, etc. | Not available. |
+| **Global `document`/`window` listeners** for typing/clipboard events — `keydown`, `keyup`, `keypress`, `beforeinput`, `input`, `paste`, `copy`, `cut`, `before*paste/copy/cut`, `compositionstart/update/end`, `storage` | Attach the listener to your own element, or use the React handler (`onKeyDown`, `onPaste`, …) on the specific input/container. The same listener on a script-owned element still works. |
 
-**Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + SDK components + data hooks + `useAction` + DataAppRouter) covers every routine need; anything outside it is intentionally unreachable.
+**Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + SDK components + data hooks + `useAction` + DataAppRouter + `copy`) covers every routine need; anything outside it is intentionally unreachable.
 
 ### When to use `useMetabaseQuery` vs a `StaticQuestion` / `InteractiveQuestion`
 
