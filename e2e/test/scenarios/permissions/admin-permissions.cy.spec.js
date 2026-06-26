@@ -88,7 +88,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       H.modal().should("not.exist");
 
       // Switching to data permissions page
-      cy.get("label").contains("Data").click();
+      cy.findByRole("tab", { name: "Data" }).click();
 
       H.modal().within(() => {
         cy.findByText("Discard your changes?");
@@ -102,7 +102,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.url().should("include", "/admin/permissions/collections/root");
 
       // Switching to data permissions page again
-      cy.get("label").contains("Data").click();
+      cy.findByRole("tab", { name: "Data" }).click();
 
       H.modal().button("Discard changes").click();
 
