@@ -595,6 +595,36 @@
                         (count (:related_tables_without_fields output))))
                   "total exceeds the surfaced set, signalling tables were dropped"))))))))
 
+(deftest related-tables-without-fields-omitted-when-no-fields-requested-test
+  (testing (str "with `with-fields?` false every related table is column-free, so there is no with/without "
+                "distinction: the whole capped set is surfaced in :related_tables and :related_tables_without_fields "
+                "is omitted, while the :related_tables cap is still enforced")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [orders-query (let [mp (mt/metadata-provider)]
+                             (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+              related      (fn [] (#'entity-details/related-tables orders-query false identity))]
+          (testing "Orders has more than one FK-related table (Products + People)"
+            (is (> (count (:related_tables (related))) 1)))
+          (testing "lowering the column-expansion cap does NOT spill into a without-fields list"
+            (with-redefs-fn {#'entity-details/max-related-tables-with-fields 1}
+              (fn []
+                (let [output (related)]
+                  (is (> (count (:related_tables output)) 1)
+                      "every surfaced table stays in :related_tables")
+                  (is (every? (comp empty? :fields) (:related_tables output))
+                      "no table carries columns when with-fields? is false")
+                  (is (nil? (:related_tables_without_fields output))
+                      ":related_tables_without_fields is omitted entirely when with-fields? is false")))))
+          (testing "the :related_tables cap still applies (and reports drops) when with-fields? is false"
+            (with-redefs-fn {#'entity-details/max-related-tables 1}
+              (fn []
+                (let [output (related)]
+                  (is (= 1 (count (:related_tables output))))
+                  (is (nil? (:related_tables_without_fields output)))
+                  (is (= 2 (:related_tables_total output))
+                      "tables dropped by the cap are still reported via :related_tables_total"))))))))))
+
 (defn- orders+reviews-join-query
   "A query whose source table is Orders with an explicit join to Reviews.
 

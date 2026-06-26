@@ -352,12 +352,15 @@
 
   Returns nil when the query has no FK-related tables, otherwise a map:
 
-    :related_tables                vector of related-table maps with their fields (if `with-fields?`is true). 
-                                   One per FK path, capped at [[max-related-tables-with-fields]].
+    :related_tables                vector of related-table maps, one per FK path. When `with-fields?` is true they
+                                   carry their column set and the list is capped at [[max-related-tables-with-fields]];
+                                   when `with-fields?` is false they carry no columns and the list holds the whole
+                                   surfaced set (capped at [[max-related-tables]]).
     :related_tables_without_fields (optional) the remaining surfaced FK paths, built the same way but without
-                                   columns. Present only when there are more :related_tables than
-                                   [[max-related-tables-with-fields]], capped so the two lists together hold at most
-                                   [[max-related-tables]].
+                                   columns. Present only when `with-fields?` is true and there are more FK paths
+                                   than [[max-related-tables-with-fields]], capped so the two lists together hold at
+                                   most [[max-related-tables]]. Omitted entirely when `with-fields?` is false, since
+                                   without columns there is no distinction between the two lists.
     :related_tables_total          (optional) total number of related-tables before capping. Present only when
                                    that total exceeds [[max-related-tables]] (i.e. some were dropped entirely), so
                                    the LLM knows the surfaced set is truncated."
@@ -365,11 +368,15 @@
   (let [fk-groups (fk-related-table-groups query)
         total     (count fk-groups)]
     (when (pos? total)
-      (when (> total max-related-tables-with-fields)
-        (log/infof "Capping metabot related-table column expansion to %d of %d related-tables (capped to %d total)."
-                   max-related-tables-with-fields total max-related-tables))
-      (let [[with-groups without-groups] (split-at max-related-tables-with-fields
-                                                   (take max-related-tables fk-groups))
+      (when (and with-fields? (> total max-related-tables-with-fields))
+        (log/infof "Capping related-tables column expansion to %d of %d." max-related-tables-with-fields total))
+      (when (> total max-related-tables)
+        (log/infof "Capping related-tables to %d of %d." max-related-tables total))
+      (let [capped (take max-related-tables fk-groups)
+            ;; Only split into a with-fields/without-fields pair when the caller actually asked for columns.
+            [with-groups without-groups] (if with-fields?
+                                           (split-at max-related-tables-with-fields capped)
+                                           [capped nil])
             build (fn [include-fields? [table-id fk-field-id fk-field-name]]
                     (-> (table-details table-id
                                        {:metadata-provider    query
@@ -378,9 +385,9 @@
                                         :with-related-tables? false
                                         :with-metrics?        false})
                         (assoc :related_by {:id fk-field-id :name fk-field-name})))
-            with-fields    (mapv #(build (boolean with-fields?) %) with-groups)
-            without-fields (mapv #(build false %) without-groups)]
-        (cond-> {:related_tables with-fields}
+            maybe-with-fields (mapv #(build (boolean with-fields?) %) with-groups)
+            without-fields    (mapv #(build false %) without-groups)]
+        (cond-> {:related_tables maybe-with-fields}
           (seq without-fields)         (assoc :related_tables_without_fields without-fields)
           (> total max-related-tables) (assoc :related_tables_total total))))))
 
