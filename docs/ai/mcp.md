@@ -118,7 +118,7 @@ These toggles only control inline charts; they don't gate whether a client can c
 
 The **Custom inline chart origins** field is for browser-based MCP clients that render [inline charts](#using-the-mcp-server) but aren't in the supported list (like a self-hosted client).
 
-![An inline chart](./images/mcp-chart.png)
+![An inline chart](./images/inline-bar-chart.png)
 
 Adding an origin here puts it on Metabase's CORS allowlist, just like toggling on one of the supported clients. Clients that run outside the browser (like Claude Code on your own machine) don't need an entry here.
 
