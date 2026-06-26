@@ -40,7 +40,7 @@
       (ingest-errors [_] []))))
 
 (deftest card-backed-entity-round-trip-test
-  (testing "every card-backed entity type exports as the Card's entity_id and imports back"
+  (testing "every card-backed entity type stores as the canonical \"card\", exports as the Card's entity_id, and imports back"
     (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
       (doseq [entity-type ["card" "model" "metric" "question"]]
         (testing entity-type
@@ -49,10 +49,10 @@
                           :entity_type     entity-type
                           :entity_local_id card-id}]
             (let [extracted (ts/extract-one "OsiAiContext" sli-id)]
-              (testing "entity_local_id is exported as a portable reference; ai_context copies verbatim"
+              (testing "entity_local_id is exported as a portable reference; the type is normalized to \"card\""
                 (is (=? {:entity_id       sli-eid
                          :ai_context      {:instructions "Use it directly." :synonyms [entity-type]}
-                         :entity_type     entity-type
+                         :entity_type     "card"
                          :entity_local_id card-eid}
                         extracted)))
               (testing "dependencies cover the referenced Card"
@@ -61,7 +61,7 @@
               (testing "importing resolves the ref back to the local id"
                 (t2/delete! :model/OsiAiContext :id sli-id)
                 (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
-                (is (=? {:entity_type entity-type :entity_local_id card-id}
+                (is (=? {:entity_type "card" :entity_local_id card-id}
                         (t2/select-one :model/OsiAiContext :entity_id sli-eid)))
                 ;; load-metabase! re-inserts under a new id that with-temp can't reap; clean it up so the
                 ;; row doesn't leak into other tests' view of the (small, fully-scanned) table.

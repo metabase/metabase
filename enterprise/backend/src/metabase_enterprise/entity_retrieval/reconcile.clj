@@ -145,7 +145,7 @@
   (when-let [lib (collections/library-collection)]
     (let [lib-ids (library-ids lib)]
       (cond
-        (entity-retrieval/card-entity-types entity-type)
+        (entity-retrieval/card-entity-type? entity-type)
         (first (library-cards lib-ids entity-local-id))
 
         (= "table" entity-type)
@@ -180,14 +180,11 @@
 
 (defn- ai-context-by-entity
   "Map of entity [[entity-class]] -> ai_context for every `osi_ai_context` row, so a card's curated context
-  is found under its class even when the card's current type differs from the one it was curated under.
-  If a card has two rows (a metric and a model — reachable across a relabel, since the API keys uniqueness
-  on the exact type) the most-recently-updated one deterministically wins."
+  (stored under the canonical `card` type) is found under the same class as its index docs (keyed by the
+  card's live metric/model type). One row per card is guaranteed by the normalized storage key."
   []
-  ;; ascending order + last-wins index-by => the latest-updated row per class is the one kept.
   (u/index-by entity-class :ai_context
-              (t2/select [:model/OsiAiContext :entity_type :entity_local_id :ai_context]
-                         {:order-by [[:updated_at :asc] [:id :asc]]})))
+              (t2/select [:model/OsiAiContext :entity_type :entity_local_id :ai_context])))
 
 (defn- dedup-by-doc-id [docs]
   ;; distinct-by doc_id so an exact duplicate (same doc_type and text, e.g. a synonym listed twice)
@@ -208,15 +205,11 @@
   GC. `entity-type` may be either Card label; membership resolves the canonical stored type."
   [entity-type entity-local-id]
   (if-let [member (library-entity entity-type entity-local-id)]
-    ;; Match ai_context by entity class, not exact type: a card relabelled between question/metric/model
-    ;; keeps its synonyms/examples regardless of which type-string the row was stored under.
+    ;; Match ai_context by the normalized storage type: a card's row is stored as `card`, so look it up by
+    ;; `card` whichever live label (metric/model) drove this targeted run.
     (let [ai-ctx (t2/select-one-fn :ai_context :model/OsiAiContext
                                    :entity_local_id entity-local-id
-                                   :entity_type (if (entity-retrieval/card-entity-types entity-type)
-                                                  [:in entity-retrieval/card-entity-types]
-                                                  entity-type)
-                                   ;; latest-updated wins if a relabel left two card rows for this id
-                                   {:order-by [[:updated_at :desc] [:id :desc]]})]
+                                   :entity_type (entity-retrieval/normalize-entity-type entity-type))]
       (dedup-by-doc-id (entity->docs member ai-ctx)))
     []))
 

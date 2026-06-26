@@ -43,7 +43,7 @@
       (mt/user-http-request :rasta :get 403 (str "osi/ai-context/" (:id entry))))))
 
 (deftest create-test
-  (testing "superuser can create an ai_context entry"
+  (testing "superuser can create an ai_context entry (a card flavor is stored under the canonical \"card\")"
     (let [response (mt/user-http-request :crowberto :post 200 "osi/ai-context/"
                                          {:entity_type     "metric"
                                           :entity_local_id 42
@@ -51,7 +51,7 @@
                                                             :synonyms     ["sales"]
                                                             :examples     ["revenue last month"]}})]
       (try
-        (is (=? {:entity_type     "metric"
+        (is (=? {:entity_type     "card"
                  :entity_local_id 42
                  :ai_context      {:instructions "Use the Revenue metric."
                                    :synonyms     ["sales"]
@@ -68,17 +68,17 @@
           (is (=? {:entity_type entity-type :entity_local_id 5} response))
           (finally
             (t2/delete! :model/OsiAiContext :id (:id response)))))))
-  (testing "posting the same entity twice upserts in place rather than duplicating"
+  (testing "posting the same card under different flavors upserts one row (both normalize to \"card\")"
     (let [first-resp  (mt/user-http-request :crowberto :post 200 "osi/ai-context/"
                                             {:entity_type "metric" :entity_local_id 99
                                              :ai_context {:instructions "v1"}})
           second-resp (mt/user-http-request :crowberto :post 200 "osi/ai-context/"
-                                            {:entity_type "metric" :entity_local_id 99
+                                            {:entity_type "model" :entity_local_id 99
                                              :ai_context {:instructions "v2"}})]
       (try
-        (is (= (:id first-resp) (:id second-resp)) "same row reused")
+        (is (= (:id first-resp) (:id second-resp)) "same row reused across a metric->model relabel")
         (is (= {:instructions "v2"} (:ai_context second-resp)) "ai_context replaced")
-        (is (= 1 (count (filter #(= {:entity_type "metric" :entity_local_id 99}
+        (is (= 1 (count (filter #(= {:entity_type "card" :entity_local_id 99}
                                     (select-keys % [:entity_type :entity_local_id]))
                                 (:data (mt/user-http-request :crowberto :get 200 "osi/ai-context/"))))))
         (finally
@@ -104,11 +104,11 @@
                                           (str "osi/ai-context/" (:id entry))
                                           {:ai_context {:instructions "updated"}})]
         (is (= {:instructions "updated"} (:ai_context updated)))))
-    (testing "superuser can update the entity"
+    (testing "superuser can update the entity (a card flavor is stored under the canonical \"card\")"
       (let [updated (mt/user-http-request :crowberto :put 200
                                           (str "osi/ai-context/" (:id entry))
                                           {:entity_type "model" :entity_local_id 7})]
-        (is (=? {:entity_type "model" :entity_local_id 7} updated))))
+        (is (=? {:entity_type "card" :entity_local_id 7} updated))))
     (testing "entity_type and entity_local_id must be provided together"
       (mt/user-http-request :crowberto :put 400 (str "osi/ai-context/" (:id entry))
                             {:entity_type "model"}))

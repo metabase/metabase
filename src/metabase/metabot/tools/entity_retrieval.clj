@@ -103,14 +103,19 @@
         ;; The index is eventually consistent, so a hit may point at an entity that has since left the
         ;; library; post-filter to current members (like the permission filter above) so a stale index
         ;; never surfaces a now-unpublished/archived entity. nil only in OSS, where there are no hits.
-        lib-keys (entity-retrieval/library-entity-keys)]
+        ;; Compare by entity *class*: between a Card metric<->model relabel and the next reconcile the index
+        ;; carries the old type while membership carries the new one, so a raw [type id] compare would drop a
+        ;; valid library card. Collapsing both to one class (as the rest of the pipeline does) keeps it.
+        lib-classes (some->> (entity-retrieval/library-entity-keys)
+                             (into #{} (map (fn [[t id]] (entity-retrieval/entity-class t id)))))]
     (->> (for [{:keys [doc_type doc_text entity score]} deduped
                ;; hydrated records use the agent-facing entity type, so normalize the ref's model to match
                ;; (plain "card" refs hydrate as "question")
                :let [resolved (get by-key [(tools.search/ref-model->entity-type (:model entity)) (:id entity)])
                      sim      (similarity score)]
                :when (and resolved
-                          (or (nil? lib-keys) (contains? lib-keys [(:model entity) (:id entity)])))]
+                          (or (nil? lib-classes)
+                              (contains? lib-classes (entity-retrieval/entity-class (:model entity) (:id entity)))))]
            {:doc_type           doc_type
             :matched_text       doc_text
             :usage_instructions (get instrs [(:model entity) (:id entity)])

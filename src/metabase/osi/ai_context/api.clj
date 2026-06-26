@@ -11,9 +11,9 @@
    [toucan2.core :as t2]))
 
 (def ^:private writable-entity-type
-  "Entity types accepted on writes. The reconciler keys library Cards by their type (metric/model) and
-  indexes table-bound measures/segments; a plain card/question would never match an index doc, so it's
-  rejected."
+  "Entity types accepted on writes — the real types callers name. Card flavors (metric/model) are stored
+  under the canonical `card` key (see [[entity-retrieval/normalize-entity-type]]); tables and table-bound
+  measures/segments keep their type. A plain question never matches an index doc, so it's rejected."
   [:enum "table" "metric" "model" "measure" "segment"])
 
 (def ^:private AiContext
@@ -37,9 +37,12 @@
 
 (defn- find-by-entity
   "The existing row for this entity, or nil.
-  One row per entity is enforced here at the app layer, not by a DB unique constraint."
+  Normalizes the type to the stored key, so a card is found whichever flavor (metric/model) the caller
+  names; one row per entity is enforced by the `(entity_type, entity_local_id)` unique constraint."
   [entity-type entity-local-id]
-  (t2/select-one :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
+  (t2/select-one :model/OsiAiContext
+                 :entity_type (entity-retrieval/normalize-entity-type entity-type)
+                 :entity_local_id entity-local-id))
 
 (api.macros/defendpoint :get "/"
   :- [:map
@@ -83,8 +86,10 @@
        [:entity_local_id ms/PositiveInt]
        [:ai_context      AiContext]]]
   (api/check-superuser)
+  ;; Key the upsert on the normalized (stored) type so re-posting a relabelled card updates its one row.
   (let [pk (app-db/update-or-insert! :model/OsiAiContext
-                                     {:entity_type entity_type :entity_local_id entity_local_id}
+                                     {:entity_type     (entity-retrieval/normalize-entity-type entity_type)
+                                      :entity_local_id entity_local_id}
                                      (constantly {:ai_context ai_context}))]
     (t2/select-one :model/OsiAiContext :id pk)))
 

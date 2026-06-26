@@ -9,6 +9,7 @@
   ([[mirror/request-entity-sync!]]); they never touch the embedding service or the pgvector store
   themselves."
   (:require
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -40,6 +41,19 @@
 ;;; stale-read race (a delete buried in a long transaction) is closed without leaning on the backstop.
 ;;; Tagging the nudge as a delete is the wrong fix: it breaks under coalescing (a delete + re-insert of the
 ;;; same entity collapse to one dirty entry) and would act on possibly-rolled-back state.
+
+;;; Card-backed entities (question/metric/model) store their `entity_type` as the canonical `card`, so one
+;;; ai_context row survives a type relabel and upserts key on a stable `(card, entity_local_id)`. The CRUD
+;;; and tool APIs still speak the real types; only the stored key is normalized. Non-card types pass through.
+(t2/define-before-insert :model/OsiAiContext
+  [row]
+  (cond-> row
+    (:entity_type row) (update :entity_type entity-retrieval/normalize-entity-type)))
+
+(t2/define-before-update :model/OsiAiContext
+  [row]
+  (cond-> row
+    (contains? (t2/changes row) :entity_type) (update :entity_type entity-retrieval/normalize-entity-type)))
 
 (t2/define-after-insert :model/OsiAiContext
   [row]
@@ -128,8 +142,10 @@
                   (let [{:keys [entity_type entity_local_id]} ingested
                         local-id (import-entity-local-id entity_type entity_local_id)]
                     (when (some? local-id)
+                      ;; normalize to the stored key so a card matches its `card` row regardless of the
+                      ;; flavor the export carried.
                       (t2/select-one :model/OsiAiContext
-                                     :entity_type entity_type
+                                     :entity_type (entity-retrieval/normalize-entity-type entity_type)
                                      :entity_local_id local-id))))]
     (serdes/default-load-one! ingested local)))
 

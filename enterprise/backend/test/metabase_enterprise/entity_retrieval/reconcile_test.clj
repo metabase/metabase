@@ -336,26 +336,6 @@
                   (is (= {"name" 1 "synonym" 2} (frequencies (map :doc_type (docs-for ds "model" card-id))))
                       "the ai_context (stored under metric) is matched by class and kept, re-keyed under model"))))))))))
 
-(deftest ^:sequential reconcile!-prefers-latest-ai-context-row-for-duplicate-card-test
-  (testing "a full reconcile uses the most-recently-updated row when a card has both a metric and a model ai_context row"
-    (mt/with-premium-features #{:library :semantic-search}
-      (with-isolated-index [ds]
-        (collections.tu/with-library [{metrics :metrics}]
-          (let [model semantic.tu/mock-embedding-model]
-            (mt/with-temp [:model/Database {db-id :id} {}
-                           :model/Card {card-id :id} {:type "metric" :collection_id (:id metrics)
-                                                      :name "Revenue" :database_id db-id}
-                           ;; a stale "model"-typed row first, then the current "metric" row (higher id) — the
-                           ;; later row wins deterministically (the card collapses both to one ::card class)
-                           :model/OsiAiContext _ {:entity_type "model" :entity_local_id card-id
-                                                  :ai_context {:synonyms ["stale"]}}
-                           :model/OsiAiContext _ {:entity_type "metric" :entity_local_id card-id
-                                                  :ai_context {:synonyms ["fresh"]}}]
-              (reconcile/reconcile! ds (constantly model))
-              (is (= ["fresh"]
-                     (map :doc_text (filter #(= "synonym" (:doc_type %)) (docs-for ds "metric" card-id))))
-                  "only the latest row's synonym is indexed; the stale duplicate row's is dropped"))))))))
-
 (deftest ^:sequential library-entity-matches-library-entities-test
   (testing "library-entity (point lookup) agrees with library-entities (full scan) for members and non-members"
     (mt/with-premium-features #{:library :semantic-search}
