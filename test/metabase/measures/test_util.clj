@@ -1,5 +1,6 @@
-(ns metabase-enterprise.entity-retrieval.test-util
-  "Shared helpers for the library-entity-index (entity-retrieval) tests."
+(ns metabase.measures.test-util
+  "Test helpers for building MBQL5 Measure and Segment definitions against the ambient test metadata
+  provider. Shared so tests across modules (measures, serdes, entity-retrieval) don't each redefine them."
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]

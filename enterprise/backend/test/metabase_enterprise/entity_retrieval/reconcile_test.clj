@@ -3,11 +3,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
-   [metabase-enterprise.entity-retrieval.test-util :as tu]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.entity-retrieval.mirror :as mirror]
+   [metabase.measures.test-util :as measures.tu]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]
@@ -201,10 +201,10 @@
                          :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
                          :model/Measure {measure-id :id} {:name "Order Revenue" :description "sum of order totals"
                                                           :table_id orders :creator_id (mt/user->id :crowberto)
-                                                          :definition (tu/measure-definition orders total)}
+                                                          :definition (measures.tu/measure-definition orders total)}
                          :model/Segment {segment-id :id} {:name "Big Orders" :description "totals over 100"
                                                           :table_id orders
-                                                          :definition (tu/segment-definition orders total 100)}]
+                                                          :definition (measures.tu/segment-definition orders total 100)}]
             ;; publish the (real, fielded) orders table into the library for the duration of the test
             (mt/with-temp-vals-in-db :model/Table orders {:collection_id data-id :is_published true}
               (reconcile/reconcile! ds (constantly model))

@@ -4,13 +4,13 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase-enterprise.entity-retrieval.test-util :as cs.tu]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase.measures.test-util :as measures.tu]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -73,9 +73,9 @@
           total  (mt/id :orders :total)]
       (mt/with-temp [:model/Measure {measure-id :id measure-eid :entity_id}
                      {:name "M" :table_id orders :creator_id (mt/user->id :crowberto)
-                      :definition (cs.tu/measure-definition orders total)}
+                      :definition (measures.tu/measure-definition orders total)}
                      :model/Segment {segment-id :id segment-eid :entity_id}
-                     {:name "S" :table_id orders :definition (cs.tu/segment-definition orders total 100)}]
+                     {:name "S" :table_id orders :definition (measures.tu/segment-definition orders total 100)}]
         (doseq [[entity-type id eid serdes-model] [["measure" measure-id measure-eid "Measure"]
                                                    ["segment" segment-id segment-eid "Segment"]]]
           (testing entity-type
