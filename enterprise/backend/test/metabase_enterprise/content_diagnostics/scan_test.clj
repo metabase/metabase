@@ -176,6 +176,7 @@
           (is (contains? resp :finding_count))
           (is (contains? resp :entities_scanned))
           (is (contains? resp :duration_ms))))))
-  (testing "without the feature the endpoint is gated (premium-handler)"
-    (mt/with-premium-features #{}
-      (mt/user-http-request :rasta :post 402 "ee/content-diagnostics/scan"))))
+  ;; DEMO (temporary): premium gate disabled in api_routes/routes.clj, so this no longer 402s. Restore with the gate.
+  #_(testing "without the feature the endpoint is gated (premium-handler)"
+      (mt/with-premium-features #{}
+        (mt/user-http-request :rasta :post 402 "ee/content-diagnostics/scan"))))
