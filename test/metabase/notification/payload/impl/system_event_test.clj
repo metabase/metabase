@@ -206,6 +206,26 @@
           (is (re-find #"/auth/reset_password/.*redirect(&#x3D;|=)/question/7.*#new"
                        (join-url-html {:type "question" :id 7 :name "Signups"}))))))))
 
+(deftest create-and-invite-user-sso-redirect-test
+  (testing "with SSO enabled and password login disabled, the invite link points at /auth/login carrying the item redirect"
+    (mt/with-model-cleanup [:model/User]
+      (mt/with-dynamic-fn-redefs [sso.settings/sso-enabled?              (constantly true)
+                                  session.settings/enable-password-login (constantly false)]
+        (let [join-url-html (fn [invite-target]
+                              (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+                                (-> (notification.tu/with-captured-channel-send!
+                                      (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
+                                                                    {:first_name "Admin" :email "admin@metabase.com"}
+                                                                    false
+                                                                    invite-target))
+                                    :channel/email first :message first :content)))]
+          (testing "dashboard"
+            (is (re-find #"/auth/login\?redirect(&#x3D;|=)/dashboard/42"
+                         (join-url-html {:type "dashboard" :id 42 :name "Q3 KPIs"}))))
+          (testing "question"
+            (is (re-find #"/auth/login\?redirect(&#x3D;|=)/question/7"
+                         (join-url-html {:type "question" :id 7 :name "Signups"})))))))))
+
 (deftest create-and-invite-user-email-content-test
   (testing "the invite email is scoped to the dashboard/question when an invite_target is present"
     (mt/with-model-cleanup [:model/User]

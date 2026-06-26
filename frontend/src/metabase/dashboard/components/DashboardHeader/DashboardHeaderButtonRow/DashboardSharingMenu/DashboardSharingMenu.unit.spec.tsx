@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
-import { createMockDashboardTab } from "metabase-types/api/mocks";
+import type { Dashboard } from "metabase-types/api";
+import {
+  createMockDashboardTab,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { openMenu, setupDashboardSharingMenu } from "./tests/setup";
 
@@ -297,6 +301,36 @@ describe("DashboardSharingMenu", () => {
   });
 
   describe("invite to view", () => {
+    const inviteAndGetRequestBody = async (dashboard: Partial<Dashboard>) => {
+      fetchMock.get("path:/api/permissions/group", []);
+      fetchMock.post("path:/api/user", createMockUser({ id: 99 }));
+      setupDashboardSharingMenu({
+        isAdmin: true,
+        isEmailSetup: true,
+        dashboard,
+      });
+      await openMenu();
+      await userEvent.click(screen.getByText("Invite someone to view this"));
+      await userEvent.type(
+        await screen.findByLabelText(/Email/),
+        "newbie@metabase.com",
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Send invitation" }),
+      );
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/user", { method: "POST" }),
+        ).toHaveLength(1),
+      );
+      const call = fetchMock.callHistory.calls("path:/api/user", {
+        method: "POST",
+      })[0];
+      return JSON.parse(
+        await (call.options?.body as unknown as Promise<string>),
+      );
+    };
+
     it("shows the invite item for admins", async () => {
       setupDashboardSharingMenu({ isAdmin: true });
       await openMenu();
@@ -321,6 +355,23 @@ describe("DashboardSharingMenu", () => {
       expect(
         await screen.findByText("Invite someone to view this dashboard"),
       ).toBeInTheDocument();
+    });
+
+    it("sends the dashboard as the invite_target", async () => {
+      const body = await inviteAndGetRequestBody({ id: 42, name: "Q3 KPIs" });
+      expect(body.invite_target).toEqual({
+        type: "dashboard",
+        id: 42,
+        name: "Q3 KPIs",
+      });
+    });
+
+    it("omits the invite_target for an x-ray dashboard (string id)", async () => {
+      const body = await inviteAndGetRequestBody({
+        id: "10-12345",
+        name: "An x-ray",
+      });
+      expect(body.invite_target).toBeUndefined();
     });
   });
 });
