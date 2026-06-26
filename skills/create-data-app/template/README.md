@@ -10,7 +10,7 @@ iframe.
 gh repo create my-data-app --template metabase/data-app-template --private --clone
 cd my-data-app
 npm install                           # or yarn / pnpm / bun — no lockfile shipped
-cp .env.local.example .env.local      # set VITE_MB_URL + VITE_MB_API_KEY
+cp .env.local.example .env.local      # set DATA_APP_MB_URL + DATA_APP_MB_API_KEY
 npm run dev                           # preview at http://localhost:5174
 npm run build                         # produces dist/index.js for upload
 ```

@@ -11,7 +11,7 @@ import { findEnvRoot } from "./config/env-root";
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const envDir = findEnvRoot(appRoot);
   const env = loadEnv(mode, envDir, "");
 
@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     envDir,
+    // use DATA_APP_ prefixed variables only for dev mode
+    envPrefix: command === "serve" ? "DATA_APP_" : [],
     plugins: [react()],
     build: {
       outDir: "dist",
@@ -59,7 +61,7 @@ export default defineConfig(({ mode }) => {
       headers: {
         "Content-Security-Policy": buildDevConnectSrcCsp(
           allowedHosts,
-          env.VITE_MB_URL,
+          env.DATA_APP_MB_URL,
         ),
       },
     },
