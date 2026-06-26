@@ -1345,7 +1345,10 @@
   ;; btree is the only method that supports UNIQUE; gin/gist/brin are containment/range methods. The niche methods
   ;; (hash, spgist) and partial/expression indexes are intentionally left out.
   (let [name+cols [driver.common/index-name-field driver.common/index-columns-field]]
-    {:btree {:lifecycle :standalone :fields (conj name+cols driver.common/index-unique-field)}
+    ;; btree is the only method where column order direction matters, so it opts into the asc/desc picker.
+    {:btree {:lifecycle :standalone :fields [driver.common/index-name-field
+                                             (assoc driver.common/index-columns-field :directions true)
+                                             driver.common/index-unique-field]}
      :gin   {:lifecycle :standalone :fields name+cols}
      :gist  {:lifecycle :standalone :fields name+cols}
      :brin  {:lifecycle :standalone :fields name+cols}}))

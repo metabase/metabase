@@ -4,12 +4,11 @@
   Per-driver cases and helpers live in [[metabase.transforms.index-test-util]]. Each test stubs
   [[metabase.transforms.execute/hydrate-transform-indexes]] to inject its case."
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.index-test-util :as index-util]
@@ -157,36 +156,53 @@
                        (assoc-in transform [:target :indexes] indexes))
                       (is (= expected (physical-indexes db schema table-name))))))))))))))
 
+(defn- fetch-schema
+  "Schema the fetch-correctness suite creates its table in and passes to fetch-table-indexes. nil for sql-jdbc drivers
+  (the connection default); bigquery has none, so it uses its session dataset and qualifies the DDL with it."
+  [driver]
+  (when-not (isa? driver/hierarchy driver :sql-jdbc)
+    (sql.tx/session-schema driver)))
+
+(defn- run-fetch-ddl!
+  "Run raw fetch-case DDL through execute-raw-queries! (both sql-jdbc and bigquery implement it). Each statement is
+  wrapped as `[sql]` because the seam expects `[sql & params]` vectors, not bare strings."
+  [driver db stmts]
+  (driver/execute-raw-queries! driver (driver/connection-spec driver db) (mapv vector stmts)))
+
 (deftest ^:synchronized fetch-table-indexes-correctness-test
   (testing "fetch-table-indexes reports each driver's popular index kinds in the normalized cross-driver shape"
     ;; The e2e tests above prove indexes Metabase *applies* land on the table; this proves the driver method the
     ;; GET /indexes API consumes reads them back correctly, including catalog shapes the apply path can't produce
-    ;; (e.g. a Postgres gin or partial index). Indexes are created directly; nil schema uses the connection default.
+    ;; (e.g. a Postgres gin or partial index). Tables are created directly from raw DDL.
     (mt/test-drivers (index-util/index-test-drivers)
-      (let [spec  (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-            cases (index-util/fetch-cases driver/*driver*)]
-        (is (driver/database-supports? driver/*driver* :index/fetch (mt/db))
+      (let [db     (mt/db)
+            schema (fetch-schema driver/*driver*)
+            cases  (index-util/fetch-cases driver/*driver*)]
+        (is (driver/database-supports? driver/*driver* :index/fetch db)
             "a driver that implements fetch-table-indexes declares :index/fetch")
         (is (some? cases) (index-util/missing-case-message driver/*driver*))
         (doseq [{:keys [label table create expected definition-contains]} cases]
           (testing label
-            (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table)])
-            (try
-              (doseq [stmt create]
-                (jdbc/execute! spec [stmt]))
-              (let [indexes (driver/fetch-table-indexes driver/*driver* (mt/db) nil table)]
-                (is (nil? (mr/explain :metabase.driver/fetch-table-indexes.result indexes))
-                    "result conforms to ::fetch-table-indexes.result")
-                (is (= expected (into #{} (map #(dissoc % :definition)) indexes)))
-                ;; `:definition` is dropped from the equality check above (it's driver-verbatim), so a case that hinges
-                ;; on it (e.g. Redshift INTERLEAVED vs COMPOUND, identical except for this word) asserts it explicitly.
-                (when definition-contains
-                  (is (some #(str/includes? (:definition %) definition-contains) indexes)
-                      (str "an index definition contains " (pr-str definition-contains)))))
-              (finally
-                (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table)])))))
+            ;; sql-jdbc drivers create in the connection default (schema nil, bare name); bigquery needs the dataset.
+            (let [qualified (if schema (format "`%s`.%s" schema table) table)
+                  drop-sql  (str "DROP TABLE IF EXISTS " qualified)
+                  creates   (cond->> create schema (mapv #(str/replace-first % table qualified)))]
+              (run-fetch-ddl! driver/*driver* db [drop-sql])
+              (try
+                (run-fetch-ddl! driver/*driver* db creates)
+                (let [indexes (driver/fetch-table-indexes driver/*driver* db schema table)]
+                  (is (nil? (mr/explain :metabase.driver/fetch-table-indexes.result indexes))
+                      "result conforms to ::fetch-table-indexes.result")
+                  (is (= expected (into #{} (map #(dissoc % :definition)) indexes)))
+                  ;; `:definition` is dropped from the equality check above (it's driver-verbatim), so a case that hinges
+                  ;; on it (e.g. Redshift INTERLEAVED vs COMPOUND, identical except for this word) asserts it explicitly.
+                  (when definition-contains
+                    (is (some #(str/includes? (:definition %) definition-contains) indexes)
+                        (str "an index definition contains " (pr-str definition-contains)))))
+                (finally
+                  (run-fetch-ddl! driver/*driver* db [drop-sql]))))))
         (testing "a table that does not exist returns [] rather than throwing"
-          (is (= [] (driver/fetch-table-indexes driver/*driver* (mt/db) nil "mb_fetch_does_not_exist"))))))))
+          (is (= [] (driver/fetch-table-indexes driver/*driver* db schema "mb_fetch_does_not_exist"))))))))
 
 (deftest ^:parallel fetch-table-indexes-unsupported-driver-test
   (testing "a driver that can't introspect indexes doesn't declare :index/fetch"
