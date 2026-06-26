@@ -238,7 +238,7 @@
                      :database_id :database_name :portable_entity_id
                      :base_table_id :base_table_name :base_table_portable_fk]))))
 
-(declare related-tables related-tables-result)
+(declare related-tables)
 
 (def ^:private max-related-tables
   "Maximum number of FK-related tables to expand when building entity context for the LLM.
@@ -315,7 +315,7 @@
                          :segments (when with-segments?
                                      (not-empty (mapv #(convert-measure-or-segment % :filters)
                                                       (lib/available-segments table-query)))))
-           (merge (related-tables-result related)))))))
+           (merge related))))))
 
 (defn- fk-related-table-groups
   "Sorted, distinct `[target-table-id fk-field-id]` pairs for every direct FK from `query`'s source table.
@@ -344,21 +344,25 @@
          sort)))
 
 (defn related-tables
-  "Context about tables related to `query` via a foreign key.
+  "Context about tables related to `query` via a foreign key, as the entity-detail result keys callers merge in.
 
   Each distinct FK path (a `[table-id fk-field-id]` pair) is a separate related table, so the same table reachable
   through multiple foreign keys appears once per FK.
 
   Returns nil when the query has no FK-related tables, otherwise a map:
 
-    :tables     vector of detailed related-table maps (one per FK path), each optionally with its fields, capped at
-                [[max-related-tables]]. This is the expensive part — each entry re-fetches and formats the
-                target table's full column set.
-    :total      total number of FK-related tables before capping.
-    :refs       list of `{:id :name :description :related_by}` of related tables that were *not* expanded into
-                `:tables`, capped at [[max-related-table-truncated-refs]] (ids/names only, no column fetch). Tables
-                already present in `:tables` are excluded so the roster only surfaces tables the LLM hasn't already
-                seen in full."
+    :related_tables       vector of detailed related-table maps (one per FK path), each optionally with its fields,
+                          capped at [[max-related-tables]]. This is the expensive part — each entry re-fetches and
+                          formats the target table's full column set.
+    :related_tables_total (optional) total number of FK-related tables before capping. Only present when truncation
+                          occurred, so callers infer that `:related_tables` was truncated by comparing it against
+                          the length of `:related_tables`.
+    :related_table_refs   (optional) list of `{:id :name :description :related_by}` for related tables *not* expanded
+                          into `:related_tables` (ids/names only, no column fetch), so the LLM knows more related
+                          tables exist and can look them up individually. Capped at
+                          [[max-related-table-truncated-refs]]; tables already present in `:related_tables` are
+                          excluded so the roster only surfaces tables the LLM hasn't already seen in full. Only
+                          present when truncation occurred."
   [query with-fields? field-values-fn]
   (let [fk-groups (fk-related-table-groups query)
         total     (count fk-groups)]
@@ -366,46 +370,29 @@
       (when (> total max-related-tables)
         (log/infof "Capping metabot related-table expansion to %d of %d FK-related tables."
                    max-related-tables total))
-      (let [shown-groups    (take max-related-tables fk-groups)
-            shown-table-ids (into #{} (map first) shown-groups)
-            ;; exclude tables already expanded in :tables so the roster only lists tables not shown in full
-            excluded-groups (remove (comp shown-table-ids first) fk-groups)]
-        {:total      total
-         :tables     (mapv
-                      (fn [[table-id fk-field-id]]
-                        (-> (table-details table-id
-                                           {:with-fields?         with-fields?
-                                            :field-values-fn      field-values-fn
-                                            :with-related-tables? false
-                                            :with-metrics?        false})
-                            (assoc :related_by (:name (lib.metadata/field query fk-field-id)))))
-                      shown-groups)
-         :refs       (mapv
-                      (fn [[table-id fk-field-id]]
-                        (let [table (lib.metadata/table query table-id)]
-                          {:id          table-id
-                           :name        (:name table)
-                           :description (:description table)
-                           :related_by  (:name (lib.metadata/field query fk-field-id))}))
-                      (take max-related-table-truncated-refs excluded-groups))}))))
-
-(defn- related-tables-result
-  "Convert the map returned by [[related-tables]] into the entity-detail result.
-
-  - `:related_tables` list of related tables with full details
-  - `:related_tables_total` (optional) count of total related tables, before truncation. Only present when
-     truncation occurred, so callers can infer that `:related_tables` was truncated by comparing it against the
-     length of `:related_tables`.
-  - `:related_table_refs` (optional) list of id/name/description for related tables *not* expanded into
-     `:related_tables`. Only present when truncation occurred, so the LLM knows more related tables exist and can
-     look them up individually. This list may itself be capped at [[max-related-table-truncated-refs]]; callers
-     infer that by comparing `:related_tables_total` against the lengths of `:related_tables` and
-     `:related_table_refs`."
-  [related]
-  (when-let [{:keys [tables total refs]} related]
-    (cond-> {:related_tables tables}
-      (> total (count tables)) (assoc :related_tables_total total
-                                      :related_table_refs   refs))))
+      (let [included-groups (take max-related-tables fk-groups)
+            included-ids    (into #{} (map first) included-groups)
+            excluded-groups (remove (comp included-ids first) fk-groups)
+            related-tables  (mapv
+                             (fn [[table-id fk-field-id]]
+                               (-> (table-details table-id
+                                                  {:with-fields?         with-fields?
+                                                   :field-values-fn      field-values-fn
+                                                   :with-related-tables? false
+                                                   :with-metrics?        false})
+                                   (assoc :related_by (:name (lib.metadata/field query fk-field-id)))))
+                             included-groups)]
+        (cond-> {:related_tables related-tables}
+          (> total (count related-tables))
+          (assoc :related_tables_total total
+                 :related_table_refs   (mapv
+                                        (fn [[table-id fk-field-id]]
+                                          (let [table (lib.metadata/table query table-id)]
+                                            {:id          table-id
+                                             :name        (:name table)
+                                             :description (:description table)
+                                             :related_by  (:name (lib.metadata/field query fk-field-id))}))
+                                        (take max-related-table-truncated-refs excluded-groups))))))))
 
 (defn- card-details
   "Get details for a card."
@@ -491,7 +478,7 @@
           :segments (when with-segments?
                       (not-empty (mapv #(convert-measure-or-segment % :filters)
                                        (lib/available-segments card-query)))))
-         (merge (related-tables-result related))))))
+         (merge related)))))
 
 (defn cards-details
   "Get the details of metrics or models as specified by `card-type` and `cards`
