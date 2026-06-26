@@ -147,6 +147,7 @@ export const ActionParameterMappingItem = ({
       <Select
         data-testid="parameter-mapping-select"
         value={value}
+        comboboxProps={{ width: 300, position: "bottom-start" }}
         onChange={handleChange}
         data={[
           ...getDefaultOptions({
