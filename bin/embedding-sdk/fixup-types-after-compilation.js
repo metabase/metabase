@@ -52,6 +52,17 @@ const DTS_ROLLUPS = [
       "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/data-app.d.ts",
     ),
   },
+  {
+    name: "data-app-dev",
+    configPath: path.join(
+      __dirname,
+      "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-data-app-dev-api-extractor.json",
+    ),
+    entryPointPath: path.join(
+      __dirname,
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/data-app-dev.d.ts",
+    ),
+  },
 ];
 
 const getLogger = (prefix) => {

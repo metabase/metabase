@@ -1,6 +1,9 @@
-import type * as React from "react";
+import * as React from "react";
+import * as ReactJsxRuntime from "react/jsx-runtime";
 import { pick } from "underscore";
 
+import * as sdkExports from "embedding-sdk-package";
+import * as dataAppExports from "embedding-sdk-package/data-app";
 import { getSubpathSafeUrl } from "metabase/urls";
 
 import {
@@ -103,7 +106,17 @@ export function instantiateDataAppBundle(
   targetWindow: Window,
   allowedHosts: string[] = [],
 ): LoadedDataApp {
-  const sandbox = createDataAppSandbox(label, targetWindow, allowedHosts);
+  const sandbox = createDataAppSandbox({
+    label,
+    targetWindow,
+    allowedHosts,
+    endowments: {
+      React,
+      reactJsxRuntime: ReactJsxRuntime,
+      sdkExports,
+      dataAppExports,
+    },
+  });
   const factory = sandbox.evaluate(code);
 
   const def = factory();
