@@ -5,8 +5,7 @@
 
    - **Manager-side state.** Workspaces and their per-database configs live in the
      `:model/Workspace` and `:model/WorkspaceDatabase` rows. Mutations go through
-     [[create-workspace!]], [[add-database!]], [[update-database!]],
-     [[remove-database!]], [[delete-workspace!]]. Provisioning operations are
+     [[create-workspace!]] and [[delete-workspace!]]. Provisioning operations are
      synchronous — the caller waits until the warehouse work completes.
 
    - **Instance-side state.** When a Metabase boots in workspace mode, the
@@ -32,13 +31,15 @@
          │                                                ▼
          └──────────────────────────────────────── provisioned"
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver.sql :as driver.sql]
-   [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.workspaces.core :as ws]
    [toucan2.core :as t2]))
@@ -175,22 +176,15 @@
       (throw (ex-info "Workspace not found"
                       {:status-code 404 :workspace_id workspace-id}))))
 
-(defn- assert-input-schemas-when-supported!
-  "Throw 400 if the database supports the `:schemas` feature and `input-schemas` is empty.
-   Databases without schemas (e.g. MySQL) accept an empty `input-schemas`."
-  [database-id input-schemas]
-  (when-let [db (t2/select-one :model/Database :id database-id)]
-    (when (and (driver.u/supports? (:engine db) :schemas db)
-               (empty? input-schemas))
-      (throw (ex-info "input_schemas is required: at least one source schema must be specified"
-                      {:status-code 400 :database_id database-id})))))
+(defn- assert-database-exists [database-id]
+  (or (t2/select-one :model/Database :id database-id)
+      (throw (ex-info "Database not found"
+                      {:status-code 404 :database_id database-id}))))
 
-(defn- find-wsd
-  "Find the WorkspaceDatabase for a given workspace + database, or throw 404."
-  [ws database-id]
-  (or (some #(when (= database-id (:database_id %)) %) (:databases ws))
-      (throw (ex-info "Database not in workspace"
-                      {:status-code 404 :workspace_id (:id ws) :database_id database-id}))))
+(defn- assert-database-eligible-for-workspaces [database]
+  (when-not (workspace-database/database-eligible-for-workspaces? database)
+    (throw (ex-info "Workspaces are not enabled for this database"
+                    {:status-code 400 :database_id (:id database)}))))
 
 ;;; ------------------------------------- Manager-side reads --------------------------------------------------
 
@@ -208,63 +202,81 @@
 ;;; ------------------------------------- Manager-side writes -------------------------------------------------
 
 (defn create-workspace!
-  "Create a new Workspace (name only, no databases). Returns the created workspace, hydrated."
-  [params]
-  (workspace/create-workspace! (select-keys params [:name :creator_id])))
-
-(defn add-database!
-  "Add a database to a workspace and provision it immediately (blocking).
-   `input-schemas` is a vector of driver-opaque schema name strings.
-   Returns the updated workspace, hydrated."
-  [workspace-id database-id input-schemas]
-  (let [ws (assert-workspace-exists workspace-id)]
-    (assert-input-schemas-when-supported! database-id input-schemas)
-    (when (some #(= database-id (:database_id %)) (:databases ws))
-      (throw (ex-info "Database already in workspace"
-                      {:status-code 409 :workspace_id workspace-id :database_id database-id})))
+  "Create a new Workspace, attach the databases with ids `database_ids` — each must
+   exist (404) and be eligible for workspaces (400, see
+   [[workspace-database/database-eligible-for-workspaces?]]) — with all of their
+   known schemas as
+   `input_schemas`, and provision each database (blocking). Everything runs in a
+   single transaction, so a provisioning failure rolls back the workspace and its
+   database rows. Returns the created workspace, hydrated."
+  [{:keys [name creator_id database_ids]}]
+  (let [databases (mapv (fn [db-id]
+                          (let [database (assert-database-exists db-id)]
+                            (assert-database-eligible-for-workspaces database)
+                            {:database_id   db-id
+                             :input_schemas (workspace-database/database-input-schemas database)}))
+                        database_ids)]
     (t2/with-transaction [_conn]
-      (let [wsd-id (t2/insert-returning-pk! :model/WorkspaceDatabase
-                                            {:workspace_id     workspace-id
-                                             :database_id      database-id
-                                             :input_schemas    input-schemas
-                                             :database_details {}
-                                             :output_namespace ""})]
-        (provisioning/provision-single! wsd-id)))
-    (workspace/get-workspace workspace-id)))
+      (let [ws (workspace/create-workspace! {:name       name
+                                             :creator_id creator_id
+                                             :databases  databases})]
+        (doseq [{wsd-id :id} (:databases ws)]
+          (provisioning/provision-single! wsd-id))
+        (workspace/get-workspace (:id ws))))))
 
-(defn update-database!
-  "Update a database's config in a workspace: deprovision the existing one (if provisioned),
-   update `input-schemas`, then reprovision (blocking). `input-schemas` is a vector of
-   driver-opaque schema name strings. Returns the updated workspace, hydrated."
-  [workspace-id database-id input-schemas]
-  (let [ws     (assert-workspace-exists workspace-id)
-        wsd    (find-wsd ws database-id)
-        wsd-id (:id wsd)]
-    (assert-input-schemas-when-supported! database-id input-schemas)
-    (when (= :provisioned (:status wsd))
-      (provisioning/deprovision-single! wsd-id))
-    (provisioning/with-workspace-database-lock wsd-id
-      (t2/with-transaction [_conn]
-        (t2/update! :model/WorkspaceDatabase {:id wsd-id}
-                    {:input_schemas input-schemas})
-        (provisioning/provision-single! wsd-id)))
-    (workspace/get-workspace workspace-id)))
+(defn- orphaned-resources-message
+  [workspace-id failures]
+  (str (format "Workspace %d was deleted, but warehouse cleanup failed for %d database(s). "
+               workspace-id (count failures))
+       "These resources were left in place and may need to be removed manually:\n"
+       (str/join "\n"
+                 (for [{:keys [database_id driver schema user reason]} failures]
+                   (format "  - database %d (%s): schema \"%s\", user \"%s\" — not removed because: %s"
+                           database_id (name driver) schema user reason)))))
 
-(defn remove-database!
-  "Deprovision a database (if provisioned) and remove it from the workspace (blocking).
-   Returns the updated workspace, hydrated."
-  [workspace-id database-id]
-  (let [ws  (assert-workspace-exists workspace-id)
-        wsd (find-wsd ws database-id)]
-    (when (= :provisioned (:status wsd))
-      (provisioning/deprovision-single! (:id wsd)))
-    (t2/delete! :model/WorkspaceDatabase :id (:id wsd))
-    (workspace/get-workspace workspace-id)))
+(defn- pending-database?
+  "True for a WorkspaceDatabase that is mid-provision/deprovision — a state we can't
+  safely tear down because warehouse work may still be in flight on another node."
+  [wsd]
+  (contains? #{:provisioning :deprovisioning} (:status wsd)))
 
 (defn delete-workspace!
-  "Deprovision all databases (blocking), then delete the workspace."
-  [id]
-  (let [ws (assert-workspace-exists id)]
-    (when (some #(= :provisioned (:status %)) (:databases ws))
-      (provisioning/deprovision-workspace! id))
-    (workspace/delete-workspace! id)))
+  "Tear down each `:provisioned` database's warehouse isolation (best-effort,
+  blocking), then delete the workspace.
+
+  `ignore-pending?` (default false) controls databases still `:provisioning` or
+  `:deprovisioning`: when false, refuses with a 409 (`:pending_databases` lists
+  them) since their warehouse work may be in flight; when true, those databases are
+  left untouched in the warehouse and only their app-DB rows are removed.
+
+  Returns `{:deleted true}` on clean teardown, or
+  `{:deleted true :orphaned_resources [...] :message ..}` when the warehouse was
+  unreachable for some `:provisioned` rows and inert schema/user objects were left
+  behind. App-DB `TableRemapping` rows are always cleared, so query routing is never
+  left dangling."
+  ([id] (delete-workspace! id false))
+  ([id ignore-pending?]
+   (let [ws       (assert-workspace-exists id)
+         databases (:databases ws)
+         pending  (filter pending-database? databases)
+         active   (filter #(= :provisioned (:status %)) databases)]
+     (when (and (seq pending) (not ignore-pending?))
+       (throw (ex-info "Cannot delete a workspace while some of its databases are still provisioning or deprovisioning"
+                       {:status-code       409
+                        :workspace_id      id
+                        :pending_databases (mapv (fn [wsd]
+                                                   {:database_id (:database_id wsd)
+                                                    :name        (:name (:database wsd))
+                                                    :status      (:status wsd)})
+                                                 pending)})))
+     (let [results  (mapv #(provisioning/force-teardown-for-delete!
+                            % provisioning/dispatching-provisioner)
+                          active)
+           failures (filterv #(= :failure (:status %)) results)]
+       (run! provisioning/ignore-pending-database! pending)
+       (workspace/delete-workspace! id)
+       (if (seq failures)
+         (let [message (orphaned-resources-message id failures)]
+           (log/warn message)
+           {:deleted true :orphaned_resources failures :message message})
+         {:deleted true})))))

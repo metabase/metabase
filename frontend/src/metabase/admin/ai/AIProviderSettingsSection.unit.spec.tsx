@@ -18,6 +18,8 @@ import {
 import { reinitialize } from "metabase/plugins";
 import { defer } from "metabase/utils/promise";
 import type {
+  BedrockCredentials,
+  MetabotCredentials,
   MetabotProvider,
   MetabotSettingsResponse,
   SettingDefinition,
@@ -66,6 +68,26 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  azure: {
+    // Azure has no model dropdown — deployment names are free text.
+    value: "azure/anthropic/claude-sonnet-4-5",
+    models: [],
+  },
+  bedrock: {
+    value: "bedrock/anthropic.claude-haiku-4-5",
+    models: [
+      {
+        id: "anthropic.claude-haiku-4-5",
+        display_name: "anthropic.claude-haiku-4-5",
+        group: "Anthropic",
+      },
+      {
+        id: "openai.gpt-5.5",
+        display_name: "openai.gpt-5.5",
+        group: "OpenAI",
+      },
+    ],
+  },
   openai: {
     value: "openai/gpt-4.1-mini",
     models: [
@@ -99,14 +121,21 @@ type MetabotSettingsApiResponse =
 type MetabotSettingKey =
   | "llm-metabot-provider"
   | "llm-anthropic-api-key"
+  | "llm-azure-api-key"
+  | "llm-azure-api-base-url"
   | "llm-openai-api-key"
-  | "llm-openrouter-api-key";
+  | "llm-openrouter-api-key"
+  | "llm-bedrock-access-key-id"
+  | "llm-bedrock-secret-access-key"
+  | "llm-bedrock-region"
+  | "llm-bedrock-session-token";
 
 type MetabotSettingDefinition = SettingDefinition<MetabotSettingKey>;
 type MetabotSettingsUpdateBody = {
   provider: MetabotProvider;
   model?: string;
   "api-key"?: string | null;
+  credentials?: MetabotCredentials | null;
 };
 
 type SetupOptions = {
@@ -134,6 +163,7 @@ type SetupOptions = {
   pauseUpdateResponse?: boolean;
   deferMetabotSettingsUpdateResponse?: boolean;
   settingUpdateResponse?: number | { status: number; body?: unknown };
+  metabotSettingsUpdateResponse?: number | { status: number; body?: unknown };
   responses?: Partial<Record<MetabotProvider, MetabotSettingsApiResponse>>;
   updateResponse?: MetabotSettingsResponse;
   renderAsModal?: boolean;
@@ -164,6 +194,7 @@ async function setup({
   pauseUpdateResponse = false,
   deferMetabotSettingsUpdateResponse = false,
   settingUpdateResponse = 204,
+  metabotSettingsUpdateResponse,
   responses,
   updateResponse = {
     value: "anthropic/claude-sonnet-4-5",
@@ -178,8 +209,13 @@ async function setup({
   const purchaseCloudAddOnDeferred = defer<void>();
   const updateMetabotSettingsDeferred = defer<void>();
 
-  const mergedApiKeyValues: Record<MetabotApiKeyProvider, string | null> = {
+  const mergedApiKeyValues: Record<
+    MetabotApiKeyProvider | "azure" | "bedrock",
+    string | null
+  > = {
     anthropic: "**********45",
+    azure: null,
+    bedrock: null,
     openai: null,
     openrouter: null,
     ...apiKeyValues,
@@ -225,6 +261,17 @@ async function setup({
       is_env_setting: apiKeySettingIsEnv,
       env_name: apiKeySettingIsEnv ? apiKeySettingEnvName : undefined,
     }),
+    "llm-azure-api-key": createMockSettingDefinition({
+      key: "llm-azure-api-key",
+      value: mergedApiKeyValues.azure ?? undefined,
+    }),
+    // The base URL is configured whenever the Azure API key is — they are saved together.
+    "llm-azure-api-base-url": createMockSettingDefinition({
+      key: "llm-azure-api-base-url",
+      value: mergedApiKeyValues.azure
+        ? "https://my-resource.services.ai.azure.com/anthropic"
+        : undefined,
+    }),
     "llm-openai-api-key": createMockSettingDefinition({
       key: "llm-openai-api-key",
       value: mergedApiKeyValues.openai ?? undefined,
@@ -232,6 +279,23 @@ async function setup({
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
       value: mergedApiKeyValues.openrouter ?? undefined,
+    }),
+    "llm-bedrock-access-key-id": createMockSettingDefinition({
+      key: "llm-bedrock-access-key-id",
+      value: mergedApiKeyValues.bedrock ?? undefined,
+    }),
+    // The secret access key is configured whenever the access key ID is — they are saved together.
+    "llm-bedrock-secret-access-key": createMockSettingDefinition({
+      key: "llm-bedrock-secret-access-key",
+      value: mergedApiKeyValues.bedrock ? "**********ET" : undefined,
+    }),
+    "llm-bedrock-region": createMockSettingDefinition({
+      key: "llm-bedrock-region",
+      value: mergedApiKeyValues.bedrock ? "us-east-1" : undefined,
+    }),
+    "llm-bedrock-session-token": createMockSettingDefinition({
+      key: "llm-bedrock-session-token",
+      value: mergedApiKeyValues.bedrock ? "**********EN" : undefined,
     }),
   };
 
@@ -288,6 +352,10 @@ async function setup({
   }
 
   fetchMock.put("path:/api/metabot/settings", (call) => {
+    if (metabotSettingsUpdateResponse !== undefined) {
+      return metabotSettingsUpdateResponse;
+    }
+
     if (pauseUpdateResponse) {
       return new Promise(() => undefined);
     }
@@ -322,6 +390,39 @@ async function setup({
         key: apiKeySettingKey,
         value: maskedApiKey,
       });
+    }
+
+    if (body.provider === "bedrock" && "credentials" in body) {
+      const mask = (value: string | null | undefined) =>
+        value ? `**********${String(value).slice(-2)}` : undefined;
+
+      // `credentials: null` is an explicit clear — the backend wipes all the saved key material.
+      // Fields inside the map follow the same presence contract: an absent field keeps the saved
+      // value, a null field clears it.
+      const requestCredentials = body.credentials ?? null;
+      const updateBedrockSetting = (
+        settingKey:
+          | "llm-bedrock-access-key-id"
+          | "llm-bedrock-secret-access-key"
+          | "llm-bedrock-session-token",
+        field: keyof BedrockCredentials,
+      ) => {
+        if (requestCredentials !== null && !(field in requestCredentials)) {
+          return;
+        }
+        settingsDefinitions[settingKey] = createMockSettingDefinition({
+          ...settingsDefinitions[settingKey],
+          key: settingKey,
+          value: mask(requestCredentials?.[field]),
+        });
+      };
+
+      updateBedrockSetting("llm-bedrock-access-key-id", "access-key-id");
+      updateBedrockSetting(
+        "llm-bedrock-secret-access-key",
+        "secret-access-key",
+      );
+      updateBedrockSetting("llm-bedrock-session-token", "session-token");
     }
 
     if ("model" in body) {
@@ -595,7 +696,7 @@ describe("AIProviderSettingsSection", () => {
       responses: {
         anthropic: {
           value: "anthropic/claude-haiku-4-5",
-          "api-key-error": "Anthropic API key expired or invalid",
+          "credentials-error": "Anthropic API key expired or invalid",
           models: [],
         },
       },
@@ -628,7 +729,7 @@ describe("AIProviderSettingsSection", () => {
       responses: {
         anthropic: {
           value: "anthropic/claude-haiku-4-5",
-          "api-key-error": "Anthropic API key expired or invalid",
+          "credentials-error": "Anthropic API key expired or invalid",
           models: [],
         },
       },
@@ -651,7 +752,7 @@ describe("AIProviderSettingsSection", () => {
       responses: {
         anthropic: {
           value: "anthropic/claude-haiku-4-5",
-          "api-key-error": "Anthropic API key expired or invalid",
+          "credentials-error": "Anthropic API key expired or invalid",
           models: [],
         },
       },
@@ -1471,7 +1572,7 @@ describe("AIProviderSettingsSection", () => {
       responses: {
         anthropic: {
           value: "anthropic/claude-haiku-4-5",
-          "api-key-error": "Anthropic API key expired or invalid",
+          "credentials-error": "Anthropic API key expired or invalid",
           models: [],
         },
       },
@@ -1683,6 +1784,440 @@ describe("AIProviderSettingsSection", () => {
             (toast) => toast.message === "Unable to save provider settings.",
           ),
       ).toBe(true);
+    });
+  });
+
+  describe("Microsoft Azure", () => {
+    it("shows Microsoft Azure as selectable in the provider dropdown", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await userEvent.click(screen.getByLabelText("Provider"));
+
+      const azureOption = await screen.findByRole("option", {
+        name: "Microsoft Azure",
+      });
+      expect(azureOption).toBeInTheDocument();
+      expect(azureOption).not.toHaveAttribute("data-combobox-disabled");
+    });
+
+    it("shows the Azure fields without a model dropdown when selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Microsoft Azure");
+
+      expect(
+        await screen.findByLabelText("Model provider"),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Base URL")).toBeInTheDocument();
+      expect(screen.getByLabelText("API key")).toBeInTheDocument();
+      expect(screen.getByLabelText("Deployment name")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+    });
+
+    it("connects Azure by sending the composed model and the credentials object", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "azure/openai/my-deployment",
+          models: [],
+        },
+      });
+
+      await selectProvider("Microsoft Azure");
+
+      const connectButton = screen.getByRole("button", { name: "Connect" });
+      expect(connectButton).toBeDisabled();
+
+      await userEvent.click(await screen.findByLabelText("Model provider"));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "OpenAI" }),
+      );
+      await userEvent.type(
+        screen.getByLabelText("Base URL"),
+        "https://my-resource.services.ai.azure.com/openai",
+      );
+      await userEvent.type(screen.getByLabelText("API key"), "azure-key");
+      await userEvent.type(
+        screen.getByLabelText("Deployment name"),
+        "my-deployment",
+      );
+
+      expect(connectButton).toBeEnabled();
+      await userEvent.click(connectButton);
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "azure",
+          model: "openai/my-deployment",
+          credentials: {
+            "api-key": "azure-key",
+            "base-url": "https://my-resource.services.ai.azure.com/openai",
+          },
+        }),
+      );
+    });
+
+    it("shows the saved family, base URL, and deployment for a connected Azure provider", async () => {
+      await setup({
+        savedProviderValue: "azure/anthropic/claude-sonnet-4-5",
+        apiKeyValues: { azure: "**********ey" },
+      });
+
+      expect(await screen.findByLabelText("Model provider")).toHaveValue(
+        "Anthropic",
+      );
+      expect(screen.getByLabelText("Base URL")).toHaveValue(
+        "https://my-resource.services.ai.azure.com/anthropic",
+      );
+      expect(screen.getByLabelText("Deployment name")).toHaveValue(
+        "claude-sonnet-4-5",
+      );
+      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
+    });
+
+    it("sends untouched Azure credential fields as null when editing only the deployment", async () => {
+      await setup({
+        savedProviderValue: "azure/anthropic/claude-sonnet-4-5",
+        apiKeyValues: { azure: "**********ey" },
+        updateResponse: {
+          value: "azure/anthropic/renamed-deployment",
+          models: [],
+        },
+      });
+
+      const deploymentInput = await screen.findByLabelText("Deployment name");
+      await userEvent.clear(deploymentInput);
+      await userEvent.type(deploymentInput, "renamed-deployment");
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      // The untouched key and base URL round-trip as displayed values in the form, but must be
+      // sent as null so the backend keeps the real saved values.
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "azure",
+          model: "anthropic/renamed-deployment",
+          credentials: {
+            "api-key": null,
+            "base-url": null,
+          },
+        }),
+      );
+    });
+
+    it("disconnects Azure by clearing the credentials before the provider setting", async () => {
+      await setup({
+        savedProviderValue: "azure/anthropic/claude-sonnet-4-5",
+        apiKeyValues: { azure: "**********ey" },
+      });
+
+      await screen.findByLabelText("Deployment name");
+      await confirmDisconnectProvider();
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+            body: { provider: "azure", credentials: null },
+          }),
+        ).toBe(true);
+      });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/setting", {
+            method: "PUT",
+            body: { "llm-metabot-provider": null },
+          }),
+        ).toBe(true);
+      });
+
+      const callHistory = fetchMock.callHistory.calls();
+      const [credentialsRequest] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+      const [providerRequest] = fetchMock.callHistory.calls(
+        "path:/api/setting",
+        { method: "PUT" },
+      );
+
+      if (!credentialsRequest || !providerRequest) {
+        throw new Error("Expected credentials and provider requests to exist");
+      }
+
+      expect(callHistory.indexOf(credentialsRequest)).toBeLessThan(
+        callHistory.indexOf(providerRequest),
+      );
+
+      expect(
+        await screen.findByText("Connect to an AI provider"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("Amazon Bedrock", () => {
+    it("shows Amazon Bedrock as selectable in the provider dropdown", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await userEvent.click(screen.getByLabelText("Provider"));
+
+      const bedrockOption = await screen.findByRole("option", {
+        name: "Amazon Bedrock",
+      });
+      expect(bedrockOption).toBeInTheDocument();
+      expect(bedrockOption).not.toHaveAttribute("data-combobox-disabled");
+    });
+
+    it("shows the AWS credential fields when Amazon Bedrock is selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Amazon Bedrock");
+
+      expect(await screen.findByLabelText("Access key ID")).toBeInTheDocument();
+      expect(screen.getByLabelText("Secret access key")).toBeInTheDocument();
+      expect(screen.getByLabelText("Region")).toBeInTheDocument();
+      expect(screen.getByLabelText("Session token")).toBeInTheDocument();
+      expect(screen.queryByLabelText("API key")).not.toBeInTheDocument();
+    });
+
+    it("connects Amazon Bedrock by sending the credentials object", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Amazon Bedrock");
+
+      await userEvent.type(
+        await screen.findByLabelText("Access key ID"),
+        "AKIDEXAMPLE",
+      );
+      await userEvent.type(
+        screen.getByLabelText("Secret access key"),
+        "test-secret",
+      );
+      await userEvent.type(screen.getByLabelText("Region"), "us-east-2");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      // The untouched session token field is omitted entirely — only changed fields are sent.
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "bedrock",
+          credentials: {
+            "access-key-id": "AKIDEXAMPLE",
+            "secret-access-key": "test-secret",
+            region: "us-east-2",
+          },
+        }),
+      );
+    });
+
+    it("does not echo obfuscated credentials when editing only the region of a connected Bedrock provider", async () => {
+      await setup({
+        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
+        apiKeyValues: { bedrock: "**********LE" },
+      });
+
+      const regionInput = await screen.findByLabelText("Region");
+      await userEvent.clear(regionInput);
+      await userEvent.type(regionInput, "us-west-2");
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      // The untouched access key, secret, and session token round-trip as obfuscated placeholders
+      // in the form, and must be omitted so the backend leaves the real saved values intact.
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "bedrock",
+          credentials: {
+            region: "us-west-2",
+          },
+        }),
+      );
+    });
+
+    it("clears the session token by sending an explicit null without touching the other fields", async () => {
+      await setup({
+        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
+        apiKeyValues: { bedrock: "**********LE" },
+      });
+
+      const sessionTokenInput = await screen.findByLabelText("Session token");
+      await userEvent.clear(sessionTokenInput);
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      // null means an explicit clear; the untouched fields are omitted so the saved keys survive.
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "bedrock",
+          credentials: {
+            "session-token": null,
+          },
+        }),
+      );
+    });
+
+    it("shows the grouped model picker for a connected Bedrock provider", async () => {
+      await setup({
+        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
+        apiKeyValues: { bedrock: "**********LE" },
+      });
+
+      await screen.findByLabelText("Access key ID");
+      await screen.findByLabelText("Model");
+
+      await openModelSelector();
+
+      expect(await screen.findByText("Anthropic")).toBeInTheDocument();
+      expect(screen.getByText("OpenAI")).toBeInTheDocument();
+    });
+
+    it("disconnects Bedrock by clearing the credentials before the provider setting", async () => {
+      await setup({
+        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
+        apiKeyValues: { bedrock: "**********LE" },
+      });
+
+      await screen.findByLabelText("Access key ID");
+      await confirmDisconnectProvider();
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+            body: { provider: "bedrock", credentials: null },
+          }),
+        ).toBe(true);
+      });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/setting", {
+            method: "PUT",
+            body: { "llm-metabot-provider": null },
+          }),
+        ).toBe(true);
+      });
+
+      const callHistory = fetchMock.callHistory.calls();
+      const [credentialsRequest] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+      const [providerRequest] = fetchMock.callHistory.calls(
+        "path:/api/setting",
+        { method: "PUT" },
+      );
+
+      if (!credentialsRequest || !providerRequest) {
+        throw new Error("Expected credentials and provider requests to exist");
+      }
+
+      expect(callHistory.indexOf(credentialsRequest)).toBeLessThan(
+        callHistory.indexOf(providerRequest),
+      );
+
+      expect(
+        await screen.findByText("Connect to an AI provider"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not clear the provider setting if clearing the Bedrock credentials fails", async () => {
+      const { store } = await setup({
+        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
+        apiKeyValues: { bedrock: "**********LE" },
+        metabotSettingsUpdateResponse: { status: 500 },
+      });
+
+      await screen.findByLabelText("Access key ID");
+      await confirmDisconnectProvider();
+
+      await waitFor(() => {
+        expect(
+          store
+            .getState()
+            .undo.some(
+              (toast) => toast.message === "Unable to save provider settings.",
+            ),
+        ).toBe(true);
+      });
+
+      expect(
+        fetchMock.callHistory
+          .calls("path:/api/setting")
+          .some((call) => call.request?.method === "PUT"),
+      ).toBe(false);
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -87,7 +87,9 @@ export function MetricSearchPanel() {
   return (
     <Stack gap="md">
       <Flex align="center" justify="space-between" mih="1.875rem">
-        <Text fw={700} size="lg">{t`Explore`}</Text>
+        <Text fw={700} size="lg" component="h1">
+          {t`Explore`}
+        </Text>
         {hasDefinitions && (
           <FilterPopover
             definitionSources={definitionSources}
@@ -97,7 +99,7 @@ export function MetricSearchPanel() {
             <Button.Group>
               <Button
                 variant="light"
-                color="filter"
+                color="core-filter"
                 size="xs"
                 p="sm"
                 leftSection={
@@ -114,7 +116,7 @@ export function MetricSearchPanel() {
                 <Tooltip label={toggleLabel}>
                   <Button
                     variant="light"
-                    color="filter"
+                    color="core-filter"
                     size="xs"
                     py="sm"
                     px="md"
@@ -153,7 +155,7 @@ export function MetricSearchPanel() {
             className={S.filterPillsSection}
             px="sm"
             py="xs"
-            bg="background-filter"
+            bg="background_page-filter"
           >
             <MetricsFilterPills
               definitionSources={definitionSources}

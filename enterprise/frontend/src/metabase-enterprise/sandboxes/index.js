@@ -68,7 +68,6 @@ export function initializePlugin() {
         key=":tableId/segmented"
         path=":tableId/segmented"
         modal={EditSandboxingModal}
-        modalProps={{ enableMouseEvents: true }}
       />,
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
@@ -76,7 +75,6 @@ export function initializePlugin() {
         key="segmented/group/:groupId"
         path="segmented/group/:groupId"
         modal={EditSandboxingModal}
-        modalProps={{ enableMouseEvents: true }}
       />,
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);

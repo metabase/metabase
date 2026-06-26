@@ -20,20 +20,20 @@
 }
 
 .RemoveButton:hover {
-  background: var(--mb-color-background-hover);
+  background: var(--mb-color-background_surface-hover);
   color: var(--mb-color-text-primary);
 }
 
 .PickerTrigger {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   transition: border-color 0.15s ease;
   cursor: pointer;
 }
 
 .PickerTrigger:hover {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .AddTableButton {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }

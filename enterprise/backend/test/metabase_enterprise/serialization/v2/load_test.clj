@@ -321,6 +321,57 @@
                        :database (:id @db1d)}
                       (:dataset_query @card1d))))))))))
 
+(deftest model-result-metadata-id-roundtrips-test
+  (testing "GHY-3946: deserializing a model re-derives its result_metadata :id from the query when the underlying Fields are already present, so a filter mapped to the model column keeps its value dropdown; overrides are preserved"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "serialize a model whose CATEGORY column carries a user override"
+          (ts/with-db source-db
+            (let [coll  (ts/create! :model/Collection :name "models")
+                  db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "products" :db_id (:id db))
+                  field (ts/create! :model/Field :name "category" :table_id (:id table)
+                                    :base_type :type/Text :semantic_type :type/Category
+                                    :has_field_values :list)]
+              (ts/create! :model/Card
+                          :type            :model
+                          :name            "Products Model"
+                          :collection_id   (:id coll)
+                          :database_id     (:id db)
+                          :table_id        (:id table)
+                          :query_type      :query
+                          :dataset_query   {:type     :query
+                                            :query    {:source-table (:id table)}
+                                            :database (:id db)}
+                          :result_metadata [{:name "category" :display_name "Custom Category"
+                                             :base_type :type/Text :semantic_type :type/Category
+                                             :id (:id field) :field_ref [:field (:id field) nil]
+                                             :table_id (:id table)}])
+              (reset! serialized (into [] (serdes.extract/extract {}))))))
+        (testing "the serialized model column keeps its user override"
+          (let [card (first (filter #(= "Products Model" (:name %)) (by-model @serialized "Card")))
+                cat  (first (filter #(= "category" (:name %)) (:result_metadata card)))]
+            (is (some? cat))
+            (is (= "Custom Category" (:display_name cat)))))
+        (testing "loading re-derives the local :id when the data model already exists on the destination"
+          (ts/with-db dest-db
+            ;; the data model is already present on the destination (and at different IDs than the source)
+            (ts/create! :model/Database :name "decoy")
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "products" :db_id (:id db))
+                  field (ts/create! :model/Field :name "category" :table_id (:id table)
+                                    :base_type :type/Text :semantic_type :type/Category
+                                    :has_field_values :list)]
+              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+              (let [dest-card (t2/select-one :model/Card :name "Products Model")
+                    cat       (first (filter #(= "category" (:name %)) (:result_metadata dest-card)))]
+                (is (number? (:id cat))
+                    "model column kept a numeric :id link after the round-trip")
+                (is (= (:id field) (:id cat))
+                    "model column :id points at the dest Field id")
+                (is (= "Custom Category" (:display_name cat))
+                    "user override on the column survived the round-trip")))))))))
+
 (deftest card-with-unexported-table-and-field-test
   (testing "a Card referencing a Table/Field absent from the bundle still loads by synthesizing inactive rows"
     (let [serialized (atom nil)]
@@ -1670,6 +1721,94 @@
             (is (= (t2/select-one-fn :id :model/Dashboard :entity_id (:entity_id dash1))
                    (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id card-2))))))))))
 
+(defn- card-sourced-param
+  "A category parameter whose dropdown values come from `card-id`'s results."
+  [card-id]
+  {:id                   "abc"
+   :type                 "category"
+   :name                 "CATEGORY"
+   :slug                 "category"
+   :values_source_type   "card"
+   :values_source_config {:card_id card-id}})
+
+(deftest self-referencing-parameter-card-test
+  (testing "a card whose parameter sources dropdown values from the card itself can be loaded (#73133)"
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [coll (ts/create! :model/Collection :name "coll")
+              card (ts/create! :model/Card :name "self-ref card" :collection_id (:id coll))
+              _    (t2/update! :model/Card (:id card)
+                               {:parameters [(card-sourced-param (:id card))]})
+              ser  (into [] (serdes.extract/extract {:no-settings   true
+                                                     :no-data-model false}))]
+          (testing "loading on top of the existing card"
+            (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+            (is (= (:id card)
+                   (-> (t2/select-one :model/Card :entity_id (:entity_id card))
+                       :parameters first :values_source_config :card_id))))
+          (testing "loading into an empty database"
+            (ts/with-db dest-db
+              (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+              (let [new-card (t2/select-one :model/Card :entity_id (:entity_id card))]
+                (is (= (:id new-card)
+                       (-> new-card :parameters first :values_source_config :card_id)))))))))))
+
+(deftest mutually-referencing-parameter-cards-test
+  (testing "two cards whose parameters source dropdown values from each other can be loaded (#73133)"
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [coll   (ts/create! :model/Collection :name "coll")
+              card-a (ts/create! :model/Card :name "card a" :collection_id (:id coll))
+              card-b (ts/create! :model/Card :name "card b" :collection_id (:id coll))
+              _      (t2/update! :model/Card (:id card-a) {:parameters [(card-sourced-param (:id card-b))]})
+              _      (t2/update! :model/Card (:id card-b) {:parameters [(card-sourced-param (:id card-a))]})
+              ser    (into [] (serdes.extract/extract {:no-settings   true
+                                                       :no-data-model false}))]
+          (testing "loading on top of the existing cards"
+            (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+            (is (= (:id card-b)
+                   (-> (t2/select-one :model/Card :entity_id (:entity_id card-a))
+                       :parameters first :values_source_config :card_id)))
+            (is (= (:id card-a)
+                   (-> (t2/select-one :model/Card :entity_id (:entity_id card-b))
+                       :parameters first :values_source_config :card_id))))
+          (testing "loading into an empty database"
+            (ts/with-db dest-db
+              (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+              (let [new-a (t2/select-one :model/Card :entity_id (:entity_id card-a))
+                    new-b (t2/select-one :model/Card :entity_id (:entity_id card-b))]
+                (is (= (:id new-b)
+                       (-> new-a :parameters first :values_source_config :card_id)))
+                (is (= (:id new-a)
+                       (-> new-b :parameters first :values_source_config :card_id)))))))))))
+
+(deftest dashboard-parameter-sourcing-own-dashboard-question-test
+  (testing "a dashboard whose parameter sources dropdown values from a dashboard question on that same dashboard can be loaded (#73133)"
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [coll (ts/create! :model/Collection :name "coll")
+              dash (ts/create! :model/Dashboard :name "dash" :collection_id (:id coll))
+              card (ts/create! :model/Card :name "dq card" :dashboard_id (:id dash))
+              _    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
+              _    (t2/update! :model/Dashboard (:id dash)
+                               {:parameters [(card-sourced-param (:id card))]})
+              ser  (into [] (serdes.extract/extract {:no-settings   true
+                                                     :no-data-model false}))]
+          (testing "loading on top of the existing dashboard"
+            (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+            (is (= (:id card)
+                   (-> (t2/select-one :model/Dashboard :entity_id (:entity_id dash))
+                       :parameters first :values_source_config :card_id))))
+          (testing "loading into an empty database"
+            (ts/with-db dest-db
+              (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+              (let [new-dash (t2/select-one :model/Dashboard :entity_id (:entity_id dash))
+                    new-card (t2/select-one :model/Card :entity_id (:entity_id card))]
+                (is (= (:id new-card)
+                       (-> new-dash :parameters first :values_source_config :card_id)))
+                (is (= (:id new-dash)
+                       (:dashboard_id new-card)))))))))))
+
 (deftest continue-on-error-test
   (let [change-ser   (fn [ser changes] ;; kind of like left-join, but right side is indexed
                        (vec (for [entity ser]
@@ -2071,6 +2210,55 @@
                     db        (t2/select-one :model/Database :name "my-db")]
                 (is (some? transform))
                 (is (= (:id db) (:source_database_id transform)))))))))))
+
+(deftest transform-with-deleted-source-database-load-test
+  (testing "An orphaned transform (source database was deleted before export) round-trips through serdes as a tombstone (GDGT-2447)"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "soon-to-be-deleted")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  coll  (ts/create! :model/Collection :name "Transform Collection" :namespace :transforms)
+                  _     (ts/create! :model/Transform
+                                    :name "Orphan Transform"
+                                    :description "Transform whose source DB will be deleted"
+                                    :collection_id (:id coll)
+                                    :source {:query (mbql5-query (:id db) (:id table))
+                                             :type "query"}
+                                    :target {:database (:id db)
+                                             :type "table"
+                                             :schema "public"
+                                             :name "orphan_target"})]
+              ;; Deleting the database cascade-SET-NULLs source_database_id (FK action)
+              ;; AND cascade-deletes the Table (Field FKs) — the transform survives as a tombstone.
+              (t2/delete! :model/Database :name "soon-to-be-deleted")
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+          (let [minimal (mapv (fn [entity]
+                                (if (= "Transform" (-> entity :serdes/meta last :model))
+                                  (select-keys entity [:serdes/meta :entity_id :name
+                                                       :source :target])
+                                  entity))
+                              @serialized)]
+            (testing "the extracted transform carries the :serdes/unresolved flag and verbatim body"
+              (let [extracted (first (filter #(= "Transform" (-> % :serdes/meta last :model)) minimal))]
+                (is (some? extracted))
+                (is (true? (get-in extracted [:source :serdes/unresolved])))
+                ;; native query text is preserved verbatim
+                (is (some? (get-in extracted [:source :query])))))
+            (ts/with-db dest-db
+              (t2/delete! :model/TransformTag)
+              (serdes.load/load-metabase! (ingestion-in-memory minimal))
+              (let [transform (t2/select-one :model/Transform :name "Orphan Transform")]
+                (testing "transform round-trips and ends up as a tombstone in the destination instance"
+                  (is (some? transform))
+                  (is (nil? (:source_database_id transform))
+                      "source_database_id should be nil — there's no DB to bind to")
+                  (is (not (contains? (:source transform) :serdes/unresolved))
+                      "the :serdes/unresolved marker should have been stripped on import")
+                  (is (some? (get-in transform [:source :query]))
+                      "the query body should be preserved as a breadcrumb"))))))))))
 
 (deftest table-created-by-transform-load-test
   (testing "Table created by a Transform can be imported via serialization (GDGT-2444)"

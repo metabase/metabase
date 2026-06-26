@@ -27,8 +27,8 @@
   }
 
   &:checked {
-    border-color: var(--mb-color-brand);
-    background-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-core-brand);
   }
 
   &:disabled {
@@ -37,7 +37,7 @@
 
   &:disabled:not(:checked) {
     border-color: var(--mb-color-text-tertiary);
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_page-tertiary);
   }
 }
 

@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
-import { trackSearchClick } from "metabase/search/analytics";
+import { trackSearchClick } from "metabase/common/search/analytics";
 import {
   Flex,
   Group,
@@ -51,7 +51,7 @@ const FullSearchCTA = ({
 
   return (
     <Text
-      c="brand"
+      c="core-brand"
       component={Link}
       fw={700}
       id="search-results-metadata"

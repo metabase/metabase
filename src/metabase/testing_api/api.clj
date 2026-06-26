@@ -366,7 +366,16 @@
   ([user-id second-user-id]
    (seed-usage-auditing-data! user-id second-user-id nil nil))
   ([user-id second-user-id tenant-id second-tenant-id]
-   (let [today          (t/offset-date-time (t/zone-offset "+00"))
+   ;; Anchor "today" at noon UTC, not the current instant. The seeded "today"
+   ;; conversations are timestamped a few minutes/hours before this reference;
+   ;; with a wall-clock instant they slip into the previous UTC day when the
+   ;; test runs shortly after midnight. That desyncs them from the reported
+   ;; :date (the UTC calendar day) and makes the "Conversations by day" chart's
+   ;; last dot drill to the wrong day. Noon keeps every "today" event firmly
+   ;; inside the current UTC day regardless of run time.
+   (let [today          (-> (t/offset-date-time (t/zone-offset "+00"))
+                            (t/truncate-to :days)
+                            (t/plus (t/hours 12)))
          yesterday      (t/minus today (t/days 1))
          two-days       (t/minus today (t/days 2))
          previous-week  (t/minus today (t/days 8))

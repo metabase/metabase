@@ -373,6 +373,37 @@
             (is (= [1 1 2 2 2 2 2 2 2 1]
                    (test-extract-week (mt/id :weeks :d) :instance)))))))))
 
+(deftest day-of-week-preserves-null-test
+  (testing "day-of-week breakout should preserve NULL inputs, not bucket them into day 7 (#76107)"
+    ;; The bug only manifests when the offset between `start-of-week` and the driver's `db-start-of-week`
+    ;; is non-zero. Iterating over all 7 settings guarantees we hit a non-zero offset on every driver.
+    (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract :expressions)
+      (mt/dataset daily-bird-counts
+        (let [mp          (mt/metadata-provider)
+              bird-count  (lib.metadata/table mp (mt/id :bird-count))
+              date-field  (lib.metadata/field mp (mt/id :bird-count :date))
+              count-field (lib.metadata/field mp (mt/id :bird-count :count))
+              ;; `nullable_date` = `date` when `count` is not NULL, otherwise NULL.
+              ;; The `daily-bird-counts` dataset has 5 rows with NULL `count`.
+              base        (-> (lib/query mp bird-count)
+                              (lib/expression "nullable_date"
+                                              (lib/case [[(lib/not-null count-field) date-field]])))
+              expr-col    (->> (lib/breakoutable-columns base)
+                               (filter (comp #{:source/expressions} :lib/source))
+                               first)
+              query       (-> base
+                              (lib/aggregate (lib/count))
+                              (lib/breakout (lib/with-temporal-bucket expr-col :day-of-week)))]
+          (doseq [start-of-week [:sunday :monday :tuesday :wednesday :thursday :friday :saturday]]
+            (mt/with-temporary-setting-values [start-of-week start-of-week]
+              (testing (str "start-of-week = " start-of-week)
+                (let [rows (mt/formatted-rows [identity int] (qp/process-query query))]
+                  (testing (str "rows = " (pr-str rows))
+                    (is (some (comp nil? first) rows)
+                        "NULL date should produce a NULL day-of-week bucket")
+                    (is (= 5 (some (fn [[dow cnt]] (when (nil? dow) cnt)) rows))
+                        "the NULL day-of-week bucket should hold the 5 rows whose date is NULL")))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Date arithmetics tests                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -463,6 +494,26 @@
                                :breakout    [[:expression "expr"]]}}]]
             (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
               (is (= (set expected) (set (test-datetime-math query)))))))))))
+
+(deftest ^:parallel datetime-arithmetic-expression-temporal-bucket-in-breakout-test
+  (testing "Breaking out by a datetime-arithmetic expression with a `:temporal-unit` truncates the value (#27808)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
+      (mt/dataset times-mixed
+        (let [mp     (mt/metadata-provider)
+              times  (lib.metadata/table mp (mt/id :times))
+              dt     (lib.metadata/field mp (mt/id :times :dt))
+              base   (-> (lib/query mp times)
+                         (lib/expression "shifted" (lib/datetime-subtract dt 2 :year)))
+              query  (-> base
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (-> (lib/expression-ref base "shifted")
+                                           (lib/with-temporal-bucket :year))))]
+          (is (= #{["2002-01-01T00:00:00Z" 1]
+                   ["2006-01-01T00:00:00Z" 1]
+                   ["2010-01-01T00:00:00Z" 2]}
+                 (set (mt/formatted-rows
+                       [u.date/temporal-str->iso8601-str int]
+                       (qp/process-query query))))))))))
 
 (deftest temporal-arithmetic-with-literal-date-test
   (mt/with-temporary-setting-values [start-of-week   :sunday

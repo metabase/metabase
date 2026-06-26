@@ -39,7 +39,9 @@
                    (premium-features/has-feature? :transforms-basic))
            :feature-transforms)
          (when (premium-features/has-feature? :transforms-python)
-           :feature-transforms-python)]))
+           :feature-transforms-python)
+         (when (premium-features/has-feature? :semantic-search)
+           :feature-semantic-search)]))
 
 (defn capability-set
   "Build the full set of capability keywords for a request: the backend-inferred feature capabilities

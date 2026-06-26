@@ -2,10 +2,13 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.custom-values-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -370,6 +373,32 @@
                     nil
                     (constantly mock-default-result))))))))))
 
+(deftest ^:parallel parameter->values-join-aliased-value-field-test
+  (let [mp (mt/metadata-provider)
+        venue-table (lib.metadata/table mp (mt/id :venues))
+        categories-table (lib.metadata/table mp (mt/id :categories))
+        venue-category-id (lib.metadata/field mp (mt/id :venues :category_id))
+        category-id (lib.metadata/field mp (mt/id :categories :id))
+        query (-> (lib/query mp venue-table)
+                  (lib/join (lib/join-clause categories-table
+                                             [(lib/= venue-category-id category-id)])))]
+    (binding [custom-values/*max-rows* 3]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (mt/card-with-source-metadata-for-query query)]
+          (is (= {:has_more_values true
+                  :values          [["American"] ["Artisan"] ["Asian"]]}
+                 (custom-values/parameter->values
+                  {:name                 "Category name"
+                   :slug                 "category_name"
+                   :id                   (str (random-uuid))
+                   :type                 :string/=
+                   :values_query_type    :list
+                   :values_source_type   :card
+                   :values_source_config {:card_id     card-id
+                                          :value_field [:field "Categories__NAME" {:base-type :type/Text}]}}
+                  nil
+                  (fn [] (throw (ex-info "Couldn't get parameter values unexpectedly" {})))))))))))
+
 (deftest ^:parallel parameter->values-with-label-field-test
   ;; bind to an admin to bypass the permissions check
   (mt/with-current-user (mt/user->id :crowberto)
@@ -602,3 +631,29 @@
 (deftest ^:parallel pk-of-fk-pk-field-ids-test-6
   (testing "just a non-key"
     (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :people :name)])))))
+
+(deftest ^:parallel card-query-bulk-loads-metadata-test
+  (testing "card-query bulk-loads the value-source Card's metadata up front, so resolving the value field's column hits
+            the provider cache instead of fetching one entity at a time (no N+1)"
+    (let [mp           (mt/metadata-provider)
+          orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card card {:database_id     (mt/id)
+                                       :table_id        (mt/id :orders)
+                                       :type            :question
+                                       :dataset_query   orders-query
+                                       :result_metadata (lib/returned-columns orders-query)}]
+        (let [card        (t2/select-one :model/Card :id (:id card))
+              value-field [:field "TOTAL" {:base-type :type/Float}]]
+          ;; The 6 batched loads are:
+          ;; - the source Card
+          ;; - the source Database
+          ;; - the Card's result-metadata Fields
+          ;; - those Fields' FK targets
+          ;; - the FK-target Tables
+          ;; - those Tables' columns
+          ;; This count is constant -- it must NOT grow with the number of columns/Tables (that would be the N+1 this
+          ;; bulk-loading exists to prevent).
+          (is (= 6 (lib-be/with-metadata-provider-cache
+                     (t2/with-call-count [call-count]
+                       (#'custom-values/can-get-card-values? (#'custom-values/card-query (:id card) (:dataset_query card)) value-field)
+                       (call-count))))))))))

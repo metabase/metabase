@@ -232,14 +232,14 @@ function TransformLink({ table }: { table: Table }) {
           cursor: "pointer",
           textDecoration: "none",
         }}
-        bg="background-brand"
-        c="brand"
+        bg="background_surface-brand-subtle"
+        c="core-brand"
       >
         <Icon name="insight" size={12} />
         <Text
           size="sm"
           fw="bold"
-          c="brand"
+          c="core-brand"
           style={{
             fontSize: 12,
             lineHeight: "16px",

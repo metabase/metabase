@@ -34,7 +34,7 @@ function RoundedBox({
     <Box
       w="100%"
       maw={twoColumns ? "100%" : "30rem"}
-      bd="2px solid var(--mb-color-border)"
+      bd="2px solid var(--mb-color-border-neutral)"
       className={cx(S.roundedBox, { [S.roundedBoxTwoColumns]: twoColumns })}
     >
       {children}
@@ -168,7 +168,7 @@ export const StrategyEditorForDatabases: React.FC = () => {
           )}
           <Box
             component="section"
-            bg="background-primary"
+            bg="background_page-primary"
             h="100%"
             className={cx(S.formPanel, {
               [S.formPanelWithLeftBorder]: canOverrideRootStrategy,

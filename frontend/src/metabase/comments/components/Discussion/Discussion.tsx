@@ -9,8 +9,7 @@ import {
 } from "metabase/api";
 import { getCommentsUrl } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
-import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import type {
@@ -30,7 +29,7 @@ export interface DiscussionProps {
   comments: Comment[];
   targetId: EntityId;
   targetType: CommentEntityType;
-  enableHoverHighlight?: boolean;
+  onHoverChange?: (childTargetId: string | undefined) => void;
 }
 
 export const Discussion = ({
@@ -38,10 +37,9 @@ export const Discussion = ({
   comments,
   targetId,
   targetType,
-  enableHoverHighlight = false,
+  onHoverChange,
 }: DiscussionProps) => {
   const currentUser = useSelector(getUser);
-  const dispatch = useDispatch();
   const [, setNewComment] = useState<DocumentContent>();
   const parentCommentId = comments[0].id;
   const [sendToast] = useToast();
@@ -71,7 +69,11 @@ export const Discussion = ({
   };
 
   const handleDeleteComment = async (comment: Comment) => {
-    const { error } = await deleteComment(comment.id);
+    const { error } = await deleteComment({
+      id: comment.id,
+      target_type: comment.target_type,
+      target_id: comment.target_id,
+    });
 
     if (error) {
       sendToast({
@@ -142,40 +144,46 @@ export const Discussion = ({
     sendToast({ icon: "check", message: t`Copied link` });
   };
 
-  const handleReaction = async (comment: Comment, emoji: string) => {
-    const { error } = await toggleReaction({ id: comment.id, emoji });
+  const handleToggleReaction = async (
+    comment: Comment,
+    emoji: string,
+    errorMessage: string,
+  ) => {
+    if (!currentUser) {
+      return;
+    }
+
+    const { error } = await toggleReaction({
+      id: comment.id,
+      emoji,
+      target_type: comment.target_type,
+      target_id: comment.target_id,
+      currentUser,
+    });
 
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
         iconColor: "warning",
-        message: t`Failed to add reaction`,
+        message: errorMessage,
       });
     }
   };
 
-  const handleReactionRemove = async (comment: Comment, emoji: string) => {
-    const { error } = await toggleReaction({ id: comment.id, emoji });
+  const handleReaction = (comment: Comment, emoji: string) =>
+    handleToggleReaction(comment, emoji, t`Failed to add reaction`);
 
-    if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "warning",
-        message: t`Failed to remove reaction`,
-      });
-    }
-  };
+  const handleReactionRemove = (comment: Comment, emoji: string) =>
+    handleToggleReaction(comment, emoji, t`Failed to remove reaction`);
 
   const handleMouseEnter = () => {
-    if (enableHoverHighlight && effectiveChildTargetId) {
-      dispatch(setHoveredChildTargetId(String(effectiveChildTargetId)));
+    if (effectiveChildTargetId) {
+      onHoverChange?.(String(effectiveChildTargetId));
     }
   };
 
   const handleMouseLeave = () => {
-    if (enableHoverHighlight) {
-      dispatch(setHoveredChildTargetId(undefined));
-    }
+    onHoverChange?.(undefined);
   };
 
   return (

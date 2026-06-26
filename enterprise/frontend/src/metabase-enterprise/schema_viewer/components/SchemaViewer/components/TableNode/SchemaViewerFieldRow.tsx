@@ -130,7 +130,7 @@ export function SchemaViewerFieldRow({
       <FixedSizeIcon
         name={icon}
         size={16}
-        c={isSelectedInEdge ? "brand" : undefined}
+        c={isSelectedInEdge ? "core-brand" : undefined}
         className={isSelectedInEdge ? undefined : S.icon}
         style={{ flexShrink: 0 }}
       />
@@ -138,7 +138,7 @@ export function SchemaViewerFieldRow({
         className={cx(S.name, { [S.clickableName]: isClickable })}
         fz="sm"
         fw={isSelectedInEdge ? "bold" : "normal"}
-        c={isSelectedInEdge ? "brand" : undefined}
+        c={isSelectedInEdge ? "core-brand" : undefined}
       >
         {field.name}
       </Box>

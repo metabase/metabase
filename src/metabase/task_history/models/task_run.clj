@@ -81,23 +81,27 @@
 
 (mr/def ::TaskRunInfo
   [:map {:closed true}
-   [:run_type                       (into [:enum] run-types)]
-   [:entity_type                    (into [:enum] entity-types)]
-   [:entity_id                      ms/PositiveInt]
-   [:auto-complete {:optional true} [:maybe :boolean]]])
+   [:run_type                         (into [:enum] run-types)]
+   [:entity_type                      (into [:enum] entity-types)]
+   [:entity_id                        ms/PositiveInt]
+   ;; The notification this run is for, when applicable (alerts / subscriptions). Lets the run be
+   ;; attributed to the exact notification rather than only to its shared card/dashboard entity.
+   [:notification_id {:optional true} [:maybe ms/PositiveInt]]
+   [:auto-complete   {:optional true} [:maybe :boolean]]])
 
 (mu/defn create-task-run! :- ms/PositiveInt
   "Create a new task run record. Returns the run ID."
-  [{:keys [run_type entity_type entity_id]} :- ::TaskRunInfo]
+  [{:keys [run_type entity_type entity_id notification_id]} :- ::TaskRunInfo]
   (let [now (mi/now)]
     (t2/insert-returning-pk! :model/TaskRun
-                             {:run_type     run_type
-                              :entity_type  entity_type
-                              :entity_id    entity_id
-                              :status       :started
-                              :started_at   now
-                              :updated_at   now
-                              :process_uuid config/local-process-uuid})))
+                             {:run_type        run_type
+                              :entity_type     entity_type
+                              :entity_id       entity_id
+                              :notification_id notification_id
+                              :status          :started
+                              :started_at      now
+                              :updated_at      now
+                              :process_uuid    config/local-process-uuid})))
 
 (mu/defn complete-task-run!
   "Mark a task run as complete, deriving status from child tasks.

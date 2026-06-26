@@ -28,7 +28,7 @@ import {
   useListBookmarksQuery,
   useUpdateDocumentMutation,
 } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import {
@@ -650,7 +650,7 @@ export const DocumentPage = ({
               // only applies when trying to duplicate a document that has unsaved changes
               opened={duplicateModalMode === "leave"}
               confirmButtonText={t`Save changes`}
-              confirmButtonProps={{ color: "brand" }}
+              confirmButtonProps={{ color: "core-brand" }}
               data-testid="save-confirmation"
               message={t`You need to save before you can duplicate this document.`}
               title={t`Save your changes first`}

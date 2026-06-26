@@ -99,7 +99,7 @@ export function PythonTransformsUpsell({
             p={shouldShowLeftColumn ? "3rem 1.5rem" : "3rem"}
             flex={1}
             gap="md"
-            bg={shouldShowLeftColumn ? "background-secondary" : undefined}
+            bg={shouldShowLeftColumn ? "background_page-secondary" : undefined}
           >
             {!shouldShowLeftColumn && (
               <>
@@ -115,7 +115,7 @@ export function PythonTransformsUpsell({
               {bulletPoints.map((point) => (
                 <Flex direction="row" gap="sm" key={point}>
                   <Center w={24} h={24} flex="0 0 auto">
-                    <Icon name="check_filled" size={16} c="brand" />
+                    <Icon name="check_filled" size={16} c="core-brand" />
                   </Center>
                   <Text c="text-secondary" lh="lg">
                     {point}

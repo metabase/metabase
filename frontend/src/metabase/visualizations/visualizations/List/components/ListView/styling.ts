@@ -30,7 +30,7 @@ export const getEntityIcon = (entityType?: string) => {
 
 export const ENTITY_ICON_COLORS: ColorName[] = [
   "text-primary",
-  "brand",
+  "core-brand",
   "accent1",
   "accent2",
   "accent3",
@@ -63,7 +63,7 @@ const CATEGORY_COLORS = [
 // Get a consistent color for a category value based on its hash
 export const getCategoryColor = (categoryValue: any, columnName: string) => {
   if (categoryValue == null || categoryValue === "") {
-    return "var(--mb-color-background-secondary)";
+    return "var(--mb-color-background_page-secondary)";
   }
 
   const stringValue = String(categoryValue);

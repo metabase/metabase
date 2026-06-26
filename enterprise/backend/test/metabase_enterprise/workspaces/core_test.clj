@@ -53,96 +53,60 @@
       (ws/create-workspace! {:name "B" :creator_id (mt/user->id :crowberto)})
       (is (>= (count (ws/list-workspaces)) 2)))))
 
-;;; ----------------------------------------- Add/Remove Database ----------------------------------------------
+(deftest create-workspace-provisions-databases-test
+  (testing "create-workspace! attaches and provisions the given databases"
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :details  {}
+                                                :settings {:database-enable-workspaces true}}
+                   :model/Table _ {:db_id db-id :schema "public" :active true}
+                   :model/Database {ineligible-id :id} {:engine :postgres :details {}}]
+      (mt/with-model-cleanup [:model/Workspace]
+        (testing "an ineligible database is rejected"
+          (is (thrown-with-msg? ExceptionInfo #"Workspaces are not enabled for this database"
+                                (ws/create-workspace! {:name         "Nope"
+                                                       :creator_id   (mt/user->id :crowberto)
+                                                       :database_ids [ineligible-id]}))))
+        (testing "a missing database is rejected"
+          (is (thrown-with-msg? ExceptionInfo #"Database not found"
+                                (ws/create-workspace! {:name         "Nope"
+                                                       :creator_id   (mt/user->id :crowberto)
+                                                       :database_ids [Integer/MAX_VALUE]}))))
+        (testing "provisioning failure rolls back the workspace and its database rows"
+          (let [failing-provisioner (reify provisioning/Provisioner
+                                      (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
+                                      (grant!   [_ _ _ _ _] nil)
+                                      (destroy! [_ _ _ _]   nil))]
+            (with-redefs [provisioning/dispatching-provisioner failing-provisioner]
+              (is (thrown-with-msg? ExceptionInfo #"boom"
+                                    (ws/create-workspace! {:name         "Boom"
+                                                           :creator_id   (mt/user->id :crowberto)
+                                                           :database_ids [db-id]}))))
+            (is (not (t2/exists? :model/Workspace :name "Boom"))
+                "the failed create must not leave a Workspace row behind")
+            (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id))
+                "the failed create must not leave WorkspaceDatabase rows behind")))
+        (testing "success: the attached database comes back :provisioned"
+          (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+            (let [ws (ws/create-workspace! {:name         "Provisioned"
+                                            :creator_id   (mt/user->id :crowberto)
+                                            :database_ids [db-id]})]
+              (is (=? [{:database_id   db-id
+                        :input_schemas ["public"]
+                        :status        :provisioned}]
+                      (:databases ws))))))))))
 
-(deftest add-database-test
-  (testing "add database provisions immediately"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws  (ws/create-workspace! {:name "Add DB" :creator_id (mt/user->id :crowberto)})
-            ws' (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-                  (ws/add-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"]))]
-        (is (= 1 (count (:databases ws'))))
-        (is (= ["PUBLIC" "ANALYTICS"]
-               (:input_schemas (first (:databases ws')))))
-        (is (= :provisioned (:status (first (:databases ws'))))))))
-  (testing "input required on add"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "No Schema Add" :creator_id (mt/user->id :crowberto)})]
-        (is (thrown-with-msg?
-             ExceptionInfo #"input_schemas is required"
-             (ws/add-database! (:id ws) (mt/id) []))))))
-  (testing "input not required when database does not support :schemas (e.g. MySQL)"
-    (when (workspaces.tu/driver-loadable? :mysql)
-      (mt/with-temp [:model/Database {db-id :id} {:engine :mysql}]
-        (mt/with-model-cleanup [:model/Workspace]
-          (let [ws  (ws/create-workspace! {:name "MySQL Add" :creator_id (mt/user->id :crowberto)})
-                ws' (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-                      (ws/add-database! (:id ws) db-id []))]
-            (is (= 1 (count (:databases ws'))))
-            (is (= [] (:input_schemas (first (:databases ws'))))))))))
-  (testing "duplicate database throws 409"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "Dup DB" :creator_id (mt/user->id :crowberto)})]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
-        (is (thrown-with-msg?
-             ExceptionInfo #"Database already in workspace"
-             (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))))))
-  (testing "provisioning failure rolls the row back so the caller can retry cleanly"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "Roll Back" :creator_id (mt/user->id :crowberto)})
-            failing-provisioner (reify provisioning/Provisioner
-                                  (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
-                                  (grant!   [_ _ _ _ _] nil)
-                                  (destroy! [_ _ _ _]   nil))]
-        (with-redefs [provisioning/dispatching-provisioner failing-provisioner]
-          (is (thrown-with-msg? ExceptionInfo #"boom"
-                                (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))))
-        (is (empty? (:databases (ws/get-workspace (:id ws))))
-            "the failed add must not leave a workspace_database row behind")))))
-
-(deftest remove-database-test
-  (testing "remove deprovisions and deletes"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "Remove DB" :creator_id (mt/user->id :crowberto)})]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"])
-          (let [ws' (ws/remove-database! (:id ws) (mt/id))]
-            (is (empty? (:databases ws'))))))))
-  (testing "remove from non-existent workspace throws 404"
-    (is (thrown-with-msg?
-         ExceptionInfo #"Workspace not found"
-         (ws/remove-database! 999999 (mt/id))))))
-
-;;; ----------------------------------------- Update Database --------------------------------------------------
-
-(deftest update-database-test
-  (testing "update deprovisions old config and reprovisions with new input"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "Update DB" :creator_id (mt/user->id :crowberto)})]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"])
-          (let [ws' (ws/update-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"])]
-            (is (= ["PUBLIC" "ANALYTICS"]
-                   (:input_schemas (first (:databases ws')))))
-            (is (= :provisioned (:status (first (:databases ws'))))))))))
-  (testing "reprovision failure rolls the input-schemas change back"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "Update Roll Back" :creator_id (mt/user->id :crowberto)})]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
-        (let [failing-provisioner (reify provisioning/Provisioner
-                                    (init!    [_ _ _ _]   (throw (ex-info "failure" {})))
-                                    (grant!   [_ _ _ _ _] nil)
-                                    (destroy! [_ _ _ _]   nil))]
-          (with-redefs [provisioning/dispatching-provisioner failing-provisioner]
-            (is (thrown-with-msg? ExceptionInfo #"failure"
-                                  (ws/update-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"]))))
-          (let [wsd (first (:databases (ws/get-workspace (:id ws))))]
-            (is (= ["PUBLIC"] (:input_schemas wsd))
-                "the new input_schemas must not commit when reprovisioning fails")
-            (is (= :unprovisioned (:status wsd))
-                "the row is left unprovisioned, consistent with the torn-down warehouse")))))))
+(defn- add-database!
+  "Test helper: insert a WorkspaceDatabase row for `workspace-id` and provision it
+   (blocking). Replaces the removed production add-database! for test setup."
+  [workspace-id database-id input-schemas]
+  (t2/with-transaction [_conn]
+    (let [wsd-id (t2/insert-returning-pk! :model/WorkspaceDatabase
+                                          {:workspace_id     workspace-id
+                                           :database_id      database-id
+                                           :input_schemas    input-schemas
+                                           :database_details {}
+                                           :output_namespace ""})]
+      (provisioning/provision-single! wsd-id))))
 
 ;;; ----------------------------------------- Delete Workspace ------------------------------------------------
 
@@ -151,15 +115,79 @@
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Delete WS" :creator_id (mt/user->id :crowberto)})]
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
+          (add-database! (:id ws) (mt/id) ["PUBLIC"]))
         (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
           (ws/delete-workspace! (:id ws)))
         (is (nil? (ws/get-workspace (:id ws)))))))
   (testing "delete workspace with no databases"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Empty WS" :creator_id (mt/user->id :crowberto)})]
-        (ws/delete-workspace! (:id ws))
+        (is (= {:deleted true} (ws/delete-workspace! (:id ws))))
         (is (nil? (ws/get-workspace (:id ws))))))))
+
+(deftest delete-workspace-with-pending-status-test
+  (testing "GHY-3954: a workspace with a database still :provisioning/:deprovisioning"
+    (doseq [pending-status [:provisioning :deprovisioning]]
+      (testing (str "status " pending-status)
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [ws     (ws/create-workspace! {:name       (str "Pending " (name pending-status))
+                                              :creator_id (mt/user->id :crowberto)})
+                _      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                         (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+                wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))]
+            ;; force the row into the pending state. :provisioning rows that crashed
+            ;; never stored their iso details, so clear them too.
+            (t2/update! :model/WorkspaceDatabase {:id wsd-id}
+                        (cond-> {:status pending-status}
+                          (= pending-status :provisioning)
+                          (assoc :output_namespace "" :database_details {})))
+            (testing "is refused by default, listing the pending databases"
+              (is (thrown-with-msg?
+                   ExceptionInfo #"still provisioning or deprovisioning"
+                   (ws/delete-workspace! (:id ws))))
+              (is (=? {:status-code       409
+                       :pending_databases [{:database_id (mt/id) :status pending-status}]}
+                      (try (ws/delete-workspace! (:id ws))
+                           (catch ExceptionInfo e (ex-data e)))))
+              (is (some? (ws/get-workspace (:id ws)))
+                  "the workspace is left intact when the delete is refused"))
+            (testing "is deleted when ignore-pending? is true; the warehouse is left untouched"
+              ;; destroy! must NOT be called for a pending row — fail loudly if it is.
+              (let [exploding (reify provisioning/Provisioner
+                                (init!    [_ _ _ _]   nil)
+                                (grant!   [_ _ _ _ _] nil)
+                                (destroy! [_ _ _ _]   (throw (ex-info "destroy! must not run for a pending row" {}))))]
+                (with-redefs [provisioning/dispatching-provisioner exploding]
+                  (is (= {:deleted true} (ws/delete-workspace! (:id ws) true)))))
+              (is (nil? (ws/get-workspace (:id ws))))
+              (is (not (t2/exists? :model/WorkspaceDatabase :id wsd-id))))))))))
+
+(deftest delete-workspace-warehouse-unreachable-test
+  (testing "GHY-3954: delete still succeeds when warehouse teardown fails; the result"
+    (testing "names the orphaned schema/user and why they were left behind"
+      (mt/with-model-cleanup [:model/Workspace]
+        (let [ws     (ws/create-workspace! {:name "Unreachable WS" :creator_id (mt/user->id :crowberto)})
+              _      (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
+                       (add-database! (:id ws) (mt/id) ["PUBLIC"]))
+              wsd-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id (:id ws))
+              boom   (reify provisioning/Provisioner
+                       (init!    [_ _ _ _]   nil)
+                       (grant!   [_ _ _ _ _] nil)
+                       (destroy! [_ _ _ _]   (throw (ex-info "Connection refused" {}))))
+              result (with-redefs [provisioning/dispatching-provisioner boom]
+                       (ws/delete-workspace! (:id ws)))]
+          (is (true? (:deleted result)))
+          (is (nil? (ws/get-workspace (:id ws)))
+              "the workspace is deleted even though warehouse cleanup failed")
+          (is (=? [{:status                :failure
+                    :workspace_database_id wsd-id
+                    :database_id           (mt/id)
+                    :schema                "mb_iso_stub"
+                    :user                  "stub_user"
+                    :reason                "Connection refused"}]
+                  (:orphaned_resources result)))
+          (is (re-find #"was deleted, but warehouse cleanup failed" (:message result)))
+          (is (re-find #"Connection refused" (:message result))))))))
 
 ;;; -------------------------------------------- Remappings ----------------------------------------------------
 

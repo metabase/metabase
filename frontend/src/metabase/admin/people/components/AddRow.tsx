@@ -31,7 +31,7 @@ export const AddRow = ({
     p="0.5rem"
     display="relative"
     align="center"
-    bd="1px solid var(--mb-color-brand)"
+    bd="1px solid var(--mb-color-core-brand)"
     style={{ borderRadius: "0.5rem" }}
   >
     {children}

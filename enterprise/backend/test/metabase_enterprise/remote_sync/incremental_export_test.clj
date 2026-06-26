@@ -16,7 +16,7 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each rs.test/clean-remote-sync-state)
+(use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
 
 (defn- venues-query []
   {:database (mt/id) :type :query :query {:source-table (mt/id :venues)}})
@@ -505,3 +505,32 @@
           (is (entity-exported? mock e2) "second Foo exported")
           (is (not= (path-for-eid mock e1) (path-for-eid mock e2))
               "the two Foos get distinct, deduped paths"))))))
+
+(deftest force-export-overwrites-upstream-changes-test
+  ;; A force export must be a true overwrite: it has to drop files the remote diverged with, which the
+  ;; incremental fast-path (preserving every file it didn't touch) cannot do. This pins force? = full
+  ;; re-serialize and guards the GHY-3726 reconciliation against regressing to an incremental force.
+  (with-exported-collection!
+    (fn [{:keys [mock card-a]}]
+      (let [ghost-path "collections/bench/cards/ghost_upstream.yaml"
+            a-eid      (t2/select-one-fn :entity_id :model/Card :id card-a)]
+        ;; Simulate the remote diverging: a new, non-colliding upstream file the local instance never imported.
+        (swap! (:files-atom mock) assoc-in ["main" ghost-path]
+               "name: Ghost\nentity_id: ghostUpstream00000001\nserdes/meta:\n- id: ghostUpstream00000001\n  model: Card\n")
+        (t2/update! :model/Card card-a {:description "local edit"})
+        (set-status! "Card" card-a "update")
+        (testing "an ordinary (incremental) export preserves the upstream file — so it is NOT an overwrite"
+          (let [task (new-task!)]
+            (is (= :success (:status (impl/export! (source.p/snapshot mock) task "edit"))))
+            (is (= "apply-changes-version" (written-version task)) "took the incremental fast-path")
+            (is (contains? (files mock) ghost-path)
+                "the incremental path leaves the upstream file in place")))
+        (testing "a force export re-serializes the whole set and drops the upstream file (true overwrite)"
+          (let [task (new-task!)]
+            (is (= :success (:status (impl/export! (source.p/snapshot mock) task "force" :force? true))))
+            (is (= "write-files-version" (written-version task)) "took the full-export path")
+            (is (not (contains? (files mock) ghost-path))
+                "force overwrite removes the upstream file the remote diverged with")
+            (is (re-find #"local edit"
+                         (get (files mock) (path-for-eid mock a-eid)))
+                "the local edit survives the overwrite")))))))

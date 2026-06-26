@@ -1,4 +1,4 @@
-import { isTrackedSearchContext } from "metabase/search/analytics";
+import { toSnowplowContext } from "metabase-types/analytics";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 import { trackSearchRequest } from "./analytics";
@@ -17,9 +17,10 @@ export const searchApi = Api.injectEndpoints({
       providesTags: (response, error, { models }) =>
         provideSearchItemListTags(response?.data ?? [], models),
       onQueryStarted: (args, { queryFulfilled, requestId }) => {
-        // Only track searches with an actual text query. Query-less requests are filter/available-model
-        // lookups and internal existence probes, not searches the user performed.
-        if (isTrackedSearchContext(args.context) && args.q?.trim()) {
+        // Only track searches from a surface already in the snowplow schema, with an actual text query.
+        // Pending contexts (toSnowplowContext → null) stay unpublished until the schema is widened; so do
+        // query-less requests (filter/available-model lookups, existence probes), which aren't searches.
+        if (toSnowplowContext(args.context) != null && args.q?.trim()) {
           const start = Date.now();
           return handleQueryFulfilled(queryFulfilled, (data) => {
             const duration = Date.now() - start;

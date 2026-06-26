@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { trackDataReferenceClicked } from "metabase/collections/analytics";
+import { trackDataReferenceClicked } from "metabase/common/collections/analytics";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 
@@ -21,7 +21,7 @@ export const BrowseDataHeader = () => {
         >
           <Title order={2} c="text-primary">
             <Group gap="sm">
-              <Icon size={24} c="brand" name="database" />
+              <Icon size={24} c="core-brand" name="database" />
               {t`Databases`}
             </Group>
           </Title>

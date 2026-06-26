@@ -44,6 +44,15 @@
                          {:name "Not-Trash Child" :parent_id (:id parent)})]
           (is (nil? (:type defaulted))
               "Trash type does not propagate to children")))))
+  (testing "Child does NOT inherit :type \"tenant-specific-root-collection\" from a tenant root parent (UXW-4520)"
+    (mt/with-temp [:model/Collection parent {:name "Tenant Root" :type "tenant-specific-root-collection"}]
+      (with-redefs [api/write-check (fn [& _])]
+        ;; The tenant root type is a root-only sentinel; propagating it would fail the closed
+        ;; output schema and break tenant sub-collection creation.
+        (let [defaulted (collections.create/apply-defaults-to-collection
+                         {:name "Tenant Sub" :parent_id (:id parent)})]
+          (is (nil? (:type defaulted))
+              "Tenant root type does not propagate to children")))))
   (testing "Child inherits :is_remote_synced from a remote-synced parent"
     (mt/with-temp [:model/Collection parent {:name "RS Parent" :is_remote_synced true}]
       (with-redefs [api/write-check (fn [& _])]

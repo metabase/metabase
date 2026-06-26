@@ -2,7 +2,7 @@
   border-radius: 0.5rem;
 
   &:hover {
-    color: var(--mb-color-brand);
-    background-color: var(--mb-color-background-secondary);
+    color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_page-secondary);
   }
 }

@@ -51,6 +51,13 @@
   [_searchable-documents]
   (oss-semantic-search-error))
 
+(defenterprise diagnose
+  "Engine-owned diagnostic stages (`missing-from-index` / `filtered` / `not-matching` / `candidate`) for the
+  semantic search index. See [[metabase.search.debug/diagnose]]."
+  metabase-enterprise.semantic-search.core
+  [_search-ctx _expected-model _expected-id]
+  (oss-semantic-search-error))
+
 ;; Search engine method implementations
 
 (defmethod search.engine/supported-engine? :search.engine/semantic [_]
@@ -67,6 +74,10 @@
 (defmethod search.engine/model-set :search.engine/semantic
   [_search-ctx]
   search.config/all-models)
+
+(defmethod search.engine/diagnose :search.engine/semantic
+  [search-ctx expected-model expected-id]
+  (diagnose search-ctx expected-model expected-id))
 
 (defmethod search.engine/update! :search.engine/semantic
   [_ document-reducible]

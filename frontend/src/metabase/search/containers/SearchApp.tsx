@@ -9,13 +9,22 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/redux";
-import { SearchSidebar } from "metabase/search/components/SearchSidebar";
+import {
+  filterEnabledSearchTypes,
+  getFiltersFromLocation,
+  getSearchTextFromLocation,
+} from "metabase/common/search";
 import {
   SearchContextTypes,
   SearchFilterKeys,
-} from "metabase/search/constants";
+} from "metabase/common/search/constants";
+import type {
+  SearchAwareLocation,
+  URLSearchFilterQueryParams,
+} from "metabase/common/search/types";
+import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useDispatch } from "metabase/redux";
+import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
   SearchBody,
   SearchControls,
@@ -24,15 +33,8 @@ import {
 } from "metabase/search/containers/SearchApp.styled";
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import {
-  filterEnabledSearchTypes,
-  getFiltersFromLocation,
-  getSearchTextFromLocation,
-} from "metabase/search/utils";
 import { Box, Group, Paper, Text } from "metabase/ui";
 import type { SearchRequest } from "metabase-types/api";
-
-import type { SearchAwareLocation, URLSearchFilterQueryParams } from "../types";
 
 const getPageFromLocation = (location: SearchAwareLocation) => {
   const maybePage = location.query?.page

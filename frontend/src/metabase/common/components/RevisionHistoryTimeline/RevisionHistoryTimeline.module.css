@@ -27,7 +27,7 @@
 }
 
 .event:hover {
-  background: var(--mb-color-background-hover);
+  background: var(--mb-color-background_surface-hover);
   border-radius: var(--mantine-radius-lg);
 }
 

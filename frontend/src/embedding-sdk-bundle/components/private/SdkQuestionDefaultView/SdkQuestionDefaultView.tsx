@@ -216,7 +216,7 @@ export const SdkQuestionDefaultView = ({
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
-                  c="brand"
+                  c="core-brand"
                   fz="md"
                   ml="sm"
                 >
@@ -236,7 +236,7 @@ export const SdkQuestionDefaultView = ({
                           mx="xs"
                           orientation="vertical"
                           style={{
-                            color: "var(--mb-color-border) !important",
+                            color: "var(--mb-color-border-neutral) !important",
                           }}
                         />
                       )}

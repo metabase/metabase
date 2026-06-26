@@ -85,10 +85,13 @@ export const BaseChartSettings = ({
       widgets.find((widget) => widget.id === SERIES_SETTING_KEY);
 
     const display = transformedSeries?.[0]?.card?.display;
-    // In the pie the chart, clicking on the "measure" settings menu will only
+    // In the pie and treemap charts, clicking on the "measure" settings menu will only
     // open a formatting widget, and we don't want the style widget (used only
     // for dimension) to override that
-    if (display === "pie" && currentWidget?.id === "column_settings") {
+    if (
+      (display === "pie" || display === "treemap") &&
+      currentWidget?.id === "column_settings"
+    ) {
       return null;
     }
 

@@ -154,8 +154,11 @@ jobs:
       # here we pass the list of changed files
       # e.g. e2e/test/scenarios/onboarding/command-palette.cy.spec.js,e2e/test/scenarios/question/document-title.cy.spec.js
       # e2e_all_files includes all changes which trigger all e2e tests, if the list of changes files is included in the
-      # list of changed specs files, then only specs are changed and we can run only those specs
-      specs: ${{ needs.create-test-plan.outputs.e2e_all_files == needs.create-test-plan.outputs.e2e_specs_files && needs.create-test-plan.outputs.e2e_specs_files || '' }}
+      # list of changed specs files, then only specs are changed and we can run only those specs.
+      # Only narrow to changed specs on pull requests. On push to master/release branches (and the
+      # merge queue) the paths-filter still computes these file lists, so without this guard a push
+      # that touched only specs would silently run a narrowed suite — we always want the full suite there.
+      specs: ${{ github.event_name == 'pull_request' && needs.create-test-plan.outputs.e2e_all_files == needs.create-test-plan.outputs.e2e_specs_files && needs.create-test-plan.outputs.e2e_specs_files || '' }}
 
   embedding-sdk-package:
     needs: [create-test-plan]
@@ -217,6 +220,18 @@ jobs:
     with:
       self_hosting: false
       analytics_dev_mode: true
+
+  pr-env-stats-dump:
+      needs: [uberjar]
+      if: |
+        !cancelled() &&
+        contains(github.event.pull_request.labels.*.name, 'PR-Env-Stats-Dump')
+      uses: ./.github/workflows/pr-env.yml
+      secrets: inherit
+      with:
+        self_hosting: false
+        analytics_dev_mode: false
+        stats_dump: true
 
   containerize:
     needs: [uberjar]

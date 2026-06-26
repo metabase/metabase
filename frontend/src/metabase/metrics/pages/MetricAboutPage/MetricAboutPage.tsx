@@ -1,8 +1,8 @@
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import type { MetricPageProps } from "metabase/common/metrics/types";
 
 import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
-import type { MetricPageProps } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 
 import { MetricAbout } from "./MetricAbout";

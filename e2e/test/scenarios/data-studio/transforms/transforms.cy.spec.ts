@@ -1820,6 +1820,66 @@ LIMIT
     });
   });
 
+  describe("disconnected database", () => {
+    it("should warn about transforms when deleting a database and show disconnected banner on transform pages", () => {
+      cy.log("create a transform");
+      createMbqlTransform({ visitTransform: false });
+
+      cy.log("go to admin and delete the writable database");
+      cy.intercept("GET", "/api/database/*/usage_info").as("usageInfo");
+      cy.intercept("DELETE", "/api/database/*").as("deleteDb");
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+      cy.button("Remove this database").click();
+      cy.wait("@usageInfo");
+
+      cy.log(
+        "verify the delete modal warns about transforms that will stop working",
+      );
+      H.modal().within(() => {
+        cy.findByLabelText(/1 transform will stop working/)
+          .should("not.be.checked")
+          .click()
+          .should("be.checked");
+        cy.findByTestId("database-name-confirmation-input").type(DB_NAME);
+        cy.findByText("Delete this DB connection").click();
+        cy.wait("@deleteDb");
+      });
+
+      cy.log(
+        "visit the transform query page and verify the disconnected banner",
+      );
+      cy.visit("/data-studio/transforms/1");
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log("edit definition button should not be visible");
+      H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
+
+      cy.log(
+        "visit the run page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.runTab().click();
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log(
+        "visit the settings page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.settingsTab().click();
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log(
+        "visit the inspect page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.inspectTab().click();
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log(
+        "visit the dependencies page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.dependenciesTab().click();
+      verifyDisconnectedDatabaseBanner();
+    });
+  });
+
   describe("cancelation", () => {
     function createSlowTransform(seconds: number = 100) {
       H.createTransform(
@@ -2223,8 +2283,14 @@ LIMIT
       H.modal().findByRole("button", { name: "Create" }).click();
 
       getTransformsList().within(() => {
-        // Expand the collection to see the nested collection
-        cy.findByText("Marketing Transforms").click();
+        // The list refetches its collection tree after the create, and the
+        // parent row only renders an "Expand" control once the new child is
+        // present in the refetched tree. Clicking the row name to toggle it is
+        // a no-op until then (the row isn't yet expandable), which left the
+        // nested collection hidden. Wait for the Expand control to appear — its
+        // presence is the deterministic signal the child has landed — and click
+        // that instead; it only ever expands, never toggles a collapse.
+        cy.findByRole("button", { name: "Expand" }).click();
         cy.findByText("Q4 Reports").should("be.visible");
       });
 
@@ -3804,6 +3870,16 @@ describe("scenarios > admin > transforms", () => {
     );
   });
 });
+
+function verifyDisconnectedDatabaseBanner() {
+  return cy
+    .findByRole("alert")
+    .should("be.visible")
+    .and(
+      "contain.text",
+      "The database this transform depends on has been disconnected",
+    );
+}
 
 function getTransformsNavLink() {
   return H.DataStudio.nav().findByRole("link", { name: "Transforms" });

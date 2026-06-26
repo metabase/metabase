@@ -594,6 +594,51 @@
              :message  (format "Import contains %s but local instance has unsynced %s namespace collections"
                                category category)}))))
 
+(defn- removal-condition-clauses
+  "Converts a spec's removal-conditions map into HoneySQL where-fragments, matching the semantics
+   [[metabase-enterprise.remote-sync.impl/build-entity-id-where-clause]] uses: an :entity_id entry
+   whose value is an [op value] pair becomes [op :entity_id value]; any other entry becomes [:= key value]."
+  [removal-conds]
+  (for [[k v] removal-conds]
+    (if (and (= k :entity_id) (vector? v))
+      (let [[op value] v] [op :entity_id value])
+      [:= k v])))
+
+(defn check-deletion-conflicts
+  "Detects local entities of all-or-nothing models (specs with :all-on-setting-disable) that an import
+   would wholesale-delete because they are absent from it, but which hold unsaved local work — i.e. they
+   have no RemoteSyncObject in 'synced' status. Already-synced entities are excluded: their removal is a
+   normal reconcile against the remote source of truth, not data loss.
+
+   Takes imported-data from [[extract-imported-entities]]. Returns a vector of conflict maps
+   ({:type :category :message}), one per affected model type (categories repeat across the transform models;
+   callers dedupe via the conflict summary)."
+  [{:keys [by-entity-id]}]
+  (into []
+        (for [[model-key spec] (specs-for-deletion)
+              :let [setting-kw (get-in spec [:removal :all-on-setting-disable])]
+              :when setting-kw
+              :let [model-type   (:model-type spec)
+                    imported-ids (get by-entity-id model-type #{})
+                    conds        (cond-> []
+                                   (seq imported-ids) (conj [:not-in :entity_id imported-ids])
+                                   :always            (into (removal-condition-clauses (removal-conditions spec))))
+                    candidates   (if (seq conds)
+                                   (t2/select [model-key :id] {:where (into [:and] conds)})
+                                   (t2/select [model-key :id]))
+                    n-unsynced   (count (remove (fn [{:keys [id]}]
+                                                  (t2/exists? :model/RemoteSyncObject
+                                                              :model_type model-type
+                                                              :model_id id
+                                                              :status "synced"))
+                                                candidates))]
+              :when (pos? n-unsynced)
+              :let [category (setting->category setting-kw)]]
+          {:type    (keyword (str (u/lower-case-en category) "-conflict"))
+           :category category
+           :message  (format "Import would delete %d unsynced local %s %s"
+                             n-unsynced category (if (= 1 n-unsynced) "entity" "entities"))})))
+
 ;;; ------------------------------------------------ Eligibility Checking ----------------------------------------------
 
 (defn transforms-namespace-collection?

@@ -2313,6 +2313,11 @@ describe("scenarios > dashboard > parameters", () => {
       });
       cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
 
+      cy.log("Wait for the dashcard to finish rendering before editing");
+      H.getDashboardCard(0)
+        .findByTestId("chart-container")
+        .should("be.visible");
+
       // Connect the Count filter in the header to first card
       H.editingDashboardParametersContainer().findByText("Count").click();
       H.selectDashboardFilter(H.getDashboardCard(0), "Count");

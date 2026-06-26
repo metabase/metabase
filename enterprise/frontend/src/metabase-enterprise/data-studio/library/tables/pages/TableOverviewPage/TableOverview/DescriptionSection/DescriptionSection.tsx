@@ -187,10 +187,10 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
       </Box>
 
       {/* Metadata Sections */}
-      <Card mx="lg" bg="background-secondary" shadow="none" radius="1rem">
+      <Card mx="lg" bg="background_page-secondary" shadow="none" radius="1rem">
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
-            <Icon name="pencil" c="brand" />
+            <Icon name="pencil" c="core-brand" />
             <Text size="md" fw={600} lh="1rem">
               <DateTime value={table.updated_at} />
             </Text>
@@ -201,7 +201,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
         </Card.Section>
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
-            <Icon name="database" c="brand" />
+            <Icon name="database" c="core-brand" />
             {table.db ? (
               <Link to={Urls.dataStudioData({ databaseId: table.db.id })}>
                 <Text size="md" fw={600} lh="1rem">
@@ -222,7 +222,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
           <Group gap="sm" mb={4}>
             <Icon
               name="refresh_downstream"
-              c={table.data_source ? "brand" : "icon-secondary"}
+              c={table.data_source ? "core-brand" : "icon-secondary"}
             />
 
             <DataSourceInput
@@ -249,7 +249,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
           <Group gap="sm" mb={4}>
             <Icon
               name="person"
-              c={isOwnerSpecified ? "brand" : "icon-secondary"}
+              c={isOwnerSpecified ? "core-brand" : "icon-secondary"}
             />
 
             <UserInput

@@ -95,7 +95,7 @@ export function getMetricGroups(
     return {
       id: definitionSource.index,
       metricName: getDefinitionSourceName(definitionSource),
-      metricCount: definitionSource.token?.count,
+      metricCount: definitionSource.token?.occurrenceCount,
       icon: getDefinitionSourceIcon(definitionSource),
       colors: metricColors[definitionSource.entityIndex],
       sections,

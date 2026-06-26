@@ -16,9 +16,9 @@ function buildEntry(
     type: "expression",
     name: "A + B",
     tokens: [
-      { type: "metric", sourceId: "metric:1", count: 1 },
+      { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
       { type: "operator", op: "+" },
-      { type: "metric", sourceId: "metric:2", count: 1 },
+      { type: "metric", sourceId: "metric:2", occurrenceCount: 1 },
     ],
     ...overrides,
   };
@@ -61,11 +61,11 @@ describe("MetricExpressionPill expression rendering", () => {
       type: "expression",
       name: "",
       tokens: [
-        { type: "metric", sourceId: "metric:1", count: 1 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
         { type: "operator", op: "+" },
-        { type: "metric", sourceId: "metric:1", count: 2 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 2 },
         { type: "operator", op: "+" },
-        { type: "metric", sourceId: "metric:1", count: 3 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 3 },
       ],
     };
 
@@ -90,11 +90,11 @@ describe("MetricExpressionPill expression rendering", () => {
       type: "expression",
       name: "A + A + A",
       tokens: [
-        { type: "metric", sourceId: "metric:1", count: 1 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
         { type: "operator", op: "+" },
-        { type: "metric", sourceId: "metric:1", count: 2 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 2 },
         { type: "operator", op: "+" },
-        { type: "metric", sourceId: "metric:1", count: 3 },
+        { type: "metric", sourceId: "metric:1", occurrenceCount: 3 },
       ],
     };
 

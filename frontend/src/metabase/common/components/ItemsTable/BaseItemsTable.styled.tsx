@@ -32,7 +32,7 @@ export const Table = styled(
     shouldForwardProp: (prop) => prop !== "isInDragLayer",
   },
 )`
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   table-layout: fixed;
   border-collapse: unset;
   border-radius: 0.5rem;
@@ -40,16 +40,16 @@ export const Table = styled(
 
   thead {
     th {
-      border-top: 1px solid var(--mb-color-border);
+      border-top: 1px solid var(--mb-color-border-neutral);
 
       &:first-of-type {
         border-start-start-radius: 8px;
-        border-inline-start: 1px solid var(--mb-color-border);
+        border-inline-start: 1px solid var(--mb-color-border-neutral);
       }
 
       &:last-child {
         border-start-end-radius: 8px;
-        border-inline-end: 1px solid var(--mb-color-border);
+        border-inline-end: 1px solid var(--mb-color-border-neutral);
       }
     }
   }
@@ -102,7 +102,7 @@ const itemLinkStyle = css`
   align-items: center;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 
@@ -123,7 +123,7 @@ export const ItemNameCell = styled.td`
 
   &:hover {
     ${ItemLink}, ${MaybeItemLink}, ${ItemButton} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
 
     cursor: pointer;
@@ -181,14 +181,14 @@ export const TBody = styled.tbody`
   td {
     border: none;
     background-color: transparent;
-    border-top: 1px solid var(--mb-color-border);
+    border-top: 1px solid var(--mb-color-border-neutral);
 
     &:first-of-type {
-      border-inline-start: 1px solid var(--mb-color-border);
+      border-inline-start: 1px solid var(--mb-color-border-neutral);
     }
 
     &:last-child {
-      border-inline-end: 1px solid var(--mb-color-border);
+      border-inline-end: 1px solid var(--mb-color-border-neutral);
     }
   }
 
@@ -198,7 +198,7 @@ export const TBody = styled.tbody`
 
   tr:last-child {
     td {
-      border-bottom: 1px solid var(--mb-color-border);
+      border-bottom: 1px solid var(--mb-color-border-neutral);
 
       &:last-child {
         border-end-end-radius: 8px;

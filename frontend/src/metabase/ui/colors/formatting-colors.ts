@@ -4,12 +4,12 @@ export function assignUserColors(
   userIds: string[],
   currentUserId: string | null,
   colors = [
-    color("brand"),
+    color("core-brand"),
     color("accent2"),
     color("error"),
     color("accent1"),
     color("accent4"),
-    color("background-tertiary"),
+    color("background_page-tertiary"),
   ],
 ) {
   const assignments: { [index: string]: string } = {};

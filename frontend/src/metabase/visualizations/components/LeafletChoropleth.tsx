@@ -4,10 +4,10 @@ import L from "leaflet";
 
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/ui/utils/colors";
-import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 import type { GeoJSONData, Series } from "metabase-types/api";
 
 import { CardRenderer } from "./CardRenderer";
+import { computeMinimalBounds } from "./leaflet-bounds";
 
 type FeatureInteraction = {
   feature: Feature;
@@ -36,7 +36,7 @@ export const LeafletChoropleth = ({
         isFeatureCollection(geoJson) ? geoJson.features : [geoJson],
       )
     : undefined,
-  getColor = () => color("brand"),
+  getColor = () => color("core-brand"),
   onHoverFeature = () => {},
   onClickFeature = () => {},
   onRenderError = () => {},
@@ -69,7 +69,7 @@ export const LeafletChoropleth = ({
       });
 
       const style = (feature?: Feature): L.PathOptions => ({
-        fillColor: feature ? getColor(feature) : color("brand"),
+        fillColor: feature ? getColor(feature) : color("core-brand"),
         weight: 1,
         opacity: 1,
         color: "white",

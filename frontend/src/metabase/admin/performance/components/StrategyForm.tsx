@@ -299,11 +299,11 @@ const FormButtonsGroup = ({
       justify={layout === "sidebar" ? "flex-end" : undefined}
       px={layout === "sidebar" ? "md" : "2.5rem"}
       pb={layout === "sidebar" ? 0 : undefined}
-      bg={layout === "sidebar" ? undefined : "background-primary"}
+      bg={layout === "sidebar" ? undefined : "background_page-primary"}
       style={
         layout === "sidebar"
           ? undefined
-          : { borderTop: "1px solid var(--mb-color-border)" }
+          : { borderTop: "1px solid var(--mb-color-border-neutral)" }
       }
     >
       {children}
@@ -614,7 +614,7 @@ const MultiplierFieldSubtitle = () => (
       label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
       maw="20rem"
     >
-      <Text tabIndex={0} fz="md" lh="1.25rem" display="inline" c="brand">
+      <Text tabIndex={0} fz="md" lh="1.25rem" display="inline" c="core-brand">
         {t`Example`}
       </Text>
     </Tooltip>
