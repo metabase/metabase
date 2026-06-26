@@ -35,7 +35,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [get-in not-empty some]]
+   [metabase.util.performance :as perf :refer [get-in mapv not-empty some]]
    [next.jdbc :as next.jdbc])
   (:import
    (java.io File)
