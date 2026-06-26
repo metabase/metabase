@@ -262,7 +262,7 @@
                  :description "User accounts"
                  :fields [{:name "id" :field_id "f1" :base-type :type/Integer :database_type "INTEGER"}]
                  :related_tables [{:id 20 :name "orders" :fully_qualified_name "public.orders"
-                                   :related_by "user_id" :fields []}]}
+                                   :related_by {:id 91 :name "user_id"} :fields []}]}
           xml (llm-shape/table->xml table)]
       (is (str/starts-with? xml "<table"))
       ;; Python format: id="10", name="users"
@@ -743,10 +743,10 @@
    :database_engine "postgres"
    :database_schema "public"
    :related_tables [{:id 20 :name "products" :fully_qualified_name "public.products"
-                     :related_by "product_id" :fields []}]
+                     :related_by {:id 92 :name "product_id"} :fields []}]
    :related_tables_total 3
-   :related_table_refs [{:id 21 :name "people" :related_by "user_id"}
-                        {:id 22 :name "reviews" :related_by "review_id"}]})
+   :related_table_refs [{:id 21 :name "people" :related_by {:id 91 :name "user_id"}}
+                        {:id 22 :name "reviews" :related_by {:id 93 :name "review_id"}}]})
 
 (deftest ^:parallel table->xml-related-tables-truncation-test
   (testing "a capped related-tables list renders a truncation note plus a roster of related-table ids/names"
@@ -756,27 +756,28 @@
       (is (str/includes? xml "<related-tables-truncated")
           "a truncation marker tells the LLM the list is incomplete")
       (is (str/includes? xml "total=\"3\""))
-      (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by=\"user_id\"/>"))
-      (is (str/includes? xml "<related-table-ref id=\"22\" name=\"reviews\" related_by=\"review_id\"/>")
+      (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by_field_name=\"user_id\" related_by_field_id=\"91\"/>"))
+      (is (str/includes? xml "<related-table-ref id=\"22\" name=\"reviews\" related_by_field_name=\"review_id\" related_by_field_id=\"93\"/>")
           "the roster lists every non-expanded related table by id/name so the LLM can look them up"))))
 
 (deftest ^:parallel table->xml-related-table-ref-description-test
   (testing "a related-table-ref surfaces the table's description when present, and omits it when absent"
     (let [xml (llm-shape/table->xml
                (assoc base-table-with-truncated-related
-                      :related_table_refs [{:id 22 :name "reviews" :related_by "review_id"
+                      :related_table_refs [{:id 22 :name "reviews" :related_by {:id 93 :name "review_id"}
                                             :description "All the reviews customers left"}
-                                           {:id 21 :name "people" :related_by "user_id"}]))]
+                                           {:id 21 :name "people" :related_by {:id 91 :name "user_id"}}]))]
       (is (str/includes? xml (str "<related-table-ref id=\"22\" name=\"reviews\" "
-                                  "related_by=\"review_id\" description=\"All the reviews customers left\"/>")))
-      (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by=\"user_id\"/>")
+                                  "related_by_field_name=\"review_id\" related_by_field_id=\"93\" "
+                                  "description=\"All the reviews customers left\"/>")))
+      (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by_field_name=\"user_id\" related_by_field_id=\"91\"/>")
           "a ref with no description renders no description attribute")))
   (testing "a long related-table-ref description is capped and gets an ellipsis"
     (let [long-desc (apply str (repeat 600 "x"))
           cap-len   @#'llm-shape/max-related-table-ref-description-length
           xml       (llm-shape/table->xml
                      (assoc base-table-with-truncated-related
-                            :related_table_refs [{:id 22 :name "reviews" :related_by "review_id"
+                            :related_table_refs [{:id 22 :name "reviews" :related_by {:id 93 :name "review_id"}
                                                   :description long-desc}]))]
       (is (str/includes? xml (str "description=\"" (apply str (repeat cap-len "x")) "...\"")))
       (is (not (str/includes? xml (apply str (repeat (inc cap-len) "x"))))
@@ -796,7 +797,7 @@
                                      :database_schema "public"
                                      :related_tables [{:id 20 :name "products"
                                                        :fully_qualified_name "public.products"
-                                                       :related_by "product_id" :fields []}]})]
+                                                       :related_by {:id 92 :name "product_id"} :fields []}]})]
       (is (str/includes? xml "<related-table id=\"20\""))
       (is (not (str/includes? xml "<related-tables-truncated")))
       (is (not (str/includes? xml "<related-table-ref"))))))
@@ -805,4 +806,26 @@
   (testing "model related-tables truncation renders the same truncation note + roster as tables"
     (let [xml (llm-shape/model->xml (assoc base-table-with-truncated-related :name "orders_model"))]
       (is (str/includes? xml "<related-tables-truncated"))
-      (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by=\"user_id\"/>")))))
+      (is (str/includes? xml "<related-table-ref id=\"21\" name=\"people\" related_by_field_name=\"user_id\" related_by_field_id=\"91\"/>")))))
+
+(deftest ^:parallel table->xml-related-by-field-id-test
+  (testing (str "a `{:id :name}` `related_by` renders symmetric `related_by_field_name` + `related_by_field_id` "
+                "attributes so the LLM can tell two related-table entries apart when they share an FK name (two FK "
+                "fields with the same name -> the same table)")
+    (let [xml (llm-shape/table->xml
+               {:id 10 :name "orders" :database_id 1 :database_engine "postgres" :database_schema "public"
+                :related_tables [{:id 20 :name "products" :fully_qualified_name "public.products"
+                                  :related_by {:id 101 :name "product_id"} :fields []}
+                                 {:id 20 :name "products" :fully_qualified_name "public.products"
+                                  :related_by {:id 202 :name "product_id"} :fields []}]
+                :related_tables_total 3
+                :related_table_refs [{:id 21 :name "people" :related_by {:id 303 :name "user_id"}}
+                                     {:id 22 :name "reviews" :related_by {:id 404 :name "review_id"}}]})]
+      (testing "detailed related tables render both the FK field name and id"
+        (is (str/includes? xml "related_by_field_name=\"product_id\" related_by_field_id=\"101\""))
+        (is (str/includes? xml "related_by_field_name=\"product_id\" related_by_field_id=\"202\"")))
+      (testing "roster refs render both the FK field name and id"
+        (is (str/includes? xml
+                           "<related-table-ref id=\"21\" name=\"people\" related_by_field_name=\"user_id\" related_by_field_id=\"303\"/>"))
+        (is (str/includes? xml
+                           "<related-table-ref id=\"22\" name=\"reviews\" related_by_field_name=\"review_id\" related_by_field_id=\"404\"/>"))))))

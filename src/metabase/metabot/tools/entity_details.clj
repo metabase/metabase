@@ -371,21 +371,21 @@
       (let [[detail-groups rest-groups] (split-at max-related-tables fk-groups)
             refs-groups (take max-related-table-truncated-refs rest-groups)
             details     (mapv
-                         (fn [[table-id _fk-field-id fk-field-name]]
+                         (fn [[table-id fk-field-id fk-field-name]]
                            (-> (table-details table-id
                                               {:with-fields?         with-fields?
                                                :field-values-fn      field-values-fn
                                                :with-related-tables? false
                                                :with-metrics?        false})
-                               (assoc :related_by fk-field-name)))
+                               (assoc :related_by {:id fk-field-id :name fk-field-name})))
                          detail-groups)
             refs        (mapv
-                         (fn [[table-id _fk-field-id fk-field-name]]
+                         (fn [[table-id fk-field-id fk-field-name]]
                            (let [table (lib.metadata/table query table-id)]
                              {:id          table-id
                               :name        (:name table)
                               :description (:description table)
-                              :related_by  fk-field-name}))
+                              :related_by  {:id fk-field-id :name fk-field-name}}))
                          refs-groups)]
         (cond-> {:related_tables details}
           (> total (count details))

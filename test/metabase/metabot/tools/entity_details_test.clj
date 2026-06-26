@@ -593,3 +593,49 @@
               (is (> (:related_tables_total output)
                      (+ (count (:related_tables output))
                         (count (:related_table_refs output))))))))))))
+
+(defn- orders+reviews-join-query
+  "A query whose source table is Orders with an explicit join to Reviews.
+
+  Both tables carry a `PRODUCT_ID` FK to Products, so `visible-columns` exposes two FK columns with the same name
+  pointing at the same target table and therefore must be distinguished by field id, not name."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :reviews))
+                                   [(lib/= (lib.metadata/field mp (mt/id :orders :id))
+                                           (lib.metadata/field mp (mt/id :reviews :id)))])))))
+
+(deftest fk-related-table-groups-distinguishes-same-named-fks-test
+  (testing (str "two distinct FK fields that share a name and point at the same target table stay separate FK paths: "
+                "`fk-related-table-groups` keys distinctness on the FK field id, not its name (so they don't collapse)")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [groups   (#'entity-details/fk-related-table-groups (orders+reviews-join-query))
+              products (mt/id :products)
+              ;; the two PRODUCT_ID FK paths: orders.PRODUCT_ID and reviews.PRODUCT_ID, both -> products
+              product-paths (filter (fn [[target-table-id _ fk-name]]
+                                      (and (= target-table-id products) (= fk-name "PRODUCT_ID")))
+                                    groups)]
+          (testing "both PRODUCT_ID FKs survive distinct/sort as separate tuples"
+            (is (= 2 (count product-paths))))
+          (testing "they share a name and target table but differ by FK field id"
+            (is (=? #{[products (mt/id :orders :product_id) "PRODUCT_ID"]
+                      [products (mt/id :reviews :product_id) "PRODUCT_ID"]}
+                    (set product-paths)))))))))
+
+(deftest related-tables-related-by-field-id-test
+  (testing (str "`:related_by` carries a `{:id :name}` map so the LLM can disambiguate two related-table entries that "
+                "share a `:related_by` name and target table (e.g. orders.PRODUCT_ID vs reviews.PRODUCT_ID)")
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [output       (#'entity-details/related-tables (orders+reviews-join-query) false identity)
+              products     (mt/id :products)
+              product-rows (filter #(and (= (:id %) products) (= (-> % :related_by :name) "PRODUCT_ID"))
+                                   (:related_tables output))]
+          (testing "every related table's :related_by is a {:id :name} map"
+            (is (every? #(and (-> % :related_by :id) (-> % :related_by :name)) (:related_tables output))))
+          (testing "the two same-named PRODUCT_ID entries are present and distinguished only by :related_by :id"
+            (is (=? #{{:id products :related_by {:id (mt/id :orders :product_id) :name "PRODUCT_ID"}}
+                      {:id products :related_by {:id (mt/id :reviews :product_id) :name "PRODUCT_ID"}}}
+                    (into #{} (map #(select-keys % [:id :related_by])) product-rows)))))))))

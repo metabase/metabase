@@ -274,12 +274,13 @@
   [{:keys [id name related_by database_name fully_qualified_name fields]}]
   (render-llm-template
    :related_table
-   {:related_table_id            (when (some? id) (str id))
-    :related_table_name          name
-    :related_table_related_by    related_by
-    :related_table_database_name database_name
-    :related_table_fqn           fully_qualified_name
-    :related_table_fields_xml    (when (seq fields) (str/join "\n" (map field->xml fields)))}))
+   {:related_table_id              (when (some? id) (str id))
+    :related_table_name            name
+    :related_table_related_by_name (:name related_by)
+    :related_table_related_by_id   (str (:id related_by))
+    :related_table_database_name   database_name
+    :related_table_fqn             fully_qualified_name
+    :related_table_fields_xml      (when (seq fields) (str/join "\n" (map field->xml fields)))}))
 
 (def ^:private max-related-table-ref-description-length
   "Cap on a related-table-ref's description in the truncation list."
@@ -290,11 +291,12 @@
   [{:keys [id name description related_by]}]
   (render-llm-template
    :related_table_ref
-   {:related_table_ref_id          (when (some? id) (str id))
-    :related_table_ref_name        name
-    :related_table_ref_related_by  related_by
-    :related_table_ref_description (when (not-empty description)
-                                     (truncate description max-related-table-ref-description-length))}))
+   {:related_table_ref_id              (when (some? id) (str id))
+    :related_table_ref_name            name
+    :related_table_ref_related_by_name (:name related_by)
+    :related_table_ref_related_by_id   (str (:id related_by))
+    :related_table_ref_description     (when (not-empty description)
+                                         (truncate description max-related-table-ref-description-length))}))
 
 (defn- related-tables->xml
   "Render the related-tables block for a table/model.
