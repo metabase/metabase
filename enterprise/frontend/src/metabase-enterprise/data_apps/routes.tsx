@@ -9,10 +9,6 @@ import { DataAppLayout } from "./DataAppLayout";
  *
  * Path can't be `/app/:name` because the server reserves `/app/*` for static
  * asset serving.
- *
- * `DataAppLayout` is the shared parent component: it provides the full-page
- * chrome (the hover-down panel) and stays mounted across the app's internal
- * sub-routes, so only `AppView` (and its iframe) lives in `children`.
  */
 export function getRoutes() {
   return (
