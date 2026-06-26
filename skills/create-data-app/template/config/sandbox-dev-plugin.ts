@@ -86,7 +86,41 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
     async configureServer(server) {
       const { root, mode } = server.config;
 
-      await rebuild(root, mode);
+      // Serialize rebuilds: never run two `build()`s at once, and coalesce
+      // changes that arrive mid-rebuild into a single follow-up so we always
+      // serve and announce the latest bundle. Failures are logged (not left as
+      // unhandled rejections), and the last good `bundleCode` is kept.
+      let rebuilding = false;
+      let pending = false;
+      const rebuildAndNotify = async (notify: boolean) => {
+        if (rebuilding) {
+          pending = true;
+          return;
+        }
+        rebuilding = true;
+        try {
+          do {
+            pending = false;
+            await rebuild(root, mode);
+          } while (pending);
+          if (notify) {
+            // Soft reload: the harness re-evaluates the rebuilt bundle in the
+            // live sandbox and re-renders in place (preserving the loaded SDK +
+            // auth), instead of a full page reload. See `DATA_APP_REBUILT_EVENT`.
+            server.ws.send({ type: "custom", event: DATA_APP_REBUILT_EVENT });
+          }
+        } catch (error) {
+          server.config.logger.error(
+            `[data-app-sandbox] failed to build the app bundle: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        } finally {
+          rebuilding = false;
+        }
+      };
+
+      await rebuildAndNotify(false);
 
       server.middlewares.use((req, res, next) => {
         if (req.url === DATA_APP_BUNDLE_URL) {
@@ -100,11 +134,7 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
       const srcDir = `${path.sep}src${path.sep}`;
       server.watcher.on("change", async (file) => {
         if (file.includes(srcDir)) {
-          await rebuild(root, mode);
-          // Soft reload: the harness re-evaluates the rebuilt bundle in the live
-          // sandbox and re-renders in place (preserving the loaded SDK + auth),
-          // instead of a full page reload. See `DATA_APP_REBUILT_EVENT`.
-          server.ws.send({ type: "custom", event: DATA_APP_REBUILT_EVENT });
+          await rebuildAndNotify(true);
         }
       });
     },

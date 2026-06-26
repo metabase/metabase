@@ -48,7 +48,15 @@ const sandbox = createDataAppSandbox({
 });
 
 async function loadAndRender() {
-  const code = await fetch(__DATA_APP_BUNDLE_URL__).then((res) => res.text());
+  const res = await fetch(__DATA_APP_BUNDLE_URL__, { cache: "no-store" });
+
+  if (!res.ok) {
+    throw new Error(
+      `Failed to load the data-app bundle: ${res.status} ${res.statusText}.`,
+    );
+  }
+
+  const code = await res.text();
   const { component: Component, providerProps } = sandbox.evaluate(code)();
 
   appRoot.render(

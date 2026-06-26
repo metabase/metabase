@@ -92,7 +92,9 @@ export function createDataAppSandbox({
       endowments: Object.getOwnPropertyDescriptors({
         React: endowments.React,
         __react_jsx_runtime__: endowments.reactJsxRuntime,
-        __react_jsx_dev_runtime__: endowments.reactJsxDevRuntime,
+        ...(!!endowments.reactJsxDevRuntime && {
+          __react_jsx_dev_runtime__: endowments.reactJsxDevRuntime,
+        }),
         __metabase_sdk__: {
           ...endowments.sdkExports,
           // Below we can set fallbacks to `sdkExports` exports that were renamed/removed to prevent breaking changes
