@@ -1,6 +1,6 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
-  "mainEntryPointFilePath": "<projectFolder>/resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/data-app-sandbox.d.ts",
+  "mainEntryPointFilePath": "<projectFolder>/resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/data-app-dev.d.ts",
   "bundledPackages": [],
   "apiReport": {
     "enabled": false
@@ -10,7 +10,7 @@
   },
   "dtsRollup": {
     "enabled": true,
-    "untrimmedFilePath": "<projectFolder>/resources/embedding-sdk/dist/data-app-sandbox.d.ts"
+    "untrimmedFilePath": "<projectFolder>/resources/embedding-sdk/dist/data-app-dev.d.ts"
   },
   "tsdocMetadata": {
     "enabled": false

@@ -53,14 +53,14 @@ const DTS_ROLLUPS = [
     ),
   },
   {
-    name: "data-app-sandbox",
+    name: "data-app-dev",
     configPath: path.join(
       __dirname,
-      "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-data-app-sandbox-api-extractor.json",
+      "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-data-app-dev-api-extractor.json",
     ),
     entryPointPath: path.join(
       __dirname,
-      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/data-app-sandbox.d.ts",
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/data-app-dev.d.ts",
     ),
   },
 ];

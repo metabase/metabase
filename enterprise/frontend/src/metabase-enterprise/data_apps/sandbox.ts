@@ -38,7 +38,7 @@ export type DataAppFactory = () => {
  * React/SDK, and the data-app template's dev harness passes the React/SDK from
  * its installed `@metabase/embedding-sdk-react` — in both cases the bundle runs
  * against exactly one SDK instance. (Importing them here would bundle a second
- * SDK copy into the published `data-app-sandbox` entry.)
+ * SDK copy into the published `data-app-dev` entry.)
  */
 export interface DataAppSandboxEndowments {
   /** Endowed as the `React` global the bundle externalizes `react` to. */

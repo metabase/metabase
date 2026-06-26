@@ -39,7 +39,7 @@ const baseConfig = {
   entry: {
     main: "./index.ts",
     "data-app": "./data-app.ts",
-    "data-app-sandbox": "./data-app-sandbox.ts",
+    "data-app-dev": "./data-app-dev.ts",
   },
 
   output: {
@@ -95,7 +95,7 @@ const esmConfig = {
   entry: {
     "main.esm": "./index.ts",
     "data-app.esm": "./data-app.ts",
-    "data-app-sandbox.esm": "./data-app-sandbox.ts",
+    "data-app-dev.esm": "./data-app-dev.ts",
   },
 
   output: {

@@ -43,7 +43,7 @@ If `<repo>/data_apps/<slug>/` already holds a project, verify it matches the cur
    `__metabase_data_app__`), and `vite.config.ts` reuses them.
 2. `src/index.tsx`'s factory returns `{ component, theme }` (no args).
 3. `src/dev.tsx` runs the built bundle through `createDataAppSandbox` (from
-   `@metabase/embedding-sdk-react/data-app-sandbox`) and wraps the result in the
+   `@metabase/embedding-sdk-react/data-app-dev`) and wraps the result in the
    SDK's `<MetabaseProvider authConfig={…}>`; `config/sandbox-dev-plugin.ts` is present.
 
 **All checks pass** → template-shaped. Ask: "Extend this app, or scaffold a new one under a different slug?" If extend → skip the copy step, edit `src/`. If new → pick a different slug and restart at Step 2.
@@ -76,7 +76,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    npm install @metabase/embedding-sdk-react@63-data-apps
    ```
 
-   This resolves to the current internal-testing SDK build with the `@metabase/embedding-sdk-react/data-app` entrypoint and the `@metabase/embedding-sdk-react/data-app-sandbox` entrypoint the dev harness uses. Do not use `latest`, `63-stable`, or a generic `^0.63.x` range for data apps until the data-app SDK surface is promoted out of the internal tag.
+   This resolves to the current internal-testing SDK build with the `@metabase/embedding-sdk-react/data-app` entrypoint and the `@metabase/embedding-sdk-react/data-app-dev` entrypoint the dev harness uses. Do not use `latest`, `63-stable`, or a generic `^0.63.x` range for data apps until the data-app SDK surface is promoted out of the internal tag.
 3. **Ensure the repo-root `.gitignore` ignores `.env.local`** — do this *before* creating any credentials file so the secret can never be committed. Create the `.gitignore` if the repo doesn't have one, then add the entry if it's missing:
 
    ```bash

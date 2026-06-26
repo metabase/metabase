@@ -8,7 +8,7 @@ import {
   DevToolbar,
   createDataAppSandbox,
   installDevDiagnostics,
-} from "@metabase/embedding-sdk-react/data-app-sandbox";
+} from "@metabase/embedding-sdk-react/data-app-dev";
 import { createRoot } from "react-dom/client";
 
 import { sdkTheme } from "./theme";
