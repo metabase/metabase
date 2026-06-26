@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -275,7 +276,7 @@
   "Folds `metadata` ({:model_type :model_id :path :content_hash}) into matching `rows` as :file_path +
   :content_hash; rows with no metadata are unchanged."
   [rows metadata]
-  (let [by-key (into {} (map (juxt (juxt :model_type :model_id) identity)) metadata)]
+  (let [by-key (m/index-by (juxt :model_type :model_id) metadata)]
     (mapv (fn [row]
             (if-let [m (by-key [(:model_type row) (:model_id row)])]
               (assoc row :file_path (:path m) :content_hash (:content_hash m))
