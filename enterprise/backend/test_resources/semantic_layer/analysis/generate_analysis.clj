@@ -4,7 +4,9 @@
   Produces sample_pairs and cluster analysis (v2) for every (model × text-type × catalog ×
   threshold) combination, writing to the structured output directory.
 
-  Run via nREPL:
+  Run from a dev REPL (the `:dev` alias puts `test_resources` and the EE sources on the classpath,
+  so the sibling `semantic-layer.analysis.*` namespaces — and the data-complexity-score code they
+  use — resolve):
     (load-file \"enterprise/backend/test_resources/semantic_layer/analysis/generate_analysis.clj\")
     (semantic-layer.analysis.generate-analysis/generate-all!
       {:dump-dir \"enterprise/backend/test_resources/semantic_layer/appdb_dump\"})"
@@ -22,9 +24,8 @@
    {:model "arctic-l" :text "names-split" :emb-file "names_split_arctic-l_1024d.json"
     :thresholds [0.80 0.85 0.90 0.95]}
 
-   ;; Arctic-L: search-text
-   {:model "arctic-l" :text "search-text" :emb-file "search-text_arctic-l_1024d.json"
-    :thresholds [0.80 0.85 0.90 0.95]}
+   ;; NOTE: no :search-text variant — generate_embeddings.clj no longer produces a search-text
+   ;; embedding file (dropped as dump-unsupported), so running it here would fail on a missing input.
 
    ;; Arctic-L: typed-split
    {:model "arctic-l" :text "typed-split" :emb-file "typed_split_arctic-l_1024d.json"
