@@ -1085,7 +1085,7 @@
   (sql.u/format-sql-and-fix-params :mysql native-form))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          Indexes (Index Manager)                                              |
+;;; |                                          Indexes (Index Manager)                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; BigQuery has no secondary indexes. Clustering is the index-equivalent, inlined as `CLUSTER BY` into both creation
