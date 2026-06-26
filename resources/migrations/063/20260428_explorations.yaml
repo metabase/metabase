@@ -1539,3 +1539,152 @@ databaseChangeLog:
         - renameTable:
             oldTableName: exploration_block
             newTableName: exploration_thread_group
+
+  - changeSet:
+      id: v63.exppagetable
+      author: johnswanson
+      comment: Create exploration_page table — the persisted (block, card, dimension, query_type) page. Surrogate id is the page's identity; the (block, card, dim, query_type) columns are its mutable grouping/reconciliation key. Queries are reconciled to a page on (re)run so its id (and any comments/stars hanging off it) survives.
+      changes:
+        - createTable:
+            tableName: exploration_page
+            remarks: A page within a block — the queries for one (card, dimension, query_type), bundled under a stable id so comments/stars can anchor to it across reruns.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key — the page's stable identity, surfaced to the FE
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID for serdes
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: exploration_block_id
+                  type: int
+                  remarks: The block this page belongs to. Mutable parent — a future re-grouping can move a page between blocks without changing its id.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: Metric Card — part of the page's grouping/reconciliation key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dimension_id
+                  type: ${text.type}
+                  remarks: Virtual dimension ID — part of the page's grouping/reconciliation key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: query_type
+                  type: varchar(32)
+                  defaultValue: default
+                  remarks: Generator variant — part of the page's grouping/reconciliation key
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: First-seen authoring order of the page within its block
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the page was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the page was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v63.exppageblockidx
+      author: johnswanson
+      comment: Index on exploration_page.exploration_block_id (load a block's pages for reconciliation)
+      changes:
+        - createIndex:
+            tableName: exploration_page
+            indexName: idx_exploration_page_block_id
+            columns:
+              - column:
+                  name: exploration_block_id
+
+  - changeSet:
+      id: v63.exppageblockfk
+      author: johnswanson
+      comment: FK exploration_page.exploration_block_id -> exploration_block.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_page
+            baseColumnNames: exploration_block_id
+            referencedTableName: exploration_block
+            referencedColumnNames: id
+            constraintName: fk_exploration_page_block_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v63.exppagecardfk
+      author: johnswanson
+      comment: FK exploration_page.card_id -> report_card.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_page
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_exploration_page_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v63.expqpagecol
+      author: johnswanson
+      comment: Add exploration_query.page_id (NOT NULL) — the page each query is reconciled under. The reconciler stamps it on every query, so it's required from the start. group_id stays as the block pointer until the read-side/URL rework drops it.
+      changes:
+        - addColumn:
+            tableName: exploration_query
+            columns:
+              - column:
+                  name: page_id
+                  type: int
+                  remarks: The exploration_page this query belongs to
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v63.expqpageidx
+      author: johnswanson
+      comment: Index exploration_query.page_id for read-side grouping
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_page_id
+            columns:
+              - column:
+                  name: page_id
+
+  - changeSet:
+      id: v63.expqpagefk
+      author: johnswanson
+      comment: FK exploration_query.page_id -> exploration_page.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: page_id
+            referencedTableName: exploration_page
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_page_id
+            onDelete: CASCADE

@@ -144,6 +144,7 @@
     :model/Exploration
     :model/ExplorationThread
     :model/ExplorationBlock
+    :model/ExplorationPage
     :model/ExplorationThreadTimeline
     :model/ExplorationQuery
     :model/ExplorationBookmark]

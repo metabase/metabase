@@ -91,34 +91,89 @@
                      :params    (:params recipe)})))
           (qp.variants/plan-rows (:variant item) plan-ctx))))
 
+;; ---------------------------------------------------------------------------
+;; Page reconciliation
+;;
+;; Each query belongs to a persisted `ExplorationPage`, which it shares with any other
+;; queries that have the same block-id, card-id, dimension-id, and query-type. The page's
+;; surrogate id is its identity (comments/stars anchor to it), so on a rerun — where
+;; queries are deleted and recreated — we find-or-create the page from that grouping to
+;; recover the same id, then GC pages whose selection was removed.
+;; ---------------------------------------------------------------------------
+
+(defn- page-key
+  "The `[block-id card-id dimension-id query-type]` a query row reconciles to."
+  [row]
+  [(:group_id row) (:card_id row) (:dimension_id row) (:query_type row)])
+
+(defn- find-or-create-page!
+  "Return the id of the `ExplorationPage` for `k` (a [[page-key]]), creating it at
+  `position` if it doesn't exist yet. An existing page keeps its id and position."
+  [[block-id card-id dim-id query-type] position]
+  (or (t2/select-one-pk :model/ExplorationPage
+                        :exploration_block_id block-id
+                        :card_id              card-id
+                        :dimension_id         dim-id
+                        :query_type           query-type)
+      (t2/insert-returning-pk! :model/ExplorationPage
+                               {:exploration_block_id block-id
+                                :card_id              card-id
+                                :dimension_id         dim-id
+                                :query_type           query-type
+                                :position             position})))
+
+(defn- reconcile-pages!
+  "Find-or-create a page per distinct [[page-key]] in `rows` (first-seen order sets the
+  `position` of newly-created pages); returns a `key -> page-id` map."
+  [rows]
+  (into {}
+        (for [[pos k] (map-indexed vector (distinct (map page-key rows)))]
+          [k (find-or-create-page! k pos)])))
+
+(defn- gc-orphan-pages!
+  "Delete pages of `thread-id`'s blocks that ended up with no queries — e.g. a selection
+  the user removed before a rerun. `used-page-ids` are the pages the current plan kept.
+  (Issue: once comments/stars exist, this becomes anchored-content-aware.)"
+  [thread-id used-page-ids]
+  (let [block-ids (t2/select-pks-vec :model/ExplorationBlock :exploration_thread_id thread-id)
+        orphans   (when (seq block-ids)
+                    (->> (t2/select-pks-vec :model/ExplorationPage :exploration_block_id [:in block-ids])
+                         (remove (set used-page-ids))))]
+    (when (seq orphans)
+      (t2/delete! :model/ExplorationPage :id [:in orphans]))))
+
 (defn- insert-plan-rows!
-  "Materialize each plan item into row recipes and insert them as
-  `ExplorationQuery` rows. Returns the number of rows inserted."
+  "Materialize each plan item into row recipes, reconcile each to its persisted
+  `ExplorationPage`, insert them as `ExplorationQuery` rows, and GC pages left with no
+  queries. Returns the number of rows inserted."
   [thread-id metric-by-key plan]
-  (let [rows (vec
-              (for [item   plan
-                    :let   [metric (get metric-by-key [(:group_id item) (:metric_id item)])]
-                    recipe (try
-                             (materialize-item metric-by-key item)
-                             (catch Throwable e
-                               (log/warnf e "Skipping plan item that failed to materialize: %s"
-                                          (pr-str item))
-                               []))]
-                {:exploration_thread_id thread-id
-                 :group_id              (:group_id item)
-                 :card_id               (:metric_id item)
-                 :database_id           (:database_id (:card metric))
-                 :segment_id            (:segment_id recipe)
-                 :dimension_id          (:dimension_id item)
-                 :query_type            (:query_type recipe)
-                 :display               (:display recipe)
-                 :name                  (:name recipe)
-                 :params                (:params recipe)
-                 :status                "pending"}))]
-    (when (seq rows)
+  (let [rows      (vec
+                   (for [item   plan
+                         :let   [metric (get metric-by-key [(:group_id item) (:metric_id item)])]
+                         recipe (try
+                                  (materialize-item metric-by-key item)
+                                  (catch Throwable e
+                                    (log/warnf e "Skipping plan item that failed to materialize: %s"
+                                               (pr-str item))
+                                    []))]
+                     {:exploration_thread_id thread-id
+                      :group_id              (:group_id item)
+                      :card_id               (:metric_id item)
+                      :database_id           (:database_id (:card metric))
+                      :segment_id            (:segment_id recipe)
+                      :dimension_id          (:dimension_id item)
+                      :query_type            (:query_type recipe)
+                      :display               (:display recipe)
+                      :name                  (:name recipe)
+                      :params                (:params recipe)
+                      :status                "pending"}))
+        key->page (reconcile-pages! rows)
+        rows*     (mapv #(assoc % :page_id (key->page (page-key %))) rows)]
+    (when (seq rows*)
       (t2/insert! :model/ExplorationQuery
-                  (map-indexed (fn [i r] (assoc r :position i)) rows)))
-    (count rows)))
+                  (map-indexed (fn [i r] (assoc r :position i)) rows*)))
+    (gc-orphan-pages! thread-id (vals key->page))
+    (count rows*)))
 
 ;; ---------------------------------------------------------------------------
 ;; Failure path

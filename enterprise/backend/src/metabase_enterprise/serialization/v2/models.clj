@@ -88,6 +88,7 @@
    "Exploration"
    "ExplorationBlock"
    "ExplorationBookmark"
+   "ExplorationPage"
    "ExplorationQuery"
    "ExplorationQueryResult"
    "ExplorationQueryTimelineInterestingness"
