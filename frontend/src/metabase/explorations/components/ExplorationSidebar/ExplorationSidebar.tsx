@@ -86,7 +86,7 @@ export function ExplorationSidebar({
 
   const handlePrefetch = useCallback(
     (item: ITreeNodeItem<ExplorationTreeNode>) => {
-      if (item.data?.type !== "group") {
+      if (item.data?.type !== "page") {
         return;
       }
       const queries = item.data.queries;
@@ -124,17 +124,17 @@ export function ExplorationSidebar({
       );
       if (nextItem != null && nextItem.id !== selectedEntityId.id) {
         if (
-          nextItem.data?.type !== "group" &&
+          nextItem.data?.type !== "page" &&
           nextItem.data?.type !== "document"
         ) {
           return;
         }
-        if (nextItem.data.type === "group") {
-          setSelectedEntityId({ type: "group", id: nextItem.data.group_id });
+        if (nextItem.data.type === "page") {
+          setSelectedEntityId({ type: "page", id: nextItem.data.page_id });
         } else if (nextItem.data.type === "document") {
           setSelectedEntityId({ type: "document", id: nextItem.data.id });
         }
-        if (nextItem.data.type === "group") {
+        if (nextItem.data.type === "page") {
           trackExplorationVisualizationChanged(exploration.id, "keyboard");
         } else if (nextItem.data.isAiSummary) {
           trackExplorationAISummaryOpened(exploration.id);
@@ -394,7 +394,7 @@ function isExplorationTreeItemProps(
   props: ExplorationTreeNodeProps,
 ): props is ExplorationTreeItemProps {
   return (
-    props.item.data?.type === "document" || props.item.data?.type === "group"
+    props.item.data?.type === "document" || props.item.data?.type === "page"
   );
 }
 
@@ -420,7 +420,7 @@ function ExplorationTreeItem({
 
   const handleClick = useCallback(() => {
     if (!isSelected) {
-      if (item.data?.type === "group") {
+      if (item.data?.type === "page") {
         trackExplorationVisualizationChanged(explorationId, "click");
       } else if (item.data?.isAiSummary) {
         trackExplorationAISummaryOpened(explorationId);
@@ -433,8 +433,8 @@ function ExplorationTreeItem({
   }
 
   const entityId: SelectedEntityId =
-    item.data.type === "group"
-      ? { type: "group", id: item.data.group_id }
+    item.data.type === "page"
+      ? { type: "page", id: item.data.page_id }
       : { type: "document", id: item.data.id };
 
   const iconProps: IconProps = {
@@ -442,12 +442,12 @@ function ExplorationTreeItem({
     name: typeof item.icon === "string" ? item.icon : item.icon.name,
   };
 
-  const groupData = item.data.type === "group" ? item.data : null;
-  const isError = groupData?.status === "error";
+  const pageData = item.data.type === "page" ? item.data : null;
+  const isError = pageData?.status === "error";
   const isLoading = isLoadingStatus(item.data?.status);
   const isInteresting =
     !isError &&
-    (groupData?.interestingness_score ?? 0) >=
+    (pageData?.interestingness_score ?? 0) >=
       QUERY_INTERESTINGNESS_SCORE_THRESHOLD;
 
   return (

@@ -2,15 +2,15 @@ import dayjs from "dayjs";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import {
+  createBlock,
   createExploration,
   createExplorationDocument,
+  createPage,
   createQuery,
-  leafGroup,
-  metricGroup,
 } from "metabase/explorations/test-utils";
 import type { ExplorationQueryStatus } from "metabase-types/api";
 
-import type { ExplorationTreeNode, ExplorationTreeQueryGroup } from "./utils";
+import type { ExplorationTreeNode, ExplorationTreePage } from "./utils";
 import {
   getCompactRelativeTime,
   getExplorationSidebarTree,
@@ -25,23 +25,23 @@ function getLeafIds(
   heading: ITreeNodeItem<ExplorationTreeNode> | undefined,
 ): string[] {
   return (heading?.children ?? [])
-    .filter((child) => child.data?.type === "group")
+    .filter((child) => child.data?.type === "page")
     .map((child) => String(child.id));
 }
 
-function getLeafGroupData(
+function getPageData(
   heading: ITreeNodeItem<ExplorationTreeNode> | undefined,
-  leafId: string,
-): ExplorationTreeQueryGroup | undefined {
-  const leaf = heading?.children?.find((child) => child.id === leafId);
-  return leaf?.data?.type === "group" ? leaf.data : undefined;
+  pageId: string,
+): ExplorationTreePage | undefined {
+  const leaf = heading?.children?.find((child) => child.id === pageId);
+  return leaf?.data?.type === "page" ? leaf.data : undefined;
 }
 
 describe("getExplorationSidebarTree sorting", () => {
-  const METRIC_A = "metric:a";
-  const METRIC_B = "metric:b";
+  const METRIC_A_BLOCK_ID = 10;
+  const METRIC_B_BLOCK_ID = 20;
 
-  it("orders done leaf groups by interestingness descending", () => {
+  it("orders done pages by interestingness descending", () => {
     const low = createQuery({
       id: 1,
       name: "Low",
@@ -58,21 +58,34 @@ describe("getExplorationSidebarTree sorting", () => {
     const tree = getExplorationSidebarTree(
       createExploration({
         queries: [low, high],
-        groups: [
-          metricGroup(METRIC_A, "Metric A", 0),
-          leafGroup("leaf:low", METRIC_A, [low.id], 0),
-          leafGroup("leaf:high", METRIC_A, [high.id], 1),
+        blocks: [
+          createBlock({
+            id: METRIC_A_BLOCK_ID,
+            name: "Metric A",
+            position: 0,
+            pages: [
+              createPage({
+                id: 1,
+                name: "Low",
+                position: 0,
+                query_ids: [low.id],
+              }),
+              createPage({
+                id: 2,
+                name: "High",
+                position: 1,
+                query_ids: [high.id],
+              }),
+            ],
+          }),
         ],
       }),
     );
 
-    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual([
-      "leaf:high",
-      "leaf:low",
-    ]);
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["2", "1"]);
   });
 
-  it("prefers settled groups over running page groups even when one sibling query already scored highly", () => {
+  it("prefers settled pages over running pages even when one sibling query already scored highly", () => {
     const doneSegment = createQuery({
       id: 1,
       name: "Revenue (US)",
@@ -94,29 +107,38 @@ describe("getExplorationSidebarTree sorting", () => {
     const tree = getExplorationSidebarTree(
       createExploration({
         queries: [doneSegment, pendingSegment, doneSingleton],
-        groups: [
-          metricGroup(METRIC_A, "Metric A", 0),
-          leafGroup(
-            "leaf:page",
-            METRIC_A,
-            [doneSegment.id, pendingSegment.id],
-            0,
-            "Revenue by region",
-            "page",
-          ),
-          leafGroup("leaf:done", METRIC_A, [doneSingleton.id], 1),
+        blocks: [
+          createBlock({
+            id: METRIC_A_BLOCK_ID,
+            name: "Metric A",
+            position: 0,
+            pages: [
+              createPage({
+                id: 100,
+                name: "Revenue by region",
+                position: 0,
+                query_ids: [doneSegment.id, pendingSegment.id],
+              }),
+              createPage({
+                id: 3,
+                name: "Done but less interesting",
+                position: 1,
+                query_ids: [doneSingleton.id],
+              }),
+            ],
+          }),
         ],
       }),
     );
 
     const heading = getMetricHeadings(tree)[0];
 
-    expect(getLeafIds(heading)).toEqual(["leaf:done", "leaf:page"]);
-    expect(getLeafGroupData(heading, "leaf:page")).toMatchObject({
+    expect(getLeafIds(heading)).toEqual(["3", "100"]);
+    expect(getPageData(heading, "100")).toMatchObject({
       status: "running",
       interestingness_score: null,
     });
-    expect(getLeafGroupData(heading, "leaf:done")).toMatchObject({
+    expect(getPageData(heading, "3")).toMatchObject({
       status: "done",
       interestingness_score: 0.2,
     });
@@ -135,20 +157,37 @@ describe("getExplorationSidebarTree sorting", () => {
     const tree = getExplorationSidebarTree(
       createExploration({
         queries: [error, running, done],
-        groups: [
-          metricGroup(METRIC_A, "Metric A", 0),
-          leafGroup("leaf:error", METRIC_A, [error.id], 0),
-          leafGroup("leaf:running", METRIC_A, [running.id], 1),
-          leafGroup("leaf:done", METRIC_A, [done.id], 2),
+        blocks: [
+          createBlock({
+            id: METRIC_A_BLOCK_ID,
+            name: "Metric A",
+            position: 0,
+            pages: [
+              createPage({
+                id: 3,
+                name: "Error",
+                position: 0,
+                query_ids: [error.id],
+              }),
+              createPage({
+                id: 2,
+                name: "Running",
+                position: 1,
+                query_ids: [running.id],
+              }),
+              createPage({
+                id: 1,
+                name: "Done",
+                position: 2,
+                query_ids: [done.id],
+              }),
+            ],
+          }),
         ],
       }),
     );
 
-    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual([
-      "leaf:done",
-      "leaf:running",
-      "leaf:error",
-    ]);
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1", "2", "3"]);
   });
 
   it("orders metric headings by their best settled child score", () => {
@@ -168,22 +207,44 @@ describe("getExplorationSidebarTree sorting", () => {
     const tree = getExplorationSidebarTree(
       createExploration({
         queries: [metricBLeaf, metricALeaf],
-        groups: [
-          metricGroup(METRIC_B, "Metric B", 0),
-          leafGroup("leaf:b", METRIC_B, [metricBLeaf.id], 0),
-          metricGroup(METRIC_A, "Metric A", 1),
-          leafGroup("leaf:a", METRIC_A, [metricALeaf.id], 0),
+        blocks: [
+          createBlock({
+            id: METRIC_B_BLOCK_ID,
+            name: "Metric B",
+            position: 0,
+            pages: [
+              createPage({
+                id: 2,
+                name: "Metric B leaf",
+                position: 0,
+                query_ids: [metricBLeaf.id],
+              }),
+            ],
+          }),
+          createBlock({
+            id: METRIC_A_BLOCK_ID,
+            name: "Metric A",
+            position: 1,
+            pages: [
+              createPage({
+                id: 1,
+                name: "Metric A leaf",
+                position: 0,
+                query_ids: [metricALeaf.id],
+              }),
+            ],
+          }),
         ],
       }),
     );
 
     expect(getMetricHeadings(tree).map((heading) => heading.id)).toEqual([
-      METRIC_A,
-      METRIC_B,
+      String(METRIC_A_BLOCK_ID),
+      String(METRIC_B_BLOCK_ID),
     ]);
   });
 
-  it("tiebreaks equal scores by group id", () => {
+  it("tiebreaks equal scores by page id", () => {
     const first = createQuery({
       id: 1,
       name: "First",
@@ -200,25 +261,38 @@ describe("getExplorationSidebarTree sorting", () => {
     const tree = getExplorationSidebarTree(
       createExploration({
         queries: [first, second],
-        groups: [
-          metricGroup(METRIC_A, "Metric A", 0),
-          leafGroup("leaf:z", METRIC_A, [first.id], 0),
-          leafGroup("leaf:a", METRIC_A, [second.id], 1),
+        blocks: [
+          createBlock({
+            id: METRIC_A_BLOCK_ID,
+            name: "Metric A",
+            position: 0,
+            pages: [
+              createPage({
+                id: 2,
+                name: "First",
+                position: 0,
+                query_ids: [first.id],
+              }),
+              createPage({
+                id: 1,
+                name: "Second",
+                position: 1,
+                query_ids: [second.id],
+              }),
+            ],
+          }),
         ],
       }),
     );
 
-    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual([
-      "leaf:a",
-      "leaf:z",
-    ]);
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1", "2"]);
   });
 });
 
 describe("getExplorationSidebarTree passes BE-computed names through", () => {
-  const DIM_GROUP = "dim:country";
+  const DIM_BLOCK_ID = 30;
 
-  it("uses the group's group_name for the heading and each leaf's name for sub-items", () => {
+  it("uses the block's name for the heading and each page's name for sub-items", () => {
     const signups = createQuery({
       id: 1,
       name: "Signups",
@@ -235,10 +309,27 @@ describe("getExplorationSidebarTree passes BE-computed names through", () => {
     const tree = getExplorationSidebarTree(
       createExploration({
         queries: [signups, revenue],
-        groups: [
-          metricGroup(DIM_GROUP, "Country", 0, "By Country"),
-          leafGroup("auto:country:10", DIM_GROUP, [signups.id], 0, "Signups"),
-          leafGroup("auto:country:11", DIM_GROUP, [revenue.id], 1, "Revenue"),
+        blocks: [
+          createBlock({
+            id: DIM_BLOCK_ID,
+            type: "dimension",
+            name: "By Country",
+            position: 0,
+            pages: [
+              createPage({
+                id: 10,
+                name: "Signups",
+                position: 0,
+                query_ids: [signups.id],
+              }),
+              createPage({
+                id: 11,
+                name: "Revenue",
+                position: 1,
+                query_ids: [revenue.id],
+              }),
+            ],
+          }),
         ],
       }),
     );
@@ -253,9 +344,9 @@ describe("getExplorationSidebarTree passes BE-computed names through", () => {
 });
 
 describe("pickInitialSidebarEntity", () => {
-  const METRIC_A = "metric:a";
+  const METRIC_A_BLOCK_ID = 10;
 
-  it("picks a fully settled group over a page group still waiting on a sibling query", () => {
+  it("picks a fully settled page over a page still waiting on a sibling query", () => {
     const doneSegment = createQuery({
       id: 1,
       name: "Revenue (US)",
@@ -277,30 +368,39 @@ describe("pickInitialSidebarEntity", () => {
     const tree = getExplorationSidebarTree(
       createExploration({
         queries: [doneSegment, pendingSegment, doneSingleton],
-        groups: [
-          metricGroup(METRIC_A, "Metric A", 0),
-          leafGroup(
-            "leaf:page",
-            METRIC_A,
-            [doneSegment.id, pendingSegment.id],
-            0,
-            "Revenue by region",
-            "page",
-          ),
-          leafGroup("leaf:done", METRIC_A, [doneSingleton.id], 1),
+        blocks: [
+          createBlock({
+            id: METRIC_A_BLOCK_ID,
+            name: "Metric A",
+            position: 0,
+            pages: [
+              createPage({
+                id: 100,
+                name: "Revenue by region",
+                position: 0,
+                query_ids: [doneSegment.id, pendingSegment.id],
+              }),
+              createPage({
+                id: 3,
+                name: "Done but less interesting",
+                position: 1,
+                query_ids: [doneSingleton.id],
+              }),
+            ],
+          }),
         ],
       }),
     );
 
     expect(pickInitialSidebarEntity(tree)).toEqual({
-      type: "group",
-      id: "leaf:done",
+      type: "page",
+      id: "3",
     });
   });
 });
 
-describe("getExplorationSidebarTree inherits a heading status from its leaves", () => {
-  const METRIC = "metric:revenue";
+describe("getExplorationSidebarTree inherits a heading status from its pages", () => {
+  const METRIC_BLOCK_ID = 10;
 
   function buildTree(statuses: ExplorationQueryStatus[]) {
     const queries = statuses.map((status, i) =>
@@ -309,11 +409,20 @@ describe("getExplorationSidebarTree inherits a heading status from its leaves", 
     return getExplorationSidebarTree(
       createExploration({
         queries,
-        groups: [
-          metricGroup(METRIC, "Revenue", 0),
-          ...queries.map((q, i) =>
-            leafGroup(`leaf:${q.id}`, METRIC, [q.id], i, q.name ?? ""),
-          ),
+        blocks: [
+          createBlock({
+            id: METRIC_BLOCK_ID,
+            name: "Revenue",
+            position: 0,
+            pages: queries.map((q, i) =>
+              createPage({
+                id: q.id,
+                name: q.name ?? "",
+                position: i,
+                query_ids: [q.id],
+              }),
+            ),
+          }),
         ],
       }),
     );
@@ -328,19 +437,19 @@ describe("getExplorationSidebarTree inherits a heading status from its leaves", 
   const headingStatus = (tree: ReturnType<typeof buildTree>) =>
     statusOf(getMetricHeadings(tree)[0]);
 
-  it("is running while any leaf query is still loading", () => {
+  it("is running while any page query is still loading", () => {
     const tree = buildTree(["pending", "done"]);
     expect(headingStatus(tree)).toBe("running");
     expect(threadStatus(tree)).toBe("running");
   });
 
-  it("is error once all leaves are settled and one or more errored", () => {
+  it("is error once all pages are settled and one or more errored", () => {
     const tree = buildTree(["done", "error"]);
     expect(headingStatus(tree)).toBe("error");
     expect(threadStatus(tree)).toBe("error");
   });
 
-  it("is done when all leaf queries are done", () => {
+  it("is done when all page queries are done", () => {
     const tree = buildTree(["done", "done"]);
     expect(headingStatus(tree)).toBe("done");
     expect(threadStatus(tree)).toBe("done");
@@ -361,7 +470,7 @@ describe("getExplorationSidebarTree AI summary document status", () => {
     return getExplorationSidebarTree(
       createExploration({
         queries: [],
-        groups: [],
+        blocks: [],
         documents: [createExplorationDocument({ id: 99, name: "AI Summary" })],
         ...threadOverrides,
       }),

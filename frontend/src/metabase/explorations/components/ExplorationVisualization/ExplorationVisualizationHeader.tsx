@@ -7,15 +7,12 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch } from "metabase/redux";
 import { useRouter } from "metabase/router";
 import { Group, Indicator, Text } from "metabase/ui";
-import type {
-  ExplorationId,
-  ExplorationQueryGroupId,
-} from "metabase-types/api";
+import type { ExplorationId, ExplorationPageNodeId } from "metabase-types/api";
 
 interface ExplorationVisualizationHeaderProps {
   name: string;
   explorationId?: ExplorationId;
-  groupId?: ExplorationQueryGroupId;
+  pageId?: ExplorationPageNodeId;
   isCommentsSidebarOpen?: boolean;
   showCommentsButton?: boolean;
 }
@@ -23,7 +20,7 @@ interface ExplorationVisualizationHeaderProps {
 export function ExplorationVisualizationHeader({
   name,
   explorationId,
-  groupId,
+  pageId,
   isCommentsSidebarOpen,
   showCommentsButton,
 }: ExplorationVisualizationHeaderProps) {
@@ -38,7 +35,7 @@ export function ExplorationVisualizationHeader({
             target_type: "exploration",
           }
         : undefined,
-    childTargetId: groupId,
+    childTargetId: pageId,
   });
 
   const ShowCommentsButton = showCommentsButton ? (

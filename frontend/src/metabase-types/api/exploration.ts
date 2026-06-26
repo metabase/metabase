@@ -252,19 +252,27 @@ export interface ExplorationDocument {
   updated_at?: string | null;
 }
 
-export type ExplorationQueryGroupId = string;
+/**
+ * The id used by selection, routing, and comment anchoring for a navigable
+ * page. Block and page `id`s arrive from the backend as numbers, but the
+ * frontend keys selection/URL/comment-draft state by an opaque string
+ * (`String(page.id)`), which is also what comments target.
+ */
+export type ExplorationPageNodeId = string;
 
-export type ExplorationQueryGroupDisplayType = "singleton" | "sidebar" | "page";
-
-export interface ExplorationQueryGroup {
-  id: ExplorationQueryGroupId;
-  parent_group_id: ExplorationQueryGroupId | null;
-  position: number;
-  type: "auto";
-  display_type: ExplorationQueryGroupDisplayType;
+export interface ExplorationPageNode {
+  id: number;
   name: string | null;
-  group_name?: string | null;
+  position: number;
   query_ids: ExplorationQueryId[];
+}
+
+export interface ExplorationBlockNode {
+  id: number;
+  type: "metric" | "dimension";
+  name: string | null;
+  position: number;
+  pages: ExplorationPageNode[];
 }
 
 export function getExplorationQueryGroupStatus(
@@ -317,7 +325,7 @@ export interface ExplorationThread {
   queries?: ExplorationQuery[];
   documents?: ExplorationDocument[];
   ai_summary_document_id?: DocumentId | null;
-  groups?: ExplorationQueryGroup[] | null;
+  blocks?: ExplorationBlockNode[] | null;
 }
 
 export interface ExplorationCreator {

@@ -6,9 +6,8 @@ import type {
   DocumentId,
   Exploration,
   ExplorationId,
+  ExplorationPageNodeId,
   ExplorationQuery,
-  ExplorationQueryGroup,
-  ExplorationQueryGroupId,
   ExplorationQueryId,
   ExplorationQueryStatus,
   ExplorationThread,
@@ -28,20 +27,20 @@ export interface ExplorationTreeHeading {
   lastActivityAt?: string;
 }
 
-export interface ExplorationTreeQueryGroup {
-  type: "group";
-  group_id: ExplorationQueryGroupId;
+export interface ExplorationTreePage {
+  type: "page";
+  page_id: ExplorationPageNodeId;
   query_ids: ExplorationQueryId[];
   queries: ExplorationQuery[];
   status: ExplorationQueryStatus;
   interestingness_score: number | null;
-  parent_id: ExplorationQueryGroupId | null;
+  parent_id: ExplorationPageNodeId | null;
 }
 
-function isExplorationTreeQueryGroup(
+function isExplorationTreePage(
   node: ITreeNodeItem<ExplorationTreeNode>,
-): node is ITreeNodeItem<ExplorationTreeQueryGroup> {
-  return node.data?.type === "group";
+): node is ITreeNodeItem<ExplorationTreePage> {
+  return node.data?.type === "page";
 }
 
 export interface ExplorationTreeDocument {
@@ -52,9 +51,7 @@ export interface ExplorationTreeDocument {
   isAiSummary: boolean;
 }
 
-export type ExplorationTreeItem =
-  | ExplorationTreeQueryGroup
-  | ExplorationTreeDocument;
+export type ExplorationTreeItem = ExplorationTreePage | ExplorationTreeDocument;
 
 export type ExplorationTreeNode = ExplorationTreeItem | ExplorationTreeHeading;
 
@@ -133,108 +130,91 @@ export function getCompactRelativeTime(timestamp: string): string {
 function getExplorationQueryTree(
   thread: ExplorationThread,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
-  const groups = (thread.groups ?? []).filter(
-    (group): group is ExplorationQueryGroup & { name: string } =>
-      group.name != null, // don't show anything missing a name
-  );
-
   const queriesById = new Map<ExplorationQueryId, ExplorationQuery>(
     (thread.queries ?? []).map((query) => [query.id, query]),
   );
 
-  const leafGroupsByParent = new Map<
-    ExplorationQueryGroupId,
-    { group: ExplorationQueryGroup; queries: ExplorationQuery[] }[]
-  >();
-  for (const group of groups) {
-    if (group.parent_group_id == null) {
-      continue;
-    }
-    const queries = group.query_ids
-      .map((id) => queriesById.get(id))
-      .filter((q): q is ExplorationQuery => q != null);
-    if (queries.length === 0) {
-      continue;
-    }
-    const siblings = leafGroupsByParent.get(group.parent_group_id) ?? [];
-    siblings.push({ group, queries });
-    leafGroupsByParent.set(group.parent_group_id, siblings);
-  }
+  const blocks = (thread.blocks ?? []).filter(
+    (block) => block.name != null, // don't show anything missing a name
+  );
 
-  const headings: ITreeNodeItem<ExplorationTreeNode>[] = [];
-
-  for (const group of groups) {
-    if (group.parent_group_id != null) {
-      continue;
-    }
-    const leafGroups = leafGroupsByParent.get(group.id) ?? [];
-
-    const children: ITreeNodeItem<ExplorationTreeNode>[] = leafGroups.map(
-      ({ group: leafGroup, queries }) => {
+  const headings: ITreeNodeItem<ExplorationTreeNode>[] = blocks.map((block) => {
+    const children: ITreeNodeItem<ExplorationTreeNode>[] = block.pages
+      .map((page): ITreeNodeItem<ExplorationTreeNode> | null => {
+        const queries = page.query_ids
+          .map((id) => queriesById.get(id))
+          .filter((q): q is ExplorationQuery => q != null);
+        if (queries.length === 0) {
+          return null;
+        }
         const status = getExplorationQueryGroupStatus(queries);
         return {
-          id: leafGroup.id,
-          name: leafGroup.name ?? "",
+          id: String(page.id),
+          name: page.name ?? "",
           icon: "lineandbar",
           data: {
-            type: "group",
-            group_id: leafGroup.id,
-            query_ids: leafGroup.query_ids,
+            type: "page",
+            page_id: String(page.id),
+            query_ids: page.query_ids,
             queries,
             status,
             interestingness_score:
               status === "done"
                 ? getExplorationQueryGroupInterestingness(queries)
                 : null,
-            parent_id: leafGroup.parent_group_id,
+            parent_id: String(block.id),
           },
         };
-      },
-    );
+      })
+      .filter(
+        (node): node is ITreeNodeItem<ExplorationTreeNode> => node != null,
+      );
 
-    headings.push({
-      id: group.id,
-      name: group.group_name ?? group.name,
+    return {
+      id: String(block.id),
+      name: block.name ?? "",
       icon: "empty",
       data: {
         type: "heading",
         status: getExplorationQueryGroupStatus(
-          leafGroups.flatMap((leaf) => leaf.queries),
+          children.flatMap((child) =>
+            isExplorationTreePage(child) ? (child.data?.queries ?? []) : [],
+          ),
         ),
       },
       children,
-    });
-  }
+    };
+  });
 
   return headings
     .filter((heading) => (heading.children ?? []).length > 0)
     .map((heading) => ({
       ...heading,
-      children: heading.children?.toSorted(compareExplorationTreeQueryGroups),
+      children: heading.children?.toSorted(compareExplorationTreePages),
     }))
     .toSorted(compareExplorationTreeHeadings);
 }
 
-function compareExplorationTreeQueryGroups(
+function compareExplorationTreePages(
   a: ITreeNodeItem<ExplorationTreeNode>,
   b: ITreeNodeItem<ExplorationTreeNode>,
 ) {
   if (
     !a.data ||
     !b.data ||
-    !isExplorationTreeQueryGroup(a) ||
-    !isExplorationTreeQueryGroup(b)
+    !isExplorationTreePage(a) ||
+    !isExplorationTreePage(b)
   ) {
     return 0;
   }
-  const getScore = (group: ExplorationTreeQueryGroup) => {
-    if (group.status === "error") {
+  const getScore = (page: ExplorationTreePage) => {
+    if (page.status === "error") {
       return -2;
     }
-    if (group.status === "running") {
+    if (page.status === "running") {
       return -1;
     }
-    return group.interestingness_score ?? 0;
+    return page.interestingness_score ?? 0;
   };
   const diff = getScore(b.data) - getScore(a.data);
   if (diff === 0) {
@@ -251,7 +231,7 @@ function compareExplorationTreeHeadings(
   const getScore = (heading: ITreeNodeItem<ExplorationTreeNode>) => {
     let max = 0;
     for (const child of heading.children ?? []) {
-      if (isExplorationTreeQueryGroup(child)) {
+      if (isExplorationTreePage(child)) {
         max = Math.max(max, child.data?.interestingness_score ?? 0);
       }
     }
@@ -326,7 +306,7 @@ export function flattenTree(
   }
   return result.filter(
     (node): node is ITreeNodeItem<ExplorationTreeItem> =>
-      node.data?.type === "document" || node.data?.type === "group",
+      node.data?.type === "document" || node.data?.type === "page",
   );
 }
 
@@ -334,8 +314,8 @@ export function pickInitialSidebarEntity(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
 ): SelectedEntityId | null {
   for (const node of nodes) {
-    if (node.data?.type === "group") {
-      return { type: "group", id: node.data.group_id };
+    if (node.data?.type === "page") {
+      return { type: "page", id: node.data.page_id };
     }
     if (node.children?.length) {
       const result = pickInitialSidebarEntity(node.children);

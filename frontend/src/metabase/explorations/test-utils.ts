@@ -1,9 +1,10 @@
 import type {
   Exploration,
+  ExplorationBlockNode,
   ExplorationDocument,
   ExplorationMetric,
+  ExplorationPageNode,
   ExplorationQuery,
-  ExplorationQueryGroup,
   ExplorationQueryStatus,
   ExplorationSummary,
   ExplorationThread,
@@ -22,7 +23,7 @@ import {
   metricBlockId,
 } from "./hooks/useExplorationSelection";
 
-export const METRIC_HEADING_ID = "metric:1";
+export const INITIAL_BLOCK_ID = 1;
 
 export interface MockSelectionOpts {
   blocks?: ExplorationBlock[];
@@ -157,16 +158,25 @@ export function createQuery(
   };
 }
 
-export function createGroup(
-  overrides: Partial<ExplorationQueryGroup> &
-    Pick<ExplorationQueryGroup, "id" | "name">,
-): ExplorationQueryGroup {
+export function createPage(
+  overrides: Partial<ExplorationPageNode> & Pick<ExplorationPageNode, "id">,
+): ExplorationPageNode {
   return {
-    parent_group_id: null,
+    name: null,
     position: 0,
-    type: "auto",
-    display_type: "page",
     query_ids: [],
+    ...overrides,
+  };
+}
+
+export function createBlock(
+  overrides: Partial<ExplorationBlockNode> & Pick<ExplorationBlockNode, "id">,
+): ExplorationBlockNode {
+  return {
+    type: "metric",
+    name: null,
+    position: 0,
+    pages: [],
     ...overrides,
   };
 }
@@ -192,7 +202,7 @@ export function createThread(
 
 export interface CreateExplorationOpts {
   queries?: ExplorationQuery[];
-  groups?: ExplorationQueryGroup[];
+  blocks?: ExplorationBlockNode[];
   documents?: ExplorationDocument[];
   /** Thread chat prompt — set when the exploration was created with LLM context. */
   prompt?: string | null;
@@ -201,30 +211,24 @@ export interface CreateExplorationOpts {
 
 export function createExploration({
   queries = [],
-  groups,
+  blocks,
   documents = [],
   prompt = null,
   thread: threadOverrides = {},
 }: CreateExplorationOpts = {}): Exploration {
-  const finalGroups: ExplorationQueryGroup[] = groups ?? [
+  const finalBlocks: ExplorationBlockNode[] = blocks ?? [
     {
-      id: METRIC_HEADING_ID,
-      parent_group_id: null,
+      id: INITIAL_BLOCK_ID,
+      type: "metric",
       position: 0,
-      type: "auto",
-      display_type: "sidebar",
       name: "Initial investigation",
-      query_ids: [],
+      pages: queries.map((q, i) => ({
+        id: q.id,
+        name: q.name,
+        position: i,
+        query_ids: [q.id],
+      })),
     },
-    ...queries.map((q, i) => ({
-      id: `auto:1:dim-${q.id}`,
-      parent_group_id: METRIC_HEADING_ID,
-      position: i,
-      type: "auto" as const,
-      display_type: "singleton" as const,
-      name: q.name,
-      query_ids: [q.id],
-    })),
   ];
 
   return {
@@ -243,7 +247,7 @@ export function createExploration({
     threads: [
       createThread({
         queries,
-        groups: finalGroups,
+        blocks: finalBlocks,
         documents,
         prompt,
         ...threadOverrides,
@@ -263,43 +267,6 @@ export function createExplorationDocument(
     created_at: "2026-04-30T00:00:00Z",
     updated_at: "2026-04-30T00:00:00Z",
     ...overrides,
-  };
-}
-
-export function metricGroup(
-  id: string,
-  name: string,
-  position: number,
-  groupName?: string,
-): ExplorationQueryGroup {
-  return {
-    id,
-    parent_group_id: null,
-    position,
-    type: "auto",
-    display_type: "sidebar",
-    name,
-    group_name: groupName ?? name,
-    query_ids: [],
-  };
-}
-
-export function leafGroup(
-  id: string,
-  parentId: string,
-  queryIds: number[],
-  position: number,
-  name = "Leaf",
-  displayType: ExplorationQueryGroup["display_type"] = "singleton",
-): ExplorationQueryGroup {
-  return {
-    id,
-    parent_group_id: parentId,
-    position,
-    type: "auto",
-    display_type: displayType,
-    name,
-    query_ids: queryIds,
   };
 }
 

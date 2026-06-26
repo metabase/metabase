@@ -70,7 +70,7 @@ function setup({
   renderWithProviders(
     <ActionToolbar
       explorationId={EXPLORATION_ID}
-      groupId={GROUP_ID}
+      pageId={GROUP_ID}
       commentDrafts={{}}
       setCommentDrafts={setCommentDrafts}
       showTimelineDropdown={showTimelineDropdown}

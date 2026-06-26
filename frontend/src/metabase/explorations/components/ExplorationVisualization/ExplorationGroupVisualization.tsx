@@ -25,8 +25,8 @@ import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend
 import type {
   Comment,
   ExplorationId,
+  ExplorationPageNode,
   ExplorationQuery,
-  ExplorationQueryGroup,
   SingleSeries,
   Timeline,
   TimelineId,
@@ -41,7 +41,7 @@ import { type LegendItem, buildSeriesGroup } from "./utils";
 
 interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;
-  group: ExplorationQueryGroup;
+  page: ExplorationPageNode;
   queries: ExplorationQuery[];
   availableTimelines: Timeline[];
   selectedTimelineId: TimelineId | null;
@@ -60,8 +60,8 @@ interface ExplorationGroupVisualizationWithGroupNameProps extends ExplorationGro
 export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
-  const { group, queries } = props;
-  const groupName = queries[0]?.name ?? group.name ?? t`Group`;
+  const { page, queries } = props;
+  const groupName = queries[0]?.name ?? page.name ?? t`Group`;
 
   return (
     <Stack flex={1} h="100%" pb="3rem" pr="1rem" align="center">
@@ -133,7 +133,7 @@ function ExplorationGroupVisualizationBody(
 
 function ExplorationGroupVisualizationChart({
   explorationId,
-  group,
+  page,
   queries,
   availableTimelines,
   selectedTimelineId,
@@ -259,7 +259,7 @@ function ExplorationGroupVisualizationChart({
         <ExplorationVisualizationHeader
           name={groupName}
           explorationId={explorationId}
-          groupId={group.id}
+          pageId={String(page.id)}
           isCommentsSidebarOpen={isCommentsSidebarOpen}
           showCommentsButton={true}
         />
@@ -286,7 +286,7 @@ function ExplorationGroupVisualizationChart({
         </Box>
         <ActionToolbar
           explorationId={explorationId}
-          groupId={group.id}
+          pageId={String(page.id)}
           commentDrafts={commentDrafts}
           setCommentDrafts={setCommentDrafts}
           showTimelineDropdown={showTimelineDropdown ?? false}
@@ -299,7 +299,7 @@ function ExplorationGroupVisualizationChart({
       {isCommentsSidebarOpen && (
         <Box w="23rem" h="100%" className={S.commentsSidebar}>
           <Comments
-            // since ExplorationGroupVisualization is keyed on the group, Comments remounts whenever the group changes
+            // since ExplorationGroupVisualization is keyed on the page, Comments remounts whenever the page changes
             // but autofocus can steal the focus and prevent keyboard nav from working
             // so we only allow autofocus is the sidebar is truly opening, not just Comments remounting
             disableAutoFocus={wasCommentsSidebarOpen}
@@ -307,7 +307,7 @@ function ExplorationGroupVisualizationChart({
               target_id: explorationId,
               target_type: "exploration",
             }}
-            childTargetId={group.id}
+            childTargetId={String(page.id)}
             showCloseButton={false}
             context={{
               timeline_id: selectedTimelineId,

@@ -22,18 +22,18 @@ import { ActionIcon, Group, Icon, Menu, Popover } from "metabase/ui";
 import type {
   DocumentContent,
   ExplorationId,
-  ExplorationQueryGroupId,
+  ExplorationPageNodeId,
   Timeline,
   TimelineId,
 } from "metabase-types/api";
 
 import S from "./ActionToolbar.module.css";
 
-export type CommentDrafts = Record<ExplorationQueryGroupId, DocumentContent>;
+export type CommentDrafts = Record<ExplorationPageNodeId, DocumentContent>;
 
 interface ActionToolbarProps {
   explorationId: ExplorationId;
-  groupId: ExplorationQueryGroupId;
+  pageId: ExplorationPageNodeId;
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   showTimelineDropdown: boolean;
@@ -45,7 +45,7 @@ interface ActionToolbarProps {
 
 export function ActionToolbar({
   explorationId,
-  groupId,
+  pageId,
   commentDrafts,
   setCommentDrafts,
   showTimelineDropdown,
@@ -74,9 +74,8 @@ export function ActionToolbar({
   );
 
   const handleMarkAsInteresting = useCallback(() => {
-    //todo add analytics
-    console.log("handleMarkAsInteresting", groupId);
-  }, [groupId]);
+    // TODO(stars): mark this page as interesting + add analytics
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -122,14 +121,14 @@ export function ActionToolbar({
   ]);
 
   const handleChangeCommentDraft = (content: DocumentContent) => {
-    setCommentDrafts((prev) => ({ ...prev, [groupId]: content }));
+    setCommentDrafts((prev) => ({ ...prev, [pageId]: content }));
   };
 
   const handleAddComment = async (content: DocumentContent) => {
     const { error } = await createComment({
       target_id: explorationId,
       target_type: "exploration",
-      child_target_id: groupId,
+      child_target_id: pageId,
       parent_comment_id: null,
       content,
       context: {
@@ -239,7 +238,7 @@ export function ActionToolbar({
             <CommentEditor
               className={S.commentEditor}
               placeholder={t`Add a comment…`}
-              initialContent={commentDrafts[groupId]}
+              initialContent={commentDrafts[pageId]}
               onChange={handleChangeCommentDraft}
               onSubmit={handleAddComment}
               autoFocus={"end"}

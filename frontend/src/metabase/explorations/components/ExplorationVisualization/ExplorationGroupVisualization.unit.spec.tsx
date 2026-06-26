@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createGroup, createQuery } from "metabase/explorations/test-utils";
+import { createPage, createQuery } from "metabase/explorations/test-utils";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   Comment,
@@ -125,9 +125,8 @@ function makeStateMapDataset(): Dataset {
   });
 }
 
-const group = createGroup({
-  id: "auto:1:dim-page",
-  display_type: "page",
+const page = createPage({
+  id: 1,
   name: "Revenue across regions",
   query_ids: [101, 102],
 });
@@ -174,7 +173,7 @@ function setup({
       component={() => (
         <ExplorationGroupVisualization
           explorationId={1}
-          group={{ ...group, query_ids: queries.map((q) => q.id) }}
+          page={{ ...page, query_ids: queries.map((q) => q.id) }}
           queries={queries}
           availableTimelines={availableTimelines}
           selectedTimelineId={selectedTimelineId}

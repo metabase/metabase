@@ -16,9 +16,9 @@ import * as Urls from "metabase/urls";
 import type {
   DocumentId,
   Exploration,
+  ExplorationPageNode,
+  ExplorationPageNodeId,
   ExplorationQuery,
-  ExplorationQueryGroup,
-  ExplorationQueryGroupId,
   ExplorationThread,
   Timeline,
   TimelineId,
@@ -61,7 +61,7 @@ interface ExplorationPageQuery {
 interface ExplorationPageProps {
   params: {
     id: string;
-    entityType?: "document" | "group";
+    entityType?: "document" | "page";
     entityId?: string;
     childTargetId?: string;
   };
@@ -95,12 +95,12 @@ interface SelectedDocumentId {
   id: DocumentId;
 }
 
-interface SelectedGroupId {
-  type: "group";
-  id: ExplorationQueryGroupId;
+interface SelectedPageId {
+  type: "page";
+  id: ExplorationPageNodeId;
 }
 
-export type SelectedEntityId = SelectedDocumentId | SelectedGroupId;
+export type SelectedEntityId = SelectedDocumentId | SelectedPageId;
 
 export function ExplorationPage({
   params,
@@ -195,10 +195,11 @@ export function ExplorationPage({
   // and prevent it from following subsequent data updates.
   const selectedEntityId: SelectedEntityId | null = useMemo(() => {
     if (params.entityType && params.entityId) {
-      // Group ids are opaque strings (e.g. "auto:42:dim-foo") with
-      // colons — we URL-encode them on push and decode them here.
-      if (params.entityType === "group") {
-        return { type: "group", id: decodeURIComponent(params.entityId) };
+      // Page ids are opaque strings (the page's numeric PK stringified, the
+      // same value comments anchor to) — we URL-encode them on push and
+      // decode them here.
+      if (params.entityType === "page") {
+        return { type: "page", id: decodeURIComponent(params.entityId) };
       }
       return { type: params.entityType, id: Number(params.entityId) };
     }
@@ -262,54 +263,56 @@ export function ExplorationPage({
     }
   }, [exploration, dispatch, selectedEntityId, sendToast, setSelectedEntityId]);
 
-  const groupIdToGroupAndQueries: Map<
-    ExplorationQueryGroupId,
+  const pageIdToPageAndQueries: Map<
+    ExplorationPageNodeId,
     {
-      group: ExplorationQueryGroup;
+      page: ExplorationPageNode;
       thread: ExplorationThread;
       queries: ExplorationQuery[];
     }
   > = useMemo(() => {
     const map = new Map<
-      ExplorationQueryGroupId,
+      ExplorationPageNodeId,
       {
-        group: ExplorationQueryGroup;
+        page: ExplorationPageNode;
         thread: ExplorationThread;
         queries: ExplorationQuery[];
       }
     >();
     for (const thread of exploration?.threads ?? []) {
       const queriesById = new Map((thread.queries ?? []).map((q) => [q.id, q]));
-      for (const group of thread.groups ?? []) {
-        const queries = group.query_ids
-          .map((id) => queriesById.get(id))
-          .filter((q): q is ExplorationQuery => q !== undefined);
-        map.set(group.id, { group, thread, queries });
+      for (const block of thread.blocks ?? []) {
+        for (const page of block.pages) {
+          const queries = page.query_ids
+            .map((id) => queriesById.get(id))
+            .filter((q): q is ExplorationQuery => q !== undefined);
+          map.set(String(page.id), { page, thread, queries });
+        }
       }
     }
     return map;
   }, [exploration]);
 
-  const selectedGroup = useMemo(() => {
-    return selectedEntityId?.type === "group"
-      ? groupIdToGroupAndQueries.get(selectedEntityId.id)
+  const selectedPage = useMemo(() => {
+    return selectedEntityId?.type === "page"
+      ? pageIdToPageAndQueries.get(selectedEntityId.id)
       : undefined;
-  }, [selectedEntityId, groupIdToGroupAndQueries]);
+  }, [selectedEntityId, pageIdToPageAndQueries]);
 
   const availableTimelines: Timeline[] = useMemo(() => {
     return (
-      selectedGroup?.thread?.timelines
+      selectedPage?.thread?.timelines
         ?.map((timeline) => allTimelinesById.get(timeline.timeline_id))
         .filter((timeline) => timeline !== undefined) ?? []
     );
-  }, [selectedGroup, allTimelinesById]);
+  }, [selectedPage, allTimelinesById]);
 
   const selectedQueries: ExplorationQuery[] = useMemo(() => {
-    if (selectedGroup) {
-      return selectedGroup.queries;
+    if (selectedPage) {
+      return selectedPage.queries;
     }
     return [];
-  }, [selectedGroup]);
+  }, [selectedPage]);
 
   const availableTimelineIds: ReadonlySet<TimelineId> = useMemo(
     () => new Set(availableTimelines.map((t) => t.id)),
@@ -322,7 +325,7 @@ export function ExplorationPage({
   );
 
   const selectedTimelineId: TimelineId | null = useMemo(() => {
-    if (!selectedGroup) {
+    if (!selectedPage) {
       return null;
     }
     const param = location.query?.[TIMELINE_QUERY_PARAM];
@@ -336,7 +339,7 @@ export function ExplorationPage({
       }
     }
     return getMostInterestingTimelineId(selectedQueries, availableTimelineIds);
-  }, [selectedGroup, location.query, selectedQueries, availableTimelineIds]);
+  }, [selectedPage, location.query, selectedQueries, availableTimelineIds]);
 
   const handleSelectTimelineId = useCallback(
     (timelineId: TimelineId | null) => {
@@ -420,17 +423,16 @@ export function ExplorationPage({
             getSelectedEntityIdUrl={getSelectedEntityIdUrl}
             isOpen={isSidebarOpen}
           />
-          {selectedGroup && (
+          {selectedPage && (
             <ExplorationGroupVisualization
-              // Key on group id so the component remounts when the user
-              // navigates between `page` groups. The body calls one
-              // RTKQ hook per query, so the hook count must be stable for
-              // the lifetime of a single mount; remounting on group switch
-              // guarantees that.
-              key={selectedGroup.group.id}
+              // Key on page id so the component remounts when the user
+              // navigates between pages. The body calls one RTKQ hook per
+              // query, so the hook count must be stable for the lifetime of
+              // a single mount; remounting on page switch guarantees that.
+              key={selectedPage.page.id}
               explorationId={exploration.id}
-              group={selectedGroup.group}
-              queries={selectedGroup.queries}
+              page={selectedPage.page}
+              queries={selectedPage.queries}
               availableTimelines={availableTimelines}
               selectedTimelineId={selectedTimelineId}
               onSelectTimelineId={handleSelectTimelineId}
@@ -451,7 +453,7 @@ export function ExplorationPage({
               isCommentsSidesheetOpen={isCommentsSidesheetOpen}
             />
           )}
-          {!selectedGroup &&
+          {!selectedPage &&
             !selectedDocument &&
             hasUnsettledQueries(exploration) && (
               <ExplorationChartAreaSkeleton />
