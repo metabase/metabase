@@ -172,7 +172,7 @@ export function DependencyDiagnostics({
       h="100%"
       wrap="nowrap"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
+      <Stack className={S.main} flex={1} gap="md">
         <DiagnosticsHeader />
         <DiagnosticsFilterBar
           mode={mode}

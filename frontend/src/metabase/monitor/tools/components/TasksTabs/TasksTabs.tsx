@@ -7,7 +7,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useDispatch } from "metabase/redux";
-import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 type TabConfig = {
@@ -21,8 +21,8 @@ type TasksTabsProps = WithRouterProps & {
 
 const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
   const tabs: TabConfig[] = [
-    { value: Urls.adminToolsTasksList(), label: t`Tasks` },
-    { value: Urls.adminToolsTasksRuns(), label: t`Runs` },
+    { value: Urls.monitorTasksList(), label: t`Tasks` },
+    { value: Urls.monitorTasksRuns(), label: t`Runs` },
   ];
   const DEFAULT_TAB = tabs[0].value;
   const dispatch = useDispatch();
@@ -37,15 +37,23 @@ const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
 
   return (
     <SettingsPageWrapper>
-      <SettingsSection>
-        <Flex align="center" gap="sm">
-          <Title order={1}>{t`Troubleshooting logs`}</Title>
-          <Tooltip
-            label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
+      {/* Title header sits on the page background, outside the white
+          SettingsSection card — matching the other Monitor tool routes. */}
+      <Flex align="center" gap="sm">
+        <Title order={1}>{t`Troubleshooting logs`}</Title>
+        <Tooltip
+          label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
+        >
+          <ActionIcon
+            variant="transparent"
+            c="text-secondary"
+            aria-label={t`About troubleshooting logs`}
           >
             <Icon name="info" />
-          </Tooltip>
-        </Flex>
+          </ActionIcon>
+        </Tooltip>
+      </Flex>
+      <SettingsSection>
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List>
             {tabs.map((tab) => (

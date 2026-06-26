@@ -76,6 +76,7 @@ import {
   CanAccessDataModel,
   CanAccessDataStudio,
   CanAccessMonitor,
+  CanAccessMonitoringTools,
   CanAccessOnboarding,
   CanAccessSettings,
   CanAccessTransforms,
@@ -403,7 +404,7 @@ export const getRoutes = (store: AppStore) => {
           )}
 
           {/* MONITOR */}
-          {getMonitorRoutes(CanAccessMonitor)}
+          {getMonitorRoutes(CanAccessMonitor, CanAccessMonitoringTools)}
         </Route>
       </Route>
 

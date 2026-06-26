@@ -2,7 +2,10 @@ import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
-import { canAccessMonitor } from "metabase/common/monitor/selectors";
+import {
+  canAccessMonitor,
+  canAccessMonitoringTools,
+} from "metabase/common/monitor/selectors";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { metabaseReduxContext } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -137,6 +140,15 @@ const UserCanAccessMonitor = connectedReduxRedirect<Props, State>({
   context: metabaseReduxContext,
 });
 
+const UserCanAccessMonitoringTools = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessMonitoringTools",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) => canAccessMonitoringTools(state),
+  redirectAction: routerActions.replace,
+  context: metabaseReduxContext,
+});
+
 const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessTransforms",
   redirectPath: "/unauthorized",
@@ -177,6 +189,14 @@ export const CanAccessMonitor = MetabaseIsSetup(
   UserIsAuthenticated(
     UserCanAccessMonitor(AvailableInEmbedding(({ children }) => children)),
   ),
+);
+
+// Gates the Admin Tools pages migrated into the Monitor space (GDGT-2684) so
+// they keep their original superuser-or-monitoring access rather than the
+// broader analyst-level Monitor guard.
+// Must be in sync with canAccessMonitoringTools in frontend/src/metabase/common/monitor/selectors.ts
+export const CanAccessMonitoringTools = UserCanAccessMonitoringTools(
+  ({ children }) => children,
 );
 
 export const CanAccessDataModel = UserCanAccessDataModel(

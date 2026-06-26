@@ -62,7 +62,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
   return (
     <SettingsSection>
       <Flex align="center" gap="sm">
-        <Link to={Urls.adminToolsTasksList()}>
+        <Link to={Urls.monitorTasksList()}>
           <Flex align="center" gap="xs" c="text-secondary">
             <Icon name="chevronleft" />
             {t`Back to Tasks`}
@@ -89,7 +89,7 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
             <Text fw="bold" w={120}>{t`Task run`}</Text>
             <Anchor
               component={Link}
-              to={Urls.adminToolsTaskRunDetails(task.run_id)}
+              to={Urls.monitorTaskRunDetails(task.run_id)}
             >
               {t`Go to the corresponding run`}
             </Anchor>

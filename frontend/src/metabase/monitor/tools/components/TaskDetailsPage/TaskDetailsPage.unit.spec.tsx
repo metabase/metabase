@@ -26,7 +26,7 @@ jest.mock("@mantine/hooks", () => ({
 
 const mockUseClipboard = useClipboard as jest.Mock;
 
-const PATHNAME = `${Urls.adminToolsTasksList()}/:taskId`;
+const PATHNAME = `${Urls.monitorTasksList()}/:taskId`;
 
 interface SetupOpts {
   task?: Task;
@@ -39,7 +39,7 @@ const setup = ({ task = createMockTask() }: SetupOpts = {}) => {
   return renderWithProviders(
     <Route path={PATHNAME} component={TaskDetailsPage} />,
     {
-      initialRoute: Urls.adminToolsTaskDetails(task.id),
+      initialRoute: Urls.monitorTaskDetails(task.id),
       withRouter: true,
     },
   );

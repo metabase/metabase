@@ -3,6 +3,7 @@ import { type PropsWithChildren, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import {
   SettingsPageWrapper,
   SettingsSection,
@@ -113,46 +114,48 @@ export const Help = ({ children }: PropsWithChildren) => {
   const compactDetailStringForUrl = encodeURIComponent(JSON.stringify(details));
 
   return (
-    <SettingsPageWrapper title={t`Help`}>
-      <Group grow>
-        <HelpLink
-          title={t`Get help`}
-          description={t`Resources and support`}
-          link={
-            isPaidPlan
-              ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}&diag=${compactDetailStringForUrl}`
-              : `https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}`
-          }
-        />
-        <HelpLink
-          title={t`Report an issue`}
-          description={t`Create a GitHub issue (includes the diagnostic info below)`}
-          link={githubIssueLink(detailString)}
-        />
-      </Group>
+    <AdminSettingsLayout maw="50rem">
+      <SettingsPageWrapper title={t`Help`}>
+        <Group grow>
+          <HelpLink
+            title={t`Get help`}
+            description={t`Resources and support`}
+            link={
+              isPaidPlan
+                ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}&diag=${compactDetailStringForUrl}`
+                : `https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}`
+            }
+          />
+          <HelpLink
+            title={t`Report an issue`}
+            description={t`Create a GitHub issue (includes the diagnostic info below)`}
+            link={githubIssueLink(detailString)}
+          />
+        </Group>
 
-      <UpsellBetterSupport location="settings-troubleshooting" />
+        <UpsellBetterSupport location="settings-troubleshooting" />
 
-      {PLUGIN_SUPPORT.isEnabled && <PLUGIN_SUPPORT.SupportSettings />}
+        {PLUGIN_SUPPORT.isEnabled && <PLUGIN_SUPPORT.SupportSettings />}
 
-      <SettingsSection
-        title={t`Diagnostic info`}
-        description={t`Please include these details in support requests. Thank you!`}
-      >
-        <InfoBlock>{detailString}</InfoBlock>
-      </SettingsSection>
-      <SettingsSection
-        title={t`Advanced details`}
-        description={t`Click to download`}
-      >
-        <HelpLink
-          title={t`Connection Pool Details`}
-          description={t`Information about active and idle connections for all pools`}
-          link={getConnectionPoolDetailsUrl()}
-        />
-      </SettingsSection>
-      {/* render 'children' so that the child modal routes can show up */}
-      {children}
-    </SettingsPageWrapper>
+        <SettingsSection
+          title={t`Diagnostic info`}
+          description={t`Please include these details in support requests. Thank you!`}
+        >
+          <InfoBlock>{detailString}</InfoBlock>
+        </SettingsSection>
+        <SettingsSection
+          title={t`Advanced details`}
+          description={t`Click to download`}
+        >
+          <HelpLink
+            title={t`Connection Pool Details`}
+            description={t`Information about active and idle connections for all pools`}
+            link={getConnectionPoolDetailsUrl()}
+          />
+        </SettingsSection>
+        {/* render 'children' so that the child modal routes can show up */}
+        {children}
+      </SettingsPageWrapper>
+    </AdminSettingsLayout>
   );
 };

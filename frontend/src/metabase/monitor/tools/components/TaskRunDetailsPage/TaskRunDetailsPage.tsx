@@ -44,7 +44,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
   const dispatch = useDispatch();
 
   const onClickTask = (task: Task) => {
-    dispatch(push(Urls.adminToolsTaskDetails(task.id)));
+    dispatch(push(Urls.monitorTaskDetails(task.id)));
   };
 
   if (!taskRun || error || isLoading) {
@@ -54,7 +54,7 @@ export const TaskRunDetailsPage = ({ params }: TaskRunDetailsPageProps) => {
   return (
     <SettingsSection>
       <Flex align="center" gap="sm">
-        <Link to={Urls.adminToolsTasksRuns()}>
+        <Link to={Urls.monitorTasksRuns()}>
           <Flex align="center" gap="xs" c="text-secondary">
             <Icon name="chevronleft" />
             {t`Back to Runs`}

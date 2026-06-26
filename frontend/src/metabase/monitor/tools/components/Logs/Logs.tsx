@@ -13,6 +13,7 @@ import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { Option, Select } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { Button, Flex, Icon, TextInput } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { openSaveDialog } from "metabase/utils/dom";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
@@ -134,7 +135,7 @@ const LogsBase = ({
               <Flex align="center" gap="md">
                 <Button
                   component={Link}
-                  to="/admin/tools/logs/levels"
+                  to={Urls.monitorLogLevels()}
                   leftSection={<Icon name="pulse" />}
                   variant="default"
                 >{t`Customize log levels`}</Button>

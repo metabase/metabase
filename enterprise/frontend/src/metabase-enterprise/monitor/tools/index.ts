@@ -1,4 +1,4 @@
-import { PLUGIN_ADMIN_TOOLS } from "metabase/plugins";
+import { PLUGIN_MONITOR_TOOLS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import ErrorOverview from "./ErrorOverview";
@@ -8,6 +8,6 @@ import ErrorOverview from "./ErrorOverview";
  */
 export function initializePlugin() {
   if (hasPremiumFeature("audit_app")) {
-    PLUGIN_ADMIN_TOOLS.COMPONENT = ErrorOverview;
+    PLUGIN_MONITOR_TOOLS.COMPONENT = ErrorOverview;
   }
 }

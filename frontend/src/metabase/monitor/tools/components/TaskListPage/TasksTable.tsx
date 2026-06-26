@@ -45,7 +45,7 @@ export const TasksTable = ({
   const dispatch = useDispatch();
 
   const onClickTask = (task: Task) => {
-    dispatch(push(Urls.adminToolsTaskDetails(task.id)));
+    dispatch(push(Urls.monitorTaskDetails(task.id)));
   };
 
   return (

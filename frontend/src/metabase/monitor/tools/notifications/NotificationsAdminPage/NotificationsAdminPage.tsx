@@ -187,7 +187,7 @@ export const NotificationsAdminPage = ({
 
   const handleRowClick = (id: NotificationId) => {
     trackAlertsManagementAlertOpened(id, "table_row");
-    dispatch(push(Urls.adminToolsNotificationDetail(id)));
+    dispatch(push(Urls.monitorNotificationDetail(id)));
   };
 
   const handleSearchChange = (query: string) => {
@@ -198,7 +198,7 @@ export const NotificationsAdminPage = ({
   };
 
   const handleSidebarClose = () => {
-    dispatch(push(Urls.adminToolsNotifications()));
+    dispatch(push(Urls.monitorNotifications()));
   };
 
   const deleteNotifications = useCallback(
@@ -224,7 +224,7 @@ export const NotificationsAdminPage = ({
           notificationId !== undefined &&
           notificationIds.includes(notificationId)
         ) {
-          dispatch(push(Urls.adminToolsNotifications()));
+          dispatch(push(Urls.monitorNotifications()));
         }
       } catch {
         trackAlertsManagementAlertsDeleted(triggeredFrom, "failure", count);

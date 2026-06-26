@@ -6,7 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Flex, LoadingOverlay, Text, Title } from "metabase/ui";
-import { adminToolsGrantAccess } from "metabase/urls";
+import { adminHelpGrantAccess } from "metabase/urls";
 
 import { useAccessGrantsQuery } from "../../hooks/useAccessGrantsQuery";
 
@@ -50,7 +50,7 @@ export function SupportSettingsSection() {
         <Box pb="lg">
           <Button
             disabled={!!currentAccessGrant}
-            onClick={() => dispatch(push(adminToolsGrantAccess()))}
+            onClick={() => dispatch(push(adminHelpGrantAccess()))}
             variant="filled"
             title={
               currentAccessGrant
