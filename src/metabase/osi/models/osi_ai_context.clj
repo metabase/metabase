@@ -5,8 +5,9 @@
   This table is authoritative.
   An enterprise pgvector index (`library_entity_index`) is reconciled against this table plus live
   library membership and serves the `retrieve_library_entities` Metabot tool's similarity search.
-  Writes here only nudge the index's background sync ([[mirror/request-sync!]]); they never touch
-  the embedding service or the pgvector store themselves."
+  Writes here only nudge a targeted reconcile of the entity's slice
+  ([[mirror/request-entity-sync!]]); they never touch the embedding service or the pgvector store
+  themselves."
   (:require
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
@@ -26,23 +27,25 @@
   ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly.
   {:ai_context mi/transform-json})
 
-;;; Each write nudges the enterprise background sync, which reconciles the pgvector mirror against this
-;;; table. The nudge is fire-and-forget (no-op in OSS, error-swallowing in EE), so appdb writes never
-;;; fail or slow down because of the mirror.
+;;; Each write nudges a targeted reconcile of just this entity's index slice (fire-and-forget: no-op in
+;;; OSS, error-swallowing in EE), so appdb writes never fail or slow down because of the mirror. The
+;;; reconcile runs later on a future, which is what makes the before-delete hook correct: by the time it
+;;; runs the row is gone, so the entity's synonym/example docs GC while its name/description docs stay if
+;;; the entity is still in the library.
 
 (t2/define-after-insert :model/OsiAiContext
   [row]
-  (mirror/request-sync!)
+  (mirror/request-entity-sync! (:entity_type row) (:entity_local_id row))
   row)
 
 (t2/define-after-update :model/OsiAiContext
   [row]
-  (mirror/request-sync!)
+  (mirror/request-entity-sync! (:entity_type row) (:entity_local_id row))
   row)
 
 (t2/define-before-delete :model/OsiAiContext
   [row]
-  (mirror/request-sync!)
+  (mirror/request-entity-sync! (:entity_type row) (:entity_local_id row))
   row)
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
@@ -82,8 +85,10 @@
   {:copy      [:entity_id :entity_type :ai_context]
    :transform {:created_at      (serdes/date)
                :updated_at      (serdes/date)
-               :entity_local_id {:export-with-context (fn [row _k id] (export-entity-local-id (:entity_type row) id))
-                                 :import-with-context (fn [row _k id] (import-entity-local-id (:entity_type row) id))}}})
+               :entity_local_id {:export-with-context
+                                 (fn [row _k id] (export-entity-local-id (:entity_type row) id))
+                                 :import-with-context
+                                 (fn [row _k id] (import-entity-local-id (:entity_type row) id))}}})
 
 (defn- entity-ref-label
   "Slug source for serdes paths: the entity ref, e.g. \"metric-42\"."

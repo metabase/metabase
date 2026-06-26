@@ -8,11 +8,19 @@
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
-(defenterprise request-sync!
-  "Ask the background sync to reconcile the pgvector index with the appdb soon; no-op in OSS.
-  Fire-and-forget: never throws, does no embedding or pgvector work on the calling thread."
+(defenterprise entity-retrieval-available?
+  "Whether the library entity index can serve a query right now: a pgvector store is configured and the
+  license includes semantic search. `false` in OSS (no index). Re-evaluated per use — pgvector config is
+  boot-fixed but the feature can flip at runtime."
   metabase-enterprise.entity-retrieval.core
   []
+  false)
+
+(defenterprise request-entity-sync!
+  "Ask the targeted write path to reconcile one library entity's index slice soon; no-op in OSS.
+  Fire-and-forget: never throws, does no embedding or pgvector work on the calling thread."
+  metabase-enterprise.entity-retrieval.core
+  [_entity-type _entity-local-id]
   nil)
 
 (defenterprise force-reconcile!

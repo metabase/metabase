@@ -170,9 +170,13 @@
   :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  10
   :temperature     0.3
-  ;; the nlq profile discovers data through the curated library tool (gated via its
-  ;; :feature-semantic-search capability), not the general instance search.
+  ;; The nlq profile prefers the curated library tool for data discovery (gated to
+  ;; :feature-entity-retrieval = pgvector configured AND semantic-search licensed). When that index is
+  ;; unavailable, capability filtering swaps it for the general nlq search fallback (gated to the
+  ;; complementary :feature-no-entity-retrieval), so the agent is never left with zero discovery tools.
+  ;; Exactly one of the two survives filtering for any given request.
   :tools           [#'tools/retrieve-library-entities-tool
+                    #'tools/nlq-search-fallback-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/navigate-user-tool

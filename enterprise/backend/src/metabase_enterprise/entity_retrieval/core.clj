@@ -13,9 +13,10 @@
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.task.core :as task]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
@@ -24,8 +25,8 @@
 (set! *warn-on-reflection* true)
 
 (def sync-job-key
-  "Quartz job key of the background sync; [[request-sync!]] triggers it and
-  [[metabase-enterprise.entity-retrieval.task.sync]] schedules it."
+  "Quartz job key of the periodic full-reconcile backstop, scheduled by
+  [[metabase-enterprise.entity-retrieval.task.sync]]."
   (jobs/key "metabase-enterprise.entity-retrieval.sync.job"))
 
 (defn pgvector-configured?
@@ -43,87 +44,139 @@
   (and (pgvector-configured?)
        (premium-features/has-feature? :semantic-search)))
 
-(defenterprise request-sync!
-  "Trigger the background sync job to reconcile the mirror soon.
-  Fire-and-forget: [[metabase.task.core/trigger-now!]] swallows scheduler errors, and the job's periodic
-  schedule covers anything a lost trigger misses."
-  :feature :semantic-search
+;; OSS-callable surface of `available?` (it does its own feature check, so the shim runs unconditionally
+;; rather than gating on :feature — the OSS fallback `false` already covers the unlicensed case).
+(defenterprise entity-retrieval-available?
+  "EE impl: delegate to [[available?]] (pgvector configured + semantic-search licensed)."
+  :feature :none
   []
-  (when (available?)
-    (task/trigger-now! sync-job-key)))
+  (available?))
+
+;;; ----------------------------------------- Reconcile scheduling -----------------------------------------
+;;;
+;;; Two independent two-slot coalescing schedules, both mutated only under run-lock and both serialized on
+;;; the appdb side by reconcile's pg advisory lock so they never race on the index:
+;;;   - full-*     drives full reconciles (force-reconcile API, periodic backstop, startup); blocking.
+;;;   - targeted-* drives the per-entity write path; fire-and-forget, draining `dirty-entities`.
+;;; Each is the "current run + one queued follow-up" pattern: a caller never joins the in-flight run (it may
+;;; predate the caller's write); it starts a run when idle, or queues (or joins) the single follow-up, which
+;;; begins only after the in-flight run finishes. So every write is covered by a run that starts after it,
+;;; and a burst collapses to one extra run. Keeping the schedules separate (rather than one with a
+;;; full-vs-targeted flag) means a blocking full caller always derefs a run that did a full reconcile.
 
 (defonce ^:private run-lock (Object.))
+(defonce ^:private full-current (atom nil))
+(defonce ^:private full-next (atom nil))
+(defonce ^:private targeted-current (atom nil))
+(defonce ^:private targeted-next (atom nil))
+(defonce ^:private dirty-entities (atom #{}))
 
-;; The reconcile schedule, shared by the force-reconcile API and the background sync job, both mutated only
-;; under run-lock. `current-run` is the in-flight run (nil when idle); `next-run` is the single follow-up
-;; queued behind it (nil when none). A caller never joins the in-flight run — it may have begun before the
-;; caller's write — so it starts a run when idle, or queues (or joins) the one follow-up, which begins only
-;; once the in-flight run finishes. Every caller's write is thus covered by a run that starts after it, a
-;; burst of callers collapses to a single extra run, and the API and the periodic job never run two
-;; reconciles at once on a node.
-(defonce ^:private current-run (atom nil))
-(defonce ^:private next-run (atom nil))
+(defn- record-run!
+  "Emit metrics and a log line for one completed reconcile. `scope` is \"full\" or \"targeted\"; the index
+  size gauges come only from a full run, which counts the whole index."
+  [scope {:keys [inserted deleted unchanged rebuilt? documents entities]} ran-ms]
+  (analytics/observe! :metabase-entity-retrieval/reconcile-duration-ms {:scope scope} ran-ms)
+  (when (pos? (long (or inserted 0))) (analytics/inc! :metabase-entity-retrieval/docs-inserted (long inserted)))
+  (when (pos? (long (or deleted 0)))  (analytics/inc! :metabase-entity-retrieval/docs-deleted  (long deleted)))
+  (when rebuilt? (analytics/inc! :metabase-entity-retrieval/rebuilds))
+  (when documents (analytics/set-gauge! :metabase-entity-retrieval/index-documents documents))
+  (when entities  (analytics/set-gauge! :metabase-entity-retrieval/index-entities  entities))
+  (when (or (pos? (long (or inserted 0))) (pos? (long (or deleted 0))) rebuilt?)
+    (log/info "library entity index reconciled"
+              {:scope scope :inserted inserted :deleted deleted :unchanged unchanged
+               :rebuilt? rebuilt? :documents documents :entities entities :ran_ms ran-ms})))
 
-(defn- start-reconcile!
-  "Spawn the reconcile future, first awaiting `predecessor` (nil to begin at once) so a queued follow-up
-  reflects writes made after the predecessor began.
-  The datasource is resolved inside the future; the embedding model is resolved later still, under the
-  reconcile lock (see [[reconcile/reconcile!]]), so a run that waited out a concurrent node uses the
-  current model rather than one captured before the wait.
-  Its value is {:index <diff> :execution {:waited_ms _ :ran_ms _}} — index mutations alongside how long the
-  run sat queued and then ran.
-  On completion it promotes the queued follow-up, if any, to the current run under the lock."
-  [predecessor]
+(defn- run-loop
+  "Future for the two-slot schedule held in `cur`/`nxt`: await `predecessor` (nil to start now), call
+  `(work scheduled-timer)`, then promote the queued follow-up. Returns `work`'s value (the full path's
+  result map; nil for the targeted path)."
+  [cur nxt predecessor work]
   (future
     (let [scheduled (u/start-timer)]
       (when predecessor
         ;; A failed predecessor must not block the follow-up — its writes still need reconciling.
         (try @predecessor (catch Throwable _ nil)))
       (try
-        (let [ds        (semantic.db.datasource/ensure-initialized-data-source!)
-              waited-ms (Math/round ^double (u/since-ms scheduled))
-              started   (u/start-timer)
-              diff      (reconcile/reconcile! ds embedding/get-configured-model)]
-          {:index     diff
-           :execution {:waited_ms waited-ms
-                       :ran_ms    (Math/round ^double (u/since-ms started))}})
+        (work scheduled)
         (finally
           (locking run-lock
-            (reset! current-run @next-run)
-            (reset! next-run nil)))))))
+            (reset! cur @nxt)
+            (reset! nxt nil)))))))
 
-(defn reconcile-coalesced!
-  "Run a reconcile through the shared queue-and-coalesce schedule, blocking until a run covering this call
-  finishes.
-  Returns {:index {:inserted n :deleted n :unchanged n} :execution {:waited_ms _ :ran_ms _}} — the index
-  mutations separated from how long the run waited to start and then ran.
-  A call never joins a run already in flight, which may predate its write; it starts a run when idle, or
-  queues a single follow-up behind the in-flight run that concurrent callers coalesce onto.
-  Across nodes the run waits for the reconcile advisory lock (see [[reconcile/reconcile!]]).
-  Callers must have checked [[available?]]."
+(defn- schedule!
+  "Schedule (or join) a run of `work` on the `cur`/`nxt` two-slot schedule, returning its future. Must be
+  called holding run-lock; deref the future outside the lock."
+  [cur nxt work]
+  (cond
+    (nil? @cur) (let [f (run-loop cur nxt nil work)]  (reset! cur f) f)
+    (nil? @nxt) (let [f (run-loop cur nxt @cur work)] (reset! nxt f) f)
+    :else       @nxt))
+
+(defn- elapsed-ms ^long [timer]
+  (Math/round ^double (u/since-ms timer)))
+
+(defn- do-full-run
+  "Run a full reconcile, record its metrics, and return {:index {...} :execution {...}}. The model is
+  resolved under the reconcile lock (see [[reconcile/reconcile!]]), so a run that waited out a concurrent
+  node uses the current model rather than one captured before the wait."
+  [scheduled]
+  (let [ds        (semantic.db.datasource/ensure-initialized-data-source!)
+        waited-ms (elapsed-ms scheduled)
+        started   (u/start-timer)
+        diff      (reconcile/reconcile! ds embedding/get-configured-model)
+        ran-ms    (elapsed-ms started)]
+    (record-run! "full" diff ran-ms)
+    {:index     (select-keys diff [:inserted :deleted :unchanged])
+     :execution {:waited_ms waited-ms :ran_ms ran-ms}}))
+
+(defn- do-targeted-run
+  "Snapshot and clear the dirty-entity set under the lock (so a write arriving mid-run is re-dirtied and
+  picked up by the next run), then targeted-reconcile each, recording per-entity metrics."
+  [_scheduled]
+  (let [dirty (locking run-lock (let [d @dirty-entities] (reset! dirty-entities #{}) d))
+        ds    (semantic.db.datasource/ensure-initialized-data-source!)]
+    (doseq [[entity-type entity-local-id] dirty]
+      (let [started (u/start-timer)
+            diff    (try
+                      (reconcile/reconcile-entity! ds embedding/get-configured-model entity-type entity-local-id)
+                      (catch Throwable e
+                        (log/error e "library entity index: targeted reconcile failed"
+                                   entity-type entity-local-id)
+                        nil))]
+        (when diff
+          (record-run! "targeted" diff (elapsed-ms started)))))))
+
+(defn reconcile-full-coalesced!
+  "Run a full reconcile through the full-reconcile schedule, blocking until a run covering this call
+  finishes; returns {:index {:inserted n :deleted n :unchanged n} :execution {:waited_ms _ :ran_ms _}}.
+  Used by the force-reconcile API and the periodic backstop job. Callers must have checked [[available?]]."
   []
-  ;; Claim under the lock (creation and the slot write are one atomic step); block on the deref outside it
-  ;; so a joiner never holds the lock while a reconcile runs.
-  (let [run (locking run-lock
-              (cond
-                (nil? @current-run) (let [f (start-reconcile! nil)]
-                                      (reset! current-run f)
-                                      f)
-                (nil? @next-run)    (let [f (start-reconcile! @current-run)]
-                                      (reset! next-run f)
-                                      f)
-                :else               @next-run))]
-    @run))
+  @(locking run-lock (schedule! full-current full-next do-full-run)))
 
 (defenterprise force-reconcile!
-  "Reconcile the `library_entity_index` against the appdb, blocking until a run covering this call finishes.
-  Returns {:index {:inserted n :deleted n :unchanged n} :execution {:waited_ms _ :ran_ms _}}, or nil when
-  entity retrieval isn't available (no pgvector store configured).
-  See [[reconcile-coalesced!]] for the queue-and-coalesce semantics it shares with the background sync."
+  "Force a full reconcile of the `library_entity_index` against the appdb, blocking until a run covering
+  this call finishes. Returns {:index {:inserted n :deleted n :unchanged n} :execution {:waited_ms _
+  :ran_ms _}}, or nil when entity retrieval isn't available (no pgvector store configured).
+  See [[reconcile-full-coalesced!]] for the coalescing semantics it shares with the periodic backstop."
   :feature :semantic-search
   []
   (when (available?)
-    (reconcile-coalesced!)))
+    (reconcile-full-coalesced!)))
+
+(defenterprise request-entity-sync!
+  "Mark one library entity dirty and ensure the targeted write path reconciles its index slice soon.
+  Fire-and-forget: never blocks, throws, or does embedding/pgvector work on the calling (appdb-write)
+  thread — the reconcile runs later on a future. Covers `osi_ai_context` edits; membership / name /
+  description changes to the underlying entity are caught by the periodic full reconcile."
+  :feature :semantic-search
+  [entity-type entity-local-id]
+  (when (available?)
+    (try
+      (locking run-lock
+        (swap! dirty-entities conj [entity-type entity-local-id])
+        (schedule! targeted-current targeted-next do-targeted-run))
+      (catch Throwable _ nil))
+    nil))
 
 (defenterprise library-entity-keys
   "Live set of `[entity_type entity_local_id]` for entities currently in the library (see the OSS shim)."
@@ -192,9 +245,18 @@
                            (sql.helpers/limit limit)
                            (sql/format {:quoted true}))
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-                      ;; 42P01 = undefined table: the background sync hasn't created the index yet.
                       (catch SQLException e
-                        (if (= "42P01" (.getSQLState e)) [] (throw e))))]
+                        ;; The index can be transiently incompatible with the query vector — right after an
+                        ;; upgrade that changed embedding dimensions (a vector(OLD) column vs the vector(NEW)
+                        ;; literal, SQLState 22000), or before the background sync created the table (42P01).
+                        ;; The index, not the agent, is at fault and the next reconcile heals it, so degrade
+                        ;; to no results. 42P01 during boot is the expected not-yet-created state, so it
+                        ;; stays quiet; anything else is worth a warning + metric.
+                        (when-not (= "42P01" (.getSQLState e))
+                          (analytics/inc! :metabase-entity-retrieval/search-degraded)
+                          (log/warnf e "library entity index query failed (sqlstate %s); returning no results"
+                                     (.getSQLState e)))
+                        []))]
       (->> rows
            (map (fn [row]
                   {:entity   {:model (:entity_type row) :id (:entity_local_id row)}

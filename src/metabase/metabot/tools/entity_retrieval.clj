@@ -160,9 +160,10 @@
 
 (mu/defn ^{:tool-name    "retrieve_library_entities"
            :scope        scope/agent-search
-           ;; only offered to users whose license includes semantic search (the index's backing store);
-           ;; :feature-semantic-search is derived in profiles/feature-capabilities.
-           :capabilities #{:feature-semantic-search}}
+           ;; only offered when the library index can actually serve a query (pgvector configured AND
+           ;; semantic-search licensed) — not just the feature flag, which leaves search returning [].
+           ;; :feature-entity-retrieval is derived in metabot.capabilities/feature-capabilities.
+           :capabilities #{:feature-entity-retrieval}}
   retrieve-library-entities-tool
   "Find the best data to answer the user's request from the library — the curated set of entities vetted
   for the agent (published tables, library metrics/models, and their measures/segments). Phrase

@@ -1,11 +1,13 @@
 (ns metabase-enterprise.entity-retrieval.task.sync
-  "Quartz job running the library entity index reconciliation.
+  "Quartz job running a full library entity index reconcile, on a slow schedule, as the backstop.
 
-  Scheduled periodically as a safety net; appdb writes also trigger it immediately via
-  [[metabase-enterprise.entity-retrieval.core/request-sync!]], so curator edits become searchable
-  within seconds.
-  `DisallowConcurrentExecution` plus Quartz's trigger coalescing debounce edit bursts to at most one
-  queued extra run, and Quartz clustering ensures a single node runs it."
+  Immediate freshness comes from the targeted write path — an `osi_ai_context` edit drives a per-entity
+  reconcile (see [[metabase-enterprise.entity-retrieval.core/request-entity-sync!]]) within seconds. This
+  periodic full reconcile only catches what isn't hooked: membership / name / description changes to the
+  underlying Card/Table/Measure/Segment, and any write whose targeted reconcile was lost (scheduler
+  hiccup, pgvector down, an import that bypassed the model hooks). Its first firing, ~10s after boot, is
+  also the post-upgrade startup reconcile that rebuilds the index when the doc format changed.
+  `DisallowConcurrentExecution` plus Quartz clustering ensure a single node runs it at a time."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
@@ -24,17 +26,18 @@
   OsiAiContextSync [_ctx]
   (when (entity-retrieval.core/available?)
     (try
-      ;; Same queue-and-coalesce schedule the force-reconcile API uses: this run waits out a concurrent
-      ;; node rather than skipping, and never runs alongside an API-triggered reconcile on this node.
-      (let [{:keys [inserted deleted] :as index} (:index (entity-retrieval.core/reconcile-coalesced!))]
-        (when (pos? (+ (or inserted 0) (or deleted 0)))
-          (log/info "library entity index reconciled" index)))
+      ;; Full reconcile via the shared coalescing schedule: it waits out a concurrent node rather than
+      ;; skipping, and never runs alongside an API- or write-triggered reconcile on this node. Duration
+      ;; and mutation metrics are emitted centrally for every run (see entity-retrieval.core).
+      (entity-retrieval.core/reconcile-full-coalesced!)
       (catch Throwable e
         ;; Log and move on: the next periodic run retries from the authoritative appdb table.
         (log/error e "entity-retrieval mirror reconciliation failed")))))
 
 (def ^:private ^Duration startup-delay (Duration/parse "PT10S"))
-(def ^:private ^Duration run-frequency (Duration/parse "PT30S"))
+;; Slow: this is the backstop, not the freshness mechanism — the targeted write path keeps the index live.
+;; The +10s first firing (startup reconcile / post-upgrade rebuild) is preserved regardless of this value.
+(def ^:private ^Duration run-frequency (Duration/parse "PT15M"))
 
 (defmethod task/init! ::OsiAiContextSync [_]
   ;; Gate scheduling on pgvector being configured (boot-fixed), NOT on available? — the job body

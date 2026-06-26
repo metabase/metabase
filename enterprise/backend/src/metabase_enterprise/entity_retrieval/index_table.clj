@@ -38,8 +38,15 @@
   "library_entity_index_meta")
 
 (def schema-version
-  "Version of the vectors table schema.
-  Bump it to force a drop-and-rebuild on instances whose meta row records an older version."
+  "Canonical version of the index's *document format* — both the vectors table schema and the
+  doc-derivation contract (doc_id scheme, doc_type set, doc_text source, dedup/key rules).
+  It's part of the meta row's [[model-identity]], so bumping it makes [[ensure-tables!]] drop and rebuild
+  the vectors table; the post-upgrade startup reconcile then repopulates from the appdb under the new
+  format. Bump on ANY format-affecting change in [[metabase-enterprise.entity-retrieval.reconcile]] or
+  the table schema: a vectors-table column/type change, a new or renamed doc_type, a changed doc_text
+  source, or a changed doc_id / dedup / key scheme — anything that makes old rows incomparable to newly
+  derived desired docs. A bump forces a full re-embed of the library on every instance at upgrade, so do
+  it only when the format truly moved, never as a refresh convenience."
   ;; v1 — initial schema.
   1)
 
@@ -91,7 +98,9 @@
    :schema_version    schema-version})
 
 (defn- read-meta [tx]
-  (jdbc/execute-one! tx [(format "SELECT provider, model_name, vector_dimensions, schema_version FROM \"%s\" WHERE id = 1" *meta-table*)]
+  (jdbc/execute-one! tx
+                     [(format "SELECT provider, model_name, vector_dimensions, schema_version FROM \"%s\" WHERE id = 1"
+                              *meta-table*)]
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- write-meta! [tx embedding-model]

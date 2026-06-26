@@ -3169,7 +3169,8 @@
   enterprise/entity-retrieval
   {:team "Metabot"
    :api  #{metabase-enterprise.entity-retrieval.init}
-   :uses #{collections
+   :uses #{analytics-interface
+           collections
            premium-features
            task
            util

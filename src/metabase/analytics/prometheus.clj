@@ -447,6 +447,24 @@
                        {:description "Number of successful semantic search DLQ retries"})
    (prometheus/counter :metabase-search/semantic-indexer-dlq-failures
                        {:description "Number of failed semantic search DLQ retries"})
+   ;; library entity index (entity-retrieval) reconciliation
+   (prometheus/histogram :metabase-entity-retrieval/reconcile-duration-ms
+                         {:description "Duration (ms) of a library entity index reconcile run, labelled :scope full | targeted."
+                          :labels      [:scope]
+                          ;; 1ms -> 10min
+                          :buckets     [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-entity-retrieval/docs-inserted
+                       {:description "Number of documents embedded and inserted into the library entity index."})
+   (prometheus/counter :metabase-entity-retrieval/docs-deleted
+                       {:description "Number of documents garbage-collected from the library entity index."})
+   (prometheus/counter :metabase-entity-retrieval/rebuilds
+                       {:description "Number of times the library entity index vectors table was dropped and rebuilt (model or doc-format change)."})
+   (prometheus/counter :metabase-entity-retrieval/search-degraded
+                       {:description "Number of library entity index searches that degraded to no results because the index query errored (e.g. a dimension mismatch before the next reconcile heals it)."})
+   (prometheus/gauge :metabase-entity-retrieval/index-documents
+                     {:description "Number of documents in the library entity index, as of the last full reconcile."})
+   (prometheus/gauge :metabase-entity-retrieval/index-entities
+                     {:description "Number of distinct entities in the library entity index, as of the last full reconcile."})
    ;; data-complexity-score timing
    ;; 1ms → 1min buckets; widen later if real-world runs push past a minute.
    (prometheus/histogram :metabase-data-complexity/scoring-duration-ms

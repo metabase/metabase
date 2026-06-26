@@ -7,6 +7,7 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.entity-retrieval.mirror :as mirror]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]
@@ -14,6 +15,17 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; OsiAiContext write hooks fire request-entity-sync!, which would spawn a background targeted reconcile
+;; using the *real* configured embedding model and race these tests — they drive reconcile! / reconcile-entity!
+;; with the mock model directly. Suppress the nudge here; the hook -> drain path is covered in core-test.
+;; The ignore is for re-binding a bang fn in a fixture: validate-deftest flags it as a destructive call, but
+;; we only redef it to a no-op, never invoke it.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each
+  (fn [thunk]
+    (mt/with-dynamic-fn-redefs [mirror/request-entity-sync! (fn [& _] nil)]
+      (thunk))))
 
 (deftest doc-id-test
   (testing "equal (entity_type, entity_local_id, doc_type, doc_text) tuples hash equal"
@@ -238,3 +250,96 @@
               (is (= #{"Edited Orig"} (set (map :doc_text (docs-for ds "table" edited))))))
             (testing "the entity that left the library is still GC'd (no failed insert of its own)"
               (is (empty? (docs-for ds "table" leaving))))))))))
+
+(deftest ^:sequential reconcile-entity!-targets-one-slice-test
+  (testing "reconcile-entity! reconciles only the given entity's docs, leaving other entities untouched"
+    (mt/with-premium-features #{:library :semantic-search}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{data :data}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id} {}
+                           :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                    :active true :name "a" :display_name "Orders"
+                                                    :description "all orders"}
+                           :model/Table {b-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                    :active true :name "b" :display_name "Customers"}]
+              (reconcile/reconcile! ds (constantly model))
+              (let [b-before (set (map :doc_id (docs-for ds "table" b-id)))]
+                (testing "adding ai_context to A then reconciling only A inserts A's synonym, leaves B alone"
+                  (mt/with-temp [:model/OsiAiContext _ {:entity_type "table" :entity_local_id a-id
+                                                        :ai_context {:synonyms ["sales"]}}]
+                    (is (=? {:inserted 1 :deleted 0}
+                            (reconcile/reconcile-entity! ds (constantly model) "table" a-id)))
+                    (is (= {"name" 1 "description" 1 "synonym" 1}
+                           (frequencies (map :doc_type (docs-for ds "table" a-id)))))
+                    (is (= b-before (set (map :doc_id (docs-for ds "table" b-id)))) "B untouched")))))))))))
+
+(deftest ^:sequential reconcile-entity!-leaving-library-deletes-all-test
+  (testing "reconcile-entity! on an entity that has left the library GCs all of its docs"
+    (mt/with-premium-features #{:library :semantic-search}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{data :data}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id} {}
+                           :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                    :active true :name "a" :display_name "Orders"}
+                           :model/Table {b-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                    :active true :name "b" :display_name "Customers"}]
+              (reconcile/reconcile! ds (constantly model))
+              (is (seq (docs-for ds "table" a-id)))
+              (let [b-before (set (map :doc_id (docs-for ds "table" b-id)))]
+                (mt/with-temp-vals-in-db :model/Table a-id {:is_published false}
+                  (is (=? {:inserted 0} (reconcile/reconcile-entity! ds (constantly model) "table" a-id)))
+                  (is (empty? (docs-for ds "table" a-id)) "A (no longer a member) is GC'd")
+                  (is (= b-before (set (map :doc_id (docs-for ds "table" b-id)))) "B untouched"))))))))))
+
+(deftest ^:sequential reconcile-entity!-ai-context-removal-keeps-name-test
+  (testing "removing an entity's ai_context and reconciling it GCs synonym/example docs but keeps name/description"
+    (mt/with-premium-features #{:library :semantic-search}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{data :data}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id} {}
+                           :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                    :active true :name "a" :display_name "Orders"
+                                                    :description "all orders"}
+                           :model/OsiAiContext {ctx-id :id} {:entity_type "table" :entity_local_id a-id
+                                                             :ai_context {:synonyms ["sales" "revenue"]}}]
+              (reconcile/reconcile! ds (constantly model))
+              (is (= {"name" 1 "description" 1 "synonym" 2}
+                     (frequencies (map :doc_type (docs-for ds "table" a-id)))))
+              (t2/delete! :model/OsiAiContext :id ctx-id)
+              (is (=? {:inserted 0 :deleted 2} (reconcile/reconcile-entity! ds (constantly model) "table" a-id)))
+              (is (= {"name" 1 "description" 1} (frequencies (map :doc_type (docs-for ds "table" a-id))))
+                  "the synonym docs are GC'd; name + description remain"))))))))
+
+(deftest ^:sequential library-entity-matches-library-entities-test
+  (testing "library-entity (point lookup) agrees with library-entities (full scan) for members and non-members"
+    (mt/with-premium-features #{:library :semantic-search}
+      (collections.tu/with-library [{data :data metrics :metrics}]
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Table {tbl :id}      {:db_id db-id :collection_id (:id data) :is_published true
+                                                    :active true :name "t" :display_name "T"}
+                       :model/Card  {metric :id}   {:type "metric" :collection_id (:id metrics)
+                                                    :name "M" :database_id db-id}
+                       :model/Table {unpub :id}    {:db_id db-id :collection_id (:id data) :is_published false
+                                                    :active true :name "u"}
+                       :model/Card  {archived :id} {:type "metric" :collection_id (:id metrics) :archived true
+                                                    :name "A" :database_id db-id}]
+          (let [by-key (into {} (map (juxt (juxt :entity_type :entity_local_id) identity))
+                             (#'reconcile/library-entities))]
+            (testing "members resolve and match the full-scan entry"
+              (is (= (get by-key ["table" tbl])   (reconcile/library-entity "table" tbl)))
+              (is (= (get by-key ["metric" metric]) (reconcile/library-entity "metric" metric))))
+            (testing "non-members resolve to nil"
+              (is (nil? (reconcile/library-entity "table" unpub)))
+              (is (nil? (reconcile/library-entity "metric" archived))))))))))
+
+(deftest library-root-collection-included-in-membership-test
+  (testing "the Library root id is in lib-ids, so an entity directly in the root would be indexed too"
+    ;; Defensive: the appdb normally prevents leaf content directly in the Library root (it lives in the
+    ;; Data/Metrics sub-collections), so this can't be exercised end-to-end — but membership covers the
+    ;; root id, not just its descendants.
+    (mt/with-premium-features #{:library}
+      (collections.tu/with-library [{library :library}]
+        (is (contains? (set (#'reconcile/library-ids library)) (:id library)))))))

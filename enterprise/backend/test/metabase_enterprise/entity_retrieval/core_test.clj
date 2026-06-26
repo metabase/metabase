@@ -9,7 +9,6 @@
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.entity-retrieval.mirror :as mirror]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
-   [metabase.task.core :as task]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
@@ -35,29 +34,52 @@
 (deftest dispatch-without-pgvector-test
   (testing "with the feature enabled but pgvector unconfigured, the EE impls degrade gracefully"
     ;; Pin db-url to nil so the result is deterministic regardless of any ambient MB_PGVECTOR_DB_URL:
-    ;; available? is false, so search returns [] and the sync nudge no-ops rather than throwing.
+    ;; available? is false, so search returns [] and the write-path nudge no-ops rather than throwing.
     (mt/with-premium-features #{:semantic-search}
       (with-redefs [semantic.db.datasource/db-url nil]
         (is (= [] (mirror/search "anything" 10)))
-        (is (nil? (mirror/request-sync!)))))))
+        (is (nil? (mirror/request-entity-sync! "table" 1)))))))
 
-(deftest request-sync-triggers-the-job-test
-  (testing "when the index is available, the nudge fires trigger-now! on the sync job — and nothing else"
+(deftest targeted-drain-reconciles-each-dirty-entity-test
+  (testing "a targeted run snapshots and clears the dirty set, reconciling each entity once"
+    (let [dirty           @#'entity-retrieval.core/dirty-entities
+          do-targeted-run (var-get #'entity-retrieval.core/do-targeted-run)
+          reconciled      (atom [])]
+      (reset! dirty #{["table" 7] ["metric" 9]})
+      (mt/with-dynamic-fn-redefs
+        [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
+         semantic.embedding/get-configured-model                (constantly ::model)
+         reconcile/reconcile-entity!                            (fn [_ds _model entity-type entity-local-id]
+                                                                  (swap! reconciled conj [entity-type entity-local-id])
+                                                                  {:inserted 1 :deleted 0 :unchanged 0})]
+        (do-targeted-run nil)
+        (is (= #{["table" 7] ["metric" 9]} (set @reconciled)))
+        (is (empty? @dirty) "the dirty set is cleared at the run's start")))))
+
+(deftest request-entity-sync-is-fire-and-forget-test
+  (testing "request-entity-sync! returns nil without throwing on the calling thread, even if the reconcile fails"
     (mt/with-premium-features #{:semantic-search}
-      ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
-        (let [triggered (atom [])]
-          (mt/with-dynamic-fn-redefs [task/trigger-now! (fn [job-key] (swap! triggered conj job-key))]
-            (mirror/request-sync!)
-            (is (= [entity-retrieval.core/sync-job-key] @triggered))))))))
+        (let [tc    @#'entity-retrieval.core/targeted-current
+              tn    @#'entity-retrieval.core/targeted-next
+              dirty @#'entity-retrieval.core/dirty-entities]
+          (reset! tc nil) (reset! tn nil) (reset! dirty #{})
+          (mt/with-dynamic-fn-redefs
+            [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
+             semantic.embedding/get-configured-model                (constantly ::model)
+             reconcile/reconcile-entity!                            (fn [& _] (throw (ex-info "boom" {})))]
+            (is (nil? (entity-retrieval.core/request-entity-sync! "table" 1)))
+            ;; let the fire-and-forget drain settle so its logged error doesn't bleed into later tests
+            (when-let [f @tc] (deref f 5000 nil))
+            (reset! tc nil) (reset! tn nil) (reset! dirty #{})))))))
 
 (deftest force-reconcile-coalescing-test
   (testing "force-reconcile! never joins the in-flight run, queues one shared follow-up, and reports index + timing"
     (mt/with-premium-features #{:semantic-search}
       ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
       (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
-        (let [current @#'entity-retrieval.core/current-run
-              nxt     @#'entity-retrieval.core/next-run
+        (let [current @#'entity-retrieval.core/full-current
+              nxt     @#'entity-retrieval.core/full-next
               calls   (atom 0)]
           (mt/with-dynamic-fn-redefs
             [semantic.db.datasource/ensure-initialized-data-source! (constantly ::ds)
@@ -95,7 +117,7 @@
         (is (nil? (entity-retrieval.core/force-reconcile!)))))))
 
 (deftest pgvector-configured-decoupled-from-feature-test
-  (testing "scheduling gates on pgvector config, independent of the feature flag, so a license enabled after boot still gets the periodic sync"
+  (testing "scheduling gates on pgvector config, not the feature flag, so a post-boot license still syncs"
     ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
     (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
       (mt/with-premium-features #{}
@@ -189,8 +211,11 @@
                       (testing "deleting the ai_context via the CRUD API + reconcile drops the synonym doc"
                         (mt/user-http-request :crowberto :delete 204 (str "osi/ai-context/" cse-id))
                         (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
-                        (is (empty? (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" WHERE doc_type = 'synonym' AND entity_local_id = %d"
-                                                               index-table/*vectors-table* table-id)])))))
+                        (is (empty? (jdbc/execute!
+                                     ds
+                                     [(format (str "SELECT 1 FROM \"%s\" "
+                                                   "WHERE doc_type = 'synonym' AND entity_local_id = %d")
+                                              index-table/*vectors-table* table-id)])))))
                     (finally
                       (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
                                               index-table/*vectors-table* ", "
@@ -230,3 +255,30 @@
                       (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
                                               index-table/*vectors-table* ", "
                                               index-table/*meta-table*)]))))))))))))
+
+(deftest ^:sequential search-degrades-on-dimension-mismatch-test
+  ;; A post-upgrade embedding-dimension change leaves the query vector incompatible with the index column
+  ;; until the next reconcile rebuilds it; search must degrade to [] rather than throw in that window.
+  (testing "an index/query vector dimension mismatch degrades search to [] instead of throwing"
+    (when semantic.db.datasource/db-url
+      (mt/with-premium-features #{:library :semantic-search}
+        (let [suffix (System/nanoTime)
+              ds     (semantic.db.datasource/ensure-initialized-data-source!)]
+          (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                      (constantly semantic.tu/mock-embedding-model)]
+            (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
+                      index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
+              (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
+                             :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
+                             :model/Database   {db-id :id}    {}
+                             :model/Table      {_t :id}       {:db_id db-id :collection_id data-id :is_published true
+                                                               :active true :name "orders" :display_name "orders"}]
+                (try
+                  (semantic.tu/with-mock-embeddings {"orders" [1.0 0.0 0.0 0.0]}
+                    (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model)))
+                  ;; a dim-1 query vector against the dim-4 index column -> pgvector SQLState 22000 -> degrade to []
+                  (semantic.tu/with-mock-embeddings {"q" [1.0]}
+                    (is (= [] (entity-retrieval.core/search "q" 10))))
+                  (finally
+                    (jdbc/execute! ds [(str "DROP TABLE IF EXISTS \"" index-table/*vectors-table*
+                                            "\", \"" index-table/*meta-table* "\"")])))))))))))

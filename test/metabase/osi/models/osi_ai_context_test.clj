@@ -28,16 +28,19 @@
       (is (= {:instructions "Just this."}
              (t2/select-one-fn :ai_context :model/OsiAiContext :id id))))))
 
-(deftest hooks-nudge-the-background-sync-test
-  (testing "insert, update and delete each request a background sync — and do nothing else"
-    (let [nudges (atom 0)]
-      (mt/with-dynamic-fn-redefs [mirror/request-sync! (fn [] (swap! nudges inc) nil)]
-        (mt/with-temp [:model/OsiAiContext {:keys [id]} (assoc entity :ai_context ai-context)]
-          (is (= 1 @nudges) "insert nudges once")
-          (t2/update! :model/OsiAiContext id {:ai_context {:instructions "changed"}})
-          (is (= 2 @nudges) "update nudges once")
-          (t2/delete! :model/OsiAiContext :id id)
-          (is (= 3 @nudges) "delete nudges once"))))))
+(deftest hooks-nudge-a-targeted-reconcile-test
+  (testing "insert, update and delete each request a targeted reconcile of the entity — and nothing else"
+    (let [nudges (atom [])]
+      (mt/with-dynamic-fn-redefs [mirror/request-entity-sync! (fn [entity-type entity-local-id]
+                                                                (swap! nudges conj [entity-type entity-local-id])
+                                                                nil)]
+        (mt/with-temp [:model/OsiAiContext {:keys [id] :as row} (assoc entity :ai_context ai-context)]
+          (let [ref [(:entity_type row) (:entity_local_id row)]]
+            (is (= [ref] @nudges) "insert nudges once with the entity ref")
+            (t2/update! :model/OsiAiContext id {:ai_context {:instructions "changed"}})
+            (is (= [ref ref] @nudges) "update nudges once with the entity ref")
+            (t2/delete! :model/OsiAiContext :id id)
+            (is (= [ref ref ref] @nudges) "delete nudges once with the entity ref")))))))
 
 (deftest hooks-never-break-appdb-writes-test
   (testing "insert/update/delete succeed even though the mirror is unavailable in tests"

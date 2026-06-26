@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
@@ -64,9 +65,10 @@
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
-        ;; nlq discovers data through the curated library tool (feature-gated), not the general search
-        (is (not (contains? (tool-names profile) "search")))
+        ;; nlq prefers the curated library tool but carries a general-search fallback for when the
+        ;; library index is unavailable; capability filtering keeps exactly one at request time.
         (is (contains? (tool-names profile) "retrieve_library_entities"))
+        (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "construct_notebook_query"))))
     (testing "retrieves slackbot profile"
       (let [profile (profiles/get-profile :slackbot)]
@@ -158,12 +160,13 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "nlq matches embedding_next except it discovers via the curated library tool, not the general search"
+  (testing "nlq matches embedding_next plus the curated library tool it prefers for discovery"
     (let [tool-names  (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
           embedding   (profiles/get-profile :embedding_next)
           nlq         (profiles/get-profile :nlq)]
+      ;; nlq = embedding_next (which already carries the general `search` fallback) + retrieve_library_entities
       (is (= (disj (tool-names nlq) "retrieve_library_entities")
-             (disj (tool-names embedding) "search")))))
+             (tool-names embedding)))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "navigate_user is excluded without the capability"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]
@@ -173,6 +176,26 @@
     (testing "navigate_user is included with the capability"
       (let [tools (profiles/get-tools-for-profile :embedding_next ["frontend:navigate_user_v1"])]
         (is (contains? tools "navigate_user"))))))
+
+(deftest nlq-data-discovery-fallback-test
+  (testing "the :nlq profile always keeps a data-discovery tool, swapping by index availability"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (testing "entity retrieval AVAILABLE -> curated library tool, no general-search fallback"
+        (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
+          (let [tools (profiles/get-tools-for-profile :nlq [])]
+            (is (contains? tools "retrieve_library_entities")
+                "the curated library tool is offered when the index can serve queries")
+            (is (not (contains? tools "search"))
+                "the general-search fallback is filtered out when the library is available")
+            (is (contains? tools "construct_notebook_query")))))
+      (testing "entity retrieval UNAVAILABLE -> general-search fallback, no curated library tool"
+        (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
+          (let [tools (profiles/get-tools-for-profile :nlq [])]
+            (is (not (contains? tools "retrieve_library_entities"))
+                "the curated library tool is gated out when the index can't serve queries")
+            (is (contains? tools "search")
+                "the general-search fallback keeps the agent from having zero discovery tools")
+            (is (contains? tools "construct_notebook_query"))))))))
 
 (deftest transform-feature-capabilities-test
   (let [orig-has-feature (mt/original-fn #'premium-features/has-feature?)
