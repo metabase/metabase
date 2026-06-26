@@ -105,6 +105,8 @@
    :table_description   :text
    ;; returned for Metric, Segment, and Action
    :database_id         :integer
+   ;; returned for Document
+   :document            :text
    ;; returned for Database and Table
    :initial_sync_status :text
    :database_name       :text
@@ -270,7 +272,8 @@
                                ;; exclude them from exact-match ranking (and to keep in-place ordering stable).
                                (remove #{:collection_authority_level :moderated_status
                                          :initial_sync_status :pk_ref :location
-                                         :collection_location :data_authority :data_layer}))
+                                         :collection_location :data_authority
+                                         :data_layer :document}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -350,6 +353,11 @@
   [_ _]
   [:name])
 
+(defmethod searchable-columns "document"
+  [_ _]
+  [:name
+   :document])
+
 (def ^:private default-columns
   "Columns returned for all models."
   [:id :name :description :archived :created_at :updated_at])
@@ -405,7 +413,7 @@
 
 (defmethod columns-for-model "document"
   [_]
-  [:id :name :archived :created_at :updated_at :collection_id :creator_id])
+  [:id :name :archived :created_at :updated_at :collection_id :creator_id :document])
 
 (defmethod columns-for-model "transform"
   [_]

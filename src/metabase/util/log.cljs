@@ -5,7 +5,8 @@
    [goog.string.format :as gstring.format]
    [lambdaisland.glogi :as log]
    [lambdaisland.glogi.console :as glogi-console]
-   [metabase.util.log.capture])
+   [metabase.util.log.capture]
+   [metabase.util.log.throttle])
   (:require-macros
    [metabase.util.log]))
 
