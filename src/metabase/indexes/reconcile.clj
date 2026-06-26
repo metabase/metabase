@@ -111,9 +111,10 @@
                               (request-fields row)))]
     (into (vec present) absent)))
 
-(mu/defn fetch-warehouse-indexes :- [:sequential :map]
-  "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`. Returns `[]` if the
-  driver can't introspect indexes or the warehouse is unreachable, so callers degrade instead of erroring."
+(mu/defn fetch-warehouse-indexes :- [:maybe [:sequential :map]]
+  "Physical indexes on `table-name` (`schema`) in `database` via `driver/fetch-table-indexes`.
+  Returns `nil` if the driver can't introspect indexes or the warehouse is unreachable, so callers can distinguish
+  fetch failure from a successful empty index list."
   [database   :- :map
    schema     :- [:maybe :string]
    table-name :- :string]
@@ -121,4 +122,4 @@
     (vec (driver/fetch-table-indexes (:engine database) database schema table-name))
     (catch Throwable t
       (log/warnf t "fetch-table-indexes failed for %s.%s" schema table-name)
-      [])))
+      nil)))

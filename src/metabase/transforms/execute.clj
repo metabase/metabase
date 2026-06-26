@@ -1,16 +1,25 @@
 (ns metabase.transforms.execute
   (:require
+   [metabase.indexes.models.table-index :as table-index]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.query-impl :as transforms.query-impl]
-   [toucan2.core :as t2]))
+   [metabase.transforms.query-impl :as transforms.query-impl]))
 
 (set! *warn-on-reflection* true)
+
+(defn- select-transform-index-requests
+  [transform]
+  (vec (table-index/select-applicable-for-transform (:id transform))))
 
 (defn hydrate-transform-indexes
   "Structured index defs for `transform`, read from its managed `TableIndex` rows (ordered by name)."
   [transform]
-  (t2/select-fn-vec :structured :model/TableIndex :transform_id (:id transform) {:order-by [[:index_name :asc]]}))
+  (mapv :structured (select-transform-index-requests transform)))
+
+(defn hydrate-transform-index-ids
+  "Applicable index request ids for `transform`, hydrated with the target at execution start."
+  [transform]
+  (mapv :id (select-transform-index-requests transform)))
 
 (defn- resolve-target
   "Apply the workspace target-rewrite hook before dispatch. On a workspaced child
@@ -27,14 +36,15 @@
   identify a target DB), the hook is skipped — workspace rewriting requires a
   known DB id to look up `db-workspace-namespace`.
 
-  Also hydrates the declared indexes onto the target so the base reads them off
-  `(:indexes target)` at every table-creation seam."
+  Also hydrates the declared indexes and their request ids onto the target so the base reads them off
+  `(:indexes target)` and `(:index-request-ids target)` at every table-creation seam."
   [transform]
   (-> (if-let [db-id (transforms-base.i/target-db-id transform)]
         (assoc transform :target
                (transforms.query-impl/resolve-transform-target db-id (:target transform)))
         transform)
-      (assoc-in [:target :indexes] (vec (hydrate-transform-indexes transform)))))
+      (assoc-in [:target :indexes] (vec (hydrate-transform-indexes transform)))
+      (assoc-in [:target :index-request-ids] (vec (hydrate-transform-index-ids transform)))))
 
 (defn execute!
   "Run `transform` and sync its target table.
