@@ -534,19 +534,20 @@
                                    rot  (ids-with-setting ds "SET LOCAL enable_seqscan = off"   (topk rotated elit))]
                                {:probe pid
                                 :current (set-recall gt cur)
-                                :rotated (set-recall gt rot)})))]
+                                :rotated (set-recall gt rot)})))
+            mean-cur  (or (mean (map :current per-probe)) 0.0)
+            mean-rot  (or (mean (map :rotated per-probe)) 0.0)]
         (println (format "\nRotation win on %s (top-%d, %d probes):" table limit (count probe-ids)))
         (pprint/print-table [:probe :current :rotated]
                             (mapv (fn [r] (-> r (update :current #(format "%.2f" %)) (update :rotated #(format "%.2f" %)))) per-probe))
         (println (format "  mean recall: current %.3f -> rotated %.3f  (+%.3f)"
-                         (mean (map :current per-probe)) (mean (map :rotated per-probe))
-                         (- (mean (map :rotated per-probe)) (mean (map :current per-probe)))))
+                         mean-cur mean-rot (- mean-rot mean-cur)))
         (println (format "  index size : current %s -> rotated %s  (%.0f%% smaller)"
                          (:cur_pretty sizes) (:rot_pretty sizes)
                          (* 100.0 (- 1.0 (/ (double (:rot_b sizes)) (max 1 (:cur_b sizes)))))))
         (println (format "  rebuild cost: copy %.1f ms + index build %.1f ms (no re-embedding)" copy-ms build-ms))
-        {:mean-recall-current (mean (map :current per-probe))
-         :mean-recall-rotated (mean (map :rotated per-probe))
+        {:mean-recall-current mean-cur
+         :mean-recall-rotated mean-rot
          :cur-index-bytes     (:cur_b sizes)
          :rotated-index-bytes (:rot_b sizes)
          :copy-ms             copy-ms
