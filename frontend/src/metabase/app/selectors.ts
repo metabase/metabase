@@ -35,7 +35,7 @@ export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/data-studio");
 });
 
-export const getIsDataAppApp = createSelector([getRouterPath], (path) => {
+export const getIsDataApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/data-app/");
 });
 

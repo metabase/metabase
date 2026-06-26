@@ -7,7 +7,7 @@ import { Navbar } from "metabase/app/nav/Navbar";
 import {
   getIsAdminApp,
   getIsAppBarVisible,
-  getIsDataAppApp,
+  getIsDataApp,
   getIsDataStudioApp,
   getIsNavBarEnabled,
 } from "metabase/app/selectors";
@@ -60,7 +60,7 @@ interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
   isDataStudioApp: boolean;
-  isDataAppApp: boolean;
+  isDataApp: boolean;
   bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
   isNavBarEnabled: boolean;
@@ -84,7 +84,7 @@ const mapStateToProps = (
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
   isDataStudioApp: getIsDataStudioApp(state, props),
-  isDataAppApp: getIsDataAppApp(state, props),
+  isDataApp: getIsDataApp(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
@@ -97,7 +97,7 @@ function App({
   errorPage,
   isAdminApp,
   isDataStudioApp,
-  isDataAppApp,
+  isDataApp,
   isAppBarVisible,
   isNavBarEnabled,
   children,
@@ -133,7 +133,7 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <Metabot hide={isAdminApp || isDataStudioApp || isDataAppApp} />
+              <Metabot hide={isAdminApp || isDataStudioApp || isDataApp} />
             </AppContentContainer>
           </AppContainer>
           <Palette />
