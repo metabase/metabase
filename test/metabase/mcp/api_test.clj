@@ -294,6 +294,21 @@
         (is (contains? annotations :destructiveHint) (str name " missing :destructiveHint"))
         (is (contains? annotations :openWorldHint)   (str name " missing :openWorldHint"))))))
 
+(deftest read-resource-is-read-only-test
+  (testing "read_resource declares readOnlyHint=true so MCP clients don't bucket it under Write/delete tools"
+    ;; POST endpoints default to readOnlyHint=false; a read-only POST must set
+    ;; :read-only? true explicitly (like search/query/execute_query). read_resource
+    ;; omitted it and showed up under \"Write/delete tools\" in the Claude UI.
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])
+          rr             (some #(when (= "read_resource" (:name %)) %) tools)]
+      (is (some? rr) "read_resource must be listed")
+      (is (true? (get-in rr [:annotations :readOnlyHint]))
+          "read_resource is read-only")
+      (is (false? (get-in rr [:annotations :destructiveHint]))
+          "read_resource is not destructive"))))
+
 (deftest tools-list-omits-ui-tools-without-ui-capability-test
   (testing "clients that do not advertise MCP Apps UI support do not see UI-only tools"
     (let [[session-id _] (initialize-without-ui!)

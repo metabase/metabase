@@ -699,7 +699,11 @@
                              "Examples: metabase://databases, metabase://database/{id}/tables, "
                              "metabase://collection/{id}/items, metabase://card/{id}, "
                              "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
-                             "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
+                             "Up to 5 URIs per call. List endpoints cap at 25 items.")
+           ;; POST tools default to readOnlyHint=false (-> bucketed under "Write/delete"
+           ;; by MCP clients), so a read-only POST must declare it explicitly, like the
+           ;; sibling read tools (search, query, execute_query). read_resource only reads.
+           :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
    body :- ::read-resource-request]
