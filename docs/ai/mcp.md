@@ -92,9 +92,11 @@ These render inline visualizations in your AI client, and only work in clients t
 - **Update dashboard** (`update_dashboard`): Update a dashboard's metadata (name, description, collection, archived).
 - **Update question** (`update_question`): Update a saved question. Setting `collection_id` moves the question to another collection.
 
-## Enable MCP server
+## MCP server settings
 
 _Admin > AI > MCP_
+
+### Enable MCP server
 
 From **Admin > AI**, open the **MCP** tab in the left sidebar, and use the **MCP server** toggle to turn external access to the MCP server on or off.
 
@@ -173,7 +175,7 @@ If you want the MCP server to return an inline chart, ask it to "show" or "visua
 
 ![Show me the stuff](./images/mcp-chart.png)
 
-Inline charts are limited to bar, line, or table charts (which you can toggle between). You can drill through the charts (which will give you a link to your Metabase), change time granularity, or explore them in Metabase.
+Inline charts are limited to bar, line, or table charts (which you can toggle between). You can also drill through the charts or change their time granularity. Depending on which client you're using, drilling through will either let you keep exploring the chart right there in your client, or give you a link to continue your exploration in your Metabase.
 
 If your client is connected to other MCP servers, you can ask questions that combine data from multiple sources. For example, you can ask a question about your customers that combines data from Metabase, your CRM, and your support ticket platform (Though maybe you should put all that data into your Metabase).
 
