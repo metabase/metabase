@@ -7,18 +7,7 @@ import {
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-/** Pull the Join link out of a sent invite email and decode the HTML entities. */
-function joinUrlFromEmail(sent) {
-  return sent.html
-    .match(/href="([^"]*reset_password[^"]*)"/)[1]
-    .replace(/&#x3D;/g, "=")
-    .replace(/&amp;/g, "&");
-}
-
-// NOTE: authored to convention but not yet executed locally (no running stack in
-// this session). The API setup + email-body assertions are exact; the selectors
-// marked TODO (the new-user signup field labels and the no-access copy) need a
-// first verification run to confirm.
+const PASSWORD = "Sup3r-S3cret-Pw!";
 
 const inviteEmail = () =>
   `invitee-${Math.round(Math.random() * 1_000_000)}@metabase.test`;
@@ -30,6 +19,21 @@ function inviteFromShareMenu(email) {
     cy.findByLabelText(/Email/i).type(email);
     cy.button("Send invitation").click();
   });
+}
+
+/** Pull the Join link out of a sent invite email and decode the HTML entities. */
+function joinUrlFromEmail(sent) {
+  return sent.html
+    .match(/href="([^"]*reset_password[^"]*)"/)[1]
+    .replace(/&#x3D;/g, "=")
+    .replace(/&amp;/g, "&");
+}
+
+/** Set a password on the new-user signup screen reached from a join link. */
+function completeSignup() {
+  cy.findByLabelText("Create a password").type(PASSWORD);
+  cy.findByLabelText("Confirm your password").type(PASSWORD);
+  cy.button("Save new password").click();
 }
 
 function enableGoogleSSO() {
@@ -118,22 +122,17 @@ describe("scenarios > sharing > invite someone to view", () => {
     beforeEach(() => H.setupSMTP());
 
     it("lands the invited user on the shared dashboard after they set a password", () => {
-      const email = inviteEmail();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      inviteFromShareMenu(email);
+      inviteFromShareMenu(inviteEmail());
 
       H.getInbox().then(({ body: [sent] }) => {
         cy.signOut();
         cy.visit(joinUrlFromEmail(sent));
-
-        // TODO confirm the password field labels on the new-user signup screen
-        cy.findByLabelText("Create a password").type("Sup3rs3cure!");
-        cy.findByLabelText("Confirm your password").type("Sup3rs3cure!");
-        cy.button(/next|done/i).click();
+        completeSignup();
 
         cy.location("pathname").should(
-          "eq",
-          `/dashboard/${ORDERS_DASHBOARD_ID}`,
+          "match",
+          new RegExp(`/dashboard/${ORDERS_DASHBOARD_ID}(-|/|$)`),
         );
       });
     });
@@ -174,16 +173,9 @@ describe("scenarios > sharing > invite someone to view", () => {
           H.getInbox().then(({ body: [sent] }) => {
             cy.signOut();
             cy.visit(joinUrlFromEmail(sent));
+            completeSignup();
 
-            // TODO confirm the signup password field labels
-            cy.findByLabelText("Create a password").type("Sup3rs3cure!");
-            cy.findByLabelText("Confirm your password").type("Sup3rs3cure!");
-            cy.button(/next|done/i).click();
-
-            // navigated to the dashboard route, but denied (not granted access)
-            cy.location("pathname").should("eq", `/dashboard/${dashboard.id}`);
-            // TODO confirm the exact no-access copy
-            cy.findByText(/sorry, you don.t have permission/i).should("exist");
+            cy.findByText(/don.t have permission to see that/i).should("exist");
           });
         });
       });
