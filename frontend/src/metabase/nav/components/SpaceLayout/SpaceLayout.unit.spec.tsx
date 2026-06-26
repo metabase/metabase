@@ -33,13 +33,24 @@ const renderTab = ({ isSelected }: { isSelected: boolean }) =>
     <Route
       path="/"
       component={() => (
-        <SpaceTab
-          label="Dependency diagnostics"
-          icon="search_check"
-          to="/monitor/dependency-diagnostics"
-          isSelected={isSelected}
-          showLabel
-        />
+        <SpaceLayout
+          logo={<div>{"Logo"}</div>}
+          testId="space-nav"
+          isLoading={false}
+          isNavbarOpened
+          onNavbarToggle={jest.fn()}
+          upperNav={
+            <SpaceTab
+              label="Dependency diagnostics"
+              icon="search_check"
+              to="/monitor/dependency-diagnostics"
+              isSelected={isSelected}
+              showLabel
+            />
+          }
+        >
+          <div data-testid="content">{"Content"}</div>
+        </SpaceLayout>
       )}
     />,
     { withRouter: true },

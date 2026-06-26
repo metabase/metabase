@@ -25,29 +25,19 @@ import S from "./SpaceLayout.module.css";
 const TOOLTIP_OPEN_DELAY = 1000;
 
 type SpaceLayoutProps = {
-  /** The space logo shown at the top of the sidebar (image or icon). */
   logo: ReactNode;
-  /** `data-testid` for the sidebar nav, e.g. `data-studio-nav`. */
   testId: string;
   isLoading: boolean;
   isNavbarOpened: boolean;
   onNavbarToggle: (isOpened: boolean) => void;
-  /** Controls rendered next to the logo while the sidebar is expanded. */
   headerControls?: ReactNode;
-  /** Primary navigation items, rendered as the top (scrollable) group. */
   upperNav: ReactNode;
-  /** Secondary navigation items, pinned to the bottom of the sidebar. */
   lowerNav?: ReactNode;
-  /** Extra nodes (e.g. modals) rendered inside the nav container. */
-  navExtras?: ReactNode;
-  /** Page content rendered to the right of the sidebar. */
   children?: ReactNode;
 };
 
 /**
- * Shared shell for top-level "spaces" (Data Studio, Monitor, …): a collapsible
- * left navigation sidebar plus a content area. Purely presentational — the
- * owning layout supplies the open/close state, nav items, and gating.
+ * Shared layout container for top-level "spaces" (Data Studio, Monitor, …).
  */
 export function SpaceLayout({
   logo,
@@ -58,12 +48,11 @@ export function SpaceLayout({
   headerControls,
   upperNav,
   lowerNav,
-  navExtras,
   children,
 }: SpaceLayoutProps) {
   // Temporary enable 2 hotkeys to toggle the sidebar, until design team
   // provides a clarification which one should we keep.
-  // TODO: (stasgavrylov - GDGT-2684) Remove this code when navbar hotkey is settled.
+  // TODO: (stasgavrylov - GDGT-2697) Remove this code when navbar hotkeys are updated.
   const toggleNavbar = () => onNavbarToggle(!isNavbarOpened);
   useHotkeys([
     ["[", toggleNavbar],
@@ -97,7 +86,6 @@ export function SpaceLayout({
           {upperNav}
         </Stack>
         {lowerNav && <Stack gap="0.75rem">{lowerNav}</Stack>}
-        {navExtras}
       </Stack>
       <Box h="100%" flex={1} miw={0}>
         {children}

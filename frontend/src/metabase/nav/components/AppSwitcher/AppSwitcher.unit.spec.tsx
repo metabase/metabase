@@ -18,6 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { AppSwitcher } from "./AppSwitcher";
+import type { CurrentApp } from "./useGetCurrentApp";
 
 const USER = createMockUser();
 
@@ -310,9 +311,7 @@ const openProfileLink = async () => {
 const openHelpSubmenu = async () =>
   await userEvent.click(await screen.findByRole("menuitem", { name: "Help" }));
 
-const assertActiveApp = async (
-  current: "main" | "admin" | "data-studio" | "monitor",
-) => {
+const assertActiveApp = async (current: CurrentApp) => {
   expect(
     await within(await getMainAppMenuItem()).findByRole("img", {
       name: current === "main" ? /check_filled/i : /dashboard/i,

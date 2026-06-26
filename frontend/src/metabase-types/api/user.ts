@@ -194,7 +194,7 @@ export type UserKeyValue =
     }
   | {
       namespace: "monitor";
-      key: string;
+      key: "isNavbarOpened";
       value: boolean;
     }
   | {

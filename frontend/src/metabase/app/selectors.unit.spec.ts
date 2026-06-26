@@ -7,7 +7,6 @@ import { createMockUser } from "metabase-types/api/mocks";
 import {
   getIsAppBarVisible,
   getIsCollectionPathVisible,
-  getIsMonitorApp,
   getIsNavBarEnabled,
 } from "./selectors";
 
@@ -49,32 +48,24 @@ describe("getIsCollectionPathVisible", () => {
   });
 });
 
-describe("Monitor space shell", () => {
+describe("NavBar / AppBar visibility", () => {
   const stateWithUser = () =>
     createMockState({ currentUser: createMockUser() });
 
-  it("getIsMonitorApp is true under /monitor and false elsewhere", () => {
-    const state = stateWithUser();
-
-    expect(getIsMonitorApp(state, createRouterProps("/monitor"))).toBe(true);
-    expect(
-      getIsMonitorApp(
-        state,
-        createRouterProps("/monitor/dependency-diagnostics"),
-      ),
-    ).toBe(true);
-    expect(getIsMonitorApp(state, createRouterProps("/browse/databases"))).toBe(
-      false,
-    );
-  });
-
-  it("hides the navbar and app bar within Monitor, like Data Studio", () => {
+  it("hides the navbar and app bar within Monitor, Data Studio", () => {
     const state = stateWithUser();
 
     expect(getIsNavBarEnabled(state, createRouterProps("/monitor"))).toBe(
       false,
     );
+    expect(getIsNavBarEnabled(state, createRouterProps("/data-studio"))).toBe(
+      false,
+    );
+
     expect(getIsAppBarVisible(state, createRouterProps("/monitor"))).toBe(
+      false,
+    );
+    expect(getIsAppBarVisible(state, createRouterProps("/data-studio"))).toBe(
       false,
     );
   });

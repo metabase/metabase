@@ -1,6 +1,7 @@
 import {
   IndexRedirect,
   IndexRoute,
+  Redirect,
   Route,
   type RouteComponent,
 } from "react-router";
@@ -33,5 +34,25 @@ export function getMonitorRoutes(CanAccessMonitor: RouteComponent) {
         )}
       </Route>
     </Route>
+  );
+}
+
+/**
+ * Legacy redirects for the Dependency Diagnostics view, which moved from the
+ * Data Studio space to the Monitor space. Mounted at the top level of the app
+ * route tree in `metabase/routes`.
+ */
+export function getMonitorRedirects() {
+  return (
+    <>
+      <Redirect
+        from="/data-studio/dependency-diagnostics"
+        to="/monitor/dependency-diagnostics"
+      />
+      <Redirect
+        from="/data-studio/dependency-diagnostics/*"
+        to="/monitor/dependency-diagnostics/*"
+      />
+    </>
   );
 }

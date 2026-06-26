@@ -120,10 +120,16 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   const lowerNav = (
     <>
       {hasRemoteSyncFeature ? (
-        <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
-          isNavbarOpened={isNavbarOpened}
-          onClick={() => setIsGitSettingsOpen(true)}
-        />
+        <>
+          <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
+            isNavbarOpened={isNavbarOpened}
+            onClick={() => setIsGitSettingsOpen(true)}
+          />
+          <PLUGIN_REMOTE_SYNC.GitSettingsModal
+            isOpen={isGitSettingsOpen}
+            onClose={() => setIsGitSettingsOpen(false)}
+          />
+        </>
       ) : (
         <SpaceTab
           label={t`Set up remote sync`}
@@ -182,12 +188,6 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
       headerControls={<PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
       upperNav={upperNav}
       lowerNav={lowerNav}
-      navExtras={
-        <PLUGIN_REMOTE_SYNC.GitSettingsModal
-          isOpen={isGitSettingsOpen}
-          onClose={() => setIsGitSettingsOpen(false)}
-        />
-      }
     >
       {children}
     </SpaceLayout>

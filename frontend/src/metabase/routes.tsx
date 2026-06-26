@@ -42,7 +42,7 @@ import { getMetricRoutes } from "metabase/metrics/routes";
 import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
-import { getMonitorRoutes } from "metabase/monitor/routes";
+import { getMonitorRedirects, getMonitorRoutes } from "metabase/monitor/routes";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_LANDING_PAGE,
@@ -435,14 +435,7 @@ export const getRoutes = (store: AppStore) => {
       <Redirect from="/admin/transforms/*" to="/data-studio/transforms/*" />
 
       {/* Dependency diagnostics moved from /data-studio to /monitor */}
-      <Redirect
-        from="/data-studio/dependency-diagnostics"
-        to="/monitor/dependency-diagnostics"
-      />
-      <Redirect
-        from="/data-studio/dependency-diagnostics/*"
-        to="/monitor/dependency-diagnostics/*"
-      />
+      {getMonitorRedirects()}
 
       {/* MISC */}
       <Route path="/unsubscribe" component={UnsubscribePage} />
