@@ -50,9 +50,9 @@ export function SpaceLayout({
   lowerNav,
   children,
 }: SpaceLayoutProps) {
-  // Temporary enable 2 hotkeys to toggle the sidebar, until design team
-  // provides a clarification which one should we keep.
-  // TODO: (stasgavrylov - GDGT-2697) Remove this code when navbar hotkeys are updated.
+  // Support both sidebar toggle shortcuts for parity with the main app.
+  // `[` matches the global shortcut, while `$mod+.` matches the legacy
+  // Data Studio shortcut.
   const toggleNavbar = () => onNavbarToggle(!isNavbarOpened);
   useHotkeys([
     ["[", toggleNavbar],
