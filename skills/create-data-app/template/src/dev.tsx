@@ -7,6 +7,8 @@ import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import { createDataAppSandbox } from "@metabase/embedding-sdk-react/data-app-sandbox";
 import { createRoot } from "react-dom/client";
 
+import { DevToolbar } from "./dev/DevToolbar";
+import { installDevDiagnostics } from "./dev/diagnostics";
 import { sdkTheme } from "./theme";
 
 const { MetabaseProvider } = sdkExports;
@@ -57,4 +59,15 @@ async function renderSandboxedApp() {
   );
 }
 
-renderSandboxedApp();
+// Dev diagnostics: capture errors (including the sandbox's blocked-API logs,
+// which arrive via `console.error`) and surface them in a corner toolbar.
+// Install before the sandbox runs so nothing is missed, and mount the toolbar in
+// its own root so it shows even if the app bundle fails to load. Dev-only — none
+// of `./dev/*` is imported by `src/index.tsx`, so it never ships in the bundle.
+installDevDiagnostics();
+
+const toolbarRoot = document.createElement("div");
+document.body.appendChild(toolbarRoot);
+createRoot(toolbarRoot).render(<DevToolbar />);
+
+void renderSandboxedApp();
