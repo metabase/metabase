@@ -542,7 +542,7 @@
                   (is (every? (comp seq :fields) tables)
                       "the surfaced column-bearing table actually carries its fields"))))))))))
 
-(deftest related-tables-without-fields-roster-test
+(deftest related-tables-without-fields-list-test
   (testing (str "FK-related tables beyond the column-expansion cap are still surfaced by identity (no column "
                 "fetch) in :related_tables_without_fields, so the LLM knows they exist and can look them up "
                 "individually (metabase#76493)")
@@ -552,11 +552,11 @@
                         (:structured-output
                          (entity-details/get-table-details {:entity-type :table
                                                             :entity-id (mt/id :orders)})))]
-          (testing "no without-fields roster when every related table fits under the column cap"
+          (testing "no without-fields list when every related table fits under the column cap"
             (let [output (details)]
               (is (nil? (:related_tables_without_fields output)))
               (is (nil? (:related_tables_total output)))))
-          (testing "lowering the column cap moves the remaining tables into the without-fields roster"
+          (testing "lowering the column cap moves the remaining tables into the without-fields list"
             (with-redefs-fn {#'entity-details/max-related-tables-with-fields 1}
               (fn []
                 (let [output      (details)
@@ -564,11 +564,11 @@
                       without     (:related_tables_without_fields output)]
                   (is (= 1 (count with-fields)))
                   (is (= 1 (count without)))
-                  (testing "roster entries carry id/name but no columns"
+                  (testing "list entries carry id/name but no columns"
                     (is (every? :id without))
                     (is (every? :name without))
                     (is (every? (comp empty? :fields) without)))
-                  (testing ":related_tables and the roster are disjoint FK paths"
+                  (testing ":related_tables and the list are disjoint FK paths"
                     (let [shown-paths (into #{} (map (juxt :id :related_by)) with-fields)]
                       (is (not-any? (comp shown-paths (juxt :id :related_by)) without))))
                   (testing "no tables were dropped entirely, so no :related_tables_total"
@@ -587,7 +587,7 @@
                                                              :entity-id (mt/id :orders)}))]
               (is (= 1 (count (:related_tables output))))
               (is (nil? (:related_tables_without_fields output))
-                  "with only one table surfaced and it carrying fields, the without-fields roster is empty")
+                  "with only one table surfaced and it carrying fields, the without-fields list is empty")
               (is (= 2 (:related_tables_total output))
                   ":related_tables_total reports the full FK-related count before the cap")
               (is (> (:related_tables_total output)
