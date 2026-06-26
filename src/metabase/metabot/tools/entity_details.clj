@@ -318,10 +318,10 @@
            (merge related))))))
 
 (defn- fk-related-table-groups
-  "Sorted, distinct `[target-table-id fk-field-id]` pairs for every direct FK from `query`'s source table.
+  "Sorted `[target-table-id fk-field-id fk-field-name]` tuples for every direct FK from `query`'s source table.
 
-  The FK paths that become [[related-tables]]. Each pair means \"`fk-field-id` points at `target-table-id`\", so a
-  table reachable through several FKs appears once per FK.
+  The FK paths that become [[related-tables]]. Each tuple means \"`fk-field-id` (named `fk-field-name`) points at
+  `target-table-id`\", so a table reachable through several FKs appears once per FK.
 
   This deliberately does NOT `:include-implicitly-joinable?` when calling `lib/visible-columns` to find related
   tables: that fetches and caches the full column set of every FK-target table, even though we only
@@ -334,11 +334,11 @@
         id->target-field   (m/index-by :id (lib.metadata/bulk-metadata
                                             query :metadata/column (into #{} (map :fk-target-field-id) fk-cols)))]
     (->> fk-cols
-         (keep (fn [{fk-field-id :id, :keys [fk-target-field-id]}]
+         (keep (fn [{fk-field-id :id, fk-field-name :name, :keys [fk-target-field-id]}]
                  ;; the target field might not exist; skip self/already-joined tables
                  (when-let [target (id->target-field fk-target-field-id)]
                    (when-not (contains? existing-table-ids (:table-id target))
-                     [(:table-id target) fk-field-id]))))
+                     [(:table-id target) fk-field-id fk-field-name]))))
          distinct
          ;; sort for a deterministic selection when we cap, so the same tables are kept
          sort)))
@@ -371,21 +371,21 @@
       (let [[detail-groups rest-groups] (split-at max-related-tables fk-groups)
             refs-groups (take max-related-table-truncated-refs rest-groups)
             details     (mapv
-                         (fn [[table-id fk-field-id]]
+                         (fn [[table-id _fk-field-id fk-field-name]]
                            (-> (table-details table-id
                                               {:with-fields?         with-fields?
                                                :field-values-fn      field-values-fn
                                                :with-related-tables? false
                                                :with-metrics?        false})
-                               (assoc :related_by (:name (lib.metadata/field query fk-field-id)))))
+                               (assoc :related_by fk-field-name)))
                          detail-groups)
             refs        (mapv
-                         (fn [[table-id fk-field-id]]
+                         (fn [[table-id _fk-field-id fk-field-name]]
                            (let [table (lib.metadata/table query table-id)]
                              {:id          table-id
                               :name        (:name table)
                               :description (:description table)
-                              :related_by  (:name (lib.metadata/field query fk-field-id))}))
+                              :related_by  fk-field-name}))
                          refs-groups)]
         (cond-> {:related_tables details}
           (> total (count details))
