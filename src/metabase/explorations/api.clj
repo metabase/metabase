@@ -307,10 +307,14 @@
 (mr/def ::ExplorationPageNode
   "A page within a block: the bundle of queries for one (card, dimension, query_type) under the
    page's stable id. `:query_ids` reference queries on the same thread, sorted by interestingness.
-   `:position` is the page's 0-indexed slot among its block's pages."
+   `:position` is the page's 0-indexed slot among its block's pages. `:name` is the page's short,
+   heading-relative label (e.g. `By Category over time`); `:long_name` is the full
+   self-describing name (e.g. `Number of Orders by Category over time`) for use without the block
+   heading for context."
   [:map
    [:id        ms/PositiveInt]
    [:name      [:maybe :string]]
+   [:long_name [:maybe :string]]
    [:position  ms/IntGreaterThanOrEqualToZero]
    [:query_ids [:sequential ms/PositiveInt]]])
 

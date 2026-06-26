@@ -163,6 +163,7 @@ export function createPage(
 ): ExplorationPageNode {
   return {
     name: null,
+    long_name: null,
     position: 0,
     query_ids: [],
     ...overrides,
@@ -225,6 +226,7 @@ export function createExploration({
       pages: queries.map((q, i) => ({
         id: q.id,
         name: q.name,
+        long_name: q.name,
         position: i,
         query_ids: [q.id],
       })),

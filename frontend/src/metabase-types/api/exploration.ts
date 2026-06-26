@@ -263,6 +263,7 @@ export type ExplorationPageNodeId = string;
 export interface ExplorationPageNode {
   id: number;
   name: string | null;
+  long_name: string | null;
   position: number;
   query_ids: ExplorationQueryId[];
 }

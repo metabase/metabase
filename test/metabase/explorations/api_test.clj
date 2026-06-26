@@ -334,13 +334,18 @@
             blocks  (-> resp :threads first :blocks)
             metric-block    (first (filter #(= "metric" (:type %)) blocks))
             dimension-block (first (filter #(= "dimension" (:type %)) blocks))
-            page-names (fn [block] (set (map :name (:pages block))))]
+            page-names (fn [block] (set (map :name (:pages block))))
+            long-names (fn [block] (set (map :long_name (:pages block))))]
         (testing "metric-anchored block: heading is the metric, pages are By <dimension>"
           (is (= "Revenue" (:name metric-block)))
-          (is (= #{"By Price"} (page-names metric-block))))
+          (is (= #{"By Price"} (page-names metric-block)))
+          (testing "long_name is self-describing (carries the metric the heading drops)"
+            (is (= #{"Revenue by Price"} (long-names metric-block)))))
         (testing "dimension-anchored block: heading is By <dimension>, pages are the metrics"
           (is (= "By Price" (:name dimension-block)))
-          (is (= #{"Revenue" "Signups"} (page-names dimension-block))))))))
+          (is (= #{"Revenue" "Signups"} (page-names dimension-block)))
+          (testing "long_name is self-describing (carries the dimension the heading drops)"
+            (is (= #{"Revenue by Price" "Signups by Price"} (long-names dimension-block)))))))))
 
 (deftest exploration-dimension-group-heading-disambiguation-test
   (testing "GET qualifies same-named dimension-anchored group headings by their source"
@@ -666,13 +671,23 @@
             body    {:name       "facet"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id "cat" :display_name "Category"}]}
-            queries (-> (create-exploration! u body)
-                        :threads first :queries)
-            facet   (first (filter #(= "time-facet" (:query_type %)) queries))]
+            thread  (-> (create-exploration! u body) :threads first)
+            queries (:queries thread)
+            facet   (first (filter #(= "time-facet" (:query_type %)) queries))
+            pages   (->> thread :blocks (mapcat :pages))
+            by-long (into {} (map (juxt :long_name identity)) pages)]
         (is (= #{"default" "time-facet"} (query-types queries)))
         (is (= "line" (:display facet))
             "time-facet variant explicitly sets :display \"line\"")
-        (is (= "Sales by Category over time" (:name facet)))))))
+        (is (= "Sales by Category over time" (:name facet)))
+        (testing "the default and time-facet variants become two pages, named from parts"
+          (is (= #{"Sales by Category" "Sales by Category over time"}
+                 (set (map :long_name pages)))
+              "long_name: full <metric> by <dimension> <variant>")
+          (is (= "By Category" (:name (by-long "Sales by Category")))
+              "short name of the default page drops the metric (it's the block heading)")
+          (is (= "By Category over time" (:name (by-long "Sales by Category over time")))
+              "short name carries the variant qualifier"))))))
 
 (deftest exploration-create-time-facet-skipped-without-default-breakout-test
   (testing "POST / categorical dim but metric has no default temporal breakout → no time-facet"
@@ -1659,31 +1674,31 @@
       (is (= [[1 2] [3]] (mapv (fn [b] (mapv :id (:pages b))) tree))
           "block 10 pages [1 (0.9) then 2 (0.4)]; block 20 page [3]"))))
 
-(deftest blocks-tree-page-name-from-unsegmented-base-test
-  (testing "page :name falls back to the unsegmented (segment_id=nil) base query name; block heading is the metric name"
+(deftest blocks-tree-page-name-generated-from-parts-test
+  (testing "page names are generated from the metric + dimension (+ variant), independent of the query :name"
     (let [blocks  [{:id 5 :metrics [{:card_id 10}]}]
           pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}]
-          queries [{:id 1 :page_id 1 :segment_id 100 :name "Rev by D1 (S1)"}
-                   {:id 2 :page_id 1 :segment_id nil :name "Rev by D1"}
-                   {:id 3 :page_id 1 :segment_id 101 :name "Rev by D1 (S2)"}]
+          queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "Price" :name "some stored query name"}]
           [block] (explorations.blocks/blocks-tree blocks pages {10 "Revenue"} queries)
           [page]  (:pages block)]
-      (is (= "Revenue"   (:name block)))
-      (is (= "Rev by D1" (:name page)) "even when base isn't first in the input, its name wins"))))
+      (is (= "Revenue" (:name block)))
+      (is (= "By Price" (:name page))
+          "short name drops the metric, which the block heading already shows")
+      (is (= "Revenue by Price" (:long_name page))
+          "long name is self-describing — metric + dimension"))))
 
 (deftest blocks-tree-page-sort-prefers-contextual-test
   (testing "page sort uses contextual_interestingness_score when present, else interestingness_score"
     (let [blocks  [{:id 5}]
           pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}
                    {:id 2 :exploration_block_id 5 :card_id 10 :dimension_id "d2" :query_type "default"}]
-          queries [{:id 1 :page_id 1 :segment_id nil :name "High heuristic low contextual"
+          queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "D1"
                     :interestingness_score 0.95 :contextual_interestingness_score 0.2}
-                   {:id 2 :page_id 2 :segment_id nil :name "Low heuristic high contextual"
+                   {:id 2 :page_id 2 :segment_id nil :dimension_name "D2"
                     :interestingness_score 0.1 :contextual_interestingness_score 0.85}]
           [block] (explorations.blocks/blocks-tree blocks pages {} queries)]
-      (is (= ["Low heuristic high contextual" "High heuristic low contextual"]
-             (mapv :name (:pages block)))
-          "effective 0.85 (contextual) sorts above 0.2, not 0.95 (heuristic ignored)"))))
+      (is (= [2 1] (mapv :id (:pages block)))
+          "page 2 (effective 0.85 contextual) sorts above page 1 (0.2), not by 0.95 heuristic"))))
 
 (deftest blocks-tree-page-sort-order-test
   (testing "pages within a block sort by max interestingness desc; nil-score pages last"
@@ -1691,11 +1706,11 @@
           pages   [{:id 1 :exploration_block_id 5 :card_id 10 :dimension_id "d1" :query_type "default"}
                    {:id 2 :exploration_block_id 5 :card_id 10 :dimension_id "d2" :query_type "default"}
                    {:id 3 :exploration_block_id 5 :card_id 10 :dimension_id "d3" :query_type "default"}]
-          queries [{:id 1 :page_id 1 :segment_id nil :name "mid"  :interestingness_score 0.4}
-                   {:id 2 :page_id 2 :segment_id nil :name "high" :interestingness_score 0.9}
-                   {:id 3 :page_id 3 :segment_id nil :name "none" :interestingness_score nil}]
+          queries [{:id 1 :page_id 1 :segment_id nil :dimension_name "D1" :interestingness_score 0.4}
+                   {:id 2 :page_id 2 :segment_id nil :dimension_name "D2" :interestingness_score 0.9}
+                   {:id 3 :page_id 3 :segment_id nil :dimension_name "D3" :interestingness_score nil}]
           [block] (explorations.blocks/blocks-tree blocks pages {} queries)]
-      (is (= ["high" "mid" "none"] (mapv :name (:pages block))))
+      (is (= [2 1 3] (mapv :id (:pages block))) "high (0.9), mid (0.4), then nil-score last")
       (is (= [0 1 2] (mapv :position (:pages block))) ":position reifies the sorted order"))))
 
 (deftest blocks-tree-empty-input-test
@@ -1753,10 +1768,11 @@
                     pair-set (set (map (juxt :card_id :dimension_id) members))]
                 (is (= 1 (count pair-set))
                     (str "page " (:id p) " bundles a single (card, dim) partition"))))))
-        (testing "pages are named 'By <dimension>'"
-          (is (= #{"By Category" "By Price"} (set (map :name pages))))
-          (is (= 2 (count (filter #(= "By Category" (:name %)) pages)))
-              "category's default and top-n-other are distinct pages with the same heading"))
+        (testing "pages are named 'By <dimension> <variant>', the variant qualifier distinguishing same-dimension pages"
+          (is (= #{"By Category" "By Category (Top values + Other)" "By Price"}
+                 (set (map :name pages))))
+          (is (= 2 (count (filter #(str/includes? (:name %) "Category") pages)))
+              "category's default and top-n-other are distinct, separately-named pages"))
         (testing "page :position is 0..N-1 within the block"
           (is (= (vec (range (count pages))) (sort (map :position pages)))))))))
 

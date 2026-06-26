@@ -8,6 +8,7 @@
    persisted."
   (:require
    [clojure.string :as str]
+   [metabase.explorations.query-plan.variants :as variants]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -19,13 +20,6 @@
   (str "/question/research/" exploration-id "/page/" page-id))
 
 ;;; ------------------------------------------- names -------------------------------------------
-
-(defn- leaf-name
-  "Fallback page display name: prefer the base (unsegmented) query's `:name`, else the first
-   query's `:name`."
-  [queries]
-  (let [base (some #(when (nil? (:segment_id %)) %) queries)]
-    (or (:name base) (:name (first queries)))))
 
 (defn- dimension-anchored?
   "Whether `block` is anchored on its dimension (one dimension crossed with several metrics)
@@ -77,16 +71,46 @@
                        (dimension-base-name dim))))
      (or (get card-name-by-id (:card_id (first (:metrics block)))) ""))))
 
-(defn- page-name
-  "Display name for a page. For a dimension-anchored block the pages vary by metric, so name
-   each by its metric (Card) name; for a metric-anchored block they vary by dimension, so name
-   each `By <dimension>`."
+(defn- page-metric-name
+  "The metric (Card) name for `page` — present even on an empty (comment-retained) page."
+  [page card-name-by-id]
+  (get card-name-by-id (:card_id page)))
+
+(defn- page-dimension-label
+  "The display label of `page`'s dimension, read off any of its queries; falls back to the raw
+   `:dimension_id` for an empty page that has no queries to carry the resolved label."
+  [page queries]
+  (or (:dimension_name (first queries)) (:dimension_id page)))
+
+(defn- qualify
+  "Append a variant `qualifier` (e.g. `over time`) to a base name; returns `base` unchanged for
+   the default variant, which has no qualifier."
+  [base qualifier]
+  (if (str/blank? qualifier)
+    base
+    (str base " " qualifier)))
+
+(defn- page-long-name
+  "A page's full, self-describing name, generated from parts: `<metric> by <dimension>
+   <variant>` (e.g. `Number of Orders by Category over time`). Self-contained — used where a
+   page is shown without its block heading for context (comment deep-links, AI-summary chart
+   embeds)."
+  [page queries card-name-by-id]
+  (qualify (tru "{0} by {1}"
+                (page-metric-name page card-name-by-id)
+                (page-dimension-label page queries))
+           (variants/variant-qualifier (:query_type page))))
+
+(defn- page-short-name
+  "A page's name with the axis its block heading already shows removed: for a metric-anchored
+   block (heading = the metric) the pages vary by dimension, so `By <dimension> <variant>`; for
+   a dimension-anchored block (heading = `By <dimension>`) they vary by metric, so `<metric>
+   <variant>`."
   [block page queries card-name-by-id]
-  (if (dimension-anchored? block)
-    (or (get card-name-by-id (:card_id page)) (leaf-name queries))
-    (if-let [dn (:dimension_name (first queries))]
-      (by-dimension dn)
-      (leaf-name queries))))
+  (let [qualifier (variants/variant-qualifier (:query_type page))]
+    (if (dimension-anchored? block)
+      (qualify (page-metric-name page card-name-by-id) qualifier)
+      (qualify (by-dimension (page-dimension-label page queries)) qualifier))))
 
 ;;; ------------------------------------------ scoring ------------------------------------------
 
@@ -113,7 +137,8 @@
 (defn- page-node
   [block page queries card-name-by-id]
   {:id         (:id page)
-   :name       (page-name block page queries card-name-by-id)
+   :name       (page-short-name block page queries card-name-by-id)
+   :long_name  (page-long-name page queries card-name-by-id)
    :query_ids  (mapv :id queries)
    ::max-score (max-score queries)})
 
@@ -126,7 +151,8 @@
          :name     <computed heading>
          :position <0-indexed slot among blocks>
          :pages    [{:id        <page-pk>
-                     :name      <computed page name>
+                     :name      <short page name, heading-relative>
+                     :long_name <full self-describing page name>
                      :position  <0-indexed slot among the block's pages, score-sorted>
                      :query_ids [<id> <id> ...]}]}]
 
