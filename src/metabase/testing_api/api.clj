@@ -556,3 +556,33 @@
                                                                    [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
                                                                    [:second_tenant_id {:optional true} [:maybe ms/PositiveInt]]]]
   (seed-usage-auditing-data! user_id second_user_id tenant_id second_tenant_id))
+
+(api.macros/defendpoint :post "/mcp/seed-tool-call"
+  :- [:map
+      [:session_id ms/NonBlankString]
+      [:tool_name ms/NonBlankString]]
+  "Seed one `mcp_session_log` + one `mcp_tool_call_log` row so the MCP analytics E2E page has a
+  visible tool-call row. Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [user_id tool_name client_name]} :- [:map
+                                               [:user_id     ms/PositiveInt]
+                                               [:tool_name    {:optional true} [:maybe ms/NonBlankString]]
+                                               [:client_name  {:optional true} [:maybe ms/NonBlankString]]]]
+  (let [session-id (str "e2e-mcp-" (random-uuid))
+        tool-name  (or tool_name "execute_query")
+        now        (t/offset-date-time)]
+    (t2/insert! :model/McpSessionLog
+                {:id             session-id
+                 :user_id        user_id
+                 :client_name    (or client_name "claude")
+                 :client_version "1.0.0"
+                 :created_at     now})
+    (t2/insert! :model/McpToolCallLog
+                {:mcp_session_id session-id
+                 :user_id        user_id
+                 :tool_name      tool-name
+                 :status         "success"
+                 :duration_ms    42
+                 :created_at     now})
+    {:session_id session-id :tool_name tool-name}))
