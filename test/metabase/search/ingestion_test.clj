@@ -84,7 +84,20 @@
       (with-redefs [search.spec/spec spec-fn]
         (is (= "[table]\nname: CamelCaseTest"
                (#'search.ingestion/embeddable-text record))
-            "Transformation functions should not be applied to embeddable text for semantic search")))))
+            "Transformation functions should not be applied to embeddable text for semantic search"))))
+  (testing "embeddable-text omits fields listed in :embedding-exclude"
+    (let [spec-fn (constantly {:search-terms      {:name true :document str}
+                               :embedding-exclude #{:document}})
+          record  {:model    "document"
+                   :name     "Q3 Planning"
+                   :document "the full document body"}]
+      (with-redefs [search.spec/spec spec-fn]
+        (is (= "[document]\nname: Q3 Planning"
+               (#'search.ingestion/embeddable-text record))
+            "Excluded fields must not appear in the semantic-search embedding text")
+        (is (= "Q3 Planning the full document body"
+               (#'search.ingestion/searchable-text record))
+            "Excluded fields remain in full-text searchable-text")))))
 
 (deftest execute-all-function-attrs-test
   (testing "function-attr returning a map merges its keys into the document"
