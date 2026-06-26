@@ -43,6 +43,10 @@ import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
+  PROTO_NAV_ENABLED,
+  ProtoHome,
+} from "metabase/nav/containers/ProtoNavbar";
+import {
   PLUGIN_COLLECTIONS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_TABLE_EDITING,
@@ -151,7 +155,7 @@ export const getRoutes = (store: AppStore) => {
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
             path="/"
-            component={HomePage}
+            component={PROTO_NAV_ENABLED ? ProtoHome : HomePage}
             onEnter={(nextState, replace) => {
               const page = PLUGIN_LANDING_PAGE.getLandingPage();
               if (page && page !== "/") {

@@ -8,17 +8,21 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   isExamplesCollection,
+  isInstanceAnalyticsCollection,
   isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
+import { setOpenModal } from "metabase/redux/ui";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
@@ -28,7 +32,7 @@ import {
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Icon, Menu, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import type { Bookmark, Collection } from "metabase-types/api";
@@ -95,6 +99,7 @@ export function MainNavbarView({
     "expand-collections-in-nav",
   );
 
+  const dispatch = useDispatch();
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const currentUser = useSelector(getUser);
@@ -139,6 +144,10 @@ export function MainNavbarView({
       const regularCollections = collections.filter((c) => {
         const isNormalCollection =
           !isRootTrashCollection(c) && !isExamplesCollection(c);
+        // Usage analytics moves to the Monitor section in the prototype nav.
+        if (PROTO_NAV_ENABLED && isInstanceAnalyticsCollection(c)) {
+          return false;
+        }
         return isNormalCollection && !isLibraryCollection(c);
       });
 
@@ -180,16 +189,18 @@ export function MainNavbarView({
     <ErrorBoundary>
       <SidebarContentRoot>
         <div>
-          <SidebarSection>
-            <PaddedSidebarLink
-              isSelected={nonEntityItem?.url === "/"}
-              icon="home"
-              onClick={handleHomeClick}
-              url="/"
-            >
-              {t`Home`}
-            </PaddedSidebarLink>
-          </SidebarSection>
+          {!PROTO_NAV_ENABLED && (
+            <SidebarSection>
+              <PaddedSidebarLink
+                isSelected={nonEntityItem?.url === "/"}
+                icon="home"
+                onClick={handleHomeClick}
+                url="/"
+              >
+                {t`Home`}
+              </PaddedSidebarLink>
+            </SidebarSection>
+          )}
 
           {shouldDisplayGettingStarted && (
             <SidebarSection>
@@ -242,11 +253,13 @@ export function MainNavbarView({
             />
           )}
 
-          <NavbarLibrarySection
-            collections={collections}
-            selectedId={collectionItem?.id}
-            onItemSelect={onItemSelect}
-          />
+          {!PROTO_NAV_ENABLED && (
+            <NavbarLibrarySection
+              collections={collections}
+              selectedId={collectionItem?.id}
+              onItemSelect={onItemSelect}
+            />
+          )}
 
           <SidebarSection>
             <ErrorBoundary>
@@ -258,18 +271,59 @@ export function MainNavbarView({
                 onToggle={setExpandCollections}
                 rightAction={
                   canWriteToCollections && !isTenantUser ? (
-                    <Tooltip label={t`Create a new collection`}>
-                      <ActionIcon
-                        aria-label={t`Create a new collection`}
-                        color="text-secondary"
-                        onClick={() => {
-                          trackNewCollectionFromNavInitiated();
-                          handleCreateNewCollection();
-                        }}
-                      >
-                        <Icon name="add" />
-                      </ActionIcon>
-                    </Tooltip>
+                    PROTO_NAV_ENABLED ? (
+                      <Box onClick={(e) => e.stopPropagation()}>
+                        <Menu position="bottom-start">
+                          <Menu.Target>
+                            <ActionIcon
+                              aria-label={t`Create new…`}
+                              color="text-secondary"
+                            >
+                              <Icon name="add" />
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Item
+                              leftSection={<Icon name="folder" />}
+                              onClick={() => {
+                                trackNewCollectionFromNavInitiated();
+                                handleCreateNewCollection();
+                              }}
+                            >
+                              {t`Collection`}
+                            </Menu.Item>
+                            <Menu.Item
+                              leftSection={<Icon name="dashboard" />}
+                              onClick={() =>
+                                dispatch(setOpenModal("dashboard"))
+                              }
+                            >
+                              {t`Dashboard`}
+                            </Menu.Item>
+                            <Menu.Item
+                              leftSection={<Icon name="document" />}
+                              component={ForwardRefLink}
+                              to="/document/new"
+                            >
+                              {t`Document`}
+                            </Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
+                      </Box>
+                    ) : (
+                      <Tooltip label={t`Create a new collection`}>
+                        <ActionIcon
+                          aria-label={t`Create a new collection`}
+                          color="text-secondary"
+                          onClick={() => {
+                            trackNewCollectionFromNavInitiated();
+                            handleCreateNewCollection();
+                          }}
+                        >
+                          <Icon name="add" />
+                        </ActionIcon>
+                      </Tooltip>
+                    )
                   ) : null
                 }
                 role="section"
@@ -303,18 +357,20 @@ export function MainNavbarView({
             </ErrorBoundary>
           </SidebarSection>
 
-          <SidebarSection>
-            <ErrorBoundary>
-              <BrowseNavSection
-                nonEntityItem={nonEntityItem}
-                onItemSelect={onItemSelect}
-                hasDataAccess={hasDataAccess}
-                onAddDataModalOpen={openAddDataModal}
-              />
-            </ErrorBoundary>
-          </SidebarSection>
+          {!PROTO_NAV_ENABLED && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <BrowseNavSection
+                  nonEntityItem={nonEntityItem}
+                  onItemSelect={onItemSelect}
+                  hasDataAccess={hasDataAccess}
+                  onAddDataModalOpen={openAddDataModal}
+                />
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
 
-          {trashCollection && (
+          {!PROTO_NAV_ENABLED && trashCollection && (
             <TrashSidebarSection>
               <ErrorBoundary>
                 <Tree
@@ -328,6 +384,21 @@ export function MainNavbarView({
             </TrashSidebarSection>
           )}
         </div>
+
+        {/* Trash is anchored to the bottom of the panel in the prototype nav. */}
+        {PROTO_NAV_ENABLED && trashCollection && (
+          <TrashSidebarSection>
+            <ErrorBoundary>
+              <Tree
+                data={[trashCollection]}
+                selectedId={collectionItem?.id}
+                onSelect={onItemSelect}
+                TreeNode={SidebarCollectionLink}
+                role="tree"
+              />
+            </ErrorBoundary>
+          </TrashSidebarSection>
+        )}
       </SidebarContentRoot>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />

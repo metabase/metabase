@@ -1,0 +1,89 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  flex-shrink: 0;
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.rail {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.5rem 0.5rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.railBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--mantine-radius-md);
+  color: var(--mb-color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.railBtn:hover {
+  background-color: var(--mb-color-background_surface-hover);
+  color: var(--mb-color-core-brand);
+}
+
+.railBtn.selected {
+  background-color: var(--mb-color-background_surface-selected);
+  color: var(--mb-color-core-brand);
+}
+
+.railLabel {
+  display: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.railBtn.selected .railLabel,
+.railBtn:hover .railLabel {
+  display: inline;
+}
+
+.sectionContent {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 0.5rem;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--mb-color-border-neutral);
+  flex-shrink: 0;
+}
