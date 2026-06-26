@@ -93,7 +93,7 @@ export async function processChatResponse(
         })
         .with({ type: "text-delta" }, (e) => {
           config.onTextPart?.(e.delta);
-          const lastEntry = result.history[result.history.length - 1];
+          const lastEntry = result.history.at(-1);
           if (lastEntry?.role === "assistant" && "content" in lastEntry) {
             lastEntry.content += e.delta;
           } else {
