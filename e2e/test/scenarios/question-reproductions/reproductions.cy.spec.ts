@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type {
@@ -1354,6 +1354,11 @@ describe("issue 13347", () => {
         query: "SELECT * FROM ORDERS",
       },
     });
+
+    // The normal user belongs to the data group, which would otherwise get
+    // query access to this database by default. Block it so the user genuinely
+    // lacks data permissions - the condition this issue is about.
+    H.blockUserGroupPermissions(USER_GROUPS.DATA_GROUP, WRITABLE_DB_ID);
 
     cy.signInAsNormalUser();
 
