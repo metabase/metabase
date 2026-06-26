@@ -33,15 +33,15 @@
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::distkey
-  "Redshift distribution, inline. `:columns` holds the single DISTKEY column, required only for the `:key` style;
-  `:all`/`:even`/`:auto` take no column."
+  "Redshift distribution, inline. Only `:key` uses a column (exactly the one DISTKEY column); `:all`/`:even` take none.
+  AUTO is Redshift's default and can't be reconciled against a fixed request, so it isn't offered."
   [:and
    [:map
     [:kind    [:= :distkey]]
-    [:style   [:enum :key :all :even :auto]]
+    [:style   [:enum :key :all :even]]
     [:columns {:optional true} [:vector {:min 1 :max 1} ::column]]]
-   [:fn {:error/message "a :key distkey requires a column"}
-    (fn [{:keys [style columns]}] (or (not= style :key) (seq columns)))]])
+   [:fn {:error/message "a :key distkey requires its one column"}
+    (fn [{:keys [style columns]}] (or (not= style :key) (= 1 (count columns))))]])
 
 (mr/def ::clustering
   "Snowflake (standalone) / BigQuery (inline) clustering. `:name` is required for the standalone form."

@@ -34,8 +34,7 @@
       {:kind :skip-index :name "s" :columns [{:name "a"}] :type "bloom_filter" :granularity 4}
       {:kind :distkey    :style "key" :columns [{:name "a"}]}
       {:kind :distkey    :style "all"}
-      {:kind :distkey    :style "even"}
-      {:kind :distkey    :style "auto"})))
+      {:kind :distkey    :style "even"})))
 
 (deftest distkey-key-requires-a-column-test
   (testing "a :key distkey without a column is rejected; the column-less styles are fine"
