@@ -49,12 +49,29 @@ See [Claude Code MCP docs](https://code.claude.com/docs/en/mcp).
 
 ## Available tools
 
-Some clients (like Claude Desktop) will ask you to approve each tool the first time it's used.
+Some clients (like Claude Desktop) will ask you to approve each tool the first time it's used. The groups below match the categories your client shows when you approve or block tools.
 
-### Find and read content
+### Interactive tools
 
-- **search**: Find tables and metrics using keyword or natural language search.
-- **read_resource**: Read one to five Metabase entities per call by `metabase://` URI. Entities available to read include:
+These render inline visualizations in your AI client, and only work in clients that support inline charts.
+
+- **Render drill through** (`render_drill_through`): Render the chart a person drilled into from an inline visualization.
+- **Visualize query** (`visualize_query`): Render a query's results as an inline chart in your AI client.
+
+### Read-only tools
+
+- **Construct query** (`construct_query`): Construct a query against a table or metric. Returns an opaque query handle that can be passed to `execute_query`.
+- **Execute query** (`execute_query`): Execute a previously constructed query and return the results with column metadata, row count, and execution time.
+- **Query tables and metrics** (`query`): Run a query and return results, paging through large result sets with a continuation token. Accepts a query handle from `construct_query`, a fresh query, or a continuation token.
+- **Search tables and metrics** (`search`): Find tables and metrics using keyword or natural language search.
+
+### Write/delete tools
+
+- **Create collection** (`create_collection`): Create a new collection, optionally nested under a parent collection.
+- **Create dashboard** (`create_dashboard`): Create a new dashboard, optionally populated with saved questions.
+- **Create question** (`create_question`): Save a query as a named question.
+- **Execute SQL** (`execute_sql`): Execute a raw SQL query against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting.
+- **Read resource** (`read_resource`): Read one to five Metabase entities per call by `metabase://` URI. Entities available to read include:
   - database
   - schema
   - table
@@ -62,24 +79,9 @@ Some clients (like Claude Desktop) will ask you to approve each tool the first t
   - question
   - dashboard
   - metric
-  - transform.
-
-### Query and visualize data
-
-- **construct_query**: Construct a query against a table or metric. Returns an opaque query handle that can be passed to `execute_query`.
-- **query**: Run a query and return results, paging through large result sets with a continuation token. Accepts a query handle from `construct_query`, a fresh query, or a continuation token.
-- **execute_query**: Execute a previously constructed query and return the results with column metadata, row count, and execution time.
-- **execute_sql**: Execute a raw SQL query against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting.
-- **visualize_query**: Render a query's results as an inline chart in your AI client.
-- **render_drill_through**: Render the chart a person drilled into from an inline visualization.
-
-### Create content
-
-- **create_question**: Save a query as a named question (card).
-- **update_question**: Update a saved question. Setting `collection_id` moves the card to another collection.
-- **create_dashboard**: Create a new dashboard, optionally populated with saved questions.
-- **update_dashboard**: Update a dashboard's metadata (name, description, collection, archived).
-- **create_collection**: Create a new collection, optionally nested under a parent collection.
+  - transform
+- **Update dashboard** (`update_dashboard`): Update a dashboard's metadata (name, description, collection, archived).
+- **Update question** (`update_question`): Update a saved question. Setting `collection_id` moves the question to another collection.
 
 ## Enable MCP server
 
