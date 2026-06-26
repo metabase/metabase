@@ -479,7 +479,6 @@
     invite-target :- [:maybe users.schema/InviteTarget]]
    ;; create the new user
    (u/prog1 (t2/insert-returning-instance! :model/User new-user)
-     ;; TODO make sure the email being sent synchronously.
      (events/publish-event! :event/user-invited
                             {:object
                              (cond-> (assoc <>
