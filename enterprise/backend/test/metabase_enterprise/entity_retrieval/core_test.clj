@@ -126,6 +126,33 @@
       (mt/with-premium-features #{:semantic-search}
         (is (true? (entity-retrieval.core/available?)))))))
 
+(deftest ^:sequential entity-retrieval-available?-requires-a-populated-index-test
+  (testing "the curated tool is offered only once the index has documents (else the nlq profile falls back)"
+    (when semantic.db.datasource/db-url
+      (mt/with-premium-features #{:library :semantic-search}
+        (let [suffix (System/nanoTime)
+              ds     (semantic.db.datasource/ensure-initialized-data-source!)]
+          (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                      (constantly semantic.tu/mock-embedding-model)]
+            (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix)
+                      index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix)]
+              (try
+                (testing "configured + licensed but no index table yet -> unavailable"
+                  (is (true?  (entity-retrieval.core/available?)))
+                  (is (false? (entity-retrieval.core/entity-retrieval-available?))))
+                (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
+                               :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
+                               :model/Database   {db-id :id}    {}
+                               :model/Table      _              {:db_id db-id :collection_id data-id :is_published true
+                                                                 :active true :name "t" :display_name "T"}]
+                  (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
+                  (testing "after a reconcile populates the index -> available"
+                    (is (true? (entity-retrieval.core/entity-retrieval-available?)))))
+                (finally
+                  (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
+                                          index-table/*vectors-table* ", "
+                                          index-table/*meta-table*)]))))))))))
+
 (deftest ^:sequential ranks-by-similarity-test
   (testing "search ranks library documents by cosine similarity, nearest first"
     (when semantic.db.datasource/db-url

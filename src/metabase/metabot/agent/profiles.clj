@@ -9,6 +9,7 @@
   (:require
    [malli.error :as me]
    [metabase.api-scope.core :as api-scope]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
@@ -165,18 +166,28 @@
                         #'tools/replace-sql-query-tool
                         #'tools/ask-for-sql-clarification-tool]})
 
+;; :nlq and :nlq-fallback are a pair selected by the library index's health (see [[get-profile]]): when the
+;; curated index can serve queries the agent discovers data through retrieve_library_entities; otherwise it
+;; falls back to the general nlq search. They differ only in the discovery tool and the prompt that explains
+;; it. The redirect keeps the external profile-id :nlq, so telemetry / recent-views / skills are unaffected.
 (register-profile!
  {:name            :nlq
   :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  10
   :temperature     0.3
-  ;; The nlq profile prefers the curated library tool for data discovery (gated to
-  ;; :feature-entity-retrieval = pgvector configured AND semantic-search licensed). When that index is
-  ;; unavailable, capability filtering swaps it for the general nlq search fallback (gated to the
-  ;; complementary :feature-no-entity-retrieval), so the agent is never left with zero discovery tools.
-  ;; Exactly one of the two survives filtering for any given request.
   :tools           [#'tools/retrieve-library-entities-tool
-                    #'tools/nlq-search-fallback-tool
+                    #'tools/read-resource-tool
+                    #'tools/construct-notebook-query-tool
+                    #'tools/navigate-user-tool
+                    #'tools/create-chart-tool
+                    #'tools/edit-chart-tool]})
+
+(register-profile!
+ {:name            :nlq-fallback
+  :prompt-template "natural-language-querying-fallback.selmer"
+  :max-iterations  10
+  :temperature     0.3
+  :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/navigate-user-tool
@@ -242,13 +253,29 @@
 
 ;;; API
 
+(defn- nlq-fallback?
+  "Whether a :nlq request should be served the general-search fallback: true when the curated library index
+  can't answer (not configured/licensed, or empty). Keeps data discovery working before the first reconcile
+  and on OSS / unlicensed instances."
+  [profile-id]
+  (and (= profile-id :nlq)
+       (not (entity-retrieval/entity-retrieval-available?))))
+
 (defn get-profile
   "Get profile configuration by profile-id keyword.
   The `:model` in the returned profile is resolved from the `llm-metabot-provider`
-  setting at call time, so it always reflects the current admin configuration."
+  setting at call time, so it always reflects the current admin configuration.
+
+  A :nlq request whose library index can't serve queries is transparently served the :nlq-fallback
+  profile's discovery tool and prompt (see [[nlq-fallback?]]); the profile's `:name` stays :nlq so
+  telemetry, recent-views, and skill matching are unaffected."
   [profile-id]
   (when-let [profile (get @*profiles profile-id)]
-    (assoc profile :model (metabot.settings/llm-metabot-provider))))
+    (let [profile (if (nlq-fallback? profile-id)
+                    (let [fb (get @*profiles :nlq-fallback)]
+                      (assoc profile :tools (:tools fb) :prompt-template (:prompt-template fb)))
+                    profile)]
+      (assoc profile :model (metabot.settings/llm-metabot-provider)))))
 
 (defn get-tools-for-profile
   "Get tool registry filtered by profile configuration, user capabilities, and scope.

@@ -41,7 +41,6 @@
  [tools.search search-tool
   sql-search-tool
   nlq-search-tool
-  nlq-search-fallback-tool
   transform-search-tool]
  [tools.entity-retrieval
   retrieve-library-entities-tool]

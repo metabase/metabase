@@ -457,8 +457,8 @@
                        {:description "Number of documents embedded and inserted into the library entity index."})
    (prometheus/counter :metabase-entity-retrieval/docs-deleted
                        {:description "Number of documents garbage-collected from the library entity index."})
-   (prometheus/counter :metabase-entity-retrieval/search-degraded
-                       {:description "Number of library entity index searches that degraded to no results because the index query errored (e.g. a dimension mismatch before the next reconcile heals it)."})
+   (prometheus/counter :metabase-entity-retrieval/search-failed
+                       {:description "Number of library entity index searches that errored and returned no results (e.g. a dimension mismatch before the next reconcile heals it). The nlq profile has no in-profile fallback once the curated tool is offered, so this is a real failure."})
    (prometheus/gauge :metabase-entity-retrieval/index-documents
                      {:description "Number of documents in the library entity index, as of the last full reconcile."})
    (prometheus/gauge :metabase-entity-retrieval/index-entities

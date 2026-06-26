@@ -61,14 +61,15 @@
     (testing "retrieves nlq profile"
       (let [profile (profiles/get-profile :nlq)]
         (is (some? profile))
+        ;; the :name stays :nlq even when redirected to the fallback, so telemetry/recents are unaffected
         (is (= :nlq (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
-        ;; nlq prefers the curated library tool but carries a general-search fallback for when the
-        ;; library index is unavailable; capability filtering keeps exactly one at request time.
-        (is (contains? (tool-names profile) "retrieve_library_entities"))
+        ;; In tests the library index can't answer, so :nlq is transparently served the general-search
+        ;; fallback; the curated/fallback swap by availability is covered by nlq-data-discovery-fallback-test.
         (is (contains? (tool-names profile) "search"))
+        (is (not (contains? (tool-names profile) "retrieve_library_entities")))
         (is (contains? (tool-names profile) "construct_notebook_query"))))
     (testing "retrieves slackbot profile"
       (let [profile (profiles/get-profile :slackbot)]
@@ -160,13 +161,17 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "nlq matches embedding_next plus the curated library tool it prefers for discovery"
-    (let [tool-names  (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
-          embedding   (profiles/get-profile :embedding_next)
-          nlq         (profiles/get-profile :nlq)]
-      ;; nlq = embedding_next (which already carries the general `search` fallback) + retrieve_library_entities
-      (is (= (disj (tool-names nlq) "retrieve_library_entities")
-             (tool-names embedding)))))
+  (testing "nlq-fallback matches embedding_next's general search; curated nlq swaps that for the library tool"
+    (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
+          embedding  (tool-names (profiles/get-profile :embedding_next))
+          fallback   (tool-names (profiles/get-profile :nlq-fallback))
+          ;; force the curated nlq (no redirect) — get-profile :nlq otherwise falls back when the index can't answer
+          curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
+                       (tool-names (profiles/get-profile :nlq)))]
+      ;; the fallback profile is embedding_next's discovery surface (general `search`)
+      (is (= fallback embedding))
+      ;; the curated profile is the same set with retrieve_library_entities in place of `search`
+      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities"))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "navigate_user is excluded without the capability"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]

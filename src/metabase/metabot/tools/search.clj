@@ -545,17 +545,6 @@
   [args :- nlq-search-schema]
   (do-search "NLQ search" (sorted-set "metric" "model" "question" "table") {:profile-id "nlq"} args))
 
-;; Same impl as nlq-search-tool, but gated to :feature-no-entity-retrieval so the :nlq profile keeps a
-;; data-discovery tool when the curated library index is unavailable (no pgvector / feature off). When the
-;; index IS available the profile uses retrieve_library_entities instead and this is filtered out.
-(mu/defn ^{:tool-name    "search"
-           :scope        scope/agent-search
-           :capabilities #{:feature-no-entity-retrieval}}
-  nlq-search-fallback-tool
-  "Find NLQ-queryable data sources (tables, models, metrics, saved questions) by topic, to build a visualization from."
-  [args :- nlq-search-schema]
-  (do-search "NLQ search" (sorted-set "metric" "model" "question" "table") {:profile-id "nlq"} args))
-
 (def ^:private transform-search-schema
   [:map {:closed true}
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]

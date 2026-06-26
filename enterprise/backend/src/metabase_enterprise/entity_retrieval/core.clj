@@ -44,13 +44,27 @@
   (and (pgvector-configured?)
        (premium-features/has-feature? :semantic-search)))
 
-;; OSS-callable surface of `available?` (it does its own feature check, so the shim runs unconditionally
-;; rather than gating on :feature — the OSS fallback `false` already covers the unlicensed case).
+(defn- index-populated?
+  "Whether the library entity index holds at least one document — a cheap existence probe.
+  A missing table (before the first reconcile) or any query error reads as empty, so a configured-but-not-
+  yet-built (or transiently broken) index counts as unavailable."
+  []
+  (boolean
+   (try
+     (seq (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
+                         [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))
+     (catch SQLException _ false))))
+
+;; OSS-callable surface used to decide whether to OFFER the curated retrieve_library_entities tool: it must
+;; be able to actually answer, so beyond config + license the index has to be populated. (The write/reconcile
+;; path gates on the looser [[available?]] instead, so an empty index can still be built.) Runs
+;; unconditionally rather than gating on :feature — the OSS fallback `false` already covers the unlicensed case.
 (defenterprise entity-retrieval-available?
-  "EE impl: delegate to [[available?]] (pgvector configured + semantic-search licensed)."
+  "EE impl: pgvector configured + semantic-search licensed AND the index is populated, so the curated tool
+  is offered only when it can serve a query (otherwise the agent gets the general-search fallback)."
   :feature :none
   []
-  (available?))
+  (and (available?) (index-populated?)))
 
 ;;; ----------------------------------------- Reconcile scheduling -----------------------------------------
 ;;;
@@ -255,7 +269,7 @@
                         ;; to no results. 42P01 during boot is the expected not-yet-created state, so it
                         ;; stays quiet; anything else is worth a warning + metric.
                         (when-not (= "42P01" (.getSQLState e))
-                          (analytics/inc! :metabase-entity-retrieval/search-degraded)
+                          (analytics/inc! :metabase-entity-retrieval/search-failed)
                           (log/warnf e "library entity index query failed (sqlstate %s); returning no results"
                                      (.getSQLState e)))
                         []))]

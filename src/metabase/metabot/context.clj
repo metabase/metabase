@@ -266,8 +266,9 @@
 (def ^:private profiles-excluding-recent-views
   "Profiles for which recent views are never injected. The nlq profile discovers data through the curated
   library tool rather than general instance search, so arbitrary recently-viewed items (which may not be
-  curated) would undermine that guarantee."
-  #{:nlq})
+  curated) would undermine that guarantee. (A :nlq request served the general-search fallback keeps the
+  external profile-id :nlq, so this is reached via :nlq; :nlq-fallback is listed for a direct request.)"
+  #{:nlq :nlq-fallback})
 
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
