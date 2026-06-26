@@ -181,18 +181,26 @@ function measureChunkedSdk() {
     );
   }
   const bootstrapInitial = entrypointJsAssets(stats, "embedding-sdk-bootstrap", "assets") || [];
-  const chunkedReachable = entrypointJsAssets(stats, "embedding-sdk-chunked", "reachableAssets") || chunkedInitial;
+  const chunkedReachableAssets = entrypointJsAssets(stats, "embedding-sdk-chunked", "reachableAssets");
+  const chunkedReachable = chunkedReachableAssets || chunkedInitial;
   const bootstrapReachable = entrypointJsAssets(stats, "embedding-sdk-bootstrap", "reachableAssets") || bootstrapInitial;
 
   const notRuntime = name => !SDK_RUNTIME_RE.test(name);
   const initialNames = unique([...bootstrapInitial, ...chunkedInitial]).filter(notRuntime);
   const reachableNames = unique([...bootstrapReachable, ...chunkedReachable]).filter(notRuntime);
 
+  // "total" includes the async chunks only when the stats carry the reachable
+  // chunk graph (reachableAssets) AND those chunks are loadable at runtime.
+  // A base ref built before the reachableAssets enrichment has no graph, so its
+  // "total" collapses to "initial". Flag this so the comparison never measures a
+  // reachable total against a collapsed one (an apples-to-oranges ~30% phantom).
+  const includesAsyncChunks = chunkedReachableAssets != null && SDK_ASYNC_CHUNKS_LOADABLE;
+
   const initial = sizeOf(assetFiles(absRoot, initialNames));
-  const total = SDK_ASYNC_CHUNKS_LOADABLE ? sizeOf(assetFiles(absRoot, reachableNames)) : initial;
+  const total = includesAsyncChunks ? sizeOf(assetFiles(absRoot, reachableNames)) : initial;
   return [
     { bundle: "embedding-sdk-chunked", kind: "initial", ...initial },
-    { bundle: "embedding-sdk-chunked", kind: "total", ...total },
+    { bundle: "embedding-sdk-chunked", kind: "total", reachable: includesAsyncChunks, ...total },
   ];
 }
 

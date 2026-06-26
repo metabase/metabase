@@ -21,6 +21,15 @@ const setOutput = (name, value) => {
   }
 };
 
+// Treat the gate as non-actionable: report stable so no regression comment is
+// posted, mirroring the shell skip() for missing artifacts.
+const skip = reason => {
+  console.log(`::notice::Embedding SDK bundle-size gate skipped: ${reason}`);
+  setOutput("status", "stable");
+  setOutput("size_change_percent", "0");
+  process.exit(0);
+};
+
 const mb = bytes => (bytes / 1024 / 1024).toFixed(2);
 const percentOf = (currentBytes, baseBytes) =>
   baseBytes ? Math.trunc(((currentBytes - baseBytes) * 100) / baseBytes) : 0;
@@ -47,6 +56,18 @@ const gateBase = pick(base, "embedding-sdk-chunked", "total");
 if (!gateCurrent || !gateBase || !gateBase.gzipBytes) {
   console.error("::error::Could not find embedding-sdk-chunked total (gzip) in both builds");
   process.exit(1);
+}
+
+// Both sides must measure "total" the same way. A base ref built before the
+// reachableAssets enrichment collapses its total to the initial set, so comparing
+// it against the current reachable total reports a phantom jump (~30%). Skip until
+// the base ref also carries reachable stats (i.e. once this change is on the base).
+if (Boolean(gateCurrent.reachable) !== Boolean(gateBase.reachable)) {
+  skip(
+    `chunked "total" measured differently on each side ` +
+      `(current reachable=${Boolean(gateCurrent.reachable)}, base reachable=${Boolean(gateBase.reachable)}); ` +
+      `the base ref predates the reachable-chunk stats. Resolves once this change is on the base ref.`,
+  );
 }
 
 const percent = percentOf(gateCurrent.gzipBytes, gateBase.gzipBytes);
