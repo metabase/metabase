@@ -4,10 +4,17 @@ import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { type LibraryFormats, defineConfig, loadEnv } from "vite";
 import {
+  DATA_APP_ENTRY,
+  DATA_APP_EXTERNALS,
+  DATA_APP_FACTORY_GLOBAL,
+  DATA_APP_GLOBALS,
+} from "./config/data-app-bundle";
+import {
   buildDevConnectSrcCsp,
   readAllowedHosts,
 } from "./config/dev-connect-src";
 import { findEnvRoot } from "./config/env-root";
+import { dataAppSandboxDevPlugin } from "./config/sandbox-dev-plugin";
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,30 +32,20 @@ export default defineConfig(({ command, mode }) => {
     envDir,
     // use DATA_APP_ prefixed variables only for dev mode
     envPrefix: command === "serve" ? "DATA_APP_" : [],
-    plugins: [react()],
+    plugins: [react(), dataAppSandboxDevPlugin(allowedHosts)],
     build: {
       outDir: "dist",
       emptyOutDir: true,
       lib: {
-        entry: "src/index.tsx",
+        entry: DATA_APP_ENTRY,
         formats: ["iife"] satisfies LibraryFormats[],
         fileName: () => "index.js",
-        name: "__dataAppFactory__",
+        name: DATA_APP_FACTORY_GLOBAL,
       },
       rollupOptions: {
-        external: [
-          "react",
-          "react/jsx-runtime",
-          "@metabase/embedding-sdk-react",
-          "@metabase/embedding-sdk-react/data-app",
-        ],
+        external: DATA_APP_EXTERNALS,
         output: {
-          globals: {
-            react: "React",
-            "react/jsx-runtime": "__react_jsx_runtime__",
-            "@metabase/embedding-sdk-react": "__metabase_sdk__",
-            "@metabase/embedding-sdk-react/data-app": "__metabase_data_app__",
-          },
+          globals: DATA_APP_GLOBALS,
         },
       },
     },

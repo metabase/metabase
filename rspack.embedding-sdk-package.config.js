@@ -8,6 +8,7 @@ const {
   OPTIMIZATION_CONFIG,
 } = require("./frontend/build/embedding-sdk/rspack/shared");
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
+const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   EXTERNAL_DEPENDENCIES,
 } = require("./frontend/build/embedding-sdk/constants/external-dependencies");
@@ -39,6 +40,7 @@ const baseConfig = {
   entry: {
     main: "./index.ts",
     "data-app": "./data-app.ts",
+    "data-app-dev": "./data-app-dev.ts",
   },
 
   output: {
@@ -68,6 +70,19 @@ const baseConfig = {
           },
         ],
       },
+      {
+        // The published package has no separate stylesheet for consumers to
+        // import, and components like the dev toolbar must render standalone
+        // before the SDK bundle (and its CSS) loads. style-loader injects the
+        // CSS modules at runtime so they ship inside the JS bundle itself.
+        test: /\.css$/,
+        use: [
+          { loader: "style-loader" },
+          { loader: "css-loader", options: CSS_CONFIG },
+          { loader: "postcss-loader" },
+        ],
+        type: "javascript/auto",
+      },
     ],
   },
 
@@ -82,7 +97,7 @@ const baseConfig = {
       ...getBuildInfoValues({ version: getSdkPackageVersionFromPackageJson() }),
     }),
     new rspack.optimize.LimitChunkCountPlugin({
-      maxChunks: 2,
+      maxChunks: 3,
     }),
     new rspack.BannerPlugin(getBannerOptions(SDK_PACKAGE_BANNER)),
   ].filter(Boolean),
@@ -94,6 +109,7 @@ const esmConfig = {
   entry: {
     "main.esm": "./index.ts",
     "data-app.esm": "./data-app.ts",
+    "data-app-dev.esm": "./data-app-dev.ts",
   },
 
   output: {
