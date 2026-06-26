@@ -252,8 +252,7 @@
 
 (defn- audit-db-in-source-state?
   "True when audit tables are stuck at the postgres \"source\" schema (`public`) on a non-postgres host —
-   the half-applied state left by an interrupted `adjust-audit-db-to-host!`. Used to force a reload even
-   when `last-analytics-checksum` already matches (GHY-3974 Mode B)."
+   the half-applied state left by an interrupted `adjust-audit-db-to-host!`."
   [audit-db-id]
   (and (not= :postgres (mdb/db-type))
        (t2/exists? :model/Table :db_id audit-db-id :schema "public")))
@@ -364,13 +363,12 @@
     [(u/lower-case-en table-name) "public"]))
 
 (defn- reconcile-audit-db-duplicates!
-  "Collapse duplicate `metabase_table` rows for the same audit view into a single active row at the
-   host-canonical name/schema (GHY-3974 Mode A). For each same-name group with more than one row, keep the
-   row dependent content points at (else the active row, else the lowest id), repoint stray
-   `report_card.table_id` references to it, normalize it to the host-canonical name/schema, and delete the
-   orphans. Schema is derived from the host engine — not the surviving row — so a duplicate left at the
-   postgres \"source\" schema (Mode B masking Mode A) is also corrected. Idempotent: a no-op when there
-   are no duplicates."
+  "Collapse duplicate `metabase_table` rows for the same audit view into a single active row at the host-canonical
+  name/schema.
+
+  Idempotent: a no-op when there are no duplicates.
+
+  Dedupe by choosing the row other content points at, otherwise the active row, otherwise the lowest id."
   [audit-db-id]
   (let [groups (->> (t2/select [:model/Table :id :name :schema :active] :db_id audit-db-id)
                     (group-by (comp u/lower-case-en :name))
@@ -406,10 +404,10 @@
   []
   (u/prog1 (maybe-install-audit-db!)
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-      ;; GHY-3974 1b: serialize the load+adjust+sync+reconcile across nodes so a rolling upgrade can't run a
-      ;; sync against a half-adjusted schema (`with-duplicate-ops-prevented` is per-process only). The sync
-      ;; runs synchronously inside the lock for this reason. If another node already holds the lock it is
-      ;; doing this same work, so we skip rather than fail the boot.
+      ;; serialize the load+adjust+sync+reconcile across nodes so a rolling upgrade can't run a sync against a
+      ;; half-adjusted schema (`with-duplicate-ops-prevented` is per-process only). The sync runs synchronously inside
+      ;; the lock for this reason. If another node already holds the lock it is doing this same work, so we skip
+      ;; rather than fail the boot.
       (try
         (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 30}
           ((sync-util/with-duplicate-ops-prevented
