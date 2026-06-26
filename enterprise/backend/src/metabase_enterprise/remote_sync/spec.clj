@@ -1176,10 +1176,9 @@
   "`exportable-entities` in chunk form: a seq of `{:model_type model :rows [{:model_type model :model_id id} ...]}`,
   one chunk per model."
   []
-  (map (fn [[model ids]]
-         {:model_type model
-          :rows       (mapv (fn [id] {:model_type model :model_id id}) ids)})
-       (exportable-entities)))
+  (for [[model ids] (exportable-entities)]
+    {:model_type model
+     :rows       (mapv (fn [id] {:model_type model :model_id id}) ids)}))
 
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
