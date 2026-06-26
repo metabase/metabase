@@ -238,7 +238,7 @@
                      :database_id :database_name :portable_entity_id
                      :base_table_id :base_table_name :base_table_portable_fk]))))
 
-(declare related-tables)
+(declare ^:private related-tables)
 
 (def ^:private max-related-tables
   "Maximum number of FK-related tables to expand when building entity context for the LLM.
@@ -343,7 +343,7 @@
          ;; sort for a deterministic selection when we cap, so the same tables are kept
          sort)))
 
-(defn related-tables
+(defn- related-tables
   "Context about tables related to `query` via a foreign key, as the entity-detail result keys callers merge in.
 
   Each distinct FK path (a `[table-id fk-field-id]` pair) is a separate related table, so the same table reachable
