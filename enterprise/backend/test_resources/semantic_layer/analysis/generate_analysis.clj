@@ -4,9 +4,14 @@
   Produces sample_pairs and cluster analysis (v2) for every (model × text-type × catalog ×
   threshold) combination, writing to the structured output directory.
 
-  Run from a dev REPL (the `:dev` alias puts `test_resources` and the EE sources on the classpath,
-  so the sibling `semantic-layer.analysis.*` namespaces — and the data-complexity-score code they
-  use — resolve):
+  Run from a dev REPL that has the EE sources on the classpath (so the
+  `metabase-enterprise.data-complexity-score.*` code the sibling scripts use resolves — e.g. the
+  standard dev setup plus the `:ee` alias). `enterprise/backend/test_resources` is NOT on any deps
+  classpath, so the sibling `semantic-layer.analysis.*` namespaces can't be required from the
+  classpath — `load-file` them first (that defines their namespaces, which then satisfy this
+  script's `:require`), then load this one:
+    (load-file \"enterprise/backend/test_resources/semantic_layer/analysis/cluster_analysis_v2.clj\")
+    (load-file \"enterprise/backend/test_resources/semantic_layer/analysis/sample_pairs.clj\")
     (load-file \"enterprise/backend/test_resources/semantic_layer/analysis/generate_analysis.clj\")
     (semantic-layer.analysis.generate-analysis/generate-all!
       {:dump-dir \"enterprise/backend/test_resources/semantic_layer/appdb_dump\"})"
