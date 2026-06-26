@@ -323,7 +323,7 @@
   The FK paths that become [[related-tables]]. Each pair means \"`fk-field-id` points at `target-table-id`\", so a
   table reachable through several FKs appears once per FK.
 
-  This deliberately does NOT `:include-implicitly-joinable?` when calling `lib/visibile-columns` to find related
+  This deliberately does NOT `:include-implicitly-joinable?` when calling `lib/visible-columns` to find related
   tables: that fetches and caches the full column set of every FK-target table, even though we only
   expand [[max-related-tables]] of them (metabase#76493). Instead we read the source table's own FK columns and do a
   single bulk lookup of just the target fields (not their sibling columns) to map each FK to its table."
