@@ -1,4 +1,3 @@
-import { useClickOutside } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -18,34 +17,19 @@ interface DataAppLayoutProps {
   children: ReactNode;
 }
 
-/**
- * Full-page chrome for a data app. The app itself (an iframe) fills the whole
- * viewport; a slim panel peeks from the top edge and slides down on hover,
- * giving a way back to the admin list and a selector to switch between apps.
- */
 export function DataAppLayout({ params, children }: DataAppLayoutProps) {
   const { name } = params;
   const dispatch = useDispatch();
 
   const [hovered, setHovered] = useState(false);
-  // While the app selector's dropdown is open we pin the panel down, so it stays
-  // put even if the cursor drifts off the panel mid-interaction. The dropdown is
-  // controlled so we can also force it shut — e.g. on a click-outside or when
-  // focus moves into the data-app iframe.
   const [selectOpened, setSelectOpened] = useState(false);
 
-  // The panel is up only when both are false, so it can never retract while the
-  // selector is still open: when it flies back, the selector is already closed.
   const expanded = hovered || selectOpened;
 
   const collapse = useCallback(() => {
     setHovered(false);
     setSelectOpened(false);
   }, []);
-
-  // Click-outside within this document: anything but the toolbar (the dropdown
-  // is rendered inside it, so its options count as inside) collapses it.
-  const zoneRef = useClickOutside(collapse);
 
   // A click inside the data-app iframe never reaches this document, so the
   // click-outside above can't see it. Focus moving into the iframe blurs the top
@@ -56,7 +40,9 @@ export function DataAppLayout({ params, children }: DataAppLayoutProps) {
         collapse();
       }
     };
+
     window.addEventListener("blur", handleWindowBlur);
+
     return () => window.removeEventListener("blur", handleWindowBlur);
   }, [collapse]);
 
@@ -83,7 +69,6 @@ export function DataAppLayout({ params, children }: DataAppLayoutProps) {
   return (
     <Box className={S.root}>
       <div
-        ref={zoneRef}
         className={cx(S.zone, { [S.expanded]: expanded })}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
