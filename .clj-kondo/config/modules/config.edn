@@ -194,6 +194,13 @@
            models
            util}}
 
+  ai-tracing
+  {:team "Metabot"
+   :api  #{metabase.ai-tracing.core}
+   :uses #{settings
+           tracing
+           util}}
+
   analytics
   {:team "UX West"
    :api  #{metabase.analytics.api
@@ -1299,6 +1306,7 @@
               slackbot}
    :uses    #{activity-feed
               agent-lib
+              ai-tracing
               analytics
               analytics-interface
               api
