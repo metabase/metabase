@@ -106,33 +106,34 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- table-override-fn
-  "Build the `f` for `transforming-metadata-provider`. `id->override` maps a
+  "Build the `f` for `transforming-metadata-provider`. `id->override-map` maps a
   table id to the `{:name :schema}` overrides to merge onto its `:metadata/table`.
   All non-table metadata passes through untouched."
-  [id->override]
+  [id->override-map]
   (fn [{metadata-type :lib/type} results]
     (if (= metadata-type :metadata/table)
-      (mapv (fn [t] (merge t (get id->override (:id t)))) results)
+      (mapv (fn [t] (merge t (get id->override-map (:id t)))) results)
       results)))
 
-(defn- override-provider
+(defn override-provider
   "Wrap the BASE application-database provider for `db-id` with a
   `transforming-metadata-provider` that overrides each mapped input table's
   `:name`/`:schema` to its scratch spec. The caller binds this provider exactly
   once via `qp.store/with-metadata-provider`."
-  [db-id id->override]
+  [db-id id->override-map]
   (lib.metadata/transforming-metadata-provider
-   (table-override-fn id->override)
+   (table-override-fn id->override-map)
    (lib-be/application-database-metadata-provider db-id)))
 
-(defn- id->override
+(defn id->override
   "Build `{table-id → {:name :schema}}` from the scratch `mapping` and the
-  required `input-tables` (which carry both `:id` and the real `:schema`/`:name`).
-  Keyed by table id so the override matches on `(:id t)`, not name/schema pairs."
-  ;; V1 limitation: MBQL nodes reading an upstream scratch output lack a synced
-  ;; Table id (the upstream output was never materialized), so id->override cannot
-  ;; build an entry for it. The verify guards catch the dangling ref and throw
-  ;; ::cannot-test-run. Native chains do not have this issue.
+  `input-tables` (which carry both `:id` and the real `:schema`/`:name`).
+  Keyed by table id so the override matches on `(:id t)`, not name/schema pairs.
+
+  V1 limitation: MBQL nodes reading an upstream scratch output lack a synced
+  Table id (the upstream output was never materialized), so `id->override` cannot
+  build an entry for it. The verify guards catch the dangling ref and throw
+  `::cannot-test-run`. Native chains do not have this issue."
   [input-tables mapping]
   (into {}
         (keep (fn [{:keys [id schema name]}]

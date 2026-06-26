@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.query-processor.core :as qp]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -15,6 +16,11 @@
    [metabase.transforms.test-run.scratch :as scratch]))
 
 (set! *warn-on-reflection* true)
+
+;; scratch/seed! and scratch/cleanup! assert a :transform connection context. In
+;; production the orchestrator wraps the whole run in with-transform-connection;
+;; these tests exercise seed!/cleanup! directly, so establish the same context.
+(use-fixtures :each (fn [thunk] (driver.conn/with-transform-connection (thunk))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Naming: encode + parse round-trip
