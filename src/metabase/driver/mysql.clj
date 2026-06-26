@@ -1465,9 +1465,9 @@
         target    (apply sql.u/quote-name :mysql :table (if (not-empty schema) [schema table] [table]))
         cols      (str/join ", " (map #(mysql-index-column-sql (not fulltext?) %) columns))]
     (format "CREATE %sINDEX %s ON %s (%s)"
-            (cond fulltext?            "FULLTEXT "
-                  (and (not fulltext?) unique) "UNIQUE "
-                  :else                "")
+            (cond fulltext? "FULLTEXT "
+                  unique    "UNIQUE "
+                  :else     "")
             (sql.u/quote-name :mysql :field index-name)
             target
             cols)))
