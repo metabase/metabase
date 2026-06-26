@@ -247,7 +247,7 @@
   schema, an unbounded FK fan-out fetches an unbounded number of columns that are cached for the request's lifetime,
   exhausting the heap (metabase#76493). The LLM context window can't usefully hold hundreds of related tables anyway,
   so we limited the number of tables for which we provide column metadata."
-  20)
+  10)
 
 (def ^:private max-related-table-truncated-refs
   "Maximum number of FK-related tables to list by id/name in the truncation list (see [[related-tables]]).
