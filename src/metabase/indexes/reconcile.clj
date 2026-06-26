@@ -13,7 +13,7 @@
 
 (def ^:private unnamed-inline-kinds
   "Index kinds with no physical name (warehouse `:name` is nil); matched by kind + key columns instead."
-  #{:sortkey :order-by :distkey})
+  #{:sortkey :order-by :distkey :clustering})
 
 (mr/def ::match-key
   "Join key for reconciling a managed request with a warehouse index: a `:name` string for named kinds, else a
