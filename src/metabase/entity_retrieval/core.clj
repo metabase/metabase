@@ -20,16 +20,43 @@
   library-entity-keys
   search])
 
+(def card-entity-types
+  "osi_ai_context `entity_type` strings that all denote a Card: `question`/`metric`/`model` are
+  interchangeable labels for the same underlying Card.
+  They collapse to one [[entity-class]], so a card's index docs and curated `ai_context` stay matched
+  across a relabel between these types."
+  #{"question" "metric" "model"})
+
+(defn entity-class
+  "Equivalence class `[class entity-local-id]` for an entity ref.
+  Card flavors collapse to `::card`; any other entity_type stays itself, so a same-id entity of a
+  different type is never conflated."
+  [entity-type entity-local-id]
+  [(if (card-entity-types entity-type) ::card entity-type) entity-local-id])
+
 (defn ai-context-instructions
   "Map of `[entity-type entity-local-id] -> instructions` for the given entity refs (search-result shape
   `{:model :id}`, where `:model` is the entity_type), read live from `osi_ai_context`.
   Refs with no row, or with blank instructions, are omitted.
-  Reading here (rather than storing in the index) means the agent always sees the current text."
+  Reading here (rather than storing in the index) means the agent always sees the current text.
+  The lookup matches by entity class, so a card's instructions are found even when its current type (the
+  ref's) differs from the type it was curated under (a card-flavor relabel)."
   [entity-refs]
   (if-let [wanted (seq (into #{} (map (juxt :model :id)) entity-refs))]
-    ;; row-value IN isn't portable across our app DBs, so match the wanted (type, id) pairs with OR-of-ANDs.
-    (let [clause (into [:or] (map (fn [[t id]] [:and [:= :entity_type t] [:= :entity_local_id id]])) wanted)]
-      (into {} (remove (comp str/blank? val))
-            (t2/select-fn->fn (juxt :entity_type :entity_local_id) (comp :instructions :ai_context)
-                              :model/OsiAiContext {:where clause})))
+    ;; row-value IN isn't portable across our app DBs, so match the wanted (type, id) pairs with OR-of-ANDs;
+    ;; a card ref matches any card-type row for that id.
+    (let [clause   (into [:or]
+                         (map (fn [[t id]]
+                                [:and
+                                 (if (card-entity-types t)
+                                   [:in :entity_type card-entity-types]
+                                   [:= :entity_type t])
+                                 [:= :entity_local_id id]]))
+                         wanted)
+          by-class (into {} (remove (comp str/blank? val))
+                         (t2/select-fn->fn #(entity-class (:entity_type %) (:entity_local_id %))
+                                           (comp :instructions :ai_context)
+                                           :model/OsiAiContext {:where clause}))]
+      ;; key the result back by the caller's original [type id] ref
+      (into {} (keep (fn [[t id]] (when-let [instr (by-class (entity-class t id))] [[t id] instr]))) wanted))
     {}))

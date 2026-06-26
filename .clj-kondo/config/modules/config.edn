@@ -3171,6 +3171,7 @@
    :api  #{metabase-enterprise.entity-retrieval.init}
    :uses #{analytics-interface
            collections
+           entity-retrieval
            premium-features
            task
            util

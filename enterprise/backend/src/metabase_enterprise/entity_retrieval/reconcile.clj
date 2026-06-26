@@ -28,6 +28,7 @@
    [metabase-enterprise.entity-retrieval.index-table :as index-table]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.collections.core :as collections]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -143,10 +144,14 @@
   [entity-type entity-local-id]
   (when-let [lib (collections/library-collection)]
     (let [lib-ids (library-ids lib)]
-      (case entity-type
-        ("metric" "model") (first (library-cards lib-ids entity-local-id))
-        "table"            (first (library-tables lib-ids entity-local-id))
-        ("measure" "segment")
+      (cond
+        (entity-retrieval/card-entity-types entity-type)
+        (first (library-cards lib-ids entity-local-id))
+
+        (= "table" entity-type)
+        (first (library-tables lib-ids entity-local-id))
+
+        (#{"measure" "segment"} entity-type)
         ;; A measure/segment is a member only when its parent table is a current library table.
         (when-let [table-id (t2/select-one-fn :table_id
                                               (if (= entity-type "measure") :model/Measure :model/Segment)
@@ -155,7 +160,8 @@
             (first (if (= entity-type "measure")
                      (library-measures [table-id] entity-local-id)
                      (library-segments [table-id] entity-local-id)))))
-        nil))))
+
+        :else nil))))
 
 (defn library-entity-keys
   "Set of `[entity_type entity_local_id]` for every entity currently in the library.
@@ -164,10 +170,21 @@
   []
   (into #{} (map (juxt :entity_type :entity_local_id)) (library-entities)))
 
+(defn- entity-class
+  "Map-taking adapter over [[entity-retrieval/entity-class]] for the `{:entity_type :entity_local_id}` maps
+  this namespace passes around (rows, docs, library entities).
+  Card labels collapse to one class so a card's desired docs, stored docs, and curated `ai_context` stay
+  matched across a relabel; table/measure/segment stay distinct."
+  [{:keys [entity_type entity_local_id]}]
+  (entity-retrieval/entity-class entity_type entity_local_id))
+
 (defn- ai-context-by-entity
-  "Map of `[entity_type entity_local_id] -> ai_context` for every `osi_ai_context` row."
+  "Map of entity [[entity-class]] -> ai_context for every `osi_ai_context` row, so a card's curated context
+  is found under its class even when the card's current type differs from the one it was curated under.
+  (A card with both a metric and a model row — created across a flip — collapses last-wins; the API keeps
+  one row per entity in the common case.)"
   []
-  (u/index-by (juxt :entity_type :entity_local_id) :ai_context
+  (u/index-by entity-class :ai_context
               (t2/select [:model/OsiAiContext :entity_type :entity_local_id :ai_context])))
 
 (defn- dedup-by-doc-id [docs]
@@ -180,8 +197,7 @@
   []
   (let [ac-by-entity (ai-context-by-entity)]
     (dedup-by-doc-id
-     (mapcat (fn [{:keys [entity_type entity_local_id] :as ent}]
-               (entity->docs ent (get ac-by-entity [entity_type entity_local_id])))
+     (mapcat (fn [ent] (entity->docs ent (get ac-by-entity (entity-class ent))))
              (library-entities)))))
 
 (defn- entity-desired-docs
@@ -190,8 +206,13 @@
   GC. `entity-type` may be either Card label; membership resolves the canonical stored type."
   [entity-type entity-local-id]
   (if-let [member (library-entity entity-type entity-local-id)]
+    ;; Match ai_context by entity class, not exact type: a card relabelled between question/metric/model
+    ;; keeps its synonyms/examples regardless of which type-string the row was stored under.
     (let [ai-ctx (t2/select-one-fn :ai_context :model/OsiAiContext
-                                   :entity_type entity-type :entity_local_id entity-local-id)]
+                                   :entity_local_id entity-local-id
+                                   :entity_type (if (entity-retrieval/card-entity-types entity-type)
+                                                  [:in entity-retrieval/card-entity-types]
+                                                  entity-type))]
       (dedup-by-doc-id (entity->docs member ai-ctx)))
     []))
 
@@ -199,14 +220,6 @@
 ;;;
 ;;; All pgvector reads/writes take the locked connection (see [[with-reconcile-lock]]) so a whole run uses
 ;;; one connection — a pgvector pool of size 1 can't deadlock checking out a second.
-
-(defn- entity-class
-  "Equivalence class of a row's entity, used to match orphans to failed inserts and to scope a targeted
-  run's stored docs. Collapses a Card's interchangeable type labels (metric/model) so a type flip still
-  matches the same entity; table/measure/segment stay distinct, so a same-id entity of another type is
-  never confused."
-  [{:keys [entity_type entity_local_id]}]
-  [(if (#{"metric" "model"} entity_type) :card entity_type) entity_local_id])
 
 (defn- stored-docs
   "Map of `doc_id -> {:entity_type :entity_local_id}` for every row in the index."

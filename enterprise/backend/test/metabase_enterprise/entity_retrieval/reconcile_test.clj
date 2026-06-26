@@ -41,9 +41,10 @@
 
 (deftest entity-class-test
   (let [entity-class (var-get #'reconcile/entity-class)]
-    (testing "a Card's metric/model labels collapse to one class, so a type flip still matches"
+    (testing "a Card's question/metric/model labels collapse to one class, so a type flip still matches"
       (is (= (entity-class {:entity_type "metric" :entity_local_id 5})
-             (entity-class {:entity_type "model" :entity_local_id 5}))))
+             (entity-class {:entity_type "model" :entity_local_id 5})
+             (entity-class {:entity_type "question" :entity_local_id 5}))))
     (testing "a same-id entity of another type is a distinct class (no false-positive sparing)"
       (is (not= (entity-class {:entity_type "table" :entity_local_id 5})
                 (entity-class {:entity_type "metric" :entity_local_id 5})))
@@ -312,6 +313,28 @@
               (is (=? {:inserted 0 :deleted 2} (reconcile/reconcile-entity! ds (constantly model) "table" a-id)))
               (is (= {"name" 1 "description" 1} (frequencies (map :doc_type (docs-for ds "table" a-id))))
                   "the synonym docs are GC'd; name + description remain"))))))))
+
+(deftest ^:sequential reconcile!-keeps-ai-context-across-a-card-type-flip-test
+  (testing "a full reconcile matches ai_context by entity class, so relabelling a card keeps its synonyms"
+    (mt/with-premium-features #{:library :semantic-search}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{metrics :metrics}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id} {}
+                           :model/Card {card-id :id} {:type "metric" :collection_id (:id metrics)
+                                                      :name "Revenue" :database_id db-id}
+                           ;; ai_context curated while the card was a metric (stored under entity_type "metric")
+                           :model/OsiAiContext _ {:entity_type "metric" :entity_local_id card-id
+                                                  :ai_context {:synonyms ["sales" "turnover"]}}]
+              (reconcile/reconcile! ds (constantly model))
+              (is (= {"name" 1 "synonym" 2} (frequencies (map :doc_type (docs-for ds "metric" card-id))))
+                  "indexed under metric with both curated synonyms")
+              (testing "relabelling the card a model re-keys its docs but the curated synonyms survive"
+                (mt/with-temp-vals-in-db :model/Card card-id {:type "model"}
+                  (reconcile/reconcile! ds (constantly model))
+                  (is (empty? (docs-for ds "metric" card-id)) "stale metric-typed docs are GC'd")
+                  (is (= {"name" 1 "synonym" 2} (frequencies (map :doc_type (docs-for ds "model" card-id))))
+                      "the ai_context (stored under metric) is matched by class and kept, re-keyed under model"))))))))))
 
 (deftest ^:sequential library-entity-matches-library-entities-test
   (testing "library-entity (point lookup) agrees with library-entities (full scan) for members and non-members"
