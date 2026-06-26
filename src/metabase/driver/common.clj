@@ -161,7 +161,8 @@
 
 (def index-columns-field
   "Descriptor for the indexed columns."
-  {:name "columns" :display-name (deferred-tru "Columns") :type :columns :directions true :required true})
+  ;; :directions (per-column asc/desc) is off by default; only btree consumes it, so it opts in.
+  {:name "columns" :display-name (deferred-tru "Columns") :type :columns :required true})
 
 (def index-unique-field
   "Descriptor for the btree unique toggle."
