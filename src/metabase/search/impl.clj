@@ -198,6 +198,7 @@
         (dissoc
          :all-scores
          :dataset_query
+         :document
          :relevant-scores
          :collection_effective_ancestors
          :collection_id
@@ -272,6 +273,10 @@
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
    [:vector-search-strategy              {:optional true} [:maybe string?]]
+   [:vector-search-ef-search             {:optional true} [:maybe ms/PositiveInt]]
+   [:vector-search-max-scan-tuples       {:optional true} [:maybe ms/PositiveInt]]
+   [:vector-search-explain?              {:optional true} [:maybe boolean?]]
+   [:vector-search-force-index?          {:optional true} [:maybe boolean?]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
@@ -312,6 +317,10 @@
            offset
            search-engine
            vector-search-strategy
+           vector-search-ef-search
+           vector-search-max-scan-tuples
+           vector-search-explain?
+           vector-search-force-index?
            search-native-query
            search-string
            table-db-id
@@ -357,6 +366,10 @@
                  (some? limit)                               (assoc :limit-int limit)
                  (some? offset)                              (assoc :offset-int offset)
                  (not (str/blank? vector-search-strategy))    (assoc :vector-search-strategy (keyword vector-search-strategy))
+                 (some? vector-search-ef-search)             (assoc :vector-search-ef-search vector-search-ef-search)
+                 (some? vector-search-max-scan-tuples)       (assoc :vector-search-max-scan-tuples vector-search-max-scan-tuples)
+                 (some? vector-search-explain?)              (assoc :vector-search-explain? vector-search-explain?)
+                 (some? vector-search-force-index?)          (assoc :vector-search-force-index? vector-search-force-index?)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? curated)                             (assoc :curated? curated)

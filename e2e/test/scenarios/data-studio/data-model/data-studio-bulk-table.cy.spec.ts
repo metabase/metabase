@@ -324,6 +324,13 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.createLibrary();
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
+
+    cy.log(
+      "Expand the rows up front - we'll need them later for the assertion",
+    );
+    TablePicker.getDatabase("Writable Postgres12").should("be.visible").click();
+    cy.wait("@getSchema");
+
     TablePicker.getDatabase("Writable Postgres12")
       .find('input[type="checkbox"]')
       .check();
@@ -344,16 +351,9 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.modal().findByText("Publish these tables").click();
     cy.wait("@publishTables");
 
-    // While the database is selected the row click only toggles its expansion, which
-    // races the post-publish re-render and can collapse it. Deselect, then expand.
-    TablePicker.getDatabase("Writable Postgres12")
-      .find('input[type="checkbox"]')
-      .uncheck();
-    TablePicker.getDatabase("Writable Postgres12").click();
-    cy.wait("@getSchema");
-
     cy.findAllByTestId("tree-item")
       .filter('[data-type="table"]')
+      .should("have.length.greaterThan", 0)
       .each((table) => {
         cy.wrap(table)
           .findByTestId("table-owner")

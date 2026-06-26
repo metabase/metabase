@@ -515,6 +515,16 @@
       (catch Exception _ false))))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn table-indexes
+  "Map of index name -> pg_indexes indexdef for `table-name`; empty when the table does not exist."
+  [table-name]
+  (into {}
+        (map (juxt :indexname :indexdef))
+        (jdbc/execute! (semantic.env/get-pgvector-datasource!)
+                       ["SELECT indexname, indexdef FROM pg_indexes WHERE tablename = ?" (name table-name)]
+                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn index-relfilenode
   "Return the on-disk relfilenode for the index named `index-name`, or nil if it doesn't exist. A stable
   relfilenode across two `CREATE INDEX IF NOT EXISTS` calls proves the second did no work: had it dropped,
