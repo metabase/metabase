@@ -103,83 +103,45 @@
         (assoc new-name new-tag))))
 
 (defn- unify-template-tags
-  "Reconcile `query-pair` (tags parsed from the current query text) with `existing-pair` (the tags
-  previously saved on the stage). Both arguments and the return value are `{:tags <map> :order <vec>}`
-  pairs.
+  "Reconcile the tags parsed from the current query text (`query-tags`) with the tags previously saved on the
+  stage (`existing-tags`), returning just the merged tag map. Order is handled separately, by
+  [[metabase.lib.template-tags/reconcile-template-tags-order]]; see #5136.
 
-  - When exactly one tag was removed and exactly one was added, treat it as a rename, preserving the
-    old tag's position (and thus its id-derived identity).
-  - Otherwise, drop removed tags and append newly-added ones at the end, in query-text order.
-
-  The returned `:order` is always a permutation of the keys of `:tags`."
-  [query-pair existing-pair]
-  (let [{query-tags :tags, query-order :order} query-pair
-        {existing-tags :tags, existing-order :order} existing-pair
-        query-names    (set (keys query-tags))
+  - When exactly one tag was removed and exactly one was added, treat it as a rename, preserving the old
+    tag's id and (default) display-name.
+  - Otherwise, drop removed tags and add new ones."
+  [query-tags existing-tags]
+  (let [query-names    (set (keys query-tags))
         existing-names (set (keys existing-tags))
         new-names      (set/difference query-names existing-names)
-        old-names      (set/difference existing-names query-names)]
-    (if (and (= (count new-names) 1) (= (count old-names) 1))
-      ;; A single rename: keep the existing tag's position, just swap the name.
-      (let [old-name (first old-names)
-            new-name (first new-names)
-            tags     (rename-template-tag existing-tags old-name new-name)
-            order    (mapv #(if (= % old-name) new-name %)
-                           (or existing-order (keys existing-tags)))]
-        {:tags (update-vals tags finish-tag) :order order})
-      ;; Add and/or drop. Existing tags keep their positions; new tags are appended in query order.
-      (let [kept-order  (filterv (complement old-names) (or existing-order (keys existing-tags)))
-            added-order (filterv new-names (or query-order (keys query-tags)))
-            tags        (merge (m/remove-keys old-names existing-tags)
-                               (m/filter-keys new-names query-tags))]
-        {:tags (update-vals tags finish-tag) :order (into kept-order added-order)}))))
+        old-names      (set/difference existing-names query-names)
+        tags           (if (and (= (count new-names) 1) (= (count old-names) 1))
+                         (rename-template-tag existing-tags (first old-names) (first new-names))
+                         (merge (m/remove-keys old-names existing-tags)
+                                (m/filter-keys new-names query-tags)))]
+    (update-vals tags finish-tag)))
+
+(defn- snippet-names [template-tags]
+  (keep #(when (= (:type %) :snippet)
+           (:snippet-name %))
+        (vals template-tags)))
 
 (defn- extract-snippet-tags
-  "Expand snippet references found in `direct` (a `{:tags :order}` pair). Returns a new pair with any
-  template tags defined inside referenced snippets merged in.
-
-  Preserves the precedence of the previous implementation: snippet-defined tags override direct tags with
-  the same name (as `(merge direct snippet)` did), and nested snippets are expanded breadth-first. Tag-name
-  order is preserved: direct tags keep their positions, and newly-discovered snippet tags are appended in
-  discovery order."
-  [metadata-providerable {:keys [tags] :as direct}]
-  (let [direct-order (or (:order direct) (into [] (keys tags)))
-        ;; initial snippet *names* to expand, in direct-tag order
-        init-queue (into []
-                         (keep #(when (= (:type (tags %)) :snippet)
-                                  (:snippet-name (tags %))))
-                         direct-order)]
-    (loop [queue         init-queue  ; FIFO vector of snippet *names* still to expand
-           seen-snippets #{}          ; snippet names already expanded
-           out-tags      tags
-           out-order     direct-order
-           order-set     (set direct-order)]
-      (if (empty? queue)
-        {:tags out-tags :order out-order}
-        (let [snippet-name (first queue)
-              queue        (subvec queue 1)]
-          (if (contains? seen-snippets snippet-name)
-            (recur queue seen-snippets out-tags out-order order-set)
-            (let [snippet-tags   (:template-tags
-                                  (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name))
-                  seen-snippets  (conj seen-snippets snippet-name)
-                  {:keys [queue out-tags out-order order-set]
-                   :as   _acc} (reduce
-                                (fn [{:keys [queue out-tags out-order order-set]} [nm tag]]
-                                  (let [queue'    (if (= (:type tag) :snippet)
-                                                    (conj queue (:snippet-name tag))
-                                                    queue)
-                                        ;; snippet-defined tags override earlier definitions, matching prior
-                                        ;; `(merge direct snippet)` precedence.
-                                        out-tags' (assoc out-tags nm tag)
-                                        new?      (not (contains? order-set nm))]
-                                    {:queue     queue'
-                                     :out-tags  out-tags'
-                                     :out-order (if new? (conj out-order nm) out-order)
-                                     :order-set (if new? (conj order-set nm) order-set)}))
-                                {:queue queue :out-tags out-tags :out-order out-order :order-set order-set}
-                                (seq snippet-tags))]
-              (recur queue seen-snippets out-tags out-order order-set))))))))
+  "Expand snippet references found in `template-tags` (a tag map), returning the merged map with any tags
+  defined inside referenced snippets folded in (snippet-defined tags override direct tags with the same
+  name, and nested snippets are expanded breadth-first). Order is handled separately; see #5136."
+  [metadata-providerable template-tags]
+  (loop [[snippet-name & more-snippet-names] (snippet-names template-tags)
+         seen #{}
+         tags {}]
+    (cond
+      (nil? snippet-name) (merge template-tags tags)
+      (seen snippet-name) (recur more-snippet-names seen tags)
+      :else (let [snippet-tags (->> (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name)
+                                    :template-tags)]
+              (recur (into more-snippet-names (snippet-names snippet-tags))
+                     (conj seen snippet-name)
+                     (merge tags snippet-tags))))))
 
 (defn- add-snippet-ids [metadata-providerable template-tags]
   (update-vals template-tags
@@ -189,15 +151,24 @@
                    (= tag-type :snippet) (m/assoc-some :snippet-id
                                                        (:id (lib.metadata/native-query-snippet-by-name metadata-providerable snippet-name)))))))
 
+(defn- sql-text-tag-order
+  "Best-effort: the tag names in the order they first appear in the native `query-text`, or `nil` if `query-text`
+  is nil/blank or unparseable. Used only as a FALLBACK ordering hint (via
+  [[metabase.lib.template-tags/reconcile-template-tags-order]]) for queries that lack an explicit
+  `:template-tags-order` -- notably legacy queries with more than 8 tags whose map iteration order is
+  scrambled by Clojure's `PersistentArrayMap` threshold. See #5136."
+  [query-text]
+  (when (seq query-text)
+    (-> (recognize-template-tags-with-order query-text) :order not-empty)))
+
 (mu/defn extract-template-tags-with-order
   "Like [[extract-template-tags]], but also returns the explicit display ordering of the tags.
 
   Returns `{:template-tags <map>, :template-tags-order <vector>}`, where `:template-tags-order` lists the
-  tag names in the order they should be displayed, independent of Clojure map iteration order.
-
-  If an `existing-order` is supplied (the stage's current `:template-tags-order`), it is preserved for
-  tags that survive, so re-extracting tags from unchanged text -- or editing it -- does not reshuffle the
-  widgets. See https://github.com/metabase/metabase/issues/5136"
+  tag names in the order they should be displayed, independent of Clojure map iteration order. The order is
+  computed once, in one place, by [[metabase.lib.template-tags/reconcile-template-tags-order]]: an existing
+  explicit order is preserved for surviving tags, otherwise tags follow their SQL-text order (then
+  snippet-expanded tags). See https://github.com/metabase/metabase/issues/5136"
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     query-text            :- ::common/non-blank-string]
    (extract-template-tags-with-order metadata-providerable query-text nil nil))
@@ -209,12 +180,13 @@
     query-text            :- ::common/non-blank-string
     existing-tags         :- [:maybe ::lib.schema.template-tag/template-tag-map]
     existing-order        :- [:maybe [:sequential ::lib.schema.template-tag/name]]]
-   (let [direct-pair (recognize-template-tags-with-order query-text)
-         query-pair  (extract-snippet-tags metadata-providerable direct-pair)]
-     (if (or (seq (:tags query-pair)) (seq existing-tags))
-       (let [{:keys [tags order]} (unify-template-tags query-pair {:tags existing-tags :order existing-order})]
-         {:template-tags      (add-snippet-ids metadata-providerable tags)
-          :template-tags-order order})
+   (let [direct-tags (recognize-template-tags query-text)
+         query-tags  (extract-snippet-tags metadata-providerable direct-tags)]
+     (if (or (seq query-tags) (seq existing-tags))
+       (let [tags (unify-template-tags query-tags existing-tags)]
+         {:template-tags       (add-snippet-ids metadata-providerable tags)
+          :template-tags-order (lib.template-tags/reconcile-template-tags-order
+                                tags existing-order (sql-text-tag-order query-text))})
        {:template-tags {} :template-tags-order []}))))
 
 (mu/defn extract-template-tags :- ::lib.schema.template-tag/template-tag-map
@@ -344,29 +316,27 @@
    updated-tags :- ::lib.schema.template-tag/template-tag-map]
   (letfn [(update-stage [stage]
             (assert-native-stage stage)
-            (let [existing-tags   (:template-tags stage)
+            (let [existing-tags (:template-tags stage)
                   ;; keep only updates that target existing tags
-                  updates         (reduce-kv
-                                   (fn [m k v]
-                                     (let [k (lib.params.parse/match-and-normalize-tag-name k)]
-                                       (cond-> m
-                                         (contains? existing-tags k) (assoc k v))))
-                                   {}
-                                   updated-tags)
+                  updates      (reduce-kv
+                                (fn [m k v]
+                                  (let [k (lib.params.parse/match-and-normalize-tag-name k)]
+                                    (cond-> m
+                                      (contains? existing-tags k) (assoc k v))))
+                                {}
+                                updated-tags)
                   ;; merge in the existing tags that weren't updated
-                  final-tags      (reduce-kv
-                                   (fn [m k v]
-                                     (cond-> m (not (contains? m k)) (assoc k v)))
-                                   updates
-                                   existing-tags)
-                  ;; preserve existing order; append any genuinely-new tag names at the end
-                  existing-order  (or (:template-tags-order stage) (keys existing-tags))
-                  order-set       (set existing-order)
-                  final-order     (reduce
-                                   (fn [o k]
-                                     (cond-> o (not (contains? order-set k)) (conj k)))
-                                   (vec existing-order)
-                                   (keys final-tags))]
+                  final-tags   (reduce-kv
+                                (fn [m k v]
+                                  (cond-> m (not (contains? m k)) (assoc k v)))
+                                updates
+                                existing-tags)
+                  ;; one place decides order: honor the existing explicit order for surviving tags,
+                  ;; otherwise SQL-text order. (Previously this fell back to `(keys existing-tags)`,
+                  ;; which for >8-tag queries is scrambled map iteration order and would persist that
+                  ;; scramble.) See #5136.
+                  final-order  (lib.template-tags/reconcile-template-tags-order
+                                final-tags (:template-tags-order stage) (sql-text-tag-order (:native stage)))]
               (-> stage
                   (assoc :template-tags final-tags :template-tags-order final-order)
                   (->> (lib.normalize/normalize ::lib.schema/stage.native)))))]
@@ -393,38 +363,65 @@
 (mu/defn template-tags-in-order :- [:sequential ::lib.schema.template-tag/template-tag]
   "Returns the native query's template tags as a vector, in display order.
 
-  Uses the stage's `:template-tags-order` when present so filter widgets render in a stable,
-  user-controllable order regardless of how many tags the query has. When no explicit order is recorded
-  (e.g. for older queries that predate this), falls back to template-tag map iteration order, which is at
-  least stable for a given set of tags. See https://github.com/metabase/metabase/issues/5136."
+  Order is computed once by [[metabase.lib.template-tags/reconcile-template-tags-order]]: an explicit
+  `:template-tags-order` is honored for surviving tags (so a user's reorder is preserved), otherwise tags
+  follow their order in the native query text. The latter is what makes legacy queries with more than 8 tags
+  render in a stable, sensible order instead of Clojure's scrambled map iteration order -- the original
+  bug. See https://github.com/metabase/metabase/issues/5136."
   [query :- ::lib.schema/query]
   (let [stage (lib.util/query-stage query 0)
-        tags  (:template-tags stage)
-        order (:template-tags-order stage)]
-    (if (and (seq tags) (seq order))
-      ;; `order` is expected to be a permutation of (keys tags); `keep` tolerates any drift.
-      (into [] (keep tags) order)
-      (into [] (vals tags)))))
+        tags  (:template-tags stage)]
+    (if (seq tags)
+      (let [names (lib.template-tags/reconcile-template-tags-order
+                   tags (:template-tags-order stage) (sql-text-tag-order (:native stage)))]
+        (into [] (keep tags) names))
+      [])))
+
+(mu/defn all-template-tags-in-order :- [:sequential ::lib.schema.template-tag/template-tag]
+  "All template tags across every native stage of `query`, in display order.
+
+  This is the order-aware counterpart of [[metabase.lib.walk.util/all-template-tags]] (which returns an
+  unordered set). Use it whenever the result drives an ordered UI or API surface (e.g. deriving a card's
+  parameter list on the backend) so public/embed/API parameter widgets match the query-builder order.
+  Within each native stage, order is computed by
+  [[metabase.lib.template-tags/reconcile-template-tags-order]]. See #5136."
+  [query :- ::lib.schema/query]
+  (into []
+        (mapcat
+         (fn [stage]
+           (when (= (:lib/type stage) :mbql.stage/native)
+             (let [tags (:template-tags stage)]
+               (when (seq tags)
+                 (let [names (lib.template-tags/reconcile-template-tags-order
+                              tags (:template-tags-order stage) (sql-text-tag-order (:native stage)))]
+                   (keep tags names)))))))
+        (:stages query)))
 
 (mu/defn with-template-tags-order :- ::lib.schema/query
   "Sets the explicit display order of the native query's template tags.
 
-  `order` must contain every current template tag name exactly once (a permutation). This is what makes
-  reordering SQL template-tag filter widgets possible -- previously order was derived from Clojure map
-  iteration order, which scrambled past 8 tags and ignored reordering entirely.
-  See https://github.com/metabase/metabase/issues/5136."
+  `order` must be a true permutation of the current template tag names -- each name exactly once. A
+  duplicate or missing name is a programming error (not display metadata to silently fix), so it throws an
+  `ex-info` rather than `assert` (which can be disabled) or a lenient set-equality check (which would let a
+  duplicate-only order like `[a a b]` through for tags `{a b}` and render duplicate widgets). This is what
+  makes reordering SQL template-tag filter widgets persist; previously order was derived from Clojure map
+  iteration order. See https://github.com/metabase/metabase/issues/5136."
   [query :- ::lib.schema/query
    order :- [:sequential ::lib.schema.template-tag/name]]
   (lib.util/update-query-stage
    query 0
    (fn [stage]
      (assert-native-stage stage)
-     (let [tag-names (set (keys (:template-tags stage)))
-           order     (mapv #(lib.params.parse/match-and-normalize-tag-name %) order)]
-       (assert (= (set order) tag-names)
-               (i18n/tru "template-tags-order must be a permutation of the template tag names; got {0}, expected {1}"
-                         (pr-str order) (pr-str (sort tag-names))))
-       (assoc stage :template-tags-order order)))))
+     (let [tag-names  (into #{} (map common/normalize-string-key) (keys (:template-tags stage)))
+           normalized (mapv #(lib.params.parse/match-and-normalize-tag-name %) order)]
+       (when-not (and (= (count normalized) (count tag-names))
+                      (= (set normalized) tag-names))
+         (throw (ex-info (i18n/tru "template-tags-order must be a permutation of the template tag names; got {0}, expected {1}"
+                                   (pr-str normalized) (pr-str (sort tag-names)))
+                         {:type :invalid-template-tags-order
+                          :order normalized
+                          :expected (sort tag-names)})))
+       (assoc stage :template-tags-order normalized)))))
 
 (mu/defn native-query-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
   "Returns the card IDs from the template tags of the native query of `query`."

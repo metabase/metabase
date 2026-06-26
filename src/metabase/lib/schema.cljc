@@ -34,6 +34,7 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.template-tags :as lib.template-tags]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [every? select-keys some empty? get-in]]))
@@ -67,55 +68,36 @@
    [:parameters         {:optional true} [:ref ::lib.schema.parameter/parameters]]
    [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]])
 
-(defn- reconcile-template-tags-order
-  "Return `stage` with a *self-healed* `:template-tags-order`, but ONLY when the stage already has one.
+(defn- normalize-stage-native
+  "Normalize a native stage: drop empty/null keys, then self-heal an *existing* `:template-tags-order`
+  against the tag map via the shared [[metabase.lib.template-tags/reconcile-template-tags-order]].
 
   Crucially this does NOT add `:template-tags-order` to a stage that lacks it -- doing so would mutate the
-  serialized shape of every existing native query (breaking serdes baselines and exact-equality tests, and
-  growing storage). The key is added only by the authoring functions ([[metabase.lib.native/native-query]],
-  [[metabase.lib.native/with-native-query]], [[metabase.lib.native/with-template-tags-order]]); see #5136.
-
-  When a stage DOES already carry an order (i.e. it was authored/edited/reordered), reconcile it against the
-  actual tag keys so display metadata can never drift into an inconsistent state and break anything:
-  - keep order entries still present in the tag map, preserving positions;
-  - append tag-map names missing from the order (in map-key order);
-  - drop order entries that no longer correspond to a tag;
-  - coerce entries to the normalized string key form so keyword-vs-string decode timing can't desync them."
-  [stage]
-  (let [tags (:template-tags stage)]
+  serialized shape of every existing native query (breaking serdes baselines and exact-equality tests).
+  The key is added only by the authoring functions ([[metabase.lib.native/native-query]],
+  [[metabase.lib.native/with-native-query]], [[metabase.lib.native/with-template-tags-order]]); see #5136."
+  [m]
+  (let [m (->> m
+               normalize-stage-common
+               ;; filter out null :collection keys -- see #59675; also filter out empty `:template-tags`
+               ;; maps and empty `:template-tags-order` vectors (an order only makes sense alongside tags).
+               (m/filter-kv (fn [k v]
+                              (case k
+                                :collection          (some? v)
+                                :template-tags       (seq v)
+                                :template-tags-order (seq v)
+                                true))))]
     (cond
       ;; No explicit order recorded -> leave the stage untouched (never add one here).
-      (not (contains? stage :template-tags-order))
-      stage
-
+      (not (contains? m :template-tags-order)) m
       ;; An order was recorded but there are no tags -> it's stale, drop it.
-      (not (seq tags))
-      (dissoc stage :template-tags-order)
-
-      :else
-      (let [->name    common/normalize-string-key
-            tag-names (into #{} (map ->name) (keys tags))
-            existing  (map ->name (seq (:template-tags-order stage)))
-            kept      (filterv tag-names existing)
-            kept-set  (set kept)
-            appended  (filterv (complement kept-set) (map ->name (keys tags)))]
-        (assoc stage :template-tags-order (into kept appended))))))
-
-(defn- normalize-stage-native
-  "Normalize a native stage: drop empty/null keys, then self-heal an existing `:template-tags-order` against the
-  tag map (without adding one). See #5136."
-  [m]
-  (->> m
-       normalize-stage-common
-       ;; filter out null :collection keys -- see #59675; also filter out empty `:template-tags` maps and
-       ;; empty `:template-tags-order` vectors (an order only makes sense alongside tags).
-       (m/filter-kv (fn [k v]
-                      (case k
-                        :collection          (some? v)
-                        :template-tags       (seq v)
-                        :template-tags-order (seq v)
-                        true)))
-       reconcile-template-tags-order))
+      (not (seq (:template-tags m)))            (dissoc m :template-tags-order)
+      ;; Otherwise self-heal it against the tag map. `sql-text-order` is nil here because this layer can't
+      ;; parse the native text (and must not pull in metabase.lib.native); the authoring/render path in
+      ;; metabase.lib.native supplies SQL-text order where it matters.
+      :else (assoc m :template-tags-order
+                   (lib.template-tags/reconcile-template-tags-order
+                    (:template-tags m) (:template-tags-order m) nil)))))
 
 (mr/def ::stage.native
   [:and
@@ -143,6 +125,12 @@
      ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
      ;; `:native` key), but their definition lives under this key.
      [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
+     ;; explicit, user-controllable display order for the template tags above, as a vector of tag names. Order
+     ;; is stored separately from the tag map because Clojure map iteration order is not stable past the
+     ;; PersistentArrayMap threshold (16 entries on the JVM, 8 in ClojureScript), which scrambled SQL filter
+     ;; widgets once a query had "too many" tags. Kept consistent with `:template-tags` by
+     ;; [[metabase.lib.template-tags/reconcile-template-tags-order]]. See #5136.
+     [:template-tags-order {:optional true} [:sequential ::template-tag/name]]
      ;; optional, set of Card IDs referenced by this query in `:card` template tags like `{{card}}`. This is added
      ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
      ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.

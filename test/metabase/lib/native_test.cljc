@@ -175,13 +175,46 @@
           q2 (lib/with-native-query q1 "SELECT {{a}} {{b}} {{c}} {{d}}")]
       (is (= ["c" "a" "b" "d"] (mapv :name (lib/template-tags-in-order q2)))))))
 
-(deftest ^:parallel template-tags-rename-preserves-position-test
-  (testing "renaming a tag keeps it in its original position (#5136)"
+(deftest ^:parallel template-tags-rename-keeps-survivors-in-place-test
+  (testing "renaming a tag keeps surviving tags in place; the renamed tag is appended (#5136)"
     (let [q1 (-> (lib/native-query meta/metadata-provider "SELECT {{a}} {{b}} {{c}}")
                  (lib/with-template-tags-order ["c" "a" "b"]))
           q2 (lib/with-native-query q1 "SELECT {{a}} {{renamed}} {{c}}")]
-      ;; "b" was at position 2; after renaming to "renamed" it stays at position 2
+      ;; "b" (now "renamed") is dropped from the explicit order and re-appended; "c" and "a" keep their places.
       (is (= ["c" "a" "renamed"] (mapv :name (lib/template-tags-in-order q2)))))))
+
+(deftest ^:parallel template-tags-in-order-uses-sql-text-for-legacy-queries-test
+  (testing "A legacy stage with >8 tags and NO :template-tags-order renders in SQL-text order, not scrambled
+  map order (#5136)"
+    ;; Build a stage directly (as if loaded from the DB) with 12 tags but no explicit order.
+    (let [names (mapv #(str "p" %) (range 1 13))
+          tags  (into {} (for [n names] {n {:type :text, :name n, :display-name n, :id (str n)}}))
+          query (lib/normalize
+                 {:lib/type :mbql/query
+                  :database 1
+                  :stages    [{:lib/type      :mbql.stage/native
+                               :template-tags tags
+                               ;; deliberately no :template-tags-order
+                               :native        (reduce (fn [s n] (str s " {{" n "}}")) "SELECT" names)}]})]
+      (is (= names (mapv :name (lib/template-tags-in-order query))))
+      ;; normalize must still not have added the key (serdes-safe)
+      (is (not (contains? (-> query :stages first) :template-tags-order))))))
+
+(deftest ^:parallel with-template-tags-order-rejects-non-permutation-test
+  (testing "with-template-tags-order rejects a non-permutation (duplicates / missing names) (#5136)"
+    (let [q (lib/native-query meta/metadata-provider "SELECT {{a}} {{b}}")]
+      ;; ["a" "a" "b"] has the right set but a duplicate -- must throw, not silently render two "a" widgets
+      (is (thrown? #?(:clj Throwable :cljs :default)
+                   (lib/with-template-tags-order q ["a" "a" "b"])))
+      ;; missing a name is also rejected
+      (is (thrown? #?(:clj Throwable :cljs :default)
+                   (lib/with-template-tags-order q ["a"]))))))
+
+(deftest ^:parallel all-template-tags-in-order-test
+  (testing "all-template-tags-in-order returns tags in display order across native stages (#5136)"
+    (let [query (lib/native-query meta/metadata-provider "SELECT {{zeta}} {{alpha}} {{mid}}")]
+      (is (= ["zeta" "alpha" "mid"]
+             (mapv :name (lib/all-template-tags-in-order query)))))))
 
 (def ^:private qp-results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query

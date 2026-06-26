@@ -1504,6 +1504,7 @@
   normalize-result-metadata-column]
  [lib.native
   add-parameters-for-template-tags
+  all-template-tags-in-order
   engine
   extract-template-tags
   extract-template-tags-with-order

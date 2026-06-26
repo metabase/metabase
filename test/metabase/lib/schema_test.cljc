@@ -364,14 +364,15 @@
     Adding it here would mutate the serialized shape of every existing native query, breaking serdes baselines
     and exact-equality tests. The key is added only by the authoring functions; normalize only self-heals an
     order that is already present."
-    (is (not (contains? (lib/normalize
-                         '{:lib/type "mbql/query"
-                           :database 1
-                           :stages   ({:lib/type      "mbql.stage/native"
-                                       :template-tags {:a {:type "text", :name "a", :display-name "A"}
-                                                       :b {:type "text", :name "b", :display-name "B"}}
-                                       :native        "SELECT {{a}}, {{b}}"})})
-                        :template-tags-order)))))
+    (let [stage (-> (lib/normalize
+                     '{:lib/type "mbql/query"
+                       :database 1
+                       :stages   ({:lib/type      "mbql.stage/native"
+                                   :template-tags {:a {:type "text", :name "a", :display-name "A"}
+                                                   :b {:type "text", :name "b", :display-name "B"}}
+                                   :native        "SELECT {{a}}, {{b}}"})})
+                    :stages first)]
+      (is (not (contains? stage :template-tags-order))))))
 
 (deftest ^:parallel normalize-self-heals-template-tags-order-test
   (testing "When a stage already has a `:template-tags-order`, normalize reconciles it against the tag map (#5136)"
