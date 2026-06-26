@@ -470,9 +470,10 @@
 (defn create-hnsw-index-if-not-exists!
   "Create the HNSW index on the `embedding` column of `index`'s table, if it does not already exist.
 
-  HNSW indexes are expensive to build and maintain, so we only create one when an instance is configured to
-  use the `:hnsw` vector-search strategy (see [[create-index-table-if-not-exists!]] and the async build
-  triggered by [[metabase-enterprise.semantic-search.settings/semantic-search-vector-strategy]]).
+  HNSW indexes are expensive to build and maintain, so we only create one when an instance is configured for
+  an HNSW-index-backed vector-search strategy (`:hnsw` or `:hnsw-iterative-*`; see
+  [[metabase.search.config/hnsw-index-backed-strategies]], [[create-index-table-if-not-exists!]], and the
+  async build triggered by [[metabase-enterprise.semantic-search.settings/semantic-search-vector-strategy]]).
 
   Pass `concurrently? true` to build with `CREATE INDEX CONCURRENTLY` (for a populated table whose writes
   shouldn't be locked out); it must run outside a transaction."
@@ -492,8 +493,9 @@
   "Ensure that the index table exists and is ready to be populated. If
   force-reset? is true, drops and recreates the table if it exists.
 
-  The HNSW index is only created when the instance is configured for the `:hnsw` vector-search strategy;
-  otherwise it is built just-in-time when the strategy is configured (see [[create-hnsw-index-if-not-exists!]])."
+  The HNSW index is only created when the instance is configured for an HNSW-index-backed vector-search
+  strategy (`:hnsw` or `:hnsw-iterative-*`); under `:brute-force` it is skipped, and built just-in-time when
+  an index-backed strategy is later configured (see [[create-hnsw-index-if-not-exists!]])."
   [connectable index & {:keys [force-reset?] :or {force-reset? false}}]
   (try
     (let [{:keys [embedding-model table-name]} index
@@ -508,7 +510,8 @@
        (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
            (sql.helpers/with-columns (index-table-schema vector-dimensions))
            sql-format-quoted))
-      (when (= :hnsw (semantic-settings/semantic-search-vector-strategy))
+      (when (contains? search.config/hnsw-index-backed-strategies
+                       (semantic-settings/semantic-search-vector-strategy))
         (create-hnsw-index-if-not-exists! connectable index))
       (jdbc/execute!
        connectable
@@ -711,24 +714,108 @@
      :order-by [[:semantic_rank :asc]]
      :limit    (semantic-settings/semantic-search-results-limit)}))
 
+(defn- hnsw-iterative-search-query
+  "Build the semantic vector subquery as an index-backed iterative scan with `filters` applied inline."
+  [index embedding-literal filters]
+  ;; The filters live inside the ordered/limited candidate scan (unlike `hnsw-search-query`, which
+  ;; post-filters), so the planner can pick the HNSW index and pgvector's iterative scan keeps pulling
+  ;; neighbours until the limit is met or `hnsw.max_scan_tuples` is hit.
+  ;; The recall/latency trade-off is governed by the iterative-scan GUCs (see `vector-session-settings`),
+  ;; not the SQL shape.
+  ;; The cutoff stays in the outer query (like `hnsw-search-query`) so the inner scan fills up to the limit
+  ;; before trimming.
+  (let [inner (cond-> {:select   (into common-search-columns
+                                       [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
+                       :from     [(keyword (:table-name index))]
+                       :order-by [[[:raw (str "embedding <=> " embedding-literal)] :asc]]
+                       :limit    (semantic-settings/semantic-search-results-limit)}
+                filters (assoc :where filters))]
+    {:with     [[:vector_candidates inner]]
+     :select   (into common-search-columns
+                     [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
+                      [:distance :semantic_distance]])
+     :from     [:vector_candidates]
+     :where    [:<= :distance max-cosine-distance]
+     :order-by [[:semantic_rank :asc]]}))
+
 (defn- vector-search-strategy
   "Resolve the vector-search strategy for `search-context`, falling back to the configured default setting."
   [search-context]
   (or (:vector-search-strategy search-context)
       (semantic-settings/semantic-search-vector-strategy)))
 
+(def ^:private iterative-strategy->guc
+  "Iterative vector-search strategies mapped to pgvector's `hnsw.iterative_scan` GUC value.
+  The strategy keyword encodes the ordering, so there is no separate order knob."
+  {:hnsw-iterative-relaxed "relaxed_order"
+   :hnsw-iterative-strict  "strict_order"})
+
 (defn- semantic-search-query
   "Build the semantic vector subquery, dispatching on the resolved [[vector-search-strategy]].
-  `:brute-force` is exact and filter-first; `:hnsw` (the default) is approximate and index-backed."
+  `:brute-force` is exact and filter-first; the `:hnsw-iterative-*` strategies are index-backed with inline
+  filters and an iterative scan; `:hnsw` (the default) is approximate, index-backed and post-filters."
   [index embedding search-context]
   (let [filters           (search-filters search-context)
         embedding-literal (format-embedding embedding)
         strategy          (vector-search-strategy search-context)]
-    (case strategy
-      :brute-force (brute-force-search-query index embedding-literal filters)
-      :hnsw        (hnsw-search-query index embedding-literal filters)
-      (do (log/warnf "Unknown vector-search strategy %s; falling back to :hnsw" (pr-str strategy))
-          (hnsw-search-query index embedding-literal filters)))))
+    (cond
+      (= :brute-force strategy)          (brute-force-search-query index embedding-literal filters)
+      (iterative-strategy->guc strategy) (hnsw-iterative-search-query index embedding-literal filters)
+      (= :hnsw strategy)                 (hnsw-search-query index embedding-literal filters)
+      :else (do (log/warnf "Unknown vector-search strategy %s; falling back to :brute-force" (pr-str strategy))
+                (brute-force-search-query index embedding-literal filters)))))
+
+(defn- explain?
+  "Whether to run the gated EXPLAIN (ANALYZE) instrumentation for `search-context`, falling back to the
+  configured default setting."
+  [search-context]
+  (if (contains? search-context :vector-search-explain?)
+    (boolean (:vector-search-explain? search-context))
+    (semantic-settings/semantic-search-explain)))
+
+(defn- vector-session-settings
+  "`SET LOCAL` statements for the pgvector session GUCs implied by `search-context`, as a (possibly empty)
+  vector of single-element `[sql]` statement vectors.
+  Only the `:hnsw-iterative-*` strategies set the iterative-scan GUCs; any strategy may request
+  `force-index?`.
+  Each knob falls back to its EE setting when unset on the context."
+  [search-context]
+  ;; Values come from a fixed map or validated positive integers, so they are safe to interpolate (GUC
+  ;; names and values can't be passed as bound parameters).
+  ;; They are clamped to pgvector's GUC ranges (ef_search 1..1000, max_scan_tuples 32-bit) because an
+  ;; out-of-range SET LOCAL raises mid-transaction and would fail the whole search; the API schema enforces
+  ;; the same ranges, the clamp covers the settings path.
+  (let [iterative-guc (iterative-strategy->guc (vector-search-strategy search-context))
+        clamp         (fn [v lo hi] (-> v (max lo) (min hi)))]
+    (cond-> []
+      iterative-guc
+      (conj [(str "SET LOCAL hnsw.iterative_scan = " iterative-guc)]
+            [(format "SET LOCAL hnsw.ef_search = %d"
+                     (clamp (or (:vector-search-ef-search search-context)
+                                (semantic-settings/semantic-search-ef-search))
+                            1 1000))]
+            [(format "SET LOCAL hnsw.max_scan_tuples = %d"
+                     (clamp (or (:vector-search-max-scan-tuples search-context)
+                                (semantic-settings/semantic-search-max-scan-tuples))
+                            1 Integer/MAX_VALUE))])
+
+      (:vector-search-force-index? search-context)
+      (conj ["SET LOCAL enable_seqscan = off"]))))
+
+(defn- run-in-vector-session!
+  "Apply the [[vector-session-settings]] for `search-context` on a transaction over `db`, then call
+  `(f conn)` with that transaction.
+  `SET LOCAL` resets at COMMIT, so the pooled connection is left clean.
+  When no session settings are needed and instrumentation is off, `f` is called directly on `db` (no
+  transaction) to keep the default strategy's hot path unchanged."
+  [db search-context f]
+  (let [stmts (vector-session-settings search-context)]
+    (if (and (empty? stmts) (not (explain? search-context)))
+      (f db)
+      (jdbc/with-transaction [tx db]
+        (doseq [stmt stmts]
+          (jdbc/execute! tx stmt))
+        (f tx)))))
 
 (defn- flatten-ctes
   "Flatten nested :with clauses into a single top-level :with.
@@ -923,6 +1010,103 @@
         (u/ignore-exceptions
           (with-open [_conn (.getConnection ^PooledDataSource db)]))))))
 
+;; ----------------------------------------------------------------------------------------------------------
+;; Gated vector-search instrumentation
+;;
+;; When `vector-search-explain?` is set (per-request) or `semantic-search-explain` (setting) is on, we
+;; re-run the inner vector subquery under EXPLAIN (ANALYZE) to measure how the chosen strategy actually
+;; behaves: which plan the index-table scan got, how many tuples it visited, how long the inner query took,
+;; and how that compares to a filter-first scan's candidate pool.
+;; It is off by default because the EXPLAIN re-executes the inner query.
+;; ----------------------------------------------------------------------------------------------------------
+
+(defn- explain->element
+  "Coerce the single `EXPLAIN (… FORMAT JSON)` result value into its one plan element
+  (`{\"Plan\" {…} \"Execution Time\" …}`)."
+  [explain-value]
+  (let [decoded (cond
+                  (instance? PGobject explain-value) (json/decode (unwrap-pgobject explain-value))
+                  (string? explain-value)            (json/decode explain-value)
+                  :else                              explain-value)]
+    (first decoded)))
+
+(defn- find-scan-node
+  "Depth-first search of an EXPLAIN plan tree for the scan node over `table-name`."
+  [plan table-name]
+  (when (map? plan)
+    (if (and (#{"Seq Scan" "Index Scan" "Index Only Scan" "Bitmap Heap Scan"} (get plan "Node Type"))
+             (= table-name (get plan "Relation Name")))
+      plan
+      (some #(find-scan-node % table-name) (get plan "Plans")))))
+
+(defn- scan-node-metrics
+  "Pull the index-table scan node out of an EXPLAIN plan tree and summarise it: the plan node chosen, the
+  HNSW index used (nil for a seq scan), the tuples actually visited (returned + filtered out), and the
+  node's total execution time."
+  [plan table-name]
+  (when-let [node (find-scan-node plan table-name)]
+    ;; EXPLAIN reports per-loop averages, and for a parallel scan (the likely plan for the brute-force
+    ;; baseline) loops = workers: row totals need the multiply, but per-loop "Actual Total Time" already
+    ;; approximates wall clock because the workers run concurrently, so the time must NOT be multiplied
+    (let [loops       (get node "Actual Loops" 1)
+          actual-rows (* (get node "Actual Rows" 0) loops)
+          removed     (* (get node "Rows Removed by Filter" 0) loops)]
+      {:node-type              (get node "Node Type")
+       :index-name             (get node "Index Name")
+       :actual-rows            actual-rows
+       :rows-removed-by-filter removed
+       :tuples-scanned         (+ actual-rows removed)
+       :inner-ms               (get node "Actual Total Time" 0)
+       :shared-hit             (get node "Shared Hit Blocks")
+       :shared-read            (get node "Shared Read Blocks")})))
+
+(defn- explain-vector-subquery
+  "Run the inner vector subquery under EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) on `conn` and return its
+  [[scan-node-metrics]] plus the subquery's total execution time.
+  Re-executes the inner query."
+  [conn index embedding search-context]
+  (let [[sql & params] (sql-format-quoted (semantic-search-query index embedding search-context))
+        explain-sql    (str "EXPLAIN (ANALYZE true, BUFFERS true, FORMAT JSON) " sql)
+        element        (-> (jdbc/execute-one! conn (into [explain-sql] params)) vals first explain->element)]
+    (assoc (scan-node-metrics (get element "Plan") (:table-name index))
+           :execution-ms (get element "Execution Time")
+           :planning-ms  (get element "Planning Time"))))
+
+(defn- prefilter-pool-size
+  "Count of index rows the non-vector filters alone select -- the candidate pool a filter-first
+  (brute-force) scan would compute distances over.
+  The vector scan's `tuples-scanned` relative to this is the overfetch."
+  [conn index search-context]
+  (let [filters (search-filters search-context)
+        q       (cond-> {:select [[[:raw "count(*)"] :n]] :from [(keyword (:table-name index))]}
+                  filters (assoc :where filters))]
+    (:n (jdbc/execute-one! conn (sql-format-quoted q) {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+
+(defn- record-vector-instrumentation!
+  "Measure and report how the resolved strategy executed the inner vector subquery: EXPLAIN ANALYZE the
+  scan and count the prefilter pool, then log a structured line and bump the analytics counters.
+  Never throws -- instrumentation failures must not break search."
+  [conn index embedding search-context raw-count]
+  (try
+    (let [strategy (name (vector-search-strategy search-context))
+          scan     (explain-vector-subquery conn index embedding search-context)
+          pool     (prefilter-pool-size conn index search-context)]
+      (log/info "Semantic vector-search instrumentation"
+                (merge {:strategy            strategy
+                        :prefilter-pool-size pool
+                        :raw-count           raw-count
+                        :used-index?         (some? (:index-name scan))
+                        :overfetch-ratio     (when (and pool (pos? pool) (:tuples-scanned scan))
+                                               (double (/ (:tuples-scanned scan) pool)))}
+                       scan))
+      (analytics/inc! :metabase-search/semantic-vector-inner-ms {:strategy strategy} (or (:inner-ms scan) 0))
+      (analytics/inc! :metabase-search/semantic-vector-tuples-scanned {:strategy strategy} (or (:tuples-scanned scan) 0))
+      (analytics/inc! :metabase-search/semantic-prefilter-pool-size {:strategy strategy} (or pool 0))
+      (analytics/inc! :metabase-search/semantic-vector-scan-used-index
+                      {:strategy strategy :plan-node (or (:node-type scan) "unknown")} 1))
+    (catch Exception e
+      (log/warn e "Failed to record vector-search instrumentation"))))
+
 (defn query-index
   "Query the index for documents similar to the search string.
   Returns a map with :results and :raw-count."
@@ -932,11 +1116,17 @@
     (if (str/blank? search-string)
       {:results [] :raw-count 0}
       (do
-        (when (and (= :hnsw (vector-search-strategy search-context))
+        ;; `:vector-search-allow-missing-index?` is a deliberate opt-out for callers that want the inner
+        ;; query to run without the HNSW index (e.g. the strategy matrix test probing the exact seq-scan
+        ;; path); production traffic leaves it unset and gets the fail-fast.
+        (when (and (contains? search.config/hnsw-index-backed-strategies (vector-search-strategy search-context))
+                   (not (:vector-search-allow-missing-index? search-context))
                    (not (semantic.util/index-exists? db (hnsw-index-name index))))
-          (throw (ex-info (str "HNSW vector-search strategy requested but no HNSW index exists. "
-                               "Set the semantic-search-vector-strategy setting to :hnsw to build it.")
-                          {:table-name (:table-name index)})))
+          (throw (ex-info (str "HNSW-index-backed vector-search strategy requested but no HNSW index exists. "
+                               "Set the semantic-search-vector-strategy setting to an index-backed strategy "
+                               "(:hnsw or :hnsw-iterative-*) to build it.")
+                          {:table-name (:table-name index)
+                           :strategy   (vector-search-strategy search-context)})))
         (let [timer (u/start-timer)
 
               ;; Warm the pool concurrently with the embedding round-trip: the pool holds zero idle
@@ -958,11 +1148,24 @@
               query (scored-search-query index embedding search-context scorers)
               xform (comp (map decode-legacy-input)
                           (map (partial legacy-input-with-score weights (keys scorers))))
-              reducible (reducible-search-query db query)
-              raw-results (tracing/with-span :search "search.semantic.db-query"
-                            {:search/query-length (count search-string)}
-                            (into [] xform reducible))
-              db-query-time-ms (u/since-ms db-timer)
+              ;; Run the query (and any gated instrumentation) inside a vector session so the iterative-scan
+              ;; GUCs from `vector-session-settings` apply on the same connection. Falls back to the plain
+              ;; datasource path for the default strategy with instrumentation off. The query duration is
+              ;; captured before the instrumentation runs, so the EXPLAIN re-execution and prefilter count
+              ;; don't inflate the latency signal they exist to analyze.
+              db-query-ms* (volatile! 0.0)
+              raw-results  (run-in-vector-session!
+                            db
+                            search-context
+                            (fn [conn]
+                              (let [results (tracing/with-span :search "search.semantic.db-query"
+                                              {:search/query-length (count search-string)}
+                                              (into [] xform (reducible-search-query conn query)))]
+                                (vreset! db-query-ms* (u/since-ms db-timer))
+                                (when (explain? search-context)
+                                  (record-vector-instrumentation! conn index embedding search-context (count results)))
+                                results)))
+              db-query-time-ms @db-query-ms*
 
               filter-timer (u/start-timer)
               filtered-results (tracing/with-span :search "search.semantic.permission-filter"

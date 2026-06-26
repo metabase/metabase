@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -85,10 +86,12 @@
   (if-let [[sym prefix & more-gens] (seq table-gens)]
     `(let [target# (gen-table-name ~prefix)
            ~sym target#]
-       (try
-         (with-transform-cleanup! ~more-gens ~@body)
-         (finally
-           (drop-target! target#))))
+       (when (or (nil? driver/*driver*)
+                 (driver.u/supports? driver/*driver* :test/dynamic-dataset-loading nil))
+         (try
+           (with-transform-cleanup! ~more-gens ~@body)
+           (finally
+             (drop-target! target#)))))
     `(mt/with-model-cleanup [:model/Transform]
        ~@body)))
 

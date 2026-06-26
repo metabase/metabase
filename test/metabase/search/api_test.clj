@@ -334,6 +334,38 @@
       (is (=? {:engine string?}
               (mt/user-http-request :crowberto :get 200 "search" :q "x" :context "search-app"))))))
 
+(deftest vector-search-knobs-test
+  (testing "the vector-search tuning/diagnostic knobs are admin-only"
+    (doseq [[param value] {:vector_search_ef_search       100
+                           :vector_search_max_scan_tuples 50000
+                           :vector_search_explain         true}]
+      (testing param
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "search" :q "x" param value))))))
+  (testing "an admin's knobs thread through into the search context"
+    (let [captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [search/search (fn [search-ctx]
+                                                  (reset! captured search-ctx)
+                                                  {:data [] :total 0 :engine "test"})]
+        (mt/user-http-request :crowberto :get 200 "search" :q "x"
+                              :vector_search_strategy "hnsw-iterative-strict"
+                              :vector_search_ef_search 100
+                              :vector_search_max_scan_tuples 50000
+                              :vector_search_explain true)
+        (is (=? {:vector-search-strategy        :hnsw-iterative-strict
+                 :vector-search-ef-search       100
+                 :vector-search-max-scan-tuples 50000
+                 :vector-search-explain?        true}
+                @captured))
+        (testing "absent knobs stay absent, so the semantic engine falls back to its setting defaults"
+          (mt/user-http-request :crowberto :get 200 "search" :q "x")
+          (is (not-any? @captured [:vector-search-strategy :vector-search-ef-search
+                                   :vector-search-max-scan-tuples :vector-search-explain?
+                                   :vector-search-force-index?]))))))
+  (testing "values outside pgvector's GUC ranges are rejected up front"
+    (is (=? {:errors {:vector_search_ef_search some?}}
+            (mt/user-http-request :crowberto :get 400 "search" :q "x" :vector_search_ef_search 2000)))))
+
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
     (with-search-items-in-root-collection "test"

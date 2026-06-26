@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { trackDataStudioLibraryCreated } from "metabase/data-studio/analytics";
+import { trackDataStudioLibraryCreated } from "metabase/common/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,

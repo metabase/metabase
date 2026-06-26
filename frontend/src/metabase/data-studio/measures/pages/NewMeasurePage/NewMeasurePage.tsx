@@ -6,8 +6,8 @@ import { t } from "ttag";
 
 import { useCreateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { trackMeasureCreated } from "metabase/data-studio/analytics";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { trackMeasureCreated } from "metabase/common/data-studio/analytics";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
