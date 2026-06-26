@@ -696,7 +696,7 @@
    :tool  {:name "read_resource"
            :description (str "Read Metabase entities by metabase:// URI. "
                              "Examples: metabase://databases, metabase://database/{id}/tables, "
-                             "metabase://collection/{id}/items, metabase://card/{id}, "
+                             "metabase://collection/{id}/items, metabase://question/{id}, "
                              "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
                              "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
   [_route-params
