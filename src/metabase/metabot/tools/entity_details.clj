@@ -368,28 +368,29 @@
       (when (> total max-related-tables)
         (log/infof "Capping metabot related-table expansion to %d of %d FK-related tables."
                    max-related-tables total))
-      (let [[included-groups rest-groups] (split-at max-related-tables fk-groups)
-            excluded-groups (take max-related-table-truncated-refs rest-groups)
-            related-tables  (mapv
-                             (fn [[table-id fk-field-id]]
-                               (-> (table-details table-id
-                                                  {:with-fields?         with-fields?
-                                                   :field-values-fn      field-values-fn
-                                                   :with-related-tables? false
-                                                   :with-metrics?        false})
-                                   (assoc :related_by (:name (lib.metadata/field query fk-field-id)))))
-                             included-groups)]
-        (cond-> {:related_tables related-tables}
-          (> total (count related-tables))
+      (let [[detail-groups rest-groups] (split-at max-related-tables fk-groups)
+            refs-groups (take max-related-table-truncated-refs rest-groups)
+            details     (mapv
+                         (fn [[table-id fk-field-id]]
+                           (-> (table-details table-id
+                                              {:with-fields?         with-fields?
+                                               :field-values-fn      field-values-fn
+                                               :with-related-tables? false
+                                               :with-metrics?        false})
+                               (assoc :related_by (:name (lib.metadata/field query fk-field-id)))))
+                         detail-groups)
+            refs        (mapv
+                         (fn [[table-id fk-field-id]]
+                           (let [table (lib.metadata/table query table-id)]
+                             {:id          table-id
+                              :name        (:name table)
+                              :description (:description table)
+                              :related_by  (:name (lib.metadata/field query fk-field-id))}))
+                         refs-groups)]
+        (cond-> {:related_tables details}
+          (> total (count details))
           (assoc :related_tables_total total
-                 :related_table_refs   (mapv
-                                        (fn [[table-id fk-field-id]]
-                                          (let [table (lib.metadata/table query table-id)]
-                                            {:id          table-id
-                                             :name        (:name table)
-                                             :description (:description table)
-                                             :related_by  (:name (lib.metadata/field query fk-field-id))}))
-                                        excluded-groups)))))))
+                 :related_table_refs   refs))))))
 
 (defn- card-details
   "Get details for a card."
