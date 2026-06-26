@@ -172,6 +172,34 @@
   "Descriptor for a ClickHouse skip-index granularity."
   {:name "granularity" :display-name (deferred-tru "Granularity") :type :integer})
 
+;; Helpers for parsing a warehouse's stored key/index column list (a `CLUSTER BY`, `ORDER BY`, sorting key, ...) back
+;; into the bare column names the managed side stores.
+
+(defn split-top-level-commas
+  "Split `s` on commas that aren't nested in parens or inside a `` ` ``/`'`/`\"` quote span, so neither a function key
+  like `toStartOfInterval(d, INTERVAL 1 DAY)` nor a quoted name like `\"weird,name\"` is torn at an inner comma."
+  [^String s]
+  (loop [i 0, depth 0, q nil, start 0, acc []]
+    (if (< i (.length s))
+      (let [c (nth s i)]
+        (cond
+          q                               (recur (inc i) depth (when-not (= c q) q) start acc)
+          (or (= c \`) (= c \') (= c \")) (recur (inc i) depth c start acc)
+          (= c \()                        (recur (inc i) (inc depth) q start acc)
+          (= c \))                        (recur (inc i) (dec depth) q start acc)
+          (and (= c \,) (zero? depth))    (recur (inc i) depth q (inc i) (conj acc (subs s start i)))
+          :else                           (recur (inc i) depth q start acc)))
+      (conj acc (subs s start)))))
+
+(defn unquote-ident
+  "Strip a wrapping `quote-char` pair off a quoted identifier (doubled `quote-char` unescaped), so it matches the bare
+  column name the managed side stores. Leaves bare names and expressions untouched."
+  [^String s quote-char]
+  (let [q (str quote-char)]
+    (if (and (> (count s) 1) (str/starts-with? s q) (str/ends-with? s q))
+      (str/replace (subs s 1 (dec (count s))) (str q q) q)
+      s)))
+
 (def advanced-options-start
   "Map representing the start of the advanced option section in a DB connection form. Fields in this section should
   have their visibility controlled using the `visible-if` property."

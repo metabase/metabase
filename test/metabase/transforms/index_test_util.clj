@@ -4,6 +4,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]))
 
@@ -57,6 +58,24 @@
                                      schema)
                       :params [table]}}))))
 
+(defn- snowflake-clustering
+  "Read a Snowflake table's clustering key back as an ordered vector of column names, or [] when unclustered.
+  `CLUSTERING_KEY` comes back as a string like `LINEAR(category, price)`."
+  [database schema table]
+  (let [clustering-key (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                                       [(str "SELECT clustering_key FROM information_schema.tables "
+                                             "WHERE table_schema = ? AND table_name = ?")
+                                        schema table])
+                           first :clustering_key)]
+    (if-let [s (some-> clustering-key str/trim not-empty)]
+      (let [inner (or (second (re-matches #"(?is)\s*LINEAR\s*\((.*)\)\s*" s)) s)]
+        (->> (str/split inner #",")
+             (map str/trim)
+             (map #(str/replace % #"^\"|\"$" ""))
+             (remove str/blank?)
+             vec))
+      [])))
+
 (def driver-cases
   "Driver -> test case: `:indexes` to declare (every method whose column types `transforms_products` can satisfy; the
   rest, e.g. Postgres gin/gist, live in the driver-level and fetch suites), `:physical-indexes` a
@@ -84,7 +103,11 @@
    ;; BigQuery: inline, unnamed clustering (`CLUSTER BY`), its only index-equivalent.
    :bigquery-cloud-sdk {:indexes          [{:kind :clustering :columns [{:name "category"}]}]
                         :expected         ["category"]
-                        :physical-indexes bigquery-clustering}})
+                        :physical-indexes bigquery-clustering}
+   ;; Snowflake: a single standalone clustering key, reported unnamed, so we read back just the clustered columns.
+   :snowflake  {:indexes          [{:kind :clustering :name "by_category" :columns [{:name "category"}]}]
+                :expected         ["category"]
+                :physical-indexes snowflake-clustering}})
 
 (defn index-test-drivers
   "Drivers that run transforms and declare any index support."
@@ -204,4 +227,14 @@
     {:label "a table with no clustering returns []"
      :table "mb_fetch_bq_empty"
      :create ["CREATE TABLE mb_fetch_bq_empty (a INT64, b INT64)"]
+     :expected #{}}]
+
+   :snowflake
+   [{:label  "the clustering key, unnamed, reconciled by kind + columns"
+     :table  "mb_fetch_sf"
+     :create ["CREATE TABLE mb_fetch_sf (category TEXT, price FLOAT) CLUSTER BY (category)"]
+     :expected #{(idx nil :clustering nil ["category"])}}
+    {:label "a table with no clustering key returns []"
+     :table "mb_fetch_sf_empty"
+     :create ["CREATE TABLE mb_fetch_sf_empty (a INT, b INT)"]
      :expected #{}}]})
