@@ -292,7 +292,7 @@
       (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id)))
       (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex deleted-id))))))
 
-(deftest ^:synchronized verify-managed-indexes!-removes-delete-pending-absent-rows-test
+(deftest ^:synchronized verify-managed-indexes!-reconciles-successful-empty-index-list-test
   (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
                                              :source             {:type "query"}
                                              :source_database_id (mt/id)
@@ -304,12 +304,27 @@
                                                      :structured {:kind :btree :name "deleted_idx" :columns [{:name "y"}]}}]
     (with-redefs [driver/fetch-table-indexes (fn [& _] [])]
       (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid))
-      (is (= :create-pending (t2/select-one-fn :status :model/TableIndex applicable-id)))
+      (is (= :failed (t2/select-one-fn :status :model/TableIndex applicable-id)))
       (is (not (t2/exists? :model/TableIndex :id deleted-id)))
       (is (some? (t2/insert-returning-pk! :model/TableIndex
                                           {:transform_id tid
                                            :index_name   "deleted_idx"
                                            :structured   {:kind :btree :name "deleted_idx" :columns [{:name "z"}]}}))))))
+
+(deftest ^:synchronized verify-managed-indexes!-leaves-rows-unchanged-when-index-fetch-fails-test
+  (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                             :source             {:type "query"}
+                                             :source_database_id (mt/id)
+                                             :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                 :model/TableIndex {applicable-id :id} {:transform_id tid :index_name "active_idx"
+                                                        :structured {:kind :btree :name "active_idx" :columns [{:name "x"}]}}
+                 :model/TableIndex {deleted-id :id} {:transform_id tid :index_name "deleted_idx"
+                                                     :status :delete-pending
+                                                     :structured {:kind :btree :name "deleted_idx" :columns [{:name "y"}]}}]
+    (with-redefs [driver/fetch-table-indexes (fn [& _] (throw (ex-info "boom" {})))]
+      (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid))
+      (is (= :create-pending (t2/select-one-fn :status :model/TableIndex applicable-id)))
+      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id))))))
 
 (deftest ^:synchronized ddl-failure-marks-row-failed-test
   (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)

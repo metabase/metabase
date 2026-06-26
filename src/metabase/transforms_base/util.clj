@@ -208,6 +208,7 @@
   [{:keys [id target last_checkpoint_value]}]
   (and (= :table-incremental (keyword (:type target)))
        (or (nil? last_checkpoint_value)
+           ;; Protect against an in-flight run writing a new checkpoint after an index mutation cleared it.
            (table-index/pending-changes-for-transform? id))))
 
 (defn- encode-checkpoint-value [v]
@@ -620,11 +621,8 @@
                     (table-index/select-for-transform (:id transform)))]
       (when-let [managed (seq managed)]
         (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))
-              {:keys [schema] table-name :name} (:target transform)
-              delete-pending (filter #(= :delete-pending (:status %)) managed)]
-          ;; An empty fetch is ambiguous (no indexes vs couldn't introspect -- both degrade to []), so leave statuses
-          ;; untouched rather than mark everything failed; warn so a stuck pending state stays traceable.
-          (if-let [warehouse-indexes (seq (reconcile/fetch-warehouse-indexes database schema table-name))]
+              {:keys [schema] table-name :name} (:target transform)]
+          (if-some [warehouse-indexes (reconcile/fetch-warehouse-indexes database schema table-name)]
             (let [present-keys (into #{} (map reconcile/match-key) warehouse-indexes)
                   by-outcome   (group-by (fn [row]
                                            (let [present? (contains? present-keys (reconcile/managed-match-key row))]
@@ -641,13 +639,8 @@
                   (t2/update! :model/TableIndex :id [:in (map :id rows)]
                               {:status           status
                                :last_executed_at :%now}))))
-            (do
-              ;; The full rebuild succeeded and delete-pending rows were deliberately excluded from table creation, so the
-              ;; old physical index is gone even when the driver reports no remaining indexes.
-              (when (seq delete-pending)
-                (t2/delete! :model/TableIndex :id [:in (map :id delete-pending)]))
-              (log/warnf "verify-managed-indexes!: no indexes read back for %s.%s; leaving %d applicable request(s) unchanged"
-                         schema table-name (- (count managed) (count delete-pending))))))))))
+            (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s; leaving %d request(s) unchanged"
+                       schema table-name (count managed))))))))
 
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.

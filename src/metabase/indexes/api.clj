@@ -68,7 +68,8 @@
   (let [transform (api/read-check :model/Transform transform-id)
         {:keys [database schema] table-name :name} (:target transform)
         managed   (table-index/select-for-transform transform-id)
-        warehouse (reconcile/fetch-warehouse-indexes (t2/select-one :model/Database database) schema table-name)]
+        warehouse (or (reconcile/fetch-warehouse-indexes (t2/select-one :model/Database database) schema table-name)
+                      [])]
     {:data (reconcile/merge-indexes managed warehouse)}))
 
 (api.macros/defendpoint :get "/request/:id" :- RequestIndex

@@ -93,6 +93,9 @@
     (with-redefs [metabase.driver/fetch-table-indexes (fn [_driver _db _schema _table] [wh-btree])]
       (is (= [wh-btree]
              (reconcile/fetch-warehouse-indexes {:engine :postgres} "public" "t")))))
-  (testing "swallows driver/connection errors and returns []"
+  (testing "preserves a successful empty warehouse response"
+    (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] [])]
+      (is (= [] (reconcile/fetch-warehouse-indexes {:engine :postgres} "public" "t")))))
+  (testing "swallows driver/connection errors and returns nil"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] (throw (ex-info "boom" {})))]
-      (is (= [] (reconcile/fetch-warehouse-indexes {:engine :postgres} "public" "t"))))))
+      (is (nil? (reconcile/fetch-warehouse-indexes {:engine :postgres} "public" "t"))))))

@@ -35,9 +35,6 @@
   {:structured transform-structured
    :status     (mi/transform-validator mi/transform-keyword (partial mi/assert-enum schema/statuses))})
 
-(def ^:private non-applicable-statuses
-  #{:delete-pending})
-
 (def pending-statuses
   "Statuses that require a full incremental rebuild before an index request's physical state can be trusted."
   #{:create-pending :update-pending :delete-pending :running})
@@ -91,7 +88,7 @@
 (defn applicable?
   "True when an index request should be applied to a transform's target table."
   [idx]
-  (not (contains? non-applicable-statuses (:status idx))))
+  (not= :delete-pending (:status idx)))
 
 (defn select-for-transform
   "All index request rows for `transform-id`, ordered for the index manager list."
