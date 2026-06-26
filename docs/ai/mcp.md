@@ -136,15 +136,15 @@ Results returned by the MCP server are sent to your MCP client, which may forwar
 
 To review which clients have connected, go to **Admin > AI > MCP** and open the **Authorizations** tab. The authorization logs are an audit log of MCP and Agent API client registrations and the authorization decisions people have approved or denied.
 
-Each row records:
+Each record includes:
 
-- **Client**: the MCP client that registered or requested access (like Claude).
-- **User**: the person who approved or denied the request (blank for registration events).
+- **Client**: the MCP client that registered or requested access (like Claude Code).
+- **User**: the person who approved (authenticated) or denied the request (blank for registration events).
 - **Redirect URI**: the OAuth callback URL the client registered.
 - **Event**: **Registered**, **Approved**, or **Denied**.
 - **Date**: when the event happened.
 
-Use the event filter above the table to narrow the list to a single event type.
+Use the event filter to narrow the list to a single event type.
 
 ## With the MCP server, your client provides the AI
 
