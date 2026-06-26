@@ -642,6 +642,20 @@
                                      :query         (:query construct-resp)
                                      :collection_id writable-id}))))))))
 
+(deftest create-question-explicit-null-collection-test
+  (testing "An explicit null collection_id saves to the root collection, not the personal default"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:source     {:type "table" :id (mt/id :orders)}
+                                                :operations [["limit" 10]]})
+          create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                               {:name          "Agent Root Question"
+                                                :query         (:query construct-resp)
+                                                :collection_id nil})]
+      (is (=? {:collection_id   nil
+               :collection_path "Our analytics"}
+              create-resp))
+      (t2/delete! :model/Card :id (:id create-resp)))))
+
 (deftest create-question-collection-path-test
   (testing "collection_path is the full breadcrumb, mirroring the app's location"
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent Coll"}
@@ -739,3 +753,13 @@
     (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
                           {:name         "Bad Dashboard"
                            :question_ids [999999]})))
+
+(deftest create-dashboard-explicit-null-collection-test
+  (testing "An explicit null collection_id saves to the root collection, not the personal default"
+    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                     {:name          "Agent Root Dashboard"
+                                      :collection_id nil})]
+      (is (=? {:collection_id   nil
+               :collection_path "Our analytics"}
+              resp))
+      (t2/delete! :model/Dashboard :id (:id resp)))))

@@ -483,13 +483,13 @@
      (inline? offset) (recur driver day-of-week-honeysql-expr (second offset) mod-fn)
      (zero? offset)   day-of-week-honeysql-expr
      (neg? offset)    (recur driver day-of-week-honeysql-expr (+ offset 7) mod-fn)
-     :else            (-> [:coalesce
-                           [:nullif
-                            (mod-fn (h2x/+ day-of-week-honeysql-expr offset) (inline-num 7))
-                            [:inline 0]]
-                           [:inline 7]]
-                          (h2x/with-database-type-info (or (h2x/database-type day-of-week-honeysql-expr)
-                                                           "integer"))))))
+     ;; `((dow + offset - 1) % 7) + 1` shifts the day-of-week into the range [1, 7] and propagates NULL.
+     :else            (let [shifted (if (= offset 1)
+                                      day-of-week-honeysql-expr
+                                      (h2x/+ day-of-week-honeysql-expr (dec offset)))]
+                        (-> (h2x/+ (mod-fn shifted (inline-num 7)) (inline-num 1))
+                            (h2x/with-database-type-info (or (h2x/database-type day-of-week-honeysql-expr)
+                                                             "integer")))))))
 
 (defmulti quote-style
   "Return the dialect that should be used by Honey SQL 2 when building a SQL statement. Defaults to `:ansi`, but other
