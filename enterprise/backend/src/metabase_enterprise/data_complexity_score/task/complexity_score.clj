@@ -22,16 +22,29 @@
 (def ^:private job-key     (jobs/key "metabase.task.data-complexity-score.job"))
 (def ^:private trigger-key (triggers/key "metabase.task.data-complexity-score.trigger"))
 
+(defn- weights-digest
+  "Short stable hex digest of the weights map. v2 grew `weights` to ~26 entries, so inlining the full
+  map would blow past the fingerprint column's varchar(512). A SHA-256 over the canonical (sorted)
+  pr-str preserves the \"a weight tuning forces a re-score\" contract in a fixed 64-char string."
+  [weights]
+  (let [bytes (.digest (java.security.MessageDigest/getInstance "SHA-256")
+                       (.getBytes (pr-str (into (sorted-map) weights)) "UTF-8"))]
+    (apply str (map #(format "%02x" %) bytes))))
+
 (defn current-fingerprint
   "String capturing everything that changes the meaning or shape of an emitted score.
-  Includes `formula-version`, `format-version`, `weights`, `synonym-threshold`, and the synonym-axis fragment
-  from [[synonym-source/fingerprint-fragment]] (source toggles, configured embedder, pgvector index swaps)."
+  Includes `formula-version`, `format-version`, a digest of `weights` (see [[weights-digest]] —
+  digested rather than inlined so the fingerprint stays within its varchar(512) column),
+  `synonym-threshold`, the cost-tier `level` (a level change adds/removes leaves, so it must force a
+  re-score), and the synonym-axis fragment from [[synonym-source/fingerprint-fragment]] (source
+  toggles, configured embedder, pgvector index swaps)."
   []
   (pr-str (into (sorted-map)
                 (merge {:formula-version   complexity/formula-version
                         :format-version    complexity/format-version
                         :synonym-threshold complexity/synonym-similarity-threshold
-                        :weights           complexity/weights}
+                        :weights-digest    (weights-digest complexity/weights)
+                        :level             (settings/effective-level)}
                        (synonym-source/fingerprint-fragment)))))
 
 (defn maybe-advance-last-fingerprint!
@@ -61,7 +74,8 @@
     (try
       (let [result (complexity/complexity-scores
                     (assoc (synonym-source/complexity-scores-opts)
-                           :metabot-scope (metabot-scope/internal-metabot-scope)))]
+                           :metabot-scope (metabot-scope/internal-metabot-scope)
+                           :level         (settings/effective-level)))]
         (try
           (data-complexity-score/record-score! claim-fingerprint "appdb" result)
           (maybe-advance-last-fingerprint! claim-fingerprint result)

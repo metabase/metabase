@@ -49,53 +49,66 @@
    (fn [names]
      (mapv #(when-let [v (get name->vec-literal %)] (float-array v)) names))))
 
+;;; Navigation helpers into the score tree. :ambiguity is split into :name and :synonym sub-groups.
+(defn- size [catalog]        (get-in catalog [:components :size :components]))
+(defn- ambiguity [catalog]   (get-in catalog [:components :ambiguity :components]))
+(defn- amb-name [catalog]    (get-in catalog [:components :ambiguity :components :name :components]))
+(defn- amb-synonym [catalog] (get-in catalog [:components :ambiguity :components :synonym :components]))
+(defn- metadata [catalog]    (get-in catalog [:components :metadata :components]))
+
 (deftest ^:parallel score-catalog-pure-test
-  (testing "empty catalog scores zero — every leaf reports the zero, group totals roll up zero"
-    (is (=? {:score 0
-             :components {:size      {:score      0
+  (testing "empty catalog: :size and :ambiguity roll up to 0; :metadata is the full coverage gap"
+    ;; v2: every measure is scored. An empty catalog has 0 size/ambiguity, but coverage is undefined
+    ;; → treated as a full gap of 1.0 each (5 coverage measures × weight 10 = 50), so the total is 50.
+    ;; Group/catalog totals mix int leaf scores with double 0.0 ratio scores, so use `==` predicates.
+    (is (=? {:score #(== % 50)
+             :components {:size      {:score      #(== % 0)
                                       :components {:entity-count {:measurement 0.0 :score 0}
                                                    :field-count  {:measurement 0.0 :score 0}}}
-                          :ambiguity {:score      0
-                                      :components {:name-collisions   {:measurement 0.0 :score 0}
-                                                   :synonym-pairs     {:measurement 0.0 :score 0}
-                                                   :repeated-measures {:measurement 0.0 :score 0}}}}}
-            (#'complexity/score-catalog [] nil))))
+                          :ambiguity {:score      #(== % 0)
+                                      :components {:name    {:score      #(== % 0)
+                                                             :components {:collisions        {:measurement 0.0 :score 0}
+                                                                          :repeated-measures {:measurement 0.0 :score 0}}}
+                                                   :synonym {:score      #(== % 0)
+                                                             :components {:pairs {:measurement 0.0 :score 0}}}}}
+                          :metadata  {:score      #(== % 50)
+                                      :components {:description-coverage {:measurement 1.0 :score 10.0}}}}}
+            (#'complexity/score-catalog [] nil nil))))
   (testing "entity count contributes +10 per entity (lives under :size)"
     (let [es [(entity :name "orders")
               (entity :name "customers")
               (entity :name "products")]]
-      (is (=? {:score 30
-               :components {:size {:score      30
+      (is (=? {:components {:size {:score      #(== % 30)
                                    :components {:entity-count {:measurement 3.0 :score 30}}}}}
-              (#'complexity/score-catalog es nil)))))
-  (testing "name collisions stack linearly: 3 identical names = +200 (lives under :ambiguity)"
+              (#'complexity/score-catalog es nil nil)))))
+  (testing "name collisions stack linearly: 3 identical names = +200 (lives under :ambiguity :name)"
     (let [es [(entity :name "orders")
               (entity :name "orders")
               (entity :name "orders")]]
-      (is (=? {:components {:size      {:components {:entity-count    {:measurement 3.0 :score 30}}}
-                            :ambiguity {:components {:name-collisions {:measurement 2.0 :score 200}}}}}
-              (#'complexity/score-catalog es nil)))))
+      (is (=? {:components {:size      {:components {:entity-count {:measurement 3.0 :score 30}}}
+                            :ambiguity {:components {:name {:components {:collisions {:measurement 2.0 :score 200}}}}}}}
+              (#'complexity/score-catalog es nil nil)))))
   (testing "collision detection is case-insensitive and trims whitespace"
     (let [es [(entity :name "Orders")
               (entity :name " orders ")
               (entity :name "ORDERS")]]
-      (is (=? {:components {:ambiguity {:components {:name-collisions {:measurement 2.0 :score 200}}}}}
-              (#'complexity/score-catalog es nil)))))
+      (is (=? {:collisions {:measurement 2.0 :score 200}}
+              (amb-name (#'complexity/score-catalog es nil nil))))))
   (testing "field count contributes +1 per field (lives under :size, summed across entities)"
     (let [es [(entity :name "a" :field-count 10)
               (entity :name "b" :field-count 25)]]
       (is (=? {:components {:size {:components {:field-count {:measurement 35.0 :score 35}}}}}
-              (#'complexity/score-catalog es nil)))))
-  (testing "repeated measures contribute +2 per repeat (lives under :ambiguity)"
+              (#'complexity/score-catalog es nil nil)))))
+  (testing "repeated measures contribute +2 per repeat (lives under :ambiguity :name)"
     (let [es [(entity :name "invoices"      :measure-names ["revenue" "discount"])
               (entity :name "subscriptions" :measure-names ["revenue"])
               (entity :name "products"      :measure-names ["price"])]]
-      (is (=? {:components {:ambiguity {:components {:repeated-measures {:measurement 1.0 :score 2}}}}}
-              (#'complexity/score-catalog es nil)))))
-  (testing "nil embedder disables synonym scoring"
+      (is (=? {:repeated-measures {:measurement 1.0 :score 2}}
+              (amb-name (#'complexity/score-catalog es nil nil))))))
+  (testing "nil embedder still produces a zero :synonym sub-group"
     (let [es [(entity :name "customers") (entity :name "clients")]]
-      (is (=? {:components {:ambiguity {:components {:synonym-pairs {:measurement 0.0 :score 0}}}}}
-              (#'complexity/score-catalog es nil))))))
+      (is (=? {:pairs {:measurement 0.0 :score 0}}
+              (amb-synonym (#'complexity/score-catalog es nil nil)))))))
 
 (deftest ^:parallel complexity-bands-well-formed-test
   (testing "every band list in the bands tree: last entry is unbounded; earlier entries have strictly ascending :max"
@@ -211,56 +224,289 @@
     (let [es       [(entity :name "customers") (entity :name "clients")]
           embedder (mock-embedder {"customers" [1.0 0.0 0.0]
                                    "clients"   [0.9 0.1 0.0]})]
-      (is (=? {:components {:ambiguity {:components {:synonym-pairs {:measurement 1.0 :score 50}}}}}
-              (#'complexity/score-catalog es embedder)))))
+      (is (=? {:pairs {:measurement 1.0 :score 50}}
+              (amb-synonym (#'complexity/score-catalog es nil embedder))))))
   (testing "orthogonal embeddings produce no synonym pairs"
     (let [es       [(entity :name "customers") (entity :name "widgets")]
           embedder (mock-embedder {"customers" [1.0 0.0]
                                    "widgets"   [0.0 1.0]})]
-      (is (=? {:components {:ambiguity {:components {:synonym-pairs {:measurement 0.0 :score 0}}}}}
-              (#'complexity/score-catalog es embedder)))))
+      (is (=? {:pairs {:measurement 0.0 :score 0}}
+              (amb-synonym (#'complexity/score-catalog es nil embedder))))))
   (testing "exact-name duplicates don't double-count as synonym pairs"
     (let [es       [(entity :name "orders") (entity :name "orders") (entity :name "tickets")]
           embedder (mock-embedder {"orders"  [1.0 0.0]
                                    "tickets" [0.0 1.0]})]
-      (is (=? {:components {:ambiguity {:components {:name-collisions {:measurement 1.0 :score 100}
-                                                     :synonym-pairs   {:measurement 0.0 :score 0}}}}}
-              (#'complexity/score-catalog es embedder)))))
+      (is (=? {:name    {:components {:collisions {:measurement 1.0 :score 100}}}
+               :synonym {:components {:pairs      {:measurement 0.0 :score 0}}}}
+              (ambiguity (#'complexity/score-catalog es nil embedder))))))
   (testing "entities without a vector from the embedder are simply skipped"
     (let [es       [(entity :name "customers") (entity :name "clients") (entity :name "ghost")]
           ;; "ghost" is missing → not considered. The remaining two are synonyms.
           embedder (mock-embedder {"customers" [1.0 0.0]
                                    "clients"   [0.99 0.01]})]
-      (is (=? {:components {:ambiguity {:components {:synonym-pairs {:measurement 1.0 :score 50}}}}}
-              (#'complexity/score-catalog es embedder)))))
+      (is (=? {:pairs {:measurement 1.0 :score 50}}
+              (amb-synonym (#'complexity/score-catalog es nil embedder))))))
   (testing "embedder failure cascades nil through the catalog (no zero-fallback)"
     (let [es       [(entity :name "customers") (entity :name "clients")]
           embedder (fn [_] (throw (ex-info "boom" {})))]
-      (is (= {:score nil
-              :components {:ambiguity {:score      nil
-                                       :components {:name-collisions   {:measurement 0.0 :score 0}
-                                                    :synonym-pairs     {:error "boom"}
-                                                    :repeated-measures {:measurement 0.0 :score 0}}}
-                           ;; Sibling sub-scores still compute their real values — only aggregates
-                           ;; that include the failed leaf cascade nil, so consumers can still see
-                           ;; the unaffected dimensions.
-                           :size      {:score      20
-                                       :components {:entity-count {:measurement 2.0 :score 20}
-                                                    :field-count  {:measurement 0.0 :score 0}}}}}
-             (#'complexity/score-catalog es embedder)))))
+      ;; The synonym leaf carries {:error ... :score nil} (cascade), which nils :synonym's score,
+      ;; then :ambiguity's :score and the catalog total. Sibling sub-scores still compute their real
+      ;; values — only aggregates that include the failed leaf cascade nil, so consumers can still
+      ;; see the unaffected dimensions (:size rolls up its real 20; :ambiguity :name stays a number).
+      (is (=? {:score nil
+               :components {:ambiguity {:score      nil
+                                        :components {:name    {:score      #(== % 0)
+                                                               :components {:collisions {:measurement 0.0 :score 0}}}
+                                                     :synonym {:score      nil
+                                                               :components {:pairs {:error "boom" :score nil}}}}}
+                            :size      {:score      #(== % 20)
+                                        :components {:entity-count {:measurement 2.0 :score 20}
+                                                     :field-count  {:measurement 0.0 :score 0}}}}}
+              (#'complexity/score-catalog es nil embedder)))))
   (testing "throwable with a nil/blank message still records :error as a nonblank string"
     ;; Regression: we must keep :error present so an embedder failure is distinguishable from a
     ;; genuine zero-synonym result. Fall back to the exception class name.
     (let [es         [(entity :name "customers") (entity :name "clients")]
-          synonym-of #(get-in (#'complexity/score-catalog es %)
-                              [:components :ambiguity :components :synonym-pairs])]
+          synonym-of #(get-in (#'complexity/score-catalog es nil %)
+                              [:components :ambiguity :components :synonym :components :pairs])]
       (doseq [[label embedder expected] [["nil message"   (fn [_] (throw (NullPointerException.)))
                                           "java.lang.NullPointerException"]
                                          ["blank message" (fn [_] (throw (RuntimeException. "   ")))
                                           "java.lang.RuntimeException"]]]
         (testing label
-          (is (= {:error expected} (synonym-of embedder))
+          (is (= {:error expected :score nil} (synonym-of embedder))
               (format ":error must be a nonblank string when the throwable's message is %s" label)))))))
+
+;;; --------------------------- v2 measures (every measure scored) ---------------------------
+
+(deftest ^:parallel collection-tree-size-scored-test
+  (testing ":collection-tree-size scores the ctx :collection-count at weight 1 (and rolls into :size)"
+    (let [es [(entity :name "orders") (entity :name "customers")]]
+      ;; entity-count 20 + field-count 0 + collection-tree-size 7 + ratios 0 = 27
+      (is (=? {:components {:size {:components {:collection-tree-size {:measurement 7.0 :score 7}}
+                                   :score 27.0}}}
+              (#'complexity/score-catalog es {:collection-count 7} nil)))))
+  (testing "missing/nil :collection-count degrades gracefully to 0 (representation/CLI path)"
+    (is (=? {:components {:size {:components {:collection-tree-size {:measurement 0.0 :score 0}}}}}
+            (#'complexity/score-catalog [(entity :name "orders")] nil nil)))
+    (is (=? {:components {:size {:components {:collection-tree-size {:measurement 0.0 :score 0}}}}}
+            (#'complexity/score-catalog [(entity :name "orders")] {:collection-count nil} nil)))))
+
+(deftest ^:parallel field-level-collisions-scored-test
+  (testing "distinct field names on >1 table count once each, at weight 5"
+    ;; "id" on tables 1+2, "ts" on tables 2+3 → 2 collisions × 5 = 10. "total" only on table 1.
+    (let [es [{:id 1 :name "orders"   :kind :table :field-count 2 :measure-names []
+               :fields [{:name "id"} {:name "total"}]}
+              {:id 2 :name "invoices" :kind :table :field-count 2 :measure-names []
+               :fields [{:name "ID"} {:name "ts"}]}        ; case-insensitive: "id" collides
+              {:id 3 :name "events"   :kind :table :field-count 1 :measure-names []
+               :fields [{:name " ts "}]}]]                 ; whitespace-trimmed: "ts" collides
+      (is (=? {:field-collisions {:measurement 2.0 :score 10}}
+              (amb-name (#'complexity/score-catalog es nil nil))))))
+  (testing "a name on a single table is not a collision"
+    (let [es [{:id 1 :name "orders" :kind :table :field-count 1 :measure-names [] :fields [{:name "id"}]}]]
+      (is (=? {:field-collisions {:measurement 0.0 :score 0}}
+              (amb-name (#'complexity/score-catalog es nil nil))))))
+  (testing "entities with no :fields (Cards / representation path) degrade to 0, never throw"
+    (let [es [(entity :name "orders") (entity :name "invoices")]]
+      (is (=? {:field-collisions {:measurement 0.0 :score 0}}
+              (amb-name (#'complexity/score-catalog es nil nil)))))))
+
+(deftest ^:parallel size-ratio-measures-test
+  (testing ":fields-per-entity = field-count / entity-count (scored, weight 1); undefined → 0"
+    (is (=? {:fields-per-entity {:measurement 5.0 :score 5.0}}
+            (size (#'complexity/score-catalog [(entity :name "a" :field-count 4)
+                                               (entity :name "b" :field-count 6)] nil nil))))
+    (is (=? {:measurement 0.0 :score 0} (:fields-per-entity (size (#'complexity/score-catalog [] nil nil))))
+        "no entities → undefined ratio → measurement 0, score 0"))
+  (testing ":measure-to-dim-ratio = (named-measures + metric-cards) / fields (scored, weight 1)"
+    ;; 1 measure on the table + 1 metric card = 2; fields = 4 → 0.5
+    (let [es [{:id 1 :name "orders" :kind :table :field-count 4 :measure-names ["revenue"] :fields []}
+              {:id 2 :name "Rev"    :kind :metric :field-count 0 :measure-names [] :fields []}]]
+      (is (=? {:measure-to-dim-ratio {:measurement 0.5 :score 0.5}} (size (#'complexity/score-catalog es nil nil)))))
+    (is (=? {:measurement 0.0 :score 0} (:measure-to-dim-ratio (size (#'complexity/score-catalog [(entity :name "a")] nil nil))))
+        "no fields → undefined ratio → 0")))
+
+(deftest ^:parallel nominal-density-measures-test
+  (testing ":name :collisions-density = collisions / entity-count × 100 (scored, weight 1); undefined → 0"
+    ;; 3 "orders" → 2 collisions over 3 entities → 66.67
+    (let [es [(entity :name "orders") (entity :name "orders") (entity :name "orders")]]
+      (is (=? {:collisions-density {:measurement #(< 66.6 % 66.7) :score #(< 66.6 % 66.7)}}
+              (amb-name (#'complexity/score-catalog es nil nil)))))
+    (is (=? {:measurement 0.0 :score 0} (:collisions-density (amb-name (#'complexity/score-catalog [] nil nil))))))
+  (testing ":name :concentration (scored, weight 10): 0 when names unique, higher when concentrated, 0 when none"
+    (is (=? {:concentration {:measurement 0.0 :score 0.0}}
+            (amb-name (#'complexity/score-catalog [(entity :name "a") (entity :name "b")] nil nil))))
+    (let [skewed [(entity :name "x") (entity :name "x") (entity :name "x") (entity :name "y")]]
+      (is (pos? (:measurement (:concentration (amb-name (#'complexity/score-catalog skewed nil nil)))))
+          "a dominant name concentrates the distribution"))
+    (is (=? {:measurement 0.0 :score 0.0} (:concentration (amb-name (#'complexity/score-catalog [] nil nil)))))))
+
+(deftest ^:parallel synonym-graph-analytics-test
+  (testing "a 3-clique (a,b,c all mutually similar) yields the expected scored graph analytics"
+    ;; 3 edges, 1 component of size 3, clustering 1.0, avg-degree 2. Weights: components 1,
+    ;; largest-component 2, avg-component 1, clustering 10, avg-degree 5, edge-density 1, degree 1 each.
+    (let [es       [(entity :name "a") (entity :name "b") (entity :name "c")]
+          embedder (mock-embedder {"a" [1.0 0.0] "b" [0.99 0.01] "c" [0.995 0.005]})
+          syn      (amb-synonym (#'complexity/score-catalog es nil embedder))]
+      ;; Scores are numerically exact; use `==` predicates so an int-vs-double score (e.g. a count
+      ;; weight gives an int, a ratio weight gives a double) doesn't spuriously fail the match.
+      (is (=? {:pairs             {:measurement 3.0   :score #(== % 150)}
+               :components        {:measurement 1.0   :score #(== % 1)}
+               :largest-component {:measurement 3.0   :score #(== % 6)}    ; 3 × weight 2
+               :avg-component     {:measurement 3.0   :score #(== % 3)}
+               :clustering-coef   {:measurement 1.0   :score #(== % 10)}   ; 1.0 × weight 10
+               :avg-degree        {:measurement 2.0   :score #(== % 10)}   ; 2.0 × weight 5
+               :edge-density      {:measurement 100.0 :score #(== % 100)}
+               ;; degree percentiles are a nested sub-group, rolled up to its own :score (2+2+2)
+               :degree            {:score #(== % 6)
+                                   :components {:p50 {:measurement 2.0 :score #(== % 2)}
+                                                :p90 {:measurement 2.0 :score #(== % 2)}
+                                                :max {:measurement 2.0 :score #(== % 2)}}}}
+              syn))))
+  (testing "two disjoint pairs → 2 edges, 2 components of size 2, no triangles (clustering 0)"
+    (let [es       [(entity :name "a") (entity :name "b") (entity :name "c") (entity :name "d")]
+          embedder (mock-embedder {"a" [1.0 0.0 0.0 0.0] "b" [0.99 0.01 0.0 0.0]
+                                   "c" [0.0 0.0 1.0 0.0] "d" [0.0 0.0 0.99 0.01]})
+          syn      (amb-synonym (#'complexity/score-catalog es nil embedder))]
+      (is (=? {:pairs             {:measurement 2.0 :score #(== % 100)}
+               :components        {:measurement 2.0 :score #(== % 2)}
+               :largest-component {:measurement 2.0 :score #(== % 4)}
+               :avg-component     {:measurement 2.0 :score #(== % 2)}
+               ;; no triangles → clustering coefficient is undefined → scored 0 (v2: every leaf scored)
+               :clustering-coef   {:measurement 0.0 :score #(== % 0)}}
+              syn))))
+  (testing "no embedded names (n=0): pairs 0, all analytics scored 0"
+    (let [syn (amb-synonym (#'complexity/score-catalog [(entity :name "a")] nil (mock-embedder {})))]
+      (is (=? {:pairs        {:measurement 0.0 :score #(== % 0)}
+               :edge-density {:measurement 0.0 :score #(== % 0)}
+               :components   {:measurement 0.0 :score #(== % 0)}
+               :degree       {:score #(== % 0) :components {:p50 {:measurement 0.0 :score #(== % 0)}}}}
+              syn))))
+  (testing "singleton (n=1): one trivial component, 0 everywhere"
+    (let [syn (amb-synonym (#'complexity/score-catalog [(entity :name "a")] nil (mock-embedder {"a" [1.0 0.0]})))]
+      (is (=? {:pairs        {:measurement 0.0 :score #(== % 0)}
+               :edge-density {:measurement 0.0 :score #(== % 0)}
+               :components   {:measurement 1.0 :score #(== % 1)}
+               :avg-degree   {:measurement 0.0 :score #(== % 0)}}
+              syn)))))
+
+(deftest ^:parallel metadata-grouping-test
+  (testing ":metadata is now a SCORED grouping that sums into the catalog total; coverage scores the GAP"
+    (let [es     [{:id 1 :name "orders" :kind :table :field-count 2 :measure-names ["revenue"]
+                   :description "Customer purchase orders with one row per line item placed."
+                   :fields [{:name "id" :semantic-type :type/PK :description "primary key"}
+                            {:name "total" :semantic-type nil :description nil}]}]
+          result (#'complexity/score-catalog es nil nil)]
+      (is (contains? (get-in result [:components :metadata]) :score)
+          ":metadata now carries a :score (every measure is scored in v2)")
+      ;; Gap = 1 - coverage, weight 10 on each coverage measure; description-quality is raw, weight 1.
+      (is (=? {:description-coverage       {:measurement 0.0 :score 0.0}    ; full coverage → 0 gap
+               :field-description-coverage {:measurement 0.5 :score 5.0}    ; 0.5 covered → 0.5 gap × 10
+               :semantic-type-coverage     {:measurement 0.5 :score 5.0}
+               :curated-metric-coverage    {:measurement 0.0 :score 0.0}    ; the one table has a measure
+               :description-quality        {:measurement #(== % 10) :score #(== % 10)}}  ; 10-word description
+              (metadata result)))
+      ;; The catalog total now sums ALL three groupings including :metadata.
+      (let [scored-sum (+ (get-in result [:components :size :score])
+                          (get-in result [:components :ambiguity :score])
+                          (get-in result [:components :metadata :score]))]
+        (is (= scored-sum (:score result))
+            "catalog :score = :size + :ambiguity + :metadata"))))
+  (testing "short (<20 char) description → full coverage gap, but a one-word one still scores quality raw"
+    (let [es [{:id 1 :name "t" :kind :table :field-count 0 :measure-names [] :fields []
+               :description "too short"}]]
+      (is (=? {:description-coverage {:measurement 1.0 :score 10.0}      ; 0 coverage → full gap × 10
+               :description-quality  {:measurement 2.0 :score #(== % 2)}} ; "too short" = 2 words
+              (metadata (#'complexity/score-catalog es nil nil)))))))
+
+(deftest ^:parallel embedding-coverage-test
+  (testing ":embedding-coverage scores the GAP (1 - fraction of names embedded); full gap on embedder error"
+    (let [es       [(entity :name "orders") (entity :name "customers") (entity :name "ghost")]
+          embedder (mock-embedder {"orders" [1.0 0.0] "customers" [0.0 1.0]})]   ; ghost has no vector
+      ;; 2 of 3 names covered → coverage ≈ 0.667 → gap ≈ 0.333 × weight 10 ≈ 3.33
+      (is (=? {:embedding-coverage {:measurement #(< 0.33 % 0.34) :score #(< 3.3 % 3.4)}}
+              (metadata (#'complexity/score-catalog es nil embedder)))))
+    (testing "embedder error → coverage undefined → full gap of 1.0 (× weight 10 = 10)"
+      (let [es [(entity :name "orders")]]
+        (is (=? {:measurement 1.0 :score 10.0}
+                (:embedding-coverage (metadata (#'complexity/score-catalog es nil (fn [_] (throw (ex-info "boom" {}))))))))))))
+
+(deftest ^:parallel rollup-rule-test
+  (testing "every leaf is scored now: a grouping sums all its children's :score"
+    (let [tree   {:g1 {:a {:measurement 1.0 :score 4} :b {:measurement 2.0 :score 6}}
+                  :g2 {:c {:measurement 2.0 :score 5}}}
+          rolled (#'complexity/rollup-node tree)]
+      (is (= 10 (get-in rolled [:components :g1 :score])) "g1 sums its two scored leaves")
+      (is (= 5  (get-in rolled [:components :g2 :score])))
+      (is (= 15 (:score rolled)) "the root sums all groupings")))
+  (testing "a nested sub-group rolls up arbitrarily deep"
+    (let [tree   {:g {:leaf {:measurement 1.0 :score 1}
+                      :sub  {:p50 {:measurement 2.0 :score 2} :max {:measurement 3.0 :score 3}}}}
+          rolled (#'complexity/rollup-node tree)]
+      (is (= 6 (get-in rolled [:components :g :score])) "g = leaf(1) + sub(5)")
+      (is (= 5 (get-in rolled [:components :g :components :sub :score]))
+          "the :sub sub-group rolls up to 2+3")))
+  (testing "an errored scored child cascades nil up through its scored ancestors"
+    (let [tree   {:g {:c {:error "x" :score nil} :d {:measurement 1.0 :score 3}}}
+          rolled (#'complexity/rollup-node tree)]
+      (is (nil? (get-in rolled [:components :g :score])))
+      (is (nil? (:score rolled))))))
+
+(deftest ^:parallel cost-tier-level-test
+  (testing "level 0: each catalog is just {:components {}} (scoring skipped, embedder never called)"
+    (let [called? (atom false)
+          es      [(entity :name "orders")]]
+      (is (= {:components {}}
+             (#'complexity/score-catalog es {:level 0} (fn [_] (reset! called? true) {}))))
+      (is (false? @called?) "level 0 must not invoke the embedder")))
+  (testing "level 1: cheap :name sub-group present; the :synonym sub-group + embedding-coverage OMITTED"
+    (let [called? (atom false)
+          es      [(entity :name "customers") (entity :name "clients")]
+          result  (#'complexity/score-catalog es {:level 1} (fn [_] (reset! called? true) {}))]
+      (is (false? @called?) "level 1 must not invoke the embedder")
+      (is (contains? (size result) :entity-count))
+      (is (contains? (ambiguity result) :name) ":name sub-group is always present")
+      (is (contains? (amb-name result) :collisions))
+      (is (contains? (amb-name result) :field-collisions))
+      (testing "no :synonym sub-group at level 1"
+        (is (not (contains? (ambiguity result) :synonym))))
+      (testing ":metadata present and scored but without :embedding-coverage"
+        (is (contains? (get-in result [:components :metadata]) :score))
+        (is (not (contains? (metadata result) :embedding-coverage))))
+      (testing "every grouping total sums its scored children (nil cascade only on error)"
+        (doseq [group [:size :ambiguity :metadata]]
+          (is (= (reduce + 0 (keep :score (vals (get-in result [:components group :components]))))
+                 (get-in result [:components group :score])))))))
+  (testing "level 2 (default): :synonym sub-group + embedding-coverage present"
+    (let [es       [(entity :name "customers") (entity :name "clients")]
+          embedder (mock-embedder {"customers" [1.0 0.0] "clients" [0.99 0.01]})
+          result   (#'complexity/score-catalog es {:level 2} embedder)]
+      (is (contains? (ambiguity result) :synonym))
+      (is (contains? (amb-synonym result) :pairs))
+      (is (contains? (amb-synonym result) :clustering-coef))
+      (is (contains? (amb-synonym result) :degree))
+      (is (contains? (metadata result) :embedding-coverage))))
+  (testing "omitting :level defaults to 2 (everything computed)"
+    (let [es [(entity :name "a")]]
+      (is (contains? (ambiguity (#'complexity/score-catalog es nil nil)) :synonym)))))
+
+(deftest ^:parallel meta-includes-level-test
+  (testing "complexity-scores publishes :level in :meta and defaults it to 2"
+    (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                (constantly {:library [] :universe [] :metabot []})]
+      (is (= 2 (get-in (complexity/complexity-scores :embedder nil) [:meta :level])))
+      (is (= 1 (get-in (complexity/complexity-scores :embedder nil :level 1) [:meta :level]))))))
+
+(deftest ^:sequential current-fingerprint-includes-level-test
+  (testing "current-fingerprint embeds the effective level so a level change forces a re-score"
+    (mt/with-temporary-setting-values [semantic-complexity-level 2]
+      (let [fp-2 (task.complexity-score/current-fingerprint)]
+        (is (str/includes? fp-2 ":level 2"))
+        (mt/with-temporary-setting-values [semantic-complexity-level 1]
+          (let [fp-1 (task.complexity-score/current-fingerprint)]
+            (is (str/includes? fp-1 ":level 1"))
+            (is (not= fp-1 fp-2) "a level change must change the fingerprint")))))))
 
 (deftest ^:sequential complexity-scores-metabot-scope-opt-test
   (testing ":verified-only? true flows the caller's metabot-scope through to enumerate-catalogs"
@@ -380,16 +626,23 @@
      (mt/with-temp [:model/Database {db-id :id} {:name "No-library Test DB"}
                     :model/Table    _           {:db_id db-id :name "contributes_to_universe" :active true}]
        (let [{:keys [library universe]} (complexity/complexity-scores :embedder nil)]
-         (testing "library is empty (no collection tree)"
-           (is (= {:score 0
-                   :components {:size      {:score      0
-                                            :components {:entity-count {:measurement 0.0 :score 0}
-                                                         :field-count  {:measurement 0.0 :score 0}}}
-                                :ambiguity {:score      0
-                                            :components {:name-collisions   {:measurement 0.0 :score 0}
-                                                         :synonym-pairs     {:measurement 0.0 :score 0}
-                                                         :repeated-measures {:measurement 0.0 :score 0}}}}}
-                  library)))
+         (testing "library is empty (no collection tree): size/ambiguity roll up 0; :metadata is the full gap"
+           ;; v2: every measure is scored. An empty library has no curation to cover, so the 5
+           ;; coverage measures each score the full gap of 1.0 × weight 10 = 50 → catalog total 50.
+           (is (=? {:score #(== % 50)
+                    :components {:size      {:score      #(== % 0)
+                                             :components {:entity-count         {:measurement 0.0 :score 0}
+                                                          :field-count          {:measurement 0.0 :score 0}
+                                                          :collection-tree-size {:measurement 0.0 :score 0}}}
+                                 :ambiguity {:score      #(== % 0)
+                                             :components {:name    {:score      #(== % 0)
+                                                                    :components {:collisions       {:measurement 0.0 :score 0}
+                                                                                 :field-collisions {:measurement 0.0 :score 0}}}
+                                                          :synonym {:score      #(== % 0)
+                                                                    :components {:pairs {:measurement 0.0 :score 0}}}}}
+                                 :metadata  {:score      #(== % 50)
+                                             :components {:description-coverage {:measurement 1.0 :score 10.0}}}}}
+                   library)))
          (testing "universe still enumerates appdb content (our temp table + whatever else is there)"
            (is (pos? (:score universe)))))))))
 
@@ -459,8 +712,8 @@
             (semantic.tu/with-test-db! {:mode :mock-indexed}
               (reset! captured (complexity/complexity-scores
                                 :embedder semantic-search/search-index-embedder)))))
-        (is (=? {:universe {:components {:ambiguity {:components {:synonym-pairs {:measurement number?
-                                                                                  :score       nat-int?}}}}}}
+        (is (=? {:universe {:components {:ambiguity {:components {:synonym {:components {:pairs {:measurement number?
+                                                                                                 :score       nat-int?}}}}}}}}
                 @captured)
             "embedder returned vectors from pgvector and the synonym axis produced a real measurement")))))
 
@@ -479,8 +732,8 @@
                                [{:id 1 :name "orders" :kind :table}]))))
       (testing "score-synonym-pairs converts the propagated failure into :error on the sub-score"
         (let [es [(entity :name "customers") (entity :name "clients")]]
-          (is (=? {:components {:ambiguity {:components {:synonym-pairs {:error string?}}}}}
-                  (#'complexity/score-catalog es semantic-search/search-index-embedder))))))))
+          (is (=? {:pairs {:error string?}}
+                  (amb-synonym (#'complexity/score-catalog es nil semantic-search/search-index-embedder)))))))))
 
 (defn- stub-fetch-batch
   "Build a `fetch-batch` stub backed by a map of expected pair-sets -> rows. Each
@@ -753,18 +1006,18 @@
 
 (defn- expected-keys-for-catalog
   "For a catalog result, return `#{[wire-key score], ...}` matching what emit-snowplow! should emit:
-   grand `total`, one `<group>.total` per group, and one `<group>.<leaf>` per sub-component (the
-   `total` suffix is a Snowplow wire-format convention — the in-memory node uses `:score`). Walks
-   the score tree directly, so any future restructuring (extra depth, renamed groups) is exercised
-   by the helper and the production walk together."
-  [{root-score :score :keys [components]}]
-  (set
-   (cons ["total" root-score]
-         (for [[group {group-score :score group-components :components}] components
-               event (cons [(str (snake group) ".total") group-score]
-                           (for [[leaf {:keys [score]}] group-components]
-                             [(str (snake group) "." (snake leaf)) score]))]
-           event))))
+   a grand `total`, a `<path>.total` for every internal node, and a `<path>` for every leaf (the
+   `total` suffix is a Snowplow wire-format convention — the in-memory node uses `:score`). Walks the
+   score tree recursively so arbitrary depth (e.g. the nested `:synonym-degree` sub-group) is
+   exercised by the helper and the production walk together."
+  [catalog]
+  (letfn [(walk [path {:keys [score components] :as node}]
+            (let [internal? (contains? node :components)
+                  k         (str/join "." (map snake (if internal? (conj path :total) path)))
+                  k         (if (empty? path) "total" k)]
+              (cons [k score]
+                    (mapcat (fn [[child-k child]] (walk (conj path child-k) child)) components))))]
+    (set (walk [] catalog))))
 
 (deftest ^:sequential emit-snowplow-publishes-total-and-each-subscore-test
   (testing "one event per (catalog × key) — grand total, group rollups, and leaves — with correct scores"
@@ -822,10 +1075,10 @@
           (testing "size leaves carry raw counts"
             (is (= 3.0 (get-in by-key ["size.entity_count" "measurement"])))
             (is (= 5.0 (get-in by-key ["size.field_count"  "measurement"]))))
-          (testing "ambiguity leaves carry their respective measurements"
-            (is (= 1.0 (get-in by-key ["ambiguity.name_collisions"   "measurement"])))
-            (is (= 0.0 (get-in by-key ["ambiguity.synonym_pairs"     "measurement"])))
-            (is (= 0.0 (get-in by-key ["ambiguity.repeated_measures" "measurement"])))))))))
+          (testing "ambiguity sub-group leaves carry their respective measurements"
+            (is (= 1.0 (get-in by-key ["ambiguity.name.collisions"        "measurement"])))
+            (is (= 0.0 (get-in by-key ["ambiguity.synonym.pairs"          "measurement"])))
+            (is (= 0.0 (get-in by-key ["ambiguity.name.repeated_measures" "measurement"])))))))))
 
 (deftest ^:sequential emit-snowplow-cascades-nil-on-embedder-failure-test
   (testing "embedder failure cascades nil through aggregates without skipping any events"
@@ -841,15 +1094,16 @@
                           (filter #(= "library" (get % "catalog")))
                           (into {} (map (juxt #(get % "key") identity))))]
           (testing ":error from the synonym-pair scorer reaches the Snowplow leaf event"
-            (is (= "embedder boom" (get-in by-key ["ambiguity.synonym_pairs" "error"]))))
+            (is (= "embedder boom" (get-in by-key ["ambiguity.synonym.pairs" "error"]))))
           (testing ":error is only present on the originating leaf — aggregates use null score instead"
             (is (not-any? #(contains? % "error")
-                          (vals (dissoc by-key "ambiguity.synonym_pairs")))))
+                          (vals (dissoc by-key "ambiguity.synonym.pairs")))))
           (testing "the failed leaf omits :score entirely (schema flags it non-nullable but optional, no zero-fallback)"
-            (is (not (contains? (get by-key "ambiguity.synonym_pairs") "score"))))
+            (is (not (contains? (get by-key "ambiguity.synonym.pairs") "score"))))
           (testing "aggregates that include the failed leaf omit :score (cascade)"
-            (is (not (contains? (get by-key "ambiguity.total") "score")))
-            (is (not (contains? (get by-key "total")           "score"))))
+            (is (not (contains? (get by-key "ambiguity.synonym.total") "score")))
+            (is (not (contains? (get by-key "ambiguity.total")         "score")))
+            (is (not (contains? (get by-key "total")                   "score"))))
           (testing "unaffected aggregates keep their numeric :score (cascade is leaf-scoped, not catalog-wide)"
             ;; size group has no synonym dependency, so its rollup must still be a real number even
             ;; when ambiguity falls through. Catches a regression where the cascade goes too far.
@@ -867,7 +1121,7 @@
         (let [huge (apply str (repeat 5000 "x"))]
           (complexity/complexity-scores :embedder (fn [_] (throw (ex-info huge {}))))
           (let [err (->> (complexity-events!)
-                         (filter #(= "ambiguity.synonym_pairs" (get % "key")))
+                         (filter #(= "ambiguity.synonym.pairs" (get % "key")))
                          first
                          (#(get % "error")))]
             (is (= 1024 (count err))
@@ -904,8 +1158,11 @@
                         batch-ids  (set (map #(get % "batch_id") events))
                         catalogs   (frequencies (map #(get % "catalog") events))
                         event-keys (set (map (juxt #(get % "catalog") #(get % "key")) events))]
-                    ;; 1 grand total + 2 group totals + 5 leaves = 8 events per catalog.
-                    (is (= {"library" 8 "universe" 8 "metabot" 8} catalogs))
+                    ;; Per catalog: 1 grand total + :size (total + 5) + :metadata (total + 6) +
+                    ;; :ambiguity (total + :name sub-group (total + 5) + :synonym sub-group (total +
+                    ;; 7 scalar leaves + :degree sub-group's total + its 3 leaves))
+                    ;; = 1 + 6 + 7 + [1 + 6 + (1 + 7 + 1 + 3)] = 1 + 6 + 7 + 19 = 33 events.
+                    (is (= {"library" 33 "universe" 33 "metabot" 33} catalogs))
                     (is (= (count events) (count event-keys)))
                     (is (= 1 (count batch-ids)))
                     (is (every? parse-uuid batch-ids))
@@ -925,11 +1182,12 @@
                                 analytics/track-event!       (fn [& _] (throw (RuntimeException. "snowplow down")))]
       (mt/with-log-messages-for-level [messages [metabase-enterprise.data-complexity-score.complexity :warn]]
         (let [result (complexity/complexity-scores :embedder nil)]
-          (is (=? {:library  {:score 10
-                              :components {:size {:score      10
+          ;; 1 entity, no fields/description: size 10, ambiguity 0, metadata 50 (full coverage gap) = 60.
+          (is (=? {:library  {:score #(== % 60)
+                              :components {:size {:score      #(== % 10)
                                                   :components {:entity-count {:measurement 1.0 :score 10}}}}}
-                   :universe {:score 10
-                              :components {:size {:score      10
+                   :universe {:score #(== % 60)
+                              :components {:size {:score      #(== % 10)
                                                   :components {:entity-count {:measurement 1.0 :score 10}}}}}}
                   result))
           (is (some #(re-find #"Failed to publish complexity score" (:message %))
@@ -1024,40 +1282,50 @@
                                      "audit_log"     [0.0  0.0  0.0  0.0 0.0 0.99 0.1]}) ; ≈ audit_events (universe-only)
             {:keys [library universe]} (complexity/complexity-scores :embedder embedder)]
         (testing "library reflects exactly what we put in the Library collection tree"
-          ;; Library: 4 tables + 2 metric cards = 6 entities.
-          ;;  entity-count       6 × 10 = 60   → :size      = 63
-          ;;  field-count        orders(2) + subscriptions(1) + others(0) = 3 × 1 = 3
-          ;;  name-collisions    "revenue" (2 metric cards) = 1 pair × 100 = 100   → :ambiguity = 152
-          ;;  synonym-pairs      clients ↔ customers = 1 × 50 = 50
-          ;;  repeated-measures  "revenue" on orders + subscriptions = 1 × 2 = 2
-          ;;  total              63 + 152 = 215
-          (is (= {:score      215
-                  :components {:size      {:score      63
-                                           :components {:entity-count {:measurement 6.0 :score 60}
-                                                        :field-count  {:measurement 3.0 :score 3}}}
-                               :ambiguity {:score      152
-                                           :components {:name-collisions   {:measurement 1.0 :score 100}
-                                                        :synonym-pairs     {:measurement 1.0 :score 50}
-                                                        :repeated-measures {:measurement 1.0 :score 2}}}}}
-                 library)))
-        (testing "universe is a strict superset of library on every component: every measurement and score is higher"
-          ;; Note: :synonym-pairs is monotonic on this fixture but not in general — score-synonym-pairs
+          ;; Library: 4 tables + 2 metric cards = 6 entities; 3 library collections (Library/Data/Metrics).
+          ;; We assert the primary scored leaves (the v2 ratio/analytics/metadata leaves also contribute
+          ;; to the grouping totals, so we don't pin the grouping :score exactly here — the superset
+          ;; invariants below cover relative monotonicity):
+          ;;  size.entity-count                6 × 10 = 60
+          ;;  size.field-count                 orders(2) + subscriptions(1) + others(0) = 3 × 1 = 3
+          ;;  size.collection-tree-size        3 collections × 1 = 3
+          ;;  ambiguity.name.collisions        "revenue" (2 metric cards) = 1 pair × 100 = 100
+          ;;  ambiguity.synonym.pairs          clients ↔ customers = 1 × 50 = 50
+          ;;  ambiguity.name.repeated-measures "revenue" on orders + subscriptions = 1 × 2 = 2
+          ;;  ambiguity.name.field-collisions  "id" on orders + subscriptions = 1 × 5 = 5
+          (is (=? {:components {:size      {:components {:entity-count         {:measurement 6.0 :score 60}
+                                                         :field-count          {:measurement 3.0 :score 3}
+                                                         :collection-tree-size {:measurement 3.0 :score 3}}}
+                                :ambiguity {:components {:name    {:components {:collisions        {:measurement 1.0 :score 100}
+                                                                                :repeated-measures {:measurement 1.0 :score 2}
+                                                                                :field-collisions  {:measurement 1.0 :score 5}}}
+                                                         :synonym {:components {:pairs {:measurement 1.0 :score 50}}}}}
+                                ;; :metadata now also carries a :score and sums into the catalog total
+                                :metadata  {:score number?}}}
+                  library))
+          (is (= (+ (get-in library [:components :size :score])
+                    (get-in library [:components :ambiguity :score])
+                    (get-in library [:components :metadata :score]))
+                 (:score library))
+              "catalog total sums all three scored groupings"))
+        (testing "universe is a strict superset of library on every primary leaf: measurement and score higher"
+          ;; Note: synonym pairs are monotonic on this fixture but not in general — synonym-block
           ;; dedupes by normalized name and picks one embedding per name, so a universe-only entity
           ;; sharing a normalized name with a library entity could in theory flip which vector wins and
           ;; decrease the pair count/score. Our fixture doesn't hit that case; if this assertion ever
-          ;; flakes, that's the reason.
-          (doseq [[group component] [[:size      :entity-count]
-                                     [:ambiguity :name-collisions]
-                                     [:ambiguity :synonym-pairs]
-                                     [:size      :field-count]
-                                     [:ambiguity :repeated-measures]]
+          ;; flakes, that's the reason. Paths reach into the :name/:synonym sub-groups.
+          (doseq [path-tail [[:size      :components :entity-count]
+                             [:ambiguity :components :name    :components :collisions]
+                             [:ambiguity :components :synonym :components :pairs]
+                             [:size      :components :field-count]
+                             [:ambiguity :components :name    :components :repeated-measures]]
                   k                 [:measurement :score]
-                  :let              [path  [:components group :components component k]
+                  :let              [path  (conj (into [:components] path-tail) k)
                                      lib-v (get-in library  path)
                                      uni-v (get-in universe path)]]
             (is (> uni-v lib-v)
-                (format "universe %s %s (%s) should be strictly > library %s %s (%s)"
-                        component k uni-v component k lib-v))))
+                (format "universe %s %s (%s) should be strictly > library (%s)"
+                        path-tail k uni-v lib-v))))
         (testing "universe total is strictly higher than library total"
           (is (> (:score universe) (:score library))))))))
 

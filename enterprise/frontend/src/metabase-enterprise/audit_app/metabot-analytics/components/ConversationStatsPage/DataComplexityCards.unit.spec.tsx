@@ -10,6 +10,7 @@ import type {
   DataComplexityRating,
   DataComplexityScoresResponse,
 } from "../../types";
+import { DATA_COMPLEXITY_CATALOG_IDS } from "../../types";
 
 import { DataComplexityCards } from "./DataComplexityCards";
 
@@ -52,14 +53,33 @@ const mockScores: DataComplexityScoresResponse = {
         components: {
           entity_count: mockComponentScore(1, 10),
           field_count: mockComponentScore(8, 8),
+          collection_tree_size: mockComponentScore(2, 2),
+          fields_per_entity: mockComponentScore(0.8, 1),
         },
       },
       ambiguity: {
-        ...mockScore(0),
+        ...mockScore(3),
         components: {
           name_collisions: mockComponentScore(0, 0),
           synonym_pairs: mockComponentScore(0, 0),
           repeated_measures: mockComponentScore(0, 0),
+          // nested sub-group: exercises arbitrary-depth rendering
+          synonym_degree: {
+            ...mockScore(3),
+            components: {
+              p50: mockComponentScore(1, 1),
+              p90: mockComponentScore(2, 2),
+              max: mockComponentScore(0, 0),
+            },
+          },
+        },
+      },
+      // descriptive-only group with fractional (coverage-gap) measurements
+      metadata: {
+        ...mockScore(15),
+        components: {
+          description_coverage: mockComponentScore(0.75, 7.5),
+          semantic_type_coverage: mockComponentScore(0.5, 5),
         },
       },
     },
@@ -124,10 +144,11 @@ const mockScoresWithError: DataComplexityScoresResponse = {
         rating: null,
         rating_label: null,
         components: {
-          ...mockScores.metabot.components.ambiguity.components,
+          name_collisions: mockComponentScore(0, 0),
           synonym_pairs: {
             error: "Embedding service timed out",
           },
+          repeated_measures: mockComponentScore(0, 0),
         },
       },
     },
@@ -209,5 +230,27 @@ describe("DataComplexityCards", () => {
       await modal.findByText("Some component scores could not be computed."),
     ).toBeInTheDocument();
     expect(modal.getByText("Embedding service timed out")).toBeInTheDocument();
+  });
+
+  it("shows a disabled state (not an error) when scoring is skipped at level 0", async () => {
+    const emptyCatalog = { components: {} };
+    fetchMock.get("path:/api/ee/data-complexity-score/complexity", {
+      library: emptyCatalog,
+      universe: emptyCatalog,
+      metabot: emptyCatalog,
+      meta: {
+        formula_version: 2,
+        format_version: 2,
+        synonym_threshold: 0.8,
+        level: 0,
+      },
+    });
+
+    renderDataComplexityCards();
+
+    expect(await screen.findAllByText("Scoring disabled")).toHaveLength(
+      DATA_COMPLEXITY_CATALOG_IDS.length,
+    );
+    expect(screen.queryByText("Score unavailable")).not.toBeInTheDocument();
   });
 });

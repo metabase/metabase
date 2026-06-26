@@ -1,10 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
 import { P, match } from "ts-pattern";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import {
-  Accordion,
   Alert,
   Box,
   Card,
@@ -16,7 +15,6 @@ import {
   Skeleton,
   Stack,
   Text,
-  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 import type { MetabaseColorKey } from "metabase/ui/colors/types";
@@ -27,21 +25,41 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { useGetDataComplexityScoresQuery } from "../../api";
 import {
   DATA_COMPLEXITY_CATALOG_IDS,
-  DATA_COMPLEXITY_GROUP_IDS,
-  type DataComplexityCatalog,
   type DataComplexityCatalogId,
-  type DataComplexityComponentId,
-  type DataComplexityFailure,
-  type DataComplexityGroupId,
+  type DataComplexityGroup,
+  type DataComplexityNode,
   type DataComplexityRating,
-  type DataComplexitySubScore,
-  type ScoreAndRating,
-  type ScoreAndRatingError,
 } from "../../types";
 
-import S from "./DataComplexityCards.module.css";
-
 type RatingColorKey = DataComplexityRating | "default";
+
+// A node with `components` is a grouping; one with `error` (and no measurement) is a failure;
+// otherwise it is a scored leaf. The breakdown renderer keys on these to walk the tree generically.
+const isGroupNode = (node: DataComplexityNode): node is DataComplexityGroup =>
+  "components" in node;
+const isFailureNode = (node: DataComplexityNode): boolean =>
+  "error" in node && !("measurement" in node);
+
+// Section titles for the well-known top-level groups; any other key is humanized from its id.
+function groupTitle(groupId: string): string {
+  switch (groupId) {
+    case "size":
+      return t`Size of this layer`;
+    case "ambiguity":
+      return t`Areas of ambiguity`;
+    case "metadata":
+      return t`Metadata coverage`;
+    default:
+      return humanizeId(groupId);
+  }
+}
+
+// "field_level_collisions" -> "Field level collisions". Keeps the renderer measure-agnostic so new
+// backend measures show up without per-key frontend changes.
+function humanizeId(id: string): string {
+  const text = id.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 const RATING_BADGE_BACKGROUND_COLORS = {
   low: "feedback-positive-selected",
@@ -83,10 +101,15 @@ function DataComplexityCardSkeleton() {
 function DataComplexityCard({
   catalogId,
   catalog,
+  level,
 }: {
   catalogId: DataComplexityCatalogId;
-  catalog: DataComplexityCatalog;
+  catalog: DataComplexityGroup;
+  level?: number;
 }) {
+  // Level 0 disables scoring entirely — distinguish that from a computation failure so we don't
+  // surface "score unavailable" for a deliberately-skipped run.
+  const skipped = level === 0;
   const [isModalOpen, { close, open }] = useDisclosure();
   const { subtitle, title } = match(catalogId)
     .with("library", () => ({
@@ -111,7 +134,7 @@ function DataComplexityCard({
           <Icon name="expand" c="text-tertiary" />
         </Flex>
         <Text c="text-secondary">{subtitle}</Text>
-        {catalog.score !== null ? (
+        {catalog.score != null ? (
           <Stack align="center" gap="sm" my="sm">
             <Text
               size="4rem"
@@ -121,6 +144,11 @@ function DataComplexityCard({
               {formatNumber(catalog.score, { maximumFractionDigits: 0 })}
             </Text>
             <Text c="text-secondary">{catalog.rating_label}</Text>
+          </Stack>
+        ) : skipped ? (
+          <Stack gap={4} my="sm">
+            <Text fw={700} c="text-secondary">{t`Scoring disabled`}</Text>
+            <Text c="text-secondary">{t`Complexity level is set to 0.`}</Text>
           </Stack>
         ) : (
           <Stack gap={4} my="sm">
@@ -144,7 +172,7 @@ function DataComplexityCard({
           </Stack>
         }
       >
-        <DataComplexityBreakdown catalog={catalog} />
+        <DataComplexityBreakdown catalog={catalog} level={level} />
       </Modal>
     </Card>
   );
@@ -152,172 +180,118 @@ function DataComplexityCard({
 
 function DataComplexityBreakdown({
   catalog,
+  level,
 }: {
-  catalog: DataComplexityCatalog;
+  catalog: DataComplexityGroup;
+  level?: number;
 }) {
-  const hasError = catalog.score == null;
+  const skipped = level === 0;
+  const hasError = !skipped && catalog.score == null;
 
   return (
     <Stack gap="lg" mt="md">
+      {skipped && (
+        <Text c="text-secondary">
+          {t`Scoring is disabled because the complexity level is set to 0.`}
+        </Text>
+      )}
       {hasError && (
         <Alert color="warning" icon={<Icon name="warning" />}>
           {t`Some component scores could not be computed.`}
         </Alert>
       )}
 
-      {DATA_COMPLEXITY_GROUP_IDS.map((groupId) => {
-        const title = match(groupId)
-          .with("size", () => t`Size of this layer`)
-          .with("ambiguity", () => t`Areas of ambiguity`)
-          .exhaustive();
-        const group = catalog.components[groupId];
+      {getObjectEntries(catalog.components).map(([groupId, group]) => (
+        <Stack key={groupId} gap="sm" w="100%">
+          <Flex align="center" justify="space-between" gap="lg">
+            <Text fw={700} lh="1rem">
+              {groupTitle(groupId)}
+            </Text>
+            <ScoreDisplayInline withTitle score={group} mr="2.75rem" />
+          </Flex>
 
-        return (
-          <Stack key={groupId} gap="md" w="100%">
-            <Flex align="center" justify="space-between" gap="lg">
-              <Text fw={700} lh="1rem">
-                {title}
-              </Text>
-              <ScoreDisplayInline withTitle score={group} mr="2.75rem" />
-            </Flex>
-
-            <Accordion
-              chevron={<Icon name="chevrondown" size={12} />}
-              classNames={{
-                chevron: S.accordionChevron,
-                content: S.accordionContent,
-                control: S.accordionControl,
-                item: S.accordionItem,
-                label: S.accordionLabel,
-                root: S.accordionRoot,
-              }}
-            >
-              {getGroupComponentEntries(catalog, groupId).map(
-                ([componentId, component]) => (
-                  <DataComplexityComponentItem
-                    key={componentId}
-                    componentId={componentId}
-                    component={component}
+          <Stack gap="xs">
+            {isGroupNode(group)
+              ? getObjectEntries(group.components).map(([id, node]) => (
+                  <DataComplexityNodeRow
+                    key={id}
+                    id={id}
+                    node={node}
+                    depth={0}
                   />
-                ),
-              )}
-            </Accordion>
+                ))
+              : null}
           </Stack>
-        );
-      })}
+        </Stack>
+      ))}
     </Stack>
   );
 }
 
-const getGroupComponentEntries = <G extends DataComplexityGroupId>(
-  catalog: DataComplexityCatalog,
-  groupId: G,
-) => {
-  return getObjectEntries(catalog.components[groupId].components);
-};
-
-function DataComplexityComponentItem({
-  componentId,
-  component,
+// Recursively render one node of the score tree. Leaves show their measurement + score; failures
+// show the error; groupings (including arbitrarily-nested sub-groups like synonym-degree) show a
+// rolled-up score and indent their children. Labels are derived from the node key, so new backend
+// measures render without per-key frontend changes.
+function DataComplexityNodeRow({
+  id,
+  node,
+  depth,
 }: {
-  componentId: DataComplexityComponentId;
-  component: DataComplexitySubScore;
+  id: string;
+  node: DataComplexityNode;
+  depth: number;
 }) {
-  const measurement = "measurement" in component ? component.measurement : null;
-  const { count, description } = match(componentId)
-    .with("entity_count", () => ({
-      count:
-        measurement === null
-          ? t`Entities`
-          : ngettext(
-              msgid`${measurement} entity`,
-              `${measurement} entities`,
-              measurement,
-            ),
-      description: t`How many tables, models, and metrics are included in this layer.`,
-    }))
-    .with("name_collisions", () => ({
-      count:
-        measurement === null
-          ? t`Duplicate names`
-          : ngettext(
-              msgid`${measurement} duplicate name`,
-              `${measurement} duplicate names`,
-              measurement,
-            ),
-      description: t`Exact duplicate names after normalization, which can make entities harder to distinguish.`,
-    }))
-    .with("synonym_pairs", () => ({
-      count:
-        measurement === null
-          ? t`Semantically similar pairs`
-          : ngettext(
-              msgid`${measurement} semantically similar pair`,
-              `${measurement} semantically similar pairs`,
-              measurement,
-            ),
-      description: t`Pairs of entity names that are semantically similar enough to be treated as possible synonyms.`,
-    }))
-    .with("field_count", () => ({
-      count:
-        measurement === null
-          ? t`Fields`
-          : ngettext(
-              msgid`${measurement} field`,
-              `${measurement} fields`,
-              measurement,
-            ),
-      description: t`Active physical-table fields exposed through this layer.`,
-    }))
-    .with("repeated_measures", () => ({
-      count:
-        measurement === null
-          ? t`Duplicate measure names`
-          : ngettext(
-              msgid`${measurement} duplicate measure name`,
-              `${measurement} duplicate measure names`,
-              measurement,
-            ),
-      description: t`Duplicate measure names across included tables.`,
-    }))
-    .exhaustive();
+  const label = humanizeId(id);
+  const indent = depth > 0 ? "md" : 0;
+
+  if (isGroupNode(node)) {
+    return (
+      <Stack gap="xs" pl={indent}>
+        <Flex align="center" justify="space-between" gap="sm">
+          <Text fw={500} c="text-primary">
+            {label}
+          </Text>
+          <ScoreDisplayInline score={node} />
+        </Flex>
+        <Stack gap="xs">
+          {getObjectEntries(node.components).map(([childId, child]) => (
+            <DataComplexityNodeRow
+              key={childId}
+              id={childId}
+              node={child}
+              depth={depth + 1}
+            />
+          ))}
+        </Stack>
+      </Stack>
+    );
+  }
+
+  if (isFailureNode(node)) {
+    return (
+      <Flex align="center" justify="space-between" gap="sm" pl={indent}>
+        <Text c="text-primary">{label}</Text>
+        <Text c="error" size="sm" role="alert">
+          {"error" in node ? node.error : null}
+        </Text>
+      </Flex>
+    );
+  }
 
   return (
-    <Accordion.Item
-      value={componentId}
-      bg="background_page-secondary"
-      bd="0"
-      mt={0}
-    >
-      <Accordion.Control>
-        <Flex align="center" gap="sm" w="100%">
-          <Text c="text-primary" fw={500} truncate>
-            {count}
-          </Text>
-          <Tooltip label={description}>
-            <Icon name="info" c="text-tertiary" size={14} />
-          </Tooltip>
-          <ScoreDisplayInline score={component} />
-        </Flex>
-      </Accordion.Control>
-      <Accordion.Panel>
-        <Text size="sm" c="text-secondary">
-          {description}
+    <Flex align="center" justify="space-between" gap="sm" pl={indent}>
+      <Text c="text-primary" truncate>
+        {label}
+      </Text>
+      <Flex align="center" gap="sm">
+        <Text c="text-secondary" size="sm">
+          {"measurement" in node
+            ? formatNumber(node.measurement, { maximumFractionDigits: 2 })
+            : null}
         </Text>
-        {match(component)
-          .with({ error: P.nonNullable }, ({ error }) => (
-            <Text c="error" size="sm" role="alert">
-              {error}
-            </Text>
-          ))
-          .with({ rating_label: P.nonNullable }, ({ rating_label }) => (
-            <Text size="sm" c="text-secondary">
-              {rating_label}
-            </Text>
-          ))
-          .otherwise(() => null)}
-      </Accordion.Panel>
-    </Accordion.Item>
+        <ScoreDisplayInline score={node} />
+      </Flex>
+    </Flex>
   );
 }
 
@@ -365,7 +339,12 @@ export function DataComplexityCards() {
         )
         .with({ data: P.nonNullable }, ({ data }) =>
           DATA_COMPLEXITY_CATALOG_IDS.map((key) => (
-            <DataComplexityCard key={key} catalogId={key} catalog={data[key]} />
+            <DataComplexityCard
+              key={key}
+              catalogId={key}
+              catalog={data[key]}
+              level={data.meta.level}
+            />
           )),
         )
         .exhaustive()}
@@ -379,38 +358,40 @@ function ScoreDisplayInline({
   ...rest
 }: {
   withTitle?: boolean;
-  score: ScoreAndRating | ScoreAndRatingError | DataComplexityFailure;
+  score: DataComplexityNode;
 } & MantineStyleProps) {
-  return match(score)
-    .with({ score: P.nullish }, { error: P.nonNullable }, () => (
+  const value = "score" in score ? score.score : null;
+  const rating = "rating" in score ? (score.rating ?? null) : null;
+
+  if (value == null) {
+    return (
       <Text c="error" fw={700} lh="1rem" ml="auto" {...rest}>
         {withTitle ? t`Complexity score unavailable` : t`Unavailable`}
       </Text>
-    ))
-    .with({ score: P.nonNullable }, ({ score, rating }) => {
-      const ratingColorKey = rating ?? "default";
+    );
+  }
 
-      return (
-        <Flex
-          ml="auto"
-          px={8}
-          py={4}
-          bdrs="sm"
-          bg={RATING_BADGE_BACKGROUND_COLORS[ratingColorKey]}
-          {...rest}
-          gap="sm"
-        >
-          {withTitle && (
-            <Text
-              lh="1rem"
-              c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}
-            >{t`Complexity score`}</Text>
-          )}
-          <Text fw={700} lh="1rem" c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}>
-            {formatNumber(score, { maximumFractionDigits: 0 })}
-          </Text>
-        </Flex>
-      );
-    })
-    .exhaustive();
+  const ratingColorKey = rating ?? "default";
+
+  return (
+    <Flex
+      ml="auto"
+      px={8}
+      py={4}
+      bdrs="sm"
+      bg={RATING_BADGE_BACKGROUND_COLORS[ratingColorKey]}
+      {...rest}
+      gap="sm"
+    >
+      {withTitle && (
+        <Text
+          lh="1rem"
+          c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}
+        >{t`Complexity score`}</Text>
+      )}
+      <Text fw={700} lh="1rem" c={RATING_BADGE_TEXT_COLORS[ratingColorKey]}>
+        {formatNumber(value, { maximumFractionDigits: 2 })}
+      </Text>
+    </Flex>
+  );
 }

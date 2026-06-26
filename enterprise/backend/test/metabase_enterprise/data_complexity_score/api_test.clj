@@ -84,7 +84,8 @@
                                                     :repeated-measures {:measurement 0.0 :score 0}}}}}
    :meta     {:formula-version   3
               :format-version    1
-              :synonym-threshold 0.9}})
+              :synonym-threshold 0.9
+              :level             2}})
 
 (defn- expected-response
   "Apply the same decoration + snake-casing the API does, to compare against an `mt/user-http-request` body."
@@ -186,14 +187,16 @@
                                 (constantly {:embedder random-synonym-embedder})]
       (mt/with-dynamic-fn-redefs [data-complexity-score/record-score! (fn [& _] nil)]
         (let [resp             (mt/user-http-request :crowberto :get 200 endpoint :force-recalculation true)
+              ;; Full component path into the response tree (ambiguity leaves now live in the
+              ;; :name / :synonym sub-groups). Keys are snake-cased at the API boundary.
               leaf-path        {:entity_count      [:size      :entity_count]
                                 :field_count       [:size      :field_count]
-                                :name_collisions   [:ambiguity :name_collisions]
-                                :synonym_pairs     [:ambiguity :synonym_pairs]
-                                :repeated_measures [:ambiguity :repeated_measures]}
+                                :name_collisions   [:ambiguity :name    :collisions]
+                                :synonym_pairs     [:ambiguity :synonym :pairs]
+                                :repeated_measures [:ambiguity :name    :repeated_measures]}
               leaf-field       (fn [cat k field]
-                                 (let [[group leaf] (leaf-path k)]
-                                   (get-in resp [cat :components group :components leaf field])))
+                                 (let [path (interpose :components (leaf-path k))]
+                                   (get-in resp (concat [cat :components] path [field]))))
               measurement      (fn [cat k] (leaf-field cat k :measurement))
               component-score  (fn [cat k] (leaf-field cat k :score))
               ;; NOTE: `:synonym_pairs` is intentionally included here even though it's *theoretically*
@@ -207,14 +210,19 @@
               ;; case. If the edge case ever actually trips this, *that* is the surprising thing we
               ;; want to see and we'll deal with it then.
               component-keys   (keys leaf-path)]
-          (testing ":score at every node equals the sum of its children's :score values"
-            (doseq [catalog [:library :universe :metabot]
-                    :let    [{catalog-score :score :keys [components]} (get resp catalog)]]
-              (is (= catalog-score (reduce + (map :score (vals components))))
-                  (format "%s :score should equal sum of group :score values" catalog))
-              (doseq [[group {grp-score :score grp-components :components}] components]
-                (is (= grp-score (reduce + (map :score (vals grp-components))))
-                    (format "%s.%s :score should equal sum of leaf :score values" catalog group)))))
+          (testing ":score at every node equals the sum of its children that HAVE a :score"
+            ;; v2: descriptive leaves and descriptive-only groupings (e.g. :metadata) carry no
+            ;; :score and are skipped by the rollup — sum only the scored children here too.
+            (let [sum-scores (fn [children] (reduce + 0 (keep :score (vals children))))]
+              (doseq [catalog [:library :universe :metabot]
+                      :let    [{catalog-score :score :keys [components]} (get resp catalog)]]
+                (is (= catalog-score (sum-scores components))
+                    (format "%s :score should equal sum of scored group :score values" catalog))
+                (doseq [[group {grp-score :score grp-components :components}] components
+                        ;; descriptive-only groupings have no :score — nothing to assert
+                        :when grp-score]
+                  (is (= grp-score (sum-scores grp-components))
+                      (format "%s.%s :score should equal sum of scored leaf :score values" catalog group))))))
           (testing "universe is a superset of library: every measurement and score >= library's"
             (doseq [k      component-keys
                     getter [measurement component-score]
@@ -343,7 +351,7 @@
 
 (def ^:private stub-scores
   {:library empty-catalog :universe empty-catalog :metabot empty-catalog
-   :meta {:formula-version 1 :format-version 1 :synonym-threshold 0.0}})
+   :meta {:formula-version 1 :format-version 1 :synonym-threshold 0.0 :level 2}})
 
 (deftest ^:sequential complexity-endpoint-force-recalculation-allows-active-scheduled-claim-test
   (testing "manual API recalculation does not share the cron/boot scoring claim"
