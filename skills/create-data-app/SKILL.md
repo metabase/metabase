@@ -103,12 +103,13 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
      [ -f "$ENV_FILE" ] || cp .env.local.example "$ENV_FILE"
      # Source inside a subshell so the vars never leak into your environment.
      ( source "$ENV_FILE" 2>/dev/null
-       [ -n "$VITE_MB_URL" ] && [ -n "$VITE_MB_API_KEY" ]
+       [ -n "$DATA_APP_MB_URL" ] && [ -n "$DATA_APP_MB_API_KEY" ] &&
+       [ -n "$DATA_APP_MB_API_KEY" ] && [ "$DATA_APP_MB_API_KEY" != "mb_replace_me" ]
      ) && echo "creds present" || echo "MISSING"
    fi
    ```
 
-   If it prints `MISSING`, **ask the user to fill `VITE_MB_URL` (the running Metabase instance) and `VITE_MB_API_KEY` (Admin → Authentication → API keys) in `<repo>/.env.local` themselves** — up front, before anything needs the key.
+   If it prints `MISSING`, **ask the user to fill `DATA_APP_MB_URL` (the running Metabase instance) and `DATA_APP_MB_API_KEY` (Admin → Authentication → API keys) in `<repo>/.env.local` themselves** — up front, before anything needs the key.
 
    > **Never ask the user to paste the API key into the chat, and never `cat` / `echo` / print `.env.local` or its variables.** It's git-ignored and may hold *other* secrets — the file's contents and the key must never enter the conversation or your context. Every command that needs the key `source`s the file (as above) so the shell uses the value directly; you only ever see the `creds present` / `MISSING` signal, never the secret itself. (`creds present` only means both vars are non-empty — not that the URL or key are valid; a bad key surfaces later when a request fails.)
 5. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone).
@@ -354,7 +355,7 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
 
 | Symptom | Fix |
 |---|---|
-| "Failed to fetch the user, the session might be invalid." | Bad API key or CORS — check `( ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -n "$ROOT" ] && source "$ROOT/.env.local" 2>/dev/null; [ -n "$VITE_MB_URL" ] && [ -n "$VITE_MB_API_KEY" ] && curl -H "x-api-key: $VITE_MB_API_KEY" "$VITE_MB_URL/api/user/current" || echo "set VITE_MB_URL / VITE_MB_API_KEY in the repo-root .env.local" )` (uses the repo-root `.env.local`), add `http://localhost:5174` to SDK CORS origins. |
+| "Failed to fetch the user, the session might be invalid." | Bad API key or CORS — check `( ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -n "$ROOT" ] && source "$ROOT/.env.local" 2>/dev/null; [ -n "$DATA_APP_MB_URL" ] && [ "$DATA_APP_MB_URL" != "mb_replace_me" ] && [ -n "$DATA_APP_MB_API_KEY" ] && [ "$DATA_APP_MB_API_KEY" != "mb_replace_me" ] && curl -H "x-api-key: $DATA_APP_MB_API_KEY" "$DATA_APP_MB_URL/api/user/current" || echo "set real DATA_APP_MB_URL / DATA_APP_MB_API_KEY in the repo-root .env.local" )` (uses the repo-root `.env.local`), add `http://localhost:5174` to SDK CORS origins. |
 | Invisible chart labels. | Set `text-primary` in the theme (see *Theme rules*). |
 | Chart overflows its container. | Pass `height` / `width` to the SDK component (see *SDK component sizing*). |
 | "Invalid hook call" at runtime. | `react` not externalized — the template ships with this configured; check you didn't edit `vite.config.ts`. |
