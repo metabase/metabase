@@ -1,8 +1,3 @@
-/* Dev-only diagnostics overlay shown only to developers building a data app,
-   never to end users. It's self-contained (React + inline styles, no `metabase/ui`)
-   so it stays lean and renders without a theme provider, but its colors use
-   Metabase's `--mb-color-*` variables (with Metabase-default fallbacks, since it
-   renders outside the provider) so it matches the app. Labels aren't localized. */
 /* eslint-disable i18next/no-literal-string */
 /* eslint-disable metabase/no-color-literals */
 import { type CSSProperties, useState, useSyncExternalStore } from "react";
@@ -12,13 +7,6 @@ import {
   getDevDiagnostics,
   subscribeDevDiagnostics,
 } from "./diagnostics";
-
-// A dev-only overlay for data apps: a corner button that opens a diagnostics
-// panel listing captured errors (including the sandbox's blocked-API logs). It's
-// self-contained (React + inline styles), so it needs no theme provider and adds
-// no UI-library dependency. Render it in the dev harness (and, later, the host)
-// after calling `installDevDiagnostics()`. Later this panel can also list the
-// sandbox's blocked-API rules from the distortion callback.
 
 const MAX_Z = 2147483647;
 
