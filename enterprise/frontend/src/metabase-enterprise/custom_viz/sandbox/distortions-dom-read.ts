@@ -87,22 +87,6 @@ export function isDomNode(obj: unknown): obj is Node {
   return false;
 }
 
-function describeNode(node: Node): string {
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    const el = node as Element;
-    const tag = el.nodeName.toLowerCase();
-    if (el.id) {
-      return `<${tag} id="${el.id}">`;
-    }
-    const testId = el.getAttribute("data-testid");
-    if (testId) {
-      return `<${tag} data-testid="${testId}">`;
-    }
-    return `<${tag}>`;
-  }
-  return `<${node.nodeName.toLowerCase()}>`;
-}
-
 function createDecoyForNode(node: Node): Node {
   switch (node.nodeType) {
     case Node.ELEMENT_NODE: {
