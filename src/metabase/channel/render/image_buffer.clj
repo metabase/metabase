@@ -1,209 +1,161 @@
 (ns metabase.channel.render.image-buffer
-  "A process-wide, size-keyed recycler of ARGB [[java.awt.image.BufferedImage]] buffers, shared across all rendering
-  threads and both rasterizing render paths.
+  "A small pool of reusable, fixed-size `int[]` pixel arrays that back the ARGB [[java.awt.image.BufferedImage]]s chart
+  rasterization renders into, shared across all rendering threads.
 
-  This exists to cut *allocation pressure*, NOT to constrain a scarce resource. The job is to avoid the churn of
-  allocating-and-discarding a multi-MB buffer on every render by handing back a recently-returned one of the same size.
-  It is therefore an OVERFLOWING recycler, not a bounded resource pool: [[acquire]] never blocks and never refuses --
-  an empty pool always allocates a fresh buffer, so there is no limit on how many buffers are live at once. (The
-  genuinely scarce resource here, the static-viz JS engines, is already constrained by its own bounded pool upstream;
-  buffers are cheap to allocate, so blocking a render to wait for one would be a pure throughput regression.)
+  Why: rasterizing a chart (SVG via Batik) paints into a `width * height * 4` byte buffer -- 3-6 MB at dashboard
+  sizes.  Under the default G1 GC any object over half a region (~1 MB at a 2 MB region) is \"humongous\": allocated
+  into dedicated regions a young GC can't reclaim. Subscriptions render in bursts, so without reuse these pile up
+  faster than mixed/full GCs reclaim the regions and the JVM OOMs on region exhaustion while most of the heap is free.
 
-  The caps below govern RETENTION only: on check-in ([[release]]) idle buffers are kept up to `:per-size-cap` per size
-  and `:global-cap` total, and any surplus is simply dropped (GC reclaims it). So the caps bound *resident idle
-  memory*, not concurrency. A daemon thread additionally evicts buffers idle past `:idle-ttl-ms`, walking each size's
-  deque from its oldest end until it reaches a still-fresh entry, so the recycler drains to zero when rendering stops
-  and holds memory only while actively rendering.
+  What we reuse and why this shape: the only expensive, humongous part of a `BufferedImage` is its backing `int[]`.
+  Constructing the wrapper objects (`DataBufferInt` + raster + the *cached* `ColorModel/getRGBdefault`) around an
+  existing array is ~1 us (verified) -- and critically, one oversized `int[]` can back an image of ANY `w` x `h` whose
+  `w*h` fits it, because `createPackedRaster` re-interprets the flat array at the new scanline stride. So we don't
+  need a per-size cache: we pool a few `int[]`s of one fixed size big enough to cover the vast majority of renders,
+  and on each [[acquire]] wrap a throwaway correctly-sized image around one. A render that needs *more* pixels than
+  the fixed size just gets a fresh standard `BufferedImage` (the original behavior) -- a rare one-off, not pooled. We
+  pool the arrays, not the images, to keep the minimum in memory.
 
-  Why this and not the alternatives: a *chart* (SVG/Batik, [[metabase.channel.render.js.svg/render-svg]]) or *table*
-  (HTML/CSSBox, [[metabase.channel.render.png/render-html-to-png]]) rasterizes into a `width * height * 4` byte buffer
-  -- 3-6 MB at dashboard sizes. Under the default G1 GC any object over half a region (~1 MB at a 2 MB region) is
-  \"humongous\": allocated into dedicated regions a young GC can't reclaim. Subscriptions render in bursts, so without
-  recycling these pile up faster than mixed/full GCs reclaim the regions and the JVM OOMs on region exhaustion while
-  most of the heap is free. We hold STRONG references (not SoftReference, which clears only at the OOM edge -- that
-  would relocate the pressure, not remove it) and evict explicitly, so memory tracks activity. Instrumentation of real
-  email and Slack sends showed renders fan across many Jetty threads (so the recycler must be *shared*, not
-  thread-local, or it stays cold) and only a handful of distinct sizes recur (~6 retained per size reaches ~60% reuse).
+  Reuse is safe because Batik PNG-encodes the buffer eagerly and returns only a `byte[]`; the image never escapes. The
+  one load-bearing rule is clearing the used region on acquire (Batik composites with `SrcOver` and skips its
+  background fill when the background is nil, so stale pixels would bleed a previous render through).
 
-  Reuse is safe because both rasterizers PNG-encode the buffer eagerly and synchronously and return only a `byte[]`;
-  the `BufferedImage` never escapes, so a reused buffer cannot corrupt already-returned bytes. The one load-bearing
-  rule is [[clear!]]-on-acquire (Batik composites with `SrcOver` and skips its background fill when the background is
-  nil, so stale pixels would bleed through).
+  Concurrency: the idle arrays live in a `ConcurrentLinkedDeque`, so every operation is lock-free and thread-safe on
+  its own; there is no cross-operation invariant to protect. [[acquire]] never blocks and never refuses. Retention is
+  bounded to `:max-arrays` idle arrays (a best-effort check on [[release]] -- occasionally keeping one extra under a
+  race is harmless, it is only a retention cap). A daemon thread periodically clears idle arrays so memory drains to
+  zero when rendering stops.
 
-  A pool is just a plain map built by [[->pool]] (its own buffer map, its own counters, its own config); the core
-  functions take one as their first argument. Prod uses the [[default-pool]] via the no-pool arities; it is built (and
-  its sweeper started) lazily on first use, not at namespace load, so AOT compilation doesn't spawn the daemon. Tests
-  construct an isolated pool with [[->pool]] so they can assert on its counters/contents without the singleton's
-  residue or its background sweeper."
+  Pools are plain maps built by [[->pool]]; the core fns take one. The no-arg arities target the process-wide
+  [[default-pool]], which is built lazily on first use (so AOT compilation, which loads every namespace, doesn't
+  allocate it or spawn its sweeper thread). Only the default pool has a sweeper; tests build isolated, sweeper-free
+  pools with [[->pool]]."
   (:require
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.log :as log])
   (:import
-   (java.awt.image BufferedImage DataBufferInt)
-   (java.util ArrayDeque Deque)
-   (java.util.concurrent ConcurrentHashMap Executors ScheduledExecutorService ThreadFactory TimeUnit)
-   (java.util.concurrent.atomic LongAdder)
-   (java.util.function Function)))
+   (java.awt Point)
+   (java.awt.image BufferedImage ColorModel DataBufferInt Raster WritableRaster)
+   (java.util.concurrent ConcurrentLinkedDeque Executors ScheduledExecutorService ThreadFactory TimeUnit)
+   (java.util.concurrent.atomic LongAdder)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private default-per-size-cap
-  "Retention limit: max idle buffers KEPT per distinct size on check-in (not a limit on live/checked-out buffers --
-  acquire never refuses). ~6 is the knee of the measured hit-rate curve (4-8); past it adds little reuse for more
-  resident memory."
+(def ^:private default-array-pixels
+  "Fixed size (in pixels = ints) of every pooled array. ~2x the size that covers the vast majority of dashboard renders
+  (1200 wide x up to ~1350 tall ~= 1.6M px), so it also fits 2x-supersampled variants. A render needing more pixels
+  falls back to a fresh standard image. At 4 bytes/pixel a pooled array is ~13 MB."
+  (* 1200 2700))
+
+(def ^:private default-max-arrays
+  "Max idle pooled arrays retained. Bounded by render concurrency (a few Jetty/notification threads), not request rate."
   6)
 
-(def ^:private default-global-cap
-  "Retention limit: max idle buffers kept across all sizes -- a backstop so an unusual spread of sizes can't grow
-  resident idle memory without bound. Again a retention cap, not an admission/concurrency cap."
-  24)
-
 (def ^:private default-idle-ttl-ms
-  "Buffers not reused within this long are dropped by [[sweep!]] so the recycler drains to zero on an idle instance."
+  "How often the daemon drops idle arrays; if nothing was rendered in the interval, the pool drains to zero."
   60000)
 
-(defn ->pool
-  "Construct a fresh, independent pool: a plain map of its own buffer store, counters, and config. With no args uses the
-  production caps/TTL. Tests pass their own to isolate from the [[default-pool]] (a constructed pool shares no state
-  with it and has no background sweeper attached).
+;; Standard non-premultiplied sRGB ARGB color model -- a cached singleton. Using this (rather than constructing a
+;; DirectColorModel) keeps wrapping cheap: a premultiplied/mismatched color model makes the BufferedImage ctor run a
+;; full-raster per-pixel `coerceData` conversion (~7 ms), whereas getRGBdefault matches the raster (no-op).
+(def ^:private ^ColorModel rgb-default (ColorModel/getRGBdefault))
+(def ^:private ^"[I" argb-masks (int-array [0x00ff0000 0x0000ff00 0x000000ff (unchecked-int 0xff000000)]))
 
-  Shape: `:buffers` maps [w h] (longs) -> ArrayDeque of {:img BufferedImage :last-used-ms long}, holding STRONG
-  references (NOT SoftReference: soft refs only clear at the edge of OOM, the failure mode we're avoiding). Each
-  per-size ArrayDeque is guarded by synchronizing on itself; the outer map is a ConcurrentHashMap. `:hits`/`:misses`
-  are this pool's own reuse counters."
-  ([] (->pool {}))
-  ([{:keys [per-size-cap global-cap idle-ttl-ms]
-     :or   {per-size-cap default-per-size-cap
-            global-cap   default-global-cap
-            idle-ttl-ms  default-idle-ttl-ms}}]
-   {:buffers      (ConcurrentHashMap.)
-    :hits         (LongAdder.)
-    :misses       (LongAdder.)
-    ;; cumulative hits/misses as of this pool's last [[log-stats!]] call, so the periodic log can report the interval
-    ;; since the previous one. Per-pool (not a namespace global) so multiple pools don't clobber each other's baseline.
-    :last-logged  (atom {:hits 0 :misses 0})
-    :per-size-cap per-size-cap
-    :global-cap   global-cap
-    :idle-ttl-ms  idle-ttl-ms}))
-
-;; THE pool prod renders use, returned by the [[default-pool]] accessor. It is lazily built (and its sweeper started)
-;; on first use, NOT at namespace load -- so AOT compilation, which loads every namespace, doesn't spawn the daemon
-;; thread or allocate the pool at build time. The public no-pool arities call [[default-pool]].
 (declare default-pool)
 
-(def ^:private new-deque
-  (reify Function (apply [_ _] (ArrayDeque.))))
+(defn ->pool
+  "Construct a fresh, independent pool: a plain map of its idle-array store, counters, and config. With no args uses
+  production sizing. Tests pass their own to isolate from the [[default-pool]] (and get no sweeper).
 
-(defn- deque-for ^Deque [pool ^long w ^long h]
-  ;; Key coerced to longs so it is type-stable: acquire is called with longs but release reads ints off the image,
-  ;; and a Clojure vector key compares elements with Java .equals, where (.equals (long 5) (int 5)) is false.
-  (.computeIfAbsent ^ConcurrentHashMap (:buffers pool) [w h] new-deque))
+  `:idle` is a `ConcurrentLinkedDeque` of idle `int[]`, each of length `:array-pixels`. `:hits`/`:misses`/`:one-offs`
+  are counters (a \"one-off\" is a render too large for the fixed array, handed a fresh standard image)."
+  ([] (->pool {}))
+  ([{:keys [array-pixels max-arrays idle-ttl-ms]
+     :or   {array-pixels default-array-pixels max-arrays default-max-arrays idle-ttl-ms default-idle-ttl-ms}}]
+   {:idle         (ConcurrentLinkedDeque.)
+    :hits         (LongAdder.)
+    :misses       (LongAdder.)
+    :one-offs     (LongAdder.)
+    :last-logged  (atom {:hits 0 :misses 0})
+    :array-pixels array-pixels
+    :max-arrays   max-arrays
+    :idle-ttl-ms  idle-ttl-ms}))
 
-(defn- idle-total
-  "Number of idle buffers held across all sizes. Derived by summing deque sizes rather than tracked in a separate
-  counter -- a parallel counter is drift-prone (it would diverge from the deques on a partial failure), and with only a
-  handful of distinct sizes this scan is cheap."
-  ^long [pool]
-  (reduce (fn [^long acc ^Deque d] (+ acc (long (locking d (.size d)))))
-          0
-          (.values ^ConcurrentHashMap (:buffers pool))))
+(defn- wrap-array
+  "Wrap an existing `int[]` (length >= w*h) as a `w` x `h` ARGB [[BufferedImage]]. Throwaway wrapper (~1 us); only
+  `backing` carries the humongous cost."
+  ^BufferedImage [^"[I" backing ^long w ^long h]
+  (let [db (DataBufferInt. backing (int (* w h)))
+        ^WritableRaster raster (Raster/createPackedRaster db (int w) (int h) (int w) argb-masks (Point. 0 0))]
+    (BufferedImage. rgb-default raster false nil)))
 
-(defn- idle-by-size
-  "Map of `[w h]` -> number of idle buffers currently pooled for that size. Sizes with no idle buffers are omitted."
-  [pool]
-  (into {}
-        (keep (fn [^java.util.Map$Entry e]
-                (let [^Deque d (.getValue e)
-                      n (locking d (.size d))]
-                  (when (pos? n) [(vec (.getKey e)) n]))))
-        (.entrySet ^ConcurrentHashMap (:buffers pool))))
-
-(mu/defn- clear!
-  "Reset every pixel of `img` to fully transparent so a reused buffer never shows the previous render's pixels.
-  Load-bearing for correctness, not just hygiene (see ns docstring). Zeroes the backing `int[]` directly -- a
-  full-raster wipe needing no `Graphics2D` allocation."
-  [img :- (ms/InstanceOfClass BufferedImage)]
-  (let [buf (.getDataBuffer (.getRaster ^BufferedImage img))]
-    (java.util.Arrays/fill (.getData ^DataBufferInt buf) (int 0))))
+(defn- cleared-array
+  "An `int[]` of `array-pixels` length with its first `need` ints zeroed (the region this render will use). Reuses one
+  from `idle` if available (a hit), else allocates (a miss). Clearing is load-bearing -- see ns docstring."
+  ^"[I" [pool ^long need]
+  (let [^"[I" backing (if-let [^"[I" reused (.pollFirst ^ConcurrentLinkedDeque (:idle pool))]
+                        (do (.increment ^LongAdder (:hits pool)) reused)
+                        (do (.increment ^LongAdder (:misses pool)) (int-array (long (:array-pixels pool)))))]
+    (java.util.Arrays/fill backing 0 (int need) (int 0))
+    backing))
 
 (defn acquire
-  "Return a cleared `TYPE_INT_ARGB` [[BufferedImage]] of exactly `w` x `h`, reusing an idle pooled buffer of that size
-  when one is available, otherwise allocating a fresh one. NEVER blocks and never refuses -- an empty pool just yields a
-  new buffer (this is a recycler, not a capacity-limited resource pool). With no pool arg, uses the [[default-pool]].
+  "Return a cleared `w` x `h` ARGB [[BufferedImage]]. If `w*h` fits the pool's fixed array size, reuses a pooled `int[]`
+  (or allocates a fixed-size one if none is idle); otherwise returns a fresh standard `BufferedImage` (a one-off, not
+  pooled). NEVER blocks or refuses. With no pool arg, uses the [[default-pool]].
 
-  Pass the result to [[release]] when finished. The buffer is shared mutable state -- it must not escape the
-  rasterization (both render paths PNG-encode it before returning, which is what makes reuse safe)."
+  Pass the result to [[release]] when done. The image is shared mutable state -- it must not escape the rasterization
+  (Batik PNG-encodes it before returning, which is what makes reuse safe)."
   (^BufferedImage [w h] (acquire (default-pool) w h))
   (^BufferedImage [pool ^long w ^long h]
-   (let [^Deque d (deque-for pool w h)
-         stamped  (locking d (.pollFirst d))]
-     (if stamped
-       (do (.increment ^LongAdder (:hits pool))
-           (doto ^BufferedImage (:img stamped) clear!))
-       (do (.increment ^LongAdder (:misses pool))
-           (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB))))))
+   (if (> (* w h) (long (:array-pixels pool)))
+     (do (.increment ^LongAdder (:one-offs pool))                 ; too large: fresh standard image, not pooled
+         (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB))
+     (wrap-array (cleared-array pool (* w h)) w h))))
+
+(defn- backing-of
+  "The backing `int[]` of an image produced by [[acquire]]."
+  ^"[I" [^BufferedImage img]
+  (.getData ^DataBufferInt (.getDataBuffer (.getRaster img))))
 
 (defn release
-  "Check `img` back in so it can be recycled, IF doing so keeps idle retention under the pool's per-size and global caps;
-  otherwise drop it on the floor (overflow -- GC reclaims it, eagerly once `-XX:G1HeapRegionSize` is large enough that
-  the raster isn't humongous). Retaining excess is never an error -- we recycle what we keep and discard the rest.
-  Safe to call with `nil`. Never throws for pool-state reasons. With no pool arg, uses the [[default-pool]]."
+  "Return `img`'s backing array to `pool` for reuse, unless the pool already holds `:max-arrays` idle arrays, or the
+  array is a one-off (a different size than the pooled arrays) -- in either case it is simply dropped (GC reclaims it).
+  Safe with `nil`; never throws. With no pool arg, uses the [[default-pool]]."
   ([img] (release (default-pool) img))
   ([pool img]
    (when img
-     (let [^BufferedImage img img
-           ^Deque d (deque-for pool (.getWidth img) (.getHeight img))
-           ;; Read the global total OUTSIDE d's lock: idle-total locks every deque, so checking it while already
-           ;; holding one could deadlock against a concurrent release of a different size. A small race here (very
-           ;; occasionally retaining one buffer over the cap) is harmless.
-           under-global? (< (idle-total pool) (long (:global-cap pool)))]
-       (locking d
-         (when (and under-global? (< (.size d) (long (:per-size-cap pool))))
-           (.addFirst d {:img img :last-used-ms (System/currentTimeMillis)})))))))
-
-(defn sweep!
-  "Evict buffers in `pool` idle since before `now-ms` minus the pool's TTL, and remove emptied size-keys, so the
-  recycler drains to zero when rendering stops. Each size's deque is newest-first, so we walk it from the oldest (tail)
-  end dropping stale entries and stop at the first still-fresh one (everything ahead of it is newer). `now-ms` is
-  injectable so tests can fast-forward past the TTL. With no pool arg, sweeps the [[default-pool]] at the real clock."
-  ([] (sweep! (default-pool) (System/currentTimeMillis)))
-  ([pool] (sweep! pool (System/currentTimeMillis)))
-  ([pool now-ms]
-   (let [cutoff (- (long now-ms) (long (:idle-ttl-ms pool)))]
-     (doseq [^java.util.Map$Entry e (vec (.entrySet ^ConcurrentHashMap (:buffers pool)))]
-       (let [^Deque d (.getValue e)]
-         (locking d
-           ;; Deques hold newest-first (addFirst); drop from the tail (oldest) while stale.
-           (while (when-let [stamped (.peekLast d)]
-                    (< (long (:last-used-ms stamped)) cutoff))
-             (.pollLast d))
-           (when (.isEmpty d)
-             (.remove ^ConcurrentHashMap (:buffers pool) (.getKey e)))))))))
+     (let [^"[I" backing (backing-of img)
+           ^ConcurrentLinkedDeque idle (:idle pool)]
+       (when (and (= (alength backing) (long (:array-pixels pool)))
+                  (< (.size idle) (long (:max-arrays pool))))
+         (.addFirst idle backing))))))
 
 (defn stats
-  "Snapshot of a pool's reuse counters `{:hits n :misses n :idle n :by-size {[w h] n}}`. With no arg, the
-  [[default-pool]]. `:by-size` shows which sizes are holding idle buffers -- useful both for prod observability and for
-  asserting pool contents in tests."
+  "Snapshot of a pool's counters `{:hits n :misses n :one-offs n :idle n}`. With no arg, the [[default-pool]]."
   ([] (stats (default-pool)))
   ([pool]
-   (let [by-size (idle-by-size pool)]
-     {:hits    (.sum ^LongAdder (:hits pool))
-      :misses  (.sum ^LongAdder (:misses pool))
-      :idle    (reduce + 0 (vals by-size))
-      :by-size by-size})))
+   {:hits     (.sum ^LongAdder (:hits pool))
+    :misses   (.sum ^LongAdder (:misses pool))
+    :one-offs (.sum ^LongAdder (:one-offs pool))
+    :idle     (.size ^ConcurrentLinkedDeque (:idle pool))}))
+
+(defn sweep!
+  "Drop the pool's idle arrays so memory is reclaimed when rendering stops. The daemon calls this periodically: if
+  rendering is active, acquire/release repopulate within microseconds; if idle, the pool stays empty. With no arg, the
+  [[default-pool]]."
+  ([] (sweep! (default-pool)))
+  ([pool] (.clear ^ConcurrentLinkedDeque (:idle pool))))
 
 ;; --- stats logging (cumulative + interval; periodic, NOT per-send -- a per-send rate is dominated by cold-start) ---
 
-(defn- rate-str [hits misses]
+(defn- rate-str [hits misses one-offs]
   (let [total (+ hits misses)]
-    (format "%d/%d hits (%.1f%%), %d allocs"
-            hits total (if (pos? total) (* 100.0 (/ hits (double total))) 0.0) misses)))
+    (format "%d/%d hits (%.1f%%), %d allocs, %d one-offs"
+            hits total (if (pos? total) (* 100.0 (/ hits (double total))) 0.0) misses one-offs)))
 
 (defn log-stats!
-  "Log `pool` reuse: the hit rate since this pool's previous [[log-stats!]] call and the cumulative lifetime rate, plus
-  idle count. The interval baseline is kept per-pool. No-op for the interval line when nothing was rendered since the
-  last call, to avoid noise on idle instances. With no arg, the [[default-pool]]."
+  "Log `pool` reuse: the hit rate since this pool's previous call and the cumulative rate, plus idle/one-off counts.
+  No-op for the interval line when nothing was rendered since the last call. With no arg, the [[default-pool]]."
   ([] (log-stats! (default-pool)))
   ([pool]
    (let [now  (stats pool)
@@ -212,43 +164,32 @@
          dm   (- (:misses now) (:misses prev))]
      (reset! (:last-logged pool) {:hits (:hits now) :misses (:misses now)})
      (when (pos? (+ dh dm))
-       (log/infof "Image buffer reuse (interval): %s; (lifetime): %s; idle buffers: %d"
-                  (rate-str dh dm)
-                  (rate-str (:hits now) (:misses now))
+       (log/infof "Image buffer reuse (interval): %s; (lifetime): %s; idle arrays: %d"
+                  (rate-str dh dm 0)
+                  (rate-str (:hits now) (:misses now) (:one-offs now))
                   (:idle now))))))
 
-(defn- start-sweeper!
-  "Start the daemon thread that maintains `pool`: every `:idle-ttl-ms` it prunes idle buffers and logs reuse, so the
-  recycler drains to zero when rendering stops. The task closes over `pool` and feeds that one instance to both
-  [[sweep!]] and [[log-stats!]] (so they can never disagree about which pool they're acting on). We don't need Quartz
-  here (no clustering/persistence/misfire handling) -- just a process-local timer. Returns the
-  [[ScheduledExecutorService]] (daemon, so it never blocks shutdown)."
-  ^ScheduledExecutorService [pool]
-  (let [exec (Executors/newScheduledThreadPool
-              1
-              (reify ThreadFactory
-                (newThread [_ r]
-                  (doto (Thread. ^Runnable r "image-buffer-maintenance")
-                    (.setDaemon true)))))]
-    (.scheduleWithFixedDelay exec
-                             ^Runnable (fn []
-                                         (try (sweep! pool) (log-stats! pool)
-                                              (catch Throwable e
-                                                (log/warn e "Error in image-buffer maintenance"))))
-                             (long (:idle-ttl-ms pool)) (long (:idle-ttl-ms pool)) TimeUnit/MILLISECONDS)
-    exec))
+;; --- the default pool, built lazily on first use, with its one sweeper daemon ------------------------------------
 
-;; THE pool, built lazily on first use (see [[default-pool]]). A delay so nothing runs at namespace load -- AOT
-;; compilation loads every namespace, and we must not allocate the pool or spawn the sweeper thread at build time. The
-;; sweeper closes over this exact instance, so it and the maintenance calls can't disagree about which pool they act on.
-;; Pools built by [[->pool]] for tests get NO sweeper -- only THE pool does.
+(defn- start-sweeper!
+  "Start the daemon that every `:idle-ttl-ms` sweeps `pool` and logs reuse, so the pool drains to zero when rendering
+  stops. No Quartz needed -- a process-local timer on a daemon thread (so it never blocks shutdown)."
+  [pool]
+  (let [exec (Executors/newScheduledThreadPool
+              1 (reify ThreadFactory
+                  (newThread [_ r]
+                    (doto (Thread. ^Runnable r "image-buffer-maintenance") (.setDaemon true)))))]
+    (.scheduleWithFixedDelay ^ScheduledExecutorService exec
+                             (fn [] (try (sweep! pool) (log-stats! pool)
+                                         (catch Throwable e (log/warn e "Error in image-buffer maintenance"))))
+                             (long (:idle-ttl-ms pool)) (long (:idle-ttl-ms pool)) TimeUnit/MILLISECONDS)))
+
+;; A delay so nothing runs at namespace load (AOT-safe). Realized exactly once on first use, which is also when -- and
+;; the only place where -- the single sweeper daemon is started.
 (defonce ^:private the-pool
-  (delay
-    (let [pool (->pool)]
-      (start-sweeper! pool)
-      pool)))
+  (delay (doto (->pool) start-sweeper!)))
 
 (defn- default-pool
-  "THE process-wide pool, realized (and its sweeper started) on first call."
+  "THE process-wide pool, built (and its sweeper started) on first call."
   []
   @the-pool)

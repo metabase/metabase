@@ -12,15 +12,14 @@
 ;; assert exact hit/miss/idle counts rather than fuzzy "some reuse" thresholds.
 
 (deftest acquire-returns-argb-of-requested-size-test
-  (testing "acquire yields a TYPE_INT_ARGB buffer of exactly the requested size, for any size asked of one pool"
+  (testing "acquire yields an ARGB BufferedImage of exactly the requested size, for any size that fits the pool"
     (let [p     (image-buffer/->pool)
           sizes [[320 240] [1200 800] [1 1] [1200 1322] [64 480]]]
       (doseq [[w h] sizes]
         (let [^BufferedImage img (image-buffer/acquire p w h)]
           (is (instance? BufferedImage img) (format "%dx%d is a BufferedImage" w h))
           (is (= w (.getWidth img)) (format "%dx%d width" w h))
-          (is (= h (.getHeight img)) (format "%dx%d height" w h))
-          (is (= BufferedImage/TYPE_INT_ARGB (.getType img)) (format "%dx%d is ARGB" w h)))))))
+          (is (= h (.getHeight img)) (format "%dx%d height" w h)))))))
 
 (deftest sequential-cycle-reuses-after-one-allocation-test
   (testing "cycling one size allocates once, then reuses every time"
@@ -30,18 +29,71 @@
         (image-buffer/release p (image-buffer/acquire p 1207 503)))
       (let [{:keys [hits misses idle]} (image-buffer/stats p)]
         (is (= 1 misses) "only the very first acquire allocates; the rest must reuse")
-        (is (= (dec n) hits) "every acquire after the first reused a pooled buffer")
-        (is (= 1 idle) "one buffer cycles through the whole run")))))
+        (is (= (dec n) hits) "every acquire after the first reused a pooled array")
+        (is (= 1 idle) "one array cycles through the whole run")))))
 
-(deftest concurrent-same-size-allocates-at-most-thread-count-test
-  (testing "concurrent threads cycling one size allocate at most thread-count buffers"
+(deftest different-sizes-reuse-the-same-array-test
+  (testing "the headline property: one fixed-size array backs ANY size that fits, so different sizes reuse it (NOT a
+            per-size cache). After the first allocation every differently-sized acquire is a hit."
+    (let [p (image-buffer/->pool)]
+      (image-buffer/release p (image-buffer/acquire p 1200 800))   ;; allocate once
+      (doseq [[w h] [[1000 600] [200 100] [1199 1000] [50 50]]]    ;; all different sizes, all fit
+        (image-buffer/release p (image-buffer/acquire p w h)))
+      (let [{:keys [hits misses idle]} (image-buffer/stats p)]
+        (is (= 1 misses) "only the first acquire allocated; differently-sized acquires reused the same array")
+        (is (= 4 hits) "every differently-sized acquire after the first was a reuse")
+        (is (= 1 idle) "still just one array")))))
+
+(deftest reused-array-is-cleared-test
+  (testing "a reused array is wiped in the region the next render uses (no data leak between renders)"
+    (let [p (image-buffer/->pool)]
+      (let [^BufferedImage img (image-buffer/acquire p 64 64)]
+        (.setRGB img 10 10 (unchecked-int 0xFF00FF00))
+        (is (not (zero? (.getRGB img 10 10))) "sanity: pixel was dirtied")
+        (image-buffer/release p img))
+      (let [^BufferedImage img (image-buffer/acquire p 64 64)]
+        (is (zero? (.getRGB img 10 10)) "the reused array no longer shows the previous render's pixel")))))
+
+(deftest oversized-request-is-a-one-off-test
+  (testing "a request larger than the fixed array size falls back to a fresh standard image and is NOT pooled"
+    (let [p (image-buffer/->pool {:array-pixels (* 100 100)})         ;; tiny fixed size
+          ^BufferedImage big (image-buffer/acquire p 500 500)]         ;; 250k px > 10k cap
+      (is (= 500 (.getWidth big)))
+      (is (= 500 (.getHeight big)))
+      (is (= BufferedImage/TYPE_INT_ARGB (.getType big)) "one-off uses a standard TYPE_INT_ARGB image")
+      (image-buffer/release p big)
+      (let [{:keys [one-offs idle]} (image-buffer/stats p)]
+        (is (= 1 one-offs) "counted as a one-off")
+        (is (= 0 idle) "the oversized array was not pooled on release")))))
+
+(deftest oversized-and-normal-coexist-test
+  (testing "one-offs don't pollute the pool: a normal-size array still pools while oversized requests pass through"
+    (let [p (image-buffer/->pool {:array-pixels (* 100 100)})]
+      (image-buffer/release p (image-buffer/acquire p 80 80))     ;; fits -> pooled
+      (image-buffer/release p (image-buffer/acquire p 500 500))   ;; oversized -> one-off, dropped
+      (let [{:keys [idle one-offs misses]} (image-buffer/stats p)]
+        (is (= 1 idle) "only the fitting array is pooled")
+        (is (= 1 one-offs))
+        (is (= 1 misses) "the fitting acquire allocated once; the one-off is counted separately")))))
+
+(deftest max-arrays-bounds-retention-test
+  (testing "the pool retains at most :max-arrays idle arrays; surplus releases are dropped"
+    (let [cap 3
+          p (image-buffer/->pool {:max-arrays cap})
+          ;; acquire more arrays than the cap (force misses by holding them all before releasing any)
+          held (vec (repeatedly (* 2 cap) #(image-buffer/acquire p 700 350)))]
+      (run! #(image-buffer/release p %) held)
+      (is (= cap (:idle (image-buffer/stats p))) "retained exactly :max-arrays; surplus discarded"))))
+
+(deftest concurrent-allocates-at-most-thread-count-test
+  (testing "concurrent threads cycling renders allocate at most thread-count arrays"
     (let [thread-count       8
           cycles-per-thread  50
           timeout-ms         5000
-          pool               (image-buffer/->pool)
-          ;; A barrier so all threads start their acquire/release loops at the same moment (genuine overlap, so the
-          ;; "<= thread-count allocations" assertion exercises real concurrency). `await` is bounded, and the worker
-          ;; reaches it via try/finally, so a thread that throws can't strand the others on the barrier.
+          pool               (image-buffer/->pool {:max-arrays thread-count})
+          ;; A barrier so all threads start at the same moment (genuine overlap, so the "<= thread-count allocations"
+          ;; assertion exercises real concurrency). `await` is bounded and the worker reaches it directly, so a thread
+          ;; that throws can't strand the others on the barrier.
           started            (java.util.concurrent.CyclicBarrier. thread-count)
           worker             (fn []
                                (.await started (long timeout-ms) java.util.concurrent.TimeUnit/MILLISECONDS)
@@ -57,103 +109,27 @@
         (is (<= misses thread-count) "never allocated more than the number of concurrent threads")
         (is (pos? hits) "reuse happened")))))
 
-(deftest many-sizes-pool-contents-and-isolation-test
-  (testing "many distinct sizes pool independently; each acquire gets its own size"
-    (let [p     (image-buffer/->pool)
-          sizes (for [i (range 9)] [(+ 1200 i) (+ 800 (* 10 i))])]  ;; 9 dashboard-ish sizes, all distinct
-      ;; release one buffer of each size into the pool
-      (doseq [[w h] sizes]
-        (image-buffer/release p (image-buffer/acquire p w h)))
-      (let [{:keys [by-size idle]} (image-buffer/stats p)]
-        (is (= (count sizes) idle) "one idle buffer per distinct size was retained")
-        (is (= (set sizes) (set (keys by-size))) "the pool holds exactly the sizes we released, keyed correctly")
-        (is (every? #(= 1 %) (vals by-size)) "exactly one buffer per size (we released one each)"))
-      ;; now re-acquire each size and assert we get back a correctly-sized, reused buffer (not a collision)
-      (doseq [[w h] sizes]
-        (let [hits-before (:hits (image-buffer/stats p))
-              ^BufferedImage img (image-buffer/acquire p w h)]
-          (is (= [w h] [(.getWidth img) (.getHeight img)]) "acquire returned a buffer of the requested size")
-          (is (= (inc hits-before) (:hits (image-buffer/stats p)))
-              "the acquire reused this size's pooled buffer rather than allocating (no cross-size theft)")
-          (image-buffer/release p img)))
-      (is (= (count sizes) (:idle (image-buffer/stats p))) "after the round trip the pool still holds one per size"))))
-
-(deftest reused-buffer-is-cleared-test
-  (testing "a reused buffer is wiped to fully transparent (no data leak between renders)"
+(deftest sweep-drains-to-zero-test
+  (testing "sweep! drops idle arrays so memory is reclaimed when rendering stops"
     (let [p (image-buffer/->pool)]
-      (let [^BufferedImage img (image-buffer/acquire p 64 64)]
-        (.setRGB img 10 10 (unchecked-int 0xFF00FF00))
-        (is (not (zero? (.getRGB img 10 10))) "sanity: pixel was dirtied")
-        (image-buffer/release p img))
-      (let [^BufferedImage img (image-buffer/acquire p 64 64)]
-        (is (zero? (.getRGB img 10 10)) "the reused buffer no longer shows the previous render's pixel")))))
-
-(deftest different-sizes-do-not-collide-test
-  (testing "a buffer is only ever reused for its own exact size"
-    (let [p (image-buffer/->pool)
-          a (image-buffer/acquire p 100 100)]
-      (image-buffer/release p a)
-      (let [^BufferedImage b (image-buffer/acquire p 200 100)]
-        (is (not (identical? a b)) "a different size must not hand back the wrong-sized buffer")
-        (is (= 200 (.getWidth b)))
-        (is (= 100 (.getHeight b)))))))
-
-(deftest empty-pool-allocates-fresh-buffer-test
-  (testing "acquiring with nothing pooled yields a fresh, correctly-sized buffer (the empty-pool branch -- there is no
-            blocking primitive in acquire to wait on; pollFirst returns nil immediately on an empty deque)"
-    (let [p (image-buffer/->pool)
-          ^BufferedImage img (image-buffer/acquire p 333 222)]
-      (is (instance? BufferedImage img))
-      (is (= 333 (.getWidth img)))
-      (is (= 222 (.getHeight img))))))
-
-(deftest per-size-cap-bounds-retention-test
-  (testing "a size retains at most per-size-cap idle buffers"
-    (let [cap 3
-          p (image-buffer/->pool {:per-size-cap cap})
-          ;; acquire more distinct buffers than the cap (force misses by holding them all before releasing any)
-          held (vec (repeatedly (* 2 cap) #(image-buffer/acquire p 700 350)))]
-      (run! #(image-buffer/release p %) held)
-      (is (= cap (:idle (image-buffer/stats p))) "retained exactly per-size-cap; surplus discarded"))))
-
-(deftest global-cap-bounds-total-retention-test
-  (testing "the global cap bounds total idle buffers across sizes"
-    (let [gcap 5
-          p (image-buffer/->pool {:per-size-cap 10 :global-cap gcap})
-          ;; release one buffer of each of many distinct sizes; total retained must not exceed the global cap
-          held (vec (for [i (range (* 2 gcap))] (image-buffer/acquire p (+ 1000 i) 400)))]
-      (run! #(image-buffer/release p %) held)
-      (is (<= (:idle (image-buffer/stats p)) gcap)
-          "total idle buffers across all sizes stays within the global cap"))))
-
-(deftest sweep-evicts-stale-and-drains-to-zero-test
-  (testing "sweep! drops buffers idle past the TTL and drains to zero"
-    ;; buffers are stamped with the real wall clock at release, so we sweep relative to a captured `now`
-    (let [ttl 60000
-          p (image-buffer/->pool {:idle-ttl-ms ttl})]
-      ;; pool a couple of buffers, then release; they are stamped at ~now
       (image-buffer/release p (image-buffer/acquire p 480 480))
       (image-buffer/release p (image-buffer/acquire p 481 481))
-      (is (= 2 (:idle (image-buffer/stats p))) "two buffers idle before any sweep")
-      (let [now (System/currentTimeMillis)]
-        ;; sweep at a moment still within the TTL of the release -> nothing evicted
-        (image-buffer/sweep! p (+ now (quot ttl 2)))
-        (is (pos? (:idle (image-buffer/stats p))) "fresh buffers (within TTL) survive a sweep")
-        ;; sweep well past the TTL -> everything drains to zero and empty keys are removed
-        (image-buffer/sweep! p (+ now (* 10 ttl)))
-        (is (= 0 (:idle (image-buffer/stats p))) "buffers idle past the TTL are evicted; the pool drains to zero")))))
+      (is (pos? (:idle (image-buffer/stats p))) "arrays are pooled before the sweep")
+      (image-buffer/sweep! p)
+      (is (= 0 (:idle (image-buffer/stats p))) "sweep drains the pool to zero")
+      ;; and rendering after a sweep just repopulates
+      (image-buffer/release p (image-buffer/acquire p 480 480))
+      (is (= 1 (:idle (image-buffer/stats p))) "post-sweep acquire/release repopulates"))))
 
 (deftest stats-idle-reflects-reality-test
   (testing "reported idle count matches reality and never goes negative"
     (let [p (image-buffer/->pool)]
       (dotimes [i 20]
-        ;; interleave acquires and releases of a few sizes
         (let [img (image-buffer/acquire p (+ 600 (mod i 3)) 300)]
           (when (even? i) (image-buffer/release p img))))
       (let [idle (:idle (image-buffer/stats p))]
         (is (>= idle 0) "idle count is never negative")
-        ;; cross-check against the records' own count by draining everything we can and counting
-        (is (= idle (:idle (image-buffer/stats p))) "idle count is stable / self-consistent on repeated reads")))))
+        (is (<= idle (:max-arrays (image-buffer/->pool))) "idle never exceeds the retention cap")))))
 
 (deftest release-nil-is-safe-test
   (is (nil? (image-buffer/release (image-buffer/->pool) nil))))
