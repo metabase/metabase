@@ -10,31 +10,35 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Card, Center, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { isNullOrUndefined } from "metabase/utils/types";
 import type { TableIndexEntry, TransformId } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
-export type TransformIndexesPageParams = {
-  transformId: string;
-};
-
 type TransformIndexesPageProps = {
-  params?: TransformIndexesPageParams;
+  params?: {
+    transformId?: string;
+  };
 };
 
 export function TransformIndexesPage({ params }: TransformIndexesPageProps) {
-  const id = Urls.extractEntityId(params?.transformId);
+  const transformId = Urls.extractEntityId(params?.transformId);
   const {
     data: transform,
     isLoading: isLoadingTransform,
     error: transformError,
-  } = useGetTransformQuery(id ?? skipToken);
+  } = useGetTransformQuery(transformId ?? skipToken);
   const { readOnly, isLoadingDatabases, databasesError } =
     useTransformPermissions({ transform });
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
-  if (id == null || transform == null || isLoading || error != null) {
+  if (
+    transformId === undefined ||
+    transform === undefined ||
+    isLoading ||
+    !isNullOrUndefined(error)
+  ) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -61,7 +65,7 @@ function TransformIndexesContent({
     error,
   } = useListTableIndexesQuery({ "transform-id": transformId });
 
-  if (isLoading || error != null) {
+  if (isLoading || !isNullOrUndefined(error)) {
     return (
       <Center flex={1}>
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
