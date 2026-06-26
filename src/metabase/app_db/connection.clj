@@ -9,6 +9,7 @@
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
    [toucan2.jdbc.connection :as t2.jdbc.conn]
+   [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
@@ -128,9 +129,43 @@
   []
   (.id *application-db*))
 
+(def ^:private select-fetch-size
+  "Default JDBC fetch size (rows per network round-trip) for app-db queries. Postgres only streams a result set from a
+  server-side cursor -- instead of materializing the whole thing in client memory -- when the fetch size is positive
+  *and* autoCommit is off (see [[do-with-app-db-connection]]); the JDBC default fetch size of 0 means \"fetch
+  everything\"."
+  500)
+
+(defn- do-with-app-db-connection
+  "Acquire a connection from the application DB and run `f` on it.
+
+  On Postgres we run every connection with autoCommit *off* so the driver streams large SELECTs from a server-side
+  cursor instead of buffering them into client memory, and we commit (or roll back on error) manually at the end of the
+  connection scope. We also set a positive default fetch size, which Postgres additionally requires before it will use a
+  cursor. Writes still commit -- Toucan 2's transaction handling commits at the end of each [[t2/with-transaction]], and
+  anything left uncommitted in the scope (e.g. a bare SELECT) is committed here. H2/MySQL keep the plain JDBC-default
+  behavior."
+  [^ApplicationDB app-db f]
+  (if (not= :postgres (.db-type app-db))
+    (with-open [conn (.getConnection app-db)]
+      (f conn))
+    (binding [t2.jdbc.options/*options* (assoc t2.jdbc.options/*options* :fetch-size select-fetch-size)]
+      (with-open [conn (.getConnection app-db)]
+        (.setAutoCommit conn false)
+        (try
+          (let [result (f conn)]
+            (.commit conn)
+            result)
+          (catch Throwable e
+            (try
+              (.rollback conn)
+              (catch Throwable rollback-e
+                (log/warn rollback-e "Failed to roll back app-db connection")))
+            (throw e)))))))
+
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
-  (t2.conn/do-with-connection *application-db* f))
+  (do-with-app-db-connection *application-db* f))
 
 (def ^:private ^:dynamic *transaction-depth* 0)
 

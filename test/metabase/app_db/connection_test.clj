@@ -62,7 +62,10 @@
         (t2/with-transaction [_t-conn conn]
           ;; dummy op
           (is (false? (.getAutoCommit conn))))
-        (is (true? (.getAutoCommit conn)))))
+        ;; On a Postgres app DB the connection runs with autoCommit off for its whole scope (so SELECTs stream from a
+        ;; cursor); on H2/MySQL the transaction restores the JDBC default of true.
+        (is (= (not= (mdb.connection/db-type) :postgres)
+               (.getAutoCommit conn)))))
     (testing "throw error when trying to create nested transaction when nested-transaction-rule=:prohibit"
       (t2/with-connection [conn]
         (t2/with-transaction [t-conn conn]
@@ -172,3 +175,22 @@
           ;; The original exception should be thrown, not the setAutoCommit exception
           (is (= msg (ex-message e))))
         (is (true? @autocommit-reset-called))))))
+
+(deftest ^:synchronized reducible-query-streams-large-result-set-test
+  (testing "when using a Postgres app DB, [[t2/reducible-query]] streams via a server-side cursor (autoCommit=false + fetch size)"
+    (when (= (mdb.connection/db-type) :postgres)
+      (let [n      Integer/MAX_VALUE
+            result (t2/reducible-query [(format "SELECT generate_series(1, %d) AS i" n)])]
+        (testing "only the first rows are pulled, not all ~2 billion"
+          (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))
+
+(deftest ^:synchronized postgres-app-db-runs-with-autocommit-off-test
+  (testing "when using a Postgres app DB, toucan2 connections run with autoCommit off and we commit manually"
+    (when (= (mdb.connection/db-type) :postgres)
+      (testing "a connection handed out by toucan2 has autoCommit disabled for its whole scope"
+        (t2/with-connection [^java.sql.Connection conn]
+          (is (false? (.getAutoCommit conn)))))
+      (testing "writes are still committed (manually, at the end of the connection scope) and survive"
+        (let [email (mt/random-email)]
+          (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
+          (is (true? (t2/exists? :model/User :email email))))))))
