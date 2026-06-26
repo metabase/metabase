@@ -298,6 +298,7 @@
   [& args]
   (->> (apply driver/describe-database args)
        :tables
+       (into [])
        (sort-by :name)))
 
 (deftest materialized-views-test
@@ -2125,7 +2126,9 @@
                FROM generate_series(1, 5000) AS i;"
             results (qp/process-query (mt/native-query {:query sql})
                                       (temp-storage/notification-rff
-                                       5000 {:context 'complex-types-in-notification-payload}))]
+                                       {:budget (temp-storage/make-resident-budget
+                                                 {:per-card 5000 :resident-cap Long/MAX_VALUE :floor Long/MAX_VALUE})}
+                                       {:context 'complex-types-in-notification-payload}))]
         (is (integer? (:data.rows-file-size results)))
         (is (temp-storage/streaming-temp-file? (-> results :data :rows)))
         (is (=? [1
@@ -2493,3 +2496,15 @@
                       (jdbc/execute! admin-spec
                                      [(format "GRANT %s TO %s" qowner qrole)])
                       (is (nil? (postgres/assert-can-alter-default-privileges! user-spec schema))))))))))))))
+
+(deftest ^:synchronized reducible-query-streams-large-result-set-test
+  (testing "reducible-query streams large result sets via a server-side cursor (autoCommit=false)"
+    (mt/test-driver :postgres
+      ;; A 2.1-billion-row generate_series in the SELECT list streams row-by-row (no server-side materialization).
+      ;; Pulling just the first few is fast ONLY if reducible-query streams (a cursor) and stops early; without
+      ;; streaming the JDBC driver buffers the whole ResultSet (~2.1B rows) and OOMs at any heap size.
+      (let [n      Integer/MAX_VALUE
+            result (sql-jdbc.execute/reducible-query
+                    (mt/db) [(format "SELECT generate_series(1, %d) AS i" n)])]
+        (testing "only the first rows are pulled, not all ~2 billion"
+          (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))

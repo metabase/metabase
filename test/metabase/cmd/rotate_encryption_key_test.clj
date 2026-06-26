@@ -98,6 +98,9 @@
               (encryption-test/with-secret-key k1
                 (t2/insert! :model/Setting {:key "k1crypted", :value "encrypted with k1"})
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
+                ;; other encrypted-json columns that must also be re-encrypted on rotation
+                (t2/update! :model/Database 1 {:settings {:database-enable-actions true}})
+                (t2/update! :model/User @user-id {:settings {:locale "en"}})
                 (let [secret (first (t2/insert-returning-instances! :model/Secret {:name       "My Secret (encrypted)"
                                                                                    :kind       "password"
                                                                                    :value      (.getBytes secret-val StandardCharsets/UTF_8)
@@ -125,11 +128,15 @@
                   (encryption-test/with-secret-key k2
                     (is (= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
                     (is (= {:db "/tmp/test.db"} (t2/select-one-fn :details :model/Database :id 1)))
+                    (is (= {:database-enable-actions true} (t2/select-one-fn :settings :model/Database :id 1)))
+                    (is (= {:locale "en"} (t2/select-one-fn :settings :model/User :id @user-id)))
                     (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))
                 (testing "but not with old key"
                   (encryption-test/with-secret-key k1
                     (is (not= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
                     (is (not= "{\"db\":\"/tmp/test.db\"}" (t2/select-one-fn :details :model/Database :id 1)))
+                    (is (not= {:database-enable-actions true} (t2/select-one-fn :settings :model/Database :id 1)))
+                    (is (not= {:locale "en"} (t2/select-one-fn :settings :model/User :id @user-id)))
                     (is (not (mt/secret-value-equals? secret-val
                                                       (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))))
               (testing "full rollback when a database details looks encrypted with a different key than the current one"

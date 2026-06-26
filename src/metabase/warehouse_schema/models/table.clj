@@ -173,7 +173,8 @@
 (t2/define-before-insert :model/Table
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
-                  :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
+                  :field_order  (or (:field_order table)
+                                    (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table))))
                   :data_layer   :internal}]
     (collection/check-allowed-content :table (:collection_id table))
     (merge defaults table)))
