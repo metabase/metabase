@@ -4,6 +4,10 @@ interface ImportMetaEnv {
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;
+  /** Vite HMR context (dev only); used for the data-app sandbox soft reload. */
+  readonly hot?: {
+    on(event: string, callback: (data: unknown) => void): void;
+  };
 }
 
 // Injected by `dataAppSandboxDevPlugin` (see `config/sandbox-dev-plugin.ts`).
@@ -11,3 +15,5 @@ interface ImportMeta {
 declare const __DATA_APP_ALLOWED_HOSTS__: string[];
 /** Dev URL serving the app pre-built as the production IIFE bundle. */
 declare const __DATA_APP_BUNDLE_URL__: string;
+/** Custom HMR event the plugin emits on rebuild for the soft reload. */
+declare const __DATA_APP_REBUILT_EVENT__: string;

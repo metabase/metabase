@@ -13,6 +13,9 @@ import {
 /** Dev-only URL the harness fetches the freshly-built IIFE bundle from. */
 export const DATA_APP_BUNDLE_URL = "/@data-app-bundle.js";
 
+/** Custom HMR event the harness listens for to soft-reload the sandboxed app. */
+export const DATA_APP_REBUILT_EVENT = "data-app:rebuilt";
+
 /**
  * Makes `npm run dev` run the app through the real Near-Membrane sandbox instead
  * of mounting it un-sandboxed, so dev behaves like production — including for
@@ -20,9 +23,12 @@ export const DATA_APP_BUNDLE_URL = "/@data-app-bundle.js";
  *
  * The membrane evaluates a code string, not Vite's module graph, so the app is
  * bundled in-memory (identically to the production bundle) on server start and
- * on every `src/` change, served at `DATA_APP_BUNDLE_URL`, with a full reload on
- * change. That trades module-level HMR for fidelity to production — the whole
- * point of a single, always-sandboxed dev environment.
+ * on every `src/` change, served at `DATA_APP_BUNDLE_URL`. Instead of a full
+ * page reload, it emits `DATA_APP_REBUILT_EVENT` so the harness re-evaluates the
+ * new bundle in the live sandbox and re-renders in place — preserving the loaded
+ * SDK bundle + auth. True module-level HMR / Fast Refresh isn't possible (the
+ * app is an opaque evaluated bundle in an isolated realm), so component state
+ * still resets on each change.
  */
 export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
   let bundleCode = "";
@@ -72,6 +78,7 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
         define: {
           __DATA_APP_ALLOWED_HOSTS__: JSON.stringify(allowedHosts),
           __DATA_APP_BUNDLE_URL__: JSON.stringify(DATA_APP_BUNDLE_URL),
+          __DATA_APP_REBUILT_EVENT__: JSON.stringify(DATA_APP_REBUILT_EVENT),
         },
       };
     },
@@ -94,7 +101,10 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
       server.watcher.on("change", async (file) => {
         if (file.includes(srcDir)) {
           await rebuild(root, mode);
-          server.ws.send({ type: "full-reload" });
+          // Soft reload: the harness re-evaluates the rebuilt bundle in the live
+          // sandbox and re-renders in place (preserving the loaded SDK + auth),
+          // instead of a full page reload. See `DATA_APP_REBUILT_EVENT`.
+          server.ws.send({ type: "custom", event: DATA_APP_REBUILT_EVENT });
         }
       });
     },
