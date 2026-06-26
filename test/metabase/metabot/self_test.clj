@@ -526,13 +526,37 @@
           finish (last (sse-events parts))]
       (is (= {:type "finish"
               :finishReason "stop"
-              :messageMetadata {:usage        {:inputTokens 12 :outputTokens 8 :totalTokens 20}
-                                :usageByModel {:claude-sonnet-4-6 {:inputTokens 10 :outputTokens 5 :totalTokens 15}
-                                               :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5}}}}
+              :messageMetadata {:usage        {:inputTokens 12 :outputTokens 8 :totalTokens 20
+                                               :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}
+                                :usageByModel {:claude-sonnet-4-6 {:inputTokens 10 :outputTokens 5 :totalTokens 15
+                                                                   :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}
+                                               :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
+                                                                   :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}}}
              finish))))
   (testing "finish omits messageMetadata when no usage was observed"
     (is (not (contains? (last (sse-events [{:type :text :id "t" :text "x"}]))
                         :messageMetadata)))))
+
+(deftest parts->aisdk-sse-xf-usage-cache-test
+  (testing "Anthropic cache breakdown flows onto finish.messageMetadata; non-cache models contribute 0"
+    (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "claude-sonnet-4-6"
+                   :usage {:promptTokens 1540 :completionTokens 10
+                           :cacheCreationTokens 300 :cacheReadTokens 1200}}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
+                  {:type :finish}]
+          finish (last (sse-events parts))]
+      (is (= {:type "finish"
+              :finishReason "stop"
+              :messageMetadata
+              {:usage        {:inputTokens 1542 :outputTokens 13 :totalTokens 1555
+                              ;; cachedInputTokens mirrors cacheReadTokens; gpt-5 adds 0 to each
+                              :cacheCreationTokens 300 :cacheReadTokens 1200 :cachedInputTokens 1200}
+               :usageByModel {:claude-sonnet-4-6 {:inputTokens 1540 :outputTokens 10 :totalTokens 1550
+                                                  :cacheCreationTokens 300 :cacheReadTokens 1200 :cachedInputTokens 1200}
+                              :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
+                                                  :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}}}
+             finish)))))
 
 ;;; ===================== Retry Logic Tests =====================
 

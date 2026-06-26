@@ -242,21 +242,30 @@
 
   Input: `{\"provider/model\" {:promptTokens N :completionTokens N}}`.
 
-  Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N}
+  Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N
+                    :cacheCreationTokens N :cacheReadTokens N :cachedInputTokens N}
             :usageByModel {\"provider/model\" {…}}}`
 
-  Returns nil if no usage was observed. Reasoning/cached token counts are
-  omitted — our provider adapters don't surface them yet."
+  Returns nil if no usage was observed. The cache counts are a subset of
+  :inputTokens (`:cachedInputTokens` mirrors cache-read), 0 without provider caching."
   [usage-by-model]
   (when (seq usage-by-model)
-    (let [by-model (update-vals usage-by-model
-                                (fn [{:keys [promptTokens completionTokens]
-                                      :or   {promptTokens 0 completionTokens 0}}]
-                                  {:inputTokens  promptTokens
-                                   :outputTokens completionTokens
-                                   :totalTokens  (+ promptTokens completionTokens)}))
+    (let [by-model (update-vals
+                    usage-by-model
+                    (fn [{:keys [promptTokens completionTokens
+                                 cacheCreationTokens cacheReadTokens]
+                          :or   {promptTokens 0 completionTokens 0
+                                 cacheCreationTokens 0 cacheReadTokens 0}}]
+                      {:inputTokens         promptTokens
+                       :outputTokens        completionTokens
+                       :totalTokens         (+ promptTokens completionTokens)
+                       :cacheCreationTokens cacheCreationTokens
+                       :cacheReadTokens     cacheReadTokens
+                       :cachedInputTokens   cacheReadTokens}))
           totals   (reduce (partial merge-with +)
-                           {:inputTokens 0 :outputTokens 0 :totalTokens 0}
+                           {:inputTokens 0 :outputTokens 0 :totalTokens 0
+                            :cacheCreationTokens 0 :cacheReadTokens 0
+                            :cachedInputTokens 0}
                            (vals by-model))]
       {:usage        totals
        :usageByModel by-model})))
