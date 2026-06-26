@@ -4,6 +4,7 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
 import { MetricAboutPage } from "./pages/MetricAboutPage";
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
+import { MetricDimensionsPage } from "./pages/MetricDimensionsPage";
 import { MetricHistoryPage } from "./pages/MetricHistoryPage";
 import { MetricOverviewPage } from "./pages/MetricOverviewPage";
 import { MetricQueryPage } from "./pages/MetricQueryPage";
@@ -16,6 +17,7 @@ export function getMetricRoutes() {
       <Route path=":cardId" component={MetricAboutPage} />
       <Route path=":cardId/overview" component={MetricOverviewPage} />
       <Route path=":cardId/query" component={MetricQueryPage} />
+      <Route path=":cardId/dimensions" component={MetricDimensionsPage} />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route path=":cardId/dependencies" component={MetricDependenciesPage}>
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />

@@ -4,6 +4,7 @@ import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
 import { DataStudioMetricAboutPage } from "./pages/DataStudioMetricAboutPage";
 import { DataStudioMetricDependenciesPage } from "./pages/DataStudioMetricDependenciesPage";
+import { DataStudioMetricDimensionsPage } from "./pages/DataStudioMetricDimensionsPage";
 import { DataStudioMetricHistoryPage } from "./pages/DataStudioMetricHistoryPage";
 import { DataStudioMetricOverviewPage } from "./pages/DataStudioMetricOverviewPage";
 import { DataStudioMetricQueryPage } from "./pages/DataStudioMetricQueryPage";
@@ -16,6 +17,10 @@ export function getDataStudioMetricRoutes() {
       <Route path=":cardId" component={DataStudioMetricAboutPage} />
       <Route path=":cardId/overview" component={DataStudioMetricOverviewPage} />
       <Route path=":cardId/query" component={DataStudioMetricQueryPage} />
+      <Route
+        path=":cardId/dimensions"
+        component={DataStudioMetricDimensionsPage}
+      />
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Route
           path=":cardId/dependencies"

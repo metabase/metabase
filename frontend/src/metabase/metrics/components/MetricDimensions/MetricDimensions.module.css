@@ -1,0 +1,58 @@
+.root {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.columns {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.column {
+  display: flex;
+  flex: 1 1 50%;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--mantine-spacing-xl);
+}
+
+.scrollArea {
+  flex: 1;
+  min-height: 0;
+}
+
+.row {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+.row:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.rowActive,
+.rowActive:hover {
+  border-color: var(--mb-color-brand);
+  background-color: var(--mb-color-brand-lighter);
+}
+
+.rowButton {
+  flex: 1;
+  min-width: 0;
+}
+
+.addableRow {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+.addableRow:hover {
+  background-color: var(--mb-color-background-hover);
+}

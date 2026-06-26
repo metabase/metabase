@@ -31,6 +31,7 @@ export const TAG_TYPES = [
   "llm-models",
   "logger-preset",
   "measure",
+  "metric-dimension",
   "model-index",
   "notification",
   "oauth-authorization",

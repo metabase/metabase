@@ -1,6 +1,8 @@
 import type {
+  AddableDimensionGroup,
   Metric,
   MetricDimension,
+  MetricDimensionGroup,
   NormalizedMetric,
 } from "metabase-types/api";
 
@@ -9,8 +11,26 @@ export const createMockMetricDimension = (
 ): MetricDimension => ({
   id: "1",
   display_name: "Dimension",
+  description: null,
   effective_type: "type/Text",
   semantic_type: null,
+  ...opts,
+});
+
+export const createMockMetricDimensionGroup = (
+  opts?: Partial<MetricDimensionGroup>,
+): MetricDimensionGroup => ({
+  id: "main",
+  type: "main",
+  display_name: "Main table",
+  ...opts,
+});
+
+export const createMockAddableDimensionGroup = (
+  opts?: Partial<AddableDimensionGroup>,
+): AddableDimensionGroup => ({
+  group: createMockMetricDimensionGroup(),
+  dimensions: [createMockMetricDimension()],
   ...opts,
 });
 

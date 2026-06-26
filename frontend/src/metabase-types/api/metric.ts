@@ -1,7 +1,13 @@
 import type { Collection, CollectionId } from "./collection";
 import type { DatasetColumn, RowValue } from "./dataset";
 import type { FieldValue } from "./field";
-import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
+import type {
+  DimensionId,
+  DimensionMapping,
+  MetricDimension,
+  MetricDimensionGroup,
+  MetricDimensionSource,
+} from "./measure";
 
 export type {
   DimensionMapping,
@@ -109,4 +115,38 @@ export type GetRemappedMetricDimensionValueRequest = {
   metricId: MetricId;
   dimensionId: DimensionId;
   value: string;
+};
+
+export type ListMetricDimensionsRequest = {
+  metricId: MetricId;
+  query?: string;
+  with_addable?: boolean;
+};
+
+export type AddableDimensionGroup = {
+  group: MetricDimensionGroup;
+  dimensions: MetricDimension[];
+};
+
+export type ListMetricDimensionsResponse = {
+  added: MetricDimension[];
+  addable: AddableDimensionGroup[];
+};
+
+export type AddMetricDimensionsRequest = {
+  metricId: MetricId;
+  dimension_ids: DimensionId[];
+};
+
+export type RemoveMetricDimensionsRequest = {
+  metricId: MetricId;
+  dimension_ids: DimensionId[];
+};
+
+export type UpdateMetricDimensionRequest = {
+  metricId: MetricId;
+  dimensionId: DimensionId;
+  display_name?: string;
+  description?: string | null;
+  source?: MetricDimensionSource;
 };

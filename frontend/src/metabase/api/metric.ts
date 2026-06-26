@@ -1,20 +1,29 @@
 import { MetricSchema } from "metabase/schema";
 import type {
+  AddMetricDimensionsRequest,
   Dataset,
   FieldValue,
   GetMetricDimensionValuesRequest,
   GetMetricDimensionValuesResponse,
   GetRemappedMetricDimensionValueRequest,
+  ListMetricDimensionsRequest,
+  ListMetricDimensionsResponse,
   Metric,
   MetricBreakoutValuesRequest,
   MetricBreakoutValuesResponse,
   MetricDatasetRequest,
+  MetricDimension,
   MetricId,
+  RemoveMetricDimensionsRequest,
   SearchMetricDimensionValuesRequest,
+  UpdateMetricDimensionRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
+  idTag,
+  invalidateTags,
+  provideMetricDimensionListTags,
   provideMetricDimensionValuesTags,
   provideMetricListTags,
   provideMetricTags,
@@ -74,6 +83,54 @@ export const metricApi = Api.injectEndpoints({
       providesTags: (_, error, { metricId }) =>
         provideMetricDimensionValuesTags(metricId),
     }),
+    listMetricDimensions: builder.query<
+      ListMetricDimensionsResponse,
+      ListMetricDimensionsRequest
+    >({
+      query: ({ metricId, ...params }) => ({
+        method: "GET",
+        url: `/api/metric/${metricId}/dimension`,
+        params,
+      }),
+      providesTags: (_, error, { metricId }) =>
+        provideMetricDimensionListTags(metricId),
+    }),
+    addMetricDimensions: builder.mutation<
+      MetricDimension[],
+      AddMetricDimensionsRequest
+    >({
+      query: ({ metricId, ...body }) => ({
+        method: "POST",
+        url: `/api/metric/${metricId}/dimension/add`,
+        body,
+      }),
+      invalidatesTags: (_, error, { metricId }) =>
+        invalidateTags(error, [idTag("metric-dimension", metricId)]),
+    }),
+    removeMetricDimensions: builder.mutation<
+      MetricDimension[],
+      RemoveMetricDimensionsRequest
+    >({
+      query: ({ metricId, ...body }) => ({
+        method: "POST",
+        url: `/api/metric/${metricId}/dimension/remove`,
+        body,
+      }),
+      invalidatesTags: (_, error, { metricId }) =>
+        invalidateTags(error, [idTag("metric-dimension", metricId)]),
+    }),
+    updateMetricDimension: builder.mutation<
+      MetricDimension,
+      UpdateMetricDimensionRequest
+    >({
+      query: ({ metricId, dimensionId, ...body }) => ({
+        method: "POST",
+        url: `/api/metric/${metricId}/dimension/${encodeURIComponent(dimensionId)}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { metricId }) =>
+        invalidateTags(error, [idTag("metric-dimension", metricId)]),
+    }),
     getMetricBreakoutValues: builder.query<
       MetricBreakoutValuesResponse,
       MetricBreakoutValuesRequest
@@ -103,6 +160,10 @@ export const {
   useGetMetricDimensionValuesQuery,
   useSearchMetricDimensionValuesQuery,
   useGetRemappedMetricDimensionValueQuery,
+  useListMetricDimensionsQuery,
+  useAddMetricDimensionsMutation,
+  useRemoveMetricDimensionsMutation,
+  useUpdateMetricDimensionMutation,
   useGetMetricBreakoutValuesQuery,
   useGetMetricDatasetQuery,
 } = metricApi;
