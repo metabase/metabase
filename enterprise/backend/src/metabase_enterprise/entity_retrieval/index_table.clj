@@ -121,12 +121,20 @@
 (defn- create-tables! [tx dims]
   (jdbc/execute! tx (create-vectors-table-sql dims)))
 
+(defn- vectors-table-exists? [tx]
+  (some? (:exists (jdbc/execute-one! tx [(format "SELECT to_regclass('%s') AS exists" *vectors-table*)]
+                                     {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+
 (defn ensure-tables!
   "Idempotently create the vectors + meta tables for `embedding-model`, rebuilding on model change.
 
   When the meta row's model identity (provider, model name, dimensions) or schema version no longer
   matches, the vectors table is dropped and recreated empty — the next reconcile re-embeds every row.
-  Serialized across nodes with an advisory lock. Returns :created, :rebuilt or :ok."
+  Serialized across nodes with an advisory lock.
+  Returns :created (the vectors table was just created empty — first build, or healing a manual drop),
+  :rebuilt (dropped and recreated empty for a model/format change), or :ok (already present, untouched).
+  A caller doing a targeted reconcile must treat :created and :rebuilt alike: both leave an empty table
+  that a one-entity write can't fill."
   [pgvector embedding-model]
   (jdbc/with-transaction [tx pgvector]
     (jdbc/execute! tx [(format "SELECT pg_advisory_xact_lock(%d)" ensure-lock-id)])
@@ -148,6 +156,9 @@
             :rebuilt)
 
         :else
-        ;; Re-issue the IF NOT EXISTS DDL so a manually dropped vectors table heals itself.
-        (do (create-tables! tx dims)
-            :ok)))))
+        ;; Meta matches. Re-issue the IF NOT EXISTS DDL so a manually dropped vectors table heals itself,
+        ;; and report :created when it had actually gone missing — the recreated table is empty, so a
+        ;; targeted reconcile must repopulate the whole library rather than fill it with one entity.
+        (let [existed? (vectors-table-exists? tx)]
+          (create-tables! tx dims)
+          (if existed? :ok :created))))))

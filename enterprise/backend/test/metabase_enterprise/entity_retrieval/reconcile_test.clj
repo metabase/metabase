@@ -367,6 +367,24 @@
       (collections.tu/with-library [{library :library}]
         (is (contains? (set (#'reconcile/library-ids library)) (:id library)))))))
 
+(deftest ^:sequential reconcile-entity!-on-first-build-repopulates-whole-library-test
+  (testing "a targeted reconcile that creates the index (first caller, empty table) repopulates the whole library"
+    (mt/with-premium-features #{:library :semantic-search}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{data :data}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id} {}
+                           :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                    :active true :name "a" :display_name "Orders"}
+                           :model/Table {b-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                    :active true :name "b" :display_name "Customers"}]
+              ;; No prior reconcile! — reconcile-entity! is the first caller, so ensure-tables! returns :created
+              ;; (empty table). It must repopulate the whole library, not index only the one dirty entity.
+              (reconcile/reconcile-entity! ds (constantly model) "table" a-id)
+              (is (seq (docs-for ds "table" a-id)) "A indexed")
+              (is (seq (docs-for ds "table" b-id))
+                  "B indexed too: the empty-index build escalated to a full repopulate"))))))))
+
 (deftest ^:sequential reconcile-entity!-on-rebuild-repopulates-whole-library-test
   (testing "a targeted reconcile that triggers a model/format rebuild repopulates the whole library, not just the one entity"
     (mt/with-premium-features #{:library :semantic-search}

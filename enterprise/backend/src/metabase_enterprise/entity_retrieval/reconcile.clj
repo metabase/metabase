@@ -365,9 +365,10 @@
 
 (defn- with-reconcile-lock
   "Acquire the session-level reconcile advisory lock on one pooled connection, ensure the tables exist for
-  the resolved model, then run `(f conn embedding-model rebuilt?)` on that same connection, and unlock.
-  Returns `f`'s diff map with `:rebuilt?` added. `rebuilt?` is true when `ensure-tables!` just dropped and
-  recreated the (now empty) vectors table, so a targeted caller can fall back to a full repopulate.
+  the resolved model, then run `(f conn embedding-model emptied?)` on that same connection, and unlock.
+  Returns `f`'s diff map with `:rebuilt?` added. `emptied?` is true when `ensure-tables!` left an empty
+  vectors table (a first :created build or a model/format :rebuilt), so a targeted caller can fall back to a
+  full repopulate; `:rebuilt?` is the narrower model/format-rebuild signal the rebuild metric counts.
 
   A single run does all its work (lock + ensure-tables! + diff) on one connection, so it never deadlocks
   checking out a second from a size-1 pgvector pool. (Two *concurrent* runs — a full and a targeted one —
@@ -390,10 +391,13 @@
         (jdbc/execute! conn [(format "SELECT pg_advisory_lock(%d)" reconcile-lock-id)])
         (try
           (let [embedding-model (resolve-model)
-                rebuilt?        (= :rebuilt (index-table/ensure-tables! conn embedding-model))]
-            (when rebuilt?
-              (log/info "library entity index: vectors table rebuilt for the current model/format; repopulating"))
-            (assoc (f conn embedding-model rebuilt?) :rebuilt? rebuilt?))
+                status          (index-table/ensure-tables! conn embedding-model)
+                ;; :created (first build / healed manual drop) and :rebuilt (model/format change) both leave
+                ;; an empty table, so a targeted caller must do a full repopulate rather than index one entity.
+                emptied?        (contains? #{:created :rebuilt} status)]
+            (when emptied?
+              (log/info "library entity index: vectors table is empty (" status "); repopulating"))
+            (assoc (f conn embedding-model emptied?) :rebuilt? (= :rebuilt status)))
           (finally
             (jdbc/execute! conn [(format "SELECT pg_advisory_unlock(%d)" reconcile-lock-id)])))
         (finally
@@ -407,7 +411,7 @@
   See the namespace docstring and [[with-reconcile-lock]]."
   [pgvector resolve-model]
   (with-reconcile-lock pgvector resolve-model
-    (fn [conn embedding-model _rebuilt?]
+    (fn [conn embedding-model _emptied?]
       (reconcile-against-appdb! conn embedding-model))))
 
 (defn reconcile-entity!
@@ -418,12 +422,12 @@
   `ai_context` delete GCs the synonym/example docs while keeping name/description, and an entity leaving
   the library GCs all of its docs. `entity-type`/`entity-local-id` come from the `osi_ai_context` write
   hook; the reconcile runs later (on a future), reading the entity's *current* appdb state.
-  If `ensure-tables!` just rebuilt the (now empty) index for a model/format change, this falls back to a
-  full reconcile — a targeted slice alone would leave every other entity missing until the backstop.
+  If `ensure-tables!` left the index empty — a first :created build or a model/format :rebuilt — this falls
+  back to a full reconcile; a targeted slice alone would leave every other entity missing until the backstop.
   See the namespace docstring and [[with-reconcile-lock]]."
   [pgvector resolve-model entity-type entity-local-id]
   (with-reconcile-lock pgvector resolve-model
-    (fn [conn embedding-model rebuilt?]
-      (if rebuilt?
+    (fn [conn embedding-model emptied?]
+      (if emptied?
         (reconcile-against-appdb! conn embedding-model)
         (reconcile-entity-against-appdb! conn embedding-model entity-type entity-local-id)))))
