@@ -10,7 +10,7 @@ function createThemeViaApi(name = "Test theme") {
           background: "#ffffff",
           "text-primary": "#2E353B",
           "text-secondary": "#697D8C",
-          "text-disabled": "#949AAB",
+          "text-tertiary": "#949AAB",
           border: "#EEECEC",
           "background-secondary": "#F9FBFC",
           filter: "#7172AD",
