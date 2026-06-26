@@ -40,8 +40,8 @@ databaseChangeLog:
               - column:
                   name: status
                   type: varchar(20)
-                  defaultValue: pending
-                  remarks: "Lifecycle status: pending, running, succeeded, failed, or dropped"
+                  defaultValue: create-pending
+                  remarks: "Lifecycle status: create-pending, update-pending, delete-pending, running, succeeded, or failed"
                   constraints:
                     nullable: false
               - column:

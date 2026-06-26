@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -401,9 +402,10 @@
   (when (seq transforms)
     (let [transform-ids (into #{} (map u/the-id) transforms)
           idx-mappings  (group-by :transform_id
-                                  (t2/select :model/TableIndex
-                                             :transform_id [:in transform-ids]
-                                             {:order-by [[:index_name :asc]]}))]
+                                  (filter table-index/applicable?
+                                          (t2/select :model/TableIndex
+                                                     :transform_id [:in transform-ids]
+                                                     {:order-by [[:index_name :asc]]})))]
       (for [transform transforms]
         (assoc transform :indexes (get idx-mappings (u/the-id transform) []))))))
 

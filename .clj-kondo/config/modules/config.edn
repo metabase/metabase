@@ -1068,6 +1068,7 @@
   indexes
   {:team "Gadget"
    :api  #{metabase.indexes.api
+           metabase.indexes.models.table-index
            metabase.indexes.reconcile}
    :uses #{api
            driver
@@ -2387,6 +2388,7 @@
            database-routing
            driver
            events
+           indexes
            lib
            lib-be
            models
