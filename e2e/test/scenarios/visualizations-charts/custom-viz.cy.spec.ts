@@ -1410,9 +1410,12 @@ describe("admin > custom visualizations", () => {
     before(() => {
       cy.exec(`mkdir -p ${tmpDir}`);
       cy.log("Build the SDK so we can use the repo-local CLI");
-      cy.exec(`cd "${sdkDir}" && bun install && bun run build`, {
-        timeout: TIMEOUT,
-      });
+      cy.exec(
+        `cd "${sdkDir}" && bun install --frozen-lockfile && bun run build`,
+        {
+          timeout: TIMEOUT,
+        },
+      );
 
       // Scaffold the boilerplate plugin using the init CLI command.
       cy.exec(`rm -rf "${projectDir}"`, { timeout: TIMEOUT });
