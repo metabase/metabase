@@ -57,7 +57,7 @@
         (t2/resolve-model :model/QueryExecution))
       (is (contains? (set @required) 'metabase.queries.models.query-execution)))))
 
-(deftest ^:parallel resolve-model-ignores-unknown-model-keywords-test
+(deftest resolve-model-ignores-unknown-model-keywords-test
   (testing "resolve-model does not attempt to require a namespace for a `model`-namespaced keyword that is not a known model"
     (let [required (atom [])]
       (with-redefs [classloader/require (fn [& args] (swap! required into args))]
