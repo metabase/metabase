@@ -192,8 +192,8 @@ function SpaceNavbarHeader({
 
 const getSidebarTooltipLabel = (isNavbarOpened: boolean) => {
   const message = isNavbarOpened ? t`Close sidebar` : t`Open sidebar`;
-  const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
-  return `${message} ${shortcut}`;
+  const modKey = isMac() ? "⌘" : "Ctrl";
+  return `${message} ([ ${t`or`} ${modKey} + .)`;
 };
 
 type ToggleActionIconProps = {
