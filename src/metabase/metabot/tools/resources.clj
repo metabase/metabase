@@ -392,6 +392,14 @@
       ;; entity-type from the resolved card's :type (:question/:model), not the
       ;; URI segment — get-table-details only knows :question/:model, so passing
       ;; the canonical "card" segment through verbatim would throw.
+      ;;
+      ;; NOTE (pre-existing, separate from this PR): unlike the card *body* (whose
+      ;; :dataset_query/:result_metadata go through redact-sandboxed), the /fields
+      ;; path emits column names via get-table-details' user-aware metadata
+      ;; provider. Whether that provider sandbox-filters the field list for a
+      ;; column-sandboxed user is unverified here; if it doesn't, /fields could
+      ;; enumerate hidden column names. Tracked as a follow-up — not changed in
+      ;; this PR to keep the diff scoped to the MBR migration.
       (table-details (:type card) (:id card) true))))
 
 (defn- fetch-card-field [_type-str id-str field-id]
