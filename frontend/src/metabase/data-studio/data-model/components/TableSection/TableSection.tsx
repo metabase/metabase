@@ -50,6 +50,7 @@ import { SegmentList } from "./components/SegmentList";
 import { TableActionsMenu } from "./components/TableActionsMenu";
 import { TableAttributesEditSingle } from "./components/TableAttributesEditSingle";
 import { TableCollection } from "./components/TableCollection";
+import { TableIndexList } from "./components/TableIndexList";
 import { TableMetadata } from "./components/TableMetadata";
 import { TableSectionGroup } from "./components/TableSectionGroup";
 
@@ -238,6 +239,9 @@ const TableSectionBase = ({
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
+            {table.transform_id != null && (
+              <Tabs.Tab value="indexes">{t`Indexes`}</Tabs.Tab>
+            )}
           </Tabs.List>
 
           <Tabs.Panel value="details">
@@ -384,6 +388,12 @@ const TableSectionBase = ({
           <Tabs.Panel value="measures">
             <MeasureList table={table} />
           </Tabs.Panel>
+
+          {table.transform_id != null && (
+            <Tabs.Panel value="indexes">
+              <TableIndexList transformId={table.transform_id} />
+            </Tabs.Panel>
+          )}
         </Tabs>
       </Box>
 

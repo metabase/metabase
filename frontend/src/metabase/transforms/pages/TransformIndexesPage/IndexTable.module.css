@@ -1,0 +1,28 @@
+@keyframes index-applying-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+    box-shadow: 0 0 0 0 var(--mb-color-brand);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 6px 2px var(--mb-color-brand);
+  }
+}
+
+.applyingDot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--mb-color-brand);
+  animation: index-applying-glow 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .applyingDot {
+    animation: none;
+    opacity: 1;
+  }
+}
