@@ -142,6 +142,20 @@ interface MetabaseCardBase {
   displayIsLocked?: boolean;
 }
 
+/**
+ * @notExported MetabaseCardBase
+ * @notExported TableVisualizationSettings
+ * @notExported CartesianVisualizationSettings
+ * @notExported ScatterVisualizationSettings
+ * @notExported WaterfallVisualizationSettings
+ * @notExported PieVisualizationSettings
+ * @notExported ScalarVisualizationSettings
+ * @notExported FunnelVisualizationSettings
+ * @notExported MapVisualizationSettings
+ * @notExported SankeyVisualizationSettings
+ * @notExported BoxplotVisualizationSettings
+ * @notExported CustomVizDisplayType
+ */
 export type MetabaseCard = MetabaseCardBase &
   (
     | {

@@ -48,6 +48,20 @@ export * from "./data-app.esm.js";
 writeToFile("data-app.cjs", dataApp_cjs);
 writeToFile("data-app.js", dataApp_js);
 
+// Data-app dev runtime imports
+const dataAppDev_cjs = `
+const DataAppDev = require("./data-app-dev.bundle");
+
+module.exports = DataAppDev;
+`.trim();
+
+const dataAppDev_js = `
+export * from "./data-app-dev.esm.js";
+`.trim();
+
+writeToFile("data-app-dev.cjs", dataAppDev_cjs);
+writeToFile("data-app-dev.js", dataAppDev_js);
+
 // Development mode entry point.
 // When the host app bundler resolves the "development" exports condition,
 // this file sets a window global so the SDK bundle can detect dev mode.

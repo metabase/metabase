@@ -52,12 +52,36 @@ import {
  * `errorPrefix` is the bracketed label that appears in thrown messages,
  * e.g. `data-app 5` produces `[data-app 5] blocked createElement: script`.
  */
-export function makeSandboxDistortionCallback(errorPrefix: string) {
-  return function distortionCallback(value: object): object {
-    if (typeof value !== "function") {
-      return value;
+export function makeSandboxDistortionCallback(
+  errorPrefix: string,
+  onBlocked?: (message: string) => void,
+) {
+  // Every distortion throws `[errorPrefix] blocked …` when the sandboxed script
+  // hits a blocked operation. That throw frequently reaches the developer only
+  // as an opaque cross-realm `#<Object>` (e.g. an unhandled async rejection), so
+  // when a consumer provides `onBlocked` we wrap the distorted function to log
+  // the real message synchronously at the block point — before re-throwing —
+  // where the stack still points at the offending sandbox code.
+  const reportThrows = (distorted: object): object => {
+    if (!onBlocked || typeof distorted !== "function") {
+      return distorted;
     }
 
+    const fn = distorted;
+
+    return function reportingDistortion(this: unknown, ...args: unknown[]) {
+      try {
+        return fn.apply(this, args);
+      } catch (error) {
+        if (error instanceof Error) {
+          onBlocked(error.message);
+        }
+        throw error;
+      }
+    };
+  };
+
+  const resolveDistortion = (value: object): object => {
     if (SANITIZED_SETTERS.has(value)) {
       const info = SANITIZED_SETTERS.get(value);
       if (info) {
@@ -121,5 +145,17 @@ export function makeSandboxDistortionCallback(errorPrefix: string) {
     }
 
     return value;
+  };
+
+  return function distortionCallback(value: object): object {
+    if (typeof value !== "function") {
+      return value;
+    }
+
+    const distorted = resolveDistortion(value);
+
+    // Only wrap when we actually distorted `value`; pass-through values are
+    // returned untouched so we never log on a non-blocked call.
+    return distorted === value ? value : reportThrows(distorted);
   };
 }
