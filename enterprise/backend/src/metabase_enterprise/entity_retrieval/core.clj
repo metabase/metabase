@@ -130,21 +130,24 @@
      :execution {:waited_ms waited-ms :ran_ms ran-ms}}))
 
 (defn- do-targeted-run
-  "Snapshot and clear the dirty-entity set under the lock (so a write arriving mid-run is re-dirtied and
-  picked up by the next run), then targeted-reconcile each, recording per-entity metrics."
+  "Targeted-reconcile each currently-dirty entity, recording per-entity metrics.
+  The datasource is resolved *before* the dirty set is snapshot-and-cleared, so a datasource failure leaves
+  the entries in place for the next run rather than dropping them. Clearing the set up front (vs after the
+  loop) means a write arriving mid-run re-dirties and is picked up by the next run. A per-entity reconcile
+  failure re-dirties that entity, so a later run (or the periodic backstop) retries it instead of losing
+  the write to the slow backstop."
   [_scheduled]
-  (let [dirty (locking run-lock (let [d @dirty-entities] (reset! dirty-entities #{}) d))
-        ds    (semantic.db.datasource/ensure-initialized-data-source!)]
-    (doseq [[entity-type entity-local-id] dirty]
-      (let [started (u/start-timer)
-            diff    (try
-                      (reconcile/reconcile-entity! ds embedding/get-configured-model entity-type entity-local-id)
-                      (catch Throwable e
-                        (log/error e "library entity index: targeted reconcile failed"
-                                   entity-type entity-local-id)
-                        nil))]
-        (when diff
-          (record-run! "targeted" diff (elapsed-ms started)))))))
+  (let [ds    (semantic.db.datasource/ensure-initialized-data-source!)
+        dirty (locking run-lock (let [d @dirty-entities] (reset! dirty-entities #{}) d))]
+    (doseq [[entity-type entity-local-id :as entity-key] dirty]
+      (try
+        (let [started (u/start-timer)
+              diff    (reconcile/reconcile-entity! ds embedding/get-configured-model entity-type entity-local-id)]
+          (record-run! "targeted" diff (elapsed-ms started)))
+        (catch Throwable e
+          (log/error e "library entity index: targeted reconcile failed; re-queuing"
+                     entity-type entity-local-id)
+          (locking run-lock (swap! dirty-entities conj entity-key)))))))
 
 (defn reconcile-full-coalesced!
   "Run a full reconcile through the full-reconcile schedule, blocking until a run covering this call

@@ -352,32 +352,39 @@
 
 (defn- with-reconcile-lock
   "Acquire the session-level reconcile advisory lock on one pooled connection, ensure the tables exist for
-  the resolved model, then run `(f conn embedding-model)` on that same connection, and unlock.
-  Returns `f`'s diff map with `:rebuilt?` added.
+  the resolved model, then run `(f conn embedding-model rebuilt?)` on that same connection, and unlock.
+  Returns `f`'s diff map with `:rebuilt?` added. `rebuilt?` is true when `ensure-tables!` just dropped and
+  recreated the (now empty) vectors table, so a targeted caller can fall back to a full repopulate.
 
-  One connection for the whole run (lock + ensure-tables! + diff) so a pgvector pool of size 1 can't
-  deadlock checking out a second. Session-level (not the transaction-scoped lock index-table and
-  semantic-search use) because the run commits per batch and tolerates partial failure across runs, so it
-  must not be wrapped in one transaction. Blocking acquire — a concurrent node makes this wait, not skip.
-  The model is resolved only under the lock, so a config change during a cross-node wait can't make us
-  embed with a stale model; `ensure-tables!` (which may drop+rebuild on a model/format change) runs under
-  the lock too, so a rebuild can't pull the table out from under a concurrent node's in-flight run."
+  A single run does all its work (lock + ensure-tables! + diff) on one connection, so it never deadlocks
+  checking out a second from a size-1 pgvector pool. (Two *concurrent* runs — a full and a targeted one —
+  are still two connections, so a size-1 pool isn't viable for that; a pool of >= 2 is recommended.)
+  Session-level (not the transaction-scoped lock index-table and semantic-search use) because the run
+  commits per batch and tolerates partial failure across runs, so it must not be wrapped in one
+  transaction. Blocking acquire — a concurrent node makes this wait, not skip. The model is resolved only
+  under the lock, so a config change during a cross-node wait can't make us embed with a stale model;
+  `ensure-tables!` (which may drop+rebuild on a model/format change) runs under the lock too, so a rebuild
+  can't pull the table out from under a concurrent node's in-flight run."
   [pgvector resolve-model f]
   (with-open [^Connection conn (jdbc/get-connection pgvector)]
     ;; Per-batch commits, not one big transaction: the run tolerates partial failure across runs, so each
-    ;; insert/delete must commit on its own. Some pools hand out autocommit-off connections, which would
-    ;; silently roll the whole run back on close, so set it explicitly. (ensure-tables! flips this to a
-    ;; transaction for its DDL and restores it.)
-    (.setAutoCommit conn true)
-    (jdbc/execute! conn [(format "SELECT pg_advisory_lock(%d)" reconcile-lock-id)])
-    (try
-      (let [embedding-model (resolve-model)
-            rebuilt?        (= :rebuilt (index-table/ensure-tables! conn embedding-model))]
-        (when rebuilt?
-          (log/info "library entity index: vectors table rebuilt for the current model/format; repopulating"))
-        (assoc (f conn embedding-model) :rebuilt? rebuilt?))
-      (finally
-        (jdbc/execute! conn [(format "SELECT pg_advisory_unlock(%d)" reconcile-lock-id)])))))
+    ;; insert/delete must commit on its own. Some pools hand out autocommit-off connections (which would
+    ;; silently roll the whole run back on close), so force it on and restore the prior setting before the
+    ;; connection goes back to the pool. (ensure-tables! flips this to a transaction for its DDL.)
+    (let [autocommit (.getAutoCommit conn)]
+      (.setAutoCommit conn true)
+      (try
+        (jdbc/execute! conn [(format "SELECT pg_advisory_lock(%d)" reconcile-lock-id)])
+        (try
+          (let [embedding-model (resolve-model)
+                rebuilt?        (= :rebuilt (index-table/ensure-tables! conn embedding-model))]
+            (when rebuilt?
+              (log/info "library entity index: vectors table rebuilt for the current model/format; repopulating"))
+            (assoc (f conn embedding-model rebuilt?) :rebuilt? rebuilt?))
+          (finally
+            (jdbc/execute! conn [(format "SELECT pg_advisory_unlock(%d)" reconcile-lock-id)])))
+        (finally
+          (.setAutoCommit conn autocommit))))))
 
 (defn reconcile!
   "Full reconcile of the pgvector `library_entity_index` with the appdb, blocking until it completes;
@@ -386,7 +393,9 @@
   The backstop for membership / name / description changes that the targeted write path doesn't hook.
   See the namespace docstring and [[with-reconcile-lock]]."
   [pgvector resolve-model]
-  (with-reconcile-lock pgvector resolve-model reconcile-against-appdb!))
+  (with-reconcile-lock pgvector resolve-model
+    (fn [conn embedding-model _rebuilt?]
+      (reconcile-against-appdb! conn embedding-model))))
 
 (defn reconcile-entity!
   "Targeted reconcile of one entity's doc slice, blocking until it completes; returns
@@ -396,8 +405,12 @@
   `ai_context` delete GCs the synonym/example docs while keeping name/description, and an entity leaving
   the library GCs all of its docs. `entity-type`/`entity-local-id` come from the `osi_ai_context` write
   hook; the reconcile runs later (on a future), reading the entity's *current* appdb state.
+  If `ensure-tables!` just rebuilt the (now empty) index for a model/format change, this falls back to a
+  full reconcile — a targeted slice alone would leave every other entity missing until the backstop.
   See the namespace docstring and [[with-reconcile-lock]]."
   [pgvector resolve-model entity-type entity-local-id]
   (with-reconcile-lock pgvector resolve-model
-    (fn [conn embedding-model]
-      (reconcile-entity-against-appdb! conn embedding-model entity-type entity-local-id))))
+    (fn [conn embedding-model rebuilt?]
+      (if rebuilt?
+        (reconcile-against-appdb! conn embedding-model)
+        (reconcile-entity-against-appdb! conn embedding-model entity-type entity-local-id)))))

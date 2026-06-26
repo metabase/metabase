@@ -343,3 +343,24 @@
     (mt/with-premium-features #{:library}
       (collections.tu/with-library [{library :library}]
         (is (contains? (set (#'reconcile/library-ids library)) (:id library)))))))
+
+(deftest ^:sequential reconcile-entity!-on-rebuild-repopulates-whole-library-test
+  (testing "a targeted reconcile that triggers a model/format rebuild repopulates the whole library, not just the one entity"
+    (mt/with-premium-features #{:library :semantic-search}
+      (with-isolated-index [ds]
+        (collections.tu/with-library [{data :data}]
+          (let [model semantic.tu/mock-embedding-model]
+            (mt/with-temp [:model/Database {db-id :id} {}
+                           :model/Table {a-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                    :active true :name "a" :display_name "Orders"}
+                           :model/Table {b-id :id} {:db_id db-id :collection_id (:id data) :is_published true
+                                                    :active true :name "b" :display_name "Customers"}]
+              (reconcile/reconcile! ds (constantly model))
+              (is (seq (docs-for ds "table" a-id)))
+              (is (seq (docs-for ds "table" b-id)))
+              ;; a targeted reconcile of A under a new model identity forces ensure-tables! to rebuild (empty);
+              ;; it must repopulate B too, not leave it missing until the periodic backstop.
+              (let [new-model (assoc model :model-name "model-v2")]
+                (is (:rebuilt? (reconcile/reconcile-entity! ds (constantly new-model) "table" a-id)))
+                (is (seq (docs-for ds "table" a-id)) "A repopulated after the rebuild")
+                (is (seq (docs-for ds "table" b-id)) "B repopulated too (not dropped by the rebuild)")))))))))
