@@ -8,21 +8,21 @@ export function setupTableIndexEndpoints(
   indexRequests: TableIndexRequest[] = [],
 ) {
   fetchMock.get({
-    url: `path:/api/indexes`,
+    url: `path:/api/index`,
     query: { "transform-id": transformId },
     response: { data: indexRequests },
     name: `listTableIndexes-${transformId}`,
   });
 
   indexRequests.forEach((index) => {
-    fetchMock.get(`path:/api/indexes/request/${index.id}`, index, {
+    fetchMock.get(`path:/api/index/request/${index.id}`, index, {
       name: `getTableIndex-${index.id}`,
     });
-    fetchMock.delete(`path:/api/indexes/request/${index.id}`, 204, {
+    fetchMock.delete(`path:/api/index/request/${index.id}`, 204, {
       name: `deleteTableIndex-${index.id}`,
     });
     fetchMock.put(
-      `path:/api/indexes/request/${index.id}`,
+      `path:/api/index/request/${index.id}`,
       async (call) => {
         const lastCall = fetchMock.callHistory.lastCall(call.url);
         return { ...index, ...(await lastCall?.request?.json()) };
@@ -32,7 +32,7 @@ export function setupTableIndexEndpoints(
   });
 
   fetchMock.post(
-    `path:/api/indexes/request`,
+    `path:/api/index/request`,
     async (call) => {
       const lastCall = fetchMock.callHistory.lastCall(call.url);
       return createMockTableIndexRequest(await lastCall?.request?.json());

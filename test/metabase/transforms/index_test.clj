@@ -97,8 +97,8 @@
               (transforms.tu/wait-for-table table-name 10000)
               (testing "every managed row is verified succeeded"
                 (is (= #{:succeeded} (t2/select-fn-set :status :model/TableIndex :transform_id tid))))
-              (testing "GET /indexes lists them, flagged metabase_managed"
-                (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "indexes?transform-id=" tid))]
+              (testing "GET /index lists them, flagged metabase_managed"
+                (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 (str "index?transform-id=" tid))]
                   (is (= (count indexes) (count (filter :metabase_managed data)))))))))))))
 
 (deftest ^:synchronized declared-index-failure-fails-the-run-test
