@@ -96,9 +96,7 @@ These render inline visualizations in your AI client, and only work in clients t
 
 _Admin > AI > MCP_
 
-MCP server and Agent API settings live on their own subpage. From **Admin > AI**, open the **MCP** tab in the left sidebar.
-
-Use the **MCP server** toggle to turn external access to the MCP server on or off.
+From **Admin > AI**, open the **MCP** tab in the left sidebar, and use the **MCP server** toggle to turn external access to the MCP server on or off.
 
 The MCP server also requires that [AI features](./overview.md) are enabled for your instance. You don't need to configure an AI provider to use the MCP server, but if **AI features** are turned off in **Admin > AI**, the MCP server stays off too.
 
