@@ -22,6 +22,15 @@
   {:name nil :kind :sortkey :access-method "compound" :is-unique false :is-primary false
    :is-valid true :key-columns ["a" "b"] :include-columns [] :partial-predicate nil :definition nil})
 
+(def ^:private managed-distkey
+  {:id 3 :transform_id 7 :index_name "distkey"
+   :structured {:kind :distkey :style :key :columns [{:name "category"}]}
+   :status :pending :error_message nil :created_by 3 :last_executed_at nil})
+
+(def ^:private wh-distkey
+  {:name nil :kind :distkey :access-method nil :is-unique false :is-primary false
+   :is-valid true :key-columns ["category"] :include-columns [] :partial-predicate nil :definition nil})
+
 (def ^:private wh-dba
   {:name "dba_made" :kind :btree :access-method "btree" :is-unique false :is-primary false
    :is-valid true :key-columns ["price"] :include-columns [] :partial-predicate nil :definition "CREATE INDEX dba_made ..."})
@@ -32,7 +41,10 @@
     (is (= "by_cat" (reconcile/match-key wh-btree))))
   (testing "unnamed inline kinds key by kind+columns, so managed and warehouse agree"
     (is (= [:sortkey ["a" "b"]] (reconcile/managed-match-key managed-sortkey)))
-    (is (= [:sortkey ["a" "b"]] (reconcile/match-key wh-sortkey)))))
+    (is (= [:sortkey ["a" "b"]] (reconcile/match-key wh-sortkey))))
+  (testing "a fetched distkey is unnamed-inline too, so it matches its managed request (#76331)"
+    (is (= [:distkey ["category"]] (reconcile/managed-match-key managed-distkey)))
+    (is (= [:distkey ["category"]] (reconcile/match-key wh-distkey)))))
 
 (deftest merge-indexes-test
   (testing "managed + present: observed from the warehouse, flagged managed, request carries lifecycle + structured"
@@ -60,6 +72,11 @@
       (is (= :pending (-> e :request :status)))))
   (testing "a managed inline sortkey matches the warehouse sortkey by kind+columns, listed once as managed"
     (let [merged (reconcile/merge-indexes [managed-sortkey] [wh-sortkey])]
+      (is (= 1 (count merged)))
+      (is (true? (:metabase_managed (first merged))))
+      (is (true? (:present_in_warehouse (first merged))))))
+  (testing "a managed inline distkey matches the warehouse distkey by kind+columns, listed once as managed"
+    (let [merged (reconcile/merge-indexes [managed-distkey] [wh-distkey])]
       (is (= 1 (count merged)))
       (is (true? (:metabase_managed (first merged))))
       (is (true? (:present_in_warehouse (first merged))))))

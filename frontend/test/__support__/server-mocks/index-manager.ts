@@ -1,33 +1,41 @@
 import fetchMock from "fetch-mock";
 
-import type { TableIndex, TransformId } from "metabase-types/api";
-import { createMockTableIndex } from "metabase-types/api/mocks";
+import type { TableIndexRequest, TransformId } from "metabase-types/api";
+import { createMockTableIndexRequest } from "metabase-types/api/mocks";
 
 export function setupTableIndexEndpoints(
   transformId: TransformId,
-  indexes: TableIndex[] = [],
+  indexRequests: TableIndexRequest[] = [],
 ) {
   fetchMock.get({
-    url: `path:/api/indexes`,
+    url: `path:/api/index`,
     query: { "transform-id": transformId },
-    response: { data: indexes },
+    response: { data: indexRequests },
     name: `listTableIndexes-${transformId}`,
   });
 
-  indexes.forEach((index) => {
-    fetchMock.get(`path:/api/indexes/${index.id}`, index, {
+  indexRequests.forEach((index) => {
+    fetchMock.get(`path:/api/index/request/${index.id}`, index, {
       name: `getTableIndex-${index.id}`,
     });
-    fetchMock.delete(`path:/api/indexes/${index.id}`, 204, {
+    fetchMock.delete(`path:/api/index/request/${index.id}`, 204, {
       name: `deleteTableIndex-${index.id}`,
     });
+    fetchMock.put(
+      `path:/api/index/request/${index.id}`,
+      async (call) => {
+        const lastCall = fetchMock.callHistory.lastCall(call.url);
+        return { ...index, ...(await lastCall?.request?.json()) };
+      },
+      { name: `updateTableIndex-${index.id}` },
+    );
   });
 
   fetchMock.post(
-    `path:/api/indexes`,
+    `path:/api/index/request`,
     async (call) => {
       const lastCall = fetchMock.callHistory.lastCall(call.url);
-      return createMockTableIndex(await lastCall?.request?.json());
+      return createMockTableIndexRequest(await lastCall?.request?.json());
     },
     { name: `createTableIndex` },
   );
