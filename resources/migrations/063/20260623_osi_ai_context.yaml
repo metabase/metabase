@@ -141,3 +141,24 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: osi_ai_context
             constraintName: uq_osi_ai_context_entity
+
+  - changeSet:
+      id: v63.2026-06-25T00:00:02
+      author: christruter
+      comment: Coalesce card-flavor ai_context rows (question/metric/model/card) into one canonical "card" row per entity
+      changes:
+        # Keep only the newest card-flavor row per entity (a derived table so MySQL allows deleting from the
+        # table referenced in the subquery), so the type-normalizing UPDATE below can't hit the unique constraint.
+        - sql:
+            sql: >-
+              DELETE FROM osi_ai_context
+              WHERE entity_type IN ('question', 'metric', 'model', 'card')
+                AND id NOT IN (SELECT keep_id FROM
+                  (SELECT MAX(id) AS keep_id FROM osi_ai_context
+                   WHERE entity_type IN ('question', 'metric', 'model', 'card')
+                   GROUP BY entity_local_id) AS newest);
+        - sql:
+            sql: >-
+              UPDATE osi_ai_context SET entity_type = 'card'
+              WHERE entity_type IN ('question', 'metric', 'model');
+      rollback:

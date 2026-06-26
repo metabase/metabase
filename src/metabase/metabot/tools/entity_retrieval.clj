@@ -163,12 +163,12 @@
                  :confidence         (if weak? "weak" "strong")))
         matches))
 
-(mu/defn ^{:tool-name    "retrieve_library_entities"
-           :scope        scope/agent-search
-           ;; only offered when the library index can actually serve a query (pgvector configured AND
-           ;; semantic-search licensed) — not just the feature flag, which leaves search returning [].
-           ;; :feature-entity-retrieval is derived in metabot.capabilities/feature-capabilities.
-           :capabilities #{:feature-entity-retrieval}}
+;; No capability gate: this tool lives only in the :nlq profile, which [[metabase.metabot.agent.profiles/
+;; get-profile]] serves (curated, with this tool) only when entity-retrieval-available? — otherwise it
+;; redirects to :nlq-fallback (general search). That single probe is the sole gate, so prompt and tools can't
+;; disagree about index availability.
+(mu/defn ^{:tool-name "retrieve_library_entities"
+           :scope     scope/agent-search}
   retrieve-library-entities-tool
   "Find the best data to answer the user's request from the library — the curated set of entities vetted
   for the agent (published tables, library metrics/models, and their measures/segments). Phrase
