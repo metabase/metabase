@@ -4,9 +4,7 @@ name: E2E Stress Test (flaky-test-fix PR)
 
 on:
   pull_request:
-    # `opened`/`reopened` catch PRs created already labelled; `labeled` catches the label
-    # being added later; `synchronize` re-burns after new commits while the label is set.
-    types: [opened, reopened, synchronize, labeled]
+    types: [opened, reopened, synchronize]
 
 concurrency:
   # One in-flight set of stress runs per PR branch — new commits cancel the previous burn.
