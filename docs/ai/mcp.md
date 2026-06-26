@@ -47,6 +47,12 @@ Once authenticated, ask your agent about your Metabase. You should see your agen
 
 See [Claude Code MCP docs](https://code.claude.com/docs/en/mcp).
 
+### Connect via Claude web
+
+If you use Claude on the web or Claude Desktop, go to [Claude's connector directory](https://claude.ai/directory/connectors/metabase) and enter your [Metabase's MCP URL](#connect-a-client-to-your-metabase-mcp-server).
+
+One of your Metabase admins will still need to have [turned on your Metabase's MCP server](#enable-mcp-server). You'll authenticate against your own Metabase during setup.
+
 ## Available tools
 
 Some clients (like Claude Desktop) will ask you to approve each tool the first time it's used. We've grouped the tools below, but your client may simply list the available tools.
