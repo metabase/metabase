@@ -1,7 +1,8 @@
 /* Dev-only diagnostics overlay shown only to developers building a data app,
-   never to end users. It's deliberately self-contained (React + inline styles,
-   no `metabase/ui`) so it stays lean and renders without a theme provider — so
-   its labels aren't localized and its colors are inline literals on purpose. */
+   never to end users. It's self-contained (React + inline styles, no `metabase/ui`)
+   so it stays lean and renders without a theme provider, but its colors use
+   Metabase's `--mb-color-*` variables (with Metabase-default fallbacks, since it
+   renders outside the provider) so it matches the app. Labels aren't localized. */
 /* eslint-disable i18next/no-literal-string */
 /* eslint-disable metabase/no-color-literals */
 import { type CSSProperties, useState, useSyncExternalStore } from "react";
@@ -95,14 +96,16 @@ const rootStyle: CSSProperties = {
 const fabStyle = (hasErrors: boolean): CSSProperties => ({
   display: "block",
   marginLeft: "auto",
-  padding: "8px 12px",
-  borderRadius: 999,
+  padding: "8px 14px",
+  borderRadius: 8,
   border: "none",
   cursor: "pointer",
-  color: "white",
-  background: hasErrors ? "#c8312b" : "#3b3f44",
-  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-  fontWeight: 600,
+  color: "#ffffff",
+  background: hasErrors
+    ? "var(--mb-color-error, #e35050)"
+    : "var(--mb-color-brand, #509ee3)",
+  boxShadow: "0 2px 8px var(--mb-color-shadow, rgba(0, 0, 0, 0.13))",
+  fontWeight: 700,
 });
 
 const panelStyle: CSSProperties = {
@@ -111,45 +114,50 @@ const panelStyle: CSSProperties = {
   marginBottom: 8,
   display: "flex",
   flexDirection: "column",
-  background: "#1f2225",
-  color: "#e8eaed",
+  background: "var(--mb-color-background, #ffffff)",
+  color: "var(--mb-color-text-primary, #4c5773)",
+  border: "1px solid var(--mb-color-border, #eeecec)",
   borderRadius: 8,
   overflow: "hidden",
-  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
+  boxShadow: "0 8px 24px var(--mb-color-shadow, rgba(0, 0, 0, 0.13))",
 };
 
 const headerStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 8,
-  padding: "8px 12px",
-  background: "#2b2f33",
-  borderBottom: "1px solid #3a3f44",
+  padding: "10px 12px",
+  background: "var(--mb-color-background-secondary, #f9fbfc)",
+  borderBottom: "1px solid var(--mb-color-border, #eeecec)",
 };
 
-const titleStyle: CSSProperties = { fontWeight: 600 };
+const titleStyle: CSSProperties = { fontWeight: 700 };
 const spacerStyle: CSSProperties = { flex: 1 };
 
 const linkButtonStyle: CSSProperties = {
   border: "none",
   background: "none",
-  color: "#9bb4ff",
+  color: "var(--mb-color-brand, #509ee3)",
   cursor: "pointer",
   padding: 0,
   fontSize: 13,
+  fontWeight: 600,
 };
 
 const bodyStyle: CSSProperties = { overflowY: "auto", padding: 4 };
 
-const emptyStyle: CSSProperties = { padding: 12, color: "#9aa0a6" };
+const emptyStyle: CSSProperties = {
+  padding: 12,
+  color: "var(--mb-color-text-secondary, #696e7b)",
+};
 
 const entryStyle: CSSProperties = {
   padding: "8px 10px",
-  borderBottom: "1px solid #2b2f33",
+  borderBottom: "1px solid var(--mb-color-border, #eeecec)",
 };
 
 const entryTimeStyle: CSSProperties = {
-  color: "#9aa0a6",
+  color: "var(--mb-color-text-tertiary, #949aab)",
   fontSize: 11,
   marginBottom: 2,
 };
@@ -157,6 +165,7 @@ const entryTimeStyle: CSSProperties = {
 const entryMessageStyle: CSSProperties = {
   whiteSpace: "pre-wrap",
   wordBreak: "break-word",
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+  fontFamily: "Monaco, ui-monospace, SFMono-Regular, Menlo, monospace",
   fontSize: 12,
+  color: "var(--mb-color-text-primary, #4c5773)",
 };
