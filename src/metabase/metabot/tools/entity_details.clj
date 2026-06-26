@@ -504,6 +504,70 @@
         {:output (ex-message e) :status-code 404}
         (metabot.tools.u/handle-agent-error e)))))
 
+(defn- measure-or-segment-details
+  "Build drill-in detail for a single measure or segment by numeric `id`.
+   `kind` is `:measure` or `:segment`; it selects the model, the lib-metadata fetcher, and the
+   `convert-measure-or-segment` definition key.
+
+   Reads the app-DB row first (for `:table_id` and to gate access — measure/segment perms delegate
+   to the parent Table) and read-checks that table. Then layers the parent-table context the agent
+   needs to use the measure/segment in a query — `database_id` / `database_name`, the base table
+   id/name/schema, and the portable `[db-name schema table]` FK — on top of the `convert-measure-or-segment`
+   payload, so the output is consistent with the nested measures/segments table-details already emits."
+  [kind id]
+  (let [model-key   (case kind :measure :model/Measure :segment :model/Segment)
+        defn-key    (case kind :measure :aggregation :segment :filters)
+        row         (t2/select-one [model-key :id :table_id] :id id)]
+    (when-not row
+      (throw (ex-info (format "%s %s not found" (name kind) id)
+                      {:agent-error? true :status-code 404})))
+    (let [table     (api/read-check :model/Table (:table_id row))
+          db-id     (:db_id table)
+          mp        (lib-be/application-database-metadata-provider db-id)
+          database  (lib.metadata/database mp)
+          metadata  (case kind
+                      :measure (lib.metadata/measure mp id)
+                      :segment (lib.metadata/segment mp id))
+          db-name   (:name database)
+          schema    (:schema table)
+          tbl-name  (:name table)]
+      (-> (convert-measure-or-segment metadata defn-key)
+          (assoc :type kind
+                 :database_id db-id
+                 :database_name db-name
+                 :base_table_id (:id table)
+                 :base_table_name tbl-name
+                 :base_table_schema schema
+                 ;; The portable FK the agent puts in `source-table:` to query against the base table —
+                 ;; same `[db-name schema table]` shape metrics carry as `:base_table_portable_fk`.
+                 :base_table_portable_fk (when db-name [db-name schema tbl-name]))))))
+
+(defn get-measure-details
+  "Get information about the measure with ID `measure-id`."
+  [{:keys [measure-id]}]
+  (try
+    (lib-be/with-metadata-provider-cache
+      (if (int? measure-id)
+        {:structured-output (assoc (measure-or-segment-details :measure measure-id) :result-type :entity)}
+        (throw (ex-info "Invalid measure_id format" {:agent-error? true :status-code 400}))))
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot.tools.u/handle-agent-error e)))))
+
+(defn get-segment-details
+  "Get information about the segment with ID `segment-id`."
+  [{:keys [segment-id]}]
+  (try
+    (lib-be/with-metadata-provider-cache
+      (if (int? segment-id)
+        {:structured-output (assoc (measure-or-segment-details :segment segment-id) :result-type :entity)}
+        (throw (ex-info "Invalid segment_id format" {:agent-error? true :status-code 400}))))
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (ex-message e) :status-code 404}
+        (metabot.tools.u/handle-agent-error e)))))
+
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
   [{:keys [report-id] :as arguments}]

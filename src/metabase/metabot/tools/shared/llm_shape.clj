@@ -229,9 +229,12 @@
     :collection_authority_level authority_level}))
 
 (defn measure->xml
-  "Format a measure for LLM consumption."
+  "Format a measure for LLM consumption.
+   Nested table/model measures carry only definition fields; a standalone drill-in
+   (read_resource) also carries `:database_name` / `:base_table_portable_fk` so the LLM knows the
+   table to query the measure against."
   [{:keys [id name display-name description definition definition-description
-           portable-entity-id portable_entity_id]}]
+           portable-entity-id portable_entity_id database_name base_table_portable_fk]}]
   (render-llm-template
    :measure
    {:measure_id                 (str id)
@@ -239,13 +242,20 @@
     :measure_display_name       (or display-name name "")
     :measure_description        description
     :measure_portable_entity_id (or portable-entity-id portable_entity_id)
+    :measure_database_name      database_name
+    :measure_base_table_fqn     (when (vector? base_table_portable_fk)
+                                  (let [[_db schema table] base_table_portable_fk]
+                                    (fully-qualified-name schema table)))
     :measure_definition         (repr-data->llm-block definition)
     :measure_definition_description definition-description}))
 
 (defn segment->xml
-  "Format a segment for LLM consumption."
+  "Format a segment for LLM consumption.
+   Nested table/model segments carry only definition fields; a standalone drill-in
+   (read_resource) also carries `:database_name` / `:base_table_portable_fk` so the LLM knows the
+   table to query the segment against."
   [{:keys [id name display-name description definition definition-description
-           portable-entity-id portable_entity_id]}]
+           portable-entity-id portable_entity_id database_name base_table_portable_fk]}]
   (render-llm-template
    :segment
    {:segment_id                 (str id)
@@ -253,6 +263,10 @@
     :segment_display_name       (or display-name name "")
     :segment_description        description
     :segment_portable_entity_id (or portable-entity-id portable_entity_id)
+    :segment_database_name      database_name
+    :segment_base_table_fqn     (when (vector? base_table_portable_fk)
+                                  (let [[_db schema table] base_table_portable_fk]
+                                    (fully-qualified-name schema table)))
     :segment_definition         (repr-data->llm-block definition)
     :segment_definition_description definition-description}))
 
@@ -766,6 +780,8 @@
 (def formatters
   "XML formatters for different entity types"
   {:metric     metric->xml
+   :measure    measure->xml
+   :segment    segment->xml
    :table      table->xml
    :model      model->xml
    :question   question->xml
