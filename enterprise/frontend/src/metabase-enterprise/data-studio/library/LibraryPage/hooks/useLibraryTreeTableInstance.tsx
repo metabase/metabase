@@ -30,8 +30,6 @@ import { useLibraryCollections } from "./useLibraryCollections";
 import { useLibrarySearch } from "./useLibrarySearch";
 import {
   type LibraryHierarchyKind,
-  getHierarchyDatabaseSchemaExpandSignature,
-  getHierarchyDatabaseSchemaExpandedIds,
   useLibrarySegmentsMeasuresTree,
 } from "./useLibrarySegmentsMeasuresTree";
 
@@ -355,15 +353,11 @@ export function useLibraryTreeTableInstance({
   const [browseExpanded, setBrowseExpanded] = useState<ExpandedState | null>(
     null,
   );
-  const [hierarchyExpanded, setHierarchyExpanded] = useState<ExpandedState>({});
   const lastExpandedSignatureRef = useRef<string | null>(null);
-  const hierarchyExpansionInitSigRef = useRef<string | null>(null);
 
   useEffect(() => {
     setBrowseExpanded(null);
-    setHierarchyExpanded({});
     lastExpandedSignatureRef.current = null;
-    hierarchyExpansionInitSigRef.current = null;
   }, [sectionFilter]);
 
   useEffect(() => {
@@ -393,40 +387,6 @@ export function useLibraryTreeTableInstance({
   const isHierarchyExpandView =
     hierarchyKind === "segments" || hierarchyKind === "measures";
 
-  const hierarchyExpandSignature = useMemo(() => {
-    if (!isHierarchyExpandView || hierarchyTree.length === 0) {
-      return null;
-    }
-    return getHierarchyDatabaseSchemaExpandSignature(hierarchyTree);
-  }, [isHierarchyExpandView, hierarchyTree]);
-
-  // Seed db/schema expansion once per tree structure. Do not use
-  // defaultExpanded — its merge effect re-applies schema ids on every change
-  // and fights user collapse/expand toggles.
-  useEffect(() => {
-    if (!isHierarchyExpandView || hierarchyExpandSignature == null) {
-      return;
-    }
-    if (hierarchyExpansionInitSigRef.current === hierarchyExpandSignature) {
-      return;
-    }
-    hierarchyExpansionInitSigRef.current = hierarchyExpandSignature;
-    const dbSchemaIds = getHierarchyDatabaseSchemaExpandedIds(hierarchyTree);
-    setHierarchyExpanded((prev) => ({
-      ...(typeof prev === "object" && prev !== null && prev !== true
-        ? prev
-        : {}),
-      ...dbSchemaIds,
-    }));
-  }, [isHierarchyExpandView, hierarchyExpandSignature, hierarchyTree]);
-
-  const onHierarchyExpandedChange = useCallback(
-    (updater: ExpandedState | ((old: ExpandedState) => ExpandedState)) => {
-      setHierarchyExpanded(updater);
-    },
-    [],
-  );
-
   const treeTableInstance = useTreeTableInstance({
     data: combinedTree,
     columns: libraryColumnDef,
@@ -435,10 +395,7 @@ export function useLibraryTreeTableInstance({
     getRowCanExpand,
     isFilterable,
     ...(isHierarchyExpandView
-      ? {
-          expanded: hierarchyExpanded,
-          onExpandedChange: onHierarchyExpandedChange,
-        }
+      ? { defaultExpanded: true }
       : useControlledExpansion
         ? {
             expanded,

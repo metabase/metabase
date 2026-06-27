@@ -1,17 +1,12 @@
-import type { ExpandedState } from "@tanstack/react-table";
 import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import {
-  useListDatabasesQuery,
   useListMeasuresQuery,
   useListSegmentsQuery,
   useListTablesQuery,
 } from "metabase/api";
-import type {
-  CollectionData,
-  TreeItem,
-} from "metabase/data-studio/common/types";
+import type { TreeItem } from "metabase/data-studio/common/types";
 import { useSelector } from "metabase/redux";
 import { getShallowTables } from "metabase/selectors/metadata";
 import type {
@@ -40,28 +35,6 @@ type HierarchyLeafData = {
   schemaName: string;
 };
 
-function collectionNode(
-  id: string,
-  name: string,
-  icon: IconName,
-  children: TreeItem[],
-): TreeItem {
-  return {
-    id,
-    name,
-    icon,
-    model: "collection",
-    data: {
-      id,
-      name,
-      model: "collection",
-      description: null,
-    } as CollectionData,
-    children,
-    childrenLoaded: true,
-  };
-}
-
 type HierarchyTableInfo = Pick<
   Table,
   "id" | "db_id" | "display_name" | "is_published" | "schema"
@@ -76,13 +49,12 @@ function getTableSchemaName(table: HierarchyTableInfo): string {
 function buildHierarchyTree(
   items: HierarchyLeaf[],
   tablesById: Map<TableId, HierarchyTableInfo>,
-  dbNameById: Map<DatabaseId, string>,
   kind: LibraryHierarchyKind,
 ): TreeItem[] {
   const leafIcon: IconName = kind === "segments" ? "segment" : "sum";
   const leafModel = kind === "segments" ? "segment" : "measure";
 
-  const dbGroups = new Map<DatabaseId, Map<string, Map<TableId, TreeItem[]>>>();
+  const tableGroups = new Map<TableId, TreeItem[]>();
 
   for (const item of items) {
     const table = tablesById.get(item.table_id);
@@ -94,10 +66,6 @@ function buildHierarchyTree(
     const schemaName = getTableSchemaName(table);
     const tableId = table.id;
 
-    const schemaGroups = dbGroups.get(databaseId) ?? new Map();
-    dbGroups.set(databaseId, schemaGroups);
-    const tableGroups = schemaGroups.get(schemaName) ?? new Map();
-    schemaGroups.set(schemaName, tableGroups);
     const leaves = tableGroups.get(tableId) ?? [];
     tableGroups.set(tableId, leaves);
 
@@ -122,62 +90,25 @@ function buildHierarchyTree(
   const byName = (a: { name: string }, b: { name: string }) =>
     a.name.localeCompare(b.name);
 
-  return [...dbGroups.entries()]
-    .map(([databaseId, schemaGroups]) =>
-      collectionNode(
-        `${kind}-db:${databaseId}`,
-        dbNameById.get(databaseId) ?? t`Unknown database`,
-        "database",
-        [...schemaGroups.entries()]
-          .map(([schemaName, tableGroups]) =>
-            collectionNode(
-              `${kind}-db:${databaseId}-schema:${schemaName}`,
-              schemaName || t`Default`,
-              "folder",
-              [...tableGroups.entries()]
-                .map(([tableId, leaves]) =>
-                  collectionNode(
-                    `${kind}-table:${tableId}`,
-                    tablesById.get(tableId)?.display_name ?? t`Unknown table`,
-                    "table",
-                    leaves.sort(byName),
-                  ),
-                )
-                .sort(byName),
-            ),
-          )
-          .sort(byName),
-      ),
-    )
+  return [...tableGroups.entries()]
+    .map(([tableId, leaves]) => {
+      const displayName =
+        tablesById.get(tableId)?.display_name ?? t`Unknown table`;
+      return {
+        id: `${kind}-table:${tableId}`,
+        name: displayName,
+        icon: "table" as IconName,
+        model: "table" as const,
+        data: {
+          id: tableId,
+          name: displayName,
+          model: "table" as const,
+        },
+        children: leaves.sort(byName),
+        childrenLoaded: true,
+      };
+    })
     .sort(byName);
-}
-
-/** Expand database and schema rows by default on hierarchy library pages. */
-export function getHierarchyDatabaseSchemaExpandedIds(
-  tree: TreeItem[],
-): ExpandedState {
-  const ids: ExpandedState = {};
-  for (const dbNode of tree) {
-    ids[dbNode.id] = true;
-    for (const schemaNode of dbNode.children ?? []) {
-      ids[schemaNode.id] = true;
-    }
-  }
-  return ids;
-}
-
-/** Stable signature of database + schema node ids for expansion state. */
-export function getHierarchyDatabaseSchemaExpandSignature(
-  tree: TreeItem[],
-): string {
-  const ids: string[] = [];
-  for (const dbNode of tree) {
-    ids.push(String(dbNode.id));
-    for (const schemaNode of dbNode.children ?? []) {
-      ids.push(String(schemaNode.id));
-    }
-  }
-  return ids.sort().join("|");
 }
 
 /** Stable signature of the full hierarchy tree structure and leaf ids. */
@@ -202,20 +133,14 @@ export function useLibrarySegmentsMeasuresTree(
     useListSegmentsQuery(undefined, { skip: kind !== "segments" });
   const { data: measures = [], isLoading: loadingMeasures } =
     useListMeasuresQuery(undefined, { skip: kind !== "measures" });
-  const { data: databasesData, isLoading: loadingDatabases } =
-    useListDatabasesQuery(undefined, { skip: kind == null });
   const { data: apiTables = [], isLoading: loadingTables } = useListTablesQuery(
     { skip_fields: true },
     { skip: kind == null },
   );
   const shallowTables = useSelector(getShallowTables);
 
-  const { tablesById, dbNameById } = useMemo(() => {
+  const tablesById = useMemo(() => {
     const tablesById = new Map<TableId, HierarchyTableInfo>();
-    const dbNameById = new Map<DatabaseId, string>();
-    for (const database of databasesData?.data ?? []) {
-      dbNameById.set(database.id, database.name);
-    }
     for (const table of apiTables) {
       tablesById.set(table.id, table);
     }
@@ -239,8 +164,8 @@ export function useLibrarySegmentsMeasuresTree(
             },
       );
     }
-    return { tablesById, dbNameById };
-  }, [shallowTables, databasesData, apiTables]);
+    return tablesById;
+  }, [shallowTables, apiTables]);
 
   const stableTreeRef = useRef(EMPTY_HIERARCHY_TREE);
   const stableTreeSignatureRef = useRef<string | null>(null);
@@ -259,7 +184,7 @@ export function useLibrarySegmentsMeasuresTree(
       return EMPTY_HIERARCHY_TREE;
     }
 
-    const built = buildHierarchyTree(items, tablesById, dbNameById, kind);
+    const built = buildHierarchyTree(items, tablesById, kind);
     if (built.length === 0) {
       stableTreeSignatureRef.current = null;
       stableTreeRef.current = EMPTY_HIERARCHY_TREE;
@@ -274,13 +199,13 @@ export function useLibrarySegmentsMeasuresTree(
     stableTreeSignatureRef.current = signature;
     stableTreeRef.current = built;
     return built;
-  }, [kind, segments, measures, tablesById, dbNameById]);
+  }, [kind, segments, measures, tablesById]);
 
   const isLoading =
     kind === "segments"
-      ? loadingSegments || loadingDatabases || loadingTables
+      ? loadingSegments || loadingTables
       : kind === "measures"
-        ? loadingMeasures || loadingDatabases || loadingTables
+        ? loadingMeasures || loadingTables
         : false;
 
   const rawItemCount =
