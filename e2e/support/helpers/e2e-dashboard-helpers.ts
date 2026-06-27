@@ -58,6 +58,25 @@ export function getDashboardCardMenu(index = 0) {
   return getDashboardCard(index).findByTestId("dashcard-menu");
 }
 
+/**
+ * Wait until every dashcard in the grid has finished loading its results.
+ *
+ * Prefer this over counting card-query requests: how many queries fire after a
+ * save, filter change, or navigation is not deterministic (results can be served
+ * from cache), but the absence of loading indicators is a stable signal that the
+ * grid has settled. Pass `count` to also assert the expected number of cards is
+ * present, which guards against the check passing before the cards render.
+ */
+export function waitForDashcardsToLoad({ count }: { count?: number } = {}) {
+  cy.log("Wait for all dashcards to finish loading");
+  if (count != null) {
+    getDashboardCards().should("have.length", count);
+  }
+  cy.findByTestId("dashboard-grid")
+    .findAllByTestId("loading-indicator")
+    .should("not.exist");
+}
+
 export function showDashboardCardActions(index = 0) {
   return getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
 }
