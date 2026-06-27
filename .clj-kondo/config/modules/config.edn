@@ -2476,8 +2476,7 @@
                     :model/QueryExecution
                     :model/Segment
                     :model/Table}
-   :uses #{app-db
-           lib
+   :uses #{lib
            lib-be
            models
            settings
