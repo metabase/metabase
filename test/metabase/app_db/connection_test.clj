@@ -8,7 +8,8 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
-   (java.util.concurrent Semaphore)))
+   (java.util.concurrent Semaphore)
+   (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -194,3 +195,64 @@
         (let [email (mt/random-email)]
           (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email))
           (is (true? (t2/exists? :model/User :email email))))))))
+
+(defn- recording-connection
+  "A bare [[Connection]] that starts at `initial-autocommit` and appends a marker for each setAutoCommit/commit/rollback/
+  close call to the `calls` volatile (holding a vector). Lets us assert the exact side effects
+  [[mdb.connection/do-with-app-db-connection]] performs against a connection without needing a real database."
+  ^Connection [initial-autocommit calls]
+  (let [autocommit (volatile! initial-autocommit)]
+    (reify Connection
+      (getAutoCommit [_] @autocommit)
+      (setAutoCommit [_ v] (vswap! calls conj [:set-autocommit v]) (vreset! autocommit v))
+      (commit        [_] (vswap! calls conj :commit))
+      (rollback      [_] (vswap! calls conj :rollback))
+      (close         [_] (vswap! calls conj :close)))))
+
+(defn- mock-app-db
+  "An [[mdb.connection/ApplicationDB]] of `db-type` (no pool) that always hands out `conn`."
+  [db-type ^Connection conn]
+  (mdb.connection/application-db db-type (reify DataSource (getConnection [_] conn))))
+
+(deftest do-with-app-db-connection-postgres-test
+  (testing "when using a Postgres app DB, we flip autoCommit off for the scope, then commit/rollback and reset it before returning to the pool"
+    (testing "happy path: autoCommit off -> commit -> reset to true -> close"
+      (let [calls  (volatile! [])
+            conn   (recording-connection true calls)
+            result (#'mdb.connection/do-with-app-db-connection
+                    (mock-app-db :postgres conn)
+                    (fn [^Connection c]
+                      (is (false? (.getAutoCommit c)) "autoCommit is off while f runs")
+                      :result))]
+        (is (= :result result))
+        (is (= [[:set-autocommit false] :commit [:set-autocommit true] :close] @calls))))
+    (testing "error path: rolls back, still resets autoCommit, and propagates the original exception"
+      (let [calls (volatile! [])
+            conn  (recording-connection true calls)
+            boom  (ex-info "boom" {})]
+        (is (identical? boom
+                        (try
+                          (#'mdb.connection/do-with-app-db-connection
+                           (mock-app-db :postgres conn)
+                           (fn [_] (throw boom)))
+                          (catch clojure.lang.ExceptionInfo e e))))
+        (is (= [[:set-autocommit false] :rollback [:set-autocommit true] :close] @calls))))
+    (testing "already in manual-commit mode: leave the flag alone -- no setAutoCommit/commit/rollback, just run and close"
+      (let [calls (volatile! [])
+            conn  (recording-connection false calls)]
+        (is (= :result
+               (#'mdb.connection/do-with-app-db-connection
+                (mock-app-db :postgres conn)
+                (fn [_] :result))))
+        (is (= [:close] @calls))))))
+
+(deftest do-with-app-db-connection-non-postgres-test
+  (testing "when using a non-Postgres app DB, autoCommit is never touched -- the connection is just used and closed"
+    (doseq [db-type [:h2 :mysql]]
+      (let [calls (volatile! [])
+            conn  (recording-connection true calls)]
+        (is (= :result
+               (#'mdb.connection/do-with-app-db-connection
+                (mock-app-db db-type conn)
+                (fn [_] :result))))
+        (is (= [:close] @calls) (str "db-type " db-type))))))
