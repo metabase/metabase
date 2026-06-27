@@ -1,5 +1,6 @@
 .TargetTrigger {
   border-radius: 0.5rem;
+  cursor: pointer;
 
   &:hover {
     color: var(--mb-color-core-brand);
