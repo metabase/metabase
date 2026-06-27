@@ -646,6 +646,11 @@ function getHistogramDataset(
 
 const MAX_FILL_COUNT = 10000;
 
+/**
+ * Inserts placeholder rows for missing time-series buckets so downstream
+ * transforms can replace missing metric values with zeros or nulls.
+ * For example, monthly values for January and March produce a February row.
+ */
 const interpolateTimeSeriesData = (
   dataset: ChartDataset,
   axisModel: TimeSeriesXAxisModel,
@@ -656,17 +661,19 @@ const interpolateTimeSeriesData = (
 
   const { count, unit } = axisModel.interval;
   const timezone = axisModel.timezone;
+  const isWeeklyIntervalInTimezone = timezone != null && unit === "week";
   const result = [];
 
   const addInterval = (date: Dayjs) => {
     const nextDate = date.add(count, unit);
-    return timezone != null && unit === "week"
-      ? nextDate.tz(timezone, true)
-      : nextDate;
+
+    // Weekly buckets should stay anchored to the same local wall-clock time
+    // across DST boundaries, e.g. Sunday 00:00 before and after spring-forward.
+    return isWeeklyIntervalInTimezone ? nextDate.tz(timezone, true) : nextDate;
   };
 
   const isBeforeEnd = (date: Dayjs, end: Dayjs) => {
-    return timezone != null && unit === "week"
+    return isWeeklyIntervalInTimezone
       ? date.isBefore(end)
       : date.isBefore(end, unit);
   };
@@ -697,6 +704,11 @@ const interpolateTimeSeriesData = (
   return result;
 };
 
+/**
+ * Applies per-column display scaling to metric values before they reach
+ * ECharts. For example, a column configured as percentage points can be
+ * multiplied by 100 while leaving non-numeric values as null.
+ */
 export function scaleDataset(
   dataset: ChartDataset,
   seriesModels: BaseSeriesModel[],
