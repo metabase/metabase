@@ -1,6 +1,8 @@
 import type { Store } from "@reduxjs/toolkit";
 import { IndexRoute, Route, type RouteComponent } from "react-router";
 
+import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
+import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -16,7 +18,6 @@ import * as Urls from "metabase/urls";
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
-import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
@@ -25,7 +26,6 @@ import { getDataStudioEventsRoutes } from "./events/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import {
   DependenciesUpsellPage,
-  DependencyDiagnosticsUpsellPage,
   LibraryUpsellPage,
   SchemaViewerUpsellPage,
 } from "./upsells/pages";
