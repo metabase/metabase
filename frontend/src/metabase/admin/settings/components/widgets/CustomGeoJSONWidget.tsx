@@ -294,7 +294,12 @@ const GeoJsonPropertySelect = ({
       <Select
         value={value}
         placeholder={t`Select…`}
-        comboboxProps={{ width: 300, position: "top-start" }}
+        comboboxProps={{
+          width: 300,
+          position: "top-start",
+          withinPortal: true,
+          keepMounted: false,
+        }}
         data={Object.keys(options).map((name) => ({
           value: name,
           label: name,
