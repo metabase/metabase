@@ -12,10 +12,7 @@ import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/co
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Divider, Icon, Select, Stack, Text } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type {
-  EmbeddingParameterVisibility,
-  EmbeddingParameters,
-} from "metabase-types/api";
+import type { EmbeddingParameters } from "metabase-types/api";
 
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 import type { EmbedResourceParameterWithValue } from "./types";
@@ -102,9 +99,9 @@ export const ParametersSettings = ({
                     </Text>
                   )}
                 </h3>
-                <Select<EmbeddingParameterVisibility>
+                <Select
                   aria-label={parameter.name}
-                  className={cx(CS.mlAuto, CS.bgWhite)}
+                  ml="auto"
                   value={visibility}
                   data={[
                     {

@@ -1,4 +1,3 @@
-import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/embedding/types";
 import { Select } from "metabase/ui";
 
@@ -21,18 +20,14 @@ export const EmbedServerSnippetLanguageSelect = ({
 
   return (
     <Select
-      className={CS.mlAuto}
       data-testid={dataTestId ? `${dataTestId}-select-button` : undefined}
       value={selectedOptionId}
       data={languageOptions.map((option) => ({
         value: option.id,
         label: option.name,
       }))}
-      onChange={(value) => {
-        if (value !== null) {
-          onChangeOption(value);
-        }
-      }}
+      onChange={onChangeOption}
+      ml="auto"
     />
   );
 };
