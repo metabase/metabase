@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { PROTO_NAV_ENABLED } from "metabase/nav/containers/ProtoNavbar/flag";
 import { TreeTableSkeleton } from "metabase/ui";
 
 import { useSelection } from "../../../pages/DataModel/contexts/SelectionContext";
@@ -187,19 +188,31 @@ export function Tree({
     setSelectedSchemas,
   ]);
 
+  // In the prototype nav, each database has its own nav item, so the data page
+  // is scoped to show only the schemas and tables of the selected database.
+  const scopedTree =
+    PROTO_NAV_ENABLED && databaseId != null
+      ? {
+          ...tree,
+          children: tree.children.filter(
+            (child) => child.value.databaseId === databaseId,
+          ),
+        }
+      : tree;
+
   if (isLoading) {
     return (
       <TreeTableSkeleton showCheckboxes columnWidths={[0.5, 0.15, 0.1, 0.1]} />
     );
   }
 
-  if (tree.children.length === 0) {
+  if (scopedTree.children.length === 0) {
     return <EmptyState title={t`No data to show`} />;
   }
 
   return (
     <TablePickerTreeTable
-      tree={tree}
+      tree={scopedTree}
       path={path}
       isExpanded={isExpanded}
       isLibraryEnabled={isLibraryEnabled}

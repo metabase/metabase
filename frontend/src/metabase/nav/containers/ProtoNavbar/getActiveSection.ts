@@ -12,7 +12,8 @@ export function getActiveSection(pathname: string): SectionId | null {
   if (
     pathname.startsWith("/data-studio/data") ||
     pathname.startsWith("/data-studio/transforms") ||
-    pathname.startsWith("/data-studio/schema-viewer")
+    pathname.startsWith("/data-studio/schema-viewer") ||
+    pathname.startsWith("/data-studio/workspaces")
   ) {
     return "data";
   }

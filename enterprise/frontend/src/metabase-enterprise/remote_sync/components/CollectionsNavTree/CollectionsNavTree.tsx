@@ -1,24 +1,19 @@
 import { useCallback, useMemo } from "react";
 
 import { useListCollectionsQuery } from "metabase/api";
-import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import { Tree } from "metabase/common/components/tree";
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import type { CollectionsNavTreeProps } from "metabase/plugins";
 
 import { useRemoteSyncDirtyState } from "../../hooks/use-remote-sync-dirty-state";
 import { CollectionSyncStatusBadge } from "../SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
-
-interface CollectionsNavTreeProps {
-  collections: CollectionTreeItem[];
-  selectedId?: number | string;
-  onSelect?: (item: ITreeNodeItem) => void;
-}
 
 export const CollectionsNavTree = ({
   collections,
   selectedId,
   onSelect,
+  initialExpandedIds,
+  pinnedExpandedIds,
 }: CollectionsNavTreeProps) => {
   // Fetch flat list to check for remote-synced collections
   const { data: collectionsList = [] } = useListCollectionsQuery({
@@ -46,6 +41,8 @@ export const CollectionsNavTree = ({
     <Tree
       data={collections}
       selectedId={selectedId}
+      initialExpandedIds={initialExpandedIds}
+      pinnedExpandedIds={pinnedExpandedIds}
       onSelect={onSelect}
       TreeNode={SidebarCollectionLink}
       role="tree"

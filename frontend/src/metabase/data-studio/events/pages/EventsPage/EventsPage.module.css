@@ -1,0 +1,12 @@
+.contentWrapper {
+  flex: 1;
+  overflow: auto;
+}
+
+.toolbar {
+  margin-bottom: 1rem;
+}
+
+.eventList {
+  padding: 1rem 1.5rem;
+}

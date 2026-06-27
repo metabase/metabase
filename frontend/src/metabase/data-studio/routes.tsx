@@ -21,6 +21,7 @@ import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
+import { getDataStudioEventsRoutes } from "./events/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import {
   DependenciesUpsellPage,
@@ -56,6 +57,7 @@ export function getDataStudioRoutes(
           {PLUGIN_WORKSPACES.getDataStudioRoutes()}
         </Route>
         {getDataStudioGlossaryRoutes()}
+        {getDataStudioEventsRoutes()}
         {PLUGIN_LIBRARY.isEnabled ? (
           PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
         ) : (

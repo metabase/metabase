@@ -1,4 +1,5 @@
 import type { Location } from "history";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/redux";
@@ -9,18 +10,25 @@ import type { IconName } from "metabase-types/api";
 import { SidebarLink } from "../../MainNavbar/SidebarItems";
 import { SubNavHeading, SubNavSection } from "../SubNav";
 
-type Props = { location: Location };
+type Props = {
+  location: Location;
+  // Lets this section keep itself selected when a click navigates to a route
+  // that would otherwise map to a different section.
+  onPin: () => void;
+};
+
+type HistoryItem = { id: string; label: string; icon: IconName };
 
 // History is faked for now — these would become real AI conversations and
 // ad hoc queries.
-const FAKE_HISTORY: { label: string; icon: IconName }[] = [
-  { label: "Revenue by region last quarter", icon: "sparkles" },
-  { label: "Why did signups dip in March?", icon: "sparkles" },
-  { label: "Untitled SQL query", icon: "sql" },
-  { label: "Orders joined with customers", icon: "notebook" },
+const FAKE_HISTORY: HistoryItem[] = [
+  { id: "h1", label: "Revenue by region last quarter", icon: "sparkles" },
+  { id: "h2", label: "Why did signups dip in March?", icon: "sparkles" },
+  { id: "h3", label: "Untitled SQL query", icon: "sql" },
+  { id: "h4", label: "Orders joined with customers", icon: "notebook" },
 ];
 
-export function ExploreSection({ location }: Props) {
+export function ExploreSection({ location, onPin }: Props) {
   const path = location.pathname;
 
   const lastUsedDatabaseId = useSelector((state) =>
@@ -32,6 +40,30 @@ export function ExploreSection({ location }: Props) {
     cardType: "question",
     DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
   });
+
+  // Stubbed history entries added by clicking "GUI query". They live only while
+  // the Explore section is mounted, so they vanish when the user leaves it.
+  const [stubbedHistory, setStubbedHistory] = useState<HistoryItem[]>([]);
+  const handleGuiQuery = () => {
+    setStubbedHistory((prev) => [
+      { id: `gui-${Date.now()}`, label: t`New GUI query`, icon: "notebook" },
+      ...prev,
+    ]);
+  };
+
+  const history = [...stubbedHistory, ...FAKE_HISTORY];
+
+  // History entries reopen the editor that matches their type, staying within
+  // the Explore section.
+  const historyUrlFor = (icon: IconName) => {
+    if (icon === "sql") {
+      return sqlQueryUrl;
+    }
+    if (icon === "notebook") {
+      return "/question/new";
+    }
+    return "/question/ask";
+  };
 
   return (
     <>
@@ -58,18 +90,30 @@ export function ExploreSection({ location }: Props) {
         >
           {t`Metric explorer`}
         </SidebarLink>
-        <SidebarLink icon="notebook" url="/question/new">
+        <SidebarLink
+          icon="notebook"
+          url="/question/new"
+          onClick={() => {
+            handleGuiQuery();
+            onPin();
+          }}
+        >
           {t`GUI query`}
         </SidebarLink>
-        <SidebarLink icon="sql" url={sqlQueryUrl}>
+        <SidebarLink icon="sql" url={sqlQueryUrl} onClick={onPin}>
           {t`SQL query`}
         </SidebarLink>
       </SubNavSection>
 
       <SubNavSection>
         <SubNavHeading>{t`History`}</SubNavHeading>
-        {FAKE_HISTORY.map((item) => (
-          <SidebarLink key={item.label} icon={item.icon} url="#">
+        {history.map((item) => (
+          <SidebarLink
+            key={item.id}
+            icon={item.icon}
+            url={historyUrlFor(item.icon)}
+            onClick={onPin}
+          >
             {item.label}
           </SidebarLink>
         ))}

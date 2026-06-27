@@ -9,6 +9,7 @@ import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
+import { useRouter } from "metabase/router";
 import {
   Card,
   Flex,
@@ -37,6 +38,22 @@ export function LibraryPage() {
 }
 
 function LibraryPageContent() {
+  const { location } = useRouter();
+  const sectionFilter = location.query?.library;
+  const isHierarchyView =
+    sectionFilter === "segments" || sectionFilter === "measures";
+
+  const breadcrumbLabel =
+    sectionFilter === "tables"
+      ? t`Published tables`
+      : sectionFilter === "segments"
+        ? t`Segments`
+        : sectionFilter === "measures"
+          ? t`Measures`
+          : sectionFilter === "metrics"
+            ? t`Metrics`
+            : t`Library`;
+
   const [searchQuery, setSearchQuery] = useState("");
   const [
     showPublishTableModal,
@@ -70,7 +87,7 @@ function LibraryPageContent() {
       <SectionLayout>
         <PaneHeader
           breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Library`}</DataStudioBreadcrumbs>
+            <DataStudioBreadcrumbs>{breadcrumbLabel}</DataStudioBreadcrumbs>
           }
           px="3.5rem"
           py={0}
@@ -82,31 +99,34 @@ function LibraryPageContent() {
           px="3.5rem"
           style={{ overflow: "hidden" }}
         >
-          {!libraryCollection && !isLoadingCollections ? (
+          {!libraryCollection && !isLoadingCollections && !isHierarchyView ? (
             <LibraryEmptyState />
           ) : (
             <>
-              <Flex gap="md">
-                <TextInput
-                  placeholder={t`Search...`}
-                  leftSection={<Icon name="search" />}
-                  bdrs="md"
-                  flex="1"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <CreateMenu
-                  metricCollectionId={writableMetricCollection?.id}
-                  canWriteToMetricCollection={!!writableMetricCollection}
-                  dataCollectionId={tableCollection?.id}
-                  canWriteToDataCollection={!!tableCollection?.can_write}
-                />
-              </Flex>
+              {!isHierarchyView && (
+                <Flex gap="md">
+                  <TextInput
+                    placeholder={t`Search...`}
+                    leftSection={<Icon name="search" />}
+                    bdrs="md"
+                    flex="1"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <CreateMenu
+                    metricCollectionId={writableMetricCollection?.id}
+                    canWriteToMetricCollection={!!writableMetricCollection}
+                    dataCollectionId={tableCollection?.id}
+                    canWriteToDataCollection={!!tableCollection?.can_write}
+                  />
+                </Flex>
+              )}
               <Card withBorder p={0}>
                 {isLoading ? (
                   <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
                 ) : (
                   <TreeTable
+                    key={sectionFilter ?? "all"}
                     instance={treeTableInstance}
                     emptyState={
                       emptyMessage ? (

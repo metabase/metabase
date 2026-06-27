@@ -38,7 +38,11 @@ export type TableData = Table & {
   model: "table";
 };
 
-export type TreeItemModel = CollectionItemModel | "empty-state";
+export type TreeItemModel =
+  | CollectionItemModel
+  | "empty-state"
+  | "segment"
+  | "measure";
 
 export type TreeItem = {
   id: string;

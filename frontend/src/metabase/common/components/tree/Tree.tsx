@@ -14,10 +14,22 @@ interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   selectedId?: ITreeNodeItem<TData>["id"];
   emptyState?: React.ReactNode;
   initialExpandedIds?: ITreeNodeItem<TData>["id"][];
+  /** IDs that stay expanded and cannot be collapsed. */
+  pinnedExpandedIds?: ITreeNodeItem<TData>["id"][];
   role?: string;
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
   TreeNode?: any;
+}
+
+function withPinnedIds<TData>(
+  ids: Set<ITreeNodeItem<TData>["id"]>,
+  pinnedExpandedIds?: ITreeNodeItem<TData>["id"][],
+) {
+  if (!pinnedExpandedIds?.length) {
+    return ids;
+  }
+  return new Set([...ids, ...pinnedExpandedIds]);
 }
 
 function BaseTree<TData = unknown>({
@@ -26,6 +38,7 @@ function BaseTree<TData = unknown>({
   role = "menu",
   emptyState = null,
   initialExpandedIds,
+  pinnedExpandedIds,
   onSelect,
   TreeNode = DefaultTreeNode,
   rightSection,
@@ -33,10 +46,13 @@ function BaseTree<TData = unknown>({
 }: TreeProps<TData>) {
   const [expandedIds, setExpandedIds] = useState(() => {
     if (initialExpandedIds) {
-      return new Set(initialExpandedIds);
+      return withPinnedIds(new Set(initialExpandedIds), pinnedExpandedIds);
     }
-    return new Set(
-      selectedId != null ? getInitialExpandedIds(selectedId, data) : [],
+    return withPinnedIds(
+      new Set(
+        selectedId != null ? getInitialExpandedIds(selectedId, data) : [],
+      ),
+      pinnedExpandedIds,
     );
   });
   const previousSelectedId = usePrevious(selectedId);
@@ -51,24 +67,60 @@ function BaseTree<TData = unknown>({
       previousSelectedId !== selectedId && !expandedIds.has(selectedId);
 
     if (selectedItemChanged || dataHasChanged) {
-      setExpandedIds(
-        (prev) =>
+      setExpandedIds((prev) =>
+        withPinnedIds(
           new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
+          pinnedExpandedIds,
+        ),
       );
     }
-  }, [prevData, data, selectedId, previousSelectedId, expandedIds]);
+  }, [
+    prevData,
+    data,
+    selectedId,
+    previousSelectedId,
+    expandedIds,
+    pinnedExpandedIds,
+  ]);
+
+  useEffect(() => {
+    if (!pinnedExpandedIds?.length) {
+      return;
+    }
+    setExpandedIds((prev) => withPinnedIds(prev, pinnedExpandedIds));
+  }, [pinnedExpandedIds, data]);
+
+  useEffect(() => {
+    if (!initialExpandedIds?.length) {
+      return;
+    }
+    setExpandedIds((prev) =>
+      withPinnedIds(
+        new Set([...prev, ...initialExpandedIds]),
+        pinnedExpandedIds,
+      ),
+    );
+  }, [initialExpandedIds, data, pinnedExpandedIds]);
 
   const handleToggleExpand = useCallback(
     (itemId: string | number) => {
+      if (expandedIds.has(itemId) && pinnedExpandedIds?.includes(itemId)) {
+        return;
+      }
       if (expandedIds.has(itemId)) {
-        setExpandedIds(
-          (prev) => new Set([...prev].filter((id) => id !== itemId)),
+        setExpandedIds((prev) =>
+          withPinnedIds(
+            new Set([...prev].filter((id) => id !== itemId)),
+            pinnedExpandedIds,
+          ),
         );
       } else {
-        setExpandedIds((prev) => new Set([...prev, itemId]));
+        setExpandedIds((prev) =>
+          withPinnedIds(new Set([...prev, itemId]), pinnedExpandedIds),
+        );
       }
     },
-    [expandedIds],
+    [expandedIds, pinnedExpandedIds],
   );
 
   if (data.length === 0) {

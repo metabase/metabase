@@ -12,6 +12,8 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.75rem;
+  padding-inline-start: 1rem;
+  margin-bottom: 0.75rem;
   flex-shrink: 0;
 }
 
@@ -25,15 +27,15 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0 0.5rem 0.5rem;
+  padding: 0 0.5rem;
+  padding-inline-start: 1rem;
+  margin-bottom: 1rem;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .railBtn {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
   padding: 0.5rem;
   border: none;
   background: transparent;
@@ -58,14 +60,34 @@
 }
 
 .railLabel {
-  display: none;
+  display: inline-block;
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
   font-size: 0.75rem;
   font-weight: 700;
+  transition:
+    max-width 200ms ease,
+    margin-left 200ms ease,
+    opacity 200ms ease;
 }
 
 .railBtn.selected .railLabel,
 .railBtn:hover .railLabel {
-  display: inline;
+  max-width: 10rem;
+  margin-left: 0.375rem;
+  opacity: 1;
+}
+
+.subNavHeading {
+  margin: 0 0 0.25rem;
+  padding-inline-start: 0.25rem;
+  color: var(--mb-color-text-secondary);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
 }
 
 .sectionContent {
@@ -84,6 +106,24 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  border-top: 1px solid var(--mb-color-border-neutral);
   flex-shrink: 0;
+}
+
+.libraryNestedItems {
+  padding-inline-start: 1rem;
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+  background-color: transparent;
+}
+
+.sidebarResizing {
+  border-inline-end-color: var(--mb-color-border-strong) !important;
 }
