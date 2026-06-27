@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
 
@@ -292,8 +293,9 @@ export const buildTimeSeriesDimensionAxis = (
         (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0),
       ...getDimensionTicksDefaultOption(settings, renderingContext),
       formatter: (rawValue: number) => {
+        const axisCoordinateValue = dayjs.utc(rawValue);
         const value = xAxisModel.fromEChartsAxisValue(rawValue);
-        if (canRender(value)) {
+        if (canRender(axisCoordinateValue)) {
           return getPaddedAxisLabel(
             formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]")),
           );

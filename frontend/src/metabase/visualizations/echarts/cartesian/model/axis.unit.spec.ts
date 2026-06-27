@@ -13,6 +13,7 @@ import {
   getXAxisDateRangeFromSortedXAxisValues,
   getXAxisModel,
 } from "./axis";
+import { isTimeSeriesAxis } from "./guards";
 import type { DimensionModel, SeriesExtents } from "./types";
 
 describe("computeSplit", () => {
@@ -62,6 +63,53 @@ describe("computeSplit", () => {
 });
 
 describe("getXAxisModel", () => {
+  it("should decode timezone-shifted ECharts values before formatting x-axis labels (#55966)", () => {
+    const dateColumn = createMockDatetimeColumn({ unit: "hour" });
+    const dimensionModel: DimensionModel = {
+      column: dateColumn,
+      columnIndex: 0,
+      columnByCardId: { 1: dateColumn },
+    };
+    const dataset = [
+      { [X_AXIS_DATA_KEY]: "2025-03-30 00:00:00", count: 10 },
+      { [X_AXIS_DATA_KEY]: "2025-03-30 01:00:00", count: 11 },
+    ];
+    const rawSeries = [
+      createMockSingleSeries(
+        { display: "line" },
+        {
+          data: {
+            requested_timezone: "US/Mountain",
+            results_timezone: "US/Mountain",
+          },
+        },
+      ),
+    ];
+    const settings = createMockVisualizationSettings({
+      "graph.x_axis.scale": "timeseries",
+    });
+
+    const model = getXAxisModel(dimensionModel, rawSeries, dataset, settings);
+
+    expect(isTimeSeriesAxis(model)).toBe(true);
+    if (!isTimeSeriesAxis(model)) {
+      throw new Error("Expected a time-series x-axis model");
+    }
+
+    const echartsValue = model.toEChartsAxisValue("2025-03-30 01:00:00");
+
+    if (echartsValue === null) {
+      throw new Error("Expected a valid ECharts axis value");
+    }
+
+    expect(echartsValue).toBe("2025-03-29T19:00:00Z");
+    expect(
+      model
+        .fromEChartsAxisValue(dayjs.utc(echartsValue).valueOf())
+        .format("YYYY-MM-DDTHH:mm:ss[Z]"),
+    ).toBe("2025-03-30T01:00:00Z");
+  });
+
   it("should format untagged datetime values using the inferred temporal unit for ordinal scale (#68179)", () => {
     const dateColumn = createMockDatetimeColumn({ unit: undefined });
 

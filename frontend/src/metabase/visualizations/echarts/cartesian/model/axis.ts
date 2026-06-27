@@ -760,7 +760,17 @@ export function getTimeSeriesXAxisModel(
       : date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss[Z]");
   };
   const fromEChartsAxisValue = (rawValue: number) => {
-    return dayjs.utc(rawValue);
+    const date = dayjs.utc(rawValue);
+
+    if (offsetMinutes != null) {
+      return date.subtract(offsetMinutes, "minute");
+    }
+
+    if (timezone != null) {
+      return dayjs.tz(date.format("YYYY-MM-DDTHH:mm:ss"), timezone).utc();
+    }
+
+    return date;
   };
 
   return {

@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import {
@@ -57,6 +61,59 @@ describe("issue 12439", () => {
 
     H.sidebar().contains("X-axis");
     H.sidebar().contains("Y-axis");
+  });
+});
+
+describe("issue 55966", () => {
+  const nativeQuery = `
+    SELECT '2025-03-30 00:00:00' AS created_at, 10 AS data_value
+    UNION ALL
+    SELECT '2025-03-30 01:00:00', 11
+    UNION ALL
+    SELECT '2025-03-30 02:00:00', 12
+    UNION ALL
+    SELECT '2025-03-30 03:00:00', 13
+    UNION ALL
+    SELECT '2025-03-30 04:00:00', 14
+    UNION ALL
+    SELECT '2025-03-30 05:00:00', 15
+  `;
+
+  function questionDetails(display) {
+    return {
+      name: `55966 ${display}`,
+      database: WRITABLE_DB_ID,
+      native: {
+        query: nativeQuery,
+      },
+      display,
+      visualization_settings: {
+        "graph.dimensions": ["created_at"],
+        "graph.metrics": ["data_value"],
+        "graph.x_axis.scale": "timeseries",
+      },
+    };
+  }
+
+  function assertXAxisLabelsMatchTooltipDates(display) {
+    cy.log(`Assert ${display} chart x-axis labels use report-timezone dates`);
+    H.createNativeQuestion(questionDetails(display), { visitQuestion: true });
+
+    H.echartsContainer()
+      .find("text")
+      .should("contain", "March 30, 2025, 1:00 AM");
+    H.echartsContainer().find("text").should("not.contain", "March 29");
+  }
+
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    H.updateSetting("report-timezone", "US/Mountain");
+  });
+
+  it("should show report-timezone dates on hourly native query x-axis labels (metabase#55966)", () => {
+    assertXAxisLabelsMatchTooltipDates("line");
+    assertXAxisLabelsMatchTooltipDates("bar");
   });
 });
 
