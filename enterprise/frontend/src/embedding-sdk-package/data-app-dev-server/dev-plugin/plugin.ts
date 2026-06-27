@@ -3,8 +3,8 @@ import path from "node:path";
 
 import { type Plugin, build } from "vite";
 
-import { dataAppBuildPlugins, dataAppLibBuild } from "./build-config";
-import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "./bundle";
+import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
+import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
 
 // Virtual modules the dev server provides. The template's `index.html` imports
 // the harness; the harness imports the config (the app's allowed hosts + the

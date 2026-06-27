@@ -6,7 +6,7 @@ import {
   DATA_APP_EXTERNALS,
   DATA_APP_FACTORY_GLOBAL,
   DATA_APP_GLOBALS,
-} from "./bundle";
+} from "../bundle";
 
 /**
  * The data-app bundle contract, shared by `vite build` (production) and the dev
