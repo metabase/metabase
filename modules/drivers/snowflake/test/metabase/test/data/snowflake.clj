@@ -405,20 +405,24 @@
               ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
     (some-> rs resultset-seq first)))
 
-(defn- dataset-rows-ok? [conn {:keys [table-definitions] :as dataset}]
+(defn- dataset-rows-ok?! [conn {:keys [table-definitions] :as dataset}]
   ;; sometimes for unknown reasons we get datasets double- or triple-inserted
   ;; and we have not been able to determine why. if a dataset has too many rows,
   ;; treat it as if it hasn't been loaded and force it to be reloaded.
-  (let [table-names (set (map :table-name table-definitions))
-        db-tables (->> (jdbc/query conn (format "SHOW TABLES IN DATABASE \"%s\""
-                                                (qualified-db-name dataset)))
-                       ;; there are some other tables of unknown source in there
-                       ;; like "g_inspector_ji_f9f65557_e249_4543_ab34_9e"
-                       (filter #(table-names (:name %))))
-        db-row-counts (zipmap (map :name db-tables) (map :rows db-tables))
-        dataset-row-counts (zipmap (map :table-name table-definitions)
-                                   (map (comp count :rows) table-definitions))]
-    (= db-row-counts dataset-row-counts)))
+  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
+                                       :snowflake conn
+                                       (format "SHOW TABLES IN DATABASE \"%s\""
+                                               (qualified-db-name dataset)) [])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! :snowflake stmt)]
+    (let [table-names (set (map :table-name table-definitions))
+          db-tables (->> (resultset-seq rs)
+                         ;; there are some other tables of unknown source in there
+                         ;; like "g_inspector_ji_f9f65557_e249_4543_ab34_9e"
+                         (filter #(table-names (:name %))))
+          db-row-counts (zipmap (map :name db-tables) (map :rows db-tables))
+          dataset-row-counts (zipmap (map :table-name table-definitions)
+                                     (map (comp count :rows) table-definitions))]
+      (= db-row-counts dataset-row-counts))))
 
 (defmethod tx/dataset-already-loaded? :snowflake
   [driver db-def]
@@ -432,7 +436,7 @@
      (and
       (dataset-tracked?! conn driver db-def)
       (database-exists?! conn driver db-def)
-      (dataset-rows-ok? conn db-def)))))
+      (dataset-rows-ok?! conn db-def)))))
 
 (defmethod tx/track-dataset :snowflake
   [driver db-def]
