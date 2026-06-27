@@ -591,5 +591,15 @@
   [driver value]
   (sql.qp/->integer-with-round driver value))
 
+(defmethod sql.qp/order-by-clause :sqlite
+  [driver direction field-clause]
+  (let [field-hsql (sql.qp/->honeysql driver field-clause)]
+    (if (sql.qp/temporal-field? field-clause)
+      ;; For temporal columns, always put nulls last
+      ;; SQLite workaround: ORDER BY (col IS NULL), col ASC/DESC
+      [[[:is field-hsql nil]]
+       [field-hsql direction]]
+      [[field-hsql direction]])))
+
 (defmethod driver/llm-sql-dialect-resource :sqlite [_]
   "metabot/prompts/dialects/sqlite.md")

@@ -12,6 +12,7 @@
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -325,3 +326,19 @@
         (testing "so its base/effective type stays temporal (Lib's type wins over the storage affinity)"
           (is (isa? (:base_type col) :type/Temporal))
           (is (isa? (:effective_type col) :type/Temporal)))))))
+
+(deftest ^:parallel order-by-temporal-nulls-last-test
+  (testing "SQLite order-by-clause uses IS NULL workaround for temporal columns"
+    (mt/test-driver :sqlite
+      (qp.store/with-metadata-provider (mt/metadata-provider)
+        (let [temporal-field [:field (mt/id :orders :created_at) {:base-type :type/DateTimeWithTZ}]
+              non-temporal-field [:field (mt/id :orders :id) {:base-type :type/BigInteger}]]
+          (testing "ascending order on temporal field generates two clauses"
+            (let [result (sql.qp/order-by-clause :sqlite :asc temporal-field)]
+              (is (= 2 (count result)) "Should return two ORDER BY clauses for SQLite temporal NULLS LAST workaround")))
+          (testing "descending order on temporal field generates two clauses"
+            (let [result (sql.qp/order-by-clause :sqlite :desc temporal-field)]
+              (is (= 2 (count result)) "Should return two ORDER BY clauses for SQLite temporal NULLS LAST workaround")))
+          (testing "non-temporal field uses single clause"
+            (let [result (sql.qp/order-by-clause :sqlite :asc non-temporal-field)]
+              (is (= 1 (count result)) "Non-temporal fields should use standard single ORDER BY clause"))))))))

@@ -629,6 +629,17 @@
 (defmethod sql.qp/datetime-diff [:mysql :minute]  [_driver _unit x y] (timestampdiff :minute x y))
 (defmethod sql.qp/datetime-diff [:mysql :second]  [_driver _unit x y] (timestampdiff :second x y))
 
+(defmethod sql.qp/order-by-clause :mysql
+  [driver direction field-clause]
+  (let [field-hsql (sql.qp/->honeysql driver field-clause)]
+    ;; (if (sql.qp/temporal-field? field-clause)
+    ;;   ;; For temporal columns, always put nulls last
+    ;;   ;; MySQL workaround: ORDER BY (col IS NULL), col ASC/DESC
+    ;;   [[[:is field-hsql nil]]
+    ;;    [field-hsql direction]]
+    ;;   [[field-hsql direction]])))
+    [[field-hsql direction]]))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+

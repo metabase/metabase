@@ -1766,7 +1766,7 @@
               "        GROUP BY"
               "          CAST(PUBLIC.ORDERS.CREATED_AT AS date)"
               "        ORDER BY"
-              "          CAST(PUBLIC.ORDERS.CREATED_AT AS date) ASC"
+              "          CAST(PUBLIC.ORDERS.CREATED_AT AS date) ASC NULLS LAST"
               "      ) AS __mb_source"
               "    GROUP BY"
               "      extract("
@@ -1781,10 +1781,60 @@
               "        from"
               "          __mb_source.CREATED_AT"
               "      ) ASC,"
-              "      DATE_TRUNC('month', __mb_source.CREATED_AT) ASC"
+              "      DATE_TRUNC('month', __mb_source.CREATED_AT) ASC NULLS LAST"
               "  ) AS __mb_source"]
              (-> (qp.compile/compile query)
                  :query
                  (->> (driver/prettify-native-form :h2))
                  (str/replace #"\"" "")
                  str/split-lines))))))
+
+(deftest ^:parallel temporal-field?-test
+  (testing "temporal-field? correctly identifies temporal columns by base-type"
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/Date}])))
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/DateTime}])))
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/DateTimeWithTZ}])))
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/Time}])))
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/TimeWithTZ}]))))
+  (testing "temporal-field? correctly identifies temporal columns by effective-type"
+    (is (true? (sql.qp/temporal-field? [:field 1 {:effective-type :type/Date}])))
+    (is (true? (sql.qp/temporal-field? [:field 1 {:effective-type :type/DateTime}]))))
+  (testing "temporal-field? prefers effective-type over base-type"
+    (is (true? (sql.qp/temporal-field? [:field 1 {:base-type :type/Text :effective-type :type/Date}])))
+    (is (false? (sql.qp/temporal-field? [:field 1 {:base-type :type/Date :effective-type :type/Text}]))))
+  (testing "temporal-field? returns false for non-temporal types"
+    (is (false? (sql.qp/temporal-field? [:field 1 {:base-type :type/Integer}])))
+    (is (false? (sql.qp/temporal-field? [:field 1 {:base-type :type/Text}])))
+    (is (false? (sql.qp/temporal-field? [:field 1 {:base-type :type/Boolean}])))
+    (is (false? (sql.qp/temporal-field? [:field 1 {:base-type :type/Float}]))))
+  (testing "temporal-field? returns false when no type info available"
+    (is (not (sql.qp/temporal-field? [:field 1 {}])))
+    (is (not (sql.qp/temporal-field? [:field 1 nil])))))
+
+(deftest ^:parallel order-by-clause-temporal-nulls-last-test
+  (testing "order-by-clause adds NULLS LAST for temporal columns"
+    (driver/with-driver :h2
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (let [temporal-field-clause [:field (meta/id :orders :created-at) {:base-type :type/DateTimeWithTZ}]]
+          (testing "ascending order on temporal field"
+            (let [result (sql.qp/order-by-clause :h2 :asc temporal-field-clause)]
+              (is (= 1 (count result)))
+              (is (= :asc-nulls-last (second (first result))))))
+          (testing "descending order on temporal field"
+            (let [result (sql.qp/order-by-clause :h2 :desc temporal-field-clause)]
+              (is (= 1 (count result)))
+              (is (= :desc-nulls-last (second (first result)))))))))))
+
+(deftest ^:parallel order-by-clause-non-temporal-default-test
+  (testing "order-by-clause uses default ordering for non-temporal columns"
+    (driver/with-driver :h2
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (let [non-temporal-field-clause [:field (meta/id :orders :id) {:base-type :type/BigInteger}]]
+          (testing "ascending order on non-temporal field"
+            (let [result (sql.qp/order-by-clause :h2 :asc non-temporal-field-clause)]
+              (is (= 1 (count result)))
+              (is (= :asc (second (first result))))))
+          (testing "descending order on non-temporal field"
+            (let [result (sql.qp/order-by-clause :h2 :desc non-temporal-field-clause)]
+              (is (= 1 (count result)))
+              (is (= :desc (second (first result)))))))))))
