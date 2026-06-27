@@ -2928,9 +2928,6 @@ const testChangingBackToDefaultBehavior = () => {
   cy.get("aside").button("Done").click();
 
   H.saveDashboard();
-  // this is necessary due to query params being reset after saving dashboard
-  // with filter applied, which causes dashcard to be refetched
-  cy.wait(1);
 
   clickLineChartPoint();
   assertDrillThroughMenuOpen();
