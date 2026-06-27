@@ -129,6 +129,15 @@
   []
   (.id *application-db*))
 
+(defn- reset-autocommit!
+  "Restore `connection`'s autoCommit to the JDBC default of true, logging -- but not propagating -- any failure, so a
+  reset error never masks the original exception or breaks the connection's return to the pool."
+  [^java.sql.Connection connection]
+  (try
+    (.setAutoCommit connection true)
+    (catch Throwable t
+      (log/warn t "Failed to reset the connection's autocommit flag to true"))))
+
 (def ^:private select-fetch-size
   "Default JDBC fetch size (rows per network round-trip) for app-db queries. Postgres only streams a result set from a
   server-side cursor -- instead of materializing the whole thing in client memory -- when the fetch size is positive
@@ -172,10 +181,7 @@
                 (log/warn rollback-e "Failed to roll back app-db connection")))
             (throw e))
           (finally
-            (try
-              (.setAutoCommit conn true)
-              (catch Throwable t
-                (log/warn t "Failed to reset app-db connection autoCommit before returning to pool")))))))))
+            (reset-autocommit! conn)))))))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]
@@ -213,10 +219,7 @@
         (thunk)
         (finally
           ;; prevent a failing .setAutoCommit call from masking the original exception
-          (try
-            (.setAutoCommit connection true)
-            (catch Throwable t
-              (log/warn t "Failed to reset the connection's autocommit flag to true")))))
+          (reset-autocommit! connection)))
       (thunk))))
 
 (comment
