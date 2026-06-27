@@ -1,8 +1,12 @@
 import { assocIn } from "icepick";
-import { Fragment } from "react";
 import { t } from "ttag";
 
-import { Flex, Menu } from "metabase/ui";
+import {
+  Combobox,
+  DefaultSelectItem,
+  UnstyledButton,
+  useCombobox,
+} from "metabase/ui";
 import type { ClickBehavior } from "metabase-types/api";
 
 import S from "./ClickMappings.module.css";
@@ -20,8 +24,13 @@ export function ClickMappingsTargetWithoutSource({
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const { id, name, type } = target;
+  const combobox = useCombobox();
 
-  const handleSelect = (source: SourceOption) => {
+  const handleOptionSubmit = (value: string) => {
+    const source = Object.values(sourceOptions)
+      .flat()
+      .find((option) => getValueForSource(option) === value);
+
     updateSettings(
       assocIn(clickBehavior, ["parameterMapping", id], {
         source,
@@ -30,50 +39,63 @@ export function ClickMappingsTargetWithoutSource({
         type,
       }),
     );
+    combobox.closeDropdown();
   };
 
   return (
-    <Menu key={id} position="bottom-start" width={300}>
-      <Menu.Target>
-        <Flex
+    <Combobox
+      key={id}
+      store={combobox}
+      position="bottom-start"
+      width={300}
+      classNames={{ groupLabel: S.groupLabel }}
+      onOptionSubmit={handleOptionSubmit}
+    >
+      <Combobox.Target>
+        <UnstyledButton
           className={S.TargetTrigger}
+          style={{ outline: "none" }}
           p="sm"
-          mb="sm"
           fw="bold"
-          w="100%"
           data-testid="click-target-column"
+          onClick={() => combobox.toggleDropdown()}
         >
           {name}
-        </Flex>
-      </Menu.Target>
-      <Menu.Dropdown>
-        {Object.entries(sourceOptions).map(([sourceType, items]) => (
-          <Fragment key={sourceType}>
-            <Menu.Label fw="700" c="brand" tt="uppercase">
-              {
+        </UnstyledButton>
+      </Combobox.Target>
+      <Combobox.Dropdown>
+        <Combobox.Options>
+          {Object.entries(sourceOptions).map(([sourceType, items]) => (
+            <Combobox.Group
+              key={sourceType}
+              label={
                 {
                   parameter: t`Dashboard filters`,
                   column: t`Columns`,
                   userAttribute: t`User attributes`,
                 }[sourceType]
               }
-            </Menu.Label>
-            {items.map((option) => (
-              <Menu.Item
-                key={getKeyForSource(option) ?? "none"}
-                onClick={() => handleSelect(option)}
-                fw="700"
-                pl="lg"
-              >
-                {option.type === undefined ? t`None` : option.name}
-              </Menu.Item>
-            ))}
-          </Fragment>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
+            >
+              {items.map((option) => {
+                const value = getValueForSource(option);
+                return (
+                  <Combobox.Option key={value} value={value} p={0}>
+                    <DefaultSelectItem
+                      pl="lg"
+                      value={value}
+                      fw="700"
+                      label={option.type === undefined ? t`None` : option.name}
+                    />
+                  </Combobox.Option>
+                );
+              })}
+            </Combobox.Group>
+          ))}
+        </Combobox.Options>
+      </Combobox.Dropdown>
+    </Combobox>
   );
 }
 
-const getKeyForSource = (option: SourceOption) =>
-  option.type == null ? null : `${option.type}-${option.id}`;
+const getValueForSource = (option: SourceOption) =>
+  option.type == null ? "none" : `${option.type}-${option.id}`;
