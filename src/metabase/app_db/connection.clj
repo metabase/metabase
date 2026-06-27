@@ -150,34 +150,32 @@
   runs `DISCARD ALL`, which Postgres refuses to run inside a transaction block. H2/MySQL keep the plain JDBC-default
   behavior.
 
-  We only manage autoCommit when it starts at the JDBC default (true), i.e. we own it. If a connection comes back from
-  the pool already in manual-commit mode, whoever turned it off owns the commit/rollback and the reset -- so we leave the
-  flag alone and just run `f` (with the streaming fetch size still applied)."
+  This runs only at the outermost connection acquisition (nested Toucan calls reuse the already-bound
+  `java.sql.Connection`), so `conn` is always a freshly checked-out pooled connection we own outright. We flip autoCommit
+  off unconditionally -- idempotent if it is somehow already off -- and always commit and reset, which also heals a
+  connection a previous borrower may have left in manual-commit mode."
   [^ApplicationDB app-db f]
   (if (not= :postgres (.db-type app-db))
     (with-open [conn (.getConnection app-db)]
       (f conn))
     (binding [t2.jdbc.options/*options* (assoc t2.jdbc.options/*options* :fetch-size select-fetch-size)]
       (with-open [conn (.getConnection app-db)]
-        (if-not (.getAutoCommit conn)
-          (f conn)
-          (do
-            (.setAutoCommit conn false)
+        (.setAutoCommit conn false)
+        (try
+          (let [result (f conn)]
+            (.commit conn)
+            result)
+          (catch Throwable e
             (try
-              (let [result (f conn)]
-                (.commit conn)
-                result)
-              (catch Throwable e
-                (try
-                  (.rollback conn)
-                  (catch Throwable rollback-e
-                    (log/warn rollback-e "Failed to roll back app-db connection")))
-                (throw e))
-              (finally
-                (try
-                  (.setAutoCommit conn true)
-                  (catch Throwable t
-                    (log/warn t "Failed to reset app-db connection autoCommit before returning to pool")))))))))))
+              (.rollback conn)
+              (catch Throwable rollback-e
+                (log/warn rollback-e "Failed to roll back app-db connection")))
+            (throw e))
+          (finally
+            (try
+              (.setAutoCommit conn true)
+              (catch Throwable t
+                (log/warn t "Failed to reset app-db connection autoCommit before returning to pool")))))))))
 
 (methodical/defmethod t2.conn/do-with-connection :default
   [_connectable f]

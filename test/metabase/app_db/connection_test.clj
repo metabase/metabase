@@ -237,14 +237,14 @@
                            (fn [_] (throw boom)))
                           (catch clojure.lang.ExceptionInfo e e))))
         (is (= [[:set-autocommit false] :rollback [:set-autocommit true] :close] @calls))))
-    (testing "already in manual-commit mode: leave the flag alone -- no setAutoCommit/commit/rollback, just run and close"
+    (testing "a connection that comes back already in manual-commit mode is taken over and reset (self-healing)"
       (let [calls (volatile! [])
             conn  (recording-connection false calls)]
         (is (= :result
                (#'mdb.connection/do-with-app-db-connection
                 (mock-app-db :postgres conn)
                 (fn [_] :result))))
-        (is (= [:close] @calls))))))
+        (is (= [[:set-autocommit false] :commit [:set-autocommit true] :close] @calls))))))
 
 (deftest do-with-app-db-connection-non-postgres-test
   (testing "when using a non-Postgres app DB, autoCommit is never touched -- the connection is just used and closed"
