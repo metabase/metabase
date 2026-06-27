@@ -573,6 +573,7 @@
   collections
   {:team "UX West"
    :api  #{metabase.collections.core
+           metabase.collections.curation
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -1192,7 +1193,10 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Card :model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   logger
   {:team "DevEx"
@@ -1927,6 +1931,7 @@
            metabase.sample-data.init}
    :uses #{config
            models
+           permissions
            plugins
            settings
            sync
@@ -1934,6 +1939,7 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DataPermissions
                     :model/Database
                     :model/Field
                     :model/Table}}
@@ -3451,8 +3457,10 @@
            analytics-interface
            api
            app-db
+           collections
            config
            connection-pool
+           events
            llm
            metabot
            models
@@ -3463,7 +3471,9 @@
            task
            tracing
            util}
-   :model-imports #{:model/Collection}}
+   :model-imports #{:model/Collection
+                    :model/Dashboard
+                    :model/Table}}
 
   enterprise/serialization
   {:team "Graphy"

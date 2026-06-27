@@ -141,7 +141,7 @@ function getColorPalette() {
     Color(color("error")).hex(),
     Color(color("warning")).hex(),
     Color(color("success")).hex(),
-    Color(color("background-tertiary")).hex(),
+    Color(color("background_page-tertiary")).hex(),
   ];
 }
 

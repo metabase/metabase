@@ -152,7 +152,7 @@ function GoogleSheetsConnectModal({
         }
       />
       <Flex
-        bg="background-secondary"
+        bg="background_page-secondary"
         style={{ borderRadius: "0.5rem" }}
         p="md"
         direction="column"
@@ -303,7 +303,7 @@ export const DriveConnectionDisplay = () => {
   return (
     <MaybeLink href={folderUrl ?? ""}>
       <Flex
-        bg="background-secondary"
+        bg="background_page-secondary"
         w="100%"
         gap="sm"
         p="md"

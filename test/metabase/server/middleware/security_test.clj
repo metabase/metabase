@@ -116,11 +116,22 @@
       "example.com:*"           {:protocol nil :domain "example.com" :port "*"}
       "app://localhost"         {:protocol "app" :domain "localhost" :port nil}
       "capacitor://localhost"   {:protocol "capacitor" :domain "localhost" :port nil}))
+  (testing "Should parse arbitrary schemes, not just a closed allowlist (MCP clients use e.g. vscode-webview, electron, chrome-extension)"
+    (are [url expected] (= expected
+                           (mw.security/parse-url url))
+      "electron://example.com"         {:protocol "electron" :domain "example.com" :port nil}
+      "vscode-webview://abc123"        {:protocol "vscode-webview" :domain "abc123" :port nil}
+      "chrome-extension://abc123"      {:protocol "chrome-extension" :domain "abc123" :port nil}
+      "ftp://example.com"              {:protocol "ftp" :domain "example.com" :port nil}))
   (testing "Should return nil for invalid urls"
     (are [url] (nil? (mw.security/parse-url url))
-      "ftp://example.com"
       "://example.com"
-      "example:com")))
+      "example:com"
+      ;; scheme must start with a letter (RFC 3986)
+      "1abc://example.com"
+      ;; domain may not contain characters outside hostname/IPv4/wildcard syntax
+      "http://exa mple.com"
+      "http://exa@mple.com")))
 
 (deftest ^:parallel test-parse-approved-origins
   (testing "Should not break on multiple spaces in a row"
@@ -128,7 +139,13 @@
     (is (= 2 (count (mw.security/parse-approved-origins "   example.com      example.org   ")))))
   (testing "Should filter out invalid origins without throwing"
     (is (= 1 (count (mw.security/parse-approved-origins "example.org ://example.com"))))
-    (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com"))))))
+    (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com")))))
+  (testing "A trailing slash or path should have no effect (#75839)"
+    (is (= [{:protocol "http" :domain "localhost" :port "6274"}]
+           (mw.security/parse-approved-origins "http://localhost:6274/")))
+    (is (= (mw.security/parse-approved-origins "http://localhost:6274")
+           (mw.security/parse-approved-origins "http://localhost:6274/")
+           (mw.security/parse-approved-origins "http://localhost:6274/some/path")))))
 
 (deftest ^:parallel test-approved-domain?
   (testing "Exact match"
@@ -191,6 +208,12 @@
       (is (mw.security/approved-origin? "https://example3.com" approved))))
   (testing "Different protocol should fail"
     (is (not (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
+  (testing "Should allow custom schemes used by MCP clients, not just a closed allowlist"
+    (is (mw.security/approved-origin? "electron://example.com" "electron://example.com"))
+    (is (mw.security/approved-origin? "chrome-extension://abc123" "chrome-extension://abc123"))
+    (is (not (mw.security/approved-origin? "electron://example.com" "app://example.com"))))
+  (testing "A trailing slash on an approved origin should have no effect (#75839)"
+    (is (mw.security/approved-origin? "http://localhost:6274" "http://localhost:6274/")))
   (testing "Origins without protocol should accept only http and https"
     (let [approved "example.com"]
       (is (mw.security/approved-origin? "http://example.com" approved))

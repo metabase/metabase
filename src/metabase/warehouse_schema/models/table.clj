@@ -692,7 +692,8 @@
                   :collection-type     :collection.type
                   :collection-location :collection.location
                   :root-collection-type {:fn collection/root-collection-type}
-                  :data-layer          :data_layer}
+                  :data-layer          :data_layer
+                  :data-authority      :data_authority}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}

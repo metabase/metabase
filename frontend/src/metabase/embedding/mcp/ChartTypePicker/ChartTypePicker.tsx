@@ -24,7 +24,7 @@ export function ChartTypePicker({
       h={32}
       align="center"
       gap="xs"
-      bg="background-secondary"
+      bg="background_page-secondary"
       px="xs"
       bdrs="md"
     >
@@ -34,7 +34,7 @@ export function ChartTypePicker({
           key={type}
           size={24}
           variant={value === type ? "filled" : "subtle"}
-          bg={value === type ? "background-primary" : undefined}
+          bg={value === type ? "background_page-primary" : undefined}
           onClick={() => onChange(type)}
           aria-label={type}
           className={value === type ? S.selected : undefined}

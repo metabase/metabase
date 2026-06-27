@@ -158,7 +158,7 @@ const TableSectionBase = ({
         pos="sticky"
         pt="lg"
         top={0}
-        bg="background-secondary"
+        bg="background_page-secondary"
       >
         {withName && (
           <NameDescriptionInput

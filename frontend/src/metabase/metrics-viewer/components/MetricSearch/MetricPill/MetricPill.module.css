@@ -1,5 +1,5 @@
 .metricPill {
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--default-border-radius);
   cursor: pointer;
@@ -7,7 +7,7 @@
 }
 
 .metricPill:hover {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .metricPillText {

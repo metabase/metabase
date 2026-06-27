@@ -11,18 +11,18 @@
   border-radius: var(--mantine-radius-md);
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
     cursor: pointer;
   }
 
   &:focus-within {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 }
 
 .selected {
   color: var(--mb-color-core-brand);
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 .title {
