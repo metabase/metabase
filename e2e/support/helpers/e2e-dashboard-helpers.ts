@@ -104,7 +104,7 @@ export function editDashboard() {
 }
 
 export function saveDashboard({
-  waitMs = 1,
+  waitMs,
   awaitRequest = true,
 }: { waitMs?: number; awaitRequest?: boolean } = {}) {
   cy.intercept("PUT", "/api/dashboard/*").as(
@@ -125,7 +125,13 @@ export function saveDashboard({
   }
 
   cy.findByTestId("edit-bar").should("not.exist");
-  cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
+  // Settle on a deterministic signal (all dashcards loaded) instead of sleeping
+  // for a fixed time while the grid resizes and detaches elements. Callers can
+  // still pass waitMs for the rare case that needs extra settle time.
+  waitForDashcardsToLoad();
+  if (waitMs != null) {
+    cy.wait(waitMs);
+  }
 }
 
 export function checkFilterLabelAndValue(label: string, value: string) {
