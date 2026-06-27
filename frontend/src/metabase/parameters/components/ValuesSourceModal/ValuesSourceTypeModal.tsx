@@ -442,7 +442,7 @@ const ColumnSelect = ({
   onChange,
 }: ColumnSelectProps) => {
   const selectedIndex =
-    selectedColumn != null ? columns.indexOf(selectedColumn) : -1;
+    selectedColumn !== undefined ? columns.indexOf(selectedColumn) : -1;
   const value =
     selectedIndex >= 0
       ? String(selectedIndex)
@@ -452,7 +452,7 @@ const ColumnSelect = ({
 
   const handleChange = (newValue: string | null) => {
     onChange(
-      newValue != null && newValue !== NONE_VALUE
+      newValue !== null && newValue !== NONE_VALUE
         ? columns[Number(newValue)]
         : undefined,
     );
