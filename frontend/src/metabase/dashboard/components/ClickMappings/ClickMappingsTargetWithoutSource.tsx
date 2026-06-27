@@ -33,7 +33,7 @@ export function ClickMappingsTargetWithoutSource({
   };
 
   return (
-    <Menu key={id} position="bottom-start">
+    <Menu key={id} position="bottom-start" width={300}>
       <Menu.Target>
         <Flex
           className={S.TargetTrigger}
@@ -49,7 +49,7 @@ export function ClickMappingsTargetWithoutSource({
       <Menu.Dropdown>
         {Object.entries(sourceOptions).map(([sourceType, items]) => (
           <Fragment key={sourceType}>
-            <Menu.Label>
+            <Menu.Label fw="700" c="brand" tt="uppercase">
               {
                 {
                   parameter: t`Dashboard filters`,
@@ -62,8 +62,10 @@ export function ClickMappingsTargetWithoutSource({
               <Menu.Item
                 key={getKeyForSource(option) ?? "none"}
                 onClick={() => handleSelect(option)}
+                fw="700"
+                pl="lg"
               >
-                {option.type == null ? t`None` : option.name}
+                {option.type === undefined ? t`None` : option.name}
               </Menu.Item>
             ))}
           </Fragment>
