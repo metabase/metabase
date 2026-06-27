@@ -10,7 +10,12 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Menu } from "metabase/ui";
+import {
+  Combobox,
+  DefaultSelectItem,
+  UnstyledButton,
+  useCombobox,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
@@ -24,7 +29,6 @@ import {
   DatabaseLink,
   DatabaseLinkIcon,
   DatabaseLinkText,
-  SchemaTrigger,
   SchemaTriggerIcon,
   SchemaTriggerText,
   SectionBody,
@@ -126,27 +130,49 @@ interface SchemaSelectProps {
 }
 
 const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
+  const combobox = useCombobox();
+
   return (
-    <Menu position="bottom-start">
-      <Menu.Target>
-        <SchemaTrigger>
+    <Combobox
+      store={combobox}
+      position="bottom-start"
+      width={300}
+      onOptionSubmit={(value) => {
+        onChange?.(value);
+        combobox.closeDropdown();
+      }}
+    >
+      <Combobox.Target>
+        <UnstyledButton
+          display="inline-flex"
+          mx="sm"
+          style={{ alignItems: "center", outline: "none" }}
+          onClick={() => combobox.toggleDropdown()}
+        >
           <SchemaTriggerText data-testid="xray-schema-name">
             {schema}
           </SchemaTriggerText>
           <SchemaTriggerIcon name="chevrondown" />
-        </SchemaTrigger>
-      </Menu.Target>
-      <Menu.Dropdown>
-        {schemas.map((schemaOption) => (
-          <Menu.Item
-            key={schemaOption}
-            onClick={() => onChange?.(schemaOption)}
-          >
-            {schemaOption}
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
+        </UnstyledButton>
+      </Combobox.Target>
+      <Combobox.Dropdown>
+        <Combobox.Options>
+          {schemas.map((schemaOption) => (
+            <Combobox.Option
+              key={schemaOption}
+              value={schemaOption}
+              selected={schemaOption === schema}
+              p={0}
+            >
+              <DefaultSelectItem
+                value={schemaOption}
+                selected={schemaOption === schema}
+              />
+            </Combobox.Option>
+          ))}
+        </Combobox.Options>
+      </Combobox.Dropdown>
+    </Combobox>
   );
 };
 
