@@ -344,13 +344,11 @@
          sort)))
 
 (defn- related-tables
-  "Context about tables related to `query` via a foreign key, as the entity-detail result keys callers merge in.
-
-  Each distinct FK path (a `[table-id fk-field-id]` pair) is a separate related table, so the same table reachable
-  through multiple foreign keys appears once per FK. We surface up to [[max-related-tables]] of them; only the
-  first [[max-related-tables-with-fields]] carry their column set to keep memory usage bounded (metabase#76493).
-
-  Returns nil when the query has no FK-related tables, otherwise a map:
+  "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
+  Creates separate entries for each FK path when the same table is reachable through multiple foreign keys. We surface
+  up to [[max-related-tables]] FK paths; only the first [[max-related-tables-with-fields]] carry their column set to
+  keep memory usage bounded (metabase#76493), even when `with-fields?` is true. Returns nil when the query has no
+  FK-related tables, otherwise a map:
 
     :related_tables                vector of related-table maps, one per FK path. When `with-fields?` is true they
                                    carry their column set and the list is capped at [[max-related-tables-with-fields]];
