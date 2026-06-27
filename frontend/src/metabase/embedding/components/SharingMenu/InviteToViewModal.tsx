@@ -1,9 +1,11 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { UserForm } from "metabase/admin/people/forms/UserForm";
+import { trackInviteToViewOpened, trackUserInvited } from "metabase/analytics";
 import { useCreateUserMutation } from "metabase/api";
+import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useSetting, useToast } from "metabase/common/hooks";
@@ -16,6 +18,7 @@ import type { InviteTarget, User } from "metabase-types/api";
 interface InviteToViewModalProps {
   title: string;
   shareUrl: string;
+  triggeredFrom: "dashboard" | "question";
   inviteTarget?: InviteTarget;
   onClose: () => void;
 }
@@ -23,6 +26,7 @@ interface InviteToViewModalProps {
 export const InviteToViewModal = ({
   title,
   shareUrl,
+  triggeredFrom,
   inviteTarget,
   onClose,
 }: InviteToViewModalProps) => {
@@ -40,16 +44,43 @@ export const InviteToViewModal = ({
     tmpPassword: string;
   } | null>(null);
 
-  const createInvitedUser = (values: Partial<User>, password?: string) =>
-    createUser({
-      ...values,
-      email: values.email ?? "",
-      first_name: values.first_name ?? undefined,
-      last_name: values.last_name ?? undefined,
-      login_attributes: values.login_attributes || undefined,
-      ...(password ? { password } : {}),
-      ...(inviteTarget ? { invite_target: inviteTarget } : {}),
-    }).unwrap();
+  const targetId = inviteTarget?.id ?? null;
+
+  useEffect(() => {
+    trackInviteToViewOpened({ triggeredFrom, targetId });
+  }, [triggeredFrom, targetId]);
+
+  const createInvitedUser = async (
+    values: Partial<User>,
+    password?: string,
+  ) => {
+    try {
+      const user = await createUser({
+        ...values,
+        email: values.email ?? "",
+        first_name: values.first_name ?? undefined,
+        last_name: values.last_name ?? undefined,
+        login_attributes: values.login_attributes || undefined,
+        ...(password ? { password } : {}),
+        ...(inviteTarget ? { invite_target: inviteTarget } : {}),
+      }).unwrap();
+      trackUserInvited({
+        triggeredFrom,
+        targetId,
+        result: "success",
+        eventDetail: "new_user",
+      });
+      return user;
+    } catch (error) {
+      trackUserInvited({
+        triggeredFrom,
+        targetId,
+        result: "failure",
+        eventDetail: isEmailAlreadyInUse(error) ? "existing_user" : null,
+      });
+      throw error;
+    }
+  };
 
   const inviteByEmail = async (values: Partial<User>) => {
     await createInvitedUser(values);

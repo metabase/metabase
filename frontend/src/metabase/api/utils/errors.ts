@@ -41,6 +41,16 @@ export const getErrorMessage = (
   return fallback;
 };
 
+// The createUser endpoint rejects a duplicate email with a 400 carrying an
+// `errors.email` message. The text is localized, so match on shape, not wording.
+export const isEmailAlreadyInUse = (error: unknown): boolean => {
+  const e = error as {
+    status?: number;
+    data?: { errors?: { email?: unknown } };
+  };
+  return e?.status === 400 && typeof e?.data?.errors?.email === "string";
+};
+
 function isEmpty(value: unknown): boolean {
   return value == null || value === "";
 }

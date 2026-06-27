@@ -1,8 +1,10 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
+import { trackUserInvited } from "metabase/analytics";
 import { setupApi, userApi } from "metabase/api";
 import { loadLocalization } from "metabase/api/localization";
+import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createDatabase } from "metabase/redux/databases";
 import {
@@ -176,8 +178,20 @@ export const submitUserInvite = createAsyncThunk(
           source: "setup",
         }),
       ).unwrap();
+      trackUserInvited({
+        triggeredFrom: "setup",
+        targetId: null,
+        result: "success",
+        eventDetail: "new_user",
+      });
       dispatch(goToNextStep());
     } catch (error) {
+      trackUserInvited({
+        triggeredFrom: "setup",
+        targetId: null,
+        result: "failure",
+        eventDetail: isEmailAlreadyInUse(error) ? "existing_user" : null,
+      });
       return rejectWithValue(error);
     }
   },

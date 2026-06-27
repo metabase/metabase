@@ -4,6 +4,7 @@ import type { InviteInfo, State } from "metabase/redux/store";
 
 import { submitUserInvite } from "./actions";
 
+const { trackUserInvited } = jest.requireMock("metabase/analytics");
 const mockCreateUser = jest.fn();
 userApi.endpoints.createUser.initiate = mockCreateUser;
 
@@ -49,6 +50,22 @@ describe("submitUserInvite", () => {
       first_name: undefined,
       last_name: undefined,
       source: "setup",
+    });
+  });
+
+  it("tracks user_invited from setup when the create succeeds", async () => {
+    (dispatch as unknown as jest.Mock).mockReturnValue({
+      unwrap: () => Promise.resolve(),
+    });
+
+    const thunk = submitUserInvite(mockInviteInfo);
+    await thunk(dispatch, getState, undefined);
+
+    expect(trackUserInvited).toHaveBeenCalledWith({
+      triggeredFrom: "setup",
+      targetId: null,
+      result: "success",
+      eventDetail: "new_user",
     });
   });
 });

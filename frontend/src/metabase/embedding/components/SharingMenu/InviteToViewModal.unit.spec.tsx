@@ -9,6 +9,11 @@ import { createMockGroup, createMockUser } from "metabase-types/api/mocks";
 
 import { InviteToViewModal } from "./InviteToViewModal";
 
+// metabase/analytics is auto-mocked globally (frontend/test/__support__/mocks.js),
+// so the trackers are jest.fns we can assert on.
+const { trackUserInvited, trackInviteToViewOpened } =
+  jest.requireMock("metabase/analytics");
+
 const GROUPS = [
   createMockGroup({ id: 1, magic_group_type: "all-internal-users" }),
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
@@ -67,6 +72,7 @@ const setup = ({
     <InviteToViewModal
       title={title}
       shareUrl={SHARE_URL}
+      triggeredFrom="dashboard"
       inviteTarget={INVITE_TARGET}
       onClose={onClose}
     />,
@@ -84,6 +90,11 @@ const submitInvite = async (email: string) => {
 };
 
 describe("InviteToViewModal", () => {
+  beforeEach(() => {
+    trackUserInvited.mockClear();
+    trackInviteToViewOpened.mockClear();
+  });
+
   it("renders the provided title", async () => {
     setup({ title: "Invite someone to view this question" });
 
@@ -174,5 +185,53 @@ describe("InviteToViewModal", () => {
       await (call.options?.body as unknown as Promise<string>),
     );
     expect(body.invite_target).toEqual(INVITE_TARGET);
+  });
+
+  it("tracks invite_to_view_opened when the modal opens", () => {
+    setup();
+
+    expect(trackInviteToViewOpened).toHaveBeenCalledWith({
+      triggeredFrom: "dashboard",
+      targetId: 1,
+    });
+  });
+
+  it("tracks user_invited success/new_user on a successful invite", async () => {
+    const { onClose } = setup({ emailConfigured: true });
+
+    await submitInvite("newbie@metabase.com");
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+    expect(trackUserInvited).toHaveBeenCalledWith({
+      triggeredFrom: "dashboard",
+      targetId: 1,
+      result: "success",
+      eventDetail: "new_user",
+    });
+  });
+
+  it("tracks user_invited failure/existing_user when the email is already in use", async () => {
+    setup({ createError: true });
+
+    await submitInvite("taken@metabase.com");
+    await screen.findByText("Email address already in use.");
+
+    expect(trackUserInvited).toHaveBeenCalledWith({
+      triggeredFrom: "dashboard",
+      targetId: 1,
+      result: "failure",
+      eventDetail: "existing_user",
+    });
+  });
+
+  it("never sends the invitee email to analytics", async () => {
+    const { onClose } = setup({ emailConfigured: true });
+
+    await submitInvite("newbie@metabase.com");
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+    expect(JSON.stringify(trackUserInvited.mock.calls)).not.toContain(
+      "newbie@metabase.com",
+    );
   });
 });
