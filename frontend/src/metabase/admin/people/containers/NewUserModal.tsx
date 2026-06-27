@@ -42,8 +42,7 @@ export const NewUserModal = ({
         ...(password ? { password } : {}),
       }).unwrap();
 
-      // Tenant ("external") creates don't send an invite email, so they're
-      // not tracked as invites.
+      // External (tenant) creates send no invite email, so skip tracking.
       if (!external) {
         trackUserInvited({
           triggeredFrom: "admin",
