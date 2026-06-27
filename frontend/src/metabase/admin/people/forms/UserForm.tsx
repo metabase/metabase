@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { MembershipSelect } from "metabase/admin/people/components/MembershipSelect";
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
+import { GroupsMultiSelect } from "metabase/admin/people/components/GroupsMultiSelect";
+import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { FormField } from "metabase/common/components/FormField";
 import { FormFooter } from "metabase/common/components/FormFooter";
@@ -22,7 +22,7 @@ import {
 } from "metabase/plugins";
 import { Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import type { GroupId, Member, User, UserId } from "metabase-types/api";
+import type { GroupId, User, UserId } from "metabase-types/api";
 
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
@@ -57,81 +57,42 @@ const FormGroupsWidget = ({
     return null;
   }
 
-  const adminGroup = _.find(groups, isAdminGroup);
   const defaultGroup = _.find(
     groups,
     external ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
   );
 
-  const value = formValue ?? [
-    { id: defaultGroup?.id, is_group_manager: false },
-  ];
+  const memberships =
+    formValue ??
+    (defaultGroup ? [{ id: defaultGroup.id, is_group_manager: false }] : []);
 
-  const memberships = value.reduce((acc, { id, ...membershipData }) => {
-    if (id != null) {
-      acc.set(id, membershipData);
-    }
-    return acc;
-  }, new Map());
+  // Preserve each group's manager flag across selection changes.
+  const managerFlagByGroupId = new Map(
+    memberships.map((membership) => [
+      membership.id,
+      membership.is_group_manager ?? false,
+    ]),
+  );
 
-  const isUserAdmin = memberships.has(adminGroup?.id);
+  const handleChange = (groupIds: GroupId[]) => {
+    const ids = defaultGroup
+      ? Array.from(new Set([defaultGroup.id, ...groupIds]))
+      : groupIds;
 
-  const handleAdd = (groupId: GroupId, membershipData: Partial<Member>) => {
-    const updatedValue = Array.from(memberships.entries()).map(
-      ([id, membershipData]) => {
-        return {
-          id,
-          ...membershipData,
-        };
-      },
+    setValue(
+      ids.map((id) => ({
+        id,
+        is_group_manager: managerFlagByGroupId.get(id) ?? false,
+      })),
     );
-
-    updatedValue.push({ id: groupId, ...membershipData });
-    setValue(updatedValue);
-  };
-
-  const handleRemove = (groupId: GroupId) => {
-    const updatedValue = Array.from(memberships.entries())
-      .map(([id, membershipData]) => {
-        if (id === groupId) {
-          return null;
-        }
-
-        return {
-          id,
-          ...membershipData,
-        };
-      })
-      .filter(Boolean);
-
-    setValue(updatedValue);
-  };
-  const handleChange = (
-    groupId: GroupId,
-    newMembershipData: Partial<Member>,
-  ) => {
-    const updatedValue = Array.from(memberships.entries()).map(
-      ([id, membershipData]) => {
-        const data = groupId === id ? newMembershipData : membershipData;
-        return {
-          id,
-          ...data,
-        };
-      },
-    );
-
-    setValue(updatedValue);
   };
 
   return (
     <FormField className={className} style={style} title={title}>
-      <MembershipSelect
+      <GroupsMultiSelect
         groups={groups}
-        memberships={memberships}
-        onAdd={handleAdd}
-        onRemove={handleRemove}
+        value={memberships.map((membership) => membership.id)}
         onChange={handleChange}
-        isUserAdmin={isUserAdmin}
       />
     </FormField>
   );

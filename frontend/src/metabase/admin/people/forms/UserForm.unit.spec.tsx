@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Tenant } from "metabase-types/api";
 import {
@@ -105,7 +105,9 @@ describe("UserForm", () => {
       // This isn't a proper form input, so we need to grab the label specifically,
       // And can ensure the proper default group is applied
       expect(await screen.findByText("Groups")).toBeInTheDocument();
-      expect(await screen.findByText("foo")).toBeInTheDocument();
+      expect(
+        within(await screen.findByRole("list")).getByText("foo"),
+      ).toBeInTheDocument();
 
       expect(screen.queryByText("Attributes")).not.toBeInTheDocument();
     });
@@ -120,18 +122,13 @@ describe("UserForm", () => {
     it("should allow you to add groups", async () => {
       const { onSubmit } = setup();
 
-      await userEvent.click(await screen.findByText("foo"));
-      await userEvent.click(await screen.findByText("Administrators"));
-
-      expect(
-        await screen.findByRole("generic", { name: "group-summary" }),
-      ).toHaveTextContent("Admin and 1 other group");
-
-      await userEvent.click(await screen.findByText("bar"));
-
-      expect(
-        await screen.findByRole("generic", { name: "group-summary" }),
-      ).toHaveTextContent("Admin and 2 other groups");
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Administrators" }),
+      );
+      await userEvent.click(await screen.findByRole("option", { name: "bar" }));
 
       expect(
         await screen.findByRole("button", { name: "Update" }),
@@ -146,22 +143,10 @@ describe("UserForm", () => {
           {
             ...USER,
             user_group_memberships: [
-              {
-                id: 1,
-                is_group_manager: false,
-              },
-              {
-                id: 3,
-                is_group_manager: false,
-              },
-              {
-                id: 2,
-                is_group_manager: false,
-              },
-              {
-                id: 4,
-                is_group_manager: false,
-              },
+              { id: 1, is_group_manager: false },
+              { id: 3, is_group_manager: false },
+              { id: 2, is_group_manager: false },
+              { id: 4, is_group_manager: false },
             ],
           },
           expect.anything(),
@@ -169,17 +154,13 @@ describe("UserForm", () => {
       });
     });
 
-    it("should allow you to remove a group", async () => {
+    it("should allow you to remove a non-default group", async () => {
       const { onSubmit } = setup();
 
-      await userEvent.click(await screen.findByText("foo"));
+      // foo (id 3) is the only removable selected group; All Users is locked.
       await userEvent.click(
-        await screen.findByRole("listitem", { name: "foo" }),
+        await screen.findByRole("button", { name: "Remove" }),
       );
-
-      expect(
-        await screen.findByRole("generic", { name: "group-summary" }),
-      ).toHaveTextContent("Default");
 
       await userEvent.click(
         await screen.findByRole("button", { name: "Update" }),
@@ -189,16 +170,22 @@ describe("UserForm", () => {
         expect(onSubmit).toHaveBeenCalledWith(
           {
             ...USER,
-            user_group_memberships: [
-              {
-                id: 1,
-                is_group_manager: false,
-              },
-            ],
+            user_group_memberships: [{ id: 1, is_group_manager: false }],
           },
           expect.anything(),
         );
       });
+    });
+
+    it("keeps the default group locked and non-removable", async () => {
+      setup();
+
+      // All Users renders as a pill...
+      expect(
+        within(await screen.findByRole("list")).getByText("All Users"),
+      ).toBeInTheDocument();
+      // ...but without a remove control, so only foo (non-default) is removable.
+      expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(1);
     });
   });
 
