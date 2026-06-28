@@ -441,21 +441,18 @@ const ColumnSelect = ({
   withNoneOption,
   onChange,
 }: ColumnSelectProps) => {
-  const selectedIndex =
-    selectedColumn !== undefined ? columns.indexOf(selectedColumn) : -1;
-  const value =
-    selectedIndex >= 0
-      ? String(selectedIndex)
-      : withNoneOption
-        ? NONE_VALUE
-        : null;
+  const value = (() => {
+    const selectedIndex =
+      selectedColumn !== undefined ? columns.indexOf(selectedColumn) : -1;
+    if (selectedIndex >= 0) {
+      return String(selectedIndex);
+    }
+    return withNoneOption ? NONE_VALUE : null;
+  })();
 
   const handleChange = (newValue: string | null) => {
-    onChange(
-      newValue !== null && newValue !== NONE_VALUE
-        ? columns[Number(newValue)]
-        : undefined,
-    );
+    const isColumnSelected = newValue !== null && newValue !== NONE_VALUE;
+    onChange(isColumnSelected ? columns[Number(newValue)] : undefined);
   };
 
   return (
