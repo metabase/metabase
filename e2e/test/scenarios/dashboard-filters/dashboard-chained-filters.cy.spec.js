@@ -271,7 +271,7 @@ describe("scenarios > dashboard > chained filter", () => {
               .parent()
               .findByText("ID")
               .click();
-            H.menu().findByText("UUID").should("be.visible");
+            cy.findByRole("listbox").findByText("UUID").should("be.visible");
           });
         });
       });

@@ -258,7 +258,7 @@ describe("issue 51020", () => {
       cy.findByText("Update a dashboard filter").click();
       cy.findByTestId("click-target-column").click();
     });
-    H.menu().findByText(columnName).click();
+    cy.findByRole("listbox").findByText(columnName).click();
     cy.button("Done").click();
 
     cy.findByLabelText("Add action").click();
