@@ -8,7 +8,7 @@ export type FileDependency = { source: string; dependencies: string[] };
 /**
  * Compiles a glob pattern to an anchored RegExp.
  */
-export function globToRegex(glob: string): RegExp {
+function globToRegex(glob: string): RegExp {
   const escapeSegment = (seg: string) =>
     seg.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*");
   const body = glob.split("**").map(escapeSegment).join(".*");
@@ -88,7 +88,7 @@ export function buildFileGraph(
   return { nodes: buildNodes(elements), fileDependents };
 }
 
-// Changed files plus every file that transitively imports them.
+/** Changed files plus every file that transitively imports them. */
 export function getAffectedFiles(
   fileGraph: FileGraph,
   changedFiles: string[],
@@ -107,26 +107,86 @@ export function getAffectedFiles(
   return affected;
 }
 
-/** Get affected files then collapse them to their modules. */
-export function getAffectedModulesFromFiles(
-  fileGraph: FileGraph,
-  changedFiles: string[],
-): Set<string> {
-  const affectedFiles = getAffectedFiles(fileGraph, changedFiles);
-  const modules = new Set<string>();
-  for (const file of affectedFiles) {
-    const module = mapFileToModule(fileGraph.nodes, file);
-    if (module) {
-      modules.add(module);
-    }
-  }
-  return modules;
-}
-
 export type ModuleGraph = {
   nodes: ModuleNode[];
+  /**
+   * dependents.get(M) is every module affected when M changes — the full
+   * transitive closure, so getAffectedModules only needs a single hop.
+   */
   dependents: Map<string, Set<string>>;
 };
+
+/** Expands a direct-dependents map into its transitive closure. */
+function transitiveClosure(
+  direct: Map<string, Set<string>>,
+): Map<string, Set<string>> {
+  const closure = new Map<string, Set<string>>();
+  for (const start of direct.keys()) {
+    const reached = new Set<string>();
+    const queue = [...(direct.get(start) ?? [])];
+    while (queue.length > 0) {
+      const node = queue.shift()!;
+      if (reached.has(node)) {
+        continue;
+      }
+      reached.add(node);
+      for (const next of direct.get(node) ?? []) {
+        queue.push(next);
+      }
+    }
+    reached.delete(start);
+    closure.set(start, reached);
+  }
+  return closure;
+}
+
+/**
+ * Builds a module graph from the actual import graph. Reachability is computed
+ * per module at the file level and then collapsed to modules.
+ */
+export function buildUsageModuleGraph(
+  elements: ModuleDef[],
+  fileDependencies: FileDependency[],
+): ModuleGraph {
+  const nodes = buildNodes(elements);
+  const fileGraph = buildFileGraph(elements, fileDependencies);
+
+  const filesByModule = new Map<string, string[]>();
+  const allFiles = new Set<string>();
+  for (const { source, dependencies } of fileDependencies) {
+    allFiles.add(source);
+    for (const target of dependencies) {
+      allFiles.add(target);
+    }
+  }
+  for (const file of allFiles) {
+    const module = mapFileToModule(nodes, file);
+    if (module) {
+      const files = filesByModule.get(module);
+      if (files) {
+        files.push(file);
+      } else {
+        filesByModule.set(module, [file]);
+      }
+    }
+  }
+
+  const dependents = new Map<string, Set<string>>(
+    elements.map((el) => [el.type, new Set()]),
+  );
+  for (const [module, files] of filesByModule) {
+    const affected = new Set<string>();
+    for (const file of getAffectedFiles(fileGraph, files)) {
+      const owner = mapFileToModule(nodes, file);
+      if (owner && owner !== module) {
+        affected.add(owner);
+      }
+    }
+    dependents.set(module, affected);
+  }
+
+  return { nodes, dependents };
+}
 
 export function buildModuleGraph(
   elements: ModuleDef[],
@@ -146,9 +206,7 @@ export function buildModuleGraph(
     return allTypes.includes(pattern) ? [pattern] : [];
   }
 
-  // dependents.get(M) is the set of modules that depend on M
-  // i.e. modules that are affected when M changes
-  const dependents = new Map<string, Set<string>>(
+  const directDependents = new Map<string, Set<string>>(
     allTypes.map((type) => [type, new Set()]),
   );
   for (const rule of rules) {
@@ -157,13 +215,13 @@ export function buildModuleGraph(
     for (const target of allowTypes) {
       for (const importer of fromTypes) {
         if (importer !== target) {
-          dependents.get(target)?.add(importer);
+          directDependents.get(target)?.add(importer);
         }
       }
     }
   }
 
-  return { nodes, dependents };
+  return { nodes, dependents: transitiveClosure(directDependents) };
 }
 
 /**
@@ -173,16 +231,10 @@ export function getAffectedModules(
   moduleGraph: ModuleGraph,
   changedFiles: string[],
 ): Set<string> {
-  const direct = getChangedModules(moduleGraph.nodes, changedFiles);
-  const affected = new Set(direct);
-  const queue = [...direct];
-  while (queue.length > 0) {
-    const module = queue.shift()!;
+  const affected = getChangedModules(moduleGraph.nodes, changedFiles);
+  for (const module of [...affected]) {
     for (const dep of moduleGraph.dependents.get(module) ?? []) {
-      if (!affected.has(dep)) {
-        affected.add(dep);
-        queue.push(dep);
-      }
+      affected.add(dep);
     }
   }
   return affected;

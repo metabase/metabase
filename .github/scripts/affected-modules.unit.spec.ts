@@ -2,9 +2,9 @@ import {
   buildFileGraph,
   buildModuleGraph,
   buildNodes,
+  buildUsageModuleGraph,
   getAffectedFiles,
   getAffectedModules,
-  getAffectedModulesFromFiles,
   getChangedModules,
   mapFileToModule,
   parseCruiseModules,
@@ -101,10 +101,6 @@ describe("affected modules", () => {
     });
   });
 
-  // Hub-merging scenario: app/main contains BOTH an entry point (app.js) that
-  // imports feature/foo AND a widely-imported file (embed.tsx) that feature/bar
-  // imports. A module-level graph would manufacture feature/foo -> app/main ->
-  // feature/bar; walking files first does not, because nothing imports app.js.
   const FILE_DEPS = [
     { source: "src/app.js", dependencies: ["src/foo/foo.tsx"] },
     { source: "src/bar/bar.tsx", dependencies: ["src/embed.tsx"] },
@@ -127,33 +123,35 @@ describe("affected modules", () => {
     });
   });
 
-  describe("getAffectedModulesFromFiles", () => {
-    it("should expand affected files to their owning modules", () => {
+  describe("buildUsageModuleGraph + getAffectedModules", () => {
+    const usageGraph = buildUsageModuleGraph(ELEMENTS, FILE_DEPS);
+
+    it("should expand a changed module to its file-level affected modules", () => {
       expect(
-        [
-          ...getAffectedModulesFromFiles(fileGraph, ["src/utils/colors.ts"]),
-        ].sort(),
+        [...getAffectedModules(usageGraph, ["src/utils/colors.ts"])].sort(),
       ).toEqual(["app/main", "feature/foo", "lib/utils"]);
     });
 
     it("should NOT pull in feature/bar via the app/main hub", () => {
-      // The bug a module-level graph has: feature/bar imports embed.tsx (app/main)
-      // and app.js (app/main) imports feature/foo, but those are different files.
-      const affected = getAffectedModulesFromFiles(fileGraph, [
-        "src/foo/foo.tsx",
-      ]);
+      const affected = getAffectedModules(usageGraph, ["src/foo/foo.tsx"]);
       expect([...affected].sort()).toEqual(["app/main", "feature/foo"]);
       expect(affected.has("feature/bar")).toBe(false);
     });
 
+    it("should treat the whole changed module as changed", () => {
+      // app.js itself has no importers, but app/main also owns embed.tsx, which
+      // feature/bar imports so changing any app/main file flags feature/bar.
+      expect(
+        [...getAffectedModules(usageGraph, ["src/app.js"])].sort(),
+      ).toEqual(["app/main", "feature/bar"]);
+    });
+
     it("should return empty when no file maps to a module", () => {
-      expect(getAffectedModulesFromFiles(fileGraph, ["docs/foo.md"]).size).toBe(
-        0,
-      );
+      expect(getAffectedModules(usageGraph, ["docs/foo.md"]).size).toBe(0);
     });
   });
 
-  describe("getAffectedModules (rules-graph fallback)", () => {
+  describe("getAffectedModules (rules graph)", () => {
     it("should affect feature/super and app/main but not feature/bar when feature/foo changes", () => {
       const result = getAffectedModules(graph, ["src/foo/x.ts"]);
       expect([...result].sort()).toEqual([

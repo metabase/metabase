@@ -5,11 +5,9 @@ import {
   type ModuleDef,
   type ModuleNode,
   type Rule,
-  buildFileGraph,
   buildModuleGraph,
-  buildNodes,
+  buildUsageModuleGraph,
   getAffectedModules,
-  getAffectedModulesFromFiles,
   getChangedModules,
   mapFileToModule,
 } from "./affected-modules";
@@ -76,19 +74,15 @@ export function createTestPlan({
   feFilesChanged,
   beFilesChanged,
 }: CreateTestPlanInput): TestPlan {
-  const nodes = buildNodes(elements);
-  const changedModules = getChangedModules(nodes, changedFiles);
+  const rulesGraph = buildModuleGraph(elements, rules);
+  const usageGraph = fileDependencies
+    ? buildUsageModuleGraph(elements, fileDependencies)
+    : rulesGraph;
 
-  const rulesAffected = getAffectedModules(
-    buildModuleGraph(elements, rules),
-    changedFiles,
-  );
-  const usageAffected = fileDependencies
-    ? getAffectedModulesFromFiles(
-        buildFileGraph(elements, fileDependencies),
-        changedFiles,
-      )
-    : rulesAffected;
+  const nodes = rulesGraph.nodes;
+  const changedModules = getChangedModules(nodes, changedFiles);
+  const rulesAffected = getAffectedModules(rulesGraph, changedFiles);
+  const usageAffected = getAffectedModules(usageGraph, changedFiles);
 
   // cljc/cljs compile into the FE bundle, so they force a full run that module
   // selection can't narrow — same effect as a suite's own infra changing.
