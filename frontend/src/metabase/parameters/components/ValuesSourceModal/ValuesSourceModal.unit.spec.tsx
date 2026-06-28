@@ -424,7 +424,9 @@ describe("ValuesSourceModal", () => {
           ],
         });
 
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+        expect(screen.getByRole("textbox", { name: "Values" })).toHaveValue(
+          "A\nB\nC",
+        );
       });
 
       it("should display a message when the user has no access to the card", async () => {
@@ -526,7 +528,9 @@ describe("ValuesSourceModal", () => {
             }),
           ],
         });
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
+        expect(screen.getByRole("textbox", { name: "Values" })).toHaveValue(
+          "A\nB\nC",
+        );
 
         await userEvent.click(
           screen.getByRole("radio", { name: "Custom list" }),
