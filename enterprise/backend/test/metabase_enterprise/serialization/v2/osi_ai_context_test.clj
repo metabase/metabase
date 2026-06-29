@@ -177,6 +177,30 @@
         ;; reinsert minted a new local id with the same entity_id; reap by entity_id so it doesn't leak.
         (t2/delete! :model/OsiAiContext :entity_id local-eid)))))
 
+(deftest import-repoints-onto-an-already-owned-entity-test
+  (testing "re-pointing onto an entity another row already owns updates that row in place (no unique-constraint abort)"
+    ;; X is matched by entity_id and re-resolves to Card B, but Y already owns (card, B). Blindly reinserting
+    ;; X's data would violate uq_osi_ai_context_entity; instead the stale X is deleted and Y is updated in place.
+    (mt/with-temp [:model/Card {card-a :id} {}
+                   :model/Card {card-b :id card-b-eid :entity_id} {}
+                   :model/OsiAiContext {x-id :id x-eid :entity_id}
+                   {:ai_context {:instructions "X, bound to A"} :entity_type "card" :entity_local_id card-a}
+                   :model/OsiAiContext {_y-id :id _y-eid :entity_id}
+                   {:ai_context {:instructions "Y, bound to B"} :entity_type "card" :entity_local_id card-b}]
+      ;; an incoming export of X (its entity_id) whose portable ref now points at Card B
+      (let [extracted (-> (ts/extract-one "OsiAiContext" x-id)
+                          (assoc :entity_local_id card-b-eid)
+                          (assoc :ai_context {:instructions "merged onto B"}))]
+        (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+        (testing "exactly one row for Card B, updated in place with X's incoming data"
+          (is (= 1 (t2/count :model/OsiAiContext :entity_type "card" :entity_local_id card-b)))
+          (is (=? {:entity_type "card" :entity_local_id card-b
+                   :entity_id x-eid :ai_context {:instructions "merged onto B"}}
+                  (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-b))))
+        (testing "Card A's row (the stale matched row) is gone"
+          (is (nil? (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-a))))
+        (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-b)))))
+
 (deftest disk-export-import-round-trip-test
   (testing "OsiAiContext survives a real on-disk export/import"
     ;; The in-memory tests above skip two layers that have silently dropped the model before:
