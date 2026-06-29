@@ -1,54 +1,20 @@
 # ci-conductor reporting
 
-Shared module for reporting test failures to **ci-conductor** (`/webhooks/failed-tests`).
+Reports test failures to ci-conductor's `/webhooks/failed-tests` webhook.
 
-Today the same transport/identity/contract code is duplicated across the backend,
-e2e, and (soon) frontend test suites. This package consolidates it behind an
-**adapter pattern**:
+A per-suite adapter normalizes that suite's source data into a shared
+`NormalizedTest` shape, which the core POSTs. The backend (hawk JUnit) adapter
+is the one that exists.
 
-```
-normalizer  = (source data) → NormalizedTest[]          // per-suite, source-specific
-core        = NormalizedTest[] → report / quarantine     // shared, one copy
-```
-
-The suites legitimately differ in **what** they collect and **when**, but the
-payload POSTed to ci-conductor **must be identical in shape**. So each suite has
-a `normalize*` function that produces `NormalizedTest[]`, and both downstream
-consumers — `reportTestFailures` (the POST) and, later,
-`checkFailuresAgainstQuarantine` (the gate) — read that same shape, so the report
-path and the quarantine path can never disagree on a test's identity.
-
-## Layout
-
-```
-src/
-├── contract.ts        the NormalizedTest shape (the agreement both report and
-│                      quarantine read). Types only for now; runtime validation
-│                      is a close follow-up.
-├── transport.ts       reportTestFailures() — resolves the run-level context
-│                      (repo/run/job/sha/branch) and POSTs /webhooks/failed-tests
-│                      (quarantine fetch/gate joins this later)
-├── util.ts            toNumber() / log()
-├── junit.ts           parseJunit(): shared JUnit XML parser (backend + frontend)
-├── report-backend.ts  backend entrypoint (bun src/report-backend.ts)
-└── adapters/
-    └── backend.ts     normalizeBackendJunit(): hawk JUnit → NormalizedTest[]
-```
-
-Adapters are named by **suite**, not format — both backend and frontend are
-JUnit, so the parser (`junit.ts`) is shared and each adapter owns only its own
-file discovery + field mapping. The **jest** (frontend) and **cypress** (e2e)
-adapters (`normalizeFrontendJunit` in `adapters/frontend.ts` reusing `junit.ts`;
-`normalizeCypressFailure` in `adapters/cypress.ts`, not JUnit) land in later
-rounds (DEV-2247 and the e2e port), reusing this same core.
+Plain TypeScript, run directly with `bun` — no build step.
 
 ## Run
 
 ```bash
 bun src/report-backend.ts   # parse target/junit and POST failures
-bun test                  # unit tests
-bun run type-check        # tsc --noEmit
+bun test                    # unit tests
+bun run type-check          # tsc --noEmit
 ```
 
-No build step — these are plain TS files run directly with `bun`. The reporter
-no-ops unless `CI_CONDUCTOR_BASE_URL` is set, so it's safe to run locally.
+The reporter no-ops unless `CI_CONDUCTOR_BASE_URL` is set, so it's safe to run
+locally.
