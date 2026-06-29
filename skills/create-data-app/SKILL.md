@@ -106,7 +106,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
      [ -f "$ENV_FILE" ] || cp .env.local.example "$ENV_FILE"
      # Source inside a subshell so the vars never leak into your environment.
      ( source "$ENV_FILE" 2>/dev/null
-       [ -n "$DATA_APP_MB_URL" ] && [ -n "$DATA_APP_MB_API_KEY" ] &&
+       [ -n "$DATA_APP_MB_URL" ] && [ "$DATA_APP_MB_URL" != "mb_replace_me" ] &&
        [ -n "$DATA_APP_MB_API_KEY" ] && [ "$DATA_APP_MB_API_KEY" != "mb_replace_me" ]
      ) && echo "creds present" || echo "MISSING"
    fi
@@ -114,7 +114,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 
    If it prints `MISSING`, **ask the user to fill `DATA_APP_MB_URL` (the running Metabase instance) and `DATA_APP_MB_API_KEY` (Admin → Authentication → API keys) in `<repo>/.env.local` themselves** — up front, before anything needs the key.
 
-   > **Never ask the user to paste the API key into the chat, and never `cat` / `echo` / print `.env.local` or its variables.** It's git-ignored and may hold *other* secrets — the file's contents and the key must never enter the conversation or your context. Every command that needs the key `source`s the file (as above) so the shell uses the value directly; you only ever see the `creds present` / `MISSING` signal, never the secret itself. (`creds present` only means both vars are non-empty — not that the URL or key are valid; a bad key surfaces later when a request fails.)
+   > **Never ask the user to paste the API key into the chat, and never `cat` / `echo` / print `.env.local` or its variables.** It's git-ignored and may hold *other* secrets — the file's contents and the key must never enter the conversation or your context. Every command that needs the key `source`s the file (as above) so the shell uses the value directly; you only ever see the `creds present` / `MISSING` signal, never the secret itself. (`creds present` only means both vars are filled and not the default `mb_replace_me` placeholder — not that the URL or key are valid; a bad key surfaces later when a request fails.)
 5. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone).
 6. **Fix the app's `.gitignore` so the lockfile *and* the built bundle get committed.** Two things must end up tracked in the remote-sync repo:
    - **Lockfile** — strip the lockfile-ignoring block (the chunk between `# Lockfiles —` and `bun.lockb`, covering `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock` / `bun.lockb`) so the project commits its lockfile for reproducible installs.
@@ -176,6 +176,8 @@ Replace `src/App.tsx`'s starter content with the screens the user described. **S
 **Do not modify `src/index.tsx`, `src/dev.tsx`, `vite.config.ts`, `config/data-app-bundle.ts`, `config/sandbox-dev-plugin.ts`, `tsconfig.json`, or `index.html` unless the change is genuinely required.** They encode the bundle contract with the host (factory shape, externals, document shell) and the dev sandbox harness. Tweaks here drift the dev preview from production — the iframe doesn't read your `index.html`, the host serves a byte-for-byte template — and silently break things like drill popups and routing.
 
 **After every meaningful round of edits, run `npm run typecheck`.** It runs `tsc --noEmit` over `src/` and `vite.config.ts` — catches wrong prop shapes against the SDK types, broken refactors, missing imports, etc. The Vite dev server does NOT typecheck (it only transpiles), so errors that would fail a production CI run can sit invisibly in a passing `npm run dev` session. Run it before declaring a task complete.
+
+**Before handoff, re-check package hygiene.** `@metabase/embedding-sdk-react` should use the expected data-app SDK source/tag for the target environment, and `@types/react-datepicker` should not be installed unless the chosen `react-datepicker` version actually needs it.
 
 ## Source conventions
 
@@ -310,14 +312,14 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed re
 
 **Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + SDK components + data hooks + `useAction` + DataAppRouter + `copy`) covers every routine need; anything outside it is intentionally unreachable.
 
-### When to use `useMetabaseQuery` vs a `StaticQuestion` / `InteractiveQuestion`
+### When to use SDK charts vs `useMetabaseQuery`
 
 This is a per-rendering decision, not a project-wide one:
 
-- **`StaticQuestion` / `InteractiveQuestion`** — only when a stock Metabase chart, displayed as-is, IS the deliverable. No custom layout the chart has to integrate with, no derived/aggregated values pulled out, no per-row UI, no bespoke list/grid/card pattern. The SDK widget renders its own chrome and sizing — take it or leave it.
-- **`useMetabaseQuery`** — whenever **any** of the following applies, even slightly: rendering as something other than the saved question's viz type (stat tile, custom table, grid, sparkline, anything bespoke); reading a single value out of the result; driving your own state or other components from the rows; formatting / transforming / grouping rows before display; custom empty/loading/error states; or making the data layout match the bundle's chrome.
+- **`useMetabaseQueryObject` + `StaticQuestion` / `InteractiveQuestion`** — default for ordinary dashboard charts: bar, line, area, row, pie, scalar/smartscalar, gauge, progress, pivot, map, sortable table, and other displays Metabase already renders well. Build the semantic query from generated schema objects, then pass it to the SDK component with the `query` prop, for example `<StaticQuestion query={trendQuery} ... />`.
+- **`useMetabaseQuery`** — use when React genuinely needs row values: extracting KPI numbers, powering custom controls, composing bespoke summary cards, combining multiple queries into one UI element, or rendering a visualization Metabase cannot express.
 
-**Default to `useMetabaseQuery`.** Reach for `StaticQuestion` / `InteractiveQuestion` only when the saved-question chart with its own framing is exactly what the user asked for. The moment they want "something custom" — even subtle, even just "show the count nicely" — switch to the hook.
+Generated dashboards should prefer SDK-rendered charts. Do not rebuild normal bar/line/table charts in React just to match app chrome. If you choose `useMetabaseQuery`, keep the row handling typed.
 
 **Always render a spinner (or skeleton) while `isLoading` is `true`** — never an empty slot or stale value, which causes layout shift when the data arrives. Same rule for lifted / derived queries (pass `isLoading` down) and for `useAction`'s `isExecuting` (spinner in the button + `disabled={isExecuting}`).
 
