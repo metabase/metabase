@@ -116,10 +116,12 @@
       mi/json-in))
 
 (t2/deftransforms :model/Transform
-  {:source_type mi/transform-keyword
-   :source      {:out transform-source-out, :in transform-source-in}
-   :target      mi/transform-json
-   :run_trigger mi/transform-keyword})
+  {:source_type        mi/transform-keyword
+   :source             {:out transform-source-out, :in transform-source-in}
+   :target             mi/transform-json
+   ;; nil round-trips as NULL
+   :table_dependencies {:in #(some-> % mi/json-in), :out mi/json-out-with-keywordization}
+   :run_trigger        mi/transform-keyword})
 
 (defmethod collection/allowed-namespaces :model/Transform
   [_]
@@ -160,6 +162,10 @@
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)
              :source_database_id (or source_database_id (transforms-base.i/source-db-id transform)))
+
+      ;; Invalidate cached deps when the source changes
+      (:source (t2/changes transform))
+      (assoc :table_dependencies nil)
 
       target-changed?
       (assoc :target_db_id target-db-id)
@@ -399,7 +405,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value]
+   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)

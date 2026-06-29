@@ -7,11 +7,10 @@ import {
   useToggleReactionMutation,
   useUpdateCommentMutation,
 } from "metabase/api";
+import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
 import { getCommentNodeId } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
-import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
-import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import type {
@@ -31,7 +30,7 @@ export interface DiscussionProps {
   comments: Comment[];
   targetId: EntityId;
   targetType: CommentEntityType;
-  enableHoverHighlight?: boolean;
+  onHoverChange?: (childTargetId: string | undefined) => void;
 }
 
 export const Discussion = ({
@@ -39,10 +38,9 @@ export const Discussion = ({
   comments,
   targetId,
   targetType,
-  enableHoverHighlight = false,
+  onHoverChange,
 }: DiscussionProps) => {
   const currentUser = useSelector(getUser);
-  const dispatch = useDispatch();
   const [, setNewComment] = useState<DocumentContent>();
   const parentCommentId = comments[0].id;
   const [sendToast] = useToast();
@@ -179,15 +177,13 @@ export const Discussion = ({
     handleToggleReaction(comment, emoji, t`Failed to remove reaction`);
 
   const handleMouseEnter = () => {
-    if (enableHoverHighlight && effectiveChildTargetId) {
-      dispatch(setHoveredChildTargetId(String(effectiveChildTargetId)));
+    if (effectiveChildTargetId) {
+      onHoverChange?.(String(effectiveChildTargetId));
     }
   };
 
   const handleMouseLeave = () => {
-    if (enableHoverHighlight) {
-      dispatch(setHoveredChildTargetId(undefined));
-    }
+    onHoverChange?.(undefined);
   };
 
   return (

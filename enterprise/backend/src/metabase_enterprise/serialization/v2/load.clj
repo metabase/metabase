@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [diehard.core :as dh]
-   [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
@@ -248,7 +247,6 @@
    :seen      #{}
    :circular  #{}
    :ingestion ingestion
-   :from-ids  (->> ingestion serdes.ingest/ingest-list (m/index-by :id))
    :errors    []})
 
 (defn load-metabase!

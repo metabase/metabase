@@ -1,5 +1,6 @@
 (ns metabase.search.filter
   (:require
+   [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
@@ -50,14 +51,23 @@
   [search-ctx]
   ;; Archived is an eccentric one - we treat it as false for models that don't map it, rather than removing them.
   ;; TODO move this behavior to the spec somehow
-  (let [required (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->filter))]
-    (into #{}
-          (remove nil?)
-          (for [search-model (:models search-ctx)
-                :let [spec (search.spec/spec search-model)]]
-            (when (and (visible-to? search-ctx spec)
-                       (every? (spec-supported-attr-keys spec) required))
-              (:name spec))))))
+  ;; :curated? is a precomputed flag every index row carries, so it isn't a per-spec attr; handle it
+  ;; explicitly below rather than through the spec-attr gate (which would drop every model). It restricts
+  ;; to the curatable models — which include `table`, so curated content stays visible where the
+  ;; verified-only filter dropped it (BOT-1536) — and matches the in-place engine for consistency.
+  (let [required (->> (remove-if-falsey search-ctx :archived?)
+                      (#(dissoc % :curated?))
+                      keys
+                      (keep context-key->filter))
+        models   (into #{}
+                       (remove nil?)
+                       (for [search-model (:models search-ctx)
+                             :let [spec (search.spec/spec search-model)]]
+                         (when (and (visible-to? search-ctx spec)
+                                    (every? (spec-supported-attr-keys spec) required))
+                           (:name spec))))]
+    (cond-> models
+      (:curated? search-ctx) (set/intersection search.config/curated-search-models))))
 
 (defn models-without-collection
   "A list of the search models which are not associated with collections, even indirectly."

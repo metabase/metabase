@@ -605,7 +605,7 @@ export const MiniPickerListLoader = () => (
         height="1.5rem"
         width="100%"
         radius="0.5rem"
-        bg="background-secondary"
+        bg="background_page-secondary"
       />
     </Repeat>
   </Stack>

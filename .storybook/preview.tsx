@@ -11,9 +11,15 @@ import { PortalContainer, ThemeProvider } from "metabase/ui";
 window.METABASE_REMOVE_DELAYS = true;
 
 require("metabase/css/core/index.css");
-require("metabase/css/vendor.css");
 require("metabase/css/index.module.css");
 require("metabase/utils/dayjs");
+
+// EChartsRenderer is loaded as an on-demand chunk in the app (see
+// EChartsRenderer/lazy.ts). Force it into the Storybook bundle so chart stories
+// render echarts synchronously and visual snapshots are deterministic (no
+// lazy-chunk skeleton flash). The dynamic `import()` then resolves from the
+// already-loaded module.
+require("metabase/visualizations/components/EChartsRenderer/EChartsRenderer");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";

@@ -31,7 +31,11 @@ import type { Table, TableId } from "./table";
 import type { TimelineEventId, TimelineId } from "./timeline";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
-import type { PieRow, SmartScalarComparison } from "./visualization-settings";
+import type {
+  PieRow,
+  SmartScalarComparison,
+  TreemapRow,
+} from "./visualization-settings";
 
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -118,6 +122,9 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
   // Not part of the card API contract, a field used by query builder for showing lineage
   original_card_id?: number;
   displayIsLocked?: boolean;
+
+  // Not part of the card API contract, a transient marker for how the card was created
+  creationType?: string;
 }
 
 export type LineSize = "S" | "M" | "L";
@@ -362,6 +369,16 @@ export type VisualizationSettings = {
   "sankey.node_align"?: "left" | "right" | "justify";
   "sankey.show_edge_labels"?: boolean;
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
+
+  // Treemap settings
+  "treemap.grouping"?: string;
+  "treemap.sub_grouping"?: string | null;
+  "treemap.value"?: string;
+  "treemap.rows"?: TreemapRow[];
+  "treemap.show_parent_labels"?: boolean;
+  "treemap.show_parent_values"?: boolean;
+  "treemap.show_leaf_labels"?: boolean;
+  "treemap.show_leaf_values"?: boolean;
 
   // BoxPlot settings
   "boxplot.whisker_type"?: BoxPlotWhiskerType;

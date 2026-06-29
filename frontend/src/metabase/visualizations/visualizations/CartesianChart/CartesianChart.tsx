@@ -88,6 +88,11 @@ function CartesianChartInner(props: VisualizationProps) {
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
   const chartRef = useRef<EChartsType>();
+  // Mirror the ECharts instance into state so that effects depending on it
+  // (e.g. brush setup) re-run once it becomes available. With the lazily loaded
+  // EChartsRenderer, `onInit` fires after the surrounding effects have already
+  // run, and a ref assignment alone would not re-trigger them.
+  const [chartInstance, setChartInstance] = useState<EChartsType>();
 
   const description = settings["card.description"];
 
@@ -99,6 +104,7 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
+    setChartInstance(chart);
 
     // HACK: clip paths cause glitches in Safari on multiseries line charts on dashboards (metabase#51383)
     if (isWebkit()) {
@@ -133,6 +139,7 @@ function CartesianChartInner(props: VisualizationProps) {
     option,
     renderingContext,
     props,
+    chartInstance,
   );
 
   const handleResize = useCallback((width: number, height: number) => {
@@ -190,6 +197,7 @@ function CartesianChartInner(props: VisualizationProps) {
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}
+          display={card.display}
           option={option}
           eventHandlers={eventHandlers}
           onResize={handleResize}

@@ -23,7 +23,7 @@ export const SelfHostedSMTPConnectionCard = () => {
               <Paper
                 fw="bold"
                 c={"core-brand"}
-                bg="background-brand"
+                bg="background_surface-brand-subtle"
                 p={"0.25rem 0.375rem"}
                 radius="xs"
               >{t`Active`}</Paper>

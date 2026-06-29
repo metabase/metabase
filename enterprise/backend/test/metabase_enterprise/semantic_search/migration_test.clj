@@ -176,8 +176,10 @@
                       "content"
                       "created_at"
                       "creator_id"
+                      "curated"
                       "dashboardcard_count"
                       "database_id"
+                      "data_authority"
                       "data_layer"
                       "display_type"
                       "embedding"
@@ -377,3 +379,33 @@
                       "6" nil              ; non-library collection, no gate doc
                       "7" "library-data"}  ; pre-existing value preserved
                      rows-by-id)))))))))
+
+(deftest candidate-table-ids-test
+  (testing "Migration 5 sweeps only active published/authoritative tables, sorted into the two id lists it
+            backfills — others are implicitly not curated (table curation never uses root_collection_type)"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {pub :id}      {:db_id db-id :active true  :is_published true :data_layer :final}
+                   :model/Table {auth :id}     {:db_id db-id :active true  :data_authority :authoritative}
+                   :model/Table {inactive :id} {:db_id db-id :active false :is_published true :data_layer :final}
+                   :model/Table {plain :id}    {:db_id db-id :active true}]
+      (let [{:keys [authoritative published]} (#'semantic.db.migration.impl/candidate-table-ids)
+            authoritative (set authoritative)
+            published     (set published)]
+        (is (contains? published (str pub))      "published-final tables go in :published")
+        (is (contains? authoritative (str auth)) "authoritative tables go in :authoritative")
+        (is (not (contains? published (str inactive))) "inactive tables are skipped")
+        (is (not (contains? published (str plain)))    "plain tables aren't candidates")
+        (is (not (contains? authoritative (str plain))))))))
+
+(deftest official-collection-dashboard-ids-test
+  (testing "Migration 5 backfills official-only dashboards (official_collection is new on the spec, so
+            existing index rows lack it)"
+    (mt/with-temp [:model/Collection {official :id} {:authority_level :official}
+                   :model/Collection {normal :id}   {}
+                   :model/Dashboard {od :id} {:collection_id official}
+                   :model/Dashboard {nd :id} {:collection_id normal}
+                   :model/Dashboard {ad :id} {:collection_id official :archived true}]
+      (let [ids (set (#'semantic.db.migration.impl/official-collection-dashboard-ids))]
+        (is (contains? ids (str od))      "dashboards in official collections are backfilled")
+        (is (not (contains? ids (str nd))) "dashboards in normal collections are not")
+        (is (not (contains? ids (str ad))) "archived dashboards are skipped")))))

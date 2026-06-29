@@ -85,9 +85,9 @@ export const ChartTypeOption = ({
             top="-0.5rem"
             right="-0.6rem"
             radius="xl"
-            color="text-tertiary"
+            color="text-disabled"
             variant="viewHeader"
-            bg="background-primary"
+            bg="background_page-primary"
             className={cx(
               ChartTypeOptionS.BorderedButton,
               ChartTypeOptionS.SettingsButton,

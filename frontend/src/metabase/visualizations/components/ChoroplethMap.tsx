@@ -1,5 +1,4 @@
 import cx from "classnames";
-import Color from "color";
 import * as d3 from "d3";
 import type { Feature, FeatureCollection } from "geojson";
 import type L from "leaflet";
@@ -22,10 +21,7 @@ import {
   getLegendTitles,
 } from "metabase/visualizations/lib/choropleth";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import {
-  computeMinimalBounds,
-  getCanonicalRowKey,
-} from "metabase/visualizations/lib/mapping";
+import { getCanonicalRowKey } from "metabase/visualizations/lib/mapping";
 import {
   getDefaultSize,
   getMinSize,
@@ -46,42 +42,7 @@ import type {
 import { ChartWithLegend } from "./ChartWithLegend";
 import { LeafletChoropleth } from "./LeafletChoropleth";
 import { LegacyChoropleth } from "./LegacyChoropleth";
-
-type ColorScaleOptions = {
-  lightness?: number;
-  darken?: number;
-  darkenLast?: number;
-  saturate?: number;
-};
-
-export function getColorplethColorScale(
-  color: string,
-  {
-    lightness = 92,
-    darken = 0.2,
-    darkenLast = 0.3,
-    saturate = 0.1,
-  }: ColorScaleOptions = {},
-): string[] {
-  const lightColor = Color(color).lightness(lightness).saturate(saturate);
-  const darkColor = Color(color).darken(darken).saturate(saturate);
-
-  const scale = d3.scaleLinear<string>(
-    [0, 1],
-    [lightColor.string(), darkColor.string()],
-  );
-
-  const colors = d3.range(0, 1.25, 0.25).map((value) => scale(value));
-
-  if (darkenLast) {
-    colors[colors.length - 1] = Color(color)
-      .darken(darkenLast)
-      .saturate(saturate)
-      .string();
-  }
-
-  return colors;
-}
+import { computeMinimalBounds } from "./leaflet-bounds";
 
 const geoJsonCache = new Map<string, GeoJSONData>();
 

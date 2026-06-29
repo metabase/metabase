@@ -79,7 +79,7 @@ const SuggestionsList = ({
                         <Tooltip label={item.description}>
                           <Icon
                             name="info_outline"
-                            c="background-tertiary-inverse"
+                            c="background_page-tertiary-inverse"
                           />
                         </Tooltip>
                       </Box>

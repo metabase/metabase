@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useGetMostRecentlyViewedDashboardQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { canPlaceEntityInCollectionOrDescendants } from "metabase/data-studio/utils";
+import { canPlaceEntityInCollectionOrDescendants } from "metabase/common/data-studio/collection-utils";
 import { useSelector } from "metabase/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";

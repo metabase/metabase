@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   trackDataStudioTablePickerFiltersApplied,
   trackDataStudioTablePickerFiltersCleared,
-} from "metabase/data-studio/analytics";
+} from "metabase/common/data-studio/analytics";
 import {
   DataSourceInput,
   LayerInput,
