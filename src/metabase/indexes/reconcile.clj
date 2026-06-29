@@ -25,8 +25,7 @@
 
 (mu/defn match-key :- ::match-key
   "Join key for a warehouse index map: its `:name` for named kinds, else a tuple for unnamed-inline kinds. Sort/order
-  keys are keyed by their columns; a distkey by its style (`:access-method`) plus column, so the column-less `:even`
-  and `:all` stay distinct. A sortkey's compound/interleaved style is intentionally not part of its key."
+  keys key by columns; a distkey also by style (`:access-method`), so the column-less `:even` and `:all` stay distinct."
   [{:keys [kind key-columns] am :access-method nm :name} :- [:map
                                                              [:kind :keyword]
                                                              [:key-columns [:sequential [:maybe :string]]]

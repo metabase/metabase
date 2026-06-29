@@ -33,8 +33,7 @@
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::distkey
-  "Redshift distribution, inline. Only `:key` uses a column (exactly the one DISTKEY column); `:all`/`:even` take none.
-  AUTO is Redshift's default and can't be reconciled against a fixed request, so it isn't offered."
+  "Redshift distribution, inline. Only `:key` uses a column (the one DISTKEY column); `:all`/`:even` take none."
   [:and
    [:map
     [:kind    [:= :distkey]]
@@ -57,8 +56,8 @@
    [:columns [:vector {:min 1} ::column]]])
 
 (mr/def ::skip-index
-  "ClickHouse data-skipping index, standalone. Only the argument-free types are offered; the parameterized ones
-  (set/ngrambf_v1/tokenbf_v1) need type-args the request form can't supply yet."
+  "ClickHouse data-skipping index, standalone. Only arg-free types; the parameterized ones need type-args the form
+  can't supply yet."
   [:map
    [:kind [:= :skip-index]]
    [:name :string]

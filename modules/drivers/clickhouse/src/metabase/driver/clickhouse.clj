@@ -282,8 +282,7 @@
                              :display-name (deferred-tru "Type")
                              :type         :select
                              :required     true
-                             ;; only the argument-free types: set/ngrambf_v1/tokenbf_v1 need parameters the request
-                             ;; form can't supply yet.
+                             ;; only arg-free types; set/ngrambf_v1/tokenbf_v1 need params the form can't supply yet
                              :options      [{:name (deferred-tru "Min/max")      :value "minmax"}
                                             {:name (deferred-tru "Bloom filter") :value "bloom_filter"}]}
                             driver.common/index-granularity-field]}})

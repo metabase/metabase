@@ -287,9 +287,8 @@
       (str/join " " clauses))))
 
 (defn- distkey-index
-  "The distkey entry from a table's declared `reldiststyle` (0 EVEN, 1 KEY, 8 ALL) and KEY column; nil for AUTO (9) or
-  anything else, so only an explicitly-distributed table reports one. Keying on the declared style (not the effective
-  one Redshift drifts AUTO tables toward) keeps a default table from reporting a value that changes underneath us."
+  "The distkey entry from a table's declared `reldiststyle` (0 EVEN, 1 KEY, 8 ALL) and KEY column; nil for AUTO (9) and
+  anything else. Reads the declared style, not the effective one Redshift drifts AUTO tables toward."
   [reldiststyle key-column]
   (when-let [style (case (long reldiststyle) 0 "even", 1 "key", 8 "all", nil)]
     (let [key? (= style "key")]
@@ -306,11 +305,11 @@
                             (format "DISTSTYLE KEY DISTKEY (%s)" key-column)
                             (format "DISTSTYLE %s" (u/upper-case-en style)))})))
 
-;; Redshift has no secondary indexes; the only physical "indexes" are the inline, unnamed sortkey and the distribution,
+;; Redshift has no secondary indexes; the only physical "indexes" are the inline unnamed sortkey and the distribution,
 ;; so we override the inherited Postgres `pg_index` query. `svv_redshift_columns.sortkey` is the 1-based position
-;; (negative marks the whole key INTERLEAVED); `distkey` is true on the single KEY-distribution column. The declared
-;; distribution style comes from `pg_class_info`, which (unlike `svv_table_info`) reports even for an empty table.
-;; Blank `schema` falls back to `current_schema()`.
+;; (negative marks the whole key INTERLEAVED); `distkey` is true on the single KEY column. The declared distribution
+;; style comes from `pg_class_info`, which reports it for empty tables (`svv_table_info` doesn't). Blank `schema`
+;; falls back to `current_schema()`.
 (defmethod driver/fetch-table-indexes :redshift
   [_driver database schema table]
   (let [spec      (sql-jdbc.conn/db->pooled-connection-spec database)
