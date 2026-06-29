@@ -404,7 +404,9 @@ The Custom Visualizations SDK works with Metabase 1.62 and newer. Declare the ve
 
 If you upload a bundle to a Metabase outside the plugin's declared range, Metabase rejects the upload.
 
-## Sandbox restrictions
+## Custom visualization limitations
+
+### Sandbox restrictions
 
 Metabase runs plugin code in an isolated sandbox, so a visualization works only from the `series` and `settings` it's given. The sandbox blocks:
 
@@ -415,9 +417,14 @@ Metabase runs plugin code in an isolated sandbox, so a visualization works only 
 - **Navigation and the rest of the app**: history changes, the host page's URL and referrer, and any DOM outside the plugin's own container.
 - **Unsafe DOM and timing APIs**: `document.write`, `execCommand`, constructable stylesheets, raw HTML parsers (`DOMParser`, `setHTMLUnsafe`, `XSLTProcessor`), and resource-timing APIs that expose other requests the page has made.
 
-### Custom visualizations only render in the live app
+### Custom visualizations only render in Metabase
 
-Custom visualizations only render in the live, interactive app. Static renders, like dashboard subscriptions sent by [email](../dashboards/subscriptions.md), Slack, or webhook, fall back to a table for any card that uses a custom visualization. The same goes for [embedded](../embedding/introduction.md) questions and dashboards: a card that uses a custom visualization falls back to a table.
+Custom visualizations won't be used in the following contexts:
+
+- [Embeds](../embedding/introduction.md), as well as [public links](../embedding/public-links.md) to questions, dashboards, and documents.
+- Static renders, like charts in alerts or dashboard subscriptions.
+
+In these cases, Metabase will render charts with custom visualizations as tables.
 
 ## Example plugins
 
