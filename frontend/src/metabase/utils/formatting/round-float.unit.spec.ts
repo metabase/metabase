@@ -16,4 +16,9 @@ describe("roundFloat", () => {
       expect(roundFloat(input, places)).toEqual(expected);
     },
   );
+
+  // TEMP ci-conductor FE smoke test — revert before merge.
+  it("TEMP ci-conductor fe reporting smoke", () => {
+    expect(roundFloat(1.2345)).toEqual(999);
+  });
 });
