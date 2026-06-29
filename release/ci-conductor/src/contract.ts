@@ -47,9 +47,10 @@ export type NormalizedTest = {
 
 /**
  * Run-level context shared by every test in a post, resolved once from the CI
- * environment (see `identity.ts`). `test_suite` is the per-job identity
- * discriminator. `repo_id`/`run_id`/`job_id` are GitHub *numeric* IDs (FKs in
- * ci-conductor), null when unresolved (all nullable server-side).
+ * environment (see `resolveRunContext` in `transport.ts`). `test_suite` is the
+ * per-job identity discriminator. `repo_id`/`run_id`/`job_id` are GitHub
+ * *numeric* IDs (FKs in ci-conductor), null when unresolved (all nullable
+ * server-side).
  */
 export type RunContext = {
   repo_id: number | null;

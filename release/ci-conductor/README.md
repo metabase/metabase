@@ -25,8 +25,8 @@ src/
 ├── contract.ts        the NormalizedTest shape (the agreement both report and
 │                      quarantine read). Types only for now; runtime validation
 │                      is a close follow-up.
-├── identity.ts        runContext() — shared run-level identity
-├── transport.ts       reportTestFailures() — the /webhooks/failed-tests POST
+├── transport.ts       reportTestFailures() — resolves the run-level context
+│                      (repo/run/job/sha/branch) and POSTs /webhooks/failed-tests
 │                      (quarantine fetch/gate joins this later)
 ├── util.ts            toNumber() / log()
 ├── report-junit.ts    backend entrypoint (bun src/report-junit.ts)

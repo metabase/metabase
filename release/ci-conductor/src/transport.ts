@@ -8,23 +8,48 @@
 // reading the same `NormalizedTest[]` this reports.
 
 import type { NormalizedTest, RunContext } from "./contract.ts";
-import { log } from "./util.ts";
+import { log, toNumber } from "./util.ts";
 
 // The endpoint can be slow, but the reporter must never hang a CI job.
 const REQUEST_TIMEOUT_MS = 15_000;
 
 /**
+ * Resolve the run-level half of the body from the CI environment. This is the
+ * payload's identity, not just log decoration: `repo_id`/`run_id`/`job_id` are
+ * GitHub numeric IDs (foreign keys in ci-conductor), `sha`/`target_branch` tie
+ * the failures to a commit/PR, and `test_suite` is the per-job dedup
+ * discriminator. On PRs the ambient `GITHUB_SHA` is a synthetic merge commit
+ * and `GITHUB_BASE_REF` the target, so the workflow sets `COMMIT_SHA`/
+ * `TARGET_BRANCH` to the PR's head sha / base ref; we fall back to the ambient
+ * vars (push runs, local). `JOB_ID` is exported by the `resolve-job-id`
+ * composite action (null when unresolved — the column is nullable).
+ */
+function resolveRunContext(testSuite: string): RunContext {
+  const env = process.env;
+  return {
+    repo_id: toNumber(env.REPO_ID ?? env.GITHUB_REPOSITORY_ID),
+    run_id: toNumber(env.GITHUB_RUN_ID),
+    attempt: toNumber(env.GITHUB_RUN_ATTEMPT),
+    job_id: toNumber(env.JOB_ID),
+    test_suite: testSuite,
+    sha: env.COMMIT_SHA || env.GITHUB_SHA || null,
+    target_branch: env.TARGET_BRANCH || env.GITHUB_BASE_REF || null,
+  };
+}
+
+/**
  * Report the given normalized failures to ci-conductor by POSTing them to the
- * webhook, no-opping when the webhook URL isn't configured (local runs, PRs
- * without the secret). Logs the resolved identity (no secrets, no host) up
- * front so a missing row in ci-conductor can be correlated with — or ruled out
- * against — this exact post. Never throws.
+ * webhook under `testSuite`'s run-level context, no-opping when the webhook URL
+ * isn't configured (local runs, PRs without the secret). Logs the resolved
+ * identity (no secrets, no host) up front so a missing row in ci-conductor can
+ * be correlated with — or ruled out against — this exact post. Never throws.
  */
 export async function reportTestFailures(
   tests: NormalizedTest[],
-  context: RunContext,
+  testSuite: string,
 ): Promise<void> {
   const baseUrl = process.env.CI_CONDUCTOR_BASE_URL;
+  const context = resolveRunContext(testSuite);
 
   log(
     `run context: test_suite=${context.test_suite} sha=${context.sha} ` +

@@ -8,7 +8,6 @@
 // Run directly with bun (no build step):  bun src/report-junit.ts
 
 import { normalizeBackendJunit } from "./adapters/junit.ts";
-import { runContext } from "./identity.ts";
 import { reportTestFailures } from "./transport.ts";
 import { log } from "./util.ts";
 
@@ -23,7 +22,7 @@ async function main(): Promise<void> {
   const testSuite =
     env.CI_CONDUCTOR_TEST_SUITE ||
     (env.DRIVERS ? `driver-${env.DRIVERS}` : "backend");
-  await reportTestFailures(normalizeBackendJunit(), runContext(testSuite));
+  await reportTestFailures(normalizeBackendJunit(), testSuite);
 }
 
 main().catch((error) => {
