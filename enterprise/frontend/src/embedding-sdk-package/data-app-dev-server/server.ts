@@ -1,78 +1,70 @@
 import react from "@vitejs/plugin-react";
-import {
-  type ConfigEnv,
-  type UserConfig,
-  type UserConfigFnObject,
-  defineConfig,
-  loadEnv,
-  mergeConfig,
-} from "vite";
+import { type PluginOption, loadEnv } from "vite";
 
 import { dataAppBuildPlugins, dataAppLibBuild } from "./config/build-config";
 import { buildConnectSrcCsp, readAllowedHosts } from "./config/dev-connect-src";
 import { findEnvRoot } from "./config/find-env-root";
 import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
 
-export type DataAppViteOverrides =
-  | UserConfig
-  | ((env: ConfigEnv) => UserConfig);
+export interface DataAppVitePluginOptions {
+  /** The Vite mode from `defineConfig(({ mode }) => …)`, used to load `.env`. */
+  mode: string;
+}
 
 /**
- * The entire Vite config for a Metabase data app — `vite.config.ts` is just:
+ * Everything a Metabase data app needs, as a single Vite plugin — drop it into a
+ * normal config:
  *
  * ```ts
- * import { dataAppVite } from "@metabase/embedding-sdk-react/data-app-dev/server";
- * export default dataAppVite();
+ * import { defineConfig } from "vite";
+ * import { dataAppVitePlugin } from "@metabase/embedding-sdk-react/data-app-dev/server";
+ *
+ * export default defineConfig(({ mode }) => ({
+ *   plugins: [dataAppVitePlugin({ mode })],
+ *   server: { port: 5174 },
+ * }));
  * ```
  *
- * `npm run dev` runs the app through the real Near-Membrane sandbox (so dev
- * behaves like production) and `npm run build` emits the single production IIFE.
- *
- * Pass `overrides` (an object or a `(env) => config` function) to extend it; they
- * are deep-merged via Vite's `mergeConfig` (extra plugins/aliases/server options,
- * etc.). The sandbox contract — the IIFE entry/format and the React/SDK
- * externals+globals — is re-locked after the merge and cannot be overridden, so
- * the bundle Metabase loads always matches what dev runs.
+ * It bundles the React plugin, inlines imported CSS, runs `npm run dev` through
+ * the real Near-Membrane sandbox (so dev behaves like production), and serves the
+ * dev harness. The bundle contract — the IIFE entry/format + the React/SDK
+ * externals/globals — is applied through its `config` hook, which Vite merges
+ * *over* your config, so it can't be accidentally overridden. Returns an array of
+ * plugins (Vite flattens nested plugin arrays).
  */
-export function dataAppVite(
-  overrides: DataAppViteOverrides = {},
-): UserConfigFnObject {
-  return defineConfig((env) => {
-    const appRoot = process.cwd();
-    const envDir = findEnvRoot(appRoot);
-    const loadedEnv = loadEnv(env.mode, envDir, "");
-    const allowedHosts = readAllowedHosts(appRoot);
+export function dataAppVitePlugin({
+  mode,
+}: DataAppVitePluginOptions): PluginOption[] {
+  const appRoot = process.cwd();
+  const envDir = findEnvRoot(appRoot);
+  const env = loadEnv(mode, envDir, "");
+  const allowedHosts = readAllowedHosts(appRoot);
 
-    const base: UserConfig = {
-      envDir,
-      plugins: [
-        react(),
-        ...dataAppBuildPlugins(),
-        dataAppSandboxDevPlugin(allowedHosts),
-      ],
-      build: { outDir: "dist", emptyOutDir: true },
-      server: {
-        port: 5174,
-        host: "localhost",
-        headers: {
-          "Content-Security-Policy": buildConnectSrcCsp(
-            allowedHosts,
-            loadedEnv.VITE_MB_URL,
-          ),
+  return [
+    react(),
+    ...dataAppBuildPlugins(),
+    dataAppSandboxDevPlugin(allowedHosts),
+    {
+      name: "metabase-data-app",
+      // Merged over the user's config (`mergeConfig(userConfig, this)`), so these
+      // win — the bundle Metabase loads always matches what dev runs.
+      config: () => ({
+        envDir,
+        build: {
+          outDir: "dist",
+          emptyOutDir: true,
+          ...dataAppLibBuild("index.js"),
         },
-      },
-    };
-
-    const extra = typeof overrides === "function" ? overrides(env) : overrides;
-    const merged: UserConfig = mergeConfig(base, extra);
-
-    // Re-assert the non-negotiable sandbox contract on top of the merge, so a
-    // consumer override can't change what the bundle is or how it's externalized.
-    merged.build = {
-      ...merged.build,
-      ...dataAppLibBuild("index.js"),
-    };
-
-    return merged;
-  });
+        server: {
+          host: "localhost",
+          headers: {
+            "Content-Security-Policy": buildConnectSrcCsp(
+              allowedHosts,
+              env.VITE_MB_URL,
+            ),
+          },
+        },
+      }),
+    },
+  ];
 }

@@ -1,1 +1,4 @@
-export { dataAppVite } from "./data-app-dev-server/server";
+export {
+  dataAppVitePlugin,
+  type DataAppVitePluginOptions,
+} from "./data-app-dev-server/server";

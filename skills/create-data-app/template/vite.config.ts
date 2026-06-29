@@ -1,3 +1,7 @@
-import { dataAppVite } from "@metabase/embedding-sdk-react/data-app-dev/server";
+import { dataAppVitePlugin } from "@metabase/embedding-sdk-react/data-app-dev/server";
+import { defineConfig } from "vite";
 
-export default dataAppVite();
+export default defineConfig(({ mode }) => ({
+  plugins: [dataAppVitePlugin({ mode })],
+  server: { port: 5174 },
+}));
