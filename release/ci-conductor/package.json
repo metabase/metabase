@@ -5,7 +5,6 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "report:backend": "bun src/report-backend.ts",
     "test": "bun test",
     "type-check": "tsc --noEmit"
   },
