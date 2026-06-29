@@ -471,8 +471,8 @@
   "Attach a `:pivot` clause to the last stage of `query`, derived from `viz-settings` (see [[build-pivot-clause]]
   for the clause shape and resolution rules).
 
-  Idempotent: returns `query` unchanged when the last stage already has `:pivot`, when `viz-settings` is empty, or
-  when no refs resolve."
+  Returns `query` unchanged when the last stage already has `:pivot`, when `viz-settings` is empty, or when no refs
+  resolve."
   [query        :- ::lib.schema/query
    viz-settings :- [:maybe :map]]
   (let [clause (when (and (not (lib.pivot/has-pivot? query))

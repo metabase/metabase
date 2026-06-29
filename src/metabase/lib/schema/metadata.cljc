@@ -279,6 +279,7 @@
 (mr/def ::column.validate-for-source-joins               (column-validate-for-source-schema :source/joins))
 (mr/def ::column.validate-for-source-expressions         (column-validate-for-source-schema :source/expressions))
 (mr/def ::column.validate-for-source-implicitly-joinable (column-validate-for-source-schema :source/implicitly-joinable))
+(mr/def ::column.validate-for-source-pivot-grouping      (column-validate-for-source-schema :source/pivot-grouping))
 
 (mr/def ::column.validate-for-source
   "Do additional validation for column metadata based on `:lib/source`."
@@ -292,7 +293,7 @@
    [:source/joins               [:ref ::column.validate-for-source-joins]]
    [:source/expressions         [:ref ::column.validate-for-source-expressions]]
    [:source/implicitly-joinable [:ref ::column.validate-for-source-implicitly-joinable]]
-   [:source/pivot-grouping      :any]
+   [:source/pivot-grouping      [:ref ::column.validate-for-source-pivot-grouping]]
    [nil                         :any]])
 
 (def column-visibility-types

@@ -2111,9 +2111,8 @@
     {:source-table 0, :breakout 1, ...}"
   (into {} (map-indexed
             #(vector %2 %1)
-            ;; `:pivot` runs AFTER `:order-by` so it can both prepend its `GROUPING(...) ASC` primary sort and convert
-            ;; any user ORDER BY on a breakout column from ASC to ASC NULLS LAST (so subtotal NULL rows sort to the end
-            ;; of each group).
+            ;; `:pivot` runs AFTER `:order-by` so it can prepend its `GROUPING(...) ASC` primary sort to the existing
+            ;; ORDER BY entries.
             [:source-table :breakout :aggregation :fields :filter :filters :joins :order-by :pivot :page :limit])))
 
 (defn- query->keys-in-application-order
