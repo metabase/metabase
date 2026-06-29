@@ -256,7 +256,7 @@
 (defmulti compile-merge
   "Returns `[sql params]` queries that upsert the rows of `select` (a compiled `{:query sql :params}`)
    into `target`. `merge-spec` is `{:unique-key [col-names] :columns [all-col-names]}`."
-  {:arglists '([driver target select merge-spec])}
+  {:added "0.63.0", :arglists '([driver target select merge-spec])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
