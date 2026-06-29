@@ -141,8 +141,10 @@
      :table  "mb_fetch_rs_interleaved"
      :create ["CREATE TABLE mb_fetch_rs_interleaved (a INT, b INT) INTERLEAVED SORTKEY (a, b)"]
      ;; same normalized shape as the compound case, so `:definition` is the only signal it's interleaved.
+     ;; interleaved can't use AUTO distribution, so Redshift assigns EVEN; it surfaces as an unmanaged distkey.
      :definition-contains "INTERLEAVED"
-     :expected #{(idx nil :sortkey nil ["a" "b"])}}
+     :expected #{(idx nil :sortkey nil ["a" "b"])
+                 (idx nil :distkey "even" [])}}
     {:label  "a KEY distkey alongside a compound sortkey, both reported as unnamed inline rows"
      :table  "mb_fetch_rs_dist"
      :create ["CREATE TABLE mb_fetch_rs_dist (a INT, b INT) DISTSTYLE KEY DISTKEY (a) COMPOUND SORTKEY (b)"]
