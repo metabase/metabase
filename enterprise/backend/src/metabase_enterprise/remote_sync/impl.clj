@@ -978,8 +978,18 @@
                   {:id [:in (vec id-chunk)]}
                   (cond-> {:status "synced" :status_changed_at sync-timestamp}
                     (seq hits)
-                    (assoc :file_path    (into [:case] (concat (mapcat (fn [id] [[:= :id id] (:file_path (by-id id))]) hits) [:else :file_path]))
-                           :content_hash (into [:case] (concat (mapcat (fn [id] [[:= :id id] (:content_hash (by-id id))]) hits) [:else :content_hash]))))))))
+                    (assoc :file_path    (into [:case]
+                                               (concat
+                                                (mapcat (fn [id]
+                                                          [[:= :id id] (:file_path (by-id id))])
+                                                        hits)
+                                                [:else :file_path]))
+                           :content_hash (into [:case]
+                                               (concat
+                                                (mapcat (fn [id]
+                                                          [[:= :id id] (:content_hash (by-id id))])
+                                                        hits)
+                                                [:else :content_hash]))))))))
 
 (defn- full-export!
   "Re-serialize and commit the entire remote-synced set, then reconcile every RemoteSyncObject.
