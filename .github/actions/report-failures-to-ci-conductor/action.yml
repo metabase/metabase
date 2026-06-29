@@ -1,30 +1,25 @@
 name: Report failures to CI Conductor
 description: >-
-  Set up bun and report this job's test failures to ci-conductor by parsing the
-  raw JUnit hawk wrote (release/ci-conductor). A visibility step: best-effort and
-  it never POSTs anything sensitive. The reporter no-ops unless
-  CI_CONDUCTOR_BASE_URL is set (local runs, PRs without the secret).
-
-  Call it AFTER the test step and BEFORE result upload (so it reads pristine
-  JUnit, before Trunk quarantine processing). Gating and isolation stay at the
-  call site: pair this with `continue-on-error: true` and an `if:` keyed on the
-  test step's outcome, so it can never change the job result — Trunk Quarantine
-  remains the sole arbiter. CI_CONDUCTOR_BASE_URL / _WEBHOOK_SECRET and the
-  resolved JOB_ID are read from the ambient workflow/job env.
+  Report this job's test failures to ci-conductor. Best-effort; no-ops unless
+  CI_CONDUCTOR_BASE_URL is set. Gate it at the call site with continue-on-error
+  and an `if:` on the test step's outcome.
 
 inputs:
   test-suite:
-    description: >-
-      The per-job test-identity label (CI_CONDUCTOR_TEST_SUITE), e.g.
-      be-tests-java-21-ee or be-tests-postgres-ee. ci-conductor buckets its
-      identity key by this, so it must be unique per job/leg.
+    description: Per-job identity label (CI_CONDUCTOR_TEST_SUITE); unique per job/leg.
     required: true
+  entrypoint:
+    description: bun reporter to run.
+    default: release/ci-conductor/src/report-backend.ts
+  install-bun:
+    description: Install bun first; set false when the job already has it (e.g. frontend).
+    default: "true"
 
 runs:
   using: composite
   steps:
     - name: Install bun
-      # The backend/driver jobs are JDK-only, so bun isn't otherwise present.
+      if: ${{ inputs.install-bun == 'true' }}
       uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       with:
         bun-version: "1.3.14"
@@ -36,6 +31,4 @@ runs:
         COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
         CI_CONDUCTOR_TEST_SUITE: ${{ inputs.test-suite }}
-      # Zero-runtime-dep (bun built-ins only), so it just runs the TS directly —
-      # no `bun install`. See DEV-2224 / DEV-2235.
-      run: bun release/ci-conductor/src/report-backend.ts
+      run: bun ${{ inputs.entrypoint }}
