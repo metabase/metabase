@@ -18,7 +18,7 @@ interface TimelineEventsBandProps {
   timelineEventsModel: TimelineEventsModel | null;
   chartLayout: ChartLayout;
   xAxisIndex: number;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
 }
 
 export const TimelineEventsBand = ({

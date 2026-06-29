@@ -498,6 +498,8 @@ describe("scenarios > organization > timelines > question", () => {
           { name: "Beta", timestamp: "2027-10-10T00:00:00Z" },
           { name: "Gamma", timestamp: "2027-10-17T00:00:00Z" },
           { name: "Delta", timestamp: "2027-10-24T00:00:00Z" },
+          // a separate event outside the cluster, to verify filtering
+          { name: "Outsider", timestamp: "2028-01-15T00:00:00Z" },
         ],
       });
 
@@ -534,8 +536,16 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByText("See all").click();
       });
 
-      cy.log("'See all' opens the timeline sidebar");
+      cy.log("'See all' opens the sidebar filtered to the clicked group");
       timelineEventCard("Alpha").should("be.visible");
+      timelineEventCard("Delta").should("be.visible");
+      cy.findByTestId("sidebar-content")
+        .findByText("Outsider")
+        .should("not.exist");
+
+      cy.log("the 'All events' link returns to the full list of events");
+      cy.findByTestId("timeline-sidebar-show-all").click();
+      timelineEventCard("Outsider").should("be.visible");
     });
 
     // TODO @nemanjaglumac 2026-04-17: Simplify or potentially remove this repro altogether!

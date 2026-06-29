@@ -18,7 +18,7 @@ const POPOVER_OFFSET =
 interface TimelineEventChipProps {
   eventsGroup: PositionedTimelineEventGroup;
   centerY: number;
-  onOpenTimelines?: () => void;
+  onOpenTimelines?: (eventIds?: number[]) => void;
 }
 
 export const TimelineEventChip = ({
@@ -71,7 +71,12 @@ export const TimelineEventChip = ({
                 <TimelineEventsList events={visibleEvents} />
               </div>
               {showSeeAll && (
-                <UnstyledButton className={S.seeAll} onClick={onOpenTimelines}>
+                <UnstyledButton
+                  className={S.seeAll}
+                  onClick={() =>
+                    onOpenTimelines?.(events.map((event) => event.id))
+                  }
+                >
                   {t`See all`}
                 </UnstyledButton>
               )}

@@ -1,10 +1,14 @@
 import type { Dayjs } from "dayjs";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { getUiControls } from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { useDispatch, useSelector } from "metabase/redux";
+import { onOpenTimelines } from "metabase/redux/query-builder";
 import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
+import { Box, Button, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -35,6 +39,18 @@ export const TimelineSidebar = ({
   onDeselectTimelineEvents,
   onClose,
 }: TimelineSidebarProps) => {
+  const dispatch = useDispatch();
+  const { focusedTimelineEventIds } = useSelector(getUiControls);
+
+  const displayedTimelines = useMemo(
+    () => getFocusedTimelines(timelines, focusedTimelineEventIds),
+    [timelines, focusedTimelineEventIds],
+  );
+
+  const handleShowAllEvents = useCallback(() => {
+    dispatch(onOpenTimelines());
+  }, [dispatch]);
+
   const handleNewEvent = useCallback(() => {
     onOpenModal?.(MODAL_TYPES.NEW_EVENT);
   }, [onOpenModal]);
@@ -66,8 +82,21 @@ export const TimelineSidebar = ({
 
   return (
     <SidebarContent title={formatTitle(xDomain)} onClose={onClose}>
+      {focusedTimelineEventIds != null && (
+        <Box mx="lg" mb="sm">
+          <Button
+            p={0}
+            variant="subtle"
+            leftSection={<Icon name="chevronleft" />}
+            onClick={handleShowAllEvents}
+            data-testid="timeline-sidebar-show-all"
+          >
+            {t`All events`}
+          </Button>
+        </Box>
+      )}
       <TimelinePanel
-        timelines={timelines}
+        timelines={displayedTimelines}
         collectionId={question.collectionId()}
         visibleEventIds={visibleTimelineEventIds}
         selectedEventIds={selectedTimelineEventIds}
@@ -80,6 +109,24 @@ export const TimelineSidebar = ({
       />
     </SidebarContent>
   );
+};
+
+export const getFocusedTimelines = (
+  timelines: Timeline[],
+  focusedTimelineEventIds: number[] | null,
+): Timeline[] => {
+  if (focusedTimelineEventIds == null) {
+    return timelines;
+  }
+  const focusedIds = new Set(focusedTimelineEventIds);
+  return timelines
+    .map((timeline) => ({
+      ...timeline,
+      events: (timeline.events ?? []).filter((event) =>
+        focusedIds.has(event.id),
+      ),
+    }))
+    .filter((timeline) => timeline.events.length > 0);
 };
 
 const formatTitle = (xDomain?: [Dayjs, Dayjs]) => {
