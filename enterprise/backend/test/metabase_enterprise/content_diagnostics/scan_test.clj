@@ -44,10 +44,11 @@
             (testing "every stale temp entity produced a :stale finding; no fresh one did"
               (is (every? found-keys stale-keys))
               (is (empty? (set/intersection found-keys fresh-keys))))
-            (testing "persisted findings carry finding_type + detector_version"
+            (testing "persisted findings carry finding_type + scope_collection_id + details"
               (let [row (first (filter #(and (= :card (:entity_type %)) (= s1 (:entity_id %))) rows))]
                 (is (= :stale (:finding_type row)))
-                (is (= detect/detector-version (:detector_version row)))
+                ;; scope_collection_id is stamped at scan time from the entity's collection
+                (is (= coll-id (:scope_collection_id row)))
                 ;; derive from the setting, not a literal — a default change must not silently desync
                 (is (= {:threshold_days (cd.settings/content-diagnostics-stale-threshold-days)}
                        (:details row)))))
@@ -117,12 +118,11 @@
                                                   :creator_id    (mt/user->id :rasta)}]
           (let [insert     (fn [scan threshold]
                              (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
-                                                              {:scan_id          scan
-                                                               :entity_type      :card
-                                                               :entity_id        card-id
-                                                               :finding_type     :stale
-                                                               :detector_version 1
-                                                               :details          {:threshold_days threshold}})))
+                                                              {:scan_id      scan
+                                                               :entity_type  :card
+                                                               :entity_id    card-id
+                                                               :finding_type :stale
+                                                               :details      {:threshold_days threshold}})))
                 old-id     (insert "scan-old" 30)
                 new-id     (insert "scan-new" 90)
                 serve      #(mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale")
@@ -163,7 +163,7 @@
         (doseq [eid [970001 970002 970003]]
           (t2/insert! :model/ContentDiagnosticsFinding
                       {:scan_id "p" :entity_type :card :entity_id eid
-                       :finding_type :stale :detector_version 1 :details {}}))
+                       :finding_type :stale :details {}}))
         (let [page (fn [limit offset]
                      (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale"
                                            :limit limit :offset offset))]

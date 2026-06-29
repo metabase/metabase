@@ -43,13 +43,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: detector_version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: Detector-logic/threshold version that produced this finding.
-                  constraints:
-                    nullable: false
-              - column:
                   name: scope_collection_id
                   type: int
                   remarks: collection the entity lived in at scan time (filter/sort); no FK
