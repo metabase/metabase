@@ -211,33 +211,6 @@
   "Max RemoteSyncObject rows per update batch, to keep IN-lists and CASE expressions bounded."
   500)
 
-(defn- mark-synced!
-  "Mark the `synced` rows ([{:id :file_path :content_hash}]) synced, writing each one's file_path/content_hash."
-  [synced sync-timestamp]
-  ;; one batched CASE update per chunk; the CASE compiles per app-db dialect
-  (doseq [chunk (partition-all content-hash-batch-size synced)]
-    (t2/update! :model/RemoteSyncObject
-                {:id [:in (mapv :id chunk)]}
-                {:status            "synced"
-                 :status_changed_at sync-timestamp
-                 :file_path         (into [:case] (mapcat (fn [{:keys [id file_path]}]    [[:= :id id] file_path]))    chunk)
-                 :content_hash      (into [:case] (mapcat (fn [{:keys [id content_hash]}] [[:= :id id] content_hash])) chunk)})))
-
-(defn- record-exported-metadata!
-  "Reconcile every RemoteSyncObject row to synced after a full export, writing file_path/content_hash for the
-  `synced` rows ([{:id :file_path :content_hash}])."
-  [synced sync-timestamp]
-  ;; one select of all row ids, then chunked CASE updates; rows not in `synced` keep their existing path/hash
-  (let [by-id (u/index-by :id synced)]
-    (doseq [id-chunk (partition-all content-hash-batch-size (t2/select-pks-set :model/RemoteSyncObject))
-            :let     [hits (filter by-id id-chunk)]]
-      (t2/update! :model/RemoteSyncObject
-                  {:id [:in id-chunk]}
-                  (cond-> {:status "synced" :status_changed_at sync-timestamp}
-                    (seq hits)
-                    (assoc :file_path    (into [:case] (concat (mapcat (fn [id] [[:= :id id] (:file_path (by-id id))])    hits) [:else :file_path]))
-                           :content_hash (into [:case] (concat (mapcat (fn [id] [[:= :id id] (:content_hash (by-id id))]) hits) [:else :content_hash]))))))))
-
 (defn- import-content-metadata
   "Content-hash entries for imported `rows` ({:model_type :model_id}), re-serializing each entity once to hash
   it. `repo-paths` supplies the real repo path for entity-id models (else the freshly computed one).
@@ -742,7 +715,8 @@
                        (not (t2/exists? :model/RemoteSyncObject :model_type model_type :model_id model_id)))))
         (export-closure model-type model-id)))
 
-(defn- resize-chunk [{:keys [model_type rows]}]
+(defn- resize-chunk
+  [{:keys [model_type rows]}]
   (->> rows
        (partition-all content-hash-batch-size)
        (map (fn [chunk-rows] {:model_type model_type :rows chunk-rows}))))
@@ -950,7 +924,8 @@
     (when (:id row)
       [{:id (:id row) :file_path path :content_hash (source/content-hash content)}])))
 
-(defn- chunk-stage-writes [commit opts chunk]
+(defn- chunk-stage-writes
+  [commit opts chunk]
   (->> chunk
        (extract-chunk)
        (mapcat #(stage-write commit opts %))
@@ -1023,7 +998,8 @@
       {:status :success
        :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))
 
-(defn- incremental-export! [plan disabled-files task-id snapshot message sync-timestamp]
+(defn- incremental-export!
+  [plan disabled-files task-id snapshot message sync-timestamp]
   (let [{:keys [writes delete-paths removed-ids]} plan
         delete-paths (into (vec delete-paths) disabled-files)]
     (remote-sync.task/update-progress! task-id 0.3)
