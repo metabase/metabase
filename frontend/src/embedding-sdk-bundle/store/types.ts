@@ -6,7 +6,6 @@ import type {
   ThunkDispatch,
 } from "@reduxjs/toolkit";
 
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import type {
@@ -15,6 +14,7 @@ import type {
   SdkLoadingError,
 } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import type { State } from "metabase/redux/store";
 import type { DashboardTabId } from "metabase-types/api";
