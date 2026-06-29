@@ -6,6 +6,7 @@ import {
   useGetAdhocQueryQuery,
 } from "metabase/api/dataset";
 import { useSelector } from "metabase/redux";
+import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
@@ -24,17 +25,6 @@ interface UseCardDataProps {
   skip?: boolean;
   storedResultId?: number; // When set, the embed renders in static mode: data is pulled from the cached `stored_result` snapshot
   storedResultSort?: StoredResultSort; // Sort to apply in-memory when reading a static snapshot. Static-mode only
-}
-
-export interface UseCardDataResult {
-  card?: Card;
-  dataset?: Dataset;
-  isLoading: boolean;
-  series: RawSeries | null;
-  question?: Question;
-  error?: "not found" | "unknown" | null;
-  draftCard?: Card;
-  regularDataset?: Dataset;
 }
 
 function buildAdhocQueryParams(card: Card) {

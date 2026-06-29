@@ -358,6 +358,7 @@
   {:team "UX West"
    :api  #{metabase.audit-app.core
            metabase.audit-app.init}
+   :friends #{enterprise/memoize-monitor}
    :uses #{api
            app-db
            events
@@ -506,6 +507,7 @@
            pivot
            premium-features
            query-processor
+           request
            settings
            slackbot
            system
@@ -516,6 +518,8 @@
            util}
    :model-exports #{:model/Channel :model/ChannelTemplate}
    :model-imports #{:model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
                     :model/Database
                     :model/PulseChannel
                     :model/User}}
@@ -571,6 +575,7 @@
   collections
   {:team "UX West"
    :api  #{metabase.collections.core
+           metabase.collections.curation
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -1242,7 +1247,10 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Card :model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   logger
   {:team "DevEx"
@@ -1983,11 +1991,20 @@
   {:team "UX West"
    :api  #{metabase.sample-data.core
            metabase.sample-data.init}
-   :uses #{plugins
+   :uses #{config
+           models
+           permissions
+           plugins
            settings
            sync
            util}
-   :model-imports #{:model/Database}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DataPermissions
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   search
   {:team "UX West"
@@ -2523,8 +2540,7 @@
                     :model/QueryExecution
                     :model/Segment
                     :model/Table}
-   :uses #{app-db
-           lib
+   :uses #{lib
            lib-be
            models
            settings
@@ -3274,6 +3290,20 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
+  enterprise/memoize-monitor
+  {:team "Graphy"
+   :api  #{metabase-enterprise.memoize-monitor.init}
+   :uses #{analytics
+           analytics-interface
+           audit-app
+           collections
+           driver
+           models
+           util
+           warehouse-schema
+           warehouses
+           enterprise/serialization}}
+
   enterprise/metabot
   {:team    "Metabot"
    :api     #{metabase-enterprise.metabot.api
@@ -3488,8 +3518,10 @@
            analytics-interface
            api
            app-db
+           collections
            config
            connection-pool
+           events
            llm
            metabot
            models
@@ -3500,7 +3532,9 @@
            task
            tracing
            util}
-   :model-imports #{:model/Collection}}
+   :model-imports #{:model/Collection
+                    :model/Dashboard
+                    :model/Table}}
 
   enterprise/serialization
   {:team "Graphy"
@@ -3510,6 +3544,7 @@
            metabase-enterprise.serialization.init
            metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
+   :friends #{enterprise/memoize-monitor}
    :uses #{analytics
            api
            app-db

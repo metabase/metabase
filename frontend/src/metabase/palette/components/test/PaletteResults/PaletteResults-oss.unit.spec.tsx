@@ -26,8 +26,8 @@ describe("PaletteResults", () => {
   it("should show actions when there is a search query", async () => {
     setup({ query: "new" });
     expect(await screen.findByText("New question")).toBeInTheDocument();
-    expect(await screen.findByText("New SQL query")).toBeInTheDocument();
     expect(await screen.findByText("New dashboard")).toBeInTheDocument();
+    expect(await screen.findByText("New collection")).toBeInTheDocument();
 
     expect(await screen.findByText("Results")).toBeInTheDocument();
   });

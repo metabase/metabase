@@ -85,7 +85,7 @@ function CategoryHeader({
   ...props
 }: EmojiPickerListCategoryHeaderProps) {
   return (
-    <Box px="sm" pos="sticky" top={0} bg="background-primary" {...props}>
+    <Box px="sm" pos="sticky" top={0} bg="background_page-primary" {...props}>
       <Text fz="sm" c="text-secondary">
         {category.label}
       </Text>

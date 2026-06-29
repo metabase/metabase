@@ -110,8 +110,3 @@ export const getIsHistorySidebarOpen = createSelector(
   getDocumentsState,
   (documents) => documents.isHistorySidebarOpen,
 );
-
-export const getDocumentHost = createSelector(
-  getDocumentsState,
-  (documents) => documents.documentHost,
-);

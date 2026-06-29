@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupExplorationDataEndpoint } from "__support__/server-mocks/metric";
 import { renderWithProviders, screen } from "__support__/ui";
+import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
   makeMockSelection,
@@ -20,6 +21,11 @@ import {
   NewExplorationData,
   buildCreateExplorationRequest,
 } from "./NewExplorationData";
+
+jest.mock("metabase/explorations/analytics", () => ({
+  trackExplorationCreated: jest.fn(),
+  trackExplorationPlanEdited: jest.fn(),
+}));
 
 jest.mock("metabase/metabot/hooks", () => ({
   ...jest.requireActual("metabase/metabot/hooks"),
@@ -67,6 +73,10 @@ function setup({
 }
 
 describe("NewExplorationData (Research plan)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe("empty state", () => {
     it("renders the header + the +Data / +Events affordances, with no Start research CTA yet", () => {
       setup();
@@ -151,6 +161,15 @@ describe("NewExplorationData (Research plan)", () => {
         "metric:1",
         dimCreatedAt.id,
       );
+      expect(trackExplorationPlanEdited).toHaveBeenCalledTimes(1);
+      expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+        "manual",
+        "dimensions",
+      );
+      expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+        "manual",
+        "metrics",
+      );
     });
 
     it("clicking the area's remove button calls selection.removeBlock", async () => {
@@ -161,6 +180,15 @@ describe("NewExplorationData (Research plan)", () => {
       await userEvent.click(screen.getByLabelText("Remove area"));
 
       expect(selection.removeBlock).toHaveBeenCalledWith("metric:1");
+      expect(trackExplorationPlanEdited).toHaveBeenCalledTimes(1);
+      expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+        "manual",
+        "metrics",
+      );
+      expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+        "manual",
+        "dimensions",
+      );
     });
   });
 
@@ -194,6 +222,34 @@ describe("NewExplorationData (Research plan)", () => {
         "dim:accounts.plan",
         revenueMetric.id,
       );
+      expect(trackExplorationPlanEdited).toHaveBeenCalledTimes(1);
+      expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+        "manual",
+        "metrics",
+      );
+      expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+        "manual",
+        "dimensions",
+      );
+    });
+
+    it("clicking the area's remove button tracks a dimensions edit", async () => {
+      const { selection } = setup({
+        blocks: [mockDimensionBlock(dimPlan, [revenueMetric, churnMetric])],
+      });
+
+      await userEvent.click(screen.getByLabelText("Remove area"));
+
+      expect(selection.removeBlock).toHaveBeenCalledWith("dim:accounts.plan");
+      expect(trackExplorationPlanEdited).toHaveBeenCalledTimes(1);
+      expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+        "manual",
+        "dimensions",
+      );
+      expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+        "manual",
+        "metrics",
+      );
     });
   });
 
@@ -212,7 +268,22 @@ describe("NewExplorationData (Research plan)", () => {
       await userEvent.click(
         screen.getByRole("button", { name: "Remove Releases" }),
       );
-      expect(selection.toggleTimeline).toHaveBeenCalledWith(releasesTimeline);
+      expect(selection.removeTimelinesById).toHaveBeenCalledWith([
+        releasesTimeline.id,
+      ]);
+      expect(trackExplorationPlanEdited).toHaveBeenCalledTimes(1);
+      expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+        "manual",
+        "timelines",
+      );
+      expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+        "manual",
+        "metrics",
+      );
+      expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+        "manual",
+        "dimensions",
+      );
     });
 
     it("shows the first picked timeline plus a +N overflow pill", () => {

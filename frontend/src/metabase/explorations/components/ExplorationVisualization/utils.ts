@@ -5,8 +5,8 @@ import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";
-import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
+import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCountry,

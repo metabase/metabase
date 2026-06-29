@@ -1,9 +1,9 @@
 import { skipToken, useListCommentsQuery } from "metabase/api";
+import type { CommentThread } from "metabase/comments/types";
 import {
   getListCommentsQuery,
   getTargetChildCommentThreads,
 } from "metabase/comments/utils";
-import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
 import type { CommentTarget } from "metabase-types/api";
 
 interface UseUnresolvedCommentsCountOptions {
@@ -33,3 +33,13 @@ export function useUnresolvedCommentsCount({
 
   return unresolvedCommentsCount;
 }
+
+export const getUnresolvedComments = (
+  threads: CommentThread[],
+): CommentThread["comments"] => {
+  return threads
+    .filter((thread) => !thread.comments[0]?.is_resolved)
+    .flatMap((thread) =>
+      thread.comments.filter((comment) => !comment.deleted_at),
+    );
+};

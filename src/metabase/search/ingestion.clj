@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
@@ -74,10 +75,16 @@
 
   Note: Unlike searchable-text, transformation functions in search-terms
   (e.g., explode-camel-case) are NOT applied. Transformations like camel-case
-  explosion are specific to full-text search optimization."
+  explosion are specific to full-text search optimization.
+
+  Fields listed in the spec's `:embedding-exclude` set are kept out of the
+  embedding text entirely (but remain in `searchable-text`)."
   [m]
-  (let [search-terms (:search-terms (search.spec/spec (:model m)))
-        field-keys   (cond-> search-terms (map? search-terms) keys)
+  (let [spec         (search.spec/spec (:model m))
+        search-terms (:search-terms spec)
+        excluded     (:embedding-exclude spec #{})
+        field-keys   (->> (cond-> search-terms (map? search-terms) keys)
+                          (remove excluded))
         header       (str "[" (:model m) "]")
         fields        (keep (fn [k]
                               (let [v (get m k)]
@@ -140,10 +147,17 @@
                         (update :archived boolean)
                         (assoc
                          :display_data (display-data m)
-                         :legacy_input (json/encode (apply dissoc m search.spec/legacy-input-excluded-keys))
                          :searchable_text (searchable-text m)
-                         :embeddable_text (embeddable-text m)))]
-    (merge fn-results sql-results)))
+                         :embeddable_text (embeddable-text m)))
+        document (merge fn-results sql-results)
+        curated  (collections.curation/curated? document)]
+    ;; Both production engines reconstruct results from legacy_input (appdb rehydrate, semantic
+    ;; legacy-input-with-score), so curated must live there to reach the search response, not just in the
+    ;; search_index column used for filtering. data_layer rides along once it leaves the excluded set.
+    (assoc document
+           :curated curated
+           :legacy_input (json/encode (assoc (apply dissoc m search.spec/legacy-input-excluded-keys)
+                                             :curated curated)))))
 
 (defn- attrs->select-items [attrs]
   (for [[k v] attrs
@@ -196,7 +210,7 @@
   ;; joined side has its own integrity violations. Downstream upserts hit a unique constraint on
   ;; (model, model_id), so dedup here at the streaming boundary — bounded by per-model row count.
   (->> (spec-index-query-where search-model where-clause)
-       mdb/streaming-reducible-query
+       t2/reducible-query
        (eduction (comp (map #(assoc % :model search-model))
                        (m/distinct-by (juxt :id :model))))))
 

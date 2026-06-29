@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
 import * as Urls from "metabase/urls";
 import type { TransformJobId } from "metabase-types/api";
 

@@ -6,6 +6,7 @@ import type {
   DatasetQuery,
   DraftTransform,
   PaginationResponse,
+  ResearchPlanContext,
   RowValue,
   SuggestedTransform,
   Transform,
@@ -49,6 +50,7 @@ export type MetabotChatContext = {
   default_database_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
+  research_plan?: ResearchPlanContext;
 };
 
 export type MetabotTool = {

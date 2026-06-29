@@ -1,18 +1,18 @@
 import { t } from "ttag";
 
-import type { DocumentHost } from "metabase/redux/store/documents";
+import type { EditorCapabilities } from "metabase/rich_text_editing/tiptap/EditorHost";
 
 import type { CommandSection } from "./types";
 
 export const getAllCommandSections = (
   isMetabotEnabled: boolean,
   metabotName: string = "Metabot",
-  documentHost: DocumentHost,
+  capabilities: EditorCapabilities,
 ): CommandSection[] => {
   return [
     {
       items: [
-        ...(isMetabotEnabled && documentHost !== "exploration"
+        ...(isMetabotEnabled && capabilities.canUseMetabot
           ? ([
               {
                 icon: "metabot" as const,
@@ -23,7 +23,7 @@ export const getAllCommandSections = (
               },
             ] satisfies CommandSection["items"])
           : []),
-        ...(documentHost !== "exploration"
+        ...(capabilities.canEmbedCharts
           ? ([
               {
                 icon: "lineandbar",

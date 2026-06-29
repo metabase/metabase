@@ -12,7 +12,7 @@ export interface DiscussionProps {
   comments: Comment[];
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
-  enableHoverHighlight?: boolean;
+  onHoverChange?: (childTargetId: string | undefined) => void;
   renderExtra?: CommentExtraRenderer;
 }
 
@@ -21,7 +21,7 @@ export const Discussions = ({
   comments,
   targetId,
   targetType,
-  enableHoverHighlight = false,
+  onHoverChange,
   renderExtra,
 }: DiscussionProps) => {
   const threads = useMemo(
@@ -39,7 +39,7 @@ export const Discussions = ({
               comments={thread.comments}
               targetId={targetId}
               targetType={targetType}
-              enableHoverHighlight={enableHoverHighlight}
+              onHoverChange={onHoverChange}
               renderExtra={renderExtra}
             />
           </Box>

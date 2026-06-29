@@ -1405,7 +1405,7 @@ jobs:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.sqlite-quarantine-conflict == 'true' }}
       run: |
-        echo "::error::SQLite driver is quarantined but you changed files in modules/drivers/sqlite/"
+        echo "::error::SQLite driver is quarantined but you changed files that affect it"
         echo ""
         echo "Your changes will NOT be tested because the driver is currently quarantined."
         echo "To run SQLite tests, add the label: break-quarantine-sqlite"

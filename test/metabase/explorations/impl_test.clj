@@ -6,6 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
@@ -104,3 +105,107 @@
           ;; 10 extra metrics would have meant ~20 extra queries pre-fix; allow generous slack
           ;; for incidental per-row variation while still proving it is not per-metric.
           (is (< (- many few) 6)))))))
+
+;;; ----------------------------------- research-candidates / research-groups -----------------------------------
+
+;; Synthetic hydrated metrics for the Metabot research tools. `region-1` and `region-2` share a
+;; source, so they collapse into one dimension group spanning both metrics; `plan-1` is its own
+;; group on metric 1 only.
+(def ^:private region-source {:source 1})
+(def ^:private plan-source {:source 2})
+
+(defn- dim [id display interestingness sources]
+  {:id id :name id :display_name display :effective_type "type/Text" :semantic_type nil
+   :dimension_interestingness interestingness :sources sources})
+
+(def ^:private synthetic-metrics
+  [{:id 1 :name "Revenue" :description "rev" :result_column_name "count"
+    :dimensions [(dim "region-1" "Region" 0.9 [region-source])
+                 (dim "plan-1" "Plan" 0.5 [plan-source])]}
+   {:id 2 :name "Churn" :description "churn" :result_column_name "count"
+    :dimensions [(dim "region-2" "Region" 0.9 [region-source])]}])
+
+(defmacro ^:private with-synthetic-metrics [& body]
+  `(with-redefs [explorations.impl/hydrated-metrics (fn [~'_] synthetic-metrics)]
+     ~@body))
+
+(deftest research-candidates-test
+  (with-synthetic-metrics
+    (let [{:keys [metrics dimension_groups]} (explorations.impl/research-candidates {})]
+      (testing "each metric inlines its candidate dimensions with ids + interestingness"
+        (is (= [{:id 1 :name "Revenue"} {:id 2 :name "Churn"}]
+               (mapv #(select-keys % [:id :name]) metrics)))
+        (is (= ["region-1" "plan-1"] (mapv :id (:dimensions (first metrics)))))
+        (is (= 0.9 (:dimension_interestingness (first (:dimensions (first metrics)))))))
+      (testing "dimension groups carry their member dimension ids and the metrics they slice"
+        (let [by-name (u/index-by :name dimension_groups)]
+          (is (= #{"region-1" "region-2"} (set (:dimension_ids (get by-name "Region")))))
+          (is (= #{1 2} (set (:metric_ids (get by-name "Region")))))
+          (is (= #{1} (set (:metric_ids (get by-name "Plan"))))))))))
+
+(deftest research-groups-metric-anchored-test
+  (with-synthetic-metrics
+    (testing "a valid metric-anchored group echoes its spec and restricts to that metric"
+      (let [spec {:anchor "metric" :metric_id 1 :dimension_ids ["plan-1"]}
+            {:keys [metrics groups]} (explorations.impl/research-groups {:groups [spec]})]
+        (is (= [spec] groups))
+        (is (= [1] (mapv :id metrics)))
+        (is (= ["region-1" "plan-1"] (:dimension_ids (first metrics))))))
+    (testing "dimension_ids is optional"
+      (is (= [1] (mapv :id (:metrics (explorations.impl/research-groups
+                                      {:groups [{:anchor "metric" :metric_id 1}]}))))))))
+
+(deftest research-groups-dimension-anchored-test
+  (with-synthetic-metrics
+    (testing "a dimension-anchored group pulls every metric exposing a dimension in that group"
+      (let [{:keys [metrics groups]} (explorations.impl/research-groups
+                                      {:groups [{:anchor "dimension" :dimension_id "region-1"}]})]
+        (is (= [{:anchor "dimension" :dimension_id "region-1"}] groups))
+        ;; region-1 and region-2 share a source -> one group across metrics 1 and 2
+        (is (= [1 2] (sort (mapv :id metrics))))))))
+
+(deftest research-groups-dimension-anchored-metric-subset-test
+  (with-synthetic-metrics
+    (testing "metric_ids restricts a dimension-anchored group to the chosen metrics"
+      (let [spec {:anchor "dimension" :dimension_id "region-1" :metric_ids [1]}
+            {:keys [metrics groups]} (explorations.impl/research-groups {:groups [spec]})]
+        (is (= [spec] groups))
+        (is (= [1] (mapv :id metrics)))))
+    (testing "omitting metric_ids still pulls every metric exposing the dimension"
+      (is (= [1 2] (sort (mapv :id (:metrics (explorations.impl/research-groups
+                                              {:groups [{:anchor "dimension" :dimension_id "region-1"}]})))))))))
+
+(deftest research-groups-hard-errors-test
+  (with-synthetic-metrics
+    (testing "unknown metric id"
+      (is (thrown-with-msg? Exception #"Unknown or inaccessible metric id 999"
+                            (explorations.impl/research-groups
+                             {:groups [{:anchor "metric" :metric_id 999}]}))))
+    (testing "dimension that isn't a candidate of its metric"
+      (is (thrown-with-msg? Exception #"not a candidate of metric"
+                            (explorations.impl/research-groups
+                             {:groups [{:anchor "metric" :metric_id 1 :dimension_ids ["region-2"]}]}))))
+    (testing "unknown dimension id"
+      (is (thrown-with-msg? Exception #"Unknown dimension id"
+                            (explorations.impl/research-groups
+                             {:groups [{:anchor "dimension" :dimension_id "bogus"}]}))))
+    (testing "replace_default_dimensions with no dimension_ids"
+      (is (thrown-with-msg? Exception #"replace_default_dimensions requires"
+                            (explorations.impl/research-groups
+                             {:groups [{:anchor "metric" :metric_id 1 :replace_default_dimensions true}]}))))
+    (testing "metric_id not related to a dimension-anchored group's dimension"
+      (is (thrown-with-msg? Exception #"not related to dimension"
+                            (explorations.impl/research-groups
+                             {:groups [{:anchor "dimension" :dimension_id "plan-1" :metric_ids [2]}]}))))
+    (testing "unknown anchor"
+      (is (thrown-with-msg? Exception #"Unknown anchor"
+                            (explorations.impl/research-groups
+                             {:groups [{:anchor "segment" :metric_id 1}]}))))
+    (testing "metric anchor missing metric_id"
+      (is (thrown-with-msg? Exception #"requires a metric_id"
+                            (explorations.impl/research-groups
+                             {:groups [{:anchor "metric"}]}))))
+    (testing "dimension anchor missing dimension_id"
+      (is (thrown-with-msg? Exception #"requires a dimension_id"
+                            (explorations.impl/research-groups
+                             {:groups [{:anchor "dimension"}]}))))))

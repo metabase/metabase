@@ -166,9 +166,7 @@ describe("Collections > utils", () => {
     it("returns true if there is no collection", () => {
       /* @ts-expect-error checking if a race condition not returning expected data behaves as expected */
       expect(isRootCollection({})).toBe(true);
-      /* @ts-expect-error checking if a race condition not returning expected data behaves as expected */
       expect(isRootCollection(null)).toBe(true);
-      /* @ts-expect-error checking if a race condition not returning expected data behaves as expected */
       expect(isRootCollection(undefined)).toBe(true);
     });
 

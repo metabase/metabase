@@ -366,7 +366,22 @@
   ([user-id second-user-id]
    (seed-usage-auditing-data! user-id second-user-id nil nil))
   ([user-id second-user-id tenant-id second-tenant-id]
-   (let [today          (t/offset-date-time (t/zone-offset "+00"))
+   ;; Anchor "today" at noon in the instance's own timezone (the JVM default
+   ;; zone), not UTC. The charts resolve relative date filters (past7days~,
+   ;; Yesterday, the per-day buckets) through the query processor, which falls
+   ;; back to the system timezone when no report/database timezone is set, so the
+   ;; app's notion of "today" follows the JVM zone. Anchoring the seed in UTC
+   ;; desyncs the two whenever that zone is behind UTC: e2e CI runs the instance
+   ;; (and browser) in US/Pacific, so a UTC-noon "today" lands on the app's
+   ;; *next* calendar day for ~7-8 hours after UTC midnight. That dropped the
+   ;; seeded "today" rows out of the window and made the "Conversations by day"
+   ;; drill report the wrong date. Noon in the JVM zone keeps every "today" event
+   ;; firmly inside the app's current day regardless of run time. Truncating to
+   ;; days and adding 12h (rather than a wall-clock instant) also keeps the
+   ;; neighbouring days clear of their own midnight boundaries.
+   (let [today          (-> (t/zoned-date-time)
+                            (t/truncate-to :days)
+                            (t/plus (t/hours 12)))
          yesterday      (t/minus today (t/days 1))
          two-days       (t/minus today (t/days 2))
          previous-week  (t/minus today (t/days 8))

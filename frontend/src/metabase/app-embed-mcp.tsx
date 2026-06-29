@@ -1,3 +1,7 @@
+// Must run before any dynamic import(): sets webpack's runtime publicPath so
+// on-demand chunks (leaflet, echarts) resolve to the Metabase instance.
+import "./app-embed-mcp-public-path";
+
 import { createRoot } from "react-dom/client";
 
 // Import the embedding SDK vendors side-effects (sets up global CSS vars, etc.)

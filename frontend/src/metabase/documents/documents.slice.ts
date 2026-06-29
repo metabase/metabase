@@ -8,7 +8,6 @@ import _ from "underscore";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
   CardEmbedRef,
-  DocumentHost,
   DocumentsState,
   MentionCacheItem,
 } from "metabase/redux/store/documents";
@@ -43,7 +42,6 @@ export const initialState: DocumentsState = {
   hoveredChildTargetId: undefined,
   hasUnsavedChanges: false,
   isHistorySidebarOpen: false,
-  documentHost: "standalone",
 };
 
 const documentsSlice = createSlice({
@@ -148,9 +146,6 @@ const documentsSlice = createSlice({
     setIsHistorySidebarOpen: (state, action: PayloadAction<boolean>) => {
       state.isHistorySidebarOpen = action.payload;
     },
-    setDocumentHost: (state, action: PayloadAction<DocumentHost>) => {
-      state.documentHost = action.payload;
-    },
   },
 });
 
@@ -172,7 +167,6 @@ export const {
   setHoveredChildTargetId,
   setHasUnsavedChanges,
   setIsHistorySidebarOpen,
-  setDocumentHost,
 } = documentsSlice.actions;
 
 export const generateDraftCardId = (): number => {

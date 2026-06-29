@@ -85,7 +85,7 @@ export const UpsellBannerInner: React.FC<UpsellBannerProps> = ({
     <Box
       className={cx(S.UpsellBannerComponent, large && S.Large)}
       data-testid="upsell-banner"
-      bg="background-primary"
+      bg="background_page-primary"
       {...domProps}
     >
       <Flex align="flex-start" gap="sm" wrap="nowrap">

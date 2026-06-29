@@ -1,10 +1,12 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { Comments } from "metabase/comments/components/Comments";
 import Animation from "metabase/css/core/animation.module.css";
+import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
 import { useDocumentState } from "metabase/documents/hooks/use-document-state";
 import { getCurrentDocument } from "metabase/documents/selectors";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 
 interface Props {
@@ -17,6 +19,14 @@ export const CommentsSidesheet = ({ params }: Props) => {
   const childTargetId = params?.childTargetId;
   const { openCommentSidebar, closeCommentSidebar } = useDocumentState();
   const document = useSelector(getCurrentDocument);
+  const dispatch = useDispatch();
+
+  const handleHoverChange = useCallback(
+    (hoveredChildTargetId: string | undefined) => {
+      dispatch(setHoveredChildTargetId(hoveredChildTargetId));
+    },
+    [dispatch],
+  );
 
   if (!childTargetId || !document) {
     return null;
@@ -45,6 +55,7 @@ export const CommentsSidesheet = ({ params }: Props) => {
         title={
           childTargetId === "all" ? t`All comments` : t`Comments about this`
         }
+        onHoverChange={childTargetId === "all" ? handleHoverChange : undefined}
       />
     </Box>
   );

@@ -1,5 +1,12 @@
 import cx from "classnames";
-import { type ChangeEvent, memo, useCallback, useState } from "react";
+import {
+  type ChangeEvent,
+  Suspense,
+  lazy,
+  memo,
+  useCallback,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -13,7 +20,6 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { Button, Ellipsified, Image, Modal, Stack, Text } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
-import { LeafletChoropleth } from "metabase/visualizations/components/LeafletChoropleth";
 import type {
   CustomGeoJSONMap,
   CustomGeoJSONSetting,
@@ -134,7 +140,7 @@ export const CustomGeoJSONWidget = () => {
       {!hasCustomMaps && (
         <Stack p="xl" align="center" gap="md">
           <Image w={120} h={120} src={noResultsSource} />
-          <Text fw="700" c="text-tertiary">{t`No custom maps yet`}</Text>
+          <Text fw="700" c="text-disabled">{t`No custom maps yet`}</Text>
         </Stack>
       )}
 
@@ -499,8 +505,18 @@ interface ChoroplethPreviewProps {
   geoJson: GeoJSONData | undefined;
 }
 
+// leaflet (~225KB) is loaded lazily here so it stays out of the admin bundle
+// until someone actually previews a custom GeoJSON map.
+const LeafletChoropleth = lazy(() =>
+  import("metabase/visualizations/components/LeafletChoropleth").then(
+    (module) => ({ default: module.LeafletChoropleth }),
+  ),
+);
+
 const ChoroplethPreview = memo(({ geoJson }: ChoroplethPreviewProps) => (
-  <LeafletChoropleth geoJson={geoJson} />
+  <Suspense fallback={<LoadingAndErrorWrapper loading />}>
+    <LeafletChoropleth geoJson={geoJson} />
+  </Suspense>
 ));
 
 ChoroplethPreview.displayName = "ChoroplethPreview";

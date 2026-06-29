@@ -47,6 +47,7 @@ interface CommentsProps {
   title?: string;
   showCloseButton?: boolean;
   context?: CommentContext;
+  onHoverChange?: (childTargetId: string | undefined) => void;
   renderExtra?: CommentExtraRenderer;
   disableAutoFocus?: boolean;
 }
@@ -59,6 +60,7 @@ export const Comments = ({
   title,
   showCloseButton = true,
   context,
+  onHoverChange,
   renderExtra,
   disableAutoFocus = false,
 }: CommentsProps) => {
@@ -243,7 +245,7 @@ export const Comments = ({
             <Discussions
               childTargetId={childTargetId === "all" ? null : childTargetId}
               comments={activeComments}
-              enableHoverHighlight={childTargetId === "all"}
+              onHoverChange={onHoverChange}
               targetId={commentTarget.target_id}
               targetType={commentTarget.target_type}
               renderExtra={renderExtra}
@@ -261,7 +263,7 @@ export const Comments = ({
             >
               <Image w={120} h={120} src={noResultsSource} />
 
-              <Text fw="700" c="text-tertiary">{t`No comments`}</Text>
+              <Text fw="700" c="text-disabled">{t`No comments`}</Text>
             </Flex>
           )}
 

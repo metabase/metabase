@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupGetWorkspaceEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockDatabase,
@@ -13,6 +14,8 @@ import { WorkspaceItem } from "./WorkspaceItem";
 const WORKSPACE = createMockWorkspace({ id: 1, name: "My workspace" });
 
 function setup({ workspace = WORKSPACE } = {}) {
+  // The delete modal fetches the hydrated workspace when opened.
+  setupGetWorkspaceEndpoint(workspace);
   renderWithProviders(<WorkspaceItem workspace={workspace} />);
 }
 

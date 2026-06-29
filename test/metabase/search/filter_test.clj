@@ -92,6 +92,7 @@
    :last-edited-at                 "2024-10-02"
    :search-native-query            true
    :verified                       true
+   :curated?                       true
    :ids                            [1 2 3 4]
    :non-temporal-dim-ids           "[1]"
    :has-temporal-dim               true
@@ -129,6 +130,7 @@
                 [:or [:= :search_index.collection_id 5] [:like :collection.location "%/5/%"]]
                 [:not= :search_index.model [:inline "table"]]
                 [:= :search_index.archived true]
+                [:= :search_index.curated true]
                 [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                 [:or
                  [:= nil :search_index.dashboard_id]
@@ -177,3 +179,9 @@
                   :search_index.collection_id)]
       (is (=? [:or any? [:exists any?]]
               clause)))))
+
+(deftest in-place-curated-table-filter-counts-authoritative-test
+  (testing "the in-place curated table filter counts authoritative tables regardless of publish state,
+            mirroring collections.curation/curated? (BOT-1570)"
+    (let [where (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true))]
+      (is (some #{"authoritative"} (tree-seq coll? seq where))))))

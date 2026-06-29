@@ -14,7 +14,7 @@ export const CardRoot = styled(Link)`
   padding: 1rem;
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   box-shadow: 0 7px 20px var(--mb-color-shadow);
   max-width: 100%;
 
