@@ -155,12 +155,18 @@
         (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))
 
 (deftest osi-ai-context-export-scope-test
-  (testing "OsiAiContext exports only on a full (untargeted) export"
-    ;; a targeted/selective export extracts it unfiltered, pulling every ai_context row in the instance
-    ;; (leaked curator text + dangling deps), so it's gated to full exports until reverse-dep export lands.
-    (is (contains? (#'extract/model-set {}) "OsiAiContext"))
-    (is (not (contains? (#'extract/model-set {:targets [["Collection" 1]]}) "OsiAiContext")))
-    (is (not (contains? (#'extract/model-set {:no-osi-ai-context true}) "OsiAiContext")))))
+  (testing "OsiAiContext exports only on a fully complete export"
+    ;; it's extracted unfiltered, so any partial export pulls every ai_context row in the instance (leaked
+    ;; curator text + dangling deps); gated until reverse-dep export lands.
+    (testing "a complete export (no targets, content + data model) includes it"
+      (is (contains? (#'extract/model-set {}) "OsiAiContext")))
+    (testing "a targeted/selective export excludes it"
+      (is (not (contains? (#'extract/model-set {:targets [["Collection" 1]]}) "OsiAiContext"))))
+    (testing "an untargeted-but-partial export excludes it (referenced entities may be absent)"
+      (is (not (contains? (#'extract/model-set {:no-collections true}) "OsiAiContext")))
+      (is (not (contains? (#'extract/model-set {:no-data-model true}) "OsiAiContext"))))
+    (testing "the explicit opt-out excludes it"
+      (is (not (contains? (#'extract/model-set {:no-osi-ai-context true}) "OsiAiContext"))))))
 
 (deftest import-repoints-row-to-a-different-entity-test
   (testing "an import whose portable ref resolves to a different entity repairs the binding instead of aborting"
