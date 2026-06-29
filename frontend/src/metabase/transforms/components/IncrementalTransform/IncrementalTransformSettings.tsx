@@ -1,29 +1,28 @@
-import { useFormikContext } from "formik";
+import { useField, useFormikContext } from "formik";
 import { t } from "ttag";
 
+import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useDocsUrl } from "metabase/common/hooks";
-import { FormSelect } from "metabase/forms";
+import { FormSelect, FormTextInput } from "metabase/forms";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  SOURCE_STRATEGY_OPTIONS,
-  TARGET_STRATEGY_OPTIONS,
-} from "metabase/transforms/constants";
+import { SOURCE_STRATEGY_OPTIONS } from "metabase/transforms/constants";
 import { getLibQuery } from "metabase/transforms/utils";
 import {
   Anchor,
   Box,
   Divider,
   Group,
+  MultiSelect,
   Stack,
   Switch,
   Text,
   Tooltip,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { TransformSource } from "metabase-types/api";
+import type { TableId, TransformSource } from "metabase-types/api";
 import type { TransformType } from "metabase-types/api/transform";
 
 import {
@@ -41,6 +40,8 @@ type IncrementalTransformSettingsProps = {
   variant?: "embedded" | "standalone";
   readOnly?: boolean;
   extraActions?: React.ReactNode;
+  // When the target table already exists, its id powers a column picker for the unique key.
+  targetTableId?: TableId;
 };
 
 export const IncrementalTransformSettings = ({
@@ -50,6 +51,7 @@ export const IncrementalTransformSettings = ({
   variant = "embedded",
   readOnly,
   extraActions,
+  targetTableId,
 }: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
@@ -165,7 +167,11 @@ export const IncrementalTransformSettings = ({
                 <Group p="lg">{extraActions}</Group>
               </>
             )}
-            <TargetStrategyFields variant={variant} />
+            <TargetStrategyFields
+              variant={variant}
+              targetTableId={targetTableId}
+              readOnly={readOnly}
+            />
           </>
         )}
       </TitleSection>
@@ -188,28 +194,97 @@ export const IncrementalTransformSettings = ({
             query={libQuery}
             transformType={transformType}
           />
-          <TargetStrategyFields variant={variant} />
+          <TargetStrategyFields
+            variant={variant}
+            targetTableId={targetTableId}
+            readOnly={readOnly}
+          />
         </>
       )}
     </Stack>
   );
 };
 
+const UNIQUE_KEY_DESCRIPTION = t`Optional. Columns that uniquely identify a row. When set, matching rows are updated in place instead of appended.`;
+
+// Form value is a comma-separated string of physical column names; this adapter presents it as a
+// column multi-select. Labels use the column display name (matching the checkpoint field select),
+// while the stored value stays the physical name the merge SQL needs.
+function UniqueKeyColumnSelect({
+  options,
+  readOnly,
+}: {
+  options: { value: string; label: string }[];
+  readOnly?: boolean;
+}) {
+  const [field, , helpers] = useField<string>("uniqueKey");
+  const value = field.value
+    ? field.value
+        .split(",")
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0)
+    : [];
+
+  return (
+    <MultiSelect
+      label={t`Unique key`}
+      description={UNIQUE_KEY_DESCRIPTION}
+      placeholder={t`Pick columns`}
+      data={options}
+      value={value}
+      onChange={(names) => helpers.setValue(names.join(", "))}
+      disabled={readOnly}
+      searchable
+      clearable
+    />
+  );
+}
+
+function UniqueKeyField({
+  targetTableId,
+  readOnly,
+}: {
+  targetTableId?: TableId;
+  readOnly?: boolean;
+}) {
+  const { data: table } = useGetTableQueryMetadataQuery(
+    targetTableId != null ? { id: targetTableId } : skipToken,
+  );
+  const options =
+    table?.fields?.map((fieldObj) => ({
+      value: fieldObj.name,
+      label: fieldObj.display_name ?? fieldObj.name,
+    })) ?? [];
+
+  if (options.length > 0) {
+    return <UniqueKeyColumnSelect options={options} readOnly={readOnly} />;
+  }
+
+  return (
+    <FormTextInput
+      name="uniqueKey"
+      label={t`Unique key`}
+      description={UNIQUE_KEY_DESCRIPTION}
+      placeholder={t`e.g. id`}
+      disabled={readOnly}
+    />
+  );
+}
+
 function TargetStrategyFields({
   variant,
+  targetTableId,
+  readOnly,
 }: {
   variant: "embedded" | "standalone";
+  targetTableId?: TableId;
+  readOnly?: boolean;
 }) {
-  const content = TARGET_STRATEGY_OPTIONS.length > 1 && (
+  // No explicit strategy picker: leaving the unique key empty appends; setting it upserts
+  // (merge/restate) matching rows in place.
+  const content = (
     <Stack>
-      <FormSelect
-        name="targetStrategy"
-        label={t`Target Strategy`}
-        description={t`How to update the target table`}
-        data={TARGET_STRATEGY_OPTIONS}
-      />
-      {/* Append strategy has no additional fields */}
-      {/* Future strategies like "merge" could add fields here */}
+      <UniqueKeyField targetTableId={targetTableId} readOnly={readOnly} />
     </Stack>
   );
 
@@ -218,12 +293,10 @@ function TargetStrategyFields({
   }
 
   return (
-    content && (
-      <>
-        <Divider />
-        <Group p="lg">{content}</Group>
-      </>
-    )
+    <>
+      <Divider />
+      <Group p="lg">{content}</Group>
+    </>
   );
 }
 

@@ -6,7 +6,7 @@ const getValues = (
   incremental: true,
   sourceStrategy: "checkpoint",
   checkpointFilterFieldId: "123",
-  targetStrategy: "append",
+  uniqueKey: "",
   ...values,
 });
 
