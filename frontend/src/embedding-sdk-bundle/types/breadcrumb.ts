@@ -1,4 +1,4 @@
-import type { SdkCollectionId } from "./collection";
+import type { SdkCollectionId } from "embedding-sdk-shared/types/collection-id";
 
 export type SdkBreadcrumbItemType =
   | "collection"

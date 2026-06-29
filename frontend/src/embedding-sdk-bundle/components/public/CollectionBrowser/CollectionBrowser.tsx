@@ -9,11 +9,9 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import type {
-  MetabaseCollectionItem,
-  SdkCollectionId,
-} from "embedding-sdk-bundle/types/collection";
+import type { MetabaseCollectionItem } from "embedding-sdk-bundle/types/collection";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
+import type { SdkCollectionId } from "embedding-sdk-shared/types/collection-id";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { EmptyState } from "metabase/common/components/EmptyState";

@@ -3,6 +3,7 @@ export type * from "embedding-sdk-shared/types/auth-config";
 export type * from "./collection";
 export type * from "./dashboard";
 export type * from "./entity";
+export type * from "embedding-sdk-shared/types/collection-id";
 export type * from "./events";
 export type * from "./metabot";
 export type * from "./plugins";

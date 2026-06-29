@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
-import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
+import type { SdkCollectionId } from "embedding-sdk-shared/types/collection-id";
 
 /**
  * Props for the MetabotQuestion component.
