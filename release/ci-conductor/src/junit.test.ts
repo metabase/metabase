@@ -87,7 +87,52 @@ also nope
 </testsuite>
 </testsuites>`;
 
+// hawk with the `message` attribute (https://github.com/metabase/hawk/pull/49):
+// the failure carries a first-class `message`, and the body still holds the
+// file:line locator + full assertion. The parser must prefer the attribute.
+const FAILURE_WITH_MESSAGE = `<?xml version='1.0' encoding='UTF-8'?>
+<testsuite name="metabase.foo-test" tests="1" errors="0" failures="1">
+<testcase classname="metabase.foo-test" name="bar-test" time="0.01" assertions="1">
+<failure message="expected: (= 1 2)">
+<![CDATA[
+foo_test.clj:42
+expected: (= 1 2)
+  actual: (not (= 1 2))
+]]>
+</failure>
+</testcase>
+</testsuite>`;
+
+// hawk emits `message` on <error> too, alongside the `type` attribute (the
+// :error branch of write-assertion-result!* in hawk PR #49). The parser must
+// read the message off an <error> the same as a <failure>, ignoring `type`.
+const ERROR_WITH_MESSAGE = `<?xml version='1.0' encoding='UTF-8'?>
+<testsuite name="metabase.foo-test" tests="1" errors="1" failures="0">
+<testcase classname="metabase.foo-test" name="boom-test" time="0.01">
+<error type="clojure.lang.ExceptionInfo" message="boom">
+<![CDATA[
+foo_test.clj:99
+java.lang.RuntimeException: boom
+]]>
+</error>
+</testcase>
+</testsuite>`;
+
 describe("parseJunit", () => {
+  it("prefers the failure `message` attribute over the body", () => {
+    const [test] = parseJunit(FAILURE_WITH_MESSAGE);
+    expect(test.message).toBe("expected: (= 1 2)");
+    // The full trace, including the locator, stays in the stack.
+    expect(test.stack).toContain("foo_test.clj:42");
+  });
+
+  it("reads the `message` attribute off an <error>, ignoring `type`", () => {
+    const [test] = parseJunit(ERROR_WITH_MESSAGE);
+    expect(test.message).toBe("boom");
+    expect(test.status).toBe("failure");
+    expect(test.stack).toContain("java.lang.RuntimeException: boom");
+  });
+
   it("collapses multiple <failure>s in one testcase into a single entry", () => {
     const tests = parseJunit(TWO_FAILURES);
     expect(tests).toHaveLength(1);
@@ -97,8 +142,9 @@ describe("parseJunit", () => {
     // file_path is intentionally null — backend identity is (suite, path, name).
     expect(test.file).toBeNull();
     expect(test.status).toBe("failure");
-    // The message is the first line of the failure body — the file:line locator.
-    expect(test.message).toBe("repair_test.clj:1184");
+    // No `message` attribute on the <failure> => null (we don't guess from the
+    // body; its first line is the file:line locator, not a message).
+    expect(test.message).toBeNull();
     // The stack carries both failures.
     expect(test.stack).toContain("repair_test.clj:1184");
     expect(test.stack).toContain("repair_test.clj:1186");

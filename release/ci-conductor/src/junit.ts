@@ -84,14 +84,14 @@ export function parseJunit(xml: string): NormalizedTest[] {
         .map((p) => elementBody(p[3]))
         .filter((body) => body !== "")
         .join("\n\n");
-      const lines = stack.split("\n").filter((line) => line.trim() !== "");
-      // Prefer a `message` attribute on the failure/error; otherwise the first
-      // line of the body (the `file:line` locator). The full trace, including
-      // that line, stays in `stack`.
-      const attrMessage = problems
-        .map((p) => attr(p[2], "message"))
-        .find((m) => m != null && m !== "");
-      const message = attrMessage ?? lines[0] ?? undefined;
+      // The `message` attribute on the failure/error is the first-class source
+      // of the human-readable message. When it's absent we send null rather
+      // than guessing from the body — the body's first line is the `file:line`
+      // locator, not a message. The full trace stays in `stack`.
+      const message =
+        problems
+          .map((p) => attr(p[2], "message"))
+          .find((m) => m != null && m !== "") ?? null;
 
       tests.push({
         name,
