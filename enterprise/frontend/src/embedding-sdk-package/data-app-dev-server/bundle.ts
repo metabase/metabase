@@ -12,15 +12,14 @@ export const DATA_APP_ENTRY = "src/index.tsx";
 /** The IIFE assigns the app factory to this global; the sandbox captures it. */
 export const DATA_APP_FACTORY_GLOBAL = "__dataAppFactory__";
 
-export const DATA_APP_EXTERNALS: string[] = [
-  "react",
-  "react/jsx-runtime",
-  // Only referenced by a development-mode build (jsxDEV); harmless in production.
-  "react/jsx-dev-runtime",
-  "@metabase/embedding-sdk-react",
-  "@metabase/embedding-sdk-react/data-app",
-];
-
+/**
+ * Each externalized import mapped to the global the sandbox endows it as. These
+ * global names MUST match the endowments in the host's `createDataAppSandbox`
+ * (`enterprise/.../metabase-enterprise/data_apps/sandbox.ts`) — that's the
+ * cross-package contract that lets the bundle share the host's single React/SDK.
+ * `react/jsx-dev-runtime` is only referenced by a development-mode build (jsxDEV);
+ * it's harmless in production.
+ */
 export const DATA_APP_GLOBALS: Record<string, string> = {
   react: "React",
   "react/jsx-runtime": "__react_jsx_runtime__",
@@ -28,6 +27,9 @@ export const DATA_APP_GLOBALS: Record<string, string> = {
   "@metabase/embedding-sdk-react": "__metabase_sdk__",
   "@metabase/embedding-sdk-react/data-app": "__metabase_data_app__",
 };
+
+/** The imports kept external, derived from `DATA_APP_GLOBALS` so the two can't drift. */
+export const DATA_APP_EXTERNALS: string[] = Object.keys(DATA_APP_GLOBALS);
 
 /** Dev-only URL the harness fetches the freshly-built IIFE bundle from. */
 export const DATA_APP_BUNDLE_URL = "/@data-app-bundle.js";

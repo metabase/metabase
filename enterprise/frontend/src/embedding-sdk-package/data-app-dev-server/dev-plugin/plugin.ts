@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { type Plugin, build } from "vite";
+import { type Plugin, type Rollup, build } from "vite";
 
 import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
 import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
@@ -14,6 +14,12 @@ import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
 const HARNESS_VIRTUAL_ID = "virtual:metabase-data-app-dev-harness";
 const CONFIG_VIRTUAL_ID = "virtual:metabase-data-app-dev-config";
 const HARNESS_SOURCE_PATH = path.join(__dirname, "data-app-dev-harness.ts");
+
+// Rollup/Vite's virtual-module marker: a leading NUL byte tells Rollup core and
+// other plugins that an id is synthetic, so they don't try to resolve/load it
+// from disk. It's a convention (not a public export), so we spell it out; Vite
+// encodes it as `__x00__` in dev URLs.
+const RESOLVED_PREFIX = "\0";
 
 /**
  * Makes `npm run dev` run the app through the real Near-Membrane sandbox instead
@@ -30,10 +36,6 @@ const HARNESS_SOURCE_PATH = path.join(__dirname, "data-app-dev-harness.ts");
 export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
   let bundleCode = "";
 
-  // Built in the dev server's own mode (development by default), so the
-  // sandboxed app runs with dev React — jsxDEV warnings, unminified — while a
-  // `--mode production` run mirrors the shipped bundle. The membrane + distortion
-  // rules are identical either way; only the React build differs.
   const rebuild = async (root: string, mode: string) => {
     const result = await build({
       root,
@@ -49,11 +51,12 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
     });
 
     const outputs = Array.isArray(result) ? result : [result];
-    const chunk = outputs
-      .flatMap((bundle) => ("output" in bundle ? bundle.output : []))
-      .find((file) => file.type === "chunk");
 
-    bundleCode = chunk && chunk.type === "chunk" ? chunk.code : "";
+    bundleCode =
+      outputs
+        .flatMap((output) => ("output" in output ? output.output : []))
+        .find((chunk): chunk is Rollup.OutputChunk => chunk.type === "chunk")
+        ?.code ?? "";
   };
 
   return {
@@ -62,15 +65,16 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
 
     resolveId(id) {
       if (id === HARNESS_VIRTUAL_ID || id === CONFIG_VIRTUAL_ID) {
-        return "\0" + id;
+        return RESOLVED_PREFIX + id;
       }
     },
 
     load(id) {
-      if (id === "\0" + HARNESS_VIRTUAL_ID) {
+      if (id === RESOLVED_PREFIX + HARNESS_VIRTUAL_ID) {
         return fs.readFileSync(HARNESS_SOURCE_PATH, "utf8");
       }
-      if (id === "\0" + CONFIG_VIRTUAL_ID) {
+
+      if (id === RESOLVED_PREFIX + CONFIG_VIRTUAL_ID) {
         return [
           `export const allowedHosts = ${JSON.stringify(allowedHosts)};`,
           `export const bundleUrl = ${JSON.stringify(DATA_APP_BUNDLE_URL)};`,
@@ -82,52 +86,54 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
     async configureServer(server) {
       const { root, mode } = server.config;
 
-      // Serialize rebuilds: never run two `build()`s at once, and coalesce
-      // changes that arrive mid-rebuild into a single follow-up so we always
-      // serve and announce the latest bundle. Failures are logged (not left as
-      // unhandled rejections); the last good `bundleCode` is kept.
-      let rebuilding = false;
-      let pending = false;
-      const rebuildAndNotify = async (notify: boolean) => {
-        if (rebuilding) {
-          pending = true;
-          return;
-        }
-        rebuilding = true;
+      const safeRebuild = async (): Promise<boolean> => {
         try {
-          do {
-            pending = false;
-            await rebuild(root, mode);
-          } while (pending);
-          if (notify) {
-            server.ws.send({ type: "custom", event: DATA_APP_REBUILT_EVENT });
-          }
+          await rebuild(root, mode);
+
+          return true;
         } catch (error) {
           server.config.logger.error(
             `[data-app-dev] failed to build the app bundle: ${
               error instanceof Error ? error.message : String(error)
             }`,
           );
-        } finally {
-          rebuilding = false;
+          return false;
         }
       };
 
-      await rebuildAndNotify(false);
+      let chain = Promise.resolve();
+      const rebuildAndNotify = () => {
+        chain = chain.then(async () => {
+          if (await safeRebuild()) {
+            server.ws.send({ type: "custom", event: DATA_APP_REBUILT_EVENT });
+          }
+        });
+
+        return chain;
+      };
+
+      // Initial build; no client is connected yet, so nothing to notify.
+      await safeRebuild();
 
       server.middlewares.use((req, res, next) => {
-        if (req.url === DATA_APP_BUNDLE_URL) {
-          res.setHeader("Content-Type", "text/javascript");
-          res.end(bundleCode);
+        if (req.url?.split("?")[0] !== DATA_APP_BUNDLE_URL) {
+          next();
           return;
         }
-        next();
+        if (!bundleCode) {
+          res.statusCode = 503;
+          res.setHeader("Content-Type", "text/plain");
+          res.end("data-app bundle is not built — see the dev server logs.");
+          return;
+        }
+        res.setHeader("Content-Type", "text/javascript");
+        res.end(bundleCode);
       });
 
       const srcDir = `${path.sep}src${path.sep}`;
       server.watcher.on("change", async (file) => {
         if (file.includes(srcDir)) {
-          await rebuildAndNotify(true);
+          await rebuildAndNotify();
         }
       });
     },
