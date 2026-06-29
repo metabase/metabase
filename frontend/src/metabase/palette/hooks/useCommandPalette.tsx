@@ -12,11 +12,7 @@ import { useSetting } from "metabase/common/hooks";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
-import {
-  getDocsSearchUrl,
-  getDocsUrl,
-  getSettings,
-} from "metabase/selectors/settings";
+import { getDocsUrl, getSettings } from "metabase/selectors/settings";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, Text } from "metabase/ui";
@@ -72,6 +68,18 @@ export const useCommandPalette = ({
 
   const hasQuery = searchQuery.length > 0;
 
+  const docsSearchUrl = useSelector((state) =>
+    debouncedSearchText
+      ? getDocsUrl(state, {
+          searchQuery: debouncedSearchText,
+          utm: {
+            utm_medium: "command-palette",
+            utm_campaign: "docs-search",
+          },
+        })
+      : null,
+  );
+
   const {
     currentData: searchResults,
     isFetching: isSearchLoading,
@@ -103,9 +111,7 @@ export const useCommandPalette = ({
   const settingValues = useSelector(getSettings);
 
   const docsAction = useMemo<PaletteAction[]>(() => {
-    const link = debouncedSearchText
-      ? getDocsSearchUrl({ query: debouncedSearchText })
-      : docsUrl;
+    const link = debouncedSearchText ? docsSearchUrl : docsUrl;
     const ret: PaletteAction[] = [
       {
         id: "search_docs",
@@ -122,7 +128,7 @@ export const useCommandPalette = ({
       },
     ];
     return ret;
-  }, [debouncedSearchText, docsUrl, trimmedQuery]);
+  }, [debouncedSearchText, docsSearchUrl, docsUrl, trimmedQuery]);
 
   const showDocsAction = showMetabaseLinks && hasQuery && !disabled;
 
