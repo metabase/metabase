@@ -1,15 +1,16 @@
 #!/usr/bin/env bun
 
 // Backend test-failure reporter entrypoint. Runs as a post-test CI step on the
-// backend and driver paths: parse the raw JUnit hawk just wrote and POST the
-// failures to ci-conductor. Best-effort — reporting must never break a test run.
+// backend and driver paths: normalize the raw JUnit hawk just wrote and report
+// the failures to ci-conductor. Best-effort — reporting must never break a test
+// run.
 //
 // Run directly with bun (no build step):  bun src/report-junit.ts
 
-import { collectFailures } from "./adapters/junit.ts";
+import { normalizeBackendJunit } from "./adapters/junit.ts";
 import { runContext } from "./identity.ts";
-import { log } from "./log.ts";
-import { postFailedTests } from "./transport.ts";
+import { reportTestFailures } from "./transport.ts";
+import { log } from "./util.ts";
 
 async function main(): Promise<void> {
   log("backend test-failure reporter starting");
@@ -22,7 +23,7 @@ async function main(): Promise<void> {
   const testSuite =
     env.CI_CONDUCTOR_TEST_SUITE ||
     (env.DRIVERS ? `driver-${env.DRIVERS}` : "backend");
-  await postFailedTests(collectFailures(), runContext(testSuite));
+  await reportTestFailures(normalizeBackendJunit(), runContext(testSuite));
 }
 
 main().catch((error) => {

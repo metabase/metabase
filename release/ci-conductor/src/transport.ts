@@ -1,23 +1,27 @@
-// Shared transport: POST a batch of canonical failures to ci-conductor's
+// Shared transport: POST a batch of normalized failures to ci-conductor's
 // `/webhooks/failed-tests`. Call-site-agnostic — the backend posts once
 // post-run; e2e posts per-spec mid-run (later round). Best-effort and never
 // throws: reporting must not break a test run.
+//
+// The quarantine side of the conversation (fetch the list + check failures
+// against it) lands here too in a later round — same host, same transport,
+// reading the same `NormalizedTest[]` this reports.
 
-import type { CanonicalTest, RunContext } from "./contract.ts";
-import { log } from "./log.ts";
+import type { NormalizedTest, RunContext } from "./contract.ts";
+import { log } from "./util.ts";
 
 // The endpoint can be slow, but the reporter must never hang a CI job.
 const REQUEST_TIMEOUT_MS = 15_000;
 
 /**
- * Report the given failures to ci-conductor by POSTing them to the webhook,
- * no-opping when the webhook URL isn't configured (local runs, PRs without the
- * secret). Logs the resolved identity (no secrets, no host) up front so a
- * missing row in ci-conductor can be correlated with — or ruled out against —
- * this exact post. Never throws.
+ * Report the given normalized failures to ci-conductor by POSTing them to the
+ * webhook, no-opping when the webhook URL isn't configured (local runs, PRs
+ * without the secret). Logs the resolved identity (no secrets, no host) up
+ * front so a missing row in ci-conductor can be correlated with — or ruled out
+ * against — this exact post. Never throws.
  */
-export async function postFailedTests(
-  tests: CanonicalTest[],
+export async function reportTestFailures(
+  tests: NormalizedTest[],
   context: RunContext,
 ): Promise<void> {
   const baseUrl = process.env.CI_CONDUCTOR_BASE_URL;

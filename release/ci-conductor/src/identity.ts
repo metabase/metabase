@@ -4,15 +4,7 @@
 // the single definition of how repo/run/job/sha/branch are read.
 
 import type { RunContext } from "./contract.ts";
-
-/** Parse a numeric env var, treating missing/blank/non-numeric as null. */
-export function toNumber(value: string | undefined | null): number | null {
-  if (value == null || value === "") {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
+import { toNumber } from "./util.ts";
 
 /**
  * Resolve the run-level context shared by every test in a post. On PRs the

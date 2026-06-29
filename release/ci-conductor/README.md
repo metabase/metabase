@@ -7,28 +7,35 @@ e2e, and (soon) frontend test suites. This package consolidates it behind an
 **adapter pattern**:
 
 ```
-Adapter  = (source data) → CanonicalTest[]          // per-suite, source-specific
-Core     = CanonicalTest[] → transport / identity   // shared, one copy
+normalizer  = (source data) → NormalizedTest[]          // per-suite, source-specific
+core        = NormalizedTest[] → report / quarantine     // shared, one copy
 ```
 
 The suites legitimately differ in **what** they collect and **when**, but the
-payload POSTed to ci-conductor **must be identical in shape**. So each suite gets
-an adapter that produces the canonical shape; everything downstream is shared.
+payload POSTed to ci-conductor **must be identical in shape**. So each suite has
+a `normalize*` function that produces `NormalizedTest[]`, and both downstream
+consumers — `reportTestFailures` (the POST) and, later,
+`checkFailuresAgainstQuarantine` (the gate) — read that same shape, so the report
+path and the quarantine path can never disagree on a test's identity.
 
 ## Layout
 
 ```
 src/
-├── contract.ts        canonical payload shape (the hub). Types only for now;
-│                      runtime validation is a close follow-up.
-├── identity.ts        runContext() / toNumber() — shared run-level identity
-├── transport.ts       postFailedTests() — the /webhooks/failed-tests POST
+├── contract.ts        the NormalizedTest shape (the agreement both report and
+│                      quarantine read). Types only for now; runtime validation
+│                      is a close follow-up.
+├── identity.ts        runContext() — shared run-level identity
+├── transport.ts       reportTestFailures() — the /webhooks/failed-tests POST
+│                      (quarantine fetch/gate joins this later)
+├── util.ts            toNumber() / log()
 ├── report-junit.ts    backend entrypoint (bun src/report-junit.ts)
 └── adapters/
-    └── junit.ts       backend (Clojure/hawk JUnit XML) → CanonicalTest[]
+    └── junit.ts       normalizeBackendJunit(): hawk JUnit XML → NormalizedTest[]
 ```
 
-The **jest** (frontend) and **cypress** (e2e) adapters land in later rounds
+The **jest** (frontend) and **cypress** (e2e) normalizers
+(`normalizeFrontendJunit` / `normalizeCypressFailure`) land in later rounds
 (DEV-2247 and the e2e port), reusing this same core.
 
 ## Run

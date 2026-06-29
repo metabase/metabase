@@ -1,4 +1,4 @@
-// Backend (Clojure) adapter: hawk's JUnit XML → CanonicalTest[].
+// Backend (Clojure) adapter: hawk's JUnit XML → NormalizedTest[].
 //
 // The hawk test runner always writes JUnit XML to `target/junit/`, so the
 // backend "collector" is a post-run parse of that artifact (one runner, one
@@ -9,8 +9,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-import type { CanonicalTest } from "../contract.ts";
-import { log } from "../log.ts";
+import type { NormalizedTest } from "../contract.ts";
+import { log } from "../util.ts";
 
 const JUNIT_DIR = process.env.JUNIT_DIR || "target/junit";
 
@@ -44,10 +44,13 @@ function elementBody(inner: string): string {
  * that carries a `<failure>` or `<error>`. Multiple problems in a single
  * testcase are joined into one `stack`. Passing (self-closing or problem-free)
  * testcases are skipped. Never throws.
+ *
+ * Pure (string → normalized), so it's the unit-tested core of the adapter;
+ * `normalizeBackendJunit` wraps it with the filesystem scan.
  */
-export function parseJunit(xml: string): CanonicalTest[] {
+export function parseJunit(xml: string): NormalizedTest[] {
   try {
-    const tests: CanonicalTest[] = [];
+    const tests: NormalizedTest[] = [];
     // Machine-generated hawk output: <testcase ...>...</testcase> (failing) or
     // <testcase .../> (passing, skipped). classname carries the namespace.
     //
@@ -129,8 +132,12 @@ function findJunitFiles(dir: string): string[] {
   }
 }
 
-/** Parse every JUnit file under `dir` into canonical entries. */
-export function collectFailures(dir: string = JUNIT_DIR): CanonicalTest[] {
+/**
+ * Backend adapter: normalize every JUnit file under `dir` into
+ * `NormalizedTest[]`. The public entry point of this adapter — the source-
+ * specific half of the pattern (hawk XML → the shared normalized shape).
+ */
+export function normalizeBackendJunit(dir: string = JUNIT_DIR): NormalizedTest[] {
   const files = findJunitFiles(dir);
   const failures = files.flatMap((file) => {
     try {
