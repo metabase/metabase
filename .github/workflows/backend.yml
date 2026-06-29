@@ -202,6 +202,23 @@ jobs:
         # whether to fail or to pass the whole job, based on the quarantine list.
         continue-on-error: true
 
+      - name: Report failed tests to ci-conductor
+        # A visibility step: parse the raw JUnit hawk just wrote and POST failures
+        # to ci-conductor. Positioned between the test run and "Upload Test Results"
+        # so it reads pristine results (before Trunk quarantine processing) and its
+        # log is easy to find. continue-on-error so it can never change the job
+        # outcome — Trunk Quarantine remains the sole arbiter. CI_CONDUCTOR_BASE_URL
+        # / _WEBHOOK_SECRET and the resolved JOB_ID arrive via the workflow/job env.
+        # See DEV-2224.
+        if: ${{ always() && steps.run-java-tests.outcome != 'success' }}
+        continue-on-error: true
+        env:
+          REPO_ID: ${{ github.event.repository.id }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          CI_CONDUCTOR_TEST_SUITE: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
+        run: node bin/ci-conductor/report-junit-failures.js
+
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always() && (steps.run-java-tests.conclusion != 'skipped' || steps.run-java-tests-21.conclusion != 'skipped')
@@ -224,20 +241,6 @@ jobs:
           list-suites: failed
           list-tests: failed
           fail-on-error: false
-
-      - name: Report failed tests to ci-conductor
-        # Parse the JUnit hawk wrote and POST failures to ci-conductor. Runs on
-        # anything that isn't a clean pass; continue-on-error so it can never
-        # change the job outcome. CI_CONDUCTOR_BASE_URL / _WEBHOOK_SECRET and the
-        # resolved JOB_ID arrive via the workflow/job env. See DEV-2224.
-        if: ${{ always() && steps.run-java-tests.outcome != 'success' }}
-        continue-on-error: true
-        env:
-          REPO_ID: ${{ github.event.repository.id }}
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          CI_CONDUCTOR_TEST_SUITE: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
-        run: node bin/ci-conductor/report-junit-failures.js
 
       - name: Upload Logs on Failure
         if: always() && !success()

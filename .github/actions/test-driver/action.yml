@@ -48,25 +48,14 @@ runs:
       # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
       # whether to fail or to pass the whole job, based on the quarantine list.
       continue-on-error: true
-    - name: Publish Test Report (JUnit)
-      uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
-      # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
-      # test.outcome gives us access to the result before `continue-on-error` overrides it and sets it to 'success'.
-      # We want test reports even if the test step gets cancelled (e.g. times out), hence we match anything that is not a 'success'.
-      if: ${{ steps.run-test.outcome != 'success' }}
-      with:
-        path: "target/junit/**/*_test.xml"
-        name: JUnit Test Report ${{ inputs.junit-name }}
-        reporter: java-junit
-        list-suites: failed
-        list-tests: failed
-        fail-on-error: false
     - name: Report failed tests to ci-conductor
-      # Parse the JUnit hawk wrote and POST failures to ci-conductor. Gated like
-      # the report above (run on anything that isn't a clean pass), and
-      # continue-on-error so it can never change the job outcome — Trunk
-      # Quarantine remains the sole arbiter. CI_CONDUCTOR_BASE_URL / _WEBHOOK_SECRET
-      # and the resolved JOB_ID arrive via the workflow/job env. See DEV-2224.
+      # A visibility step: parse the raw JUnit hawk just wrote and POST failures to
+      # ci-conductor. Positioned right after the test run (before the report/upload
+      # steps) so it reads pristine results and its log is easy to find. Gated like
+      # the report below (run on anything that isn't a clean pass), and
+      # continue-on-error so it can never change the job outcome — Trunk Quarantine
+      # remains the sole arbiter. CI_CONDUCTOR_BASE_URL / _WEBHOOK_SECRET and the
+      # resolved JOB_ID arrive via the workflow/job env. See DEV-2224.
       if: ${{ always() && steps.run-test.outcome != 'success' }}
       shell: bash
       continue-on-error: true
@@ -80,6 +69,19 @@ runs:
         # CI_CONDUCTOR_BASE_URL actually POST; others no-op.
         CI_CONDUCTOR_TEST_SUITE: ${{ inputs.junit-name }}
       run: node bin/ci-conductor/report-junit-failures.js
+    - name: Publish Test Report (JUnit)
+      uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+      # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
+      # test.outcome gives us access to the result before `continue-on-error` overrides it and sets it to 'success'.
+      # We want test reports even if the test step gets cancelled (e.g. times out), hence we match anything that is not a 'success'.
+      if: ${{ steps.run-test.outcome != 'success' }}
+      with:
+        path: "target/junit/**/*_test.xml"
+        name: JUnit Test Report ${{ inputs.junit-name }}
+        reporter: java-junit
+        list-suites: failed
+        list-tests: failed
+        fail-on-error: false
     - name: Upload Logs on Failure
       if: always() && steps.run-test.outcome != 'success'
       uses: actions/upload-artifact@v7

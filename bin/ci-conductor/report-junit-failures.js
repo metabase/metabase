@@ -20,6 +20,16 @@ const JUNIT_DIR = process.env.JUNIT_DIR || "target/junit";
 // The endpoint can be slow, but the reporter must never hang a CI job.
 const REQUEST_TIMEOUT_MS = 15_000;
 
+/**
+ * Progress line for the CI step log. This step exists largely for visibility, so
+ * it narrates what it's doing — but NEVER the webhook secret or the base URL/host
+ * (this is a public repo). Only non-sensitive identity fields and the path are
+ * ever logged. See DEV-2224.
+ */
+function log(message) {
+  console.log(`[ci-conductor] ${message}`);
+}
+
 /** Parse a numeric env var, treating missing/blank/non-numeric as null. */
 function toNumber(value) {
   if (value == null || value === "") {
@@ -65,7 +75,21 @@ function parseJunit(xml) {
     const tests = [];
     // Machine-generated hawk output: <testcase ...>...</testcase> (failing) or
     // <testcase .../> (passing, skipped). classname carries the namespace.
-    const testcaseRe = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
+    //
+    // Attribute blobs are matched as a run of quoted strings or non-quote chars
+    // (`ATTRS`) rather than `[^>]*`, because Clojure test names routinely contain
+    // an unescaped `>` (e.g. `cron-string->schedule-map-test`, `>=`), and XML
+    // doesn't require escaping `>` inside an attribute value. A naive `[^>]` stops
+    // at that `>` and silently drops the testcase. See DEV-2224.
+    const ATTRS = `(?:[^>"']|"[^"]*"|'[^']*')*`;
+    const testcaseRe = new RegExp(
+      `<testcase\\b(${ATTRS}?)(?:/>|>([\\s\\S]*?)</testcase>)`,
+      "g",
+    );
+    const problemRe = new RegExp(
+      `<(failure|error)\\b(${ATTRS})>([\\s\\S]*?)</\\1>`,
+      "g",
+    );
     for (const match of xml.matchAll(testcaseRe)) {
       const attrs = match[1];
       const inner = match[2];
@@ -73,9 +97,7 @@ function parseJunit(xml) {
         continue; // self-closing => passed
       }
 
-      const problems = [
-        ...inner.matchAll(/<(failure|error)\b([^>]*)>([\s\S]*?)<\/\1>/g),
-      ];
+      const problems = [...inner.matchAll(problemRe)];
       if (problems.length === 0) {
         continue;
       }
@@ -134,7 +156,8 @@ function findJunitFiles(dir) {
 
 /** Parse every JUnit file under `dir` into ci-conductor `tests[]` entries. */
 function collectFailures(dir) {
-  return findJunitFiles(dir).flatMap((file) => {
+  const files = findJunitFiles(dir);
+  const failures = files.flatMap((file) => {
     try {
       return parseJunit(readFileSync(file, "utf8"));
     } catch (error) {
@@ -142,6 +165,11 @@ function collectFailures(dir) {
       return [];
     }
   });
+  log(`scanned ${dir}: ${files.length} JUnit file(s), ${failures.length} failing test(s)`);
+  for (const test of failures) {
+    log(`  failing: ${test.path || "(no namespace)"} / ${test.name}`);
+  }
+  return failures;
 }
 
 /**
@@ -180,12 +208,29 @@ function runContext() {
  */
 async function postFailedTests(tests) {
   const baseUrl = process.env.CI_CONDUCTOR_BASE_URL;
-  if (tests.length === 0 || !baseUrl) {
+  const context = runContext();
+
+  // Log the resolved identity (no secrets, no URL) up front so a missing row in
+  // ci-conductor can be correlated with — or ruled out against — this exact post.
+  log(
+    `run context: test_suite=${context.test_suite} sha=${context.sha} ` +
+      `run_id=${context.run_id} attempt=${context.attempt} job_id=${context.job_id} ` +
+      `repo_id=${context.repo_id} target_branch=${context.target_branch}`,
+  );
+
+  if (tests.length === 0) {
+    log("no failing tests to report — skipping POST");
+    return;
+  }
+  if (!baseUrl) {
+    log(
+      "CI_CONDUCTOR_BASE_URL not set — skipping POST (local run or missing secret)",
+    );
     return;
   }
 
   try {
-    const body = { ...runContext(), tests };
+    const body = { ...context, tests };
 
     const endpoint = `${baseUrl.replace(/\/+$/, "")}/webhooks/failed-tests`;
     const headers = { "Content-Type": "application/json" };
@@ -193,6 +238,12 @@ async function postFailedTests(tests) {
       // ci-conductor authenticates this endpoint via the x-internal-secret header.
       headers["x-internal-secret"] = process.env.CI_CONDUCTOR_WEBHOOK_SECRET;
     }
+
+    // Path only — never the host (public repo). The secret is never logged.
+    log(
+      `POSTing ${tests.length} failure(s) to /webhooks/failed-tests ` +
+        `(${headers["x-internal-secret"] ? "authenticated" : "no secret header"})`,
+    );
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -205,6 +256,8 @@ async function postFailedTests(tests) {
       console.error(
         `[ci-conductor] failed-tests POST returned ${response.status} ${response.statusText}`,
       );
+    } else {
+      log(`ci-conductor accepted the report (${response.status} ${response.statusText})`);
     }
   } catch (error) {
     console.error("[ci-conductor] failed to POST failed-tests", error);
@@ -212,6 +265,7 @@ async function postFailedTests(tests) {
 }
 
 async function main() {
+  log("backend test-failure reporter starting");
   await postFailedTests(collectFailures(JUNIT_DIR));
 }
 
