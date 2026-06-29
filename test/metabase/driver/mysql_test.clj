@@ -1095,3 +1095,26 @@
               "query should throw rather than completing normally")
           (is (< elapsed 30000)
               (format "query should be cancelled well before SLEEP(60) completes naturally — took %.0f ms" elapsed)))))))
+
+(deftest ^:parallel compile-create-index-test
+  (testing "btree renders with backticks; UNIQUE only when asked, direction only on btree"
+    (is (= [["CREATE INDEX `by_cat` ON `t` (`category`)"]]
+           (driver/compile-create-index :mysql nil "t"
+                                        {:kind :btree :name "by_cat" :columns [{:name "category"}]})))
+    (is (= [["CREATE UNIQUE INDEX `by_cat` ON `s`.`t` (`category` DESC)"]]
+           (driver/compile-create-index :mysql "s" "t"
+                                        {:kind :btree :name "by_cat" :unique true
+                                         :columns [{:name "category" :direction :desc}]}))))
+  (testing "fulltext has no UNIQUE and no per-column direction"
+    (is (= [["CREATE FULLTEXT INDEX `ft_cat` ON `t` (`category`)"]]
+           (driver/compile-create-index :mysql nil "t"
+                                        {:kind :fulltext :name "ft_cat" :unique true
+                                         :columns [{:name "category" :direction :asc}]}))))
+  (testing "MySQL has no CREATE INDEX IF NOT EXISTS, so :if-not-exists guards via dynamic SQL instead"
+    (let [stmts (driver/compile-create-index :mysql nil "t"
+                                             {:kind :btree :name "by_cat" :if-not-exists true
+                                              :columns [{:name "category"}]})]
+      (is (not-any? #(str/includes? (first %) "IF NOT EXISTS") stmts)
+          "no literal IF NOT EXISTS clause")
+      (is (str/includes? (first (last stmts)) "DEALLOCATE PREPARE")
+          "ends by deallocating the prepared guard statement"))))
