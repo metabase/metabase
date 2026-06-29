@@ -207,8 +207,8 @@
     {:first-import-conflicts (vec first-import-conflicts)
      :deletion-conflicts     (spec/check-deletion-conflicts imported-data)}))
 
-(def content-hash-batch-size
-  "Max RemoteSyncObject rows per update batch, to keep IN-lists and CASE expressions bounded."
+(def app-db-batch-size
+  "Max rows per select/update batch, to keep IN-lists and CASE expressions bounded."
   500)
 
 (defn- import-content-metadata
@@ -261,7 +261,7 @@
   each chunk's file_path + content_hash (`repo-paths` gives entity-id models their real path) into its insert."
   [rows repo-paths]
   (serdes/with-cache
-    (doseq [chunk (partition-all content-hash-batch-size rows)]
+    (doseq [chunk (partition-all app-db-batch-size rows)]
       (t2/insert! :model/RemoteSyncObject
                   (merge-content-metadata chunk (import-content-metadata chunk repo-paths))))))
 
@@ -718,7 +718,7 @@
 (defn- resize-chunk
   [{:keys [model_type rows]}]
   (->> rows
-       (partition-all content-hash-batch-size)
+       (partition-all app-db-batch-size)
        (map (fn [chunk-rows] {:model_type model_type :rows chunk-rows}))))
 
 (defn- ->sized-chunks
@@ -972,7 +972,7 @@
   scope: the incremental export passes only its write set, a full export passes every RemoteSyncObject id."
   [ids synced sync-timestamp]
   (let [by-id (u/index-by :id synced)]
-    (doseq [id-chunk (partition-all content-hash-batch-size ids)
+    (doseq [id-chunk (partition-all app-db-batch-size ids)
             :let     [hits (filter by-id id-chunk)]]
       (t2/update! :model/RemoteSyncObject
                   {:id [:in (vec id-chunk)]}

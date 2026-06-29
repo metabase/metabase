@@ -242,7 +242,7 @@
                                   :content_hash (source/row->content-hash (select-keys r [:model_type :model_id]))})
                          (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
         ;; force more than one chunk for the 3 rows
-        (with-redefs [impl/content-hash-batch-size 2]
+        (with-redefs [impl/app-db-batch-size 2]
           (#'impl/mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced (t/offset-date-time))))
       (doseq [card [c1 c2 c3]]
         (is (= (source/row->content-hash {:model_type "Card" :model_id (:id card)})
@@ -260,7 +260,7 @@
                                 :status "synced" :status_changed_at (t/offset-date-time)})
                        [c1 c2 c3])]
         ;; force more than one chunk for the 3 cards
-        (with-redefs [impl/content-hash-batch-size 2]
+        (with-redefs [impl/app-db-batch-size 2]
           (#'impl/insert-with-metadata! rows [])))
       (doseq [card [c1 c2 c3]]
         (is (= (source/row->content-hash {:model_type "Card" :model_id (:id card)})
