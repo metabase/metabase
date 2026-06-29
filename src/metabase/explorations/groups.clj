@@ -27,7 +27,7 @@
 (defn filter-path-key
   "The grouping key for a query's filter path — the vector of `[dimension_id value]`
    steps, or nil when undrilled. Lets the read tree separate adaptive-loop survivors
-   that share a `(card, dim)` but drill to different filter paths
+   that share a `(card, dim, query-type)` but drill to different filter paths
    (`State = TX ∧ Source = Google` vs `… ∧ Twitter`); survivors on the *same* path
    (a drill's temporal variants) collapse to the same key. Undrilled queries return
    nil so their `leaf-id` is unchanged. A plain value — used directly as a `group-by`
@@ -35,15 +35,16 @@
   [query]
   (some->> (filter-path query) (mapv (juxt :dimension_id :value))))
 
-(defn- leaf-id
-  "Stable, opaque leaf id derived from `[group-id card-id dim-id]`, plus an optional
-   `fp-key` (a query's `filter-path-key`) so drilled survivors at the same
-   `(card, dim)` get distinct leaves. The group-id component keeps it unique when the
-   same (card, dim) appears in two groups. Opaque to the FE; the public deep-link
-   surface is [[chart-page-url]]."
-  ([group-id card-id dim-id] (leaf-id group-id card-id dim-id nil))
-  ([group-id card-id dim-id fp-key]
-   (str "auto:" group-id ":" card-id ":" dim-id
+(defn leaf-id
+  "Stable, opaque leaf id derived from `[group-id card-id dim-id query-type]`, plus an
+   optional `fp-key` (a query's `filter-path-key`) so drilled survivors at the same
+   `(card, dim, query-type)` get distinct leaves. The group-id component keeps it unique
+   when the same (card, dim) appears in two groups. Treated as opaque by the FE; public so
+   deep-link builders (see [[chart-page-url]]) use the same scheme the read tree emits and
+   routes on."
+  ([group-id card-id dim-id query-type] (leaf-id group-id card-id dim-id query-type nil))
+  ([group-id card-id dim-id query-type fp-key]
+   (str "auto:" group-id ":" card-id ":" dim-id ":" query-type
         (when fp-key (str ":" (Integer/toHexString (hash fp-key)))))))
 
 (defn chart-page-url
@@ -53,11 +54,11 @@
    materializer to deep-link a static `cardEmbed`'s title back to its source chart. Pass the
    chart's `filter-path-key` (see [[filter-path-key]]) for a drilled survivor so the link
    targets its specific leaf."
-  ([exploration-id group-id card-id dimension-id]
-   (chart-page-url exploration-id group-id card-id dimension-id nil))
-  ([exploration-id group-id card-id dimension-id fp-key]
+  ([exploration-id group-id card-id dimension-id query-type]
+   (chart-page-url exploration-id group-id card-id dimension-id query-type nil))
+  ([exploration-id group-id card-id dimension-id query-type fp-key]
    (str "/question/research/" exploration-id
-        "/group/" (codec/url-encode (leaf-id group-id card-id dimension-id fp-key)))))
+        "/group/" (codec/url-encode (leaf-id group-id card-id dimension-id query-type fp-key)))))
 
 (defn- leaf-name
   "Pick the display name for a leaf: prefer the base (unsegmented) query's `:name`, fall back
@@ -162,13 +163,13 @@
   "A sub-item under a group. For a dimension-anchored group the leaves vary by metric, so name
    each by its metric (Card) name; for a metric-anchored group they vary by dimension, so name
    each `By <dimension>`."
-  [group [card-id dim-id fp-key] qs card-name-by-id labels]
+  [group [card-id dim-id query-type fp-key] qs card-name-by-id labels]
   (let [base-name (if (dimension-anchored? group)
                     (or (get card-name-by-id card-id) (leaf-name qs))
                     (if-let [dn (:dimension_name (first qs))]
                       (by-dimension dn)
                       (leaf-name qs)))]
-    {:id              (leaf-id (:id group) card-id dim-id fp-key)
+    {:id              (leaf-id (:id group) card-id dim-id query-type fp-key)
      :parent_group_id (group-node-id group)
      :type            "auto"
      :display_type    (if (= 1 (count qs)) "singleton" "page")
@@ -223,7 +224,7 @@
                        (fn [group]
                          (let [labels (dimension-id->display-label (:dimensions group))
                                leaves (->> (get rows-by-group (:id group) [])
-                                           (group-by (juxt :card_id :dimension_id filter-path-key))
+                                           (group-by (juxt :card_id :dimension_id :query_type filter-path-key))
                                            (map (fn [[k qs]] (leaf-node group k qs card-name-by-id labels)))
                                            (sort-by sort-key))]
                            (cons (group-node group card-name-by-id (ambiguous? group)) leaves)))

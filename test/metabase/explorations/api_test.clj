@@ -1544,11 +1544,11 @@
 
 (deftest ^:parallel append-chart-page-url-test
   (testing "chart-page-url builds a research deep link with the (group, card, dim) leaf id percent-encoded"
-    (is (= "/question/research/7/group/auto%3A9%3A42%3Aorders.created_at"
-           (explorations.groups/chart-page-url 7 9 42 "orders.created_at")))
+    (is (= "/question/research/7/group/auto%3A9%3A42%3Aorders.created_at%3Adefault"
+           (explorations.groups/chart-page-url 7 9 42 "orders.created_at" "default")))
     (testing "the encoded segment decodes back to the FE-routed leaf id"
-      (is (= "auto:9:42:orders.created_at"
-             (#'explorations.groups/leaf-id 9 42 "orders.created_at"))))))
+      (is (= "auto:9:42:orders.created_at:default"
+             (#'explorations.groups/leaf-id 9 42 "orders.created_at" "default"))))))
 
 (deftest ^:parallel append-chart-nodes-test
   (testing "append-chart-nodes appends a single resizeNode-wrapped cardEmbed (no link paragraph) carrying the chart-href on the node — the FE turns the card title into a link to that URL"

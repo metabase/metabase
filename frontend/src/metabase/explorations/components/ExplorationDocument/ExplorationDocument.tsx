@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
+import { getListCommentsQuery } from "metabase/comments/utils";
 import { EditableText } from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -26,7 +27,6 @@ import {
   getSelectedQuestionId,
   getSidebarMode,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
   ActionIcon,
@@ -52,19 +52,19 @@ export type ExplorationDocumentWithIsAiSummary = ExplorationDocument & {
 interface ExplorationDocumentProps {
   explorationId: ExplorationId;
   document: ExplorationDocumentWithIsAiSummary;
-  isCommentsSidebarOpen: boolean;
   childTargetId?: string;
   route: Route;
   locationSearch: string;
+  isCommentsSidesheetOpen: boolean;
 }
 
 export function ExplorationDocument({
   explorationId,
   document,
-  isCommentsSidebarOpen,
   childTargetId,
   route,
   locationSearch,
+  isCommentsSidesheetOpen,
 }: ExplorationDocumentProps) {
   const { isAiSummary, isCanceled } = document;
 
@@ -101,7 +101,7 @@ export function ExplorationDocument({
   });
 
   const { hasComments } = useListCommentsQuery(
-    getListCommentsQuery(documentData),
+    getListCommentsQuery({ target_id: document.id, target_type: "document" }),
     {
       selectFromResult: ({ data }) => ({
         hasComments: !!data?.comments?.length,
@@ -135,8 +135,8 @@ export function ExplorationDocument({
       <Stack
         flex={1}
         h="100%"
-        py="3rem"
-        pr={isCommentsSidebarOpen ? "4rem" : "3rem"}
+        pb="3rem"
+        pr={isCommentsSidesheetOpen ? "3rem" : "1rem"}
         align="center"
         style={{
           overflowY: "auto",

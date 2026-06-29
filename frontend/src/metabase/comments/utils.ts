@@ -1,9 +1,13 @@
+import type { SkipToken } from "@reduxjs/toolkit/query";
 import dayjs from "dayjs";
-import { replace } from "react-router-redux";
-import type { LocationSensorState } from "react-use/lib/useLocation";
 
-import type { DispatchFn } from "metabase/redux";
-import type { Comment } from "metabase-types/api";
+import { skipToken } from "metabase/api";
+import { isWithinIframe } from "metabase/utils/iframe";
+import type {
+  Comment,
+  CommentTarget,
+  ListCommentsRequest,
+} from "metabase-types/api";
 
 import type { CommentThread } from "./types";
 
@@ -98,20 +102,12 @@ export function formatCommentDate(dateOrString: string | Date) {
   }).format(date);
 }
 
-export function deleteNewFromSearch(search: string | undefined) {
-  const searchParams = new URLSearchParams(search);
-  searchParams.delete("new");
-  return searchParams.toString();
-}
+export function getListCommentsQuery(
+  target: CommentTarget | null | undefined,
+): ListCommentsRequest | SkipToken {
+  if (!target || isWithinIframe()) {
+    return skipToken;
+  }
 
-export function deleteNewParamFromURLIfNeeded(
-  location: LocationSensorState,
-  dispatch: DispatchFn,
-) {
-  dispatch(
-    replace({
-      pathname: location.pathname,
-      search: deleteNewFromSearch(location.search),
-    }),
-  );
+  return target;
 }

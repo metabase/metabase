@@ -3,9 +3,11 @@ import type { BaseUser, User, UserId } from "./user";
 
 export type CommentId = number;
 
-export type CommentEntityType = "document";
+export type CommentEntityType = "document" | "exploration";
 
 export type EntityId = string | number;
+
+export type CommentContext = Record<string, unknown>;
 
 export interface Comment {
   id: CommentId;
@@ -27,6 +29,7 @@ export interface Comment {
   reactions: CommentReaction[];
 
   version: number;
+  context?: CommentContext | null;
 }
 
 export interface CommentReaction {
@@ -39,6 +42,11 @@ export type MentionableUser = Pick<
   User,
   "id" | "common_name" | "first_name" | "last_name"
 >;
+
+export interface CommentTarget {
+  target_id: EntityId;
+  target_type: CommentEntityType;
+}
 
 /** request types below */
 
@@ -53,6 +61,7 @@ export interface CreateCommentRequest {
   child_target_id: EntityId | null;
   parent_comment_id: CommentId | null;
   content: DocumentContent;
+  context?: CommentContext | null;
 }
 
 export interface UpdateCommentRequest {

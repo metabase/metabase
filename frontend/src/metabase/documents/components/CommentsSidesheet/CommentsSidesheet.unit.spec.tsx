@@ -30,9 +30,9 @@ const document = createMockDocument({ id: 1 });
 
 function setup({
   pathname = "/exploration/1/comments/block-abc",
-  search = "?timeline=5&new=true",
+  search = "?timeline=5",
   childTargetId = "block-abc",
-  initialRoute = "/exploration/1/comments/block-abc?timeline=5&new=true",
+  initialRoute = "/exploration/1/comments/block-abc?timeline=5",
 }: {
   pathname?: string;
   search?: string;
@@ -82,12 +82,12 @@ describe("CommentsSidesheet", () => {
     mockOpenCommentSidebar.mockClear();
   });
 
-  it("closes to the parent path and preserves search params except new", async () => {
+  it("closes to the parent path and preserves search params", async () => {
     const { history } = setup();
 
     const sidebar = screen.getByTestId("comments-sidebar");
     await userEvent.click(
-      within(sidebar).getByRole("button", { name: "Close" }),
+      await within(sidebar).findByRole("button", { name: "Close" }),
     );
 
     expect(mockCloseCommentSidebar).toHaveBeenCalled();
