@@ -18,7 +18,6 @@ import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import {
@@ -134,7 +133,7 @@ export function PermissionsPageLayout({
           closeButtonText={null}
         />
 
-        <TabsContainer className={CS.borderBottom}>
+        <TabsContainer>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
           <ToolbarButtonsContainer>
             {helpContent && !isHelpReferenceOpen && (

@@ -2,9 +2,8 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
-import { Radio } from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
-import { Stack } from "metabase/ui";
+import { Stack, Tabs } from "metabase/ui";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
   getComputedSettings,
@@ -206,15 +205,19 @@ export const BaseChartSettings = ({
       >
         {showSectionPicker && (
           <SectionContainer>
-            <Radio
-              value={chartSettingCurrentSection ?? undefined}
+            <Tabs
+              listBorder={false}
+              value={chartSettingCurrentSection ?? null}
               onChange={handleShowSection}
-              options={orderedSectionNames}
-              optionNameFn={(v) => v}
-              optionValueFn={(v) => v}
-              optionKeyFn={(v) => v}
-              variant="underlined"
-            />
+            >
+              <Tabs.List>
+                {orderedSectionNames.map((sectionName) => (
+                  <Tabs.Tab key={sectionName} value={sectionName}>
+                    {sectionName}
+                  </Tabs.Tab>
+                ))}
+              </Tabs.List>
+            </Tabs>
           </SectionContainer>
         )}
         <ChartSettingsListContainer data-testid="chartsettings-list-container">
