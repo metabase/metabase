@@ -1,4 +1,6 @@
-import { parseJunit } from "./report-junit-failures";
+import { describe, expect, it } from "bun:test";
+
+import { parseJunit } from "./junit.ts";
 
 // A real hawk failure body: first line is `file.clj:line`, then context, then
 // the expected/actual assertion. Two <failure>s under one <testcase>.
