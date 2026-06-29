@@ -9,7 +9,7 @@ import {
   getFieldRawName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Box, Flex, Group, Stack, Switch, rem } from "metabase/ui";
+import { Box, Flex, Stack, Switch, rem } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
 import { CoercionStrategyPicker } from "../../CoercionStrategyPicker";
@@ -111,7 +111,7 @@ const DataSectionBase = ({
 
   return (
     <TitledSection>
-      <Group align="start">
+      <Stack align="start">
         <Box flex={1}>
           <LabeledValue label={t`Field name`}>
             {getFieldRawName(field)}
@@ -158,7 +158,7 @@ const DataSectionBase = ({
             </>
           )}
         </Stack>
-      </Group>
+      </Stack>
     </TitledSection>
   );
 };
