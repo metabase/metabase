@@ -16,17 +16,17 @@ const POPOVER_OFFSET =
   AXIS_CLEARANCE;
 
 interface TimelineEventChipProps {
-  positioned: PositionedTimelineEventGroup;
+  eventsGroup: PositionedTimelineEventGroup;
   centerY: number;
   onOpenTimelines?: () => void;
 }
 
 export const TimelineEventChip = ({
-  positioned,
+  eventsGroup,
   centerY,
   onOpenTimelines,
 }: TimelineEventChipProps) => {
-  const { group, x, iconName, count } = positioned;
+  const { group, x, iconName, count } = eventsGroup;
   const { events } = group;
 
   const isSingleEvent = events.length === 1;
@@ -50,7 +50,7 @@ export const TimelineEventChip = ({
           className={S.chip}
           style={{ left: x, top: centerY }}
           data-testid="timeline-event-chip"
-          aria-label={getChipLabel(positioned)}
+          aria-label={getChipLabel(eventsGroup)}
         >
           {count > 1 ? (
             <span className={S.count}>{count}</span>

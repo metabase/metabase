@@ -22,6 +22,7 @@
 
 (def Icon
   "Schema for Timeline and TimelineEvents `icon`"
+  ;; using "mail" icon is deprecated, but we keep it for backwards compatibility
   [:enum default-icon "cake" "mail" "mail_at" "warning" "bell" "cloud"
    "info" "sticky_note" "event"])
 

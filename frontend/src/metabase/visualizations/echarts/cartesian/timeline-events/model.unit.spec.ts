@@ -114,6 +114,37 @@ describe("mergeOverlappingTimelineEventGroups", () => {
     ]);
   });
 
+  it("should merge chips that would overlap given the wider chip width", () => {
+    const eventGroups: TimelineEventGroup[] = [
+      createMockTimelineEventGroup({
+        date: "2024-01-01T00:00:00Z",
+        events: [createMockTimelineEvent({ id: 1 })],
+      }),
+      createMockTimelineEventGroup({
+        date: "2024-01-01T00:00:30Z",
+        events: [createMockTimelineEvent({ id: 2 })],
+      }),
+    ];
+
+    const interval = createMockTimeSeriesInterval({ count: 1, unit: "minute" });
+    // 25px apart: wider than the old 16px threshold but still under a chip
+    // width, so the fixed-width chips would overlap and must merge.
+    const intervalWidth = 50; // 0.5 min * 50px = 25px
+
+    const result = mergeOverlappingTimelineEventGroups(
+      eventGroups,
+      interval,
+      intervalWidth,
+      renderingContext,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].events).toEqual([
+      ...eventGroups[0].events,
+      ...eventGroups[1].events,
+    ]);
+  });
+
   it("should correctly merge events when interval count is greater than 1", () => {
     const eventGroups: TimelineEventGroup[] = [
       createMockTimelineEventGroup({
@@ -131,7 +162,7 @@ describe("mergeOverlappingTimelineEventGroups", () => {
     ];
 
     const interval = createMockTimeSeriesInterval({ count: 5, unit: "minute" });
-    const intervalWidth = 10; // 10px per 5-minute interval
+    const intervalWidth = 13; // 13px per 5-minute interval
 
     const result = mergeOverlappingTimelineEventGroups(
       eventGroups,

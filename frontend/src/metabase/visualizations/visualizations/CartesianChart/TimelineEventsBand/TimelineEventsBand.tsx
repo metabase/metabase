@@ -94,10 +94,10 @@ export const TimelineEventsBand = ({
           height: TIMELINE_BAND_HEIGHT,
         }}
       />
-      {positionedGroups.map((positioned) => (
+      {positionedGroups.map((eventsGroup) => (
         <TimelineEventChip
-          key={positioned.group.date}
-          positioned={positioned}
+          key={eventsGroup.group.date}
+          eventsGroup={eventsGroup}
           centerY={centerY}
           onOpenTimelines={onOpenTimelines}
         />

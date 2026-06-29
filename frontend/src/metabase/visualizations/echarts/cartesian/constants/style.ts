@@ -20,6 +20,7 @@ export const TIMELINE_EVENTS_BAND = {
   chipHeight: 24,
   bandPaddingY: 4,
   marginY: 8,
+  chipGap: 2,
 };
 
 export const TIMELINE_BAND_HEIGHT =
@@ -55,7 +56,7 @@ export const CHART_STYLE = {
   symbolSize: 6,
   timelineEvents: {
     height: TIMELINE_BAND_RESERVED_HEIGHT,
-    minDistance: 16,
+    minDistance: TIMELINE_EVENTS_BAND.chipWidth + TIMELINE_EVENTS_BAND.chipGap, // Min center-to-center distance before chips merge
     countLabelMargin: 4,
   },
   goalLine: {

@@ -28,10 +28,7 @@ export interface PositionedTimelineEventGroup {
 
 export const getTimelineEventGroupIconName = (
   group: TimelineEventGroup,
-): IconName =>
-  group.events.length > 1
-    ? "star"
-    : TIMELINE_ICON_TO_ICON_NAME[group.events[0].icon];
+): IconName => TIMELINE_ICON_TO_ICON_NAME[group.events[0]?.icon];
 
 interface PositioningInput {
   timelineEventsModel: TimelineEventsModel;

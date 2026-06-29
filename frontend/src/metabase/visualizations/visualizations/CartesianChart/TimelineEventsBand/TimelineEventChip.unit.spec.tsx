@@ -47,19 +47,19 @@ const manyGroup: PositionedTimelineEventGroup = {
 };
 
 interface SetupOpts {
-  positioned?: PositionedTimelineEventGroup;
+  eventsGroup?: PositionedTimelineEventGroup;
   withOpenTimelines?: boolean;
 }
 
 const setup = ({
-  positioned = singleGroup,
+  eventsGroup = singleGroup,
   withOpenTimelines = true,
 }: SetupOpts = {}) => {
   const onOpenTimelines = jest.fn();
 
   renderWithProviders(
     <TimelineEventChip
-      positioned={positioned}
+      eventsGroup={eventsGroup}
       centerY={120}
       onOpenTimelines={withOpenTimelines ? onOpenTimelines : undefined}
     />,
@@ -70,12 +70,12 @@ const setup = ({
 
 describe("TimelineEventChip", () => {
   it("renders the event count for a cluster", () => {
-    setup({ positioned: manyGroup });
+    setup({ eventsGroup: manyGroup });
     expect(screen.getByTestId("timeline-event-chip")).toHaveTextContent("4");
   });
 
   it("opens a single-event popover on hover without a 'See all' link", async () => {
-    setup({ positioned: singleGroup });
+    setup({ eventsGroup: singleGroup });
 
     await userEvent.hover(screen.getByTestId("timeline-event-chip"));
 
@@ -84,7 +84,7 @@ describe("TimelineEventChip", () => {
   });
 
   it("lists all events on hover for a small cluster", async () => {
-    setup({ positioned: twoGroup });
+    setup({ eventsGroup: twoGroup });
 
     await userEvent.hover(screen.getByTestId("timeline-event-chip"));
 
@@ -94,7 +94,7 @@ describe("TimelineEventChip", () => {
   });
 
   it("truncates to three events and shows 'See all' for more than three", async () => {
-    setup({ positioned: manyGroup });
+    setup({ eventsGroup: manyGroup });
 
     await userEvent.hover(screen.getByTestId("timeline-event-chip"));
 
@@ -105,7 +105,7 @@ describe("TimelineEventChip", () => {
   });
 
   it("calls onOpenTimelines from the 'See all' action", async () => {
-    const { onOpenTimelines } = setup({ positioned: manyGroup });
+    const { onOpenTimelines } = setup({ eventsGroup: manyGroup });
 
     await userEvent.hover(screen.getByTestId("timeline-event-chip"));
     await userEvent.click(await screen.findByText("See all"));
@@ -114,7 +114,7 @@ describe("TimelineEventChip", () => {
   });
 
   it("hides 'See all' when onOpenTimelines is not provided", async () => {
-    setup({ positioned: manyGroup, withOpenTimelines: false });
+    setup({ eventsGroup: manyGroup, withOpenTimelines: false });
 
     await userEvent.hover(screen.getByTestId("timeline-event-chip"));
 
