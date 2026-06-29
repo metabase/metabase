@@ -487,7 +487,7 @@
     "ci-frontend": "bun run lint && bun run test",
     "clean-cypress-artifacts": "rm -R -f cypress/",
     "clean-dev:cljs": "rm -rf target/cljs_dev/*",
-    "clean-dev:js": "rm -rf resources/frontend_client/app/dist target/classes/frontend_client/app/dist",
+    "clean-dev:js": "rm -rf resources/frontend_client/app/dist target/classes/frontend_client/app/dist resources/frontend_client/app/embedding-sdk target/classes/frontend_client/app/embedding-sdk",
     "clean-release:cljs": "rm -rf target/cljs_release/*",
     "clean:cljs": "bun install && bun run clean-dev:cljs && bun run clean-release:cljs",
     "cljs-nrepl": "bun install && shadow-cljs node-repl -d cider/cider-nrepl:0.57.0 -d cider/piggieback:0.6.1 -d refactor-nrepl/refactor-nrepl:3.11.0",
