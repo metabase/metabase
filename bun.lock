@@ -38,6 +38,7 @@
         "@mantine/core": "8.3.18",
         "@mantine/dates": "8.3.18",
         "@mantine/hooks": "8.3.18",
+        "@metabase/track": "^1.0.0-alpha.1",
         "@modelcontextprotocol/ext-apps": "^1.3.2",
         "@popperjs/core": "^2.11.8",
         "@react-oauth/google": "^0.11.1",
@@ -1198,6 +1199,8 @@
     "@marijn/find-cluster-break": ["@marijn/find-cluster-break@1.0.2", "", {}, "sha512-l0h88YhZFyKdXIFNfSWpyjStDjGHwZ/U7iobcK1cQQD8sejsONdQtTVU+1wVN1PBw40PiiHB1vA5S7VTfQiP9g=="],
 
     "@mdx-js/react": ["@mdx-js/react@3.1.0", "", { "dependencies": { "@types/mdx": "^2.0.0" } }, "sha512-QjHtSaoameoalGnKDT3FoIl4+9RwyTmo9ZJGBdLOks/YOiWHoRDI3PUwEzOE7kEmGcV3AFcp9K6dYu9rEuKLAQ=="],
+
+    "@metabase/track": ["@metabase/track@1.0.0-alpha.1", "", { "peerDependencies": { "typescript": "^5" } }, "sha512-LPpoNCyBoqUX1TNAdHQMswJETC6bPs7YNpKQp17n5+mCpeDcbP40o+V1DulVsOSWIbwg/RWX770d1s4ec7kPlw=="],
 
     "@microsoft/api-extractor": ["@microsoft/api-extractor@7.58.7", "", { "dependencies": { "@microsoft/api-extractor-model": "7.33.8", "@microsoft/tsdoc": "~0.16.0", "@microsoft/tsdoc-config": "~0.18.1", "@rushstack/node-core-library": "5.23.1", "@rushstack/rig-package": "0.7.3", "@rushstack/terminal": "0.24.0", "@rushstack/ts-command-line": "5.3.9", "diff": "~8.0.2", "minimatch": "10.2.3", "resolve": "~1.22.1", "semver": "~7.7.4", "source-map": "~0.6.1", "typescript": "5.9.3" }, "bin": { "api-extractor": "bin/api-extractor" } }, "sha512-yK6OycD46gIzLRpj6ueVUWPk1ACSpkN1LBo05gY1qPTylbWyUCanXfH7+VgkI5LJrJoRSQR5F04XuCffCXLOBw=="],
 
