@@ -318,7 +318,7 @@ describe("command palette", () => {
 
         H.saveChangesToPermissions();
 
-        cy.findByRole("radiogroup").findByText("Data").click();
+        cy.findByRole("tab", { name: "Data" }).click();
         cy.findByRole("menuitem", { name: "All Users" }).click();
 
         const TABLE_METADATA_INDEX = 3;

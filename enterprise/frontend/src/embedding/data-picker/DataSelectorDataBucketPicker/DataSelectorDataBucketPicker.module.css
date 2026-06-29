@@ -10,7 +10,7 @@
 }
 
 .DataBucketListItemDescription {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   font-weight: 700;
   font-size: 12px;
 }
