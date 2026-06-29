@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import type { SdkCollectionId } from "embedding-sdk-bundle/types";
+import type { SdkCollectionId } from "embedding-sdk-shared/types/collection-id";
 import { useDispatch } from "metabase/redux";
 import { Modal, type ModalProps } from "metabase/ui";
 import * as Urls from "metabase/urls";

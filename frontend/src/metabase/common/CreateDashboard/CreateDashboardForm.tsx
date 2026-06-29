@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import type { SdkCollectionId } from "embedding-sdk-bundle/types";
+import type { SdkCollectionId } from "embedding-sdk-shared/types/collection-id";
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";

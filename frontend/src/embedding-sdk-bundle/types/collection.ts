@@ -1,16 +1,9 @@
 import type { SdkUserId } from "embedding-sdk-bundle/types/user";
+import type { SdkCollectionId } from "embedding-sdk-shared/types/collection-id";
 
 import type { SdkEntityId } from "./entity";
 
-// "CollectionId" from core app also includes "root" | "users" and "trash", we don't want to include those
-// in public apis of the sdk, as we don't support them
-
-export type SdkCollectionId =
-  | number
-  | "personal"
-  | "root"
-  | "tenant"
-  | SdkEntityId;
+export type { SdkCollectionId };
 
 /**
  * The Collection entity
