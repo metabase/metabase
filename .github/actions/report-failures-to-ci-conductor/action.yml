@@ -9,8 +9,8 @@ inputs:
     description: Per-job identity label (CI_CONDUCTOR_TEST_SUITE); unique per job/leg.
     required: true
   entrypoint:
-    description: bun reporter to run.
-    default: release/ci-conductor/src/report-backend.ts
+    description: bun reporter to run, e.g. release/ci-conductor/src/report-backend.ts.
+    required: true
   install-bun:
     description: Install bun first; set false when the job already has it (e.g. frontend).
     default: "true"
