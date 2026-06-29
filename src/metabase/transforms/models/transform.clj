@@ -157,10 +157,11 @@
                           ;; No database existence check added here, unlike for insert.
                           ;; Just allow updates for an invalid target to fail.
                           (transforms-base.i/target-db-id transform))]
-    ;; A retarget or query edit can change the output columns, leaving managed indexes pointing at columns that no
-    ;; longer exist. Drop them so a stale definition isn't applied on the next run.
+    ;; A retarget or query edit can change the output columns. Mark the managed indexes for revalidation so the next
+    ;; run re-applies them against the new schema (and fails loudly if a column is gone) instead of silently keeping a
+    ;; stale definition.
     (when (and target-changed? (not mi/*deserializing?*))
-      (table-index/invalidate-for-transform! (:id transform)))
+      (table-index/mark-for-revalidation! (:id transform)))
     (cond-> transform
       source
       (assoc :source_type (transforms-base.u/transform-source-type source)

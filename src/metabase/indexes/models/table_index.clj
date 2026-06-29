@@ -160,17 +160,18 @@
                  :error_message    message
                  :last_executed_at :%now})))
 
-(defn invalidate-for-transform!
-  "Flip every still-applicable index request for `transform-id` to `:delete-pending`, so a changed target table or
-  output schema can't apply a stale definition (its columns may no longer exist). The next full rebuild drops the
-  indexes and clears the rows. Updates by id, so it doesn't disturb the transform's incremental checkpoint."
+(defn mark-for-revalidation!
+  "Flip every still-applicable index request for `transform-id` to `:update-pending` and clear stale errors, so a
+  changed target table or output schema gets re-applied and re-validated on the next run. A pending row already forces
+  a full rebuild (see [[metabase.transforms-base.util/full-incremental-run?]]), where an index whose column is gone
+  fails the run. Leaves `:delete-pending` rows alone, so a user's pending deletion isn't revived."
   [transform-id]
   (when transform-id
     (let [ids (map :id (select-applicable-for-transform transform-id))]
       (when (seq ids)
         (t2/update! :model/TableIndex
                     {:id [:in ids]}
-                    {:status :delete-pending, :error_message nil})))))
+                    {:status :update-pending, :error_message nil})))))
 
 (defn exists-for-transform?
   "True when `transform-id` already has a request for `index-name`."

@@ -62,19 +62,19 @@
                   :structured   {:kind :btree :name "by_cat" :columns [{:name "category"}]}}]
     (thunk transform-id index-id)))
 
-(deftest invalidate-indexes-on-schema-change-test
-  (testing "editing the source query (output schema may change) drops the transform's managed indexes"
+(deftest revalidate-indexes-on-schema-change-test
+  (testing "editing the source query (output schema may change) marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
      (fn [transform-id index-id]
        (t2/update! :model/Transform transform-id
                    {:source {:type "query" :query (query-test-util/make-query :source-table "checkins")}})
-       (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex index-id))))))
-  (testing "retargeting to a different table drops the transform's managed indexes"
+       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex index-id))))))
+  (testing "retargeting to a different table marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
      (fn [transform-id index-id]
        (t2/update! :model/Transform transform-id
                    {:target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
-       (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex index-id))))))
+       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex index-id))))))
   (testing "an unrelated edit (renaming the transform) leaves the indexes alone"
     (temp-transform-with-index!
      (fn [transform-id index-id]
