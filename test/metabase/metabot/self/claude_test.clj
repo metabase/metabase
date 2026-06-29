@@ -59,6 +59,15 @@
                         :cacheReadTokens nat-int?}}]
               (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
+(deftest ^:parallel claude-error-event-uses-canonical-error-shape-test
+  (testing "an `error` SSE event becomes an :error part keyed by :error (read by the wire serializer + persistence)"
+    (let [raw   [{:type "message_start" :message {:id "msg_1" :model "claude-haiku-4-5"}}
+                 {:type "error" :error {:type "overloaded_error" :message "Overloaded"}}]
+          parts (into [] (comp (claude/claude->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
+          err   (m/find-first #(= :error (:type %)) parts)]
+      (is (=? {:message "Overloaded"} (:error err)))
+      (is (= "3:\"Overloaded\"" (self.core/format-error-line err))))))
+
 (deftest ^:parallel claude-tool-input-conv-test
   (let [raw-chunks (fixture "claude-tool-input"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
@@ -419,3 +428,36 @@
                    clojure.lang.ExceptionInfo
                    #"No Anthropic API key is set"
                    (claude/list-models {}))))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; temperature support tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel model-supports-temperature?-test
+  (testing "models that accept an explicit temperature"
+    (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
+                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
+      (is (true? (#'claude/model-supports-temperature? model))
+          model)))
+  (testing "sampling parameters were removed starting with Opus 4.7 and on Fable models"
+    (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
+                   "claude-opus-5" "claude-opus-5-0" "claude-fable-5"]]
+      (is (false? (#'claude/model-supports-temperature? model))
+          model))))
+
+(deftest ^:parallel model-supports-temperature?-bedrock-prefixed-test
+  (testing "Bedrock mantle ids carry an anthropic. vendor prefix that is stripped before the check"
+    (doseq [model ["anthropic.claude-opus-4-8" "anthropic.claude-opus-4-7" "anthropic.claude-fable-5"]]
+      (is (false? (#'claude/model-supports-temperature? model))
+          model))
+    (is (true? (#'claude/model-supports-temperature? "anthropic.claude-haiku-4-5")))))
+
+(deftest ^:parallel temperature-omitted-for-removed-sampling-models-test
+  (let [request-body #(claude/claude-request-body {:model       %
+                                                   :input       [{:role :user :content "hi"}]
+                                                   :temperature 0.3})]
+    (testing "temperature is sent for models that accept it"
+      (is (= 0.3 (:temperature (request-body "claude-haiku-4-5")))))
+    (testing "temperature is omitted for models that reject sampling parameters"
+      (is (not (contains? (request-body "claude-opus-4-8") :temperature)))
+      (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))))

@@ -125,6 +125,66 @@
      :font-weight 700
      :color       (or color color-text-dark)})))
 
+(def object-detail-border
+  "1px border used for the object-detail table outline and the separators between rows."
+  (str "1px solid " color-border))
+
+(def ^:private object-detail-cell-padding "0.75em 1em")
+
+(defn- object-detail-cell-style
+  "Shared base style for the label and value cells of an object-detail key/value row."
+  []
+  (merge
+   (font-style)
+   {:font-weight    700
+    :vertical-align :top
+    :white-space    :normal
+    :padding        object-detail-cell-padding}))
+
+(defn object-detail-table-style
+  "Style for the outer table wrapping an object-detail key/value view in a Pulse."
+  []
+  {:max-width       "100%"
+   :width           "100%"
+   :border          object-detail-border
+   :border-radius   "6px"
+   :border-collapse "separate"
+   :border-spacing  0})
+
+(defn object-detail-label-style
+  "Style for the label (left) cell of an object-detail key/value row in a Pulse."
+  []
+  (merge
+   (object-detail-cell-style)
+   {:font-size  :12.5px
+    :color      color-gray-3
+    :text-align :left
+    :width      "40%"}))
+
+(defn object-detail-value-style
+  "Style for the value (right) cell of an object-detail key/value row in a Pulse."
+  []
+  (merge
+   (object-detail-cell-style)
+   {:font-size  :14px
+    :color      color-text-dark
+    :word-break :break-word}))
+
+(defn object-detail-empty-value-style
+  "Style for the muted \"Empty\" placeholder shown for a missing object-detail value."
+  []
+  (merge
+   (font-style)
+   {:color       color-gray-3
+    :font-weight 400}))
+
+(defn object-detail-more-records-style
+  "Style for the \"Showing 1 of N records\" note under an object-detail view."
+  []
+  {:color       color-gray-2
+   :padding-top :12px
+   :font-size   :12px})
+
 (defn- register-font! [filename]
   (with-open [is (io/input-stream (io/resource filename))]
     (.registerFont (GraphicsEnvironment/getLocalGraphicsEnvironment)

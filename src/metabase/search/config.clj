@@ -69,6 +69,12 @@
   "Set of all valid models to search for. "
   (set (keys model-to-db-model)))
 
+(def curated-search-models
+  "Search models that can carry a curation signal, so the `:curated?` filter restricts to these (and
+  keeps them consistent across the appdb and in-place engines). Includes `table`, which is exactly why
+  curated content stays visible where the older verified-only filter dropped it (BOT-1536)."
+  #{"card" "dataset" "metric" "dashboard" "table"})
+
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
@@ -213,6 +219,11 @@
     :last-editor-id          {:type :list, :context-key :last-edited-by}
     :native-query            {:type :native-query, :context-key :search-native-query}
     :verified                {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}
+    ;; "Verified or curated content" (Metabot). Backed by the precomputed `curated` index column
+    ;; (an OR over verified + official + library/published + authoritative, computed at ingestion),
+    ;; so the filter is a single indexed boolean. No :required-feature: a signal can only be set while
+    ;; its feature is present, so the precomputed flag is already feature-correct.
+    :curated                 {:type :single-value, :context-key :curated?, :supported-value? #{true}}
     :non-temporal-dim-ids    {:type :single-value :engine :appdb}
     :has-temporal-dim        {:type :single-value :engine :appdb}
     :display-type            {:type :list, :field "display_type"}}))
@@ -306,27 +317,43 @@
   "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
   so the OSS search API param and the EE semantic-search setting validation share one definition.
   Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
-  separate `case` (with an `:hnsw` default) and must be updated by hand when adding a strategy."
-  [:hnsw :brute-force])
+  separate dispatch (unknown strategies fall back to `:brute-force`) and must be updated by hand when
+  adding a strategy.
+
+   - `:hnsw`                   approximate, index-backed, post-filters the candidate set
+   - `:brute-force`            exact, filter-first full scan (skips the index)
+   - `:hnsw-iterative-relaxed` index-backed iterative scan, filters inline, results in approximate distance
+                               order (pgvector `hnsw.iterative_scan = relaxed_order`)
+   - `:hnsw-iterative-strict`  as above but exact distance order (`hnsw.iterative_scan = strict_order`)
+
+  The iterative scan keeps pulling neighbours until the limit is met or `hnsw.max_scan_tuples` is hit; the
+  `ef-search` and `max-scan-tuples` knobs tune it further."
+  [:hnsw :brute-force :hnsw-iterative-relaxed :hnsw-iterative-strict])
+
+(def hnsw-index-backed-strategies
+  "The subset of [[vector-search-strategies]] that read the HNSW index. Selecting one of these must build the
+  index just-in-time, and a query under one must fail fast when the index is missing. `:brute-force` is the
+  only strategy that needs no index."
+  #{:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict})
 
 (def ^:private ui-contexts
   "Search `context` values issued by the frontend, one per UI surface.
   Selects ranking weights ([[static-context-weights]]) and filter defaults ([[filter-defaults-by-context]]).
   Keep in sync with the frontend `SearchContext` type (frontend/src/metabase-types/api/search.ts).
   Give every value a comment naming the surface that issues it."
-  [:search-bar          ; the global navbar search typeahead
-   :search-app          ; the full-page search results app
-   :command-palette     ; the ⌘K command palette
-   :entity-picker       ; the entity-picker modal (cards, dashboards, collections, …)
-   :data-picker         ; picking a data source (table/model/metric) while building a query
-   :type-filter         ; the search type-filter dropdown's available-models lookup
-   :basic-actions       ; the command palette's basic-actions "do any models exist?" gate (New action), not a user search
+  [:basic-actions       ; the command palette's basic-actions "do any models exist?" gate (New action), not a user search
    :browse              ; the Browse models / Browse metrics pages
-   :embedding-setup     ; embedding/SDK setup and preview resource selection
-   :document            ; entity references embedded in documents
-   :library             ; the data-studio Library page (EE)
+   :command-palette     ; the ⌘K command palette
+   :data-picker         ; picking a data source (table/model/metric) while building a query
    :dependencies        ; the dependency-graph entry search (EE)
-   :model-migration])   ; the migrate-models admin page (EE)
+   :document            ; entity references embedded in documents
+   :embedding-setup     ; embedding/SDK setup and preview resource selection
+   :entity-picker       ; the entity-picker modal (cards, dashboards, collections, …)
+   :library             ; the data-studio Library page (EE)
+   :model-migration     ; the migrate-models admin page (EE)
+   :search-app          ; the full-page search results app
+   :search-bar          ; the global navbar search typeahead
+   :type-filter])       ; the search type-filter dropdown's available-models lookup
 
 (def ^:private non-ui-contexts
   "Search `context` values for non-frontend callers.
@@ -400,9 +427,20 @@
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
-   ;; Semantic-engine vector-search strategy (:hnsw or :brute-force). When absent, the engine uses its
-   ;; configured default setting.
-   [:vector-search-strategy {:optional true} [:maybe keyword?]]
+   ;; Semantic-engine vector-search strategy (see [[search.config/vector-search-strategies]]). When absent,
+   ;; the engine uses its configured default setting. The remaining vector-search-* knobs are experimental
+   ;; tuning parameters; they only affect the `:hnsw-iterative-*` strategies (except `explain?`, which works
+   ;; for any strategy). Each falls back to its EE setting default when absent.
+   [:vector-search-strategy        {:optional true} [:maybe keyword?]]
+   ;; pgvector `hnsw.ef_search` -- HNSW candidate-list size
+   [:vector-search-ef-search       {:optional true} [:maybe pos-int?]]
+   ;; pgvector `hnsw.max_scan_tuples` -- soft cap on tuples an iterative scan visits
+   [:vector-search-max-scan-tuples {:optional true} [:maybe pos-int?]]
+   ;; true to run gated EXPLAIN (ANALYZE) instrumentation of the inner vector subquery (expensive)
+   [:vector-search-explain?        {:optional true} [:maybe :boolean]]
+   ;; true to `SET LOCAL enable_seqscan = off` to force the planner onto the HNSW index (experiment knob;
+   ;; deliberately not exposed over HTTP)
+   [:vector-search-force-index?    {:optional true} [:maybe :boolean]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;
@@ -421,6 +459,8 @@
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
+   ;; true to restrict to verified-or-curated content (precomputed `curated` index column)
+   [:curated?                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:include-dashboard-questions?        {:optional true} :boolean]
    [:include-metadata?                   {:optional true} :boolean]

@@ -1,10 +1,16 @@
-import { memo } from "react";
+import { Suspense, lazy, memo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
+import { Flex } from "metabase/ui";
 import { getAccentColors, getPreferredColor } from "metabase/ui/colors/groups";
 import MetabaseSettings from "metabase/utils/settings";
+import MapSkeleton from "metabase/visualizations/components/skeletons/MapSkeleton/MapSkeleton";
+import {
+  getDefaultMapDimension,
+  getDefaultMapMetric,
+} from "metabase/visualizations/lib/choropleth";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -24,7 +30,6 @@ import type {
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
-  isDimension,
   isLatitude,
   isLongitude,
   isMetric,
@@ -33,37 +38,32 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type { CustomGeoJSONMap } from "metabase-types/api";
 
-import {
-  ChoroplethMap,
-  getColorplethColorScale,
-} from "../../components/ChoroplethMap";
-import { LeafletGridHeatMap } from "../../components/LeafletGridHeatMap";
-import { PinMap } from "../../components/PinMap";
-
 import { CustomMapFooter } from "./CustomMapFooter";
-
-const PIN_MAP_VALUES = ["pin", "heat", "grid"] as const;
-type PinMapValue = (typeof PIN_MAP_VALUES)[number];
-
-function isPinMapType(value: unknown): value is PinMapValue {
-  return PIN_MAP_VALUES.some((v) => v === value);
-}
+import { getColorplethColorScale } from "./map-color-scale";
+import { isMapSensible, isPinMapType } from "./utils";
 
 const MAP_DISPLAY_ALIASES = ["state", "country", "pin_map"] as const;
 
+// Leaflet (and the map renderer that uses it) is loaded lazily so it stays out
+// of the initial bundle for the majority of users who never open a map.
+const MapRenderer = lazy(() =>
+  import(/* webpackChunkName: "map-renderer" */ "./MapRenderer").then(
+    (module) => ({ default: module.MapRenderer }),
+  ),
+);
+
 function MapComponent(props: VisualizationProps) {
-  const { settings } = props;
-  const type = settings["map.type"];
-
-  if (isPinMapType(type)) {
-    return <PinMap {...props} />;
-  }
-
-  if (type === "region") {
-    return <ChoroplethMap {...props} />;
-  }
-
-  return null;
+  return (
+    <Suspense
+      fallback={
+        <Flex h="100%" w="100%" direction="column">
+          <MapSkeleton />
+        </Flex>
+      }
+    >
+      <MapRenderer {...props} />
+    </Suspense>
+  );
 }
 
 function arePropsEqual(prev: VisualizationProps, next: VisualizationProps) {
@@ -81,10 +81,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
   aliases: [...MAP_DISPLAY_ALIASES],
   minSize: getMinSize("map"),
   defaultSize: getDefaultSize("map"),
-  isSensible: (data) =>
-    PinMap.isSensible(data) ||
-    Boolean(ChoroplethMap.isSensible?.(data)) ||
-    LeafletGridHeatMap.isSensible(data),
+  isSensible: isMapSensible,
   hasEmptyState: true,
   settings: {
     ...columnSettings({ getHidden: () => true }),
@@ -246,7 +243,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         {
           data: { cols },
         },
-      ]) => cols.find(isMetric)?.name,
+      ]) => getDefaultMapMetric(cols),
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     ...dimensionSetting("map.dimension", {
@@ -257,13 +254,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         {
           data: { cols },
         },
-      ]) => {
-        const geoDimension = cols.find((col) => isCountry(col) || isState(col));
-        if (geoDimension) {
-          return geoDimension.name;
-        }
-        return cols.find(isDimension)?.name;
-      },
+      ]) => getDefaultMapDimension(cols),
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     "map.colors": {

@@ -11,8 +11,8 @@ import { type FileRejection, useDropzone } from "react-dropzone";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { getComposedDragProps } from "metabase/collections/components/CollectionContent/utils";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { getComposedDragProps } from "metabase/common/collections/dropzone";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { CollectionName } from "metabase/common/components/CollectionName";
 import {
   CollectionPickerModal,
@@ -227,7 +227,7 @@ export const CSVUpload = ({
             <div>
               <Text fw="bold">{primaryText}</Text>
               {!uploadState.file && (
-                <Text c="text-tertiary">
+                <Text c="text-disabled">
                   {c("{0} is the allowed size of a file in MB")
                     .t`.csv or .tsv files, ${MAX_UPLOAD_STRING} MB max`}
                 </Text>

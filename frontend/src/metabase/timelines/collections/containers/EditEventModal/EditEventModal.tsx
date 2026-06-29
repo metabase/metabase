@@ -15,7 +15,7 @@ import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
-function EditEventModalContainer({ params }: ModalComponentProps) {
+function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
   const archive = useSetArchive();
   const timelineId = Urls.extractEntityId(params.timelineId);
@@ -61,6 +61,7 @@ function EditEventModalContainer({ params }: ModalComponentProps) {
       timeline={timeline}
       onSubmit={onSubmit}
       onArchive={onArchive}
+      onClose={onClose}
     />
   );
 }

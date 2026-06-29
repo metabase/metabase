@@ -19,7 +19,6 @@
    [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.llm :as qp.llm]
-   [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
    [metabase.explorations.query-plan.planner :as planner]
    [metabase.explorations.query-plan.variants :as qp.variants]
@@ -227,13 +226,7 @@
 (defn- run-planner!
   "Invoke the picked planner, persist rows / mark terminal as appropriate, and
   return the outcome keyword (`:ok`, `:skip-empty`, or `:failed`)."
-  [{:keys [thread-id metric-dim-ctx metric-by-key creator-id] :as ctx} picked planner-id pre]
-  ;; Enforce the no-routed-databases constraint up front; both planners would
-  ;; produce items but the variant builders would later fail when running queries.
-  (qp.mbql/check-no-routed-databases!
-   (into {} (for [g (:groups metric-dim-ctx)
-                  m (:metrics g)]
-              [(:metric-id m) (:card m)])))
+  [{:keys [thread-id metric-by-key creator-id] :as ctx} picked planner-id pre]
   (let [{:keys [outcome plan rationale transcript final-errors]} (planner/plan! picked ctx)
         transcript-body {:outcome      outcome
                          :rationale    rationale

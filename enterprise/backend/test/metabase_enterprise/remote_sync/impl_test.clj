@@ -30,13 +30,6 @@
 
 ;; import! tests
 
-(deftest import!-with-no-source-configured-test
-  (testing "import! with no snapshot configured"
-    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-          result (impl/import! nil task-id)]
-      (is (= :error (:status result)))
-      (is (re-find #"Remote sync source is not enabled" (:message result))))))
-
 (deftest import!-successful-without-collections-test
   (testing "import! successful without collections (imports all remote-synced)"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
@@ -92,7 +85,10 @@
                              bad-yaml}}
           result    (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)]
       (is (= :error (:status result))
-          "Import should fail when a YAML file cannot be parsed, not silently skip it"))))
+          "Import should fail when a YAML file cannot be parsed, not silently skip it")
+      (testing "the error message names the offending file and the parse reason"
+        (is (str/includes? (:message result) "collections/main/test/bad_card.yaml"))
+        (is (str/includes? (:message result) "expected ',' or ']'"))))))
 
 (deftest import!-handles-generic-errors-test
   (testing "import! handles generic errors"
@@ -116,7 +112,19 @@
           e     (ex-info "Failed to load into database for Card abc123"
                          {:path "Card abc123"}
                          cause)]
-      (is (str/includes? (impl/source-error-message e) "A referenced database does not exist on this instance")))))
+      (is (str/includes? (impl/source-error-message e) "A referenced database does not exist on this instance"))))
+  (testing "source-error-message lists each unreadable file with its parse reason (GHY-3887)"
+    (let [ingest-err (ex-info "Failed to parse file: collections/transforms/a.yaml"
+                              {:file "collections/transforms/a.yaml"
+                               :reason "found character '@' that cannot start any token. (Do not use @ for indentation) (line 1, column 1)"})
+          e          (ex-info "Failed to read 1 file(s) during ingestion: collections/transforms/a.yaml"
+                              {:ingest-errors [ingest-err]
+                               :files         ["collections/transforms/a.yaml"]}
+                              ingest-err)
+          msg        (impl/source-error-message e)]
+      (is (str/includes? msg "Failed to read 1 file(s)"))
+      (is (str/includes? msg "collections/transforms/a.yaml"))
+      (is (str/includes? msg "found character '@'")))))
 
 ;; We need to make sure the task-id we use to track the Remote Sync is not bound to a transactions because of the behavior of
 ;; update-sync-progress. So the follow two tests cannot use with-temp to create models
@@ -137,7 +145,21 @@
               result (impl/import! (source.p/snapshot mock-source) task-id-2 :force? false)]
           (is (= :success (:status result)))
           (is (= source-version (:version result)))
-          (is (re-find #"Skipping import.*matches last imported version" (:message result))))))))
+          (is (= {:kind "pull-skipped"} (:outcome result))))))))
+
+(deftest handle-task-result!-stores-outcome-test
+  (testing "handle-task-result! records the success result's :outcome on the task (GHY-3747)"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                             {:sync_task_type "import"
+                                              :initiated_by (mt/user->id :rasta)})]
+        (impl/handle-task-result! {:status :success
+                                   :outcome {:kind "pulled" :count 3 :branch "main"}}
+                                  task-id)
+        (let [task (t2/select-one :model/RemoteSyncTask :id task-id)]
+          (is (some? (:ended_at task)))
+          (is (= {:kind "pulled" :count 3 :branch "main"} (:outcome task)))
+          (is (= :successful (:status (t2/hydrate task :status)))))))))
 
 (deftest import!-proceeds-when-version-matches-with-force-test
   (testing "import! proceeds with import when source version matches last imported version but force? is true"
@@ -162,7 +184,8 @@
               result (impl/import! (source.p/snapshot mock-source) task-id-2 :force? true)]
           (is (= :success (:status result)))
           (is (= source-version (:version result)))
-          (is (= "Successfully reloaded from git repository" (:message result))))))))
+          (is (= "pulled" (get-in result [:outcome :kind])))
+          (is (number? (get-in result [:outcome :count]))))))))
 
 ;; export! tests
 
@@ -255,7 +278,7 @@
                 import-result (impl/import! (source.p/snapshot mock-main) (:id import-task))]
             (remote-sync.task/complete-sync-task! (:id import-task))
             (is (= :success (:status import-result)))
-            (is (= "Successfully reloaded from git repository" (:message import-result)))
+            (is (= "pulled" (get-in import-result [:outcome :kind])))
             (is (t2/exists? :model/Collection :id coll-id))
             (is (t2/exists? :model/Card :id card-id))
             (let [collection (t2/select-one :model/Collection :id coll-id)
@@ -544,6 +567,23 @@
                     "Should return task ID from async-import!")
                 (is @import-called?
                     "Should call async-import! in read-only mode")))))))))
+
+(deftest finish-remote-config!-does-not-force-transform-deletion-test
+  (testing "GHY-3900: the enable-triggered import must not force transform deletion (passes :force-deletion? false)"
+    (mt/with-model-cleanup [:model/RemoteSyncTask :model/Collection]
+      (let [mock-source    (test-helpers/create-mock-source)
+            captured-args  (atom nil)]
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :is_remote_synced true :location "/"}]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-branch "main"
+                                             remote-sync-type :read-only]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                        impl/async-import! (fn [& args] (reset! captured-args args) {:id 123})]
+              (impl/finish-remote-config!)
+              (let [[_branch _force? _import-args & kvs] @captured-args]
+                (is (false? (:force-deletion? (apply hash-map kvs)))
+                    "finish-remote-config! should pass :force-deletion? false so deletions surface as conflicts")))))))))
 
 (deftest finish-remote-config!-does-nothing-when-collection-exists-in-dev-mode-test
   (testing "finish-remote-config! does nothing when collection exists in read-write mode"
@@ -1804,7 +1844,8 @@ serdes/meta:
   (testing "preview reports no changes when the remote has not advanced"
     (with-redefs [remote-sync.task/last-version (constantly "remote-R") ; == snapshot version
                   source/source-from-settings   (constantly (export-test-source))]
-      (is (= {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
+      (is (= {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}
+              :force-push-casualties {:deleted [] :overwritten []}}
              (impl/preview-export-merge "main"))))))
 
 (deftest preview-export-merge-clean-test
@@ -1839,13 +1880,17 @@ serdes/meta:
                            (default-branch [_] "main")
                            (snapshot [_] (export-test-snapshot "remote-R"))
                            (snapshot-at [_ _] nil))]
-      (with-redefs [remote-sync.task/last-version    (constantly "gone-base")
-                    source/source-from-settings      (constantly no-base-source)
-                    spec/extract-entities-for-export (constantly [{:dummy true}])]
+      (with-redefs [remote-sync.task/last-version        (constantly "gone-base")
+                    source/source-from-settings          (constantly no-base-source)
+                    spec/extract-entities-for-export     (constantly [{:dummy true}])
+                    source/force-push-casualties-no-base (fn [_ _] {:deleted ["Audit Logs"] :overwritten []})]
         (let [result (impl/preview-export-merge "main")]
           (is (true? (:diverged? result)))
           (is (false? (:clean? result)))
-          (is (= :history-rewritten (:reason result))))))))
+          (is (= :history-rewritten (:reason result)))
+          (testing "force-push casualties are still computed without a merge base"
+            (is (= {:deleted ["Audit Logs"] :overwritten []}
+                   (:force-push-casualties result)))))))))
 
 ;;; ------------------------------------- local-only pull merge tests -------------------------------------
 

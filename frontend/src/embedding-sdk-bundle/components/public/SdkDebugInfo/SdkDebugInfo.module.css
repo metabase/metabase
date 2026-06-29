@@ -10,7 +10,7 @@
   backdrop-filter: blur(6px);
   background: color-mix(
     in srgb,
-    var(--mb-color-background-primary) 60%,
+    var(--mb-color-background_page-primary) 60%,
     transparent
   );
   font-size: 12px;

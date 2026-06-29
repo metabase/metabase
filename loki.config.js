@@ -16,11 +16,13 @@ module.exports = {
     "^Components/Documents",
     "^Components/Feedback/Alert",
     "^Components/Ask Before Using/Chip Overview",
+    "^Components/Data display/KeyboardShortcut Overview",
     "^Components/Table",
     "^App/Palette",
     "^EmbeddingSDK/SdkQuestion/ChartTypeDropdownInner",
     "^viz/GridMapPdfExport",
     "ParameterValueWidget",
+    "^Explorations/ExplorationGroupVisualization",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import TimelineEmptyState from "metabase/timelines/collections/components/TimelineEmptyState";

@@ -153,7 +153,8 @@
          (let [database (t2/select-one :model/Database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
-           (if (binding [driver.settings/*allow-testing-h2-connections* true]
+           (if (binding [driver.settings/*allow-testing-h2-connections* true
+                         driver.settings/*allow-testing-sqlite-connections* true]
                  (driver.u/can-connect-with-details? (:engine database) (:details database)))
              (doseq [table tables]
                (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
@@ -240,7 +241,8 @@
         db-ids (sort (set (map :db_id tables)))]
     (doseq [database (t2/select :model/Database :id [:in db-ids])]
       (try
-        (binding [driver.settings/*allow-testing-h2-connections* true]
+        (binding [driver.settings/*allow-testing-h2-connections* true
+                  driver.settings/*allow-testing-sqlite-connections* true]
           (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
         nil
         (catch Throwable e

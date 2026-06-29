@@ -5,9 +5,14 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
+import { getListCommentsQuery } from "metabase/comments/utils";
 import { EditableText } from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  trackDocumentCreated,
+  trackDocumentUpdated,
+} from "metabase/documents/analytics";
 import { DocumentMenu } from "metabase/documents/components/DocumentMenu";
 import { DocumentRevisionHistorySidebar } from "metabase/documents/components/DocumentRevisionHistorySidebar";
 import { Editor } from "metabase/documents/components/Editor";
@@ -16,7 +21,6 @@ import { TimelineEventsSidebar } from "metabase/documents/components/TimelineEve
 import { DOCUMENT_TITLE_MAX_LENGTH } from "metabase/documents/constants";
 import {
   setChildTargetId,
-  setDocumentHost,
   setIsHistorySidebarOpen,
 } from "metabase/documents/documents.slice";
 import { useDocumentEditor } from "metabase/documents/hooks/use-document-editor";
@@ -26,8 +30,8 @@ import {
   getSelectedQuestionId,
   getSidebarMode,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { useDispatch, useSelector } from "metabase/redux";
+import type { EditorCapabilities } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {
   ActionIcon,
   Box,
@@ -44,6 +48,12 @@ import type { ExplorationDocument, ExplorationId } from "metabase-types/api";
 import S from "./ExplorationDocument.module.css";
 import { ExplorationDocumentSkeleton } from "./ExplorationDocumentSkeleton";
 
+const EXPLORATION_CAPABILITIES: EditorCapabilities = {
+  canEmbedCharts: false,
+  canUseMetabot: false,
+  canOpenCardInQueryBuilder: false,
+};
+
 export type ExplorationDocumentWithIsAiSummary = ExplorationDocument & {
   isAiSummary: boolean;
   isCanceled: boolean;
@@ -52,27 +62,23 @@ export type ExplorationDocumentWithIsAiSummary = ExplorationDocument & {
 interface ExplorationDocumentProps {
   explorationId: ExplorationId;
   document: ExplorationDocumentWithIsAiSummary;
-  isCommentsSidebarOpen: boolean;
   childTargetId?: string;
   route: Route;
   locationSearch: string;
+  isCommentsSidesheetOpen: boolean;
 }
 
 export function ExplorationDocument({
   explorationId,
   document,
-  isCommentsSidebarOpen,
   childTargetId,
   route,
   locationSearch,
+  isCommentsSidesheetOpen,
 }: ExplorationDocumentProps) {
   const { isAiSummary, isCanceled } = document;
 
   const dispatch = useDispatch();
-
-  useEffect(() => {
-    dispatch(setDocumentHost("exploration"));
-  }, [dispatch]);
 
   useEffect(() => {
     dispatch(setChildTargetId(childTargetId));
@@ -98,10 +104,16 @@ export function ExplorationDocument({
     handleQuestionSelect,
   } = useDocumentEditor({
     documentId: document.id,
+    onDocumentCreated: (id) => {
+      trackDocumentCreated(id, "exploration");
+    },
+    onDocumentUpdated: (id) => {
+      trackDocumentUpdated(id, "exploration");
+    },
   });
 
   const { hasComments } = useListCommentsQuery(
-    getListCommentsQuery(documentData),
+    getListCommentsQuery({ target_id: document.id, target_type: "document" }),
     {
       selectFromResult: ({ data }) => ({
         hasComments: !!data?.comments?.length,
@@ -135,8 +147,8 @@ export function ExplorationDocument({
       <Stack
         flex={1}
         h="100%"
-        py="3rem"
-        pr={isCommentsSidebarOpen ? "4rem" : "3rem"}
+        pb="3rem"
+        pr={isCommentsSidesheetOpen ? "3rem" : "1rem"}
         align="center"
         style={{
           overflowY: "auto",
@@ -215,6 +227,7 @@ export function ExplorationDocument({
             <Editor
               // avoid sharing state like undo/redo history between documents
               key={documentData?.id}
+              capabilities={EXPLORATION_CAPABILITIES}
               onEditorReady={setEditorInstance}
               onCardEmbedsChange={updateCardEmbeds}
               onQuestionSelect={handleQuestionSelect}

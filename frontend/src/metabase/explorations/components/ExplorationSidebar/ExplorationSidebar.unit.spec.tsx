@@ -108,6 +108,7 @@ function setup({
       selectedEntityId={resolvedEntityId}
       setSelectedEntityId={setSelectedEntityId}
       getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+      isOpen
     />
   );
 
@@ -162,15 +163,12 @@ describe("ExplorationSidebar", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows a red error marker for error queries, with the error message in its tooltip", async () => {
+  it("shows a red error marker for error queries", async () => {
     setup({ queries: [errorQuery] });
 
     const row = getRow("Revenue by source");
     const marker = within(row).getByTestId("exploration-error-marker");
     expect(marker).toBeInTheDocument();
-
-    await userEvent.hover(marker);
-    expect(await screen.findByText("Database timed out")).toBeInTheDocument();
   });
 
   it("keeps a manually collapsed heading collapsed when the tree reloads", async () => {
@@ -233,6 +231,7 @@ describe("ExplorationSidebar", () => {
         selectedEntityId={{ type: "group", id: LEAF }}
         setSelectedEntityId={jest.fn()}
         getSelectedEntityIdUrl={() => path}
+        isOpen
       />
     );
 
@@ -321,6 +320,7 @@ describe("ExplorationSidebar", () => {
           selectedEntityId={{ type: "group", id: selectedId }}
           setSelectedEntityId={jest.fn()}
           getSelectedEntityIdUrl={() => path}
+          isOpen
         />
       );
       const { rerender } = renderWithProviders(
@@ -464,22 +464,6 @@ describe("ExplorationSidebar", () => {
       });
       expect(within(heading).getByText("2d")).toBeInTheDocument();
     });
-
-    it("shows the compact time since the newest document update on the Findings heading", () => {
-      setup({
-        queries: [],
-        documents: [
-          createExplorationDocument({
-            id: 1,
-            name: "AI Summary",
-            updated_at: dayjs().subtract(5, "hour").toISOString(),
-          }),
-        ],
-      });
-
-      const findings = screen.getByRole("group", { name: /Findings/ });
-      expect(within(findings).getByText("5h")).toBeInTheDocument();
-    });
   });
 
   describe("heading status inherited from descendant queries", () => {
@@ -598,14 +582,16 @@ describe("ExplorationSidebar", () => {
       },
     });
 
-    await userEvent.click(screen.getByRole("group", { name: /Findings/ }));
+    await userEvent.click(
+      screen.getByRole("group", { name: /Initial investigation/ }),
+    );
 
     expect(
       within(getRow("AI Summary")).getByLabelText("Stopped"),
     ).toBeInTheDocument();
   });
 
-  it("marks the Findings heading as busy while the AI summary is generating", () => {
+  it("marks the AI summary document row as busy while it is generating", async () => {
     const aiSummaryDocument = createExplorationDocument({
       id: 42,
       name: "AI Summary",
@@ -622,8 +608,11 @@ describe("ExplorationSidebar", () => {
       },
     });
 
-    const findings = screen.getByRole("group", { name: /Findings/ });
-    expect(findings).toHaveAttribute("aria-busy", "true");
+    await userEvent.click(
+      screen.getByRole("group", { name: /Initial investigation/ }),
+    );
+
+    expect(getRow("AI Summary")).toHaveAttribute("aria-busy", "true");
   });
 
   describe("potentially-interesting marker", () => {

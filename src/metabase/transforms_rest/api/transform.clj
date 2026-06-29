@@ -67,6 +67,7 @@
    [:user_id [:maybe pos-int?]]
    [:transform_name {:optional true} [:maybe :string]]
    [:transform_entity_id {:optional true} [:maybe :string]]
+   [:job_run_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
@@ -79,6 +80,7 @@
    [:description [:maybe :string]]
    [:source :any]
    [:target :any]
+   [:table_dependencies {:optional true} [:maybe [:sequential :map]]]
    [:source_type :keyword]
    [:source_database_id {:optional true} [:maybe pos-int?]]
    [:source_readable {:optional true} [:maybe :boolean]]
@@ -115,6 +117,7 @@
    [:user_id [:maybe pos-int?]]
    [:transform_name {:optional true} [:maybe :string]]
    [:transform_entity_id {:optional true} [:maybe :string]]
+   [:job_run_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
@@ -219,7 +222,7 @@
   (-> (transforms.core/paged-runs (assoc query-params
                                          :offset (request/offset)
                                          :limit  (request/limit)))
-      (update :data #(map transforms-base.u/localize-run-timestamps %))))
+      (update :data #(map transforms-base.u/present-run %))))
 
 (api.macros/defendpoint :get "/run/:run-id" :- TransformRunResponse
   "Get a transform run by ID."
@@ -228,7 +231,7 @@
   (api/check-data-analyst)
   (let [run (api/check-404 (t2/select-one :model/TransformRun :id run-id))]
     (-> (t2/hydrate run [:transform :collection :transform_tag_ids])
-        transforms-base.u/localize-run-timestamps)))
+        transforms-base.u/present-run)))
 
 (api.macros/defendpoint :put "/:id" :- TransformResponse
   "Update a transform."

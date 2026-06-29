@@ -8,5 +8,4 @@
   exploration-data
   research-candidates
   research-groups
-  min-interestingness
-  routed-database-ids])
+  min-interestingness])

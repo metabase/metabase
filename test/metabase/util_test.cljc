@@ -357,6 +357,17 @@
     "string" 3  "str"
     "string" 0  ""))
 
+(deftest ^:parallel strip-bom-test
+  (are [s expected] (= expected
+                       (u/strip-bom s))
+    nil                          nil
+    ""                           ""
+    "ID,Name"                    "ID,Name"
+    (str u/utf8-bom "ID,Name")   "ID,Name"
+    (str u/utf8-bom)             ""
+    ;; only a *leading* BOM is stripped
+    (str "ID" u/utf8-bom "Name") (str "ID" u/utf8-bom "Name")))
+
 #?(:clj
    (deftest capitalize-en-turkish-test
      (mt/with-locale! "tr"
@@ -538,13 +549,15 @@
                  :b [:c :d]
                  :c nil
                  :d [:e]
-                 :e nil}]
+                 :e nil}
+          neighbors-fn #(zipmap (get graph %) (repeat #{%}))]
       (is (= {:a nil
               :b #{:a}
               :c #{:b}
               :d #{:a :b}
               :e #{:d}}
-             (u/traverse [:a] #(zipmap (get graph %) (repeat #{%}))))))))
+             (u/traverse [:a] neighbors-fn)))
+      (is (= {} (u/traverse [] neighbors-fn))))))
 
 (deftest ^:parallel round-to-decimals-test
   (are [decimal-place expected] (= expected

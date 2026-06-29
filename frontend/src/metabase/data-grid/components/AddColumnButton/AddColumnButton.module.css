@@ -3,25 +3,25 @@
   align-items: center;
   justify-content: center;
   z-index: 5;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   width: 36px;
   height: 36px;
   box-sizing: content-box;
-  border-bottom: 1px solid var(--mb-color-border-subtle);
+  border-bottom: 1px solid var(--mb-color-border-neutral-subtle);
 }
 
 .sticky {
   position: absolute;
   top: 0;
   right: 0;
-  border-left: 1px solid var(--mb-color-border-subtle);
+  border-left: 1px solid var(--mb-color-border-neutral-subtle);
 }
 
 .button {
   transition: background-color 200ms;
-  background-color: var(--mb-color-background-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
 }
 
 .button:hover {
-  background: var(--mb-color-background-hover) !important;
+  background: var(--mb-color-background_surface-hover) !important;
 }

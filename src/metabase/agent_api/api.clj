@@ -41,10 +41,6 @@
 
 ;;; --------------------------------------------------- Defaults ------------------------------------------------------
 
-(def ^:private ^:const default-query-row-limit
-  "Default row cap when :limit is omitted from a table query request."
-  200)
-
 (def ^:private ^:const page-size
   "Rows returned per page when paginating the combined query endpoint via continuation tokens.
    Also used as the query processor's per-call row constraint."
@@ -103,10 +99,10 @@
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
 (mr/def ::search-result-item
-  "A table or metric returned from search."
+  "A table, metric, or model returned from search."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:enum "table" "metric"]]
+   [:type [:enum "table" "metric" "model"]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
@@ -117,7 +113,7 @@
    [:created_at {:optional true} [:maybe :any]]])
 
 (mr/def ::search-response
-  "Search results containing tables and metrics matching the query."
+  "Search results containing tables, metrics, and models matching the query."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
    [:data [:sequential ::search-result-item]]
    [:total_count :int]])
@@ -150,14 +146,14 @@
     :else           v))
 
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
-  "Search for tables and metrics.
+  "Search for tables, metrics, and models.
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
-           :title "Search Tables and Metrics"
-           :description (str "Search for tables and metrics in Metabase. "
+           :title "Search Tables, Metrics, and Models"
+           :description (str "Search for tables, metrics, and models in Metabase. "
                              "Use term_queries for keyword search or semantic_queries for natural language search. "
                              "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
@@ -175,7 +171,7 @@
   (let [results (metabot-search/search
                  {:term-queries     (or (coerce-query-list term-queries) [])
                   :semantic-queries (or (coerce-query-list semantic-queries) [])
-                  :entity-types     ["table" "metric"]
+                  :entity-types     ["table" "metric" "model"]
                   :limit            (or (request/limit) 50)})]
     {:data        results
      :total_count (count results)}))
@@ -340,11 +336,11 @@
     decoded))
 
 (defn- clamp-total-limit
-  "Default a missing :limit and cap it at the combined endpoint's hard maximum.
-   This is the app-level total-row budget enforced across paginated responses; each page's QP-level
-   cap comes from `:page.items`, which `remaining-page-rows` clamps to respect this total."
+  "Cap `limit` at the combined endpoint's hard maximum.
+   A nil `limit` (no explicit limit in the query) defaults to the full 2000-row budget so that
+   omitting :limit doesn't silently collapse pagination to a single page."
   [limit]
-  (min (or limit default-query-row-limit) max-total-row-limit))
+  (min (or limit max-total-row-limit) max-total-row-limit))
 
 (defn- total-row-limit
   "The user's requested :limit read from a resolved lib query, defaulted and capped."
@@ -534,11 +530,16 @@
    :tool  {:name "query"
            :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query and return results with column "
-                             "metadata. If more rows are available, the response includes a "
-                             "continuation_token — pass it back to get the next page.\n\n"
-                             "Provide one of: a `query_handle` returned by construct_query "
-                             "(preferred when you have one); a `{\"query\": <object>}` body "
-                             "(same shape as construct_query; see the `construct_notebook_query` "
+                             "metadata, paginating automatically up to 2,000 rows total.\n\n"
+                             "Results are returned in pages of 200 rows. When more pages remain "
+                             "within the 2,000-row budget, the response includes a "
+                             "continuation_token — pass it back to fetch the next page. A missing "
+                             "continuation_token means the budget is exhausted or the table has "
+                             "fewer rows than the page size. If the table is larger than 2,000 "
+                             "rows and you need more, add a filter or aggregation to narrow "
+                             "the result set.\n\n Provide one of: a `query_handle` returned "
+                             "by construct_query (preferred when you have one); a `{\"query\": <object>}` "
+                             "body (same shape as construct_query; see the `construct_notebook_query` "
                              "tool for the format reference); or a `{\"continuation_token\": "
                              "\"...\"}` from a previous response.")
            :annotations {:read-only? true}}}
@@ -696,7 +697,7 @@
    :tool  {:name "read_resource"
            :description (str "Read Metabase entities by metabase:// URI. "
                              "Examples: metabase://databases, metabase://database/{id}/tables, "
-                             "metabase://collection/{id}/items, metabase://card/{id}, "
+                             "metabase://collection/{id}/items, metabase://question/{id}, "
                              "metabase://dashboard/{id}/items, metabase://table/{id}/fields. "
                              "Up to 5 URIs per call. List endpoints cap at 25 items.")}}
   [_route-params
@@ -755,6 +756,7 @@
   or a base64-encoded MBQL string. MCP callers should always use the handle.
   Optionally specify display type, description, collection, and visualization settings.
   If `collection_id` is omitted the question is saved to the caller's personal collection.
+  Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
   {:scope metabot/agent-question-create
    :tool  {:name "create_question"
@@ -762,15 +764,21 @@
                              "Pass the `query_handle` returned by `construct_query`. "
                              "Optionally set display type (table, bar, line, pie, etc.), "
                              "description, and target collection. "
-                             "If you omit collection_id it's saved to the user's personal collection. "
+                             "If you omit collection_id it's saved to the user's personal collection; "
+                             "pass an explicit null to save it to the root collection. "
                              "Report the saved location from the response `collection_path`.")}}
   [_route-params
    _query-params
-   {:keys [query display description collection_id visualization_settings]
-    question-name :name}
+   {:keys [query display description visualization_settings]
+    question-name :name
+    :as body}
    :- ::create-question-request]
   (let [dataset-query (-> query u/decode-base64 json/decode+kw)
-        collection_id (or collection_id (personal-collection-id))]
+        ;; `nil` means the root collection, so only default to the personal collection when the
+        ;; key is absent. `(or ...)` would silently turn an explicit `null` into personal.
+        collection_id (if (contains? body :collection_id)
+                        (:collection_id body)
+                        (personal-collection-id))]
     ;; Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`.
     ;; `create-card!` itself does NOT run permissions checks; without these mirroring the
     ;; REST endpoint, an LLM caller could (a) save a card whose query references data the
@@ -939,21 +947,28 @@
   Pass `question_ids` to add existing saved questions as cards on the dashboard.
   Cards are automatically positioned on the grid based on their display type.
   If `collection_id` is omitted the dashboard is saved to the caller's personal collection.
+  Pass an explicit `null` to save it to the root collection.
   The response `collection_path` is the saved location."
   {:scope metabot/agent-dashboard-create
    :tool  {:name "create_dashboard"
            :description (str "Create a dashboard in Metabase. "
                              "Optionally pass question_ids to add saved questions as cards. "
                              "Cards are auto-positioned on the dashboard grid. "
-                             "If you omit collection_id it's saved to the user's personal collection. "
+                             "If you omit collection_id it's saved to the user's personal collection; "
+                             "pass an explicit null to save it to the root collection. "
                              "Report the saved location from the response `collection_path`. "
                              "Returns the dashboard URL.")}}
   [_route-params
    _query-params
-   {:keys [description collection_id question_ids]
-    dashboard-name :name}
+   {:keys [description question_ids]
+    dashboard-name :name
+    :as body}
    :- ::create-dashboard-request]
-  (let [collection_id (or collection_id (personal-collection-id))]
+  ;; `nil` means the root collection, so only default to the personal collection when the
+  ;; key is absent. `(or ...)` would silently turn an explicit `null` into personal.
+  (let [collection_id (if (contains? body :collection_id)
+                        (:collection_id body)
+                        (personal-collection-id))]
     (api/create-check :model/Dashboard {:collection_id collection_id})
     (let [cards (when (seq question_ids)
                   (mapv #(api/read-check :model/Card %) question_ids))

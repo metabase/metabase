@@ -120,10 +120,10 @@ export const DestinationDatabaseConnectionModal = ({
             px="md"
             mx="xl"
             my="md"
-            bg="background-secondary"
+            bg="background_page-secondary"
             align="center"
             justify="space-between"
-            bd="1px solid border"
+            bd="1px solid border-neutral"
             style={{ borderRadius: ".5rem" }}
           >
             <Text>{t`You can also add databases programmatically via the API.`}</Text>

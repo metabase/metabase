@@ -8,8 +8,10 @@ import type {
 import _ from "underscore";
 
 import { getTextColorForBackground } from "metabase/ui/colors/palette";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isNotNull } from "metabase/utils/types";
 import {
+  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
@@ -54,6 +56,7 @@ import {
 } from "../model/series";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
+import { getPadding } from "./ticks";
 import { getSeriesYAxisIndex } from "./utils";
 
 const MIN_LABEL_SPACING_PX = 40;
@@ -297,7 +300,7 @@ export const buildEChartsLabelOptions = (
     fontWeight: CHART_STYLE.seriesLabels.weight,
     fontSize,
     color: renderingContext.getColor("text-primary"),
-    textBorderColor: renderingContext.getColor("background-primary"),
+    textBorderColor: renderingContext.getColor("background_page-primary"),
     textBorderWidth: 3,
     formatter:
       formatter &&
@@ -325,8 +328,12 @@ export const computeContinuousScaleBarWidth = (
     return 1;
   }
 
+  const padding = isTimeSeriesAxis(xAxisModel)
+    ? getPadding(xAxisModel.intervalsCount)
+    : 0.5;
+
   let barWidth =
-    (boundaryWidth / (xAxisModel.intervalsCount + 2)) *
+    (boundaryWidth / (xAxisModel.intervalsCount + 1 + 2 * padding)) *
     CHART_STYLE.series.barWidth;
 
   if (!stackedOrSingleSeries) {
@@ -438,7 +445,7 @@ function getDataLabelSeriesOption(
       fontWeight: CHART_STYLE.seriesLabels.weight,
       fontSize: CHART_STYLE.seriesLabels.size,
       color: renderingContext.getColor("text-primary"),
-      textBorderColor: renderingContext.getColor("background-primary"),
+      textBorderColor: renderingContext.getColor("background_page-primary"),
       textBorderWidth: 3,
     },
     labelLayout: {
@@ -481,12 +488,27 @@ const buildEChartsBarSeries = (
   const stack = stackName ?? `bar_${seriesModel.dataKey}`;
   const isStacked = settings["stackable.stack_type"] != null;
 
+  const dimensionValueColors = settings["graph._dimension_value_colors"];
+  const itemColor: NonNullable<BarSeriesOption["itemStyle"]>["color"] =
+    dimensionValueColors == null
+      ? seriesModel.color
+      : (params: CallbackDataParams) => {
+          const xValue = dataset[params.dataIndex]?.[X_AXIS_DATA_KEY];
+          const formattedXValue =
+            xValue === ECHARTS_CATEGORY_AXIS_NULL_VALUE
+              ? NULL_DISPLAY_VALUE
+              : String(xValue);
+          return dimensionValueColors[formattedXValue] ?? seriesModel.color;
+        };
+  const emphasisItemColor: NonNullable<BarSeriesOption["itemStyle"]>["color"] =
+    dimensionValueColors == null ? seriesModel.color : "inherit";
+
   const seriesOption: BarSeriesOption = {
     id: seriesModel.dataKey,
     emphasis: {
       focus: hasMultipleSeries ? "series" : "self",
       itemStyle: {
-        color: seriesModel.color,
+        color: emphasisItemColor,
       },
     },
     blur: {
@@ -548,7 +570,7 @@ const buildEChartsBarSeries = (
           },
         }),
     itemStyle: {
-      color: seriesModel.color,
+      color: itemColor,
     },
   };
 
@@ -694,7 +716,7 @@ const buildEChartsLineAreaSeries = (
     },
     symbol: "circle", // default is "emptyCircle", but it's filled with white, so we need to handle the fill ourselves for dark mode
     itemStyle: {
-      color: renderingContext.getColor("background-primary"),
+      color: renderingContext.getColor("background_page-primary"),
       borderColor: seriesModel.color,
       borderWidth: lineWidth,
       opacity: isSymbolVisible ? 1 : 0, // Make the symbol invisible to keep it for event trigger for tooltip

@@ -4,13 +4,10 @@
   LLM or persists state — everything is a thin wrapper over `metabase.lib`
   that the variant builders compose."
   (:require
-   [clojure.string :as str]
-   [metabase.explorations.core :as explorations]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.metrics.core :as metrics]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.metrics.core :as metrics]))
 
 (set! *warn-on-reflection* true)
 
@@ -144,20 +141,3 @@
   (let [base-query (-> (lib/query mp card-dataset-query) lib/remove-all-breakouts)
         ref-clause (normalize-target-ref target)]
     (lib/breakout base-query (apply-default-bucket base-query ref-clause dim))))
-
-(defn check-no-routed-databases!
-  "Throw a 400 if any metric Card lives in a router database. The worker-cached
-  result blob reflects whichever destination the creator routed to, so different
-  viewers can't safely share it."
-  [cards]
-  (when-let [routed (seq (explorations/routed-database-ids
-                          (into #{} (keep :database_id) (vals cards))))]
-    (let [routed-set (set routed)
-          offenders  (->> (vals cards)
-                          (filter (comp routed-set :database_id))
-                          (map :name))]
-      (throw (ex-info (tru "Cannot create an exploration for metrics on a routed database: {0}"
-                           (str/join ", " offenders))
-                      {:status-code      400
-                       :metric-names     offenders
-                       :routed-databases routed})))))

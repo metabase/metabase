@@ -178,10 +178,6 @@ export const getRoutes = (store: AppStore) => {
               path="comments/:childTargetId"
               modal={CommentsSidesheet}
               noWrap
-              modalProps={{
-                enableTransition: false,
-                closeOnClickOutside: false,
-              }}
             />
           </Route>
 
@@ -292,10 +288,6 @@ export const getRoutes = (store: AppStore) => {
                   path="comments/:childTargetId"
                   modal={CommentsSidesheet}
                   noWrap
-                  modalProps={{
-                    enableTransition: false,
-                    closeOnClickOutside: false,
-                  }}
                 />
               </Route>
             </Route>

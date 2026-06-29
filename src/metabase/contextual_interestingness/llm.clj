@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [metabase.interestingness.core :as interestingness]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -78,7 +79,6 @@ Always return a single object matching the supplied schema. Do not respond with 
 
 ")
 
-(def ^:private model "anthropic/claude-haiku-4-5")
 (def ^:private temperature 0.0)
 (def ^:private max-tokens 512)
 
@@ -136,7 +136,7 @@ Always return a single object matching the supplied schema. Do not respond with 
   [{:keys [card-description] :as inputs}]
   (try
     (let [response (metabot.self/call-llm-structured
-                    model
+                    (metabot.settings/llm-metabot-provider)
                     [{:role "user" :content (build-user-message inputs)}]
                     (response-schema (str/blank? card-description))
                     temperature

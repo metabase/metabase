@@ -13,6 +13,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private translated-chunk-type?
+  "Output item types we translate into AI SDK chunks.
+  Other types (e.g. reasoning summaries) are ignored."
+  #{:text :function_call})
+
 (defn openai->aisdk-chunks-xf
   "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol chunks.
 
@@ -34,10 +39,14 @@
           model-name   (volatile! nil)
           payload      (volatile! {})
           close!       (fn [result]
-                         (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text          :text-end
-                                                             :function_call :tool-input-available)}
-                                                    @payload))
+                         ;; only emit an end marker for chunk types we translate; reasoning and other
+                         ;; output item types are ignored.
+                         (u/prog1 (if-let [end-type (case @current-type
+                                                      :text          :text-end
+                                                      :function_call :tool-input-available
+                                                      nil)]
+                                    (rf result (merge {:type end-type} @payload))
+                                    result)
                            (vreset! current-type nil)
                            (vreset! current-id nil)
                            (vreset! payload {})))]
@@ -79,37 +88,49 @@
                  (and @current-id
                       (not= chunk-id
                             @current-id)))      (close!)
-             ;; start of a new chunk
-             (= t "response.output_item.added") (-> (u/prog1
-                                                      (vreset! current-type chunk-type)
-                                                      (vreset! current-id chunk-id)
-                                                      (vreset! payload
-                                                               (case @current-type
-                                                                 ;; no :type in payloads since we'll use that for finish msg too
-                                                                 :text          {:id chunk-id}
-                                                                 :function_call {:toolCallId chunk-id
-                                                                                 :toolName   (:name item)}
-                                                                 nil)))
-                                                    (rf (merge (case @current-type
-                                                                 :text          {:type :text-start}
-                                                                 :function_call {:type :tool-input-start})
-                                                               @payload)))
-             ;; just a middle of a chunk
-             delta                              (rf (case @current-type
-                                                      :text          {:type  :text-delta
-                                                                      :id    @current-id
-                                                                      :delta delta}
-                                                      :function_call {:type           :tool-input-delta
-                                                                      :toolCallId     (:toolCallId @payload)
-                                                                      :inputTextDelta delta}))
-             (= (:type chunk)
-                "response.completed")           (rf {:type  :usage
-                                                     :usage (let [u (:usage response)]
-                                                              {:promptTokens     (:input_tokens u 0)
-                                                               :completionTokens (:output_tokens u 0)})
-                                                     ;; non-standard extension, not in AISDK5
-                                                     :id    (:id response)
-                                                     :model @model-name})
+             ;; start of a new chunk — only for types we translate; reasoning items are ignored
+             (and (= t "response.output_item.added")
+                  (translated-chunk-type? chunk-type)) (-> (u/prog1
+                                                             (vreset! current-type chunk-type)
+                                                             (vreset! current-id chunk-id)
+                                                             (vreset! payload
+                                                                      (case @current-type
+                                                                        ;; no :type in payloads since we'll use that for finish msg too
+                                                                        :text          {:id chunk-id}
+                                                                        :function_call {:toolCallId chunk-id
+                                                                                        :toolName   (:name item)}
+                                                                        nil)))
+                                                           (rf (merge (case @current-type
+                                                                        :text          {:type :text-start}
+                                                                        :function_call {:type :tool-input-start}
+                                                                        nil)
+                                                                      @payload)))
+             ;; just a middle of a chunk — ignore deltas for types we don't translate (e.g. reasoning summaries)
+             (and delta
+                  (translated-chunk-type? @current-type)) (rf (case @current-type
+                                                                :text          {:type  :text-delta
+                                                                                :id    @current-id
+                                                                                :delta delta}
+                                                                :function_call {:type           :tool-input-delta
+                                                                                :toolCallId     (:toolCallId @payload)
+                                                                                :inputTextDelta delta}))
+             ;; `response.completed` and `response.incomplete` are both terminal events carrying final usage.
+             ;; An incomplete response (e.g. truncated at max_output_tokens or stopped by a content filter)
+             ;; still has valid partial output, so we record its usage rather than treating it as an error.
+             (contains? #{"response.completed" "response.incomplete"} t)
+             (rf {:type  :usage
+                  :usage (let [u (:usage response)]
+                           {:promptTokens     (:input_tokens u 0)
+                            :completionTokens (:output_tokens u 0)})
+                  ;; non-standard extension, not in AISDK5
+                  :id    (:id response)
+                  :model @model-name})
+             ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
+             ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
+             (= t "response.failed")            (rf {:type      :error
+                                                     :errorText (or (get-in response [:error :message])
+                                                                    (get-in response [:error :code])
+                                                                    (tru "The model provider failed to complete the response"))})
              (= t "error")                      (rf {:type      :error
                                                      :errorText (or (:message error) (:message chunk))}))))))))
 
@@ -174,14 +195,15 @@
 
 (defn list-models
   "List available OpenAI models.
-  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [api-key ai-proxy?]}]
-   (when (and api-key (str/blank? api-key))
+  ([{:keys [credentials ai-proxy?]}]
+   (when (and credentials (str/blank? (:api-key credentials)))
      (throw (core/missing-api-key-ex "OpenAI")))
    (try
      (let [auth (core/resolve-auth "openai" "OpenAI"
-                                   (when-let [k (or (not-empty api-key) (not-empty (llm/llm-openai-api-key)))]
+                                   (when-let [k (or (not-empty (:api-key credentials))
+                                                    (not-empty (llm/llm-openai-api-key)))]
                                      {:url     (llm/llm-openai-api-base-url)
                                       :headers {"Authorization" (str "Bearer " k)}})
                                    ai-proxy?)
@@ -196,9 +218,18 @@
      (catch Exception e
        (core/rethrow-api-error! "openai" openai-error-msg e)))))
 
-(mu/defn openai-raw
-  "Perform a streaming request to OpenAI Responses API."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
+(defn- model-supports-temperature?
+  "Whether `model` accepts an explicit `temperature` parameter.
+
+  The GPT-5 family and the o-series reasoning models only support the default temperature."
+  [model]
+  (let [model (str/replace-first (str model) #"^openai\." "")]
+    (not (or (str/starts-with? model "gpt-5")
+             (re-find #"^o\d" model)))))
+
+(mu/defn openai-request-body
+  "Build the OpenAI Responses API request body for an LLM request."
+  [{:keys [model system input tools schema tool_choice temperature max-tokens]
     :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
   (let [all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
@@ -206,19 +237,27 @@
                           :name        "structured_output"
                           :description "Output structured data"
                           :parameters  schema}])
-                      (when (seq tools) (mapv tool->openai tools)))
-        req       (cond-> {:model        model
-                           :stream       true
-                           :store        false
-                           :instructions system
-                           :input        (parts->openai-input input)}
-                    all-tools   (assoc :tool_choice (cond
-                                                      schema      "required"
-                                                      tool_choice tool_choice
-                                                      :else       "auto")
-                                       :tools       all-tools)
-                    temperature (assoc :temperature temperature)
-                    max-tokens  (assoc :max_tokens max-tokens))]
+                      (when (seq tools) (mapv tool->openai tools)))]
+    (cond-> {:model        model
+             :stream       true
+             :store        false
+             :instructions system
+             :input        (parts->openai-input input)}
+      all-tools   (assoc :tool_choice (cond
+                                        schema      "required"
+                                        tool_choice tool_choice
+                                        :else       "auto")
+                         :tools       all-tools)
+      max-tokens  (assoc :max_output_tokens max-tokens)
+
+      (and temperature (model-supports-temperature? model))
+      (assoc :temperature temperature))))
+
+(mu/defn openai-raw
+  "Perform a streaming request to OpenAI Responses API."
+  [{:keys [model ai-proxy?] :as opts
+    :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
+  (let [req (openai-request-body opts)]
     (try
       (let [api-key  (not-empty (llm/llm-openai-api-key))
             auth     (core/resolve-auth "openai" "OpenAI"

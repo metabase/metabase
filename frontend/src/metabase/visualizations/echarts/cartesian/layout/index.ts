@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   CHART_STYLE,
@@ -93,6 +92,32 @@ const getValuesToMeasure = (min: number, max: number): number[] => {
   return [...middleValues, min, max];
 };
 
+const getYAxisExtentToMeasure = (
+  axisModel: YAxisModel,
+  settings: ComputedVisualizationSettings,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
+): [number, number] => {
+  const [min, max] = axisModel.extent.map((extent) =>
+    yAxisScaleTransforms.fromEChartsAxisValue(extent),
+  );
+
+  if (!settings["graph.y_axis.auto_range"]) {
+    return [
+      settings["graph.y_axis.min"] ?? min,
+      settings["graph.y_axis.max"] ?? max,
+    ];
+  }
+
+  if (
+    settings["graph.y_axis.unpin_from_zero"] ||
+    settings["graph.y_axis.scale"] === "log"
+  ) {
+    return [min, max];
+  }
+
+  return [Math.min(min, 0), Math.max(max, 0)];
+};
+
 /**
  * For log scales, ECharts places ticks at regular intervals in transformed space.
  * These intervals can be at integer positions (giving 1, 10, 100...) or half-integer
@@ -133,9 +158,10 @@ const getYAxisTicksWidth = (
     size: theme.cartesian.label.fontSize,
   };
 
-  // extents need to be untransformed to get the value of the tick label
-  const [min, max] = axisModel.extent.map((extent) =>
-    yAxisScaleTransforms.fromEChartsAxisValue(extent),
+  const [min, max] = getYAxisExtentToMeasure(
+    axisModel,
+    settings,
+    yAxisScaleTransforms,
   );
 
   const isFormattingAutoOrCompact =
@@ -145,23 +171,18 @@ const getYAxisTicksWidth = (
     : [min, max];
 
   if (settings["graph.y_axis.scale"] === "log") {
-    const [transformedMin, transformedMax] = axisModel.extent;
-    valuesToMeasure.push(
-      ...getLogScaleTickValues(
-        transformedMin,
-        transformedMax,
-        yAxisScaleTransforms.fromEChartsAxisValue,
-      ),
-    );
-  }
+    const transformedMin = yAxisScaleTransforms.toEChartsAxisValue(min);
+    const transformedMax = yAxisScaleTransforms.toEChartsAxisValue(max);
 
-  if (!settings["graph.y_axis.auto_range"]) {
-    const customRangeValues = [
-      settings["graph.y_axis.min"],
-      settings["graph.y_axis.max"],
-    ].filter(isNotNull);
-
-    valuesToMeasure.push(...customRangeValues);
+    if (transformedMin != null && transformedMax != null) {
+      valuesToMeasure.push(
+        ...getLogScaleTickValues(
+          transformedMin,
+          transformedMax,
+          yAxisScaleTransforms.fromEChartsAxisValue,
+        ),
+      );
+    }
   }
 
   if (settings["graph.show_goal"] && settings["graph.goal_value"] != null) {
@@ -180,10 +201,10 @@ const getYAxisTicksWidth = (
     (value) => value > -5 && value < 5,
   );
 
-  const measuredValues = valuesToMeasure.map((rawValue) => {
-    const isPercent =
-      settings.column?.(axisModel.column).number_style === "percent";
+  const columnSettings = settings.column?.(axisModel.column);
+  const isPercent = columnSettings?.number_style === "percent";
 
+  const measuredValues = valuesToMeasure.map((rawValue) => {
     let value = rawValue;
 
     if (!isPercent && !areDecimalTicksExpected) {
@@ -511,16 +532,119 @@ const getTicksDimensions = (
 // "1,000", which is significantly longer than "255".
 const TICK_OVERFLOW_BUFFER = 4;
 
+// don't allow overflow greater than 12.5% of the chart width
+const MAX_OVERFLOW_PERCENTAGE = 0.125;
+
+const getTicksOverflow = (
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  ticksDimensions: TicksDimensions,
+  axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
+  chartWidth: number,
+  padding: Padding, // this is not the final padding - the overflow returned here will be added to it
+) => {
+  const { seriesModels, xAxisModel } = input;
+
+  const maxOverflow = chartWidth * MAX_OVERFLOW_PERCENTAGE;
+
+  // We handle non-categorical scatter plots differently, because echarts places
+  // the tick labels on the very edge of the x-axis for scatter plots only.
+  const isScatterPlot =
+    seriesModels?.some((seriesModel) => {
+      const seriesSettings = settings.series?.(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+      return seriesSettings?.display === "scatter";
+    }) ?? false;
+
+  if (isScatterPlot && xAxisModel.axisType !== "category") {
+    const firstTickOverflow = Math.min(
+      Math.max(
+        ticksDimensions.firstXTickWidth / 2 -
+          padding.left +
+          TICK_OVERFLOW_BUFFER,
+        0,
+      ),
+      maxOverflow,
+    );
+    const lastTickOverflow = Math.min(
+      Math.max(
+        ticksDimensions.lastXTickWidth / 2 -
+          padding.right +
+          TICK_OVERFLOW_BUFFER,
+        0,
+      ),
+      maxOverflow,
+    );
+    return { firstTickOverflow, lastTickOverflow };
+  }
+
+  const currentBoundaryWidth = chartWidth - padding.left - padding.right;
+  const dimensionWidth = getDimensionWidth(input, currentBoundaryWidth);
+
+  // labels rotated at 45 degrees have their right edge aligned with the tick mark, so need different treatment
+  if (axisEnabledSetting === "rotate-45") {
+    const dataset = getDataset(input);
+    // the first label does not necessarily extend the farthest to the left
+    const numLabelsToCheck = Math.min(
+      // since we cap the overflow, we don't need to check all labels
+      Math.ceil(dataset.length * MAX_OVERFLOW_PERCENTAGE),
+      // this ensures we don't check too many labels - 20 is sufficient for all reasonable cases
+      20,
+    );
+    let firstTickOverflow = 0;
+    for (let i = 0; i < numLabelsToCheck; i++) {
+      const label = getPaddedAxisLabel(
+        xAxisModel.formatter(dataset[i][X_AXIS_DATA_KEY]),
+      );
+      const width = ticksDimensions.getXTickWidth(label);
+      firstTickOverflow = Math.max(
+        firstTickOverflow,
+        width -
+          dimensionWidth * (i + 0.5) -
+          padding.left +
+          TICK_OVERFLOW_BUFFER,
+      );
+    }
+    return {
+      firstTickOverflow: Math.min(firstTickOverflow, maxOverflow),
+      lastTickOverflow: 0,
+    };
+  }
+
+  const firstTickOverflow = Math.min(
+    Math.max(
+      ticksDimensions.firstXTickWidth / 2 -
+        dimensionWidth / 2 -
+        padding.left +
+        TICK_OVERFLOW_BUFFER,
+      0,
+    ),
+    maxOverflow,
+  );
+  const lastTickOverflow = Math.min(
+    Math.max(
+      ticksDimensions.lastXTickWidth / 2 -
+        dimensionWidth / 2 -
+        padding.right +
+        TICK_OVERFLOW_BUFFER,
+      0,
+    ),
+    maxOverflow,
+  );
+  return { firstTickOverflow, lastTickOverflow };
+};
+
 export const getChartPadding = (
   input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
   ticksDimensions: TicksDimensions,
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   chartWidth: number,
-  { theme }: RenderingContext,
+  renderingContext: RenderingContext,
 ): Padding => {
-  const { xAxisModel, leftAxisModel, rightAxisModel, seriesModels } = input;
-  const { fontSize } = theme.cartesian.label;
+  const { leftAxisModel, rightAxisModel } = input;
+  const { fontSize } = renderingContext.theme.cartesian.label;
 
   const axisNameFontSize = fontSize;
   const seriesLabelFontSize = fontSize;
@@ -565,66 +689,14 @@ export const getChartPadding = (
     padding.right += yAxisNameTotalWidth;
   }
 
-  const maxOverflow = chartWidth / 8; // don't allow overflow greater than 12.5% of the chart width
-  let firstTickOverflow: number;
-  let lastTickOverflow: number;
-
-  // We handle non-categorical scatter plots differently, because echarts places
-  // the tick labels on the very edge of the x-axis for scatter plots only.
-  const isScatterPlot =
-    seriesModels?.some((seriesModel) => {
-      const seriesSettings = settings.series?.(
-        seriesModel.legacySeriesSettingsObjectKey,
-      );
-      return seriesSettings?.display === "scatter";
-    }) ?? false;
-  if (isScatterPlot && xAxisModel.axisType !== "category") {
-    firstTickOverflow = Math.min(
-      Math.max(
-        ticksDimensions.firstXTickWidth / 2 -
-          padding.left +
-          TICK_OVERFLOW_BUFFER,
-        0,
-      ),
-      maxOverflow,
-    );
-    lastTickOverflow = Math.min(
-      Math.max(
-        ticksDimensions.lastXTickWidth / 2 -
-          padding.right +
-          TICK_OVERFLOW_BUFFER,
-        0,
-      ),
-      maxOverflow,
-    );
-  } else {
-    const currentBoundaryWidth = chartWidth - padding.left - padding.right;
-    const dimensionWidth = getDimensionWidth(input, currentBoundaryWidth);
-
-    firstTickOverflow = Math.min(
-      Math.max(
-        ticksDimensions.firstXTickWidth / 2 -
-          dimensionWidth / 2 -
-          padding.left +
-          TICK_OVERFLOW_BUFFER,
-        0,
-      ),
-      maxOverflow,
-    );
-    lastTickOverflow = 0;
-    if (axisEnabledSetting !== "rotate-45") {
-      lastTickOverflow = Math.min(
-        Math.max(
-          ticksDimensions.lastXTickWidth / 2 -
-            dimensionWidth / 2 -
-            padding.right +
-            TICK_OVERFLOW_BUFFER,
-          0,
-        ),
-        maxOverflow,
-      );
-    }
-  }
+  const { firstTickOverflow, lastTickOverflow } = getTicksOverflow(
+    input,
+    settings,
+    ticksDimensions,
+    axisEnabledSetting,
+    chartWidth,
+    padding,
+  );
 
   padding.left += firstTickOverflow;
   padding.right += lastTickOverflow;

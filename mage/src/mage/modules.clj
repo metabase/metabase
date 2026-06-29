@@ -105,6 +105,7 @@
      config
      content-verification
      contextual-interestingness
+     curated-search
      custom-viz-plugin
      dashboards
      documents
@@ -119,6 +120,7 @@
      events
      explorations
      formatter
+     geojson
      initialization-status
      interestingness
      internal-stats
@@ -147,6 +149,7 @@
      system
      task
      task-history
+     tiles
      timeline
      tracing
      types
@@ -297,7 +300,6 @@
    "redshift" [:redshift]
    "snowflake" [:snowflake]
    "sparksql" [:sparksql]
-   "sqlite" [:sqlite]
    "sqlserver" [:sqlserver]
    ;; starburst tests are currently disabled in drivers.yml
    ;; "starburst" [:starburst]
@@ -363,6 +365,20 @@
   [statuses]
   (into #{} (keep (fn [[driver status]] (when (= status :skip) driver))) statuses))
 
+(defn- effective-quarantined-drivers
+  "Set of `:skip` (quarantined) drivers to actually enforce for this run.
+
+   The quarantine list is fetched on the fly from a remote file (ci-test-config.json, see
+   [[driver-statuses]]) and can change at any time. We intentionally IGNORE it on `master` and
+   `release-*` branches: there, every driver must run and gate, so a stray remote quarantine entry
+   can't silently disable a driver's tests (nor raise a quarantine-conflict, which would fail a push
+   demanding a PR-only break-quarantine label). On PR/feature branches the quarantine is honored,
+   subject to the break-quarantine-<driver> label."
+  [statuses is-master-or-release]
+  (if is-master-or-release
+    #{}
+    (skip-drivers statuses)))
+
 (defn- parse-bool
   "Parse a string boolean from CLI args. Returns true for 'true', false otherwise."
   [s]
@@ -422,7 +438,9 @@
                "ci:run-all-drivers label"
                (str (run-driver-label driver) " label"))}
 
-    ;; Priority 4: Quarantined drivers (respected even on master/release)
+    ;; Priority 4: Quarantined drivers — skipped unless a break-quarantine-<driver> label is present.
+    ;; On master/release this set is empty (see [[effective-quarantined-drivers]]), so quarantine is
+    ;; ignored there and we fall through to Priority 5.
     (contains? quarantined-drivers driver)
     (do
       (when verbose?
@@ -492,17 +510,21 @@
   [{:keys [options] :as _parsed}]
   (let [github-output-only? (some? (:github-output-only options))
         git-ref (get options :git-ref "master")
+        is-master-or-release (parse-bool (:is-master-or-release options))
         ;; Detect file changes for ALL drivers via git diff
         particular-driver-changed? (drivers-with-file-changes git-ref)
         ctx {:git-ref git-ref
-             :is-master-or-release (parse-bool (:is-master-or-release options))
+             :is-master-or-release is-master-or-release
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
              :particular-driver-changed? particular-driver-changed?
              :verbose? (not github-output-only?)}
         statuses (driver-statuses)
         ;; `:skip` drivers are quarantined (not run); `:info`/`:required` drivers run normally.
-        quarantined (skip-drivers statuses)
+        ;; On master/release we drop the remote quarantine list entirely (see
+        ;; [[effective-quarantined-drivers]]) so every driver runs and gates, and no
+        ;; quarantine-conflict is raised.
+        quarantined (effective-quarantined-drivers statuses is-master-or-release)
         updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-deps-affected? updated)

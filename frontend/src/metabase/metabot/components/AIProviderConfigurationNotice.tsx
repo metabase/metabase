@@ -52,7 +52,7 @@ export function AIProviderConfigurationNotice({
     );
   return (
     <Text
-      c="text-tertiary"
+      c="text-disabled"
       maw={!inline ? "16rem" : undefined}
       ta={!inline ? "center" : undefined}
       lh="lg"

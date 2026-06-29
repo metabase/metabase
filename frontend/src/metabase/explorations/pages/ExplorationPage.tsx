@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
+import { usePrevious } from "react-use";
 import { c, t } from "ttag";
 
 import { useGetExplorationQuery, useListTimelinesQuery } from "metabase/api";
@@ -10,7 +11,7 @@ import { idTag } from "metabase/api/tags";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { Box, Group } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   DocumentId,
@@ -29,7 +30,10 @@ import {
   ExplorationDocument as ExplorationDocumentComponent,
   type ExplorationDocumentWithIsAiSummary,
 } from "../components/ExplorationDocument";
-import { ExplorationSidebar } from "../components/ExplorationSidebar";
+import {
+  ExplorationSidebar,
+  ExplorationTitle,
+} from "../components/ExplorationSidebar";
 import {
   getExplorationSidebarTree,
   pickInitialSidebarEntity,
@@ -38,11 +42,12 @@ import {
   ExplorationChartAreaSkeleton,
   ExplorationGroupVisualization,
 } from "../components/ExplorationVisualization";
+import type { CommentDrafts } from "../components/ExplorationVisualization/ActionToolbar";
 import {
   getInterestingTimelineIds,
   getMostInterestingTimelineId,
 } from "../components/ExplorationVisualization/utils";
-
+import { setCurrentExploration } from "../explorations.slice";
 const QUERY_POLL_INTERVAL_MS = 2000;
 
 const NO_TIMELINE_PARAM = "none";
@@ -50,6 +55,7 @@ const TIMELINE_QUERY_PARAM = "timeline";
 
 interface ExplorationPageQuery {
   [TIMELINE_QUERY_PARAM]?: string;
+  comments?: string;
 }
 
 interface ExplorationPageProps {
@@ -122,6 +128,8 @@ export function ExplorationPage({
   // RTK Query reads `pollingInterval` on every render, so deriving it from
   // the response is enough — passing 0 stops polling.
   const [shouldPoll, setShouldPoll] = useState(true);
+  const [commentDrafts, setCommentDrafts] = useState<CommentDrafts>({});
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const {
     data: exploration,
@@ -133,7 +141,15 @@ export function ExplorationPage({
 
   useEffect(() => {
     setShouldPoll(hasUnsettledQueries(exploration));
-  }, [exploration]);
+    dispatch(setCurrentExploration(exploration));
+  }, [exploration, dispatch]);
+
+  // This is important as it will affect collection breadcrumbs in the appbar
+  useEffect(() => {
+    return () => {
+      dispatch(setCurrentExploration(undefined));
+    };
+  }, [dispatch]);
 
   const [sendToast] = useToast();
 
@@ -367,7 +383,10 @@ export function ExplorationPage({
       : undefined;
   }, [selectedEntityId, documentIdToDocument]);
 
-  const isCommentsSidebarOpen = Boolean(children);
+  const isCommentsSidebarOpen = location.query?.comments === "true";
+  const wasCommentsSidebarOpen = usePrevious(isCommentsSidebarOpen);
+  // documents use a different comments component and URL structure
+  const isCommentsSidesheetOpen = Boolean(children);
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -378,56 +397,68 @@ export function ExplorationPage({
   }
 
   return (
-    <Group
-      pl="2.25rem"
-      h="100%"
-      w="100%"
-      bg="background-secondary"
-      align="flex-start"
-      wrap="nowrap"
-      gap={0}
-      data-test-id="exploration-page"
-    >
-      <ExplorationSidebar
-        exploration={exploration}
-        tree={tree}
-        selectedEntityId={selectedEntityId}
-        setSelectedEntityId={setSelectedEntityId}
-        getSelectedEntityIdUrl={getSelectedEntityIdUrl}
-      />
-      {selectedGroup && (
-        <ExplorationGroupVisualization
-          // Key on group id so the component remounts when the user
-          // navigates between `page` groups. The body calls one
-          // RTKQ hook per query, so the hook count must be stable for
-          // the lifetime of a single mount; remounting on group switch
-          // guarantees that.
-          key={selectedGroup.group.id}
-          explorationId={exploration.id}
-          group={selectedGroup.group}
-          queries={selectedGroup.queries}
-          explorationThread={selectedGroup.thread}
-          availableTimelines={availableTimelines}
-          selectedTimelineId={selectedTimelineId}
-          onSelectTimelineId={handleSelectTimelineId}
-          interestingTimelineIds={interestingTimelineIds}
-          locationSearch={location.search}
+    <Group h="100%" align="stretch" gap={0}>
+      <Stack
+        h="100%"
+        flex={1}
+        bg="background-secondary"
+        pl="1.5rem"
+        pt="1rem"
+        data-test-id="exploration-page"
+      >
+        <ExplorationTitle
+          exploration={exploration}
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
         />
-      )}
-      {selectedDocument && (
-        <ExplorationDocumentComponent
-          explorationId={exploration.id}
-          document={selectedDocument}
-          isCommentsSidebarOpen={isCommentsSidebarOpen}
-          childTargetId={params.childTargetId}
-          route={route}
-          locationSearch={location.search}
-        />
-      )}
-      {!selectedGroup &&
-        !selectedDocument &&
-        hasUnsettledQueries(exploration) && <ExplorationChartAreaSkeleton />}
-      {isCommentsSidebarOpen && <Box bg="background-primary">{children}</Box>}
+        <Group flex={1} mih={0} align="flex-start" wrap="nowrap" gap={0}>
+          <ExplorationSidebar
+            exploration={exploration}
+            tree={tree}
+            selectedEntityId={selectedEntityId}
+            setSelectedEntityId={setSelectedEntityId}
+            getSelectedEntityIdUrl={getSelectedEntityIdUrl}
+            isOpen={isSidebarOpen}
+          />
+          {selectedGroup && (
+            <ExplorationGroupVisualization
+              // Key on group id so the component remounts when the user
+              // navigates between `page` groups. The body calls one
+              // RTKQ hook per query, so the hook count must be stable for
+              // the lifetime of a single mount; remounting on group switch
+              // guarantees that.
+              key={selectedGroup.group.id}
+              explorationId={exploration.id}
+              group={selectedGroup.group}
+              queries={selectedGroup.queries}
+              availableTimelines={availableTimelines}
+              selectedTimelineId={selectedTimelineId}
+              onSelectTimelineId={handleSelectTimelineId}
+              interestingTimelineIds={interestingTimelineIds}
+              commentDrafts={commentDrafts}
+              setCommentDrafts={setCommentDrafts}
+              isCommentsSidebarOpen={isCommentsSidebarOpen}
+              wasCommentsSidebarOpen={wasCommentsSidebarOpen ?? false}
+            />
+          )}
+          {selectedDocument && (
+            <ExplorationDocumentComponent
+              explorationId={exploration.id}
+              document={selectedDocument}
+              childTargetId={params.childTargetId}
+              route={route}
+              locationSearch={location.search}
+              isCommentsSidesheetOpen={isCommentsSidesheetOpen}
+            />
+          )}
+          {!selectedGroup &&
+            !selectedDocument &&
+            hasUnsettledQueries(exploration) && (
+              <ExplorationChartAreaSkeleton />
+            )}
+        </Group>
+      </Stack>
+      {isCommentsSidesheetOpen && <Box bg="background-primary">{children}</Box>}
     </Group>
   );
 }

@@ -19,7 +19,7 @@ import {
   useListBookmarksQuery,
   useListTimelinesQuery,
 } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyModal } from "metabase/common/components/CopyModal";
 import {
@@ -36,8 +36,10 @@ import * as Urls from "metabase/urls";
 
 import {
   trackDocumentBookmark,
+  trackDocumentCreated,
   trackDocumentDuplicated,
   trackDocumentUnsavedChangesWarningDisplayed,
+  trackDocumentUpdated,
 } from "../analytics";
 import {
   PrefetchQueueProvider,
@@ -48,7 +50,6 @@ import { ScrollContainerProvider } from "../contexts/ScrollContainerContext";
 import {
   resetDocuments,
   setChildTargetId,
-  setDocumentHost,
   setHasUnsavedChanges,
   setIsHistorySidebarOpen,
 } from "../documents.slice";
@@ -135,6 +136,12 @@ export const DocumentPage = ({
     handleQuestionSelect,
   } = useDocumentEditor({
     documentId,
+    onDocumentCreated: (id) => {
+      trackDocumentCreated(id, "standalone");
+    },
+    onDocumentUpdated: (id) => {
+      trackDocumentUpdated(id, "standalone");
+    },
   });
   const previousLocationKey = usePrevious(location.key);
   const forceUpdate = useForceUpdate();
@@ -164,10 +171,6 @@ export const DocumentPage = ({
       ({ type, item_id }) => type === "document" && item_id === documentId,
     ),
   );
-
-  useEffect(() => {
-    dispatch(setDocumentHost("standalone"));
-  }, [dispatch]);
 
   useEffect(() => {
     if (error) {

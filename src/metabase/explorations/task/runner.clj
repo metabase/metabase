@@ -32,6 +32,8 @@
    [metabase.explorations.timeline-interestingness :as explorations.timeline-interestingness]
    [metabase.interestingness.core :as interestingness]
    [metabase.lib.core :as lib]
+   [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.request.core :as request]
@@ -356,29 +358,58 @@
                  (:id exploration-query))
       nil)))
 
+(defn- compute-data-access-token
+  "The creator's effective-data-access token for `dataset-query` — the sandbox/impersonation/routing
+  fingerprint the snapshot is computed under, stored on the `StoredResult` and compared against a
+  viewer's token to gate cached reads. Must be called inside the creator's `with-current-user` (+
+  routing-on) binding. Best-effort: any failure yields nil, which the read gate treats as
+  creator+admin-only."
+  [dataset-query db-id]
+  (try
+    (perms/data-access-token {:database-id db-id
+                              :table-ids   (query-perms/query->source-table-ids dataset-query)})
+    (catch Throwable e
+      (log/warn e "Failed to compute data-access token for exploration query result")
+      nil)))
+
 (defn- execute-and-persist-query-result!
   "Run the QP on `row`'s `:dataset_query`, compute the chart-config / stats / scores via the
   `safe-*` helpers, persist a `StoredResult` + `ExplorationQueryResult` + `StoredResultUse`, and
   flip the `ExplorationQuery` to `done`. `started` is the `OffsetDateTime` to stamp as the row's
-  `:started_at`."
+  `:started_at`.
+
+  The query runs as the exploration's creator, so the snapshot reflects the creator's own lens —
+  sandboxing, connection impersonation, and database routing (all applied by the QP's own
+  middleware under the bound user). The same lens is captured as a `:data_access_token` so
+  non-creator readers can be gated against it."
   [row ^OffsetDateTime started]
-  (let [qp-result    (qp/process-query
-                      (qp/userland-query-with-default-constraints
-                       (:dataset_query row)
-                       {:context :exploration}))
+  (let [creator-id (exploration-creator-id row)
+        db-id      (:database_id row)
+        run        (fn []
+                     {:qp-result (qp.variants/pin-other-last
+                                  (:query_type row)
+                                  (qp/process-query
+                                   (qp/userland-query-with-default-constraints
+                                    (:dataset_query row)
+                                    {:context :exploration})))
+                      :token     (compute-data-access-token (:dataset_query row) db-id)})
+        {:keys [qp-result token]} (if creator-id
+                                    (request/with-current-user creator-id
+                                      (run))
+                                    (run))
         bytes        (serialize-result qp-result)
         chart-config (safe-chart-config row qp-result)
         stats        (safe-deep-stats row chart-config)
         score        (safe-score row chart-config stats)
-        creator-id   (exploration-creator-id row)
         ctx          (safe-score+describe row chart-config creator-id)
         sr-id        (first
                       (t2/insert-returning-pks!
                        :model/StoredResult
-                       {:result_data   bytes
-                        :creator_id    creator-id
-                        :database_id   (:database_id row)
-                        :dataset_query (:dataset_query row)}))]
+                       {:result_data       bytes
+                        :creator_id        creator-id
+                        :database_id       db-id
+                        :dataset_query     (:dataset_query row)
+                        :data_access_token token}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id             (:id row)
                  :stored_result_id                 sr-id

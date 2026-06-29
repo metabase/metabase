@@ -6,10 +6,7 @@ import {
   explorationApi,
   useCancelExplorationThreadMutation,
   useRestartExplorationMutation,
-  useUpdateExplorationMutation,
 } from "metabase/api/exploration";
-import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
-import { EditableText } from "metabase/common/components/EditableText";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree, useTree } from "metabase/common/components/tree";
 import type {
@@ -28,10 +25,7 @@ import {
   ExplorationErrorMarker,
   PotentiallyInterestingMarker,
 } from "metabase/explorations/components/PotentiallyInterestingMarker";
-import {
-  EXPLORATION_NAME_MAX_LENGTH,
-  QUERY_INTERESTINGNESS_SCORE_THRESHOLD,
-} from "metabase/explorations/constants";
+import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import {
   ActionIcon,
   Box,
@@ -39,9 +33,6 @@ import {
   Icon,
   type IconProps,
   Menu,
-  Stack,
-  Text,
-  Tooltip,
 } from "metabase/ui";
 import type {
   Exploration,
@@ -54,13 +45,13 @@ import { isSettledExplorationQueryStatus } from "metabase-types/api";
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
 
+import { ExplorationLastActivity } from "./ExplorationLastActivity";
 import S from "./ExplorationSidebar.module.css";
 import {
   type ExplorationTreeHeading,
   type ExplorationTreeItem,
   type ExplorationTreeNode,
   flattenTree,
-  getCompactRelativeTime,
 } from "./utils";
 
 interface ExplorationSidebarProps {
@@ -69,6 +60,7 @@ interface ExplorationSidebarProps {
   selectedEntityId: SelectedEntityId | null;
   setSelectedEntityId: (entityId: SelectedEntityId) => void;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
+  isOpen: boolean;
 }
 
 export function ExplorationSidebar({
@@ -77,6 +69,7 @@ export function ExplorationSidebar({
   selectedEntityId,
   setSelectedEntityId,
   getSelectedEntityIdUrl,
+  isOpen,
 }: ExplorationSidebarProps) {
   const treeController = useTree({
     data: tree,
@@ -84,23 +77,6 @@ export function ExplorationSidebar({
     freezeAutoExpandOnManualToggle: true,
   });
   const pendingKeyboardSelectionRef = useRef(false);
-
-  const [updateExploration] = useUpdateExplorationMutation();
-  const [sendToast] = useToast();
-
-  const handleNameChange = useCallback(
-    async (name: string) => {
-      const { error } = await updateExploration({ id: exploration.id, name });
-      if (error) {
-        sendToast({
-          message: t`Failed to update name`,
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
-        });
-      }
-    },
-    [updateExploration, sendToast, exploration.id],
-  );
 
   const flatItems = useMemo(() => flattenTree(tree), [tree]);
 
@@ -223,31 +199,23 @@ export function ExplorationSidebar({
     ],
   );
 
+  if (!isOpen) {
+    // we still want keyboard shortcuts to work, so the component should still be mounted
+    return null;
+  }
+
   return (
-    <Stack
+    <Box
       h="100%"
       w="20%"
       miw="20.5rem"
       flex="none"
-      gap="lg"
-      pt="3rem"
       mr="2rem"
       data-testid="exploration-page-sidebar"
+      className={S.tree}
     >
-      <EditableText
-        initialValue={exploration.name}
-        onChange={handleNameChange}
-        fw="bold"
-        fz="h3"
-        lh="h3"
-        isDisabled={!exploration.can_write}
-        pl="0.75rem"
-        maxLength={EXPLORATION_NAME_MAX_LENGTH}
-      />
-      <Box className={S.tree}>
-        <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
-      </Box>
-    </Stack>
+      <Tree role="tree" tree={treeController} TreeNode={TreeNode} />
+    </Box>
   );
 }
 
@@ -321,18 +289,7 @@ function ExplorationTreeHeading({
         {item.name}
       </Ellipsified>
       {item.data?.lastActivityAt && isSettled(item.data.status) && (
-        <Tooltip label={getFormattedTime(item.data.lastActivityAt)}>
-          <Text
-            size="md"
-            c="text-secondary"
-            lh="1rem"
-            flex="none"
-            fw={500}
-            ta="right"
-          >
-            {getCompactRelativeTime(item.data.lastActivityAt)}
-          </Text>
-        </Tooltip>
+        <ExplorationLastActivity lastActivityAt={item.data.lastActivityAt} />
       )}
       <ExplorationThreadMenu item={item} canWrite={canWrite} />
     </Box>
@@ -488,9 +445,6 @@ function ExplorationTreeItem({
   const groupData = item.data.type === "group" ? item.data : null;
   const isError = groupData?.status === "error";
   const isLoading = isLoadingStatus(item.data?.status);
-  const errorMessage = isError
-    ? groupData.queries.find((query) => query.status === "error")?.error_message
-    : null;
   const isInteresting =
     !isError &&
     (groupData?.interestingness_score ?? 0) >=
@@ -523,7 +477,11 @@ function ExplorationTreeItem({
       >
         {item.name}
       </Ellipsified>
-      {isError && <ExplorationErrorMarker message={errorMessage} />}
+      {isError && (
+        <ExplorationErrorMarker
+          message={t`We couldn't generate one or more of these charts.`}
+        />
+      )}
       {isInteresting && <PotentiallyInterestingMarker />}
     </ForwardRefLink>
   );

@@ -18,20 +18,6 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
-(defn routed-database-ids
-  "Subset of `db-ids` whose databases are routers (i.e., have a row in the `db_router` table).
-   Cards/metrics only ever target the router DB directly — destinations are swapped in at QP
-   time — so checking the router side is sufficient. We filter routed metrics out of
-   explorations entirely: a worker-cached result blob would be unsafe to share, since
-   different viewers would normally route to different destination DBs."
-  [db-ids]
-  (if (empty? db-ids)
-    #{}
-    (into #{} (map :database_id)
-          (t2/query {:select [:database_id]
-                     :from   [:db_router]
-                     :where  [:in :database_id (vec (set db-ids))]}))))
-
 (set! *warn-on-reflection* true)
 
 (def min-interestingness
@@ -240,17 +226,12 @@
   "Permission-filtered, interestingness-annotated metric Cards with their candidate dimensions
    inlined as `:dimensions`, restricted to `:metric-ids` (or all visible when nil) and optionally
    filtered by search `:q`. Shared by [[exploration-data]], [[research-candidates]], and
-   [[research-groups]].
-
-   Metrics whose underlying database has database routing configured are filtered out entirely —
-   see [[routed-database-ids]] for the rationale."
+   [[research-groups]]."
   [{:keys [metric-ids q]}]
   (lib-be/with-metadata-provider-cache
     (let [library-ids (or (library-metrics-collection-ids) #{})
           card-ids   (accessible-metric-ids metric-ids)
-          all-cards  (load-metric-cards card-ids)
-          routed-dbs (routed-database-ids (into #{} (keep :database_id) all-cards))
-          cards      (remove (comp routed-dbs :database_id) all-cards)
+          cards      (load-metric-cards card-ids)
           ;; Filter dimensions by user permissions for all metrics at once (one set of queries
           ;; for the whole batch, rather than per metric).
           permitted  (metrics/filter-dimensions-for-user-batch cards)

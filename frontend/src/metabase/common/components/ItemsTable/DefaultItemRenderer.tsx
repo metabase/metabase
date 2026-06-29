@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
-import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
-import type { OnToggleSelectedWithItem } from "metabase/collections/types";
+import type { ActionMenuProps } from "metabase/common/collections/components/ActionMenu";
+import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
@@ -43,7 +43,7 @@ export const DefaultItemRenderer = ({
 
   const icon = getIcon(item);
   if (item.model === "card" || item.archived) {
-    icon.color = "text-tertiary";
+    icon.color = "text-disabled";
   }
 
   const handleSelectionToggled = useCallback(() => {

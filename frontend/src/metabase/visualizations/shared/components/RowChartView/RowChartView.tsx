@@ -190,7 +190,7 @@ const RowChartView = <TDatum,>({
                   y={y}
                   width={width}
                   height={height}
-                  fill={series.color}
+                  fill={bar.color ?? series.color}
                   opacity={opacity}
                   onClick={(event) => onClick?.(event, bar)}
                   onMouseEnter={(event) => onHover?.(event, bar)}

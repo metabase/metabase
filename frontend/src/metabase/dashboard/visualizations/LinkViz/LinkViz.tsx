@@ -43,6 +43,7 @@ const MODELS_TO_SEARCH: SearchModel[] = [
   "collection",
   "database",
   "table",
+  "document",
 ];
 
 export interface LinkVizProps {

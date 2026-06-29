@@ -1,76 +1,90 @@
-import { Group, Text } from "metabase/ui";
+import type { Location, LocationDescriptor } from "history";
+import { push } from "react-router-redux";
+import { t } from "ttag";
+
+import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useDispatch } from "metabase/redux";
+import { useRouter } from "metabase/router";
+import { Group, Indicator, Text } from "metabase/ui";
 import type {
   ExplorationId,
-  ExplorationQuery,
-  ExplorationThread,
-  Timeline,
-  TimelineId,
+  ExplorationQueryGroupId,
 } from "metabase-types/api";
-
-import { GroupDocumentMenu } from "./GroupDocumentMenu";
-import { TimelineDropdown } from "./TimelineDropdown";
-import type { ExplorationChartForDocumentEmbed } from "./utils";
 
 interface ExplorationVisualizationHeaderProps {
   name: string;
   explorationId?: ExplorationId;
-  explorationQuery?: ExplorationQuery;
-  explorationThread?: ExplorationThread;
-  availableTimelines?: Timeline[];
-  selectedTimelineId?: TimelineId | null;
-  onSelectTimelineId?: (timelineId: TimelineId | null) => void;
-  showTimelineDropdown?: boolean;
-  showDocumentMenu?: boolean;
-  chartsForEmbed?: ExplorationChartForDocumentEmbed[];
-  interestingTimelineIds?: ReadonlySet<TimelineId>;
-  locationSearch?: string;
+  groupId?: ExplorationQueryGroupId;
+  isCommentsSidebarOpen?: boolean;
+  showCommentsButton?: boolean;
 }
 
 export function ExplorationVisualizationHeader({
   name,
   explorationId,
-  explorationThread,
-  availableTimelines,
-  selectedTimelineId,
-  onSelectTimelineId,
-  showTimelineDropdown,
-  showDocumentMenu,
-  chartsForEmbed,
-  interestingTimelineIds,
-  locationSearch,
+  groupId,
+  isCommentsSidebarOpen,
+  showCommentsButton,
 }: ExplorationVisualizationHeaderProps) {
+  const dispatch = useDispatch();
+  const { location } = useRouter();
+  const nextCommentsUrl = getNextCommentsUrl(location);
+  const unresolvedCommentsCount = useUnresolvedCommentsCount({
+    target:
+      explorationId != null
+        ? {
+            target_id: explorationId,
+            target_type: "exploration",
+          }
+        : undefined,
+    childTargetId: groupId,
+  });
+
+  const ShowCommentsButton = showCommentsButton ? (
+    <ToolbarButton
+      icon="comment"
+      aria-label={
+        isCommentsSidebarOpen ? t`Hide comments` : t`Show all comments`
+      }
+      iconProps={{ size: "1.125rem" }}
+      isActive={isCommentsSidebarOpen}
+      bg={isCommentsSidebarOpen ? "background-brand" : "background-secondary"}
+      bd={
+        isCommentsSidebarOpen ? "1px solid border-strong" : "1px solid border"
+      }
+      onClick={() => {
+        dispatch(push(nextCommentsUrl));
+      }}
+    />
+  ) : null;
   return (
     <Group h="2rem" justify="space-between" style={{ flexShrink: 0 }}>
       <Text fw="bold" size="lg">
         {name}
       </Text>
       <Group align="center" gap="sm">
-        {showTimelineDropdown &&
-          availableTimelines &&
-          availableTimelines.length > 0 &&
-          selectedTimelineId !== undefined &&
-          onSelectTimelineId &&
-          explorationId != null && (
-            <TimelineDropdown
-              explorationId={explorationId}
-              availableTimelines={availableTimelines}
-              selectedTimelineId={selectedTimelineId}
-              onSelectTimelineId={onSelectTimelineId}
-              interestingTimelineIds={interestingTimelineIds}
-            />
-          )}
-        {showDocumentMenu &&
-          explorationThread &&
-          chartsForEmbed &&
-          chartsForEmbed.length > 0 &&
-          locationSearch != null && (
-            <GroupDocumentMenu
-              charts={chartsForEmbed}
-              explorationThread={explorationThread}
-              locationSearch={locationSearch}
-            />
-          )}
+        {unresolvedCommentsCount > 0 ? (
+          <Indicator label={unresolvedCommentsCount} size={16} color="danger">
+            {ShowCommentsButton}
+          </Indicator>
+        ) : (
+          ShowCommentsButton
+        )}
       </Group>
     </Group>
   );
+}
+
+function getNextCommentsUrl(location: Location): LocationDescriptor {
+  const query = { ...location.query };
+  if (query?.comments === "true") {
+    delete query.comments;
+  } else {
+    query.comments = "true";
+  }
+  return {
+    pathname: location.pathname,
+    query,
+  };
 }

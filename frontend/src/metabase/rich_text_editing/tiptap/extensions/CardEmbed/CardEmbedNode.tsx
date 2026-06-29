@@ -18,35 +18,12 @@ import { ExplicitSizeRefreshModeContext } from "metabase/common/components/Expli
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
-import { navigateToCardFromDocument } from "metabase/documents/actions";
-import {
-  trackDocumentAddSupportingText,
-  trackDocumentReplaceCard,
-} from "metabase/documents/analytics";
-import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
-import { MAX_GROUP_SIZE } from "metabase/documents/constants";
-import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
-import {
-  loadMetadataForDocumentCard,
-  openTimelineEventsSidebar,
-  openVizSettingsSidebar,
-} from "metabase/documents/documents.slice";
-import { useCardData } from "metabase/documents/hooks/use-card-data";
-import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
-import { useExternalCardDataLoader } from "metabase/documents/hooks/use-external-card-data";
-import {
-  useNodeInViewport,
-  useReportPrefetchLoading,
-} from "metabase/documents/hooks/use-node-in-viewport";
-import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
-import {
-  getChildTargetId,
-  getCurrentDocument,
-  getDocumentHost,
-  getHasUnsavedChanges,
-  getHoveredChildTargetId,
-} from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
+import {
+  EDITOR_STYLE_BOUNDARY_CLASS,
+  MAX_GROUP_SIZE,
+} from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -71,10 +48,7 @@ import { getDatasetError } from "metabase/visualizations/lib/errors";
 import { isTimeseries } from "metabase/visualizations/lib/renderer_utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import Question from "metabase-lib/v1/Question";
-import type {
-  CardDisplayType,
-  StoredResultSort,
-} from "metabase-types/api";
+import type { CardDisplayType, StoredResultSort } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {
@@ -89,6 +63,7 @@ import { useDndHelpers } from "../shared/dnd/use-dnd-helpers";
 import { CardEmbedLoadingState } from "./CardEmbedLoadingState";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
+import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
@@ -228,26 +203,28 @@ export const CardEmbedComponent = memo(
     const staticSort = isStaticCardSort(node.attrs.sort)
       ? node.attrs.sort
       : undefined;
+    const host = useEditorHost();
     const {
       ref: viewportRef,
       isInViewport,
       shouldLoadData,
-    } = useNodeInViewport(_id);
-    const childTargetId = useSelector(getChildTargetId);
-    const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
-    const document = useSelector(getCurrentDocument);
+    } = host.useNodeInViewport(_id);
+    const childTargetId = useSelector(host.selectors.getChildTargetId);
+    const hoveredChildTargetId = useSelector(
+      host.selectors.getHoveredChildTargetId,
+    );
+    const document = useSelector(host.selectors.getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+    const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
       skip: !isInViewport,
     });
-    const documentHost = useSelector(getDocumentHost);
+    const { capabilities } = host;
 
-    const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
+    const hasUnsavedChanges = useSelector(host.selectors.getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const commentsPath = useCommentUrl({
+    const commentsPath = host.useCommentUrl({
       childTargetId: _id,
-      searchParams: unresolvedCommentsCount > 0 ? undefined : { new: "true" },
     });
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
@@ -263,14 +240,14 @@ export const CardEmbedComponent = memo(
     const embedIndex = getEmbedIndex(editor, getPos);
 
     const isExternalDocument = externalCardData != null;
-    const regularCardData = useCardData({
+    const regularCardData = host.useCardData({
       id,
       skip: !shouldLoadData,
       ...(storedResultId != null
         ? { storedResultId, storedResultSort: staticSort }
         : {}),
     });
-    const externalCardDataResult = useExternalCardDataLoader(id, {
+    const externalCardDataResult = host.useExternalCardDataLoader(id, {
       skip: !shouldLoadData,
     });
 
@@ -279,7 +256,7 @@ export const CardEmbedComponent = memo(
       [isExternalDocument, externalCardDataResult, regularCardData],
     );
 
-    useReportPrefetchLoading(_id, isLoading);
+    host.useReportPrefetchLoading(_id, isLoading);
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -339,7 +316,7 @@ export const CardEmbedComponent = memo(
             tr.insert(match.start, supportingText);
             editor.view.dispatch(tr);
             editor.commands.focus(match.start + 1);
-            trackDocumentAddSupportingText(document);
+            host.analytics.trackAddSupportingText(document);
             return;
           }
           const flexContainer =
@@ -357,7 +334,7 @@ export const CardEmbedComponent = memo(
 
           editor.view.dispatch(tr);
           editor.commands.focus(match.start + 2);
-          trackDocumentAddSupportingText(document);
+          host.analytics.trackAddSupportingText(document);
         };
 
     const displayName = name || card?.name;
@@ -417,13 +394,13 @@ export const CardEmbedComponent = memo(
     // Load metadata for the card
     useEffect(() => {
       if (card) {
-        dispatch(loadMetadataForDocumentCard(card));
+        dispatch(host.actions.loadMetadataForDocumentCard(card));
       }
-    }, [card, dispatch]);
+    }, [card, dispatch, host]);
 
     const handleEditVisualizationSettings = () => {
       if (embedIndex !== -1) {
-        dispatch(openVizSettingsSidebar({ embedIndex }));
+        dispatch(host.actions.openVizSettingsSidebar({ embedIndex }));
       }
     };
 
@@ -440,19 +417,17 @@ export const CardEmbedComponent = memo(
 
     const handleEditTimelineEvents = () => {
       if (embedIndex !== -1) {
-        dispatch(openTimelineEventsSidebar({ embedIndex }));
+        dispatch(host.actions.openTimelineEventsSidebar({ embedIndex }));
       }
     };
 
     const handleTitleClick = () => {
       const chartHref = node.attrs.chart_href as string | null | undefined;
       if (chartHref) {
-        dispatch(navigateToCardFromDocument(chartHref, document));
+        dispatch(host.navigateToCard(chartHref, document));
         return;
       }
-      // exploration documents should have chart_href
-      // but if they don't, they still shouldn't open questions in query builder
-      if (documentHost === "exploration") {
+      if (!capabilities.canOpenCardInQueryBuilder) {
         return;
       }
       if (card && metadata) {
@@ -463,7 +438,7 @@ export const CardEmbedComponent = memo(
             metadata,
           );
           const url = Urls.question(question);
-          dispatch(navigateToCardFromDocument(url, document));
+          dispatch(host.navigateToCard(url, document));
         } catch (error) {
           console.error("Failed to navigate to question:", error);
         }
@@ -481,12 +456,12 @@ export const CardEmbedComponent = memo(
           name: null,
         });
         if (document) {
-          trackDocumentReplaceCard(document);
+          host.analytics.trackReplaceCard(document);
         }
 
         setIsReplaceModalOpen(false);
       },
-      [updateAttributes, document],
+      [updateAttributes, document, host],
     );
 
     const handleRemoveNode = useCallback(() => {
@@ -628,9 +603,9 @@ export const CardEmbedComponent = memo(
                           lineHeight: 1.55,
                           backgroundColor: "transparent",
                           "&:focus": {
-                            border: "1px solid var(--mb-color-border)",
+                            border: "1px solid var(--mb-color-border-neutral)",
                             backgroundColor:
-                              "var(--mb-color-background-primary)",
+                              "var(--mb-color-background_page-primary)",
                             padding: "0 0.25rem",
                           },
                         },

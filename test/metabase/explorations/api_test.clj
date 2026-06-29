@@ -340,11 +340,11 @@
                              (filter #(= (:id heading) (:parent_group_id %)))
                              (map :name)
                              set))]
-        (testing "metric-anchored group: heading is the metric, sub-items are by <dimension>"
+        (testing "metric-anchored group: heading is the metric, sub-items are By <dimension>"
           (is (= "Revenue" (:group_name metric-heading)))
-          (is (= #{"by Price"} (leaves-of metric-heading))))
-        (testing "dimension-anchored group: heading is by <dimension>, sub-items are the metrics"
-          (is (= "by Price" (:group_name dimension-heading)))
+          (is (= #{"By Price"} (leaves-of metric-heading))))
+        (testing "dimension-anchored group: heading is By <dimension>, sub-items are the metrics"
+          (is (= "By Price" (:group_name dimension-heading)))
           (is (= #{"Revenue" "Signups"} (leaves-of dimension-heading))))))))
 
 (deftest exploration-dimension-group-heading-disambiguation-test
@@ -380,7 +380,7 @@
                                 :groups [(dim-grp users-created 1)
                                          (dim-grp orders-created 2)]}))))
             (testing "a single dimension group keeps the plain heading even with a known source"
-              (is (= #{"by Created At"}
+              (is (= #{"By Created At"}
                      (headings {:name   "single-heading"
                                 :groups [(dim-grp users-created 1)]}))))))))))
 
@@ -633,7 +633,7 @@
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
                       :table_id     (mt/id :venues)
-                      :target       ["field" {} (mt/id :checkins :date)]}]
+                      :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "dt"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   "created"
@@ -744,7 +744,7 @@
                                      :definition (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1)))))}]
       (let [mapping [{:dimension_id "created"
                       :table_id     (mt/id :venues)
-                      :target       ["field" {} (mt/id :checkins :date)]}]
+                      :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "seg"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   "created"
@@ -766,7 +766,7 @@
                    :model/Card metric (venues-metric-card (:id u))]
       (let [mapping [{:dimension_id "created"
                       :table_id     (mt/id :venues)
-                      :target       ["field" {} (mt/id :checkins :date)]}]
+                      :target       ["field" {} (mt/id :people :created_at)]}]
             body    {:name       "collapse"
                      :metrics    [{:card_id (:id metric) :dimension_mappings mapping}]
                      :dimensions [{:dimension_id   "created"
@@ -1166,15 +1166,24 @@
 
 (defn- store-fake-result!
   "Insert a StoredResult holding the worker-serialized bytes plus an ExplorationQueryResult
-  that points at it, mirroring what the runner produces so the read endpoints can replay it."
+  that points at it, mirroring what the runner produces so the read endpoints can replay it.
+  Stamps `creator_id` from the owning Exploration (as the real runner does) so the cached-read
+  gate's creator bypass behaves like production."
   [query-id qp-result]
-  (let [bytes (cache.impl/do-with-serialization
-               (fn [in result-fn]
-                 (in qp-result)
-                 (result-fn)))
-        sr-id (first (t2/insert-returning-pks!
-                      :model/StoredResult
-                      {:result_data bytes}))]
+  (let [bytes      (cache.impl/do-with-serialization
+                    (fn [in result-fn]
+                      (in qp-result)
+                      (result-fn)))
+        creator-id (t2/select-one-fn :creator_id :model/Exploration
+                                     {:select [:e.creator_id]
+                                      :from   [[:exploration :e]]
+                                      :join   [[:exploration_thread :t] [:= :t.exploration_id :e.id]
+                                               [:exploration_query :q]  [:= :q.exploration_thread_id :t.id]]
+                                      :where  [:= :q.id query-id]})
+        sr-id      (first (t2/insert-returning-pks!
+                           :model/StoredResult
+                           {:result_data bytes
+                            :creator_id  creator-id}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id query-id
                  :stored_result_id     sr-id})))
@@ -1297,8 +1306,8 @@
             (is (thrown? Throwable
                          (eqr/create-ephemeral-card-for-exploration-queries!
                           [qid] doc-id (:collection_id doc) u {}))))
-          (is (zero? (t2/count :model/StoredResult :creator_id (:id u)))
-              "the composite StoredResult is rolled back when a later write fails")
+          (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
+              "only the source snapshot remains — no composite StoredResult leaks from the rolled-back append")
           (is (zero? (t2/count :model/Card :document_id doc-id))
               "no ephemeral Card leaks from the rolled-back append")
           (is (zero? (t2/count :model/StoredResultUse :stored_result_id
@@ -1339,8 +1348,8 @@
               use-rows  (t2/select :model/StoredResultUse :card_id (:card-id result))]
           (is (= src-sr-id (:stored-result-id result))
               "the embed points back at the source stored_result rather than a fresh copy")
-          (is (zero? (t2/count :model/StoredResult :creator_id (:id u)))
-              "no duplicate composite StoredResult is created for a single-query embed")
+          (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
+              "only the reused source snapshot exists — no duplicate composite StoredResult is created for a single-query embed")
           (is (= [src-sr-id] (mapv :stored_result_id use-rows))
               "exactly one stored_result_use row, pointing at the source snapshot"))))))
 
@@ -1519,11 +1528,11 @@
 
 (deftest ^:parallel append-chart-page-url-test
   (testing "chart-page-url builds a research deep link with the (group, card, dim) leaf id percent-encoded"
-    (is (= "/question/research/7/group/auto%3A9%3A42%3Aorders.created_at"
-           (explorations.groups/chart-page-url 7 9 42 "orders.created_at")))
+    (is (= "/question/research/7/group/auto%3A9%3A42%3Aorders.created_at%3Adefault"
+           (explorations.groups/chart-page-url 7 9 42 "orders.created_at" "default")))
     (testing "the encoded segment decodes back to the FE-routed leaf id"
-      (is (= "auto:9:42:orders.created_at"
-             (explorations.groups/leaf-id 9 42 "orders.created_at"))))))
+      (is (= "auto:9:42:orders.created_at:default"
+             (explorations.groups/leaf-id 9 42 "orders.created_at" "default"))))))
 
 (deftest ^:parallel append-chart-nodes-test
   (testing "append-chart-nodes appends a single resizeNode-wrapped cardEmbed (no link paragraph) carrying the chart-href on the node — the FE turns the card title into a link to that URL"
@@ -1789,8 +1798,8 @@
                     pair-set (set (map (juxt :card_id :dimension_id) members))]
                 (is (= 1 (count pair-set))
                     (str "leaf " (:id g) " bundles a single (card, dim) partition"))))))
-        (testing "metric-anchored leaves are named 'by <dimension>'"
-          (is (= #{"by Category" "by Price"}
+        (testing "metric-anchored leaves are named 'By <dimension>'"
+          (is (= #{"By Category" "By Price"}
                  (set (map :name leaf-nodes)))))))))
 
 (deftest exploration-get-multiple-groups-test
@@ -2067,48 +2076,24 @@
           (is (true? (:archived_directly d))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Routed-database creation block                                          |
+;;; |                                         Routed-database metrics                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest exploration-create-rejects-routed-database-metric-test
+(deftest dimensions-includes-routed-database-metrics-test
   (when config/ee-available?
-    (testing "Exploration planner refuses when any selected metric lives in a router database"
-      (mt/with-temp [:model/User u {:email "routed@example.com"}
-                     :model/Card metric (assoc (valid-metric-card (:id u)) :name "Routed Metric")
-                     :model/DatabaseRouter _ {:database_id    (mt/id)
-                                              :user_attribute "team"}]
-        ;; POST creates the exploration (now returns 200; routed-db check is async).
-        (let [resp (mt/user-http-request u :post 200 "exploration"
-                                         {:name   "routed"
-                                          :groups [{:name       "Group"
-                                                    :metrics    [{:card_id (:id metric)
-                                                                  :dimension_mappings [{:dimension_id "d1"
-                                                                                        :table_id (mt/id :venues)
-                                                                                        :target ["field" {} (mt/id :venues :price)]}]}]
-                                                    :dimensions [{:dimension_id "d1"}]}]})
-              tid    (-> resp :threads first :id)
-              result (query-plan/generate-query-plan! tid)]
-          ;; The planner detects the routed database and returns nil (caught throwable).
-          (is (nil? result) "planning should fail for routed-database metrics")
-          (let [thread (t2/select-one :model/ExplorationThread :id tid)]
-            ;; mark-thread-terminally-failed! sets completed_at (not query_plan_started_at,
-            ;; which is stamped by the task runner before calling generate-query-plan!).
-            (is (some? (:completed_at thread))
-                "thread is stamped as terminally processed")))))))
-
-(deftest dimensions-excludes-routed-database-metrics-test
-  (when config/ee-available?
-    (testing "GET /api/exploration/dimensions hides metrics whose database is a router"
+    (testing "GET /api/exploration/dimensions includes metrics whose database is a router — routed
+              results are gated per-lens on read (see stored_result.data_access_token) rather than
+              hidden from the picker"
       (with-sample-metrics-archived
-        (mt/with-temp [:model/Card        _ {:name          "Routed Hidden"
+        (mt/with-temp [:model/Card        _ {:name          "Routed Metric"
                                              :type          :metric
                                              :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
                        :model/DatabaseRouter _ {:database_id    (mt/id)
                                                 :user_attribute "team"}]
           (let [resp  (mt/user-http-request :rasta :get 200 "exploration/dimensions")
                 names (set (map :name (:metrics resp)))]
-            (is (not (contains? names "Routed Hidden"))
-                "metric on a router database is filtered out of /dimensions")))))))
+            (is (contains? names "Routed Metric")
+                "metric on a router database is selectable in /dimensions")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              POST /api/exploration/thread/:thread-id/cancel                                    |

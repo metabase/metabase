@@ -183,7 +183,11 @@
                                   :first_day_of_week        first-day-of-week
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
-                                  :skill_catalog            catalog
+                                  ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
+                                  ;; an empty vector as truthy, which would render the "# Available
+                                  ;; skills … load the skill(s) you need" header with nothing to
+                                  ;; load, nudging the model into pointless `load_skill` calls.
+                                  :skill_catalog            (not-empty catalog)
                                   :skill_always_on          (mapv :body always-on)
                                   :viewing_context          viewing-context
                                   :recent_views             recent-views

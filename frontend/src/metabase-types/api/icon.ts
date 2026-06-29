@@ -264,6 +264,7 @@ export type IconName =
   | "time_history"
   | "trash"
   | "trash_filled"
+  | "treemap"
   | "triangle_left"
   | "triangle_right"
   | "unarchive"

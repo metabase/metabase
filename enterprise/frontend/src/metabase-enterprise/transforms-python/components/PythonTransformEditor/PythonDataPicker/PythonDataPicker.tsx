@@ -126,7 +126,7 @@ export function PythonDataPicker({
       {database && (
         <Box>
           <Text fw="bold">{t`Pick tables and alias them`}</Text>
-          <Text size="sm" c="text-tertiary" mb="sm">
+          <Text size="sm" c="text-disabled" mb="sm">
             {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
           </Text>
           <Stack gap="md">

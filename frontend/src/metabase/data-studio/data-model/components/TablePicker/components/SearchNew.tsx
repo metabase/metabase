@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { useListTablesQuery } from "metabase/api/table";
-import { trackDataStudioTablePickerSearchPerformed } from "metabase/data-studio/analytics";
+import { trackDataStudioTablePickerSearchPerformed } from "metabase/common/data-studio/analytics";
 import { parseRouteParams } from "metabase/metadata/pages/shared/utils";
 import { Box, Flex, Loader, Text } from "metabase/ui";
 import type { Table } from "metabase-types/api";
@@ -180,7 +180,7 @@ export function SearchNew({
   if (filteredTables.length === 0) {
     return (
       <Box p="xl">
-        <Text c="text-tertiary">{t`No tables found`}</Text>
+        <Text c="text-disabled">{t`No tables found`}</Text>
       </Box>
     );
   }

@@ -33,7 +33,8 @@
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          ["CustomVizPlugin"
+          ["CuratedSearchEntry"
+           "CustomVizPlugin"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
@@ -149,6 +150,7 @@
    "SourceMetricDaily"
    "SourceSegmentCompositeDaily"
    "SourceSegmentDaily"
+   "SsoRelayState"
    "StoredResult"
    "StoredResultUse"
    "SupportAccessGrantLog"

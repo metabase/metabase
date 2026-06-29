@@ -119,22 +119,22 @@ export function ManageCustomVizPage() {
       {repoPlugins && repoPlugins.length === 0 && !isLoading && (
         <Group
           align="center"
-          bd="1px solid var(--mb-color-border)"
+          bd="1px solid var(--mb-color-border-neutral)"
           bdrs="md"
-          bg="background-primary"
+          bg="background_page-primary"
           justify="center"
           mih="15rem"
           p="xl"
         >
-          <Text c="text-tertiary">{t`You don't have any custom visualizations.`}</Text>
+          <Text c="text-disabled">{t`You don't have any custom visualizations.`}</Text>
         </Group>
       )}
 
       {repoPlugins && repoPlugins.length > 0 && (
         <Box
-          bd="1px solid var(--mb-color-border)"
+          bd="1px solid var(--mb-color-border-neutral)"
           bdrs="md"
-          bg="background-primary"
+          bg="background_page-primary"
           className={S.pluginList}
           style={{
             overflow: "hidden",
