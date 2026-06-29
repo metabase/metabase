@@ -16,13 +16,13 @@ import type { TableIndexEntry, TransformId } from "metabase-types/api";
 import { TransformHeader } from "../../components/TransformHeader";
 
 type TransformIndexesPageProps = {
-  params?: {
+  params: {
     transformId?: string;
   };
 };
 
 export function TransformIndexesPage({ params }: TransformIndexesPageProps) {
-  const transformId = Urls.extractEntityId(params?.transformId);
+  const transformId = Urls.extractEntityId(params.transformId);
   const {
     data: transform,
     isLoading: isLoadingTransform,
@@ -33,12 +33,7 @@ export function TransformIndexesPage({ params }: TransformIndexesPageProps) {
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
-  if (
-    transformId === undefined ||
-    transform === undefined ||
-    isLoading ||
-    !isNullOrUndefined(error)
-  ) {
+  if (transform === undefined || isLoading || !isNullOrUndefined(error)) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
