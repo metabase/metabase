@@ -12,13 +12,16 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import * as Urls from "metabase/urls";
 import type {
   ContentDiagnosticsFinding,
   ContentDiagnosticsUserParams,
 } from "metabase-types/api";
 import {
+  createMockContentDiagnosticsCollection,
   createMockContentDiagnosticsFinding,
+  createMockContentDiagnosticsUser,
   createMockListStaleFindingsResponse,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -67,7 +70,14 @@ function setup({
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   const { history } = renderWithProviders(
-    <Route path={Urls.staleContent()} component={StaleContentPage} />,
+    <Route
+      path={Urls.staleContent()}
+      component={(props) => (
+        <MonitorContent>
+          <StaleContentPage {...props} />
+        </MonitorContent>
+      )}
+    />,
     {
       withRouter: true,
       initialRoute: Urls.staleContent(urlParams),
@@ -112,6 +122,40 @@ describe("StaleContentPage", () => {
       expect(screen.queryByText("Marketing funnel")).not.toBeInTheDocument();
     });
     expect(screen.getByText("Sales overview")).toBeInTheDocument();
+  });
+
+  it("renders selected stale finding details in the Monitor sidebar outlet", async () => {
+    const finding = createMockContentDiagnosticsFinding({
+      entity_id: 42,
+      entity_display_name: "Revenue by category",
+      details: {
+        collection: createMockContentDiagnosticsCollection({
+          id: 20,
+          name: "Executive dashboards",
+          effective_ancestors: [{ id: "root", name: "Our analytics" }],
+        }),
+        description: "Shows revenue grouped by product category.",
+        owner: createMockContentDiagnosticsUser({ name: "Ada Owner" }),
+        creator: createMockContentDiagnosticsUser({ name: "Grace Creator" }),
+      },
+    });
+    setup({ findings: [finding] });
+
+    const list = await screen.findByRole("treegrid");
+    await userEvent.click(await within(list).findByText("Revenue by category"));
+
+    const sidebarRegion = await screen.findByTestId("monitor-sidebar-region");
+    expect(sidebarRegion).toHaveTextContent("Revenue by category");
+    expect(sidebarRegion).toHaveTextContent("Our analytics");
+    expect(sidebarRegion).toHaveTextContent("Executive dashboards");
+    expect(sidebarRegion).toHaveTextContent(
+      "Shows revenue grouped by product category.",
+    );
+    expect(sidebarRegion).toHaveTextContent("Ada Owner");
+    expect(sidebarRegion).toHaveTextContent("Grace Creator");
+    expect(screen.getByTestId("monitor-main")).not.toContainElement(
+      sidebarRegion,
+    );
   });
 
   it("sets the page parameter when navigating to the next page", async () => {

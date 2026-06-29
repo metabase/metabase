@@ -1,7 +1,11 @@
+import { useLayoutEffect, useState } from "react";
+
+import { useDisclosure, useElementSize } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { PaneHeaderTab } from "metabase/common/data-studio/components/PaneHeader";
+import { useMonitorSidebar } from "metabase/monitor/components/MonitorLayout/MonitorContent";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Button, Center, Flex, Group, Icon, Stack } from "metabase/ui";
@@ -17,6 +21,7 @@ import {
   DiagnosticsSearchInput,
 } from "metabase-enterprise/monitor/components";
 
+import { ContentDiagnosticsSidebar } from "./ContentDiagnosticsSidebar";
 import { ContentDiagnosticsTable } from "./ContentDiagnosticsTable";
 import { PAGE_SIZE } from "./constants";
 import type {
@@ -48,6 +53,11 @@ export function ContentDiagnostics({
   isLoadingParams,
   onParamsChange,
 }: ContentDiagnosticsProps) {
+  const { setSidebar } = useMonitorSidebar();
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
+  const [selectedFindingId, setSelectedFindingId] = useState<number>();
   const { page = 0, query } = params;
   const dispatch = useDispatch();
 
@@ -100,6 +110,9 @@ export function ContentDiagnostics({
     filterFindingsByName(findings, query),
     filterOptions.entityTypes,
   );
+  const selectedFinding = visibleFindings.find(
+    (finding) => finding.id === selectedFindingId,
+  );
 
   const tabs: PaneHeaderTab[] = [
     {
@@ -130,8 +143,44 @@ export function ContentDiagnostics({
     onParamsChange({ ...params, page });
   };
 
+  useLayoutEffect(() => {
+    if (selectedFindingId != null && selectedFinding == null) {
+      setSelectedFindingId(undefined);
+    }
+  }, [selectedFindingId, selectedFinding]);
+
+  useLayoutEffect(() => {
+    if (selectedFinding == null) {
+      setSidebar(null);
+      return;
+    }
+
+    setSidebar(
+      <ContentDiagnosticsSidebar
+        finding={selectedFinding}
+        containerWidth={containerWidth}
+        onResizeStart={startResizing}
+        onResizeStop={stopResizing}
+        onClose={() => setSelectedFindingId(undefined)}
+      />,
+    );
+
+    return () => setSidebar(null);
+  }, [
+    containerWidth,
+    selectedFinding,
+    setSidebar,
+    startResizing,
+    stopResizing,
+  ]);
+
   return (
-    <Flex h="100%" wrap="nowrap">
+    <Flex
+      h="100%"
+      wrap="nowrap"
+      style={{ userSelect: isResizing ? "none" : undefined }}
+      ref={containerRef}
+    >
       <Stack flex={1} gap="md">
         <Group justify="space-between" align="flex-start" wrap="nowrap">
           <DiagnosticsHeader title={t`Content diagnostics`} tabs={tabs} />
@@ -179,6 +228,7 @@ export function ContentDiagnostics({
           <ContentDiagnosticsTable
             findings={visibleFindings}
             isLoading={isLoading}
+            onSelect={(finding) => setSelectedFindingId(finding.id)}
           />
         )}
         {!isLoading && error == null && (

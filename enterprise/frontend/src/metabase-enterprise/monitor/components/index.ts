@@ -3,3 +3,4 @@ export * from "./DiagnosticsFilterPicker";
 export * from "./DiagnosticsHeader";
 export * from "./DiagnosticsPagination";
 export * from "./DiagnosticsSearchInput";
+export * from "./DiagnosticsSidebar";

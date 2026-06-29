@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type * as Urls from "metabase/urls";
+import * as Urls from "metabase/urls";
 import {
   CONTENT_DIAGNOSTICS_FILTER_TYPES,
   type ContentDiagnosticsCollection,
@@ -21,6 +21,17 @@ const ALL_FILTER_TYPES: ContentDiagnosticsFilterType[] = [
 const ENTITY_TYPE_ICONS: Record<ContentDiagnosticsEntityType, IconName> = {
   card: "table2",
   dashboard: "dashboard",
+};
+
+type ContentDiagnosticsCollectionBreadcrumbEntry =
+  | ContentDiagnosticsCollection
+  | ContentDiagnosticsCollection["effective_ancestors"][number];
+
+export type ContentDiagnosticsBreadcrumbLink = {
+  id: string;
+  label: string;
+  url: string;
+  icon?: IconName;
 };
 
 export function getEntityIcon(
@@ -44,6 +55,20 @@ export function getEntityName(finding: ContentDiagnosticsFinding): string {
   return finding.entity_display_name ?? t`Untitled`;
 }
 
+export function getEntityUrl(finding: ContentDiagnosticsFinding): string {
+  const entity = {
+    id: finding.entity_id,
+    name: getEntityName(finding),
+  };
+
+  switch (finding.entity_type) {
+    case "card":
+      return Urls.card(entity);
+    case "dashboard":
+      return Urls.dashboard(entity);
+  }
+}
+
 export function getCollectionPath(
   collection: ContentDiagnosticsCollection | null,
 ): string {
@@ -53,6 +78,45 @@ export function getCollectionPath(
   return [...collection.effective_ancestors, collection]
     .map((entry) => entry.name)
     .join(" / ");
+}
+
+function getCollectionBreadcrumbUrl(
+  entry: ContentDiagnosticsCollectionBreadcrumbEntry,
+): string {
+  return Urls.collection({ id: entry.id, name: entry.name });
+}
+
+export function getBreadcrumbLinks(
+  finding: ContentDiagnosticsFinding,
+): ContentDiagnosticsBreadcrumbLink[] {
+  const collectionLinks =
+    finding.details.collection == null
+      ? [
+          {
+            id: "root",
+            label: t`Our analytics`,
+            url: Urls.collection(),
+            icon: "folder" as const,
+          },
+        ]
+      : [...finding.details.collection.effective_ancestors, finding.details.collection].map(
+          (entry, index) => ({
+            id: String(entry.id),
+            label: entry.name,
+            url: getCollectionBreadcrumbUrl(entry),
+            icon: index === 0 ? ("folder" as const) : undefined,
+          }),
+        );
+
+  return [
+    ...collectionLinks,
+    {
+      id: `${finding.entity_type}-${finding.entity_id}`,
+      label: getEntityName(finding),
+      url: getEntityUrl(finding),
+      icon: getEntityIcon(finding.entity_type),
+    },
+  ];
 }
 
 export function getUserName(user: ContentDiagnosticsUser | null): string {

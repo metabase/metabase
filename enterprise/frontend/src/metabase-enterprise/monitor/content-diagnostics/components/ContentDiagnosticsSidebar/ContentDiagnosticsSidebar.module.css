@@ -1,0 +1,13 @@
+.sidebar {
+  flex: 1 1 auto;
+  overflow: auto;
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+.link {
+  word-break: break-word;
+}
+
+.section:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
