@@ -65,8 +65,6 @@
   qualify
   query
   select-or-insert!
-  streaming-reducible
-  streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
   with-conflict-retry]
