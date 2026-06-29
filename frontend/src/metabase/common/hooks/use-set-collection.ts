@@ -73,7 +73,6 @@ const MOVABLE_MODELS = new Set<MovableModel>([
   "snippet-collection",
   "snippet",
   "document",
-  "table",
   "timeline",
 ]);
 
