@@ -126,7 +126,7 @@ export function ManageCustomVizPage() {
           mih="15rem"
           p="xl"
         >
-          <Text c="text-tertiary">{t`You don't have any custom visualizations.`}</Text>
+          <Text c="text-disabled">{t`You don't have any custom visualizations.`}</Text>
         </Group>
       )}
 

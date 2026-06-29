@@ -754,7 +754,7 @@ describe("UXW-2696", () => {
     H.popover().findByText("Edit Visualization").click();
 
     H.getDocumentSidebar().within(() => {
-      cy.findByRole("radio", { name: /axes/i }).click({ force: true });
+      cy.findByRole("tab", { name: /axes/i }).click({ force: true });
       cy.findByLabelText("Auto y-axis range").should(
         "have.attr",
         "data-checked",
@@ -798,7 +798,7 @@ describe("UXW-2696", () => {
       H.showDashcardVisualizerModalSettings(0, { isVisualizerCard: false });
 
       H.modal().within(() => {
-        cy.findByRole("radio", { name: /axes/i }).click({ force: true });
+        cy.findByRole("tab", { name: /axes/i }).click({ force: true });
         cy.findByLabelText("Auto y-axis range").should(
           "have.attr",
           "data-checked",

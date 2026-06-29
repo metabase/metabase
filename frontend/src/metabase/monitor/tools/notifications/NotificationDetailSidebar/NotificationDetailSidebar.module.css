@@ -8,7 +8,7 @@
   }
 
   &[data-disabled] {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
     background: var(--mb-color-background_surface-primary);
 
     &:hover {

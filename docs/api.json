@@ -32948,7 +32948,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-workspace-manager-id",
         "summary" : "DELETE /api/ee/workspace-manager/{id}",
-        "description" : "Delete a Workspace. Deprovisions all databases first (blocking).",
+        "description" : "Delete a Workspace. Tears down each `:provisioned` database's warehouse isolation\n  first (blocking). Refuses with a 409 if any database is still `:provisioning`/\n  `:deprovisioning` unless `ignore_pending=true`, in which case those databases are\n  left in the warehouse and only their app-DB rows are removed. If the warehouse was\n  unreachable for some `:provisioned` databases, the response includes\n  `:orphaned_resources` and a `:message` describing the inert schema/user objects\n  left behind for manual cleanup.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -32958,6 +32958,18 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "ignore-pending",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -32974,6 +32986,44 @@
                       "description" : "value must be an integer greater than zero.",
                       "type" : "integer",
                       "minimum" : 1
+                    },
+                    "message" : {
+                      "type" : "string"
+                    },
+                    "orphaned_resources" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "database_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "driver" : {
+                            "type" : "string"
+                          },
+                          "reason" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "schema" : {
+                            "type" : "string"
+                          },
+                          "user" : {
+                            "type" : "string"
+                          },
+                          "workspace_database_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          }
+                        },
+                        "required" : [ "workspace_database_id", "database_id", "driver", "schema", "user" ]
+                      }
                     }
                   },
                   "required" : [ "id", "deleted" ]
@@ -42644,7 +42694,7 @@
           "schema" : {
             "default" : "api",
             "type" : "string",
-            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "basic-actions", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
+            "enum" : [ "basic-actions", "browse", "command-palette", "data-picker", "dependencies", "document", "embedding-setup", "entity-picker", "library", "model-migration", "search-app", "search-bar", "type-filter", "api", "metabot" ]
           }
         }, {
           "in" : "query",
@@ -42988,7 +43038,7 @@
           "schema" : {
             "default" : "api",
             "type" : "string",
-            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "basic-actions", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
+            "enum" : [ "basic-actions", "browse", "command-palette", "data-picker", "dependencies", "document", "embedding-setup", "entity-picker", "library", "model-migration", "search-app", "search-bar", "type-filter", "api", "metabot" ]
           }
         }, {
           "in" : "query",
