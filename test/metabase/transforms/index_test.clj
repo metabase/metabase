@@ -4,12 +4,11 @@
   Per-driver cases and helpers live in [[metabase.transforms.index-test-util]]. Each test stubs
   [[metabase.transforms.execute/hydrate-transform-indexes]] to inject its case."
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.index-test-util :as index-util]
@@ -157,36 +156,53 @@
                        (assoc-in transform [:target :indexes] indexes))
                       (is (= expected (physical-indexes db schema table-name))))))))))))))
 
+(defn- fetch-schema
+  "Schema the fetch-correctness suite creates its table in and passes to fetch-table-indexes. nil for sql-jdbc drivers
+  (the connection default); bigquery has none, so it uses its session dataset and qualifies the DDL with it."
+  [driver]
+  (when-not (isa? driver/hierarchy driver :sql-jdbc)
+    (sql.tx/session-schema driver)))
+
+(defn- run-fetch-ddl!
+  "Run raw fetch-case DDL through execute-raw-queries! (both sql-jdbc and bigquery implement it). Each statement is
+  wrapped as `[sql]` because the seam expects `[sql & params]` vectors, not bare strings."
+  [driver db stmts]
+  (driver/execute-raw-queries! driver (driver/connection-spec driver db) (mapv vector stmts)))
+
 (deftest ^:synchronized fetch-table-indexes-correctness-test
   (testing "fetch-table-indexes reports each driver's popular index kinds in the normalized cross-driver shape"
     ;; The e2e tests above prove indexes Metabase *applies* land on the table; this proves the driver method the
     ;; GET /indexes API consumes reads them back correctly, including catalog shapes the apply path can't produce
-    ;; (e.g. a Postgres gin or partial index). Indexes are created directly; nil schema uses the connection default.
+    ;; (e.g. a Postgres gin or partial index). Tables are created directly from raw DDL.
     (mt/test-drivers (index-util/index-test-drivers)
-      (let [spec  (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-            cases (index-util/fetch-cases driver/*driver*)]
-        (is (driver/database-supports? driver/*driver* :index/fetch (mt/db))
+      (let [db     (mt/db)
+            schema (fetch-schema driver/*driver*)
+            cases  (index-util/fetch-cases driver/*driver*)]
+        (is (driver/database-supports? driver/*driver* :index/fetch db)
             "a driver that implements fetch-table-indexes declares :index/fetch")
         (is (some? cases) (index-util/missing-case-message driver/*driver*))
         (doseq [{:keys [label table create expected definition-contains]} cases]
           (testing label
-            (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table)])
-            (try
-              (doseq [stmt create]
-                (jdbc/execute! spec [stmt]))
-              (let [indexes (driver/fetch-table-indexes driver/*driver* (mt/db) nil table)]
-                (is (nil? (mr/explain :metabase.driver/fetch-table-indexes.result indexes))
-                    "result conforms to ::fetch-table-indexes.result")
-                (is (= expected (into #{} (map #(dissoc % :definition)) indexes)))
-                ;; `:definition` is dropped from the equality check above (it's driver-verbatim), so a case that hinges
-                ;; on it (e.g. Redshift INTERLEAVED vs COMPOUND, identical except for this word) asserts it explicitly.
-                (when definition-contains
-                  (is (some #(str/includes? (:definition %) definition-contains) indexes)
-                      (str "an index definition contains " (pr-str definition-contains)))))
-              (finally
-                (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table)])))))
+            ;; sql-jdbc drivers create in the connection default (schema nil, bare name); bigquery needs the dataset.
+            (let [qualified (if schema (format "`%s`.%s" schema table) table)
+                  drop-sql  (str "DROP TABLE IF EXISTS " qualified)
+                  creates   (cond->> create schema (mapv #(str/replace-first % table qualified)))]
+              (run-fetch-ddl! driver/*driver* db [drop-sql])
+              (try
+                (run-fetch-ddl! driver/*driver* db creates)
+                (let [indexes (driver/fetch-table-indexes driver/*driver* db schema table)]
+                  (is (nil? (mr/explain :metabase.driver/fetch-table-indexes.result indexes))
+                      "result conforms to ::fetch-table-indexes.result")
+                  (is (= expected (into #{} (map #(dissoc % :definition)) indexes)))
+                  ;; `:definition` is dropped from the equality check above (it's driver-verbatim), so a case that hinges
+                  ;; on it (e.g. Redshift INTERLEAVED vs COMPOUND, identical except for this word) asserts it explicitly.
+                  (when definition-contains
+                    (is (some #(str/includes? (:definition %) definition-contains) indexes)
+                        (str "an index definition contains " (pr-str definition-contains)))))
+                (finally
+                  (run-fetch-ddl! driver/*driver* db [drop-sql]))))))
         (testing "a table that does not exist returns [] rather than throwing"
-          (is (= [] (driver/fetch-table-indexes driver/*driver* (mt/db) nil "mb_fetch_does_not_exist"))))))))
+          (is (= [] (driver/fetch-table-indexes driver/*driver* db schema "mb_fetch_does_not_exist"))))))))
 
 (deftest ^:parallel fetch-table-indexes-unsupported-driver-test
   (testing "a driver that can't introspect indexes doesn't declare :index/fetch"
@@ -201,12 +217,17 @@
                                                :source             {:type "query"}
                                                :source_database_id (mt/id)
                                                :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
-                   :model/TableIndex _ {:transform_id tid :index_name "b_idx"
-                                        :structured {:kind :btree :name "b_idx" :columns [{:name "x"}]}}
-                   :model/TableIndex _ {:transform_id tid :index_name "a_idx"
-                                        :structured {:kind :btree :name "a_idx" :columns [{:name "y"}]}}]
+                   :model/TableIndex {b-id :id} {:transform_id tid :index_name "b_idx"
+                                                 :structured {:kind :btree :name "b_idx" :columns [{:name "x"}]}}
+                   :model/TableIndex {a-id :id} {:transform_id tid :index_name "a_idx"
+                                                 :structured {:kind :btree :name "a_idx" :columns [{:name "y"}]}}
+                   :model/TableIndex _ {:transform_id tid :index_name "deleted_idx"
+                                        :status :delete-pending
+                                        :structured {:kind :btree :name "deleted_idx" :columns [{:name "z"}]}}]
       (is (= ["a_idx" "b_idx"]
-             (map :name (transforms.execute/hydrate-transform-indexes {:id tid})))))))
+             (map :name (transforms.execute/hydrate-transform-indexes {:id tid}))))
+      (is (= [a-id b-id]
+             (transforms.execute/hydrate-transform-index-ids {:id tid}))))))
 
 (deftest ^:synchronized verify-managed-indexes!-test
   (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
@@ -225,6 +246,101 @@
       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex present-id)))
       (is (= :failed (t2/select-one-fn :status :model/TableIndex missing-id)))
       (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex present-id))))))
+
+(defn- warehouse-btree
+  [name column]
+  {:name name :kind :btree :access-method "btree" :is-unique false
+   :is-primary false :is-valid true :key-columns [column] :include-columns []
+   :partial-predicate nil :definition "..."})
+
+(deftest ^:synchronized verify-managed-indexes!-removes-delete-pending-row-when-absent-test
+  (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                             :source             {:type "query"}
+                                             :source_database_id (mt/id)
+                                             :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                 :model/TableIndex {applicable-id :id} {:transform_id tid :index_name "active_idx"
+                                                        :structured {:kind :btree :name "active_idx" :columns [{:name "x"}]}}
+                 :model/TableIndex {deleted-id :id} {:transform_id tid :index_name "deleted_idx"
+                                                     :status :delete-pending
+                                                     :structured {:kind :btree :name "deleted_idx" :columns [{:name "y"}]}}]
+    (with-redefs [driver/fetch-table-indexes (fn [& _] [(warehouse-btree "active_idx" "x")])]
+      (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid))
+      (is (= :succeeded (t2/select-one-fn :status :model/TableIndex applicable-id)))
+      (is (not (t2/exists? :model/TableIndex :id deleted-id)))
+      (is (some? (t2/insert-returning-pk! :model/TableIndex
+                                          {:transform_id tid
+                                           :index_name   "deleted_idx"
+                                           :structured   {:kind :btree :name "deleted_idx" :columns [{:name "z"}]}}))))))
+
+(deftest ^:synchronized verify-managed-indexes!-only-verifies-hydrated-indexes-test
+  (mt/with-temp [:model/Transform {tid :id :as transform} {:name               (mt/random-name)
+                                                           :source             {:type "query"}
+                                                           :source_database_id (mt/id)
+                                                           :target             {:database (mt/id)
+                                                                                :type     "table"
+                                                                                :schema   "public"
+                                                                                :name     "t"}}
+                 :model/TableIndex {hydrated-id :id} {:transform_id tid :index_name "hydrated_idx"
+                                                      :status :running
+                                                      :structured {:kind :btree :name "hydrated_idx"
+                                                                   :columns [{:name "x"}]}}
+                 :model/TableIndex {concurrent-id :id} {:transform_id tid :index_name "concurrent_idx"
+                                                        :structured {:kind :btree :name "concurrent_idx"
+                                                                     :columns [{:name "y"}]}}]
+    (with-redefs [driver/fetch-table-indexes (fn [& _] [(warehouse-btree "hydrated_idx" "x")])]
+      (transforms-base.u/verify-managed-indexes!
+       (-> transform
+           (assoc-in [:target :indexes] [{:kind :btree :name "hydrated_idx" :columns [{:name "x"}]}])
+           (assoc-in [:target :index-request-ids] [hydrated-id])))
+      (is (= :succeeded (t2/select-one-fn :status :model/TableIndex hydrated-id)))
+      (is (= :create-pending (t2/select-one-fn :status :model/TableIndex concurrent-id))))))
+
+(deftest ^:synchronized verify-managed-indexes!-keeps-delete-pending-row-when-present-test
+  (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                             :source             {:type "query"}
+                                             :source_database_id (mt/id)
+                                             :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                 :model/TableIndex {deleted-id :id} {:transform_id tid :index_name "deleted_idx"
+                                                     :status :delete-pending
+                                                     :structured {:kind :btree :name "deleted_idx" :columns [{:name "y"}]}}]
+    (with-redefs [driver/fetch-table-indexes (fn [& _] [(warehouse-btree "deleted_idx" "y")])]
+      (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid))
+      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id)))
+      (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex deleted-id))))))
+
+(deftest ^:synchronized verify-managed-indexes!-reconciles-successful-empty-index-list-test
+  (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                             :source             {:type "query"}
+                                             :source_database_id (mt/id)
+                                             :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                 :model/TableIndex {applicable-id :id} {:transform_id tid :index_name "active_idx"
+                                                        :structured {:kind :btree :name "active_idx" :columns [{:name "x"}]}}
+                 :model/TableIndex {deleted-id :id} {:transform_id tid :index_name "deleted_idx"
+                                                     :status :delete-pending
+                                                     :structured {:kind :btree :name "deleted_idx" :columns [{:name "y"}]}}]
+    (with-redefs [driver/fetch-table-indexes (fn [& _] [])]
+      (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid))
+      (is (= :failed (t2/select-one-fn :status :model/TableIndex applicable-id)))
+      (is (not (t2/exists? :model/TableIndex :id deleted-id)))
+      (is (some? (t2/insert-returning-pk! :model/TableIndex
+                                          {:transform_id tid
+                                           :index_name   "deleted_idx"
+                                           :structured   {:kind :btree :name "deleted_idx" :columns [{:name "z"}]}}))))))
+
+(deftest ^:synchronized verify-managed-indexes!-leaves-rows-unchanged-when-index-fetch-fails-test
+  (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
+                                             :source             {:type "query"}
+                                             :source_database_id (mt/id)
+                                             :target             {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                 :model/TableIndex {applicable-id :id} {:transform_id tid :index_name "active_idx"
+                                                        :structured {:kind :btree :name "active_idx" :columns [{:name "x"}]}}
+                 :model/TableIndex {deleted-id :id} {:transform_id tid :index_name "deleted_idx"
+                                                     :status :delete-pending
+                                                     :structured {:kind :btree :name "deleted_idx" :columns [{:name "y"}]}}]
+    (with-redefs [driver/fetch-table-indexes (fn [& _] (throw (ex-info "boom" {})))]
+      (transforms-base.u/verify-managed-indexes! (t2/select-one :model/Transform tid))
+      (is (= :create-pending (t2/select-one-fn :status :model/TableIndex applicable-id)))
+      (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex deleted-id))))))
 
 (deftest ^:synchronized ddl-failure-marks-row-failed-test
   (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)

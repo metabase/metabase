@@ -54,6 +54,21 @@
                                           schema table])
                         (mapv #(update % :granularity long)))}))
 
+(defn- bigquery-clustering
+  "Clustering columns of `table` in dataset `schema`, in clustering order, read from INFORMATION_SCHEMA. BigQuery has no
+  JDBC, so this runs through the QP as a native query rather than `jdbc/query`."
+  [database schema table]
+  (mapv first
+        (mt/rows
+         (mt/process-query
+          {:database (:id database)
+           :type     :native
+           :native   {:query (format (str "SELECT column_name FROM `%s`.INFORMATION_SCHEMA.COLUMNS "
+                                          "WHERE table_name = ? AND clustering_ordinal_position IS NOT NULL "
+                                          "ORDER BY clustering_ordinal_position")
+                                     schema)
+                      :params [table]}}))))
+
 (defn- snowflake-clustering
   "Read a Snowflake table's clustering key back as an ordered vector of column names, or [] when unclustered.
   `CLUSTERING_KEY` comes back as a string like `LINEAR(category, price)`."
@@ -102,6 +117,10 @@
                                    {:kind :fulltext :name "ft_category" :columns [{:name "category"}]}]
                 :expected         #{"by_price" "ft_category"}
                 :physical-indexes mysql-indexes}
+   ;; BigQuery: inline, unnamed clustering (`CLUSTER BY`), its only index-equivalent.
+   :bigquery-cloud-sdk {:indexes          [{:kind :clustering :columns [{:name "category"}]}]
+                        :expected         ["category"]
+                        :physical-indexes bigquery-clustering}
    ;; Snowflake: a single standalone clustering key, reported unnamed, so we read back just the clustered columns.
    :snowflake  {:indexes          [{:kind :clustering :name "by_category" :columns [{:name "category"}]}]
                 :expected         ["category"]
@@ -235,6 +254,16 @@
      :table "mb_fetch_mysql_empty"
      :create ["CREATE TABLE mb_fetch_mysql_empty (id INT PRIMARY KEY, a INT)"]
      :expected #{(idx "PRIMARY" :btree "btree" ["id"] :unique true :primary true)}}]
+
+   :bigquery-cloud-sdk
+   [{:label  "the inline clustering, unnamed, reconciled by kind + columns"
+     :table  "mb_fetch_bq"
+     :create ["CREATE TABLE mb_fetch_bq (category STRING, price FLOAT64) CLUSTER BY category"]
+     :expected #{(idx nil :clustering nil ["category"])}}
+    {:label "a table with no clustering returns []"
+     :table "mb_fetch_bq_empty"
+     :create ["CREATE TABLE mb_fetch_bq_empty (a INT64, b INT64)"]
+     :expected #{}}]
 
    :snowflake
    [{:label  "the clustering key, unnamed, reconciled by kind + columns"
