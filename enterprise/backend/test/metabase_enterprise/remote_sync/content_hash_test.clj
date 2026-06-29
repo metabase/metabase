@@ -194,7 +194,7 @@
           "Content matching the baseline must clear a stale dirty flag")
       (is (not (sync-object/dirty?))))))
 
-;;; ------------------------------------------- record-exported-metadata! -------------------------------------------
+;;; ------------------------------------------- mark-rows-synced! -------------------------------------------
 
 (deftest content-metadata-matches-row-hash-test
   (testing "a full export writes a content_hash matching per-row row->content-hash for every identity flavor —
@@ -227,8 +227,8 @@
                        (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
                     (str "written hash should match per-row hash for " model_type))))))))))
 
-(deftest record-exported-metadata!-chunks-rows-test
-  (testing "record-exported-metadata! writes every synced row even when they span multiple batches (GHY-3933)"
+(deftest mark-rows-synced!-chunks-rows-test
+  (testing "mark-rows-synced! writes every synced row even when they span multiple batches (GHY-3933)"
     (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
                    :model/Card c1 {:name "C1" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
                    :model/Card c2 {:name "C2" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}
@@ -243,7 +243,7 @@
                          (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))]
         ;; force more than one chunk for the 3 rows
         (with-redefs [impl/content-hash-batch-size 2]
-          (#'impl/record-exported-metadata! synced (t/offset-date-time))))
+          (#'impl/mark-rows-synced! (t2/select-pks-set :model/RemoteSyncObject) synced (t/offset-date-time))))
       (doseq [card [c1 c2 c3]]
         (is (= (source/row->content-hash {:model_type "Card" :model_id (:id card)})
                (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type "Card" :model_id (:id card)))
@@ -366,7 +366,7 @@
                     {:model-type "PythonLibrary" :model-id (:id lib) :topic :event/python-library-update :object lib})))))))))
 
 (deftest full-export-records-metadata-and-stays-synced-test
-  (testing "A forced full export (real store-and-record! + record-exported-metadata!) writes file_path and
+  (testing "A forced full export (real store-and-record! + mark-rows-synced!) writes file_path and
             content_hash, and a subsequent no-op update stays synced (GHY-3933)"
     (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
       (mt/with-model-cleanup [:model/RemoteSyncTask]
