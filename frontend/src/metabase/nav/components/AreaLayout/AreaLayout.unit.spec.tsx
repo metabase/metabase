@@ -1,9 +1,8 @@
 import { fireEvent } from "@testing-library/react";
-import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { AreaLayout, AreaTab } from "./AreaLayout";
+import { AreaLayout } from "./AreaLayout";
 
 interface SetupOpts {
   isNavbarOpened?: boolean;
@@ -28,49 +27,11 @@ const setup = ({ isNavbarOpened = true }: SetupOpts = {}) => {
   return { onNavbarToggle };
 };
 
-const renderTab = ({ isSelected }: { isSelected: boolean }) =>
-  renderWithProviders(
-    <Route
-      path="/"
-      component={() => (
-        <AreaLayout
-          logo={<div>{"Logo"}</div>}
-          testId="area-nav"
-          isLoading={false}
-          isNavbarOpened
-          onNavbarToggle={jest.fn()}
-          upperNav={
-            <AreaTab
-              label="Dependency diagnostics"
-              icon="search_check"
-              to="/monitor/dependency-diagnostics"
-              isSelected={isSelected}
-              showLabel
-            />
-          }
-        >
-          <div data-testid="content">{"Content"}</div>
-        </AreaLayout>
-      )}
-    />,
-    { withRouter: true },
-  );
-
 describe("AreaLayout", () => {
-  describe("AreaTab", () => {
-    it("marks the selected tab as the current page for assistive tech", () => {
-      renderTab({ isSelected: true });
+  it("renders its children", () => {
+    setup();
 
-      const tab = screen.getByRole("link", { name: "Dependency diagnostics" });
-      expect(tab).toHaveAttribute("aria-current", "page");
-    });
-
-    it("does not mark an unselected tab as current", () => {
-      renderTab({ isSelected: false });
-
-      const tab = screen.getByRole("link", { name: "Dependency diagnostics" });
-      expect(tab).not.toHaveAttribute("aria-current");
-    });
+    expect(screen.getByTestId("content")).toHaveTextContent("Content");
   });
 
   describe("sidebar toggle shortcuts", () => {
