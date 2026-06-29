@@ -32,6 +32,7 @@ export const TabsContainer = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const FullHeightContainer = styled.div`
