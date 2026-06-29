@@ -226,11 +226,6 @@
                                                     :where  [:not= :router_database_id nil]}]]
                         :order-by [:group_id :db_id]}))
 
-(defn- row->graph-path
-  "The `[group-id db-id]` path of the perm-map a `data_permissions` row belongs to in the graph."
-  [{:keys [group-id db-id]}]
-  [group-id db-id])
-
 (defn- add-perm
   "Reducing step that accumulates one `data_permissions` row's value into its (group, db) `perm-map`, at either a
   db-level `[perm-type]` or table-level `[perm-type schema table-id]` path."
@@ -256,7 +251,7 @@
                      (cond-> graph (seq perm-map) (assoc-in path perm-map)))))
         [graph path perm-map]
         (reduce (fn [[graph path perm-map] row]
-                  (let [row-path (row->graph-path row)]
+                  (let [row-path [(:group-id row) (:db-id row)]]
                     (if (= row-path path)
                       ;; same (group, db) as the previous row: keep accumulating
                       [graph path (add-perm perm-map row)]
