@@ -26,7 +26,7 @@ import {
   isRecentTableItem,
 } from "metabase-types/api";
 
-import { getAdminSettingsSections } from "../constants";
+import { METABASE_DOCS_LABELS, getAdminSettingsSections } from "../constants";
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
 
@@ -116,8 +116,8 @@ export const useCommandPalette = ({
       {
         id: "search_docs",
         name: debouncedSearchText
-          ? t`Search documentation for "${debouncedSearchText}"`
-          : t`View documentation`,
+          ? METABASE_DOCS_LABELS.searchLabel(debouncedSearchText)
+          : METABASE_DOCS_LABELS.viewLabel,
         section: "docs",
         // Include search query in keywords so kbar always shows it
         keywords: trimmedQuery,

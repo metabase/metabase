@@ -115,7 +115,7 @@ describe("PaletteResults", () => {
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toHaveTextContent("Such Bar. Much Wow.");
     expect(
-      await screen.findByText('Search documentation for "Bar"'),
+      await screen.findByText('Search Metabase\'s docs for "Bar"'),
     ).toBeInTheDocument();
   });
 
@@ -151,7 +151,7 @@ describe("PaletteResults", () => {
   it("should not provide links to settings pages for non-admins", async () => {
     setup({ query: "setu", isAdmin: false });
     expect(
-      await screen.findByText(`Search documentation for "setu"`),
+      await screen.findByText(`Search Metabase's docs for "setu"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
     expect(screen.queryByText("Settings - Setup")).not.toBeInTheDocument();
@@ -166,7 +166,7 @@ describe("PaletteResults", () => {
   it("should not provide links to admin pages for non-admins", async () => {
     setup({ query: "permi", isAdmin: false });
     expect(
-      await screen.findByText(`Search documentation for "permi"`),
+      await screen.findByText(`Search Metabase's docs for "permi"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
     expect(screen.queryByText("Permissions")).not.toBeInTheDocument();
@@ -185,7 +185,7 @@ describe("PaletteResults", () => {
   it("should provide a link to docs with the proper url param", async () => {
     setup({ query: "model" });
     const docsLink = await screen.findByRole("link", {
-      name: /Search documentation/,
+      name: /Search Metabase's docs/,
     });
     expect(docsLink).toHaveAttribute(
       "href",
@@ -211,7 +211,7 @@ describe("PaletteResults", () => {
       "true",
     );
     expect(
-      await screen.findByLabelText(/Search documentation/),
+      await screen.findByLabelText(/Search Metabase's docs/),
     ).toHaveAttribute("aria-disabled", "false");
   });
 });
