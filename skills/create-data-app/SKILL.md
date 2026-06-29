@@ -16,6 +16,11 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 - "scaffold a new data app" / "create a Metabase data app" / "set up a data-app project"
 - "I want to build a data app" / any vague intent to author a data app
 - Starting a fresh agent task that will produce a data-app bundle.
+- Do **not** use this skill for an existing data-app project when the task is to
+  build screens, use Metabase data, generate or refresh schema files, wire saved
+  questions / tables / metrics / actions, add filters, or author data hooks.
+  Treat those as existing-data-app editing tasks and use the agent's normal
+  skill-discovery flow from the user's wording.
 
 ## Step 1 — Locate the remote-sync repository
 
@@ -143,35 +148,26 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    and written via `useAction` (the SDK handles auth), never raw `fetch`. Leave
    `allowed_hosts` out entirely when the app only talks to Metabase.
 
-## Step 5 — Pull the typed schema
+## Step 5 — Verify the starter app
 
-Generate `src/metabase.data.ts` by invoking the
-[`metabase-data-app-semantic-layer`](../metabase-data-app-semantic-layer/SKILL.md)
-skill, which pulls the typed schema from the target Metabase and writes the file.
+At this point the data app exists. Keep this workflow focused on creating the
+project scaffold and proving the starter bundle works.
 
-The schema is the **single source of truth** for what data the app can render. Every saved question, table, metric, segment, measure, and field the app references must come from it (`schema.questions.<name>`, `schema.tables.<t>.fields.<f>`, `schema.metrics.<m>.dimensions.<table>.<field>`, etc.). Never copy numeric IDs into constants; never invent fields the schema doesn't have. For metric filters and breakouts, use only fields exposed under `schema.metrics.<m>.dimensions`; do not substitute arbitrary `schema.tables.*.fields.*` fields. Re-run the schema skill whenever the upstream semantic layer changes (new question, renamed metric, added column).
+1. Run `npm run typecheck`.
+2. Run `npm run build`.
+3. Confirm `git status` shows the app source, lockfile, `data_app.yml`, and the
+   built bundle (`dist/index.js` by default) as committable files.
+4. If the user asked for a live preview, run `npm run dev` and confirm the
+   starter "Hello, data app" screen renders through the sandbox preview.
 
-This step is mandatory before Step 6 — the schema is the catalog you'll check the user's brief against, and the agent needs it loaded into context before discussing what the app should do.
+Stop here if the user only asked to create, scaffold, or set up a data app.
 
-## Step 6 — Confirm what the app should do
-
-Before writing a single component, confirm the app's scope with the user **and check it against the schema you just pulled**. If they haven't described the screens, data, or flow, ask first:
-
-- What are the screen(s) and the rough layout? (single screen, multi-page, etc.)
-- Which Metabase questions, dashboards, or data sources drive each screen?
-- Any specific interactions (filters, drill-downs, write-back via actions)?
-- Branding / theme constraints?
-
-**Schema-matching rule.** Every entity the user references should map to something in `src/metabase.data.ts`:
-
-- **Match exists** → confirm what you found by name. Example: "Your schema has `schema.questions.overview_revenue` and `schema.tables.customers` with the `lifetime_value` measure — is that what you want me to use?"
-- **Topic doesn't match** → don't fabricate. Push back: explain the schema doesn't expose anything for that topic, and ask whether to (1) add it upstream in the Metabase semantic layer first and re-run Step 5, (2) pick a different topic that's already curated, or (3) ship the app without that part. **Don't invent mock data. Don't create new questions from inside the app.** The schema is curated upstream; the app is presentation only.
-
-## Step 7 — Write the actual app
-
-Replace `src/App.tsx`'s starter content with the screens the user described. **Structure the project properly from the start** — don't stuff everything into `App.tsx`. Each screen/page becomes its own file under `src/pages/` (or wherever fits the app's shape), shared UI lives in `src/components/`, data-fetching hooks in `src/hooks/`, derived/computed helpers in `src/lib/`, types in `src/types/`. `App.tsx` should end up small: routing + composition of the page components, not implementation. Vite bundles everything reachable from `src/index.tsx` into the one IIFE.
-
-**Reference Metabase data through the schema, never with raw IDs.** Import `schema` from `src/metabase.data.ts` and pass `schema.questions.<name>.id`, `schema.tables.<t>.id`, `schema.metrics.<m>.id` to the data hooks. For query patterns (typed row shapes, `useMetabaseQuery` generics, segments / measures / breakouts, debugging), follow the `metabase-data-app-semantic-layer` skill — it owns the data-side conventions; this skill owns the project-side conventions.
+If the next task is to build or iterate on the actual app UI — especially if it
+mentions an existing data app, Metabase data, generated schema files, saved
+questions, tables, metrics, actions, filters, semantic-layer entities, or data
+hooks — treat it as a separate existing-data-app editing task. Use the agent's
+normal skill-discovery flow from those terms. Do not expand this scaffold skill
+with data-layer authoring rules.
 
 **Do not modify `src/index.tsx`, `src/dev.tsx`, `vite.config.ts`, `config/data-app-bundle.ts`, `config/sandbox-dev-plugin.ts`, `tsconfig.json`, or `index.html` unless the change is genuinely required.** They encode the bundle contract with the host (factory shape, externals, document shell) and the dev sandbox harness. Tweaks here drift the dev preview from production — the iframe doesn't read your `index.html`, the host serves a byte-for-byte template — and silently break things like drill popups and routing.
 
@@ -201,7 +197,7 @@ export default function CustomerCard({ customer }: { customer: Customer }) {
 
 ### 2. Structure from the start
 
-Default project layout (see Step 6 for the principle — don't dump everything into `App.tsx`):
+Default project layout once the starter app is extended:
 
 ```
 src/
@@ -291,8 +287,7 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 | `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
 | `CreateDashboardModal` | Modal for new-dashboard flow. |
 | `CollectionBrowser` | Collection picker. |
-| `useMetabaseQuery` | Schema-backed data-fetching hook for questions / tables / metrics. Import from `@metabase/embedding-sdk-react/data-app`, not the main SDK entrypoint. **The `metabase-data-app-semantic-layer` skill owns the full hook contract** — signature, generics, table-vs-metric variants, segments / measures / breakouts, debugging. Don't reinvent its rules here. |
-| `useAction` | Hook that triggers a pre-existing Metabase **action** (basic CRUD or custom SQL) and returns `{ execute, isExecuting, result, error, reset }`. Use for any write/mutation interaction — form submit, "Save" / "Update" / "Delete" buttons. **Signature:** `useAction<TParameters, TKind>(actionId)` — the runtime arg is the action's numeric **id** (read from `schema.models.<m>.actions.<a>.id`), or its `entity_id` string, or `null`. Typing comes from the two generics: `ActionParametersFromDataAppSchema<typeof schema.models.<m>.actions.<a>>` types `execute`'s parameters object, and `ActionKindFromDataAppSchema<typeof schema.models.<m>.actions.<a>>` types the discriminated `result`. `execute(parameters)` is called from an event handler. Must be called inside a component rendered under `MetabaseProvider`. For full usage patterns and the critical post-action refresh rule, invoke the `metabase-data-app-actions` skill. |
+| `@metabase/embedding-sdk-react/data-app` exports | Data-app-only helpers for routing, schema-backed data reads, actions, clipboard, and sandbox-safe integration. Treat schema-backed queries, generated schema files, filters, metrics, actions, and other data-layer behavior as existing-data-app editing work; use skill discovery before authoring that code. |
 
 ### Blocked APIs
 
@@ -300,7 +295,7 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed re
 
 | Blocked | Use instead |
 |---|---|
-| **Network** — `fetch`, `XMLHttpRequest`, `WebSocket` | Data hooks for reads, `useAction` for writes — never raw `fetch`. Raw `fetch`/`XHR` reach **only** the external origins listed in `data_app.yml`'s `allowed_hosts` (Step 4); everything else (including the Metabase origin) throws. `WebSocket` is always blocked. |
+| **Network** — `fetch`, `XMLHttpRequest`, `WebSocket` | Use the SDK/data-app APIs for Metabase reads and writes — never raw `fetch`. Raw `fetch`/`XHR` reach **only** the external origins listed in `data_app.yml`'s `allowed_hosts` (Step 4); everything else (including the Metabase origin) throws. `WebSocket` is always blocked. |
 | **UI dialogs** — `alert`, `confirm`, `prompt` | Render a React modal in your own tree. |
 | **Storage** — `localStorage`, `sessionStorage`, `indexedDB`, `document.cookie` | Treat the data app as stateless across reloads; persist via a Metabase action. |
 | **Window / history navigation** — `window.open`, `history.pushState`, `history.replaceState` | `useDataAppLocation().navigate` for in-app; `<a target="_blank" rel="noopener">` for external. |
@@ -308,22 +303,7 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed re
 | **Other `navigator.*` device APIs** — `geolocation`, etc. | Not available. |
 | **Global `document`/`window` listeners** for typing/clipboard events — `keydown`, `keyup`, `keypress`, `beforeinput`, `input`, `paste`, `copy`, `cut`, `before*paste/copy/cut`, `compositionstart/update/end`, `storage` | Attach the listener to your own element, or use the React handler (`onKeyDown`, `onPaste`, …) on the specific input/container. The same listener on a script-owned element still works. |
 
-**Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + SDK components + data hooks + `useAction` + DataAppRouter + `copy`) covers every routine need; anything outside it is intentionally unreachable.
-
-### When to use `useMetabaseQuery` vs a `StaticQuestion` / `InteractiveQuestion`
-
-This is a per-rendering decision, not a project-wide one:
-
-- **`StaticQuestion` / `InteractiveQuestion`** — only when a stock Metabase chart, displayed as-is, IS the deliverable. No custom layout the chart has to integrate with, no derived/aggregated values pulled out, no per-row UI, no bespoke list/grid/card pattern. The SDK widget renders its own chrome and sizing — take it or leave it.
-- **`useMetabaseQuery`** — whenever **any** of the following applies, even slightly: rendering as something other than the saved question's viz type (stat tile, custom table, grid, sparkline, anything bespoke); reading a single value out of the result; driving your own state or other components from the rows; formatting / transforming / grouping rows before display; custom empty/loading/error states; or making the data layout match the bundle's chrome.
-
-**Default to `useMetabaseQuery`.** Reach for `StaticQuestion` / `InteractiveQuestion` only when the saved-question chart with its own framing is exactly what the user asked for. The moment they want "something custom" — even subtle, even just "show the count nicely" — switch to the hook.
-
-**Always render a spinner (or skeleton) while `isLoading` is `true`** — never an empty slot or stale value, which causes layout shift when the data arrives. Same rule for lifted / derived queries (pass `isLoading` down) and for `useAction`'s `isExecuting` (spinner in the button + `disabled={isExecuting}`).
-
-**Call each schema entry at most once per render tree.** Multiple `useMetabaseQuery` calls on the same `questionId` (or same `tableId` + identical filters/measures/breakouts) mount independent subscriptions, fire duplicate queries, and let consumers disagree mid-load. Lift the call to the highest component that needs the data; pass `data` / `isLoading` / `error` down as props. Different ids — or the same id with different filters / breakouts — are different data sources; call them separately.
-
-(For the hook contract itself — generics, table-vs-metric variants, segments / measures / breakouts, debugging — see the `metabase-data-app-semantic-layer` skill.)
+**Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + SDK components + data-app helpers + `copy`) covers every routine need; anything outside it is intentionally unreachable.
 
 ## SDK component sizing
 
