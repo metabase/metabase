@@ -38,7 +38,6 @@ export const useCommandPalette = ({
   locationQuery: Query;
 }) => {
   const getIcon = useGetIcon();
-  const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const { isVisible } = useKBar((s) => ({
     isVisible: s.visualState !== VisualState.hidden,
@@ -68,6 +67,7 @@ export const useCommandPalette = ({
 
   const hasQuery = searchQuery.length > 0;
 
+  const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const docsSearchUrl = useSelector((state) =>
     debouncedSearchText
       ? getDocsUrl(state, {
