@@ -277,7 +277,7 @@
   "Folds `metadata` ({:model_type :model_id :path :content_hash}) into matching `rows` as :file_path +
   :content_hash; rows with no metadata are unchanged."
   [rows metadata]
-  (let [by-key (into {} (map (juxt (juxt :model_type :model_id) identity)) metadata)]
+  (let [by-key (u/index-by (juxt :model_type :model_id) metadata)]
     (mapv (fn [row]
             (if-let [m (by-key [(:model_type row) (:model_id row)])]
               (assoc row :file_path (:path m) :content_hash (:content_hash m))
@@ -1039,9 +1039,10 @@
                                (throw e)))]
       (t2/with-transaction [_]
         (remote-sync.task/set-version! task-id version)
-        (mark-synced! synced sync-timestamp)
+        ;; delete departed rows first, then update RSO metadata — same order as full-export!
         (doseq [removed-ids (partition-all 500 removed-ids)]
-          (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))))
+          (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+        (mark-synced! synced sync-timestamp)))
     (log/infof "Remote sync incremental export: wrote %d, deleted %d" (count writes) (count delete-paths))
     {:status :success
      :outcome {:kind "pushed"
