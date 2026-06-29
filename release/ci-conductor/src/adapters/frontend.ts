@@ -22,30 +22,25 @@
 // and `test_name` carry that blob (redundant but a stable, unique key) and
 // identity is (test_suite, test_path, test_name, file_path).
 
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 
 import type { NormalizedTest } from "../contract.ts";
-import { parseJunit } from "../junit.ts";
+import { findJunitFiles, parseJunit } from "../junit.ts";
 import { log } from "../util.ts";
 
 const JUNIT_DIR = process.env.JEST_JUNIT_OUTPUT_DIR || "target/junit";
 const JUNIT_NAME = process.env.JEST_JUNIT_OUTPUT_NAME || "junit.xml";
 
 /**
- * Locate jest-junit's output. Prefer the exact file jest's env contract points
- * at; fall back to any `*.xml` under the dir (covers a templated output name or
- * a dir that only this job wrote to). Returns [] on any error.
+ * Pick jest-junit's output from a directory listing: prefer the exact file
+ * jest's env contract names; fall back to any `*.xml` (covers a templated
+ * output name or a dir only this job wrote to).
  */
-function findJunitFiles(dir: string, name: string): string[] {
-  try {
-    const entries = readdirSync(dir, { recursive: true }).map(String);
+function selectJestJunit(name: string): (entries: string[]) => string[] {
+  return (entries) => {
     const exact = entries.filter((entry) => entry.endsWith(name));
-    const xml = exact.length > 0 ? exact : entries.filter((e) => e.endsWith(".xml"));
-    return xml.map((entry) => join(dir, entry));
-  } catch {
-    return [];
-  }
+    return exact.length > 0 ? exact : entries.filter((e) => e.endsWith(".xml"));
+  };
 }
 
 /**
@@ -57,7 +52,7 @@ export function normalizeFrontendJunit(
   dir: string = JUNIT_DIR,
   name: string = JUNIT_NAME,
 ): NormalizedTest[] {
-  const files = findJunitFiles(dir, name);
+  const files = findJunitFiles(dir, selectJestJunit(name));
   const failures = files.flatMap((file) => {
     try {
       return parseJunit(readFileSync(file, "utf8"));

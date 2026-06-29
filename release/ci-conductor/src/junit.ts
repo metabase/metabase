@@ -1,11 +1,34 @@
-// The shared JUnit XML parser: a JUnit `<testcase>`/`<failure>` document →
-// NormalizedTest[]. Format-level and producer-agnostic — both the backend
-// (hawk) and the frontend (jest-junit) adapters build on it. The per-suite
-// parts (where the XML lives, how fields map, the suite label) stay in
-// `adapters/`. JUnit XML is simple, machine-generated markup, so we parse it
-// ourselves rather than pull in a dependency.
+// The shared JUnit utilities: discover a producer's JUnit files in a directory
+// (`findJunitFiles`) and turn one file's `<testcase>`/`<failure>` document into
+// NormalizedTest[] (`parseJunit`). Format-level and producer-agnostic — both
+// the backend (hawk) and the frontend (jest-junit) adapters build on these. The
+// per-suite parts (which entries are this producer's files, how fields map, the
+// suite label) stay in `adapters/`. JUnit XML is simple, machine-generated
+// markup, so we parse it ourselves rather than pull in a dependency.
+
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 
 import type { NormalizedTest } from "./contract.ts";
+
+/**
+ * List files under `dir` (recursively), keeping those `select` returns, as
+ * paths joined to `dir`. Each adapter passes the topical part — which entries
+ * are *its* JUnit files (hawk's `*_test.xml`, jest-junit's configured output
+ * name, ...). Returns [] on any IO error — a missing artifact directory is a
+ * no-op, not a failure (reporting is best-effort).
+ */
+export function findJunitFiles(
+  dir: string,
+  select: (entries: string[]) => string[],
+): string[] {
+  try {
+    const entries = readdirSync(dir, { recursive: true }).map(String);
+    return select(entries).map((entry) => join(dir, entry));
+  } catch {
+    return [];
+  }
+}
 
 /** Decode the XML entities a JUnit producer can emit in attribute values. */
 function decodeEntities(value: string): string {
