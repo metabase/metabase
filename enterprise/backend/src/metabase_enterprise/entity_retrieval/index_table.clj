@@ -9,7 +9,8 @@
     `entity_local_id` columns.
     The primary key `doc_id` is content-addressed over the embedded text (see [[reconcile]]), so a text
     edit mints a new row and the reconciler GCs the old one.
-    Curator `instructions` are NOT stored here — the tool reads them live from `osi_ai_context` at query time.
+    Curator `instructions` are NOT stored here — the tool reads them live from `osi_ai_context` at query
+    time.
   - a single-row meta table recording the embedding model identity and schema version the vectors table
     was built for.
 
@@ -124,6 +125,17 @@
 (defn- vectors-table-exists? [tx]
   (some? (:exists (jdbc/execute-one! tx [(format "SELECT to_regclass('%s') AS exists" *vectors-table*)]
                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
+
+(defn index-compatible?
+  "Whether the meta row matches `embedding-model` and the current [[schema-version]] — i.e. the vectors
+  table holds embeddings the configured model can be queried against.
+  False when the meta row is missing or describes a different provider/model/dimensions/format, meaning the
+  index is stale and a rebuild is still pending; the same comparison [[ensure-tables!]] uses to decide a
+  rebuild.
+  Reads the meta table directly, so a caller must guard against the table not existing yet (it throws a SQL
+  error before the first [[ensure-tables!]] of the process)."
+  [pgvector embedding-model]
+  (= (read-meta pgvector) (model-identity embedding-model)))
 
 (defn ensure-tables!
   "Idempotently create the vectors + meta tables for `embedding-model`, rebuilding on model change.

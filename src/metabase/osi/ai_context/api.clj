@@ -35,15 +35,6 @@
 (def ^:private default-limit 50)
 (def ^:private default-offset 0)
 
-(defn- find-by-entity
-  "The existing row for this entity, or nil.
-  Normalizes the type to the stored key, so a card is found whichever flavor (metric/model) the caller
-  names; one row per entity is enforced by the `(entity_type, entity_local_id)` unique constraint."
-  [entity-type entity-local-id]
-  (t2/select-one :model/OsiAiContext
-                 :entity_type (entity-retrieval/normalize-entity-type entity-type)
-                 :entity_local_id entity-local-id))
-
 (api.macros/defendpoint :get "/"
   :- [:map
       [:data   [:sequential Entry]]
@@ -95,31 +86,15 @@
 
 (api.macros/defendpoint :put "/:id"
   :- Entry
-  "Update an ai_context entry by ID. Only the provided fields are changed; pointing it at an entity that
-  another row already owns is rejected, preserving one row per entity. `entity_type` and `entity_local_id`
-  must be provided together."
+  "Update an ai_context entry's metadata blob by ID.
+  A row is permanently bound to its entity; to attach context to a different entity, delete this row and
+  create a new one."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
-   ;; patch semantics: presence of a key (not nil-ness of its value) decides what changes.
-   {:keys [entity_type entity_local_id ai_context] :as body}
-   :- [:map
-       [:entity_type     {:optional true} writable-entity-type]
-       [:entity_local_id {:optional true} ms/PositiveInt]
-       [:ai_context      {:optional true} AiContext]]]
+   {:keys [ai_context]} :- [:map [:ai_context AiContext]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/OsiAiContext :id id))
-  (when (or (contains? body :entity_type) (contains? body :entity_local_id))
-    (api/check-400 (and (contains? body :entity_type) (contains? body :entity_local_id))
-                   "entity_type and entity_local_id must be provided together")
-    (let [owner (find-by-entity entity_type entity_local_id)]
-      (api/check-400 (or (nil? owner) (= (:id owner) id))
-                     "Another ai_context row already exists for that entity")))
-  (let [changes (cond-> {}
-                  (contains? body :entity_type)     (assoc :entity_type entity_type)
-                  (contains? body :entity_local_id) (assoc :entity_local_id entity_local_id)
-                  (contains? body :ai_context)      (assoc :ai_context ai_context))]
-    (when (seq changes)
-      (t2/update! :model/OsiAiContext id changes)))
+  (t2/update! :model/OsiAiContext id {:ai_context ai_context})
   (t2/select-one :model/OsiAiContext :id id))
 
 (api.macros/defendpoint :post "/reconcile"

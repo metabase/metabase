@@ -44,27 +44,34 @@
   (and (pgvector-configured?)
        (premium-features/has-feature? :semantic-search)))
 
-(defn- index-populated?
-  "Whether the library entity index holds at least one document — a cheap existence probe.
-  A missing table (before the first reconcile) or any query error reads as empty, so a configured-but-not-
-  yet-built (or transiently broken) index counts as unavailable."
+(defn- index-ready?
+  "Whether the library entity index can serve a query right now: its meta row matches the configured
+  embedding model and schema version, and it holds at least one document.
+  A mismatched meta row (a model/dimension/format change whose rebuild hasn't run yet), a missing or empty
+  vectors table, or any query error all read as not-ready.
+  The compatibility check is what keeps a stale index from being offered: querying a vectors table built for
+  a different model returns nothing (or errors) rather than answering, so the agent must get the
+  general-search fallback instead."
   []
   (boolean
    (try
-     (seq (jdbc/execute! (semantic.db.datasource/ensure-initialized-data-source!)
-                         [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))
-     (catch SQLException _ false))))
+     (let [ds (semantic.db.datasource/ensure-initialized-data-source!)]
+       (and (index-table/index-compatible? ds (embedding/get-configured-model))
+            (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))))
+     (catch Throwable _ false))))
 
 ;; OSS-callable surface used to decide whether to OFFER the curated retrieve_library_entities tool: it must
-;; be able to actually answer, so beyond config + license the index has to be populated. (The write/reconcile
-;; path gates on the looser [[available?]] instead, so an empty index can still be built.) Runs
-;; unconditionally rather than gating on :feature — the OSS fallback `false` already covers the unlicensed case.
+;; be able to actually answer, so beyond config + license the index has to be built for the current model and
+;; populated. (The write/reconcile path gates on the looser [[available?]] instead, so an empty or stale
+;; index can still be rebuilt.) Runs unconditionally rather than gating on :feature — the OSS fallback
+;; `false` already covers the unlicensed case.
 (defenterprise entity-retrieval-available?
-  "EE impl: pgvector configured + semantic-search licensed AND the index is populated, so the curated tool
-  is offered only when it can serve a query (otherwise the agent gets the general-search fallback)."
+  "EE impl: pgvector configured + semantic-search licensed AND the index is ready (built for the current
+  model and populated), so the curated tool is offered only when it can serve a query (otherwise the agent
+  gets the general-search fallback)."
   :feature :none
   []
-  (and (available?) (index-populated?)))
+  (and (available?) (index-ready?)))
 
 ;;; ----------------------------------------- Reconcile scheduling -----------------------------------------
 ;;;

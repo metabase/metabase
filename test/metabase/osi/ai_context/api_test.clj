@@ -104,30 +104,18 @@
                                           (str "osi/ai-context/" (:id entry))
                                           {:ai_context {:instructions "updated"}})]
         (is (= {:instructions "updated"} (:ai_context updated)))))
-    (testing "superuser can update the entity (a card flavor is stored under the canonical \"card\")"
+    (testing "the entity is permanently bound: entity_type/entity_local_id in the body are ignored"
       (let [updated (mt/user-http-request :crowberto :put 200
                                           (str "osi/ai-context/" (:id entry))
-                                          {:entity_type "model" :entity_local_id 7})]
-        (is (=? {:entity_type "card" :entity_local_id 7} updated))))
-    (testing "entity_type and entity_local_id must be provided together"
-      (mt/user-http-request :crowberto :put 400 (str "osi/ai-context/" (:id entry))
-                            {:entity_type "model"}))
+                                          {:entity_type "model" :entity_local_id 7
+                                           :ai_context {:instructions "x"}})]
+        (is (=? {:entity_type "table" :entity_local_id 1} updated) "still bound to the original entity")))
     (testing "returns 404 for unknown id"
       (mt/user-http-request :crowberto :put 404 "osi/ai-context/0" {:ai_context {:instructions "x"}}))
     (testing "non-superuser gets 403"
       (mt/user-http-request :rasta :put 403
                             (str "osi/ai-context/" (:id entry))
                             {:ai_context {:instructions "x"}}))))
-
-(deftest update-cannot-steal-another-entitys-row-test
-  (testing "PUT pointing at an entity another row already owns is rejected (one row per entity)"
-    (with-test-entry [a {:entity_type "table" :entity_local_id 1}]
-      (with-test-entry [b {:entity_type "table" :entity_local_id 2}]
-        (mt/user-http-request :crowberto :put 400 (str "osi/ai-context/" (:id b))
-                              {:entity_type "table" :entity_local_id 1})
-        (testing "re-pointing a row at its own entity is fine (no-op self-match)"
-          (mt/user-http-request :crowberto :put 200 (str "osi/ai-context/" (:id a))
-                                {:entity_type "table" :entity_local_id 1}))))))
 
 (deftest reconcile-test
   (testing "POST /reconcile requires superuser"

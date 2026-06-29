@@ -147,7 +147,14 @@
                                                                  :active true :name "t" :display_name "T"}]
                   (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                   (testing "after a reconcile populates the index -> available"
-                    (is (true? (entity-retrieval.core/entity-retrieval-available?)))))
+                    (is (true? (entity-retrieval.core/entity-retrieval-available?))))
+                  (testing "but a configured model that no longer matches the built index -> unavailable"
+                    ;; e.g. an embedding-dimension change before the rebuild reconcile runs: querying the
+                    ;; stale index would degrade to empty, so the tool must not be offered.
+                    (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                                (constantly (assoc semantic.tu/mock-embedding-model
+                                                                   :vector-dimensions 8))]
+                      (is (false? (entity-retrieval.core/entity-retrieval-available?))))))
                 (finally
                   (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
                                           index-table/*vectors-table* ", "

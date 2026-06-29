@@ -50,10 +50,24 @@
   (cond-> row
     (:entity_type row) (update :entity_type entity-retrieval/normalize-entity-type)))
 
+;;; A row is permanently bound to its entity. Re-pointing it — a changed entity_local_id, or an entity_type
+;;; that normalizes to a different stored type — would strand the old entity's synonym/example docs in the
+;;; index until the periodic full reconcile (the after-update nudge below only reconciles the *new* entity's
+;;; slice). Disallow it: callers delete the row and create a new one. A no-op type relabel (metric -> model,
+;;; both stored as `card`) normalizes away first, so it isn't a change and is allowed.
 (t2/define-before-update :model/OsiAiContext
   [row]
-  (cond-> row
-    (contains? (t2/changes row) :entity_type) (update :entity_type entity-retrieval/normalize-entity-type)))
+  (let [row     (cond-> row
+                  (contains? (t2/changes row) :entity_type)
+                  (update :entity_type entity-retrieval/normalize-entity-type))
+        changes (t2/changes row)]
+    (when (or (contains? changes :entity_local_id)
+              (contains? changes :entity_type))
+      (throw (ex-info (str "Cannot re-point an osi_ai_context row to a different entity; "
+                           "delete it and create a new one.")
+                      {:status-code 400
+                       :changes     (select-keys changes [:entity_type :entity_local_id])})))
+    row))
 
 (t2/define-after-insert :model/OsiAiContext
   [row]
