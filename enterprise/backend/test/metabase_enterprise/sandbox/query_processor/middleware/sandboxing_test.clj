@@ -1228,8 +1228,9 @@
           (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
           (let [mp     (mt/metadata-provider)
                 orders (lib.metadata/table mp (mt/id :orders))
+                ;; Oracle prefixes table names with "Test Data " — match by display-name suffix to stay portable.
                 query  (-> (lib/query mp orders)
-                           (lib.tu.notebook/add-join {:display-name "People"} {:display-name "User ID"} {:display-name "ID"})
+                           (lib.tu.notebook/add-join {:display-name #"People$"} {:display-name "User ID"} {:display-name "ID"})
                            (lib/aggregate (lib/count))
                            (lib.tu.notebook/add-breakout {:display-name "People"} {:display-name "Source"})
                            (lib.tu.notebook/add-breakout {:display-name "Product"} {:display-name "Category"})
