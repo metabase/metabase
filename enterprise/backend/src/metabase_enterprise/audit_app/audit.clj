@@ -373,20 +373,28 @@
 
   Dedupe by choosing the row other content points at, otherwise the active row, otherwise the lowest id."
   [audit-db-id]
+  ;; sort by id up front so every selection below (including the `referenced?` tiebreak) is deterministic
+  ;; regardless of the order the appdb returns rows in
   (let [groups (->> (t2/select [:model/Table :id :name :schema :active] :db_id audit-db-id)
+                    (sort-by :id)
                     (group-by (comp u/lower-case-en :name))
                     (filter (fn [[_ rows]] (> (count rows) 1))))]
     (doseq [[_ rows] groups]
       (let [referenced?       (fn [{:keys [id]}] (t2/exists? :model/Card :table_id id))
             survivor          (or (first (filter referenced? rows))
                                   (first (filter :active rows))
-                                  (first (sort-by :id rows)))
+                                  (first rows))
             [c-name c-schema] (host-canonical-table (:name survivor))
             orphans           (remove #(= (:id %) (:id survivor)) rows)]
+        ;; delete orphans before re-canonicalizing the survivor so the survivor's new (name, schema) can't
+        ;; collide with an orphan still sitting at that slot on idx_unique_table
         (doseq [{orphan-id :id} orphans]
           (t2/update! :model/Card {:table_id orphan-id} {:table_id (:id survivor)})
           (t2/delete! :model/Table orphan-id))
-        (t2/update! :model/Table (:id survivor) {:active true :name c-name :schema c-schema})
+        ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
+        ;; NULL — and thus excluded from the index — while the flag is set)
+        (t2/update! :model/Table (:id survivor)
+                    {:active true :name c-name :schema c-schema :is_defective_duplicate false})
         (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
                    (count orphans) (:id survivor))))))
 

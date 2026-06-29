@@ -374,15 +374,18 @@
   ;; `should-load-audit?` returns false forever and the host-adjust never re-runs. If the host-adjust
   ;; is interrupted, the checksum must stay put so the next boot re-runs the load and the adjust.
   (mt/test-drivers #{:postgres :h2 :mysql}
-    (t2/delete! :model/Database :is_audit true)
-    (audit/last-analytics-checksum! 0)
-    (testing "an interrupted adjust-audit-db-to-host! does not advance the checksum"
-      (with-redefs [serialization.cmd/v2-load-internal!  (fn [& _] {:seen [] :errors []})
-                    ee-audit/adjust-audit-db-to-host! (fn [& _] (throw (ex-info "host-adjust interrupted" {})))]
-        (is (thrown-with-msg? Exception #"host-adjust interrupted"
-                              (ee-audit/ensure-audit-db-installed!)))
-        (is (= 0 (audit/last-analytics-checksum))
-            "checksum stays 0 so the next boot re-runs the load and host-adjust")))
-    ;; leave a clean-ish state for sibling tests
-    (t2/delete! :model/Database :is_audit true)
-    (audit/last-analytics-checksum! 0)))
+    (try
+      (t2/delete! :model/Database :is_audit true)
+      (audit/last-analytics-checksum! 0)
+      (testing "an interrupted adjust-audit-db-to-host! does not advance the checksum"
+        (with-redefs [serialization.cmd/v2-load-internal!  (fn [& _] {:seen [] :errors []})
+                      ee-audit/adjust-audit-db-to-host! (fn [& _] (throw (ex-info "host-adjust interrupted" {})))]
+          (is (thrown-with-msg? Exception #"host-adjust interrupted"
+                                (ee-audit/ensure-audit-db-installed!)))
+          (is (= 0 (audit/last-analytics-checksum))
+              "checksum stays 0 so the next boot re-runs the load and host-adjust")))
+      (finally
+        ;; restore a clean, installed audit DB for sibling tests regardless of how this test exits
+        (t2/delete! :model/Database :is_audit true)
+        (audit/last-analytics-checksum! 0)
+        (mbc/ensure-audit-db-installed!)))))
