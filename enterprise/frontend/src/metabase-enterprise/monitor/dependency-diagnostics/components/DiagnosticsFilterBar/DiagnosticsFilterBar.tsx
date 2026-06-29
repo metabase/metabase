@@ -1,15 +1,15 @@
-import { useDebouncedCallback } from "@mantine/hooks";
-import { type ChangeEvent, memo, useState } from "react";
-import { t } from "ttag";
+import { memo } from "react";
 
-import { FixedSizeIcon, Group, Loader, TextInput } from "metabase/ui";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import { FilterOptionsPicker } from "metabase-enterprise/dependencies/components/FilterOptionsPicker";
+import { Group } from "metabase/ui";
 import type { DependencyFilterOptions } from "metabase-enterprise/dependencies/types";
 import {
   areFilterOptionsEqual,
-  getSearchQuery,
+  getDependencyGroupTypeInfo,
 } from "metabase-enterprise/dependencies/utils";
+import {
+  DiagnosticsFilterPicker,
+  DiagnosticsSearchInput,
+} from "metabase-enterprise/monitor/components";
 
 import type { DependencyDiagnosticsMode } from "../types";
 import { getAvailableGroupTypes, getDefaultFilterOptions } from "../utils";
@@ -33,50 +33,34 @@ export const DiagnosticsFilterBar = memo(function DiagnosticsFilterBar({
   onQueryChange,
   onFilterOptionsChange,
 }: DiagnosticsFilterBarProps) {
-  const [searchValue, setSearchValue] = useState(query ?? "");
-  const hasLoader = isFetching && !isLoading;
   const hasDefaultFilterOptions = areFilterOptionsEqual(
     filterOptions,
     getDefaultFilterOptions(mode),
   );
 
-  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const newSearchValue = event.target.value;
-    setSearchValue(newSearchValue);
-    handleSearchDebounce(newSearchValue);
-  };
-
-  const handleSearchDebounce = useDebouncedCallback(
-    (newSearchValue: string) => {
-      const newQuery = getSearchQuery(newSearchValue);
-      onQueryChange(newQuery);
-    },
-    SEARCH_DEBOUNCE_DURATION,
-  );
-
-  const handleFilterOptionsChange = (
-    newFilterOptions: DependencyFilterOptions,
-  ) => {
-    onFilterOptionsChange(newFilterOptions);
-  };
-
   return (
     <Group gap="md" align="center" wrap="nowrap">
-      <TextInput
-        value={searchValue}
-        placeholder={t`Search…`}
-        flex={1}
-        leftSection={<FixedSizeIcon name="search" />}
-        rightSection={hasLoader ? <Loader size="sm" /> : undefined}
+      <DiagnosticsSearchInput
+        query={query}
+        isFetching={isFetching}
+        isLoading={isLoading}
         data-testid="dependency-list-search-input"
-        onChange={handleSearchChange}
+        onChange={onQueryChange}
       />
-      <FilterOptionsPicker
-        filterOptions={filterOptions}
-        availableGroupTypes={getAvailableGroupTypes(mode)}
+      <DiagnosticsFilterPicker
+        availableTypes={getAvailableGroupTypes(mode)}
+        selectedTypes={filterOptions.groupTypes}
+        includePersonalCollections={filterOptions.includePersonalCollections}
+        getTypeLabel={(type) => getDependencyGroupTypeInfo(type).label}
         isDisabled={isLoading}
-        hasDefaultFilterOptions={hasDefaultFilterOptions}
-        onFilterOptionsChange={handleFilterOptionsChange}
+        hasDefaultOptions={hasDefaultFilterOptions}
+        buttonTestId="dependency-filter-button"
+        onChange={({ types, includePersonalCollections }) =>
+          onFilterOptionsChange({
+            groupTypes: types,
+            includePersonalCollections,
+          })
+        }
       />
     </Group>
   );

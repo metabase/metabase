@@ -45,6 +45,13 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
         showLabel={isNavbarOpened}
         isGated={!hasDependenciesFeature}
       />
+      <AreaTab
+        label={t`Content diagnostics`}
+        icon="document"
+        to={Urls.contentDiagnostics()}
+        isSelected={pathname.startsWith(Urls.contentDiagnostics())}
+        showLabel={isNavbarOpened}
+      />
       {canAccessTools && (
         <>
           <AreaTab

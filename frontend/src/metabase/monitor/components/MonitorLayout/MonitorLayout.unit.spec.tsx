@@ -1,3 +1,4 @@
+import { type ReactNode, useEffect } from "react";
 import { Route } from "react-router";
 
 import {
@@ -16,6 +17,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
+import { useMonitorSidebar } from "./MonitorContent";
 import { MonitorLayout } from "./MonitorLayout";
 
 interface SetupOpts {
@@ -23,6 +25,19 @@ interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
   initialRoute?: string;
   user?: ReturnType<typeof createMockUser>;
+  children?: ReactNode;
+}
+
+function TestSidebarSetter() {
+  const { setSidebar } = useMonitorSidebar();
+
+  useEffect(() => {
+    setSidebar(<aside data-testid="monitor-sidebar">{"Sidebar"}</aside>);
+
+    return () => setSidebar(null);
+  }, [setSidebar]);
+
+  return <div data-testid="content">{"Content"}</div>;
 }
 
 const setup = ({
@@ -30,6 +45,7 @@ const setup = ({
   tokenFeatures,
   initialRoute = "/monitor",
   user = createMockUser({ is_superuser: true }),
+  children = <div data-testid="content">{"Content"}</div>,
 }: SetupOpts = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),
@@ -55,11 +71,7 @@ const setup = ({
   renderWithProviders(
     <Route
       path="/monitor"
-      component={() => (
-        <MonitorLayout>
-          <div data-testid="content">{"Content"}</div>
-        </MonitorLayout>
-      )}
+      component={() => <MonitorLayout>{children}</MonitorLayout>}
     />,
     {
       initialRoute,
@@ -79,6 +91,7 @@ describe("MonitorLayout", () => {
 
     const expectedTabs: [string, string][] = [
       ["Dependency diagnostics", Urls.dependencyDiagnostics()],
+      ["Content diagnostics", Urls.contentDiagnostics()],
       ["Tasks", Urls.monitorTasks()],
       ["Jobs", Urls.monitorJobs()],
       ["Logs", Urls.monitorLogs()],
@@ -111,6 +124,9 @@ describe("MonitorLayout", () => {
     expect(
       screen.getByRole("link", { name: "Dependency diagnostics" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Content diagnostics" }),
+    ).toBeInTheDocument();
     [
       "Tasks",
       "Jobs",
@@ -141,6 +157,24 @@ describe("MonitorLayout", () => {
     });
 
     expect(screen.getByTestId("app-switcher-target")).toBeInTheDocument();
+  });
+
+  it("renders monitor sidebars outside the padded main content area", async () => {
+    setup({ children: <TestSidebarSetter /> });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-sidebar")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("monitor-main")).toContainElement(
+      screen.getByTestId("content"),
+    );
+    expect(screen.getByTestId("monitor-main")).not.toContainElement(
+      screen.getByTestId("monitor-sidebar"),
+    );
+    expect(screen.getByTestId("monitor-sidebar-region")).toContainElement(
+      screen.getByTestId("monitor-sidebar"),
+    );
   });
 
   const getTabGem = (name: string) =>

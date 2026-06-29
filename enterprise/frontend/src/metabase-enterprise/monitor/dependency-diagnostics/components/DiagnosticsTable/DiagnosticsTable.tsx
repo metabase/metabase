@@ -9,9 +9,9 @@ import {
 } from "metabase/ui";
 import type { DependencySortOptions } from "metabase-enterprise/dependencies/types";
 import { getNodeId } from "metabase-enterprise/dependencies/utils";
+import { DiagnosticsEmptyState } from "metabase-enterprise/monitor/components";
 import type { DependencyNode } from "metabase-types/api";
 
-import { DiagnosticsEmptyState } from "../DiagnosticsEmptyState";
 import type { DependencyDiagnosticsMode } from "../types";
 
 import {

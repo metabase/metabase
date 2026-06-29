@@ -1,12 +1,9 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/common/data-studio/components/PaneHeader";
-import { Stack, Title } from "metabase/ui";
+import type { PaneHeaderTab } from "metabase/common/data-studio/components/PaneHeader";
 import * as Urls from "metabase/urls";
+import { DiagnosticsHeader as BaseDiagnosticsHeader } from "metabase-enterprise/monitor/components";
 
 export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   const tabs: PaneHeaderTab[] = [
@@ -23,9 +20,6 @@ export const DiagnosticsHeader = memo(function DiagnosticsHeader() {
   ];
 
   return (
-    <Stack gap="md">
-      <Title order={1}>{t`Dependency diagnostics`}</Title>
-      <PaneHeaderTabs tabs={tabs} />
-    </Stack>
+    <BaseDiagnosticsHeader title={t`Dependency diagnostics`} tabs={tabs} />
   );
 });

@@ -7,6 +7,8 @@ import {
 } from "react-router";
 
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { ContentDiagnosticsSectionLayout } from "metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout";
+import { ContentDiagnosticsUpsellPage } from "metabase/monitor/content-diagnostics/ContentDiagnosticsUpsellPage";
 import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
 import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
 import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
@@ -47,6 +49,20 @@ export function getMonitorRoutes(
             {/* Catch sub-paths (e.g. /broken, /unreferenced) redirected from the
                 old Data Studio URLs so OSS lands on the upsell, not NotFound. */}
             <Route path="*" component={DependencyDiagnosticsUpsellPage} />
+          </Route>
+        )}
+
+        {PLUGIN_MONITOR.isContentDiagnosticsEnabled ? (
+          <Route
+            path="content-diagnostics"
+            component={ContentDiagnosticsSectionLayout}
+          >
+            {PLUGIN_MONITOR.getContentDiagnosticsRoutes()}
+          </Route>
+        ) : (
+          <Route path="content-diagnostics">
+            <IndexRoute component={ContentDiagnosticsUpsellPage} />
+            <Route path="*" component={ContentDiagnosticsUpsellPage} />
           </Route>
         )}
 

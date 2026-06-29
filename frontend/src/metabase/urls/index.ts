@@ -5,6 +5,7 @@ export * from "./bookmarks";
 export * from "./browse";
 export * from "./cards";
 export * from "./collections";
+export * from "./content-diagnostics";
 export * from "./dashboards";
 export * from "./data-studio";
 export * from "./dependencies";
