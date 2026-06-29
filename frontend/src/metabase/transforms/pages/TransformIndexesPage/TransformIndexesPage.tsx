@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import {
   skipToken,
   useGetTransformQuery,
@@ -14,6 +12,8 @@ import { isNullOrUndefined } from "metabase/utils/types";
 import type { TableIndexEntry, TransformId } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
+
+import { NoIndexes } from "./NoIndexes";
 
 type TransformIndexesPageProps = {
   params: {
@@ -69,13 +69,7 @@ function TransformIndexesContent({
   }
 
   if (indexes.length === 0) {
-    return (
-      <Card flex={1} withBorder>
-        <Center h="100%">
-          <Text c="text-secondary">{t`No indexes defined for this transform.`}</Text>
-        </Center>
-      </Card>
-    );
+    return <NoIndexes />;
   }
 
   return (
