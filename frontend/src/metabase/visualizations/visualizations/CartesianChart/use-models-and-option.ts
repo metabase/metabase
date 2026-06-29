@@ -115,14 +115,8 @@ export function useModelsAndOption(
   );
 
   const timelineEventsModel = useMemo(
-    () =>
-      getTimelineEventsModel(
-        chartModel,
-        chartLayout,
-        timelineEvents ?? [],
-        renderingContext,
-      ),
-    [chartModel, chartLayout, timelineEvents, renderingContext],
+    () => getTimelineEventsModel(chartModel, chartLayout, timelineEvents ?? []),
+    [chartModel, chartLayout, timelineEvents],
   );
 
   const tooltipOption = useMemo(() => {
