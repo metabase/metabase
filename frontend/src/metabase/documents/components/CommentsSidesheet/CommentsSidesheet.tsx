@@ -14,6 +14,7 @@ import {
 } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import Animation from "metabase/css/core/animation.module.css";
+import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
 import { useDocumentState } from "metabase/documents/hooks/use-document-state";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { getListCommentsQuery } from "metabase/documents/utils/api";
@@ -79,6 +80,13 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
     closeCommentSidebar();
     onClose();
   }, [closeCommentSidebar, onClose]);
+
+  const handleHoverChange = useCallback(
+    (hoveredChildTargetId: string | undefined) => {
+      dispatch(setHoveredChildTargetId(hoveredChildTargetId));
+    },
+    [dispatch],
+  );
 
   useEffect(() => {
     if (childTargetId == null) {
@@ -227,7 +235,9 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
             <Discussions
               childTargetId={childTargetId === "all" ? null : childTargetId}
               comments={activeComments}
-              enableHoverHighlight={childTargetId === "all"}
+              onHoverChange={
+                childTargetId === "all" ? handleHoverChange : undefined
+              }
               targetId={document.id}
               targetType="document"
             />
@@ -244,7 +254,7 @@ export const CommentsSidesheet = ({ params, onClose }: Props) => {
             >
               <Image w={120} h={120} src={noResultsSource} />
 
-              <Text fw="700" c="text-tertiary">{t`No comments`}</Text>
+              <Text fw="700" c="text-disabled">{t`No comments`}</Text>
             </Flex>
           )}
 

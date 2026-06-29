@@ -85,7 +85,7 @@ The MCP server exposes these tools, dynamically generated from the Agent API end
 | Tool            | Description                                                                                                                                                         |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `search`        | Search for tables, metrics, cards, dashboards, and collections using keyword or natural-language queries.                                                           |
-| `read_resource` | Read one or more Metabase entities by `metabase://` URI. Covers database/schema/table/collection/card/dashboard/metric/transform navigation. Up to 5 URIs per call. |
+| `read_resource` | Read one or more Metabase entities by `metabase://` URI. Covers database/schema/table/collection/question/dashboard/metric/transform navigation. Up to 5 URIs per call. |
 
 ### Query construction + execution
 
@@ -121,7 +121,7 @@ clients can fetch supplementary content by URI without inflating tool descriptio
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | `metabase://docs/construct-query.md` | Program syntax for `construct_query` and `query`: sources, operations, operator forms, worked examples, pitfalls. |
 
-The `read_resource` **tool** (above) uses a separate URI scheme to navigate Metabase entities (`metabase://card/{id}`,
+The `read_resource` **tool** (above) uses a separate URI scheme to navigate Metabase entities (`metabase://question/{id}`,
 `metabase://database/{id}/tables`, etc.). The two URI namespaces are independent: `metabase://docs/...` is for static
 reference content fetched via MCP `resources/read`, while `metabase://table/...` and friends are entity URIs passed
 to the `read_resource` tool.

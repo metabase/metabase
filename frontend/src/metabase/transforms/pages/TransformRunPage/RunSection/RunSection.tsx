@@ -9,7 +9,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
+import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -92,7 +92,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
 
   const runExtra = status === "succeeded" && previousStatus === "canceling" && (
     <Box
-      c="text-tertiary"
+      c="text-disabled"
       ml="lg"
     >{t`This run succeeded before it had a chance to cancel.`}</Box>
   );

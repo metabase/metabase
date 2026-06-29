@@ -8,7 +8,7 @@
 }
 
 .ListItem :global(.Icon) {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .ListSectionHeader {
@@ -67,7 +67,7 @@
 }
 
 .ListItemDisabled .ListItemTitle {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .ListItemCursor:not(.ListItemDisabled) .ListItemTitle,

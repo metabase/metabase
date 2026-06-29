@@ -4,7 +4,7 @@
 }
 
 .content {
-  --color: var(--mb-color-text-tertiary);
+  --color: var(--mb-color-text-disabled);
   --active-color: var(--mb-color-brand);
 }
 

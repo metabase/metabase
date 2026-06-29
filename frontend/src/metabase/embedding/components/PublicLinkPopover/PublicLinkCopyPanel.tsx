@@ -43,7 +43,7 @@ export const PublicLinkCopyPanel = ({
               key={extension}
               tt="uppercase"
               c={
-                extension === selectedExtension ? "core-brand" : "text-tertiary"
+                extension === selectedExtension ? "core-brand" : "text-disabled"
               }
               fw={700}
               onClick={() =>

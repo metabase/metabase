@@ -94,6 +94,9 @@
          :dataset-filters-patterns (test-dataset-id db-def)
          :include-user-id-and-hash true))
 
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :test/dynamic-dataset-loading]
+  [_driver _feature _database] false)
+
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
 (mu/defmethod sql.tx/qualified-name-components :bigquery-cloud-sdk
@@ -508,6 +511,7 @@
 
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
   [_driver db-def]
+  ;; this will return true for partially-loaded datasets
   (setup-tracking-dataset!)
   (and
    (dataset-tracked?! db-def)
@@ -529,7 +533,7 @@
 (defn- get-existing-tables [dataset-id]
   (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
                     (project-id) dataset-id)]
-    (set (map :table_name (execute! sql)))))
+    (set (map first (execute! sql)))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]

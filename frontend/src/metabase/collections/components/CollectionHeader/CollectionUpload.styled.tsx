@@ -15,7 +15,7 @@ export const NewBadge = styled.div`
   font-size: 0.875rem;
   font-weight: 700;
   color: var(--mb-color-core-brand);
-  background-color: var(--mb-color-background-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
   margin: 0 auto;
   border-radius: 6px;
 `;

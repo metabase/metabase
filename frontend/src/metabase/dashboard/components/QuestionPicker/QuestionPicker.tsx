@@ -139,7 +139,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
                 const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
                   collection,
                 )
-                  ? "text-tertiary"
+                  ? "text-disabled"
                   : icon.color;
                 return (
                   <SelectList.Item
