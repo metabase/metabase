@@ -163,6 +163,20 @@
                                      :entity_local_id local-id))))]
     (serdes/default-load-one! ingested local)))
 
+;; The before-update hook forbids re-pointing a row to a different entity — correct for the CRUD API, but on
+;; import serdes legitimately re-resolves a row's portable ref to a new local entity (e.g. re-importing after
+;; the target was recreated under a new local id). When the ingested binding differs from the matched local
+;; row's, delete + reinsert instead of `t2/update!`-ing the binding (which the hook would reject, aborting the
+;; import). The reinsert runs under `*deserializing?*`, so it keeps the ingested entity_id and stays matchable.
+(defmethod serdes/load-update! "OsiAiContext"
+  [model-name ingested local]
+  (if (or (not= (entity-retrieval/normalize-entity-type (:entity_type ingested)) (:entity_type local))
+          (not= (:entity_local_id ingested) (:entity_local_id local)))
+    (do
+      (t2/delete! :model/OsiAiContext :id (:id local))
+      (serdes/load-insert! model-name ingested))
+    ((get-method serdes/load-update! :default) model-name ingested local)))
+
 ;; TODO (Chris 2026-06-24) -- this is a top-level model that *depends on* its entity, so a context row only
 ;; travels on export when it's independently selected.
 ;; We probably want the reverse: selecting an entity should pull in its ai_context (a cascade /

@@ -154,6 +154,29 @@
         ;; delete by natural key so the row doesn't leak into other tests' view of the fully-scanned table.
         (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))
 
+(deftest import-repoints-row-to-a-different-entity-test
+  (testing "an import whose portable ref resolves to a different entity repairs the binding instead of aborting"
+    ;; The immutable-binding before-update hook rejects a changed entity_local_id (right for the CRUD API), but
+    ;; serdes legitimately re-resolves a row's ref to a new local entity (e.g. re-import after the target was
+    ;; recreated). load-update! must delete + reinsert in that case rather than t2/update! the binding.
+    (mt/with-temp [:model/Card {card-a :id} {}
+                   :model/Card {card-b :id card-b-eid :entity_id} {}
+                   :model/OsiAiContext {local-id :id local-eid :entity_id}
+                   {:ai_context {:instructions "bound to A"} :entity_type "card" :entity_local_id card-a}]
+      ;; same serdes entity_id, but the portable ref now points at Card B
+      (let [extracted (-> (ts/extract-one "OsiAiContext" local-id)
+                          (assoc :entity_local_id card-b-eid)
+                          (assoc :ai_context {:instructions "now bound to B"}))]
+        (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+        (testing "still one row for this entity_id, now bound to Card B"
+          (is (= 1 (t2/count :model/OsiAiContext :entity_id local-eid)))
+          (is (=? {:entity_type "card" :entity_local_id card-b :ai_context {:instructions "now bound to B"}}
+                  (t2/select-one :model/OsiAiContext :entity_id local-eid))))
+        (testing "the stale binding to Card A is gone"
+          (is (nil? (t2/select-one :model/OsiAiContext :entity_type "card" :entity_local_id card-a))))
+        ;; reinsert minted a new local id with the same entity_id; reap by entity_id so it doesn't leak.
+        (t2/delete! :model/OsiAiContext :entity_id local-eid)))))
+
 (deftest disk-export-import-round-trip-test
   (testing "OsiAiContext survives a real on-disk export/import"
     ;; The in-memory tests above skip two layers that have silently dropped the model before:

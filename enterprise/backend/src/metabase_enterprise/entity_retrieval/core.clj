@@ -269,20 +269,19 @@
                            (sql/format {:quoted true}))
                        {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                       (catch SQLException e
-                        ;; The index can be transiently incompatible with the query vector — right after an
-                        ;; upgrade that changed embedding dimensions (a vector(OLD) column vs the vector(NEW)
-                        ;; literal, SQLState 22000), or before the background sync created the table (42P01).
-                        ;; The index, not the agent, is at fault and the next reconcile heals it, so degrade
-                        ;; to no results. 42P01 during boot is the expected not-yet-created state, so it
-                        ;; stays quiet; anything else is worth a warning + metric.
-                        ;; A live dependency outage (e.g. the embedding service) is *not* caught here — it
-                        ;; propagates so the tool can tell the agent the search is unavailable rather than
-                        ;; reporting an empty library.
-                        (when-not (= "42P01" (.getSQLState e))
-                          (analytics/inc! :metabase-entity-retrieval/search-failed)
-                          (log/warnf e "library entity index query failed (sqlstate %s); returning no results"
-                                     (.getSQLState e)))
-                        []))]
+                        ;; Only the index-not-ready states degrade to no results — the index, not the agent,
+                        ;; is at fault and the next reconcile heals it:
+                        ;;   42P01  vectors table doesn't exist yet (pre-first-build; expected at boot, stay quiet)
+                        ;;   22000  stored vectors incompatible with the query vector (a dimension/format change
+                        ;;          awaiting rebuild — e.g. a vector(OLD) column vs a vector(NEW) literal)
+                        ;; Any other SQL error — a connection loss or pgvector outage — propagates so the tool
+                        ;; reports the search as unavailable rather than as an empty library.
+                        (case (.getSQLState e)
+                          "42P01" []
+                          "22000" (do (log/warn e "library entity index incompatible with the query vector; returning no results")
+                                      [])
+                          (do (analytics/inc! :metabase-entity-retrieval/search-failed)
+                              (throw e)))))]
       (->> rows
            (map (fn [row]
                   {:entity   {:model (:entity_type row) :id (:entity_local_id row)}

@@ -51,6 +51,19 @@
       (is (not= (entity-class {:entity_type "measure" :entity_local_id 5})
                 (entity-class {:entity_type "segment" :entity_local_id 5}))))))
 
+(deftest entity->docs-bounds-oversized-ai-context-test
+  (testing "list length and per-value text are bounded at index time, regardless of how the row was written"
+    (let [entity->docs (var-get #'reconcile/entity->docs)
+          ctx          {:synonyms (mapv #(str "synonym-" %) (range 200))
+                        :examples [(apply str (repeat 9000 \x))]}
+          docs         (entity->docs {:entity_type "table" :entity_local_id 1 :name "Orders" :description "d"}
+                                     ctx)]
+      (testing "an unbounded synonym list is capped (bounds bloat from API-bypassing writes)"
+        (is (= 50 (count (filter #(= "synonym" (:doc_type %)) docs)))))
+      (testing "every doc's text is truncated to the char cap"
+        (is (every? #(<= (count (:doc_text %)) 8000) docs))
+        (is (= 8000 (count (:doc_text (first (filter #(= "example" (:doc_type %)) docs))))))))))
+
 (deftest format-embedding-rejects-invalid-values-test
   (testing "non-numbers, NaN and infinities are rejected before they reach a raw SQL literal"
     (doseq [bad [Double/NaN Double/POSITIVE_INFINITY Double/NEGATIVE_INFINITY "0.1"]]

@@ -59,12 +59,28 @@
 
 ;;; ------------------------------------------------- Desired docs -------------------------------------------------
 
+(def ^:private max-doc-chars
+  "Char cap on a doc's text, applied before [[doc-id]] and embedding.
+  The embedding layer skips a single text over the per-item token budget, which drops the doc and
+  under-indexes the entity; truncating keeps it indexed.
+  Coarse (chars-per-token varies) — a residual over-budget outlier is dropped by [[insert-batch!]], never
+  inserted as an empty vector."
+  8000)
+
+(def ^:private max-values-per-kind
+  "Cap on synonym docs (and, separately, example docs) indexed per entity, mirroring the API's per-list cap.
+  Bounds index bloat from rows that bypass the API schema — SerDes, direct appdb writes, or rows predating
+  the cap — since reconcile reads osi_ai_context directly."
+  50)
+
 (defn- make-doc [entity-type entity-local-id doc-type doc-text]
-  {:doc_id          (doc-id entity-type entity-local-id doc-type doc-text)
-   :entity_type     entity-type
-   :entity_local_id entity-local-id
-   :doc_type        doc-type
-   :doc_text        doc-text})
+  (let [doc-text (cond-> doc-text
+                   (and (string? doc-text) (> (count doc-text) max-doc-chars)) (subs 0 max-doc-chars))]
+    {:doc_id          (doc-id entity-type entity-local-id doc-type doc-text)
+     :entity_type     entity-type
+     :entity_local_id entity-local-id
+     :doc_type        doc-type
+     :doc_text        doc-text}))
 
 (defn- entity->docs
   "All desired docs for one library entity: a `name` doc (always), a `description` doc (non-blank), and a
@@ -75,8 +91,10 @@
     (concat
      [(doc "name" name)]
      (when-not (str/blank? description) [(doc "description" description)])
-     (for [s (:synonyms ai_context) :when (not (str/blank? s))] (doc "synonym" s))
-     (for [e (:examples ai_context) :when (not (str/blank? e))] (doc "example" e)))))
+     ;; cap the list length (each value is also char-capped in make-doc) so a row that skipped the API's
+     ;; bounds can't bloat the index with an unbounded number of synonym/example docs.
+     (map #(doc "synonym" %) (take max-values-per-kind (remove str/blank? (:synonyms ai_context))))
+     (map #(doc "example" %) (take max-values-per-kind (remove str/blank? (:examples ai_context)))))))
 
 (defn- ->library-entity [entity-type id nm description]
   {:entity_type     entity-type
