@@ -79,6 +79,11 @@ export function parseJunit(xml: string): NormalizedTest[] {
         continue;
       }
       const namespace = (attr(attrs, "classname") || "").trim();
+      // `file` is a standard (optional) JUnit testcase attribute. jest-junit
+      // emits it as the source path when `addFileAttribute: "true"` is set
+      // (the frontend path); hawk never writes one, so backend testcases parse
+      // to null — backend identity stays (test_suite, test_path, test_name).
+      const file = (attr(attrs, "file") || "").trim();
 
       const stack = problems
         .map((p) => elementBody(p[3]))
@@ -96,10 +101,7 @@ export function parseJunit(xml: string): NormalizedTest[] {
       tests.push({
         name,
         path: namespace || undefined,
-        // file_path is unstable for backend tests (the stack locator varies by
-        // failure mode), so identity is (test_suite, test_path, test_name) and
-        // file is sent as null.
-        file: null,
+        file: file || null,
         message,
         stack: stack || undefined,
         // JUnit only tells us a test failed/errored, never that it recovered,

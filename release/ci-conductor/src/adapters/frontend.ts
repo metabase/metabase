@@ -13,14 +13,14 @@
 //   - it entity-escapes (rather than CDATA-wraps) those bodies, which
 //     `parseJunit`'s `elementBody` already decodes.
 //
-// FILE / IDENTITY NOTE: with jest-junit's *default* templates, `classname` and
-// `name` are both `{ancestors} {title}` (identical, redundant) and there's no
-// `file` attribute. Clean `test_path`/`test_name` and a real `file_path`
-// require a companion jest-junit config change (`classNameTemplate: '{classname}'`,
-// `titleTemplate: '{title}'`, `addFileAttribute: 'true'`) in `jest.config.js`,
-// plus teaching `parseJunit` to surface the testcase `file` attribute. Until
-// then this yields what the shared parser produces (file = null), and identity
-// is (test_suite, test_path, test_name) like the backend.
+// FILE / IDENTITY NOTE: `jest.config.js` sets jest-junit's `addFileAttribute`,
+// so each <testcase> carries the source path as a `file` attribute, which the
+// shared parser surfaces as `file_path`. We deliberately leave jest-junit's
+// `classname`/`name` on their defaults (the same `{ancestors} {title}` blob in
+// both) rather than re-template them: that artifact is also what Trunk ingests,
+// and changing those fields would re-baseline its test identity. So `test_path`
+// and `test_name` carry that blob (redundant but a stable, unique key) and
+// identity is (test_suite, test_path, test_name, file_path).
 
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
