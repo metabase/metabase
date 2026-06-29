@@ -163,7 +163,7 @@
         payload    {:entity_type    (friendly-entity-type-for entity)
                     :entity_title   (:name entity)
                     :comment_href   (comment/url entity comment)
-                    :document_href  (urlpath-for entity)
+                    :entity_href    (urlpath-for entity)
                     :created_at     (:created_at comment)
                     :author         (:common_name (:creator comment))
                     :comment        (comments.render/content->html (:content comment))
