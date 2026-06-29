@@ -234,12 +234,12 @@ export function AIProviderConfigurationForm({
               >
                 <Text
                   lh="1rem"
-                  c={option.disabled ? "text-tertiary" : undefined}
+                  c={option.disabled ? "text-disabled" : undefined}
                 >
                   {option.label}
                 </Text>
                 {!isAvailableProvider(option.value as MetabotProvider) && (
-                  <Text c="text-tertiary" lh="1rem" size="sm">
+                  <Text c="text-disabled" lh="1rem" size="sm">
                     {t`Coming soon`}
                   </Text>
                 )}

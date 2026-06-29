@@ -40,7 +40,7 @@ export const EntityDisplay = ({
       {showDescription && entity?.description && (
         <Icon
           name="info"
-          c="text-tertiary"
+          c="text-disabled"
           tooltip={
             <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
               {entity.description}
@@ -55,7 +55,7 @@ export const EntityDisplay = ({
 export const RestrictedEntityDisplay = () => (
   <EntityDisplayContainer>
     <LeftContainer>
-      <Icon name="key" c="text-tertiary" />
+      <Icon name="key" c="text-disabled" />
       <EllipsifiedEntityContainer>{t`Sorry, you don't have permission to see this link.`}</EllipsifiedEntityContainer>
     </LeftContainer>
   </EntityDisplayContainer>

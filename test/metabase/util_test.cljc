@@ -357,6 +357,17 @@
     "string" 3  "str"
     "string" 0  ""))
 
+(deftest ^:parallel strip-bom-test
+  (are [s expected] (= expected
+                       (u/strip-bom s))
+    nil                          nil
+    ""                           ""
+    "ID,Name"                    "ID,Name"
+    (str u/utf8-bom "ID,Name")   "ID,Name"
+    (str u/utf8-bom)             ""
+    ;; only a *leading* BOM is stripped
+    (str "ID" u/utf8-bom "Name") (str "ID" u/utf8-bom "Name")))
+
 #?(:clj
    (deftest capitalize-en-turkish-test
      (mt/with-locale! "tr"
