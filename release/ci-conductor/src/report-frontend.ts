@@ -16,8 +16,8 @@ async function main(): Promise<void> {
   // `test_suite` is the suite-level identity discriminator. Frontend unit tests
   // are jest-sharded across parallel jobs, but each test file runs on exactly
   // one shard, so every shard reports a disjoint subset under the SAME stable
-  // suite (`frontend-unit`, set via `CI_CONDUCTOR_TEST_SUITE`) — the shard
-  // number is deliberately NOT part of the suite, or a test would re-key in
+  // suite (`fe-tests-unit`, the job name, set via `CI_CONDUCTOR_TEST_SUITE`) —
+  // the shard number is deliberately NOT part of the suite, or a test would re-key in
   // ci-conductor whenever sharding changes. Falls back to a generic `frontend`.
   const testSuite = env.CI_CONDUCTOR_TEST_SUITE || "frontend";
   await reportTestFailures(normalizeFrontendJunit(), testSuite);

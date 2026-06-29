@@ -121,7 +121,7 @@ jobs:
           # collision under a shared suite. The shard is a parallelization detail
           # (which one ran a failure lives in job_id/run context), so keeping it
           # out of the suite keeps a test's identity stable across re-sharding.
-          test-suite: frontend-unit
+          test-suite: fe-tests-unit
           entrypoint: release/ci-conductor/src/report-frontend.ts
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
