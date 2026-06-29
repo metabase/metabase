@@ -3,7 +3,6 @@ import { type CSSProperties, forwardRef } from "react";
 import { createPortal } from "react-dom";
 
 import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
-import type { CommentThread } from "metabase/comments/types";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { Box, rem } from "metabase/ui";
@@ -20,16 +19,6 @@ interface Props {
   unresolvedCommentsCount: number;
 }
 
-export const getUnresolvedComments = (
-  threads: CommentThread[],
-): CommentThread["comments"] => {
-  return threads
-    .filter((thread) => !thread.comments[0]?.is_resolved)
-    .flatMap((thread) =>
-      thread.comments.filter((comment) => !comment.deleted_at),
-    );
-};
-
 export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
   function CommentsMenu(
     { active, childTargetId, show, style, unresolvedCommentsCount }: Props,
@@ -38,7 +27,6 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
     const hasUnresolvedComments = unresolvedCommentsCount > 0;
     const commentUrl = useCommentUrl({
       childTargetId,
-      searchParams: hasUnresolvedComments ? undefined : { new: "true" },
     });
 
     return createPortal(

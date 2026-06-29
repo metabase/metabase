@@ -8,6 +8,7 @@ import {
   useUpdateCommentMutation,
 } from "metabase/api";
 import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
+import type { CommentExtraRenderer } from "metabase/comments/types";
 import { getCommentNodeId } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
@@ -31,6 +32,7 @@ export interface DiscussionProps {
   targetId: EntityId;
   targetType: CommentEntityType;
   onHoverChange?: (childTargetId: string | undefined) => void;
+  renderExtra?: CommentExtraRenderer;
 }
 
 export const Discussion = ({
@@ -39,6 +41,7 @@ export const Discussion = ({
   targetId,
   targetType,
   onHoverChange,
+  renderExtra,
 }: DiscussionProps) => {
   const currentUser = useSelector(getUser);
   const [, setNewComment] = useState<DocumentContent>();
@@ -207,6 +210,7 @@ export const Discussion = ({
             onCopyLink={handleCopyLink}
             onReaction={handleReaction}
             onReactionRemove={handleReactionRemove}
+            renderExtra={renderExtra}
           />
         ))}
         {!comments[0]?.is_resolved && currentUser && (

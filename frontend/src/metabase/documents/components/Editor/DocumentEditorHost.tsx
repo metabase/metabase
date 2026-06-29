@@ -32,7 +32,7 @@ import {
   useNodeInViewport,
   useReportPrefetchLoading,
 } from "../../hooks/use-node-in-viewport";
-import { useUnresolvedCommentsCount } from "../../hooks/use-unresolved-comments-count";
+import { useUnresolvedDocumentCommentsCount } from "../../hooks/use-unresolved-document-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
@@ -73,7 +73,7 @@ export const documentEditorHost: EditorHost = {
   useCardData,
   useExternalCardDataLoader,
   useCommentUrl,
-  useUnresolvedCommentsCount,
+  useUnresolvedCommentsCount: useUnresolvedDocumentCommentsCount,
   useNodeInViewport,
   useReportPrefetchLoading,
   useDraftCardOperations,

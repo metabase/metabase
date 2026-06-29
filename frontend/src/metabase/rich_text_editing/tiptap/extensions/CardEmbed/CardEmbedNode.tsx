@@ -225,7 +225,6 @@ export const CardEmbedComponent = memo(
     const isHovered = hoveredChildTargetId === _id;
     const commentsPath = host.useCommentUrl({
       childTargetId: _id,
-      searchParams: unresolvedCommentsCount > 0 ? undefined : { new: "true" },
     });
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;

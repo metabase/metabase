@@ -347,15 +347,21 @@ describe("getExplorationSidebarTree inherits a heading status from its leaves", 
   });
 });
 
-describe("getExplorationSidebarTree Findings heading status", () => {
-  function findingsStatus(tree: ReturnType<typeof getExplorationSidebarTree>) {
-    const node = tree.find((n) => n.id === "documents");
-    return node?.data?.type === "heading" ? node.data.status : undefined;
+describe("getExplorationSidebarTree AI summary document status", () => {
+  function aiSummaryDocumentStatus(
+    tree: ReturnType<typeof getExplorationSidebarTree>,
+  ) {
+    const doc = tree[0]?.children?.find(
+      (node) => node.data?.type === "document" && node.data.isAiSummary,
+    );
+    return doc?.data?.type === "document" ? doc.data.status : undefined;
   }
 
   function buildTree(threadOverrides: Parameters<typeof createExploration>[0]) {
     return getExplorationSidebarTree(
       createExploration({
+        queries: [],
+        groups: [],
         documents: [createExplorationDocument({ id: 99, name: "AI Summary" })],
         ...threadOverrides,
       }),
@@ -370,7 +376,7 @@ describe("getExplorationSidebarTree Findings heading status", () => {
         canceled_at: null,
       },
     });
-    expect(findingsStatus(tree)).toBe("running");
+    expect(aiSummaryDocumentStatus(tree)).toBe("running");
   });
 
   it("is done once the AI summary document has finished", () => {
@@ -381,7 +387,7 @@ describe("getExplorationSidebarTree Findings heading status", () => {
         canceled_at: null,
       },
     });
-    expect(findingsStatus(tree)).toBe("done");
+    expect(aiSummaryDocumentStatus(tree)).toBe("done");
   });
 });
 
@@ -412,28 +418,6 @@ describe("getExplorationSidebarTree last-activity timestamps", () => {
     );
 
     expect(headingData(tree[0])?.lastActivityAt).toBe("2026-04-30T12:00:00Z");
-  });
-
-  it("derives the Findings heading's last activity from the newest document updated_at", () => {
-    const tree = getExplorationSidebarTree(
-      createExploration({
-        documents: [
-          createExplorationDocument({
-            id: 1,
-            name: "Scratchpad",
-            updated_at: "2026-04-29T08:00:00Z",
-          }),
-          createExplorationDocument({
-            id: 2,
-            name: "AI Summary",
-            updated_at: "2026-05-01T09:00:00Z",
-          }),
-        ],
-      }),
-    );
-
-    const findings = tree.find((node) => node.id === "documents");
-    expect(headingData(findings)?.lastActivityAt).toBe("2026-05-01T09:00:00Z");
   });
 
   it("leaves last activity undefined when no query has finished", () => {

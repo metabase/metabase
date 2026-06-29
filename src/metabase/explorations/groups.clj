@@ -23,17 +23,17 @@
    group-id component keeps it unique when the same (card, dim) appears in two groups. Public
    so deep-link builders (see [[chart-page-url]]) use the same scheme the read tree emits and
    routes on."
-  [group-id card-id dim-id]
-  (str "auto:" group-id ":" card-id ":" dim-id))
+  [group-id card-id dim-id query-type]
+  (str "auto:" group-id ":" card-id ":" dim-id ":" query-type))
 
 (defn chart-page-url
   "Relative URL of a chart's leaf page in the exploration detail view, scoped to the group
    (`group-id`) the chart was planned under. The route segment is percent-encoded to match
    the client's `encodeURIComponent`. Used by the document-append endpoint and the AI summary
    materializer to deep-link a static `cardEmbed`'s title back to its source chart."
-  [exploration-id group-id card-id dimension-id]
+  [exploration-id group-id card-id dimension-id query-type]
   (str "/question/research/" exploration-id
-       "/group/" (codec/url-encode (leaf-id group-id card-id dimension-id))))
+       "/group/" (codec/url-encode (leaf-id group-id card-id dimension-id query-type))))
 
 (defn- leaf-name
   "Pick the display name for a leaf: prefer the base (unsegmented) query's `:name`, fall back
@@ -119,8 +119,8 @@
   "A sub-item under a group. For a dimension-anchored group the leaves vary by metric, so name
    each by its metric (Card) name; for a metric-anchored group they vary by dimension, so name
    each `By <dimension>`."
-  [group [card-id dim-id] qs card-name-by-id]
-  {:id              (leaf-id (:id group) card-id dim-id)
+  [group [card-id dim-id query-type] qs card-name-by-id]
+  {:id              (leaf-id (:id group) card-id dim-id query-type)
    :parent_group_id (group-node-id group)
    :type            "auto"
    :display_type    (if (= 1 (count qs)) "singleton" "page")
@@ -176,7 +176,7 @@
         depth-first   (mapcat
                        (fn [group]
                          (let [leaves (->> (get rows-by-group (:id group) [])
-                                           (group-by (juxt :card_id :dimension_id))
+                                           (group-by (juxt :card_id :dimension_id :query_type))
                                            (map (fn [[k qs]] (leaf-node group k qs card-name-by-id)))
                                            (sort-by sort-key))]
                            (cons (group-node group card-name-by-id (ambiguous? group)) leaves)))

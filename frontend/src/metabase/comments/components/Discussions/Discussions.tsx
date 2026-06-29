@@ -1,5 +1,6 @@
 import { Fragment, useMemo } from "react";
 
+import type { CommentExtraRenderer } from "metabase/comments/types";
 import { getCommentThreads } from "metabase/comments/utils";
 import { Box, Stack } from "metabase/ui";
 import type { Comment } from "metabase-types/api/comments";
@@ -12,6 +13,7 @@ export interface DiscussionProps {
   targetId: Comment["target_id"];
   targetType: Comment["target_type"];
   onHoverChange?: (childTargetId: string | undefined) => void;
+  renderExtra?: CommentExtraRenderer;
 }
 
 export const Discussions = ({
@@ -20,6 +22,7 @@ export const Discussions = ({
   targetId,
   targetType,
   onHoverChange,
+  renderExtra,
 }: DiscussionProps) => {
   const threads = useMemo(
     () => getCommentThreads(comments, childTargetId),
@@ -37,6 +40,7 @@ export const Discussions = ({
               targetId={targetId}
               targetType={targetType}
               onHoverChange={onHoverChange}
+              renderExtra={renderExtra}
             />
           </Box>
         </Fragment>

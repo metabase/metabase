@@ -1,15 +1,11 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import { createSeriesCard } from "metabase/common/utils/series";
 import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";
-import {
-  formatBreakoutValue,
-  getSeriesVizSettingsKey,
-} from "metabase/visualizations/echarts/cartesian/model/series";
-import { buildColorScale } from "metabase/visualizations/lib/choropleth";
+import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
@@ -22,13 +18,7 @@ import type {
   CardDisplayType,
   Dataset,
   DatasetColumn,
-  DimensionId,
-  ExplorationDocument,
   ExplorationQuery,
-  ExplorationQueryId,
-  ExplorationQueryParams,
-  ExplorationQueryType,
-  ExplorationThread,
   RowValue,
   RowValues,
   SeriesSettings,
@@ -42,9 +32,12 @@ const SHOULD_STACK_CUTOFF = 8;
 const MIN_SEGMENTS_TO_SHOW_HEATMAP = 4;
 const MIN_ROWS_TO_SHOW_LINE_OR_BAR = 3;
 
-interface BuildSeriesGroupsParams {
-  queries: ExplorationQuery[];
-  datasets: Dataset[];
+interface ExplorationQueryWithDataset extends ExplorationQuery {
+  dataset: Dataset;
+}
+
+interface BuildSeriesGroupParams {
+  queriesWithDatasets: ExplorationQueryWithDataset[];
   selectedTimelineId: TimelineId | null;
 }
 
@@ -55,359 +48,15 @@ export interface LegendItem {
 
 export interface SeriesGroup {
   series: SingleSeries[];
-  queryType: ExplorationQueryType;
   isTimeseries: boolean;
   stackCount?: number;
-  chartLabel?: string;
-  /**
-   * Variant-specific params from the BE plan row (e.g. `k` for
-   * `top-n-other`). All queries in a group share the same params shape
-   * upstream, so we copy off the first one in `buildSeries`.
-   */
-  params?: ExplorationQueryParams | null;
   legendItems: LegendItem[];
 }
-
-/**
- * Per-group chart title used by the labeled layout strategies. Falls back
- * to the static `QUERY_TYPE_TO_LABEL_MAP`, with a dynamic case for
- * `top-n-other` so the title reflects the actual `k` from the query plan.
- */
-function getChartLabel(group: SeriesGroup): string | null {
-  if (group.queryType === "top-n-other") {
-    const k = group.params?.k;
-    return typeof k === "number" ? t`Top ${k}` : null;
-  }
-  return QUERY_TYPE_TO_LABEL_MAP[group.queryType]?.() ?? null;
-}
-
-const QUERY_TYPE_TO_LABEL_MAP: Record<
-  ExplorationQueryType,
-  () => string | null
-> = {
-  ["default"]: () => null,
-  ["top-n-other"]: () => null,
-  ["temporal-pattern-day"]: () => t`Day of week`,
-  // Hour of day is pluralized on the backend, so we need to pluralize it here
-  // otherwise building the translation files will fail
-  ["temporal-pattern-hour"]: () =>
-    ngettext(msgid`Hour of day`, `Hours of day`, 1),
-  ["time-facet"]: () => t`Over time`,
-  ["filtered-subset"]: () => null,
-  ["per-value-time-series"]: () => null,
-};
-
-interface CategoryColors {
-  barColorByRawString: Record<string, string>;
-  overtimeOrder: string[];
-}
-
-function getCategoryColumn(
-  dataset: Dataset,
-): { col: DatasetColumn; index: number } | null {
-  const cols = dataset.data.cols;
-  const first = cols[0];
-  if (cols.length < 2 || first == null || isDate(first)) {
-    return null;
-  }
-  return { col: first, index: 0 };
-}
-
-/**
- * Query types that participate in category-color matching: the regular category
- * bar (`default`) and its "Over time" companion (`time-facet`). Special charts —
- * day-of-week, hour-of-day, top-N, etc. — are deliberately excluded; their bars
- * keep the default single color rather than being painted per category.
- */
-const CATEGORY_COLOR_QUERY_TYPES = new Set<ExplorationQueryType>([
-  "default",
-  "time-facet",
-]);
-
-function distinctCategoryRawValues(
-  query: ExplorationQueryWithDataset,
-): RowValue[] {
-  const category = getCategoryColumn(query.dataset);
-  if (!category) {
-    return [];
-  }
-  const seen = new Set<string>();
-  const values: RowValue[] = [];
-  for (const row of query.dataset.data.rows) {
-    const value = row[category.index];
-    if (!seen.has(String(value))) {
-      seen.add(String(value));
-      values.push(value);
-    }
-  }
-  return values;
-}
-
-/**
- * Compute one canonical color/order assignment per dimension from the leaf's
- * single-query `default` (bar) and `time-facet` (over-time) groups. The bar is
- * the order authority; categories are linked to the over-time line by raw value
- * so the line's baked keys come from its OWN column (and therefore match its
- * series models) while still following the bar's order. Multi-query (segment)
- * groups are colored by their own segment logic and are skipped here.
- */
-function computeCategoryColorsByDimension(
-  groups: ExplorationQueryWithDataset[][],
-): Map<DimensionId, CategoryColors> {
-  const byDimensionQueryMap = new Map<
-    DimensionId,
-    { bar?: ExplorationQueryWithDataset; line?: ExplorationQueryWithDataset }
-  >();
-  for (const group of groups) {
-    const query = group[0];
-    if (
-      !query ||
-      !CATEGORY_COLOR_QUERY_TYPES.has(query.query_type) ||
-      !getCategoryColumn(query.dataset)
-    ) {
-      continue;
-    }
-    const entry = byDimensionQueryMap.get(query.dimension_id) ?? {};
-    if (query.query_type === "default" && !entry.bar) {
-      entry.bar = query;
-    } else if (query.query_type === "time-facet" && !entry.line) {
-      entry.line = query;
-    }
-    byDimensionQueryMap.set(query.dimension_id, entry);
-  }
-
-  const result = new Map<string, CategoryColors>();
-  for (const [dimensionId, { bar, line }] of byDimensionQueryMap) {
-    const orderQuery = bar ?? line;
-    if (!orderQuery) {
-      continue;
-    }
-    const orderCol = getCategoryColumn(orderQuery.dataset)?.col;
-    const shouldColorBars = !isNumeric(orderCol) || line != null; // We don't want to apply custom colors to a standalone numeric/binned bar
-    if (!orderCol || !shouldColorBars) {
-      continue;
-    }
-
-    const orderedRaw = distinctCategoryRawValues(orderQuery);
-    if (isNumeric(orderCol)) {
-      orderedRaw.sort((a, b) => Number(a) - Number(b));
-    }
-    const orderedFormatted = orderedRaw.map((v) =>
-      formatBreakoutValue(v, orderCol),
-    );
-
-    const colorByFormatted = getColorsForValues(orderedFormatted);
-    const barColorByRawString: Record<string, string> = {};
-
-    orderedRaw.forEach((raw, i) => {
-      const color = colorByFormatted[orderedFormatted[i]];
-      if (color != null) {
-        barColorByRawString[String(raw)] = color;
-        // Alias by the bar's formatted value too, in case the x-axis holds it.
-        barColorByRawString[orderedFormatted[i]] = color;
-      }
-    });
-
-    let overtimeOrder: string[] = [];
-    if (line) {
-      const lineCol = getCategoryColumn(line.dataset)?.col;
-      if (!lineCol) {
-        continue;
-      }
-
-      overtimeOrder = [...orderedFormatted];
-    }
-
-    result.set(dimensionId, {
-      barColorByRawString,
-      overtimeOrder,
-    });
-  }
-  return result;
-}
-
-function seriesSettingsFromColors(
-  byFormatted: Record<string, string>,
-): Record<string, SeriesSettings> {
-  const settings: Record<string, SeriesSettings> = {};
-  for (const [value, color] of Object.entries(byFormatted)) {
-    settings[value] = { color };
-  }
-  return settings;
-}
-
-function numericMetricValues(query: ExplorationQueryWithDataset): number[] {
-  const metricIndex = query.dataset.data.cols.length - 1;
-  return query.dataset.data.rows
-    .map((row) => row[metricIndex])
-    .filter((v): v is number => typeof v === "number");
-}
-
-function computeGeoTopNColorsByDimension(
-  groups: ExplorationQueryWithDataset[][],
-): Map<DimensionId, Record<string, string>> {
-  const geoByDimension = new Map<DimensionId, ExplorationQueryWithDataset>();
-  const topNByDimension = new Map<DimensionId, ExplorationQueryWithDataset>();
-  for (const group of groups) {
-    const query = group.length === 1 ? group[0] : undefined;
-    const category = query && getCategoryColumn(query.dataset);
-    if (!query || !category) {
-      continue;
-    }
-    if (
-      query.query_type === "default" &&
-      (isState(category.col) || isCountry(category.col))
-    ) {
-      geoByDimension.set(query.dimension_id, query);
-    } else if (query.query_type === "top-n-other") {
-      topNByDimension.set(query.dimension_id, query);
-    }
-  }
-
-  const result = new Map<DimensionId, Record<string, string>>();
-  for (const [dimensionId, geoQuery] of geoByDimension) {
-    const topNQuery = topNByDimension.get(dimensionId);
-    if (!topNQuery) {
-      continue;
-    }
-    const domain = Array.from(new Set(numericMetricValues(geoQuery)));
-    if (domain.length === 0) {
-      continue;
-    }
-    // Reproduce the map's ramp: a choropleth scale seeded by the single-series
-    // "(All)" color — the same input `buildSeries` feeds the region map.
-    const baseColor = getColorsForValues([t`(All)`])[t`(All)`];
-    const { colorScale } = buildColorScale(
-      domain,
-      getColorplethColorScale(baseColor),
-    );
-    const categoryCol = getCategoryColumn(topNQuery.dataset);
-    if (!categoryCol) {
-      continue;
-    }
-    const categoryIndex = categoryCol.index;
-    const metricIndex = topNQuery.dataset.data.cols.length - 1;
-    const colors: Record<string, string> = {};
-    for (const row of topNQuery.dataset.data.rows) {
-      const value = row[metricIndex];
-      if (typeof value === "number") {
-        colors[String(row[categoryIndex])] = colorScale(value);
-      }
-    }
-    result.set(dimensionId, colors);
-  }
-  return result;
-}
-
-export function buildSeriesGroups({
-  queries,
-  datasets,
-  ...rest
-}: BuildSeriesGroupsParams): {
-  seriesGroups: SeriesGroup[];
-  layoutStrategy: ChartLayout;
-  chartsForDocumentEmbed: ExplorationChartForDocumentEmbed[];
-} {
-  const queriesWithDatasetGroups = groupQueriesWithDatasets({
-    queries,
-    datasets,
-  });
-
-  const categoryColorsByDimension = computeCategoryColorsByDimension(
-    queriesWithDatasetGroups,
-  );
-  const geoTopNColorsByDimension = computeGeoTopNColorsByDimension(
-    queriesWithDatasetGroups,
-  );
-
-  const seriesGroups = queriesWithDatasetGroups
-    .map((queriesWithDatasets) => {
-      const dimensionId = queriesWithDatasets[0]?.dimension_id ?? "";
-      return buildSeriesGroup({
-        ...rest,
-        queriesWithDatasets,
-        categoryColors: categoryColorsByDimension.get(dimensionId),
-        topNBarColors: geoTopNColorsByDimension.get(dimensionId),
-      });
-    })
-    .filter((group) => group.series.length > 0);
-
-  const layoutStrategy = getChartsGroupLayoutStrategy(seriesGroups);
-
-  if (
-    layoutStrategy === "two-small-charts-down" ||
-    layoutStrategy === "two-small-tables-down"
-  ) {
-    const bottomLeftChartLabel = getChartLabel(seriesGroups[1]);
-    if (bottomLeftChartLabel) {
-      seriesGroups[1].chartLabel = bottomLeftChartLabel;
-    }
-
-    const bottomRightChartLabel = getChartLabel(seriesGroups[2]);
-    if (bottomRightChartLabel) {
-      seriesGroups[2].chartLabel = bottomRightChartLabel;
-    }
-  }
-
-  if (
-    layoutStrategy === "two-same-size-charts-vertically" ||
-    layoutStrategy === "chart-and-table-vertically"
-  ) {
-    const bottomChartLabel = getChartLabel(seriesGroups[1]);
-    if (bottomChartLabel) {
-      seriesGroups[1].chartLabel = bottomChartLabel;
-    }
-  }
-
-  const chartsForDocumentEmbed = seriesGroups.flatMap((group, i) =>
-    composeChartsForGroup(
-      group,
-      queriesWithDatasetGroups[i].map((q) => q.id),
-    ),
-  );
-
-  return { seriesGroups, layoutStrategy, chartsForDocumentEmbed };
-}
-
-interface ExplorationQueryWithDataset extends ExplorationQuery {
-  dataset: Dataset;
-}
-
-function groupQueriesWithDatasets({
-  queries,
-  datasets,
-}: Pick<
-  BuildSeriesGroupsParams,
-  "queries" | "datasets"
->): ExplorationQueryWithDataset[][] {
-  const groups: Record<string, ExplorationQueryWithDataset[]> = {};
-  queries.forEach((query, i) => {
-    const key = `${query.dimension_id}-${query.query_type}`;
-    let group = groups[key];
-    if (!group) {
-      group = [];
-      groups[key] = group;
-    }
-    group.push({ ...query, dataset: datasets[i] });
-  });
-  return Object.values(groups);
-}
-
-type BuildSeriesParams = Omit<
-  BuildSeriesGroupsParams,
-  "queries" | "datasets"
-> & {
-  queriesWithDatasets: ExplorationQueryWithDataset[];
-  categoryColors?: CategoryColors;
-  topNBarColors?: Record<string, string>;
-};
 
 export function buildSeriesGroup({
   queriesWithDatasets,
   selectedTimelineId,
-  categoryColors,
-  topNBarColors,
-}: BuildSeriesParams): SeriesGroup {
+}: BuildSeriesGroupParams): SeriesGroup {
   let isTimeseries = false;
   let stackCount: number | undefined;
 
@@ -455,54 +104,6 @@ export function buildSeriesGroup({
         if (!cardVizSettings["graph.x_axis.labels_enabled"]) {
           cardVizSettings["graph.x_axis.labels_enabled"] = false;
         }
-
-        if (categoryColors && queriesWithDatasets.length === 1) {
-          if (
-            display === "bar" &&
-            query.query_type === "default" &&
-            Object.keys(categoryColors.barColorByRawString).length > 0
-          ) {
-            cardVizSettings["graph._dimension_value_colors"] =
-              categoryColors.barColorByRawString;
-          } else if (
-            display === "line" &&
-            query.query_type === "time-facet" &&
-            dataset.data.cols.length === 3
-          ) {
-            cardVizSettings.series_settings = {
-              ...cardVizSettings.series_settings,
-              ...seriesSettingsFromColors(categoryColors.barColorByRawString),
-            };
-            // Order the over-time series to match the regular bar's category
-            // order (the top chart). `graph.series_order` is only honored when
-            // every entry carries a color AND `graph.series_order_dimension`
-            // matches the breakout dimension (`graph.dimensions[1]`) — otherwise
-            // the chart falls back to the default order. We must set both.
-            const breakoutDimension =
-              cardVizSettings["graph.dimensions"]?.[1] ??
-              dataset.data.cols[0]?.name;
-            if (breakoutDimension != null) {
-              cardVizSettings["graph.series_order_dimension"] =
-                breakoutDimension;
-              cardVizSettings["graph.series_order"] =
-                categoryColors.overtimeOrder.map((key) => ({
-                  key,
-                  name: key,
-                  color: categoryColors.barColorByRawString[key],
-                  enabled: true,
-                }));
-            }
-          }
-        }
-
-        if (
-          topNBarColors &&
-          display === "bar" &&
-          query.query_type === "top-n-other"
-        ) {
-          // Color a "Top N" bar (`top-n-other`) by the choropleth shade each value gets on the companion region map, so the bar matches the map.
-          cardVizSettings["graph._dimension_value_colors"] = topNBarColors;
-        }
       } else if (display === "map") {
         const segmentName = segmentNames[i];
         const color = colors[segmentName];
@@ -524,8 +125,6 @@ export function buildSeriesGroup({
     series: getFinalSeries({ series, legendItems }),
     isTimeseries,
     stackCount,
-    queryType: queriesWithDatasets[0]?.query_type || "default",
-    params: queriesWithDatasets[0]?.params,
     legendItems,
   };
 }
@@ -614,56 +213,6 @@ function getDisplay(
     return { display: "table", stackCount: numQueries };
   }
   return { display: "bar" };
-}
-
-export interface ExplorationChartForDocumentEmbed {
-  queryIds: ExplorationQueryId[];
-  label: string;
-  display: VisualizationDisplay;
-  visualization_settings: VisualizationSettings;
-}
-
-const CARTESIAN_SERIES_COL_NAME = "Series";
-
-function composeChartsForGroup(
-  group: SeriesGroup,
-  queryIds: ExplorationQueryId[],
-): ExplorationChartForDocumentEmbed[] {
-  const firstSeries = group.series[0];
-  const display = firstSeries.card.display;
-
-  // Maps render one `<Visualization>` per series side-by-side (no
-  // `graph.split_panels` analogue), so the user perceives each map as a
-  // standalone chart. Expand a multi-series map group into N picker
-  // entries — each appends a single-snapshot embed (the N=1
-  // pass-through path through `composite/combine` server-side).
-  if (display === "map" && group.series.length > 1) {
-    return group.series.map((s, i) => ({
-      queryIds: [queryIds[i]],
-      label: s.card.name ?? group.chartLabel ?? "Chart",
-      display: s.card.display,
-      visualization_settings: s.card.visualization_settings ?? {},
-    }));
-  }
-
-  const label = group.chartLabel ?? firstSeries.card.name ?? "Chart";
-  let visualization_settings: VisualizationSettings =
-    firstSeries.card.visualization_settings ?? {};
-
-  if (group.series.length > 1 && isCartesianChart(display)) {
-    // The BE will append a "Series" column. Pin `graph.dimensions` so
-    // the rendered chart reads the new column as the series breakout.
-    const cols = firstSeries.data.cols;
-    const xCol = cols.find(isDate)?.name ?? cols[0]?.name;
-    if (xCol) {
-      visualization_settings = {
-        ...visualization_settings,
-        "graph.dimensions": [xCol, CARTESIAN_SERIES_COL_NAME],
-      };
-    }
-  }
-
-  return [{ queryIds, label, display, visualization_settings }];
 }
 
 interface GetFinalSeriesParams {
@@ -949,66 +498,3 @@ export function getMostInterestingTimelineId(
   }
   return best?.id ?? null;
 }
-
-export function getDocumentsForDocumentMenu(
-  explorationThread: ExplorationThread,
-): ExplorationDocument[] {
-  return (explorationThread.documents ?? []).filter(
-    (d) => d.id !== explorationThread.ai_summary_document_id,
-  );
-}
-
-// Pre-defined chart layouts; the value drives the `data-chart-layout` attribute
-// the grid CSS keys off. New layouts are added here and in the CSS module - ./ExplorationVisualization.module.css
-export type ChartLayout =
-  | "default"
-  | "two-small-charts-down"
-  | "two-small-tables-down"
-  | "chart-and-table-vertically"
-  | "two-same-size-charts-vertically";
-
-const SPECIAL_QUERY_TYPES: ExplorationQueryType[] = [
-  "top-n-other",
-  "temporal-pattern-day",
-  "temporal-pattern-hour",
-  "time-facet",
-  "filtered-subset",
-  "per-value-time-series",
-];
-
-export const getChartsGroupLayoutStrategy = (
-  seriesGroups: SeriesGroup[],
-): ChartLayout => {
-  const isTwoSmallChartsDownStrategy =
-    seriesGroups.length === 3 &&
-    seriesGroups[1].queryType === "temporal-pattern-day" &&
-    seriesGroups[2].queryType === "temporal-pattern-hour";
-
-  if (isTwoSmallChartsDownStrategy) {
-    const bottomChartsAreTables =
-      isTwoSmallChartsDownStrategy &&
-      seriesGroups[1].series[0].card.display === "table" &&
-      seriesGroups[2].series[0].card.display === "table";
-
-    return bottomChartsAreTables
-      ? "two-small-tables-down"
-      : "two-small-charts-down";
-  }
-
-  const isTwoChartsWithOneSpecial =
-    seriesGroups.length === 2 &&
-    seriesGroups[0].queryType === "default" &&
-    SPECIAL_QUERY_TYPES.includes(seriesGroups[1].queryType);
-
-  if (isTwoChartsWithOneSpecial) {
-    if (
-      seriesGroups[0].series[0].card.display !== "table" &&
-      seriesGroups[1].series[0].card.display === "table"
-    ) {
-      return "chart-and-table-vertically";
-    }
-    return "two-same-size-charts-vertically";
-  }
-
-  return "default";
-};

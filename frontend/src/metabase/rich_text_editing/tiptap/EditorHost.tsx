@@ -135,10 +135,7 @@ export interface EditorCommentsHost {
     getChildTargetId: Selector<string | undefined>;
     getHoveredChildTargetId: Selector<string | undefined>;
   };
-  useCommentUrl: (opts: {
-    childTargetId: EntityId | null;
-    searchParams?: Record<string, string>;
-  }) => string;
+  useCommentUrl: (opts: { childTargetId: EntityId | null }) => string;
   useUnresolvedCommentsCount: (
     nodeId: string,
     opts?: { skip?: boolean },

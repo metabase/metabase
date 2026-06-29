@@ -143,7 +143,6 @@ const SupportingTextComponent = ({
   const isOpen = childTargetId === _id;
   const commentsPath = host.useCommentUrl({
     childTargetId: _id,
-    searchParams: unresolvedCommentsCount > 0 ? undefined : { new: "true" },
   });
   const dispatch = useDispatch();
 
