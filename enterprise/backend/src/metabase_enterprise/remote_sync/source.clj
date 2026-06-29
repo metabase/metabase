@@ -56,7 +56,7 @@
     (str/join File/separator (concat dirnames [basename]))))
 
 (defn entity->content
-  "The serialized YAML string for an extracted `entity`. Independent of the storage path/dedup context."
+  "The serialized YAML string for an extracted `entity`."
   [entity]
   (yaml/generate-string (serialization/serialization-deep-sort entity)
                         {:dumper-options {:flow-style :block :split-lines false}}))

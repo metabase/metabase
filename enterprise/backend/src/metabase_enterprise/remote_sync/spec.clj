@@ -1162,7 +1162,7 @@
         targets (-> #{}
                     (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) opts))))
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
-    (u/group-by first second targets)))
+    (u/group-by first second (keys targets))))
 
 (defn extract-entities-for-export
   "Extracts all entities for remote-sync export based on enabled specs.
