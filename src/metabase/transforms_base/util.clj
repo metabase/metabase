@@ -614,6 +614,20 @@
   [transform]
   (t2/select-one :model/Table :transform_id (:id transform)))
 
+(defn merge-target-unique-key
+  "Physical column names of a transform's `merge` unique key, or nil when the target isn't a merge target."
+  [transform]
+  (let [strategy (get-in transform [:target :target-incremental-strategy])]
+    (when (= "merge" (:type strategy))
+      (not-empty (mapv :name (:unique-key strategy))))))
+
+(defn target-column-names
+  "Physical column names of a transform's synced target table, ordered by position, or nil."
+  [transform]
+  (when-let [table (output-table transform)]
+    (not-empty (t2/select-fn-vec :name [:model/Field :name :position]
+                                 :table_id (:id table) :active true
+                                 {:order-by [[:position :asc]]}))))
 ;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
 
 ;;; ------------------------------------------------- Source Table Resolution -------------------------------------------------

@@ -239,8 +239,7 @@
       (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
 
 (defn- merge-delete-query
-  "DELETE the rows of `target` whose unique key matches a row staged in `temp`.
-   `EXISTS`/tuple-`IN` over a correlated join for portability."
+  "DELETE the rows of `target` whose `unique-key` matches a row in `temp`."
   [driver target temp unique-key]
   (let [cols (mapv keyword unique-key)
         lhs  (if (= 1 (count cols)) (first cols) (into [:composite] cols))]
@@ -249,22 +248,20 @@
                              :where       [:in lhs {:select cols, :from [temp]}]})))
 
 (defn- merge-insert-query
-  "INSERT every row staged in `temp` into `target`. Positional `SELECT *` — `temp` was built by the
-   same source query that created `target` via CTAS, so column order matches."
+  "INSERT every row of `temp` into `target`."
   [driver target temp]
   (sql.qp/format-honeysql driver
                           {:insert-into [target {:select [:*] :from [temp]}]}))
 
 (defmulti compile-merge
-  "Raw queries that upsert the rows produced by `select` (a compiled `{:query sql :params}` map) into
-   `target`, keyed on `unique-key` (a vector of physical column names). Returns a vector of
-   `[sql params]` queries meant to run as one transaction."
-  {:arglists '([driver target select unique-key])}
+  "Returns `[sql params]` queries that upsert the rows of `select` (a compiled `{:query sql :params}`)
+   into `target`. `merge-spec` is `{:unique-key [col-names] :columns [all-col-names]}`."
+  {:arglists '([driver target select merge-spec])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod compile-merge :sql
-  [driver target select unique-key]
+  [driver target select {:keys [unique-key]}]
   (let [temp (driver.u/temp-table-name driver target)]
     [(driver/compile-transform driver {:query select, :output-table temp})
      (merge-delete-query driver target temp unique-key)
@@ -284,7 +281,7 @@
       merge-opts
       (let [results (driver/execute-raw-queries!
                      driver conn-spec
-                     (compile-merge driver output-table query (:unique-key merge-opts)))]
+                     (compile-merge driver output-table query merge-opts))]
         {:rows-affected (reduce max 0 (keep :rows-affected results))})
 
       ;; Append.
