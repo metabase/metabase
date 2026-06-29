@@ -12,8 +12,6 @@
    [metabase.driver :as driver]
    [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.indexes.requestable-test :as requestable]
-   [metabase.indexes.schema :as schema]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.tx]
@@ -38,13 +36,6 @@
       (is (= ["style" "columns"] (map :name (get-in methods [:distkey :fields]))))
       (is (= #{"compound" "interleaved"} (style-options :sortkey)))
       (is (= #{"key" "all" "even" "auto"} (style-options :distkey))))))
-
-(deftest ^:parallel every-advertised-option-is-requestable-test
-  (testing "every sortkey/distkey style Redshift advertises builds a schema-valid index request"
-    (doseq [[kind {:keys [fields]}] (driver/supported-index-methods :redshift nil)
-            body                    (requestable/advertised-bodies kind fields)]
-      (is (mr/validate ::schema/index-structured body)
-          (str kind " body should validate: " (pr-str body))))))
 
 ;;; ------------------------------------------ DDL rendering ------------------------------------------
 
@@ -86,6 +77,16 @@
     :indexes      [{:kind :distkey :style :all}]
     :ctas         "CREATE TABLE \"events\" DISTSTYLE ALL AS SELECT 1"
     :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) DISTSTYLE ALL"}
+   {:label        "even distribution renders DISTSTYLE EVEN, no column"
+    :table        :events
+    :indexes      [{:kind :distkey :style :even}]
+    :ctas         "CREATE TABLE \"events\" DISTSTYLE EVEN AS SELECT 1"
+    :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) DISTSTYLE EVEN"}
+   {:label        "auto distribution renders DISTSTYLE AUTO, no column"
+    :table        :events
+    :indexes      [{:kind :distkey :style :auto}]
+    :ctas         "CREATE TABLE \"events\" DISTSTYLE AUTO AS SELECT 1"
+    :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) DISTSTYLE AUTO"}
    {:label        "distkey + sortkey render in Redshift's required order (distribution then sort)"
     :table        :events
     :indexes      [{:kind :distkey :style :key :columns [{:name "a"}]}

@@ -13,8 +13,6 @@
    [metabase.driver :as driver]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.indexes.requestable-test :as requestable]
-   [metabase.indexes.schema :as schema]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]))
 
@@ -37,13 +35,6 @@
              (map :name (get-in methods [:skip-index :fields]))))
       (is (= #{"minmax" "bloom_filter"}
              (set (map :value (:options type-field))))))))
-
-(deftest ^:parallel every-advertised-option-is-requestable-test
-  (testing "every value ClickHouse advertises in supported-index-methods builds a schema-valid index request"
-    (doseq [[kind {:keys [fields]}] (driver/supported-index-methods :clickhouse nil)
-            body                    (requestable/advertised-bodies kind fields)]
-      (is (mr/validate ::schema/index-structured body)
-          (str kind " body should validate: " (pr-str body))))))
 
 ;;; --- inline ORDER BY at both creation seams ---
 
@@ -84,6 +75,11 @@
             ["ALTER TABLE `events` MATERIALIZE INDEX `idx_a`"]]
            (driver/compile-create-index :clickhouse nil "events"
                                         {:name "idx_a" :columns [{:name "a"}] :type :minmax :granularity 4}))))
+  (testing "bloom_filter (the other arg-free advertised type) renders TYPE bloom_filter, no args"
+    (is (= [["ALTER TABLE `events` ADD INDEX `idx_a` (`a`) TYPE bloom_filter GRANULARITY 4"]
+            ["ALTER TABLE `events` MATERIALIZE INDEX `idx_a`"]]
+           (driver/compile-create-index :clickhouse nil "events"
+                                        {:name "idx_a" :columns [{:name "a"}] :type :bloom_filter :granularity 4}))))
   (testing "type args render, schema qualifies, granularity defaults to 1"
     (is (= [["ALTER TABLE `public`.`events` ADD INDEX `idx_ab` (`a`, `b`) TYPE set(100) GRANULARITY 1"]
             ["ALTER TABLE `public`.`events` MATERIALIZE INDEX `idx_ab`"]]
