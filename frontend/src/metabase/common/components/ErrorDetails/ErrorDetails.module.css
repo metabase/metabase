@@ -1,5 +1,5 @@
 .monospace {
-  font-family: monospace;
+  font-family: var(--mb-default-monospace-font-family, monospace);
   white-space: pre-wrap;
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-md);

@@ -14,6 +14,7 @@ import {
   Stack,
   Text,
   TextInput,
+  Title,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
@@ -73,7 +74,7 @@ export function EditorPanel({
     >
       <Box flex={1} style={{ overflow: "auto" }} p="xl">
         <Flex align="center" justify="space-between" mb="xl">
-          <Text fw={700} fz="xl">{t`Edit theme`}</Text>
+          <Title order={2}>{t`Edit theme`}</Title>
           <CopyButton value={themeCodeSnippet}>
             {({ copied, copy }) => (
               <Button

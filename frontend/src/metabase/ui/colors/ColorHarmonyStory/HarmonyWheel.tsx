@@ -313,7 +313,7 @@ function CenterSwatch({ brand }: { brand: string }) {
         fontSize={13}
         fontWeight={600}
         fill={isLightColor(brand) ? "#1c1c1f" : "#ffffff"}
-        fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+        fontFamily="var(--mb-default-monospace-font-family, monospace)"
       >
         {brand}
       </text>

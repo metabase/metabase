@@ -109,46 +109,52 @@ export const getThemeOverrides = (
     xs: rem(11),
     sm: rem(12),
     md: rem(14),
-    lg: rem(17),
-    xl: rem(21),
+    lg: rem(16),
+    xl: rem(999), // Do not use. Use Title component instead.
   },
   lineHeights: {
-    xs: "100%",
-    sm: "115%",
-    md: "122%",
-    lg: "138%",
-    xl: "150%",
+    xs: "1.36", // 15px / 11px
+    sm: "1.33", // 16px / 12px
+    md: "1.14", // 16px / 14px
+    lg: "1.5", // 24px / 16px
+    xl: "999", // Do not use. Use Title component instead.
   },
   headings: {
     sizes: {
       h1: {
-        fontSize: rem(32),
-        lineHeight: rem(38),
+        fontSize: rem(27),
+        lineHeight: rem(32),
+        fontWeight: "600",
       },
       h2: {
-        fontSize: rem(24),
-        lineHeight: rem(28),
+        fontSize: rem(21),
+        lineHeight: rem(27),
+        fontWeight: "600",
       },
       h3: {
-        fontSize: rem(20),
+        fontSize: rem(18),
         lineHeight: rem(24),
+        fontWeight: "600",
       },
       h4: {
-        fontSize: rem(17),
-        lineHeight: rem(20),
+        fontSize: rem(16),
+        lineHeight: rem(22),
+        fontWeight: "600",
       },
       h5: {
         fontSize: rem(14),
-        lineHeight: rem(16),
+        lineHeight: rem(18),
+        fontWeight: "600",
       },
       h6: {
-        fontSize: rem(14),
+        fontSize: rem(12),
         lineHeight: rem(16),
+        fontWeight: "600",
       },
     },
   },
   fontFamily: "var(--mb-default-font-family)",
-  fontFamilyMonospace: "Monaco, monospace",
+  fontFamilyMonospace: '"JetBrains Mono", monospace',
   components: {
     ...accordionOverrides,
     ...actionIconOverrides,

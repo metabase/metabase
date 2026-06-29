@@ -189,7 +189,7 @@ function Option(props: OptionProps) {
 
   return (
     <Combobox.Option px="sm" py="xs" value={value} selected={selected}>
-      <Flex align="center" gap="sm">
+      <Flex align="center" gap="sm" mih={24}>
         {iconUrl ? (
           <img
             src={iconUrl}

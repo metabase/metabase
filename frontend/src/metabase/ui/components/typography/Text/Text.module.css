@@ -3,9 +3,8 @@
   white-space: pre;
 }
 
-.root[data-size="md"],
-.root[data-size="lg"] {
-  line-height: 1.5rem;
+.root[data-size="md"] {
+  line-height: 1.43; /* 20px */
 }
 
 .root {

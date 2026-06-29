@@ -1,6 +1,8 @@
 import type { LoaderProps as MantineLoaderProps } from "@mantine/core";
-import { Loader as MantineLoader, Stack, Text, getSize } from "@mantine/core";
+import { Loader as MantineLoader, Stack, getSize } from "@mantine/core";
 import type React from "react";
+
+import { Title } from "../../typography";
 
 const SIZES: Record<string, string> = {
   xs: "1rem",
@@ -30,9 +32,9 @@ export const Loader = ({ size = "md", label, ...props }: LoaderProps) => {
   return label ? (
     <Stack justify="center" align="center" gap="sm" mt="xl">
       <MantineLoader {...props} size={getSize(SIZES[size] ?? size)} />
-      <Text c="text-tertiary" size="xl">
+      <Title c="text-tertiary" order={2}>
         {label}
-      </Text>
+      </Title>
     </Stack>
   ) : (
     <MantineLoader {...props} size={getSize(SIZES[size] ?? size)} />

@@ -53,7 +53,7 @@ export function DashboardEmptyState({
     <EmptyStateWrapper>
       <>
         <Stack align="center" maw="25rem" gap="xs">
-          <Title ta="center" order={3}>
+          <Title ta="center" order={2}>
             {title}
           </Title>
 
@@ -84,7 +84,7 @@ export function DashboardEmptyStateWithoutAddPrompt({
   const title = getDefaultTitle(isDashboardEmpty);
   return (
     <EmptyStateWrapper>
-      <Title ta="center" order={3}>
+      <Title ta="center" order={2}>
         {title}
       </Title>
     </EmptyStateWrapper>

@@ -23,7 +23,7 @@ export const DatabaseRoutingStepContent = () => {
             {t`Manage data permissions with database routing`}
           </Title>
 
-          <Text c="text-secondary" lh="xl">
+          <Text c="text-secondary">
             {t`Follow the guide in the docs to enable database routing at the data source level, add destination databases and configure the relevant tenant attributes.`}
           </Text>
 

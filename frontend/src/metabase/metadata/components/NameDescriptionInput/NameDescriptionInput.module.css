@@ -23,7 +23,6 @@
 }
 
 .descriptionInput {
-  line-height: var(--mantine-line-height-lg);
   border-start-start-radius: 0;
   border-start-end-radius: 0;
   border-end-start-radius: var(--mantine-radius-md);

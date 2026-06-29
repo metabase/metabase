@@ -8,7 +8,16 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/redux";
-import { Button, Flex, Group, Modal, Radio, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Group,
+  Modal,
+  Radio,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 
 import S from "./EditUserStrategyModal.module.css";
 
@@ -140,17 +149,11 @@ export const EditUserStrategyModal = ({
                   >
                     <Group wrap="nowrap">
                       <div>
-                        <Text
-                          fw={700}
-                          fz="lg"
-                          lh="xl"
-                          mb="xs"
-                          className={S.radioCardTitle}
-                        >
+                        <Title order={4} mb="xs" className={S.radioCardTitle}>
                           {option.title}
-                        </Text>
+                        </Title>
 
-                        <Text c="text-secondary" fz="sm" lh="lg">
+                        <Text c="text-secondary" fz="sm">
                           {option.description}
                         </Text>
                       </div>

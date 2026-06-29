@@ -50,7 +50,7 @@ export const ClickActionControl = ({
       return (
         <Button
           variant="outline"
-          fz="xl"
+          fz="var(--mantine-h4-font-size)" // exception: the <, >, =, ≠, etc. symbols that render here are hardly readable
           size="xs"
           onClick={handleClick}
           className={S.tokenFilterActionButton}
@@ -86,7 +86,6 @@ export const ClickActionControl = ({
         <Tooltip label={action.tooltip}>
           <Button
             variant="outline"
-            fz="xl"
             size="xs"
             className={S.tokenFilterActionButton}
             data-testid={`click-actions-sort-control-${action.name}`}
@@ -102,7 +101,7 @@ export const ClickActionControl = ({
     case "formatting":
       return (
         <Tooltip label={action.tooltip}>
-          <Button variant="outline" fz="xl" size="xs" onClick={handleClick}>
+          <Button variant="outline" size="xs" onClick={handleClick}>
             {typeof action.icon === "string" && (
               <Icon size={16} name={action.icon} />
             )}

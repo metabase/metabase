@@ -13,7 +13,6 @@ const TitleAndDescriptionInner = ({
     <Box {...boxProps}>
       <Title
         role="heading"
-        size="xl"
         component="span"
         lh="normal"
         order={2}

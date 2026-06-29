@@ -140,12 +140,11 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
   <header>
     <h2>
       <div>
-        <div
-          color="text-primary"
-          data-size="xl"
+        <h2
+          data-order="2"
         >
           Curated semantic layer
-        </div>
+        </h2>
         <div
           color="text-primary"
           data-size="sm"

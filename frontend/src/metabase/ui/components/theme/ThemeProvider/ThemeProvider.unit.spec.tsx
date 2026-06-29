@@ -17,12 +17,12 @@ describe.skip("ThemeProvider", () => {
   it("applies the metabase theme overrides", () => {
     render(
       <ThemeProvider>
-        <Text size="xl">Text</Text>
+        <Text size="lg">Text</Text>
       </ThemeProvider>,
     );
 
     const textCss = window.getComputedStyle(screen.getByText("Text"));
-    expect(textCss.getPropertyValue("font-size")).toBe(OVERRIDES.fontSizes!.xl);
+    expect(textCss.getPropertyValue("font-size")).toBe(OVERRIDES.fontSizes!.lg);
 
     const defaultColor = OVERRIDES.colors?.["text-primary"]?.[0];
     expect(textCss.getPropertyValue("color")).toBe(
@@ -39,14 +39,14 @@ describe.skip("ThemeProvider", () => {
 
     render(
       <ThemeProvider theme={theme}>
-        <Text size="xl">Text</Text>
+        <Text size="lg">Text</Text>
       </ThemeProvider>,
     );
 
     const textCss = window.getComputedStyle(screen.getByText("Text"));
 
     // Metabase theme overrides should still be preserved.
-    expect(textCss.getPropertyValue("font-size")).toBe(OVERRIDES.fontSizes!.xl);
+    expect(textCss.getPropertyValue("font-size")).toBe(OVERRIDES.fontSizes!.lg);
 
     // Theme overrides from the user should be applied.
     expect(textCss.getPropertyValue("color")).toBe("rgb(12, 34, 56)");

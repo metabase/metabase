@@ -1,7 +1,7 @@
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { getQuestionTitle } from "embedding-sdk-bundle/lib/sdk-question/get-question-title";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Text } from "metabase/ui";
+import { Title } from "metabase/ui";
 
 export function QuestionTitle() {
   const { question } = useSdkQuestionContext();
@@ -12,9 +12,5 @@ export function QuestionTitle() {
     return null;
   }
 
-  return (
-    <Text fw={700} c="text-primary" fz="xl">
-      {titleText}
-    </Text>
-  );
+  return <Title order={2}>{titleText}</Title>;
 }

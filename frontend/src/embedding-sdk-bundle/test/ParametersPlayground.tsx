@@ -193,7 +193,7 @@ export const ParametersPlayground = ({
             style={{
               maxHeight: 260,
               overflowY: "auto",
-              fontFamily: "monospace",
+              fontFamily: "var(--mb-default-monospace-font-family, monospace)",
               fontSize: 12,
             }}
           >

@@ -1,4 +1,4 @@
-import { Card, Loader, Stack, Text } from "metabase/ui";
+import { Card, Loader, Stack, Text, Title } from "metabase/ui";
 import type { InspectorCard } from "metabase-types/api";
 
 import { useLensCardLoader } from "../../../../hooks";
@@ -27,9 +27,7 @@ export const ScalarCard = ({ card }: ScalarCardProps) => {
         {isLoading ? (
           <Loader size="sm" />
         ) : (
-          <Text size="xl" fw={700}>
-            {value?.toString() ?? "-"}
-          </Text>
+          <Title order={2}>{value?.toString() ?? "-"}</Title>
         )}
 
         <CardAlerts alerts={alerts} fullWidth />

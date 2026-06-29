@@ -1,6 +1,6 @@
 import { getQuestionTitle } from "embedding-sdk-bundle/lib/sdk-question/get-question-title";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Stack, Text } from "metabase/ui";
+import { Stack, Title } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../SdkQuestion/context";
 
@@ -35,13 +35,9 @@ export const DefaultViewTitle = ({ title }: SdkQuestionDefaultViewProps) => {
       <DefaultViewTitleText
         title={
           titleText && (
-            <Text
-              fw={700}
-              fz="xl"
-              style={{ color: "var(--mb-color-text-primary)" }}
-            >
+            <Title c="text-primary" order={2}>
               {titleText}
-            </Text>
+            </Title>
           )
         }
       />
@@ -54,13 +50,9 @@ export const DefaultViewTitle = ({ title }: SdkQuestionDefaultViewProps) => {
     return (
       <DefaultViewTitleText
         title={
-          <Text
-            fw={700}
-            fz="xl"
-            style={{ color: "var(--mb-color-text-primary)" }}
-          >
+          <Title c="text-primary" order={2}>
             {titleText}
-          </Text>
+          </Title>
         }
       />
     );

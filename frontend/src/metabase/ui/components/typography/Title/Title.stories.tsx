@@ -1,4 +1,6 @@
-import { Group, Stack, Title, type TitleProps } from "metabase/ui";
+import { Fragment } from "react";
+
+import { Grid, Text, Title, type TitleProps } from "metabase/ui";
 
 const args = {
   align: "left",
@@ -11,7 +13,7 @@ const argTypes = {
     control: { type: "inline-radio" },
   },
   order: {
-    options: [1, 2, 3, 4],
+    options: [1, 2, 3, 4, 5, 6] satisfies (1 | 2 | 3 | 4 | 5 | 6)[],
     control: { type: "inline-radio" },
   },
 };
@@ -19,47 +21,26 @@ const argTypes = {
 const DefaultTemplate = (args: TitleProps) => <Title {...args}>Header</Title>;
 
 const SizeTemplate = (args: TitleProps) => (
-  <Group align="top">
-    <Stack>
-      <Title {...args} order={1}>
-        Get up and running in no time
-      </Title>
-      <Title {...args} order={2}>
-        Get up and running in no time
-      </Title>
-      <Title {...args} order={3}>
-        Get up and running in no time
-      </Title>
-      <Title {...args} order={4}>
-        Get up and running in no time
-      </Title>
-      <Title {...args} order={5}>
-        Get up and running in no time
-      </Title>
-    </Stack>
-    <Stack maw={400}>
-      <Title {...args} order={1}>
-        Segment access and unlock multi-tenant analytics via row-level data
-        sandboxes
-      </Title>
-      <Title {...args} order={2}>
-        Segment access and unlock multi-tenant analytics via row-level data
-        sandboxes
-      </Title>
-      <Title {...args} order={3}>
-        Segment access and unlock multi-tenant analytics via row-level data
-        sandboxes
-      </Title>
-      <Title {...args} order={4}>
-        Segment access and unlock multi-tenant analytics via row-level data
-        sandboxes
-      </Title>
-      <Title {...args} order={5}>
-        Segment access and unlock multi-tenant analytics via row-level data
-        sandboxes
-      </Title>
-    </Stack>
-  </Group>
+  <Grid align="center" maw="64rem">
+    {argTypes.order.options.map((order) => (
+      <Fragment key={order}>
+        <Grid.Col span={1}>
+          <Text fw="bold">{order}</Text>
+        </Grid.Col>
+        <Grid.Col span={5}>
+          <Title {...args} order={order}>
+            Get up and running in no time
+          </Title>
+        </Grid.Col>
+        <Grid.Col span={6}>
+          <Title {...args} order={order}>
+            Segment access and unlock multi-tenant analytics via row-level data
+            sandboxes
+          </Title>
+        </Grid.Col>
+      </Fragment>
+    ))}
+  </Grid>
 );
 
 export default {

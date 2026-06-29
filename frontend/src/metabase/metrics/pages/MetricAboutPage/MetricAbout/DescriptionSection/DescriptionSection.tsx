@@ -13,7 +13,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
-import { Box, Stack, Text, Tooltip } from "metabase/ui";
+import { Box, Stack, Text, Title, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { Card as CardApiType, CardType } from "metabase-types/api";
 
@@ -77,7 +77,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
       align="stretch"
       data-testid="metric-description-sidebar"
     >
-      <Text fz="lg" fw={700}>{t`About`}</Text>
+      <Title order={4}>{t`About`}</Title>
       <Tooltip label={<DateTime value={card.updated_at} />} offset={8}>
         <Text
           size="sm"

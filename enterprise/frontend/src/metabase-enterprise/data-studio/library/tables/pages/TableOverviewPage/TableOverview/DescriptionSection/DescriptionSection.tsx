@@ -22,6 +22,7 @@ import {
   Icon,
   Stack,
   Text,
+  Title,
   rem,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -285,9 +286,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               to={Urls.dataStudioTableFields(table.id)}
               className={S.metricLink}
             >
-              <Text size="xl" fw={600}>
-                {table.fields?.length ?? 0}
-              </Text>
+              <Title order={2}>{table.fields?.length ?? 0}</Title>
             </Link>
           </Flex>
         </Card.Section>
@@ -298,9 +297,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               <Text size="md" c="text-secondary">
                 {t`Rows`}
               </Text>
-              <Text size="xl" fw={600}>
-                {formatNumber(table.estimated_row_count)}
-              </Text>
+              <Title order={2}>{formatNumber(table.estimated_row_count)}</Title>
             </Flex>
           </Card.Section>
         )}
@@ -317,14 +314,10 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
                   to={Urls.dataStudioTableDependencies(table.id)}
                   className={S.metricLink}
                 >
-                  <Text size="xl" fw={600}>
-                    {dependentsCount}
-                  </Text>
+                  <Title order={2}>{dependentsCount}</Title>
                 </Link>
               ) : (
-                <Text size="xl" fw={600}>
-                  {dependentsCount}
-                </Text>
+                <Title order={2}>{dependentsCount}</Title>
               )}
             </Flex>
           </Card.Section>
