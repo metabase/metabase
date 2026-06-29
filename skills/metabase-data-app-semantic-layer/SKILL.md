@@ -257,25 +257,25 @@ Measures must come from tables in the metric's `mappedTableIds`. Fields, segment
 
 ## Interactive Metabase Views
 
-Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass the returned query to the SDK question component with the `query` prop.
+Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass it through the SDK question component's `card` prop.
 
 `useMetabaseQueryObject` supports generated table objects and generated metric objects. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization.
 
 The basic prop contract is:
 
 - Saved question: `<StaticQuestion questionId={schema.questions.someQuestion.id} />`
-- Generated table or metric query: `<StaticQuestion query={trendQuery} />`
-- Full interactive question: `<InteractiveQuestion query={trendQuery} />`
+- Generated table or metric query: `<StaticQuestion card={{ query: trendQuery }} />`
+- Full interactive question: `<InteractiveQuestion card={{ query: trendQuery }} />`
 
 When you need the set of SDK-supported question displays, do not copy a local list. In generated apps, search `node_modules/@metabase/embedding-sdk-react/dist/index.d.ts` for the exact declaration `declare const cardDisplayTypes: readonly [...]` and use that tuple as the source of truth. Do not read the whole declaration file into context.
 
-When a Metabase-rendered question needs an initial chart type or visualization settings, pass a typed `card` object instead of a bare `query` prop. Search `node_modules/@metabase/embedding-sdk-react/dist/index.d.ts` for `export declare type MetabaseCard` and use that TypeScript type as the source of truth for legal `visualization` and `visualizationSettings` combinations. Build the query with `useMetabaseQueryObject`; do not call `createMetabaseQuery` directly, cast through `any`, or hardcode settings from memory.
+Always pass SDK-rendered ad hoc questions with a `card` object. Start with `card={{ query }}` when the user has not asked for a specific chart type and Metabase defaults can infer a reasonable display from the query. Use `card={{ query, visualization }}` when the user request or design calls for a specific chart type, such as a pie chart for a distribution, but does not ask for setting-level customization. Add `visualizationSettings` only when the user explicitly asks for a setting-level presentation change, such as hiding or renaming an axis label, showing value labels, stacking bars, adding a goal line, ordering table columns, showing pie totals/labels, or controlling series/slice order. Search `node_modules/@metabase/embedding-sdk-react/dist/index.d.ts` for `export declare type MetabaseCard` and use that TypeScript type as the source of truth for legal `visualization` and `visualizationSettings` combinations. Build the query with `useMetabaseQueryObject`; do not call `createMetabaseQuery` directly, cast through `any`, or hardcode settings from memory.
 
 For lightweight descriptions of the exposed settings and when to use them, read [references/visualization-settings.md](references/visualization-settings.md). Treat that file as guidance only; the installed SDK declaration decides what is legal.
 
-Before writing a `card`, check `node_modules/@metabase/embedding-sdk-react/dist/data-app.d.ts` for the `useMetabaseQueryObject` return type. If it returns a raw `DatasetQuery`, use that value in `card.query` and type the object with `satisfies MetabaseCard`. If the installed SDK instead returns a wrapper result or TypeScript reports duplicate opaque `DatasetQuery` symbols, do not force a cast; use the bare `query` prop for that package version and note that the SDK package must be updated before `card` can typecheck cleanly.
+Before writing a `card`, check `node_modules/@metabase/embedding-sdk-react/dist/data-app.d.ts` for the `useMetabaseQueryObject` return type. If it returns a raw `DatasetQuery`, use that value in `card.query`; for configured cards, type the object with `satisfies MetabaseCard`. If the installed SDK instead returns a wrapper result or TypeScript reports duplicate opaque `DatasetQuery` symbols, do not force a cast; update the SDK package before using `card`.
 
-Do not invent alternate prop names for generated queries or visualization settings. If the SDK type says a prop does not exist, believe it and use the documented `query` or `card` prop shape.
+Do not invent alternate prop names for generated queries or visualization settings. If the SDK type says a prop does not exist, believe it and use the documented `questionId` or `card` prop shape.
 
 When `useMetabaseQuery` is needed, map typed rows into an explicit local view model using named properties before rendering:
 
@@ -341,7 +341,7 @@ const trendQuery = useMetabaseQueryObject({
 });
 
 return (
-  <InteractiveQuestion query={trendQuery}>
+  <InteractiveQuestion card={{ query: trendQuery }}>
     <InteractiveQuestion.QuestionVisualization height="500px" />
   </InteractiveQuestion>
 );
@@ -381,7 +381,7 @@ const trendQuery = useMetabaseQueryObject({
   breakouts: [breakout(eventsTable.fields.occurredAt, { bucket: "month" })],
 });
 
-return <InteractiveQuestion query={trendQuery} height="500px" />;
+return <InteractiveQuestion card={{ query: trendQuery }} height="500px" />;
 ```
 
 Static question:
@@ -393,7 +393,7 @@ const trendQuery = useMetabaseQueryObject({
   breakouts: [breakout(eventsTable.fields.occurredAt, { bucket: "month" })],
 });
 
-return <StaticQuestion query={trendQuery} height="500px" />;
+return <StaticQuestion card={{ query: trendQuery }} height="500px" />;
 ```
 
 Metric-backed SDK question:
@@ -413,7 +413,7 @@ const metricTrendQuery = useMetabaseQueryObject({
 });
 
 return (
-  <InteractiveQuestion query={metricTrendQuery}>
+  <InteractiveQuestion card={{ query: metricTrendQuery }}>
     <InteractiveQuestion.QuestionVisualization height="500px" />
   </InteractiveQuestion>
 );

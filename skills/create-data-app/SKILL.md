@@ -288,7 +288,7 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 |---|---|
 | `React` (from `"react"`) | Hooks (`useState`, `useEffect`, etc.), JSX runtime. Externalized to the host's React via `react: "React"`. |
 | `StaticQuestion` | Non-drillable question. Props include `questionId`, `card`, `withChartTypeSelector`, `height`, `width`. |
-| `InteractiveQuestion` | Drillable question. Same props as StaticQuestion plus drill behaviors. Prefer `card` over a bare `query` prop when the app needs an initial chart type or `visualizationSettings`; see the `metabase-data-app-semantic-layer` skill for the type guardrails. |
+| `InteractiveQuestion` | Drillable question. Same props as StaticQuestion plus drill behaviors. Use `card={{ query }}` for ad hoc SDK-rendered questions. Add `visualization` when the request calls for a specific chart type, and add `visualizationSettings` only for explicit setting-level presentation changes; see the `metabase-data-app-semantic-layer` skill for the type guardrails. |
 | `MetabaseCard` | Type-only import from `@metabase/embedding-sdk-react` for ad hoc SDK-rendered cards with `visualization` or `visualizationSettings`; the full contract lives in the `metabase-data-app-semantic-layer` skill. |
 | `CreateQuestion`, `MetabotQuestion` | More question variants. |
 | `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
