@@ -124,25 +124,21 @@ function FormFieldEditor({
             )}
           </Header>
           {isEditable && fieldSettings && (
-            <>
-              <Subtitle>{t`Field type`}</Subtitle>
-              <Radio.Group
-                aria-label={t`Field type`}
-                mt="sm"
-                value={fieldSettings.fieldType}
-                onChange={(value) => handleChangeFieldType(value as FieldType)}
-              >
-                <Group gap="lg">
-                  {fieldTypeOptions.map((option) => (
-                    <Radio
-                      key={option.value}
-                      value={option.value}
-                      label={option.name}
-                    />
-                  ))}
-                </Group>
-              </Radio.Group>
-            </>
+            <Radio.Group
+              label={<Subtitle>{t`Field type`}</Subtitle>}
+              value={fieldSettings.fieldType}
+              onChange={(value) => handleChangeFieldType(value as FieldType)}
+            >
+              <Group gap="lg">
+                {fieldTypeOptions.map((option) => (
+                  <Radio
+                    key={option.value}
+                    value={option.value}
+                    label={option.name}
+                  />
+                ))}
+              </Group>
+            </Radio.Group>
           )}
           <Subtitle>{t`Appearance`}</Subtitle>
         </Column>
