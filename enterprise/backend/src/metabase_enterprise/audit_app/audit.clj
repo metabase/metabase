@@ -408,22 +408,25 @@
   content if it is available."
   :feature :none
   []
-  (u/prog1 (maybe-install-audit-db!)
-    (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-      ;; serialize the load+adjust+sync+reconcile across nodes so a rolling upgrade can't run a sync against a
-      ;; half-adjusted schema (`with-duplicate-ops-prevented` is per-process only). The sync runs synchronously inside
-      ;; the lock for this reason. If another node already holds the lock it is doing this same work, so we skip
-      ;; rather than fail the boot.
-      (try
-        (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
+  ;; serialize install+adjust+load+sync+reconcile across nodes so a rolling upgrade can't run an adjust or sync
+  ;; against a half-adjusted schema (`with-duplicate-ops-prevented` is per-process only). The install runs inside the
+  ;; lock too, so a node that acquires it after the installer committed sees the DB already exists and falls through
+  ;; to a no-op rather than colliding on the audit DB primary key. The sync runs synchronously inside the lock so it
+  ;; stays in the lock's transaction. If another node already holds the lock it is doing this same work, so we skip
+  ;; rather than fail the boot.
+  (try
+    (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
+      (u/prog1 (maybe-install-audit-db!)
+        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
           ((sync-util/with-duplicate-ops-prevented
             :sync-database audit-db
             (fn []
               (maybe-sync-audit-db! audit-db (maybe-load-analytics-content! audit-db))
               ;; GHY-3974 Mode A: runs every boot so already-corrupted instances (whose checksum already
               ;; matches, so the load/sync above are skipped) still self-heal.
-              (reconcile-audit-db-duplicates! (:id audit-db))))))
-        (catch Throwable e
-          (if (audit-lock-contention? e)
-            (log/info "Another node holds the audit DB lock; skipping audit content load on this node.")
-            (throw e)))))))
+              (reconcile-audit-db-duplicates! (:id audit-db))))))))
+    (catch Throwable e
+      (if (audit-lock-contention? e)
+        (u/prog1 ::skipped-locked
+          (log/info "Another node holds the audit DB lock; skipping audit DB install/load on this node."))
+        (throw e)))))
