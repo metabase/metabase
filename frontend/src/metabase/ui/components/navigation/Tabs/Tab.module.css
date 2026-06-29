@@ -35,7 +35,7 @@
   }
 
   &:disabled {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
     opacity: 1;
   }
 

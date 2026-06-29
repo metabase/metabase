@@ -25,6 +25,6 @@ export const TokenFieldAddon = styled.a<{
   color: ${({ isValid }) => (isValid ? "" : `var(--mb-color-error)`)};
 
   &:hover {
-    color: var(--mb-color-text-hover);
+    color: var(--mb-color-text-brand-hover);
   }
 `;

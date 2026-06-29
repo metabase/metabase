@@ -34,7 +34,7 @@ const defaultOption = {
   label: "Missing",
   value: "missing" as DataPermissionValue,
   icon: "empty" as IconName,
-  iconColor: "text-tertiary" as ColorName,
+  iconColor: "text-disabled" as ColorName,
 };
 
 export const PermissionsSelect = memo(function PermissionsSelect({
@@ -83,7 +83,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           {...selectedOption}
           isHighlighted={isHighlighted ?? false}
           hint={disabledTooltip}
-          iconColor="text-tertiary"
+          iconColor="text-disabled"
         />
       ) : (
         <SelectedOption {...selectedOption} />
@@ -99,7 +99,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
         style={{ visibility: isDisabled ? "hidden" : "visible" }}
         name="chevrondown"
         size={16}
-        c="text-tertiary"
+        c="text-disabled"
       />
     </PermissionsSelectRoot>
   );

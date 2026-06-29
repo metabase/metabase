@@ -86,7 +86,7 @@ export function InfoPanelField({
           miw={0}
           maw="50%"
         >
-          <Text c="text-tertiary" lh={1} fz="1rem">
+          <Text c="text-disabled" lh={1} fz="1rem">
             →
           </Text>
           <UnstyledButton

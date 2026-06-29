@@ -110,7 +110,7 @@ const FieldItemBase = ({
       >
         <Group
           align="center"
-          c="text-tertiary"
+          c="text-disabled"
           flex="0 0 auto"
           gap={0}
           maw="100%"
