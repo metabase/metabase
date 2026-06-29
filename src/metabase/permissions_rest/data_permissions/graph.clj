@@ -229,18 +229,29 @@
   [{:keys [group-id db-id]}]
   [group-id db-id])
 
+(defn- string-interner
+  "Returns a function that deduplicates equal strings to a single canonical instance. Each `data_permissions` row
+  arrives with fresh `String`s from JDBC, and any string we keep as a graph key (currently schema names) would
+  otherwise be retained once per occurrence -- e.g. a separate copy of `\"PUBLIC\"` for every `(group, db, perm-type)`.
+  The cache is bounded by the number of distinct strings and is discarded once the graph is built."
+  []
+  (let [cache (java.util.HashMap.)]
+    (fn [s]
+      (or (.get cache s)
+          (do (.put cache s s) s)))))
+
 (defn- row->perm-path
   "The path of a `data_permissions` row's value within its (group, db) perm-map: either a db-level `[perm-type]` or a
-  table-level `[perm-type schema table-id]`."
-  [{:keys [schema table-id] perm-type :type}]
+  table-level `[perm-type schema table-id]`. `intern-string` deduplicates the schema-name key."
+  [intern-string {:keys [schema table-id] perm-type :type}]
   (if table-id
-    [perm-type (or schema "") table-id]
+    [perm-type (intern-string (or schema "")) table-id]
     [perm-type]))
 
 (defn- row->perm-map
   "Reducing function that accumulates a single `data_permissions` row's value into a (group, db) `perm-map`."
-  [perm-map row]
-  (assoc-in perm-map (row->perm-path row) (:value row)))
+  [perm-map intern-string row]
+  (assoc-in perm-map (row->perm-path intern-string row) (:value row)))
 
 (defn- graph-xform
   "Stateful transducer over `(group_id, db_id)`-ordered `data_permissions` rows. It accumulates each (group, db)'s raw
@@ -253,28 +264,29 @@
   can be on the order of a gigabyte."
   [finalize]
   (fn [rf]
-    (let [current-path (volatile! ::none)
-          perms        (volatile! nil)
-          flush!       (fn [result]
-                         (let [path @current-path]
-                           (if (identical? path ::none)
-                             result
-                             (let [perm-map (finalize @perms)]
-                               (if (empty? perm-map)
-                                 result
-                                 (rf result [path perm-map]))))))]
+    (let [current-path  (volatile! ::none)
+          perms         (volatile! nil)
+          intern-string (string-interner)
+          flush!        (fn [result]
+                          (let [path @current-path]
+                            (if (identical? path ::none)
+                              result
+                              (let [perm-map (finalize @perms)]
+                                (if (empty? perm-map)
+                                  result
+                                  (rf result [path perm-map]))))))]
       (fn
         ([] (rf))
         ([result] (rf (unreduced (flush! result))))
         ([result row]
          (let [path (row->graph-path row)]
            (if (= @current-path path)
-             (do (vswap! perms row->perm-map row) result)
+             (do (vswap! perms row->perm-map intern-string row) result)
              (let [result (flush! result)]
                (if (reduced? result)
                  result
                  (do (vreset! current-path path)
-                     (vreset! perms (row->perm-map {} row))
+                     (vreset! perms (row->perm-map {} intern-string row))
                      result))))))))))
 
 (defn- reduce-into-graph
