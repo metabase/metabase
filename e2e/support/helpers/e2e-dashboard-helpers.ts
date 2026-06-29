@@ -109,8 +109,6 @@ export function saveDashboard({
   cy.intercept("PUT", "/api/dashboard/*").as(
     "saveDashboard-saveDashboardCards",
   );
-  // Saving no longer re-fetches the dashboard with a GET: the save response is
-  // reused to rebuild state. We still refresh the query metadata.
   cy.intercept("GET", "/api/dashboard/*/query_metadata*").as(
     "saveDashboard-getDashboardMetadata",
   );

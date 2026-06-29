@@ -665,8 +665,7 @@ describe("issue 21665", () => {
 
     H.visitDashboard("@dashboardId");
 
-    // Saving the dashboard no longer triggers an extra reload (the save response
-    // is reused), so it loads twice: once on initial visit, once on re-visit.
+    // The dashboard loads twice: once on the initial visit, once on re-visit.
     cy.get("@dashboardLoaded").should("have.callCount", 2);
     cy.findByTestId("dashcard")
       .findByText(
