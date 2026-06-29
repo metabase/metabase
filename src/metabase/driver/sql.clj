@@ -255,8 +255,24 @@
   (sql.qp/format-honeysql driver
                           {:insert-into [target {:select [:*] :from [temp]}]}))
 
+(defmulti compile-merge
+  "Raw queries that upsert the rows produced by `select` (a compiled `{:query sql :params}` map) into
+   `target`, keyed on `unique-key` (a vector of physical column names). Returns a vector of
+   `[sql params]` queries meant to run as one transaction."
+  {:arglists '([driver target select unique-key])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod compile-merge :sql
+  [driver target select unique-key]
+  (let [temp (driver.u/temp-table-name driver target)]
+    [(driver/compile-transform driver {:query select, :output-table temp})
+     (merge-delete-query driver target temp unique-key)
+     (merge-insert-query driver target temp)
+     (driver/compile-drop-table driver temp)]))
+
 (mu/defmethod driver/run-transform! [:sql :table-incremental] :- ::driver/run-transform-result
-  [driver {:keys [conn-spec database output-table] :as transform-details} {merge-opts :merge}]
+  [driver {:keys [conn-spec database output-table query] :as transform-details} {merge-opts :merge}]
   (let [table-exists? (driver/table-exists? driver database {:schema (namespace output-table)
                                                              :name   (name output-table)})]
     (cond
@@ -264,19 +280,12 @@
       (not table-exists?)
       (last (driver/execute-raw-queries! driver conn-spec [(driver/compile-transform driver transform-details)]))
 
-      ;; Key-based upsert/restate: stage the source into a temp table, delete matching keys from the
-      ;; target, then insert the staged rows. The whole batch runs in one transaction (see
-      ;; `execute-raw-queries! :sql-jdbc`), so the target is never left half-updated.
+      ;; Key-based upsert
       merge-opts
-      (let [temp    (driver.u/temp-table-name driver output-table)
-            results (driver/execute-raw-queries!
+      (let [results (driver/execute-raw-queries!
                      driver conn-spec
-                     [(driver/compile-transform driver (assoc transform-details :output-table temp))
-                      (merge-delete-query driver output-table temp (:unique-key merge-opts))
-                      (merge-insert-query driver output-table temp)
-                      (driver/compile-drop-table driver temp)])]
-        ;; rows-affected = the INSERT (index 2), not the trailing DROP.
-        (nth results 2))
+                     (compile-merge driver output-table query (:unique-key merge-opts)))]
+        {:rows-affected (reduce max 0 (keep :rows-affected results))})
 
       ;; Append.
       :else
