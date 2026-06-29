@@ -8,7 +8,8 @@
 
 (deftest ^:parallel schedule-map->cron-string-test
   (testing "basic schedule"
-    (is (= "0 0 * * * ? *"
+    ;; TEMP: intentional failure to exercise ci-conductor reporting (revert me)
+    (is (= "0 0 BROKEN * * ? *"
            (u.cron/schedule-map->cron-string
             {:schedule_type  "hourly"})))
     (is (= "0 0 0 * * ? *"
@@ -60,10 +61,11 @@
              :schedule_type  "weekly"})))))
 
 (deftest cron-string->schedule-map-test
+  ;; TEMP: intentional failure to exercise ci-conductor reporting (revert me)
   (is (= {:schedule_day    nil
           :schedule_frame  nil
           :schedule_hour   nil
-          :schedule_minute 0
+          :schedule_minute 99
           :schedule_type   "hourly"}
          (u.cron/cron-string->schedule-map "0 0 * * * ? *")))
   (is (= {:schedule_day    nil
