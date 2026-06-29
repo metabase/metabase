@@ -114,7 +114,7 @@ export function MetricExpressionPill({
         >
           <Flex align="center" gap="xs">
             <SourceColorIndicator
-              colors={isDisabled ? ["var(--mb-color-icon-disabled)"] : colors}
+              colors={isDisabled ? ["var(--mb-color-icon-secondary)"] : colors}
             />
             {isRenaming ? (
               <EditableText
