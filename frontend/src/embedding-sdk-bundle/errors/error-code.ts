@@ -1,18 +1,4 @@
-export type MetabaseErrorCode =
-  | "EXISTING_USER_SESSION_FAILED"
-  | "SDK_VERSION_INCOMPATIBLE"
-  | "INVALID_SESSION_OBJECT"
-  | "INVALID_SESSION_SCHEMA"
-  | "BACKEND_ERROR_STATUS"
-  | "CUSTOM_FETCH_ERROR"
-  | "DEFAULT_ENDPOINT_ERROR"
-  | "CANNOT_FETCH_JWT_TOKEN"
-  | "SAML_POPUP_BLOCKED"
-  | "SAML_POPUP_CLOSED"
-  | "SAML_TIMEOUT"
-  | "USER_FETCH_FAILED"
-  | "CANNOT_CONNECT_TO_INSTANCE"
-  | "INVALID_AUTH_METHOD"
-  | "AUTH_TIMEOUT"
-  | "EMBED_TAG_ERROR"
-  | "SSO_NOT_ALLOWED";
+// Error code type moved to embedding-sdk-shared so non-app consumers can import
+// it without crossing module boundaries. Re-exported here so existing
+// `embedding-sdk-bundle/errors/error-code` imports keep working.
+export type * from "embedding-sdk-shared/errors/error-code";
