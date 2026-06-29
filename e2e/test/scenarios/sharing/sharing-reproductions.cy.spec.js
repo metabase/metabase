@@ -1057,11 +1057,13 @@ describe("issue 49525", { tags: "@external" }, () => {
         url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.generatedFileName}`,
         encoding: "utf8",
       }).then((response) => {
-        const csvContent = response.body;
-        const rows = csvContent.split("\n");
+        // CSV exports begin with a UTF-8 BOM; strip it, and tolerate either
+        // \n or \r\n line endings, before asserting on the header row.
+        const csvContent = response.body.replace(/^\uFEFF/, "");
+        const rows = csvContent.split(/\r?\n/);
         const headers = rows[0];
         expect(headers).to.equal(
-          "Created At: Year,Doohickey,Gadget,Gizmo,Widget,Row totals\r",
+          "Created At: Year,Doohickey,Gadget,Gizmo,Widget,Row totals",
         );
       });
     });

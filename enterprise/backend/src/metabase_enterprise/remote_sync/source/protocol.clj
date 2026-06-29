@@ -68,7 +68,13 @@
 
 (defprotocol CommitBuilder
   "A single commit being built incrementally — stage files one at a time, then finish (or abort). Lets the
-  caller stream files into a commit without holding them all at once."
+  caller stream files into a commit without holding them all at once.
+
+  Lifecycle / resources: a builder holds native resources open (for git, a JGit `ObjectInserter`,
+  `ObjectReader`, and `RevWalk`) from `open-commit` until they're released. The caller MUST eventually call
+  `finish-commit!` (on success) or `abort-commit!` (on failure) to release them — including when staging
+  throws, so callers should wrap staging in `try` and `abort-commit!` in the `catch`/`finally`. A builder
+  left open leaks those resources; the lifecycle is the caller's responsibility, not the builder's."
   (stage-upsert! [commit file-spec]
     "Stage one file (a `{:path :content}` map) into the commit. Returns nil.")
   (stage-delete! [commit path]

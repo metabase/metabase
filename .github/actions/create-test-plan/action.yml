@@ -1,0 +1,66 @@
+name: Create test plan
+description: Cruise the frontend import graph and compute the affected-tests plan.
+
+inputs:
+  changed-files:
+    description: All changed files (CSV).
+    required: true
+  fe-changed-files:
+    description: Changed frontend_sources files (CSV).
+    required: true
+  be-changed-files:
+    description: Changed backend_sources files (CSV).
+    required: true
+  unit-infra-touched:
+    description: Whether FE unit infra changed.
+    required: true
+  loki-infra-touched:
+    description: Whether Loki infra changed.
+    required: true
+  shared-sources-touched:
+    description: Whether cljc/cljs/package.json changed.
+    required: true
+
+outputs:
+  stats:
+    description: FE Affected Tests stats row (JSON).
+    value: ${{ steps.compute.outputs.stats }}
+  fe_unit_specs_to_run:
+    description: Unit specs to run (JSON array).
+    value: ${{ steps.compute.outputs.fe_unit_specs_to_run }}
+  loki_stories_to_run:
+    description: Loki stories to run (JSON array).
+    value: ${{ steps.compute.outputs.loki_stories_to_run }}
+  e2e_specs_to_run:
+    description: E2E specs to run (JSON array).
+    value: ${{ steps.compute.outputs.e2e_specs_to_run }}
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare Node + Bun
+      uses: ./.github/actions/prepare-node-bun
+    - name: Create test plan
+      id: compute
+      shell: bash
+      env:
+        CHANGED_FILES: ${{ inputs.changed-files }}
+        FE_CHANGED_FILES: ${{ inputs.fe-changed-files }}
+        BE_CHANGED_FILES: ${{ inputs.be-changed-files }}
+        UNIT_INFRA_TOUCHED: ${{ inputs.unit-infra-touched }}
+        LOKI_INFRA_TOUCHED: ${{ inputs.loki-infra-touched }}
+        SHARED_SOURCES_TOUCHED: ${{ inputs.shared-sources-touched }}
+        DEP_GRAPH_JSON: dependency-graph.json
+      run: |
+        # on failure create-test-plan falls back to the rules graph.
+        bun install --frozen-lockfile || true
+        bunx depcruise frontend/src enterprise/frontend/src \
+          --config .dependency-cruiser.cjs \
+          --output-type json > dependency-graph.json || true
+
+        OUTPUT=$(bun .github/scripts/create-test-plan.ts)
+        echo "$OUTPUT" | jq '.stats'
+        echo "stats=$(echo "$OUTPUT" | jq -c '.stats')" >> "$GITHUB_OUTPUT"
+        echo "fe_unit_specs_to_run=$(echo "$OUTPUT" | jq -c '.fe_unit_specs_to_run')" >> "$GITHUB_OUTPUT"
+        echo "loki_stories_to_run=$(echo "$OUTPUT" | jq -c '.loki_stories_to_run')" >> "$GITHUB_OUTPUT"
+        echo "e2e_specs_to_run=$(echo "$OUTPUT" | jq -c '.e2e_specs_to_run')" >> "$GITHUB_OUTPUT"

@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
@@ -230,7 +229,9 @@
                             :model_id     (:id instance)
                             :path         (or repo-path (:path fspec))
                             :content_hash (source/content-hash (:content fspec))})
-                         (catch Exception _ nil)))]
+                         (catch Exception e
+                           (log/warnf e "Skipping %s %s: failed to serialize for content hash" model-type (:id instance))
+                           nil)))]
     ;; One transduction over the model groups: stream each model's extract-query through `serialize` via an
     ;; eduction — extract-one runs while the ResultSet is open, with no intermediate per-model sequence.
     (into []
@@ -249,7 +250,7 @@
   "Folds `metadata` ({:model_type :model_id :path :content_hash}) into matching `rows` as :file_path +
   :content_hash; rows with no metadata are unchanged."
   [rows metadata]
-  (let [by-key (m/index-by (juxt :model_type :model_id) metadata)]
+  (let [by-key (u/index-by (juxt :model_type :model_id) metadata)]
     (mapv (fn [row]
             (if-let [m (by-key [(:model_type row) (:model_id row)])]
               (assoc row :file_path (:path m) :content_hash (:content_hash m))
@@ -1028,6 +1029,7 @@
                                (throw e)))]
       (t2/with-transaction [_]
         (remote-sync.task/set-version! task-id version)
+        ;; delete departed rows first, then update RSO metadata — same order as full-export!
         (doseq [removed-ids (partition-all 500 removed-ids)]
           (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
         (mark-rows-synced! (map :id synced) synced sync-timestamp)))

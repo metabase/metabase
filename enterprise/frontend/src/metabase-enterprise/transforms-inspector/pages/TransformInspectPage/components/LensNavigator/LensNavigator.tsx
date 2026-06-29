@@ -51,7 +51,7 @@ const Indicator = ({ tab, activeTabKey }: IndicatorProps) => {
         )
         .exhaustive()}
     >
-      <Icon name="clock" size={12} c="text-tertiary" />
+      <Icon name="clock" size={12} c="text-disabled" />
     </Tooltip>
   );
 };
@@ -103,7 +103,7 @@ export const LensNavigator = ({
                     lh={1}
                     style={{ cursor: "pointer" }}
                   >
-                    <Icon name="close" size={16} c="text-tertiary" />
+                    <Icon name="close" size={16} c="text-disabled" />
                   </Box>
                 )}
               </Group>

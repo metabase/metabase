@@ -112,7 +112,7 @@ export const MetabotChat = ({
                     onConfigureAi={openAiProviderConfigurationModal}
                   />
                 ) : (
-                  <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
+                  <Text c="text-disabled" maw="12rem" ta="center" lh="lg">
                     {config.emptyText ??
                       (showIllustrations
                         ? t`I can help you explore your metrics and models.`

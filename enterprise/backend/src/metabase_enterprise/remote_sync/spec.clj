@@ -1148,28 +1148,20 @@
 
 (defmethod query-export-roots :default [_] nil)
 
-(defn- expand-nested-collections
-  "Expands collection IDs to include all descendant collections.
-  Takes a set of collection IDs and returns a set including the original IDs plus all IDs of nested collections."
-  [collection-ids opts]
-  (when (seq collection-ids)
-    (merge-with into
-                (u/traverse collection-ids #(serdes/descendants (first %) (second %) opts))
-                (u/traverse collection-ids #(serdes/required (first %) (second %))))))
-
 (defn exportable-entities
   "What a full export would serialize: a map of {model-name [id ...]} — the export roots plus their transitive
   `serdes/descendants`/`required` closure — or `{}` when there is no remote-syncable content."
   []
-  (let [root-targets (into []
+  (let [opts {:include-field-values     false
+              :include-database-secrets false
+              :continue-on-error        false
+              :skip-archived            true}
+        root-targets (into []
                            (mapcat query-export-roots)
                            (vals (enabled-specs)))
-        targets      (expand-nested-collections
-                      root-targets
-                      {:include-field-values     false
-                       :include-database-secrets false
-                       :continue-on-error        false
-                       :skip-archived            true})]
+        targets (-> #{}
+                    (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) opts))))
+                    (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
     (u/group-by first second (keys targets))))
 
 (defn extract-entities-for-export

@@ -158,7 +158,7 @@ export const TableColumnCard = ({
             bdrs="xs"
           >
             <Text
-              c={selectedTableName ? "text-primary" : "text-tertiary"}
+              c={selectedTableName ? "text-primary" : "text-disabled"}
               size="md"
             >
               {selectedTableName ?? t`Pick a table`}

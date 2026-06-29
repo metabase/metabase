@@ -63,10 +63,11 @@ runs:
       # Important!
       # 1. This step must always run because it controls job's exit code.
       # 2. There's no point in running this outside the organization
-      # 3. For "info" drivers our own status takes precedence: we let this step pass so
-      #    the job is reported as passing regardless of the real outcome (still uploaded).
+      # 3. For "info" drivers off master/release branches, our own status takes precedence: we let this
+      #    step pass so the job is reported as passing regardless of the real outcome (still uploaded).
+      #    On master and release branches, info status is ignored and the real outcome gates the job.
       if: always() && github.repository_owner == 'metabase'
-      continue-on-error: ${{ inputs.driver-status == 'info' }}
+      continue-on-error: ${{ inputs.driver-status == 'info' && !(github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')) }}
       uses: trunk-io/analytics-uploader@1198efcc0976501147b10a7e343c3fa069527526 # v2.0.9
       env:
         TRUNK_REPO_URL: git@github.com:metabase/metabase.git

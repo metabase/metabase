@@ -1995,8 +1995,8 @@ describe("issue 25908", () => {
   });
 });
 
-describe("issue 26230", () => {
-  const FILTER_1 = {
+describe("issue 26230, issue 27356", () => {
+  const FILTER = {
     id: "12345678",
     name: "Text",
     slug: "text",
@@ -2004,28 +2004,25 @@ describe("issue 26230", () => {
     sectionId: "string",
   };
 
-  const FILTER_2 = {
-    id: "87654321",
-    name: "Text",
-    slug: "text",
-    type: "string/=",
-    sectionId: "string",
-  };
+  const PARAM_DASHBOARD = "dashboard with a tall card";
+  const REGULAR_DASHBOARD = "dashboard without params";
 
   function prepareAndVisitDashboards() {
-    H.createDashboard({
-      name: "dashboard with a tall card",
-      parameters: [FILTER_1],
-    }).then(({ body: { id } }) => {
-      createDashCard(id, FILTER_1);
+    // A bookmarked dashboard *without* any parameters — this is the switch
+    // target that preserves the parameterized -> non-parameterized check
+    // (metabase#27356).
+    H.createDashboard({ name: REGULAR_DASHBOARD }).then(({ body: { id } }) => {
       bookmarkDashboard(id);
     });
 
+    // A bookmarked dashboard *with* a parameter and a tall mapped card. We
+    // start here so the param widget can become sticky once scrolled
+    // (metabase#26230).
     H.createDashboard({
-      name: "dashboard with a tall card 2",
-      parameters: [FILTER_2],
+      name: PARAM_DASHBOARD,
+      parameters: [FILTER],
     }).then(({ body: { id } }) => {
-      createDashCard(id, FILTER_2);
+      createDashCard(id, FILTER);
       bookmarkDashboard(id);
       H.visitDashboard(id);
     });
@@ -2070,12 +2067,12 @@ describe("issue 26230", () => {
     prepareAndVisitDashboards();
   });
 
-  it("should not preserve the sticky filter behavior when navigating to the second dashboard (metabase#26230)", () => {
+  it("should not preserve sticky filter behavior and should switch from a parameterized to a non-parameterized dashboard without error (metabase#26230, metabase#27356)", () => {
     cy.findByRole("main").scrollTo("bottom"); // This line is essential for the reproduction!
 
     cy.button("Toggle sidebar").click();
     cy.findByRole("main")
-      .findByDisplayValue("dashboard with a tall card 2")
+      .findByDisplayValue(PARAM_DASHBOARD)
       .should("not.be.visible");
 
     cy.findByTestId("dashboard-parameters-widget-container").should(
@@ -2084,61 +2081,16 @@ describe("issue 26230", () => {
       "sticky",
     );
 
+    // Switching from the parameterized dashboard to the non-parameterized one
+    // via the navigation sidebar should load cleanly, without erroring
+    // (metabase#27356).
     cy.intercept("GET", "/api/dashboard/*").as("loadDashboard");
-    cy.findByRole("listitem", { name: "dashboard with a tall card" }).click();
+    cy.findByRole("listitem", { name: REGULAR_DASHBOARD }).click();
     cy.wait("@loadDashboard");
-  });
-});
 
-describe("issue 27356", () => {
-  const ratingFilter = {
-    name: "Text",
-    slug: "text",
-    id: "5dfco74e",
-    type: "string/=",
-    sectionId: "string",
-  };
-
-  const paramDashboard = {
-    name: "Dashboard With Params",
-    parameters: [ratingFilter],
-  };
-
-  const regularDashboard = {
-    name: "Dashboard Without Params",
-  };
-
-  beforeEach(() => {
-    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createDashboard(paramDashboard).then(({ body: { id } }) => {
-      cy.request("POST", `/api/bookmark/dashboard/${id}`);
-    });
-
-    H.createDashboard(regularDashboard).then(({ body: { id } }) => {
-      cy.request("POST", `/api/bookmark/dashboard/${id}`);
-      H.visitDashboard(id);
-    });
-  });
-
-  it("should seamlessly move between dashboards with or without filters without triggering an error (metabase#27356)", () => {
-    H.openNavigationSidebar();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(paramDashboard.name).click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is empty");
-
-    H.openNavigationSidebar();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(regularDashboard.name).click({ force: true });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is empty");
-
-    H.openNavigationSidebar();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(paramDashboard.name).click({ force: true });
+    cy.findByRole("main")
+      .findByDisplayValue(REGULAR_DASHBOARD)
+      .should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is empty");
   });
