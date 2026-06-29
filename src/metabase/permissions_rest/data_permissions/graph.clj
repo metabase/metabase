@@ -20,6 +20,8 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;; See also: [[permissions.schema/data-permissions]]
 (def ^:private ->api-keys
   {:perms/view-data             :view-data
@@ -229,76 +231,40 @@
   [{:keys [group-id db-id]}]
   [group-id db-id])
 
-(defn- string-interner
-  "Returns a function that deduplicates equal strings to a single canonical instance. Each `data_permissions` row
-  arrives with fresh `String`s from JDBC, and any string we keep as a graph key (currently schema names) would
-  otherwise be retained once per occurrence -- e.g. a separate copy of `\"PUBLIC\"` for every `(group, db, perm-type)`.
-  The cache is bounded by the number of distinct strings and is discarded once the graph is built."
-  []
-  (let [cache (java.util.HashMap.)]
-    (fn [s]
-      (or (.get cache s)
-          (do (.put cache s s) s)))))
-
-(defn- row->perm-path
-  "The path of a `data_permissions` row's value within its (group, db) perm-map: either a db-level `[perm-type]` or a
-  table-level `[perm-type schema table-id]`. `intern-string` deduplicates the schema-name key."
-  [intern-string {:keys [schema table-id] perm-type :type}]
-  (if table-id
-    [perm-type (intern-string (or schema "")) table-id]
-    [perm-type]))
-
-(defn- row->perm-map
-  "Reducing function that accumulates a single `data_permissions` row's value into a (group, db) `perm-map`."
-  [perm-map intern-string row]
-  (assoc-in perm-map (row->perm-path intern-string row) (:value row)))
-
-(defn- graph-xform
-  "Stateful transducer over `(group_id, db_id)`-ordered `data_permissions` rows. It accumulates each (group, db)'s raw
-  perm-map and, when the (group, db) key changes, emits `[[group-id db-id] (finalize perm-map)]`, dropping entries that
-  `finalize` reduces to an empty map.
-
-  Each row's columns are read as the row arrives -- the rows are transient, cursor-backed instances that can't be
-  buffered (e.g. via `partition-by`) and read later -- and only a single raw perm-map is held at a time. This lets
-  callers fold the rows straight into a compact graph without ever materializing the full raw table-level graph, which
-  can be on the order of a gigabyte."
-  [finalize]
-  (fn [rf]
-    (let [current-path  (volatile! ::none)
-          perms         (volatile! nil)
-          intern-string (string-interner)
-          flush!        (fn [result]
-                          (let [path @current-path]
-                            (if (identical? path ::none)
-                              result
-                              (let [perm-map (finalize @perms)]
-                                (if (empty? perm-map)
-                                  result
-                                  (rf result [path perm-map]))))))]
-      (fn
-        ([] (rf))
-        ([result] (rf (unreduced (flush! result))))
-        ([result row]
-         (let [path (row->graph-path row)]
-           (if (= @current-path path)
-             (do (vswap! perms row->perm-map intern-string row) result)
-             (let [result (flush! result)]
-               (if (reduced? result)
-                 result
-                 (do (vreset! current-path path)
-                     (vreset! perms (row->perm-map {} intern-string row))
-                     result))))))))))
+(defn- add-perm
+  "Reducing step that accumulates one `data_permissions` row's value into its (group, db) `perm-map`, at either a
+  db-level `[perm-type]` or table-level `[perm-type schema table-id]` path."
+  [perm-map {:keys [schema table-id value] perm-type :type}]
+  (let [path (if table-id
+               [perm-type (or schema "") table-id]
+               [perm-type])]
+    (assoc-in perm-map path value)))
 
 (defn- reduce-into-graph
-  "Stream `reducible` -- which MUST be ordered by `(group_id, db_id)` so each (group, db)'s rows arrive contiguously --
-  through [[graph-xform]] into a nested `group-id -> db-id -> <perm-map>` graph, applying `finalize` to each (group, db)
-  perm-map as soon as its rows are complete."
+  "Builds the nested `group-id -> db-id -> <perm-map>` graph by streaming `reducible`, applying `finalize` (e.g. collapse
+  + rename + prune) to each (group, db)'s perm-map and dropping it if `finalize` empties it.
+
+  `reducible` MUST be ordered by `(group_id, db_id)` so each (group, db)'s rows arrive contiguously: we accumulate one
+  raw perm-map at a time and commit it as soon as its group ends, so the full raw table-level graph -- which can be on
+  the order of a gigabyte -- is never materialized. (The rows are transient, cursor-backed instances, so they can't be
+  buffered and grouped after the fact, e.g. via `partition-by`.)"
   [reducible finalize]
-  (transduce (graph-xform finalize)
-             (completing (fn [graph [path perm-map]]
-                           (assoc-in graph path perm-map)))
-             {}
-             reducible))
+  (let [commit (fn [graph path perm-map]
+                 (if (nil? path)
+                   graph
+                   (let [perm-map (finalize perm-map)]
+                     (cond-> graph (seq perm-map) (assoc-in path perm-map)))))
+        [graph path perm-map]
+        (reduce (fn [[graph path perm-map] row]
+                  (let [row-path (row->graph-path row)]
+                    (if (= row-path path)
+                      ;; same (group, db) as the previous row: keep accumulating
+                      [graph path (add-perm perm-map row)]
+                      ;; new (group, db): commit the finished group, then start the next one
+                      [(commit graph path perm-map) row-path (add-perm {} row)])))
+                [{} nil nil]
+                reducible)]
+    (commit graph path perm-map)))
 
 (mu/defn data-permissions-graph :- ::graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
