@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.impl :as plugins]
    [metabase.sample-data.example-content :as example-content]
    [metabase.sample-data.impl :as sample-data]
@@ -14,6 +15,7 @@
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses-rest.api-test :as api.database-test]
    [toucan2.core :as t2])
@@ -204,6 +206,28 @@
       (testing "the Example collection is preserved (the engine swap no longer deletes it)"
         (is (t2/exists? :model/Collection :id (:id examples)))))))
 
+(deftest replace-sample-database-survives-dangling-visualizer-ref-test
+  (testing "The engine swap completes when a sample dashcard has a dangling visualizer ref"
+    (mt/with-temp
+      [:model/Database  old-sample  {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}
+       :model/Card      sample-card {:database_id (:id old-sample)}
+       :model/Dashboard sample-dash {}
+       :model/DashboardCard dc {:dashboard_id (:id sample-dash), :card_id (:id sample-card)}]
+      ;; Inject a dangling visualizer ref via raw SQL so the model's hooks don't reject/rewrite it.
+      (t2/query-one {:update (t2/table-name :model/DashboardCard)
+                     :set    {:visualization_settings
+                              (json/encode {:visualization
+                                            {:columnValuesMapping
+                                             {:COLUMN_1 [{:sourceId "card:gEnfWx10SmfjiccZpcGrj"}]}}})}
+                     :where  [:= :id (:id dc)]})
+      (with-redefs [config/load-sample-content? (constantly false)]
+        (testing "the replacement completes instead of throwing on the dangling ref"
+          (is (nil? (#'sample-data/update-sample-database-if-needed! old-sample)))))
+      (testing "the old sample DB and the dashboard emptied by its removal are deleted"
+        (is (not (t2/exists? :model/Database :id (:id old-sample))))
+        (is (not (t2/exists? :model/Card :id (:id sample-card))))
+        (is (not (t2/exists? :model/Dashboard :id (:id sample-dash))))))))
+
 (def ^:private edn-example-collection-entity-id
   "Stable entity id of the bundled Examples collection in sample-content.edn."
   "HyB3nRtqb7pBPhFG26evI")
@@ -243,6 +267,35 @@
             (is (false? @recreate-called?)))
           (testing "the engine swap itself still completed - a new SQLite sample DB exists"
             (is (t2/exists? :model/Database :is_sample true :engine :sqlite))))))))
+
+(defn- db-level-perms
+  "DB-level data-permission rows for `db-id` as a comparable map {[group-id perm-type] perm-value}."
+  [db-id]
+  (into {}
+        (for [{:keys [group_id perm_type perm_value]} (t2/select :model/DataPermissions :db_id db-id :table_id nil)]
+          [[group_id perm_type] perm_value])))
+
+(deftest sample-database-upgrade-preserves-permissions-test
+  (testing "The H2->SQLite sample-database swap re-applies each group's permissions to the new sample DB"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (mt/with-temp [:model/PermissionsGroup custom-group {}
+                     :model/Database         old-sample {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}]
+        ;; Put the old sample DB into a distinctive, non-default permission state, so we test that real custom
+        ;; permissions carry forward - not just that the defaults happen to line up.
+        (perms/set-database-permission! (perms/all-users-group) (:id old-sample) :perms/create-queries :no)
+        (perms/set-database-permission! custom-group            (:id old-sample) :perms/create-queries :query-builder)
+        (let [expected-perms (db-level-perms (:id old-sample))]
+          (with-redefs [config/load-sample-content? (constantly true)]
+            (#'sample-data/update-sample-database-if-needed! old-sample))
+          (let [new-sample (t2/select-one :model/Database :is_sample true :engine :sqlite)]
+            (is (some? new-sample) "the swap created a SQLite sample database")
+            (testing "every group's db-level permissions match the old sample DB exactly"
+              (is (= expected-perms (db-level-perms (:id new-sample)))))
+            (testing "the custom permission state specifically carried forward"
+              (let [new-perms (db-level-perms (:id new-sample))]
+                (is (= :no            (new-perms [(:id (perms/all-users-group)) :perms/create-queries])))
+                (is (= :query-builder (new-perms [(:id custom-group)            :perms/create-queries])))))))))))
 
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"

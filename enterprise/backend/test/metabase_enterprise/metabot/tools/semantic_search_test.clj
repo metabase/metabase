@@ -88,15 +88,15 @@
                             :entity-types ["table"]}
                       results (search/search args)]
                   (is (empty? results)))))
-            (testing "search with metabot verified content flag"
+            (testing "search with metabot verified-or-curated content flag"
               (let [metabot {:entity_id "test-bot"
                              :use_verified_content true}]
                 (with-redefs [t2/select-one (fn [model & _]
                                               (is (= :model/Metabot model) "Should query for Metabot model")
                                               metabot)
                               search-core/search (fn [context]
-                                                   ;; Verify that verified flag is set when metabot has use_verified_content
-                                                   (is (true? (:verified context)))
+                                                   ;; use_verified_content now drives the curated filter, not :verified
+                                                   (is (true? (:curated? context)))
                                                    {:data [dashboard]})]
                   (let [results (search/search {:term-queries ["test"]
                                                 :metabot-id "test-bot"

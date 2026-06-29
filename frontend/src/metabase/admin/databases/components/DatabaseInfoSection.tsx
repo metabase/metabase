@@ -34,7 +34,7 @@ export const DatabaseInfoSection = ({
     <Box w="100%">
       <Card
         withBorder
-        bg="background-secondary"
+        bg="background_page-secondary"
         shadow="none"
         style={{ flexGrow: 0 }}
         px="lg"

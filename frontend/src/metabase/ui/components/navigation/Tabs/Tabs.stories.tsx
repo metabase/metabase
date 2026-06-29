@@ -2,12 +2,16 @@ import { Icon, Tabs, type TabsProps } from "metabase/ui";
 
 const args = {
   orientation: "horizontal",
+  listBorder: true,
 };
 
 const argTypes = {
   orientation: {
     options: ["horizontal", "vertical"],
     control: { type: "inline-radio" },
+  },
+  listBorder: {
+    control: { type: "boolean" },
   },
 };
 
@@ -86,5 +90,13 @@ export const VerticalOrientationIcons = {
   name: "Vertical orientation, icons",
   args: {
     orientation: "vertical",
+  },
+};
+
+export const NoListBorder = {
+  render: DefaultTemplate,
+  name: "Without list border",
+  args: {
+    listBorder: false,
   },
 };

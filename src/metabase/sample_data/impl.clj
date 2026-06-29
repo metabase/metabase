@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.config.core :as config]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
    [metabase.sample-data.example-content :as example-content]
    [metabase.sync.core :as sync]
@@ -115,7 +116,7 @@
   "IDs of Dashboards holding at least one card backed by `database-id`. Captured before the sample
   database is deleted so the dashboards it empties out can be pruned afterward."
   [database-id]
-  (t2/select-fn-set :dashboard_id :model/DashboardCard
+  (t2/select-fn-set :dashboard_id [:model/DashboardCard :dashboard_id]
                     :card_id [:in {:select [:id]
                                    :from   [(t2/table-name :model/Card)]
                                    :where  [:= :database_id database-id]}]))
@@ -126,10 +127,48 @@
   in cards from another database) is left alone."
   [dashboard-ids]
   (when (seq dashboard-ids)
-    (let [non-empty (t2/select-fn-set :dashboard_id :model/DashboardCard :dashboard_id [:in dashboard-ids])
+    (let [non-empty (t2/select-fn-set :dashboard_id [:model/DashboardCard :dashboard_id] :dashboard_id [:in dashboard-ids])
           empty-ids (remove (or non-empty #{}) dashboard-ids)]
       (when (seq empty-ids)
         (t2/delete! :model/Dashboard :id [:in empty-ids])))))
+
+(defn- capture-permissions-snapshot
+  "Snapshot a database's data-permission rows plus the names of the tables referenced by any table-level
+  rows, so the same access can be re-applied to a replacement database whose tables have new IDs. Must run
+  before the old database (and its cascading permission rows) is deleted."
+  [db-id]
+  (let [permissions (t2/select :model/DataPermissions :db_id db-id)
+        table-ids   (into #{} (keep :table_id) permissions)]
+    {:permissions    permissions
+     :table-id->name (if (seq table-ids)
+                       (t2/select-pk->fn :name :model/Table :id [:in table-ids])
+                       {})}))
+
+(defn- apply-permissions-snapshot!
+  "Re-apply a permission snapshot (see [[capture-permissions-snapshot]]) to the replacement database
+  `new-db-id`, replacing the defaults granted when it was created. Table-level rows are remapped onto the
+  new database's tables by name; since the new tables exist only after the first sync, this must run
+  post-sync. A table-level row whose table has no name match in the new database is dropped."
+  [new-db-id {:keys [permissions table-id->name]}]
+  (let [name->new-table-id (t2/select-fn->pk :name :model/Table :db_id new-db-id)
+        granular?   (fn [rows] (some :table_id rows))
+        permission-groups (group-by (juxt :group_id :perm_type) permissions)
+        db-perms    (for [[[group-id perm-type] rows] permission-groups
+                          :when (not (granular? rows))]
+                      [group-id perm-type (:perm_value (first rows))])
+        table-perms (for [[[group-id perm-type] rows] permission-groups
+                          :when (granular? rows)
+                          :let  [remapped (into {}
+                                                (keep (fn [{:keys [table_id perm_value]}]
+                                                        (when-let [new-table-id (-> table_id table-id->name name->new-table-id)]
+                                                          [new-table-id perm_value]))
+                                                      rows))]
+                          :when (seq remapped)]
+                      [group-id perm-type remapped])]
+    (doseq [[group-id perm-type perm-value] db-perms]
+      (perms/set-database-permission! group-id new-db-id perm-type perm-value))
+    (doseq [[group-id perm-type one-table-perms] table-perms]
+      (perms/set-table-permissions! group-id perm-type one-table-perms))))
 
 (defn- replace-sample-database!
   "The bundled sample database's engine changed (e.g. H2 -> SQLite on upgrade). The old sample
@@ -152,25 +191,34 @@
   ;; doesn't hold the app-DB transaction open.
   (let [new-db-details (when (config/load-sample-content?)
                          (try-to-extract-sample-database! engine))
-        new-db (t2/with-transaction [_conn]
-                 (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
-                   (t2/delete! :model/Database (:id old-sample-db))
-                   (delete-emptied-dashboards! dashboard-ids))
-                 (when new-db-details
-                   (first (t2/insert-returning-instances! :model/Database
-                                                          :name sample-database-name
-                                                          :details new-db-details
-                                                          :engine engine
-                                                          :is_sample true))))]
+        {:keys [new-db permissions-snapshot]}
+        (t2/with-transaction [_conn]
+          (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))
+                snapshot      (when new-db-details
+                                (capture-permissions-snapshot (:id old-sample-db)))]
+            (t2/delete! :model/Database (:id old-sample-db))
+            (delete-emptied-dashboards! dashboard-ids)
+            {:permissions-snapshot snapshot
+             :new-db (when new-db-details
+                       (first (t2/insert-returning-instances! :model/Database
+                                                              :name sample-database-name
+                                                              :details new-db-details
+                                                              :engine engine
+                                                              :is_sample true)))}))]
     (when new-db
-      (when (and (try
-                   (sync/sync-database! new-db)
-                   true
-                   (catch Throwable e
-                     (log/error e "Failed to sync the replacement sample database")
-                     false))
-                 (not (config/config-bool :mb-enable-test-endpoints)))
-        (example-content/recreate-example-content! (:id new-db))))))
+      (let [synced? (try
+                      (sync/sync-database! new-db)
+                      true
+                      (catch Throwable e
+                        (log/error e "Failed to sync the replacement sample database")
+                        false))]
+        (when synced?
+          ;; The new database's tables exist now, so the old sample DB's access can be restored (replacing
+          ;; the defaults granted at creation) before the bundled example content is recreated.
+          (when permissions-snapshot
+            (apply-permissions-snapshot! (:id new-db) permissions-snapshot))
+          (when-not (config/config-bool :mb-enable-test-endpoints)
+            (example-content/recreate-example-content! (:id new-db))))))))
 
 (defn update-sample-database-if-needed!
   "Reconcile the existing sample database with the bundled one. When the bundled engine changed

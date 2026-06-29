@@ -77,7 +77,7 @@ export const UpsellCardContent = ({
             </Flex>
           </Box>
           <Divider orientation="vertical" />
-          <Center w="100%" bg="background-secondary" p={33}>
+          <Center w="100%" bg="background_page-secondary" p={33}>
             <Image src={image} w="100%" h="auto" />
           </Center>
         </Flex>

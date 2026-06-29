@@ -1,7 +1,7 @@
 import { toActionExecuteError } from "./to-action-execute-error";
 
 describe("toActionExecuteError", () => {
-  describe("HTTP-shaped input (legacy-client throw)", () => {
+  describe("HTTP-shaped input (api.request throw)", () => {
     it("normalizes a typical 4xx response", () => {
       const result = toActionExecuteError({
         status: 403,
@@ -37,7 +37,7 @@ describe("toActionExecuteError", () => {
           trace: ["frame-1", "frame-2"],
         },
         isCancelled: false,
-        // an unrelated top-level field a future legacy-client could add
+        // an unrelated top-level field a future api.request could add
         diagnostic: "raw",
       });
 

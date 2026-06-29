@@ -306,7 +306,7 @@
                  (client/client :get 200 (str "public/card/" uuid "/query/json?format_rows=true")))))
         (testing ":csv download response format"
           (is (= "Count\n100\n"
-                 (client/client :get 200 (str "public/card/" uuid "/query/csv?format_rows=true"), :format :csv))))
+                 (u/strip-bom (client/client :get 200 (str "public/card/" uuid "/query/csv?format_rows=true"), :format :csv)))))
         (testing ":xlsx download response format"
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
@@ -520,11 +520,12 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp [:model/Card {uuid :public_uuid} (card-with-date-field-filter)]
       (is (= "count\n107\n"
-             (client/client :get 200 (str "public/card/" uuid "/query/csv")
-                            :parameters (json/encode [{:id     "_DATE_"
-                                                       :type   :date/quarter-year
-                                                       :target [:dimension [:template-tag :date]]
-                                                       :value  "Q1-2014"}])))))))
+             (u/strip-bom
+              (client/client :get 200 (str "public/card/" uuid "/query/csv")
+                             :parameters (json/encode [{:id     "_DATE_"
+                                                        :type   :date/quarter-year
+                                                        :target [:dimension [:template-tag :date]]
+                                                        :value  "Q1-2014"}]))))))))
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
   (mt/test-helpers-set-global-values!
@@ -534,11 +535,12 @@
         (binding [client/*url-prefix* ""]
           (mt/with-temporary-setting-values [site-url (str "http://localhost:" (server.instance/server-port) client/*url-prefix*)]
             (is (= "count\n107\n"
-                   (client/real-client :get 200 (str "public/question/" uuid ".csv")
-                                       :parameters (json/encode [{:id     "_DATE_"
-                                                                  :type   :date/quarter-year
-                                                                  :target [:dimension [:template-tag :date]]
-                                                                  :value  "Q1-2014"}]))))))))))
+                   (u/strip-bom
+                    (client/real-client :get 200 (str "public/question/" uuid ".csv")
+                                        :parameters (json/encode [{:id     "_DATE_"
+                                                                   :type   :date/quarter-year
+                                                                   :target [:dimension [:template-tag :date]]
+                                                                   :value  "Q1-2014"}])))))))))))
 
 (defn- card-with-trendline []
   (assoc (shared-obj)
@@ -1660,18 +1662,18 @@
                        :model/DashboardCard {dashcard-id :id} {:card_id      card-id
                                                                :dashboard_id dashboard-id}]
           (testing "CSV export"
-            (is (str/starts-with? (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
-                                                                   uuid
-                                                                   dashcard-id
-                                                                   card-id))
+            (is (str/starts-with? (u/strip-bom (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
+                                                                                uuid
+                                                                                dashcard-id
+                                                                                card-id)))
                                   "ID,State,Latitude,Longitude\n")))
           (testing "urlencoded requests"
-            (is (str/starts-with? (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
-                                                                   uuid
-                                                                   dashcard-id
-                                                                   card-id)
-                                                 {:request-options {:headers {"content-type" "application/x-www-form-urlencoded"}}}
-                                                 {:format_rows true})
+            (is (str/starts-with? (u/strip-bom (client/client :post 200 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"
+                                                                                uuid
+                                                                                dashcard-id
+                                                                                card-id)
+                                                              {:request-options {:headers {"content-type" "application/x-www-form-urlencoded"}}}
+                                                              {:format_rows true}))
                                   "ID,State,Latitude,Longitude\n")))
           (testing "Invalid id throws 404"
             (client/client :post 404 (format "public/dashboard/%s/dashcard/%d/card/%d/csv"

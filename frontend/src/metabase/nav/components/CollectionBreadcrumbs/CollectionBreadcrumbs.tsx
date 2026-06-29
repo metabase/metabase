@@ -43,7 +43,7 @@ export const CollectionBreadcrumbs = ({
 
   const separator = (
     <Box
-      c="text-tertiary"
+      c="text-disabled"
       fz="0.8em"
       fw="bold"
       mx="0.5rem"
@@ -82,14 +82,12 @@ export const CollectionBreadcrumbs = ({
     );
 
   return (
-    <>
-      <Flex align="center" miw="0">
-        {content}
-        <CollectionBadge
-          collectionId={collection.id}
-          onClick={onClick ? () => onClick(collection) : undefined}
-        />
-      </Flex>
+    <Flex align="center" miw="0">
+      {content}
+      <CollectionBadge
+        collectionId={collection.id}
+        onClick={onClick ? () => onClick(collection) : undefined}
+      />
       {dashboard && (
         <>
           {separator}
@@ -99,7 +97,7 @@ export const CollectionBreadcrumbs = ({
           </Breadcrumb>
         </>
       )}
-    </>
+    </Flex>
   );
 };
 

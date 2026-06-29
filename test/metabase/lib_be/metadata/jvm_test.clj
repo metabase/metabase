@@ -299,7 +299,7 @@
       (is (not (:field-ref metadata))
           "Legacy keys like :field_ref/:field-ref should have been removed"))))
 
-(deftest ^:parallel database-local-settings-test
+(deftest database-local-settings-test
   (testing "JVM metadata provider should return database-local Settings"
     (let [global-value (setting/get :unaggregated-query-row-limit)
           local-value  (inc (or global-value 0))]

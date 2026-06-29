@@ -23,7 +23,7 @@ export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   name: t`Official`,
   icon: "official_collection",
-  color: "saturated-yellow" as const,
+  color: "core-yellow-saturated" as const,
   tooltips: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     default: t`Official collection`,
