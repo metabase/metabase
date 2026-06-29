@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.agent-api.validation :as agent-api.validation]
+   [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
@@ -1799,6 +1800,18 @@
 
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
-(def ^{:arglists '([request respond raise])} routes
-  "`/api/agent/` routes."
+(def ^:private base-routes
   (api.macros/ns-handler *ns* +auth))
+
+(defn routes
+  "`/api/agent/` routes."
+  {:arglists '([request respond raise])}
+  [request respond raise]
+  ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE). Direct callers get a fresh session;
+  ;; the synthetic in-process call from MCP inherits the MCP session and nests under it.
+  ;; Agent-API endpoints are synchronous, so the span closes after the handler returns.
+  (ait/with-eval-session nil
+    (ait/eval-span (str "agent-api." (some-> (:request-method request) name) " " (:uri request))
+                   {:http/method (some-> (:request-method request) name)
+                    :http/uri    (:uri request)}
+                   (base-routes request respond raise))))

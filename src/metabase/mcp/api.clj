@@ -5,6 +5,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [compojure.response :as compojure.response]
+   [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
@@ -112,20 +113,25 @@
 (defn- dispatch-request
   "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
   [{:keys [id method params] :as _msg} session-id token-scopes request-context]
-  (try
-    (case method
-      "notifications/initialized" nil
-      "tools/list"                (handle-tools-list id params session-id token-scopes)
-      "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
-      "resources/list"            (handle-resources-list id params token-scopes)
-      "resources/read"            (handle-resources-read id params session-id token-scopes)
-      "ping"                      (handle-ping id params)
-      (if id
-        (jsonrpc-error id -32601 (str "Method not found: " method))
-        nil))
-    (catch Throwable e
-      (log/error e "Error dispatching JSON-RPC method" method)
-      (jsonrpc-error id -32603 (or (ex-message e) "Internal error")))))
+  ;; Eval tracing (inert unless MB_AI_EVAL_CAPTURE): establish a session keyed on the MCP
+  ;; session id so an entire conversation's requests append to one `<session-id>.jsonl`, and
+  ;; open a per-request root span. Tool/resource/agent-api spans nest under it automatically.
+  (ait/with-eval-session session-id
+    (ait/eval-span (str "mcp." method) {:mcp/method method :mcp/request-id id}
+                   (try
+                     (case method
+                       "notifications/initialized" nil
+                       "tools/list"                (handle-tools-list id params session-id token-scopes)
+                       "tools/call"                (handle-tools-call id params session-id token-scopes request-context)
+                       "resources/list"            (handle-resources-list id params token-scopes)
+                       "resources/read"            (handle-resources-read id params session-id token-scopes)
+                       "ping"                      (handle-ping id params)
+                       (if id
+                         (jsonrpc-error id -32601 (str "Method not found: " method))
+                         nil))
+                     (catch Throwable e
+                       (log/error e "Error dispatching JSON-RPC method" method)
+                       (jsonrpc-error id -32603 (or (ex-message e) "Internal error")))))))
 
 ;;; ----------------------------------------------------- SSE ------------------------------------------------------
 

@@ -586,15 +586,15 @@
    :version   1
    :data      debug-log})
 
-(defn- eval-trace-part
-  "Create a data part containing the captured eval trace tree (root spans).
-  Emitted at the end of the stream when `MB_AI_EVAL_CAPTURE` is enabled, so the
-  benchmark/eval harness can read the full agent trace back over the SSE stream."
-  [trace]
+(defn- eval-session-part
+  "Create a data part carrying just the eval session id. Emitted at the end of the stream when
+  `MB_AI_EVAL_CAPTURE` is enabled, so the benchmark/eval harness can locate the per-session
+  `<session-id>.jsonl` trace file written by `metabase.ai-tracing.log`."
+  [session-id]
   {:type      :data
-   :data-type "eval_trace"
+   :data-type "eval_session"
    :version   1
-   :data      trace})
+   :data      {:session-id session-id}})
 
 (def ^:private profile-id->required-permission
   "Map from profile-id to the metabot permission that must be `:yes` for a user
@@ -638,7 +638,6 @@
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
-        eval-capture?      (ait/eval-capture-enabled?)
         ;; the user's latest question — surfaced as the trace-level input for evals
         user-input         (some->> (:messages opts)
                                     (filter #(= "user" (some-> % :role name)))
@@ -660,38 +659,35 @@
           (analytics/inc! :metabase-metabot/agent-requests labels)
           (let [start-ms (u/start-timer)]
             (binding [*debug-log*                              (when debug? (atom []))
-                      ;; Establish a fresh capture only when the env toggle is on; otherwise
-                      ;; preserve any outer binding (in-process `capture-reducible`) and stay inert.
-                      ait/*capture*                            (if eval-capture? (atom []) ait/*capture*)
-                      ait/*parent*                             (if eval-capture? nil ait/*parent*)
                       scope/*current-user-scope*               scopes
                       scope/*current-user-metabot-permissions* perms
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
                       scope/*current-loadable-skill-ids*       (atom #{})]
               (try
-                (let [turn-result
-                      (ait/with-agent-turn {:ai/profile-id (name profile-id)
-                                            :ai/msg-count  (count (:messages opts))
-                                            :ai/user-input user-input}
-                        (let [agent              (init-agent opts)
-                              {result    :result
-                               iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
-                                                          (iterate loop-step)
-                                                          (drop-while #(= :continue (:status %)))
-                                                          first)]
-                          (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
-                          ;; Emit debug log as a data part if debug mode was active
-                          (if (and debug? (seq @*debug-log*))
-                            (rf result (debug-log-part @*debug-log*))
-                            result)))]
-                  ;; After the turn span has closed (and attached to the capture):
-                  ;; (1) export to the dedicated OTLP eval sink (no-op unless configured), and
-                  ;; (2) emit the full eval trace as a data part for the harness to read off the stream.
-                  (if (and eval-capture? (seq @ait/*capture*))
-                    (let [trace @ait/*capture*]
-                      (ait/export-trace! trace)
-                      (rf turn-result (eval-trace-part trace)))
-                    turn-result))
+                ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
+                ;; inherited when an in-process `capture-reducible` already bound one). Spans stream
+                ;; to the per-session JSONL file as they finish.
+                (ait/with-eval-session nil
+                  (let [turn-result
+                        (ait/with-agent-turn {:ai/profile-id (name profile-id)
+                                              :ai/msg-count  (count (:messages opts))
+                                              :ai/user-input user-input}
+                          (let [agent              (init-agent opts)
+                                {result    :result
+                                 iteration :iteration} (->> (initial-loop-state agent rf init (atom {}))
+                                                            (iterate loop-step)
+                                                            (drop-while #(= :continue (:status %)))
+                                                            first)]
+                            (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
+                            ;; Emit debug log as a data part if debug mode was active
+                            (if (and debug? (seq @*debug-log*))
+                              (rf result (debug-log-part @*debug-log*))
+                              result)))]
+                    ;; When capturing, emit a tiny pointer so the harness can find the
+                    ;; per-session `<session-id>.jsonl` trace file written by the log sink.
+                    (if (ait/capture-active?)
+                      (rf turn-result (eval-session-part ait/*session-id*))
+                      turn-result)))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)
                   (let [{:keys [api-error status provider body]} (ex-data e)

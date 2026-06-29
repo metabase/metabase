@@ -3,38 +3,39 @@
 
   This layer is **separate from production observability** (`metabase.tracing`). It exists
   to capture rich, complete agent traces *during benchmark/eval runs* so a scorer can read
-  the data back — full prompts/completions, tool I/O, and ad-hoc debug spans (search
-  internals, health signals).
+  the data back — full prompts/completions, tool I/O, and ad-hoc debug spans.
 
   ## The separate gate (production safety)
 
   All ops here are gated on [[*capture*]], a per-run dynamic binding established ONLY by the
-  eval entrypoint ([[capturing]]). This is a third axis, orthogonal to `metabase.tracing`'s
-  `MB_TRACING_ENABLED` + group gates. Consequences, by design:
+  eval entrypoints ([[with-eval-session]] / [[capturing]]). It is orthogonal to
+  `metabase.tracing`'s `MB_TRACING_ENABLED` + group gates:
 
     - In production — even with `metabase.tracing` fully enabled — ai-tracing is inert
-      (a single nil-check of overhead). Eval spans, which may carry full prompts and verbose
-      search internals, can therefore NEVER fire on organic traffic or reach the production
-      trace sink. That isolation is the whole point.
-    - In an eval run, the harness binds [[*capture*]] (via [[capturing]]) and the spans fire
-      regardless of whether production tracing is on.
+      (a single nil-check). Eval spans, which carry full prompts and verbose internals, can
+      NEVER fire on organic traffic. `MB_AI_EVAL_CAPTURE` is off by default.
+    - In an eval run, an entrypoint binds [[*capture*]] and the spans fire.
 
   ## What it captures
 
-  An in-memory trace tree (`agent.turn → llm.call → tool.*`) with prompts, completions, tool
-  I/O, durations, and custom spans. Nesting is tracked through [[*parent*]], a dynamic binding
-  Clojure conveys across the agent's virtual-thread tool execution (`bound-fn*`), so concurrent
-  tool spans nest under the right parent. The harness reads the tree back via [[capturing]] /
-  [[capture-reducible]] (in-process) or the `eval_trace` SSE data part (API path).
+  An in-memory span tree (`agent.turn → llm.call → tool.*`, or `mcp.<method> → …`) with full
+  attributes, durations, and events. Nesting + the session id are tracked through dynamic
+  bindings ([[*parent*]], [[*session-id*]]) that Clojure conveys across the agent's
+  virtual-thread tool execution (`bound-fn*`), so concurrent tool spans nest correctly.
 
-  ## Export
+  ## Session id (the OTel trace-id analog)
 
-  The same tree is also replayed to an external eval backend (Confident AI / Langfuse / Phoenix)
-  over OTLP by `metabase.ai-tracing.export` — a DEDICATED provider, isolated from the production
-  tracing sink. Opt-in via `MB_AI_EVAL_OTLP_ENDPOINT`; the domain→wire-schema mapping lives in
-  one chokepoint there, so swapping vendors never touches call sites."
+  [[*session-id*]] groups all of a run's spans and names its log file. It is minted at the root
+  of a fresh capture, or *supplied* by the caller (e.g. MCP passes its `Mcp-Session-Id`), so a
+  multi-request MCP conversation all lands in one file.
+
+  ## Sink
+
+  Each span, on finish, is streamed as one JSON line to the dedicated `metabase.ai-tracing.log`
+  logger (off by default), routed per-session to its own JSONL file. See
+  `metabase.ai-tracing.log`."
   (:require
-   [metabase.ai-tracing.export :as ai-tracing.export]
+   [metabase.ai-tracing.log :as ai-tracing.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.tracing.core :as tracing]))
 
@@ -44,20 +45,25 @@
 
 (defn eval-capture-enabled?
   "True when eval-time capture is enabled for this instance via the `MB_AI_EVAL_CAPTURE` env var.
-  This is the production toggle: the API entrypoint consults it to decide whether to establish a
-  capture binding around an agent run. Off by default — production stays inert."
+  Entrypoints consult it to decide whether to establish a capture. Off by default."
   []
   (ai-tracing.settings/ai-eval-capture))
 
 (def ^:dynamic *capture*
   "Per-run capture sink: an atom holding the vector of root span maps, or nil.
-  Bound ONLY by [[capturing]]. nil ⇒ ai-tracing is inert (the production safety gate)."
+  Bound ONLY by an entrypoint. nil ⇒ ai-tracing is inert (the production safety gate)."
   nil)
 
 (def ^:dynamic *parent*
   "The current in-flight span node (an atom), or nil at top level. Conveyed across the
   agent's virtual-thread tool execution via `bound-fn*`, so concurrent tool spans nest
   under the correct parent."
+  nil)
+
+(def ^:dynamic *session-id*
+  "The eval session id (OTel trace-id analog). Minted at the root of a fresh capture, or supplied
+  by the caller (e.g. MCP's `Mcp-Session-Id`). Conveyed across virtual threads via `bound-fn*`;
+  drives the per-session log file routing."
   nil)
 
 (defn capture-active?
@@ -71,14 +77,16 @@
 
 (defn- now-epoch-nanos ^long [] (* (System/currentTimeMillis) 1000000))
 
-(defn- new-node [span-type span-name attrs]
-  ;; :start-ns (monotonic) drives duration; :start-epoch-nanos (wall clock) drives OTLP replay.
-  (atom {:type             span-type
-         :name             span-name
-         :attributes       (or attrs {})
-         :events           []
-         :children         []
-         :start-ns         (now-ns)
+(defn- new-node [span-type span-name attrs parent-id]
+  ;; :start-ns (monotonic) drives duration; :start-epoch-nanos (wall clock) drives the log line.
+  (atom {:type              span-type
+         :name              span-name
+         :id                (str (random-uuid))
+         :parent-id         parent-id
+         :attributes        (or attrs {})
+         :events            []
+         :children          []
+         :start-ns          (now-ns)
          :start-epoch-nanos (now-epoch-nanos)}))
 
 (defn- finish-node [node]
@@ -97,13 +105,14 @@
 
 (defn eval-span*
   "Functional core behind the span macros. Runs `thunk` inside a captured span of `span-type`
-  named `span-name` with `attrs`, recording nesting + duration. No-op (just the nil-check)
-  unless a capture is active. Errors are recorded as an event and re-thrown."
+  named `span-name` with `attrs`, recording nesting + duration, attaching the finished node to
+  the tree, and streaming it to the log sink. No-op (just the nil-check) unless a capture is
+  active. Errors are recorded as an event and re-thrown."
   [span-type span-name attrs thunk]
   (if-not (capture-active?)
     (thunk)
-    (let [node   (new-node span-type span-name attrs)
-          parent *parent*]
+    (let [parent *parent*
+          node   (new-node span-type span-name attrs (when parent (:id @parent)))]
       (try
         (binding [*parent* node]
           (thunk))
@@ -111,22 +120,25 @@
           (swap! node update :events conj {:event :error :message (ex-message t)})
           (throw t))
         (finally
-          (attach! parent (finish-node node)))))))
+          (let [finished (finish-node node)]
+            (attach! parent finished)
+            ;; Stream this span as one JSONL line. Runs on whatever thread the span finished on
+            ;; (incl. tool virtual threads) — *session-id* is conveyed there by `bound-fn*`.
+            (ai-tracing.log/emit! finished *session-id*)))))))
 
 ;;;; ----------------------------------------- Enrichment of current span -----------------------------------
 
 (defn record!
-  "Merge `attrs` (namespaced keyword → primitive) onto the current eval span. Use for
-  outputs/results/health signals known mid- or post-body. No-op when inactive or outside
-  a span."
+  "Merge `attrs` (namespaced keyword → value) onto the current eval span. Use for
+  outputs/results/health signals known mid- or post-body. No-op when inactive or outside a span."
   [attrs]
   (when (and (capture-active?) *parent* (seq attrs))
     (swap! *parent* update :attributes merge attrs))
   nil)
 
 (defn event!
-  "Append a point-in-time `event` map to the current eval span (a retrieval decision, a
-  health signal, a notable log line). No-op when inactive or outside a span."
+  "Append a point-in-time `event` map to the current eval span (a retrieval decision, a health
+  signal, a notable log line). No-op when inactive or outside a span."
   [event]
   (when (and (capture-active?) *parent*)
     (swap! *parent* update :events conj event))
@@ -135,8 +147,7 @@
 ;;;; ----------------------------------------- Span macros --------------------------------------------------
 
 (defmacro eval-span
-  "Generic eval-only span. Usable from any subsystem (e.g. `metabase.search` for ranking/
-  candidate debug). `attrs` is a map of namespaced keyword → primitive."
+  "Generic eval-only span. Usable from any subsystem. `attrs` is a map of namespaced keyword → value."
   {:style/indent 2}
   [span-name attrs & body]
   `(eval-span* :span ~span-name ~attrs (^{:once true} fn* [] ~@body)))
@@ -161,43 +172,50 @@
      (eval-span* :tool (str "tool." (:ai/tool-name attrs#)) attrs#
                  (^{:once true} fn* [] ~@body))))
 
-;;;; ----------------------------------------- Harness entrypoint -------------------------------------------
+;;;; ----------------------------------------- Entrypoints --------------------------------------------------
+
+(defmacro with-eval-session
+  "Generic eval-session entrypoint. When capture is enabled and not already active, establish a
+  FRESH capture: bind [[*capture*]] (the in-memory tree), [[*session-id*]] (use `supplied-id` or
+  mint a fresh uuid), and reset [[*parent*]] to nil. When already [[capture-active?]], INHERIT the
+  outer bindings (nesting). Inert (body only) when eval-capture is disabled.
+
+  Session-id is minted eagerly here so callers can read [[*session-id*]] before the first span.
+
+    (with-eval-session nil          (with-agent-turn {…} …))   ; agent loop — mint
+    (with-eval-session mcp-session  (eval-span \"mcp.tools/call\" {…} …))   ; MCP — supplied"
+  {:style/indent 1}
+  [supplied-id & body]
+  `(let [supplied# ~supplied-id]
+     (cond
+       (capture-active?)       (do ~@body)            ; inherit / nest
+       (eval-capture-enabled?) (binding [*capture*    (atom [])
+                                         *session-id* (or supplied# (str (random-uuid)))
+                                         *parent*     nil]
+                                 ~@body)
+       :else                   (do ~@body))))         ; inert
 
 (defmacro capturing
-  "Establish an eval capture for `body` and return `{:result <body value> :trace <root spans>}`.
-  The harness MUST fully realize any lazy result (e.g. the `run-agent-loop` reducible) inside
-  `body`, otherwise spans created during realization are not captured."
+  "In-process capture, UNCONDITIONAL (ignores the gate). Establishes a fresh capture, mints a
+  session id if none is bound, and returns `{:result <body value> :trace <root spans>}`. Used by
+  [[capture-reducible]] and tests. The harness must fully realize any lazy result inside `body`."
   [& body]
   `(let [sink# (atom [])]
-     (binding [*capture* sink#
-               *parent*  nil]
+     (binding [*capture*    sink#
+               *parent*     nil
+               *session-id* (or *session-id* (str (random-uuid)))]
+       ;; bind result# in a let so the body (which populates sink#) is forced BEFORE @sink#
        (let [result# (do ~@body)]
          {:result result# :trace @sink#}))))
 
 (defn capture-reducible
   "In-process eval entrypoint. Realizes `reducible` (e.g. the value of
-  `metabase.metabot.agent.core/run-agent-loop`) with capture active, collecting every
-  reduced item into a vector. Returns `{:result [items…] :trace [root-spans]}`.
+  `metabase.metabot.agent.core/run-agent-loop`) with capture active, collecting every reduced item
+  into a vector. Returns `{:result [items…] :trace [root-spans]}`.
 
     (ai-tracing/capture-reducible (run-agent-loop opts))"
   [reducible]
-  (let [{:keys [trace] :as out} (capturing (into [] reducible))]
-    (ai-tracing.export/export-trace! trace)
-    out))
-
-;;;; ----------------------------------------- OTLP export (re-exported) ------------------------------------
-
-(defn export-trace!
-  "Replay a captured eval trace (`roots`) onto the dedicated OTLP eval provider and force-flush.
-  Best-effort; no-op when `MB_AI_EVAL_OTLP_ENDPOINT` is unset. Call sites use this so they never
-  touch the internal export namespace."
-  [roots]
-  (ai-tracing.export/export-trace! roots))
-
-(defn shutdown-export!
-  "Flush and shut down the dedicated eval OTLP provider, if any."
-  []
-  (ai-tracing.export/shutdown!))
+  (capturing (into [] reducible)))
 
 ;;;; ----------------------------------------- Helpers re-exported ------------------------------------------
 

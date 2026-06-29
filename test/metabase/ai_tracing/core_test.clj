@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.ai-tracing.core :as ait]
-   [metabase.ai-tracing.export :as ait.export]
+   [metabase.ai-tracing.log :as ait.log]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -99,8 +99,8 @@
 
 (deftest capture-reducible-test
   (testing "capture-reducible realizes a reducible and returns {:result :trace}"
-    ;; redef export so the test never ships to a configured OTLP endpoint
-    (mt/with-dynamic-fn-redefs [ait.export/export-trace! (constantly nil)]
+    ;; redef the sink so the test never writes a trace file
+    (mt/with-dynamic-fn-redefs [ait.log/emit! (constantly nil)]
       (let [reducible (reify clojure.lang.IReduceInit
                         (reduce [_ rf init]
                           (ait/with-agent-turn {:ai/profile-id "p"}
