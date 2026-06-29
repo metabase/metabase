@@ -20,8 +20,8 @@
   "Maximum time in ms since the first message before a flush is forced. 0 = no max."
   5000)
 
-(def ^:dynamic *publish-buffer-max-retries*
-  "Maximum number of flush attempts before messages are dropped. 0 = unlimited retries."
+(def ^:dynamic *publish-buffer-max-attempts*
+  "Maximum number of flush attempts before messages are dropped. 0 = unlimited attempts."
   10)
 
 (def ^:dynamic *publish-buffer-retry-base-ms*
@@ -35,9 +35,9 @@
   30000)
 
 (defn- flush-retry-backoff-ms
-  [retries]
+  [attempts]
   (min *publish-buffer-retry-max-ms*
-       (long (* *publish-buffer-retry-base-ms* (Math/pow 2 (dec retries))))))
+       (long (* *publish-buffer-retry-base-ms* (Math/pow 2 (dec attempts))))))
 
 (def ^:dynamic *publish-buffer*
   "Accumulation buffer for rapid-fire publishes. Holds only messages that are still gathering into a
@@ -49,8 +49,8 @@
   "Frozen batches whose flush failed and that are now retrying on their own backoff, independent of
    the accumulation buffer.
 
-   A vector of {:channel kw :messages [...] :retries int :deadline-ms long}; `:retries` is the number
-   of attempts that have already failed."
+   A vector of {:channel kw :messages [...] :attempts int :deadline-ms long}; `:attempts` is the
+   number of attempts that have already failed."
   (atom []))
 
 (defn- max-batch-size [channel]
@@ -87,22 +87,22 @@
                  (fn [buf] (cond-> buf (contains? buf channel) (assoc-in [channel :deadline-ms] 1)))))))))
 
 (defn- handle-flush-failure!
-  "Records a failed flush of `messages` on `channel`. `retries` is the number of attempts that have
-   now failed (1 on the first failure). Drops the batch (logging) once `*publish-buffer-max-retries*`
+  "Records a failed flush of `messages` on `channel`. `attempts` is the number of attempts that have
+   now failed (1 on the first failure). Drops the batch (logging) once `*publish-buffer-max-attempts*`
    is reached; otherwise freezes it into `*publish-retry-batches*` with an exponential-backoff
    deadline so it retries independently of fresh accumulation."
-  [channel messages retries ^Exception e]
+  [channel messages attempts ^Exception e]
   (analytics/inc! :metabase-mq/publish-buffer-flush-errors {:channel (name channel)})
-  (if (and (pos? *publish-buffer-max-retries*) (>= retries *publish-buffer-max-retries*))
+  (if (and (pos? *publish-buffer-max-attempts*) (>= attempts *publish-buffer-max-attempts*))
     (log/warnf "Dropping %d messages for %s after %d flush failures: %s"
-               (count messages) channel retries (ex-message e))
-    (let [backoff (flush-retry-backoff-ms retries)]
+               (count messages) channel attempts (ex-message e))
+    (let [backoff (flush-retry-backoff-ms attempts)]
       (log/errorf e "Error flushing publish buffer for %s, retrying in %dms (attempt %d)"
-                  channel backoff retries)
+                  channel backoff attempts)
       (swap! *publish-retry-batches* conj
              {:channel     channel
               :messages    (vec messages)
-              :retries     retries
+              :attempts    attempts
               :deadline-ms (+ (System/currentTimeMillis) backoff)}))))
 
 (defn- flush-accumulation!
@@ -133,17 +133,17 @@
   "Re-attempts each frozen retry batch whose backoff deadline has passed (or all of them when
    `force?`). A batch that publishes is dropped from the retry list; one that fails again is
    re-frozen with an incremented attempt count and a longer backoff, or dropped once it exhausts
-   `*publish-buffer-max-retries*`."
+   `*publish-buffer-max-attempts*`."
   [force?]
   (let [now      (System/currentTimeMillis)
         due?     (fn [{:keys [deadline-ms]}] (or force? (>= now deadline-ms)))
         ;; Atomically remove the due batches, leaving the not-yet-due ones in place. Re-attempts that
         ;; fail are conj'd back on by handle-flush-failure!.
         all      (first (swap-vals! *publish-retry-batches* (fn [batches] (vec (remove due? batches)))))]
-    (doseq [{:keys [channel messages retries]} (filter due? all)]
+    (doseq [{:keys [channel messages attempts]} (filter due? all)]
       (try (transport/publish! channel messages)
            (catch Exception e
-             (handle-flush-failure! channel messages (inc retries) e))))))
+             (handle-flush-failure! channel messages (inc attempts) e))))))
 
 (defn flush-publish-buffer!
   "Drains accumulation entries past their deadline and re-attempts any due retry batches.

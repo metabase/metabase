@@ -29,7 +29,7 @@
           (publish-buffer/flush-publish-buffer!)
           (testing "Failed batch is off the accumulation buffer and on the retry list"
             (is (empty? @publish-buffer/*publish-buffer*))
-            (is (= [{:channel :queue/test :messages ["msg1" "msg2"] :retries 1}]
+            (is (= [{:channel :queue/test :messages ["msg1" "msg2"] :attempts 1}]
                    (mapv #(dissoc % :deadline-ms) @publish-buffer/*publish-retry-batches*))))
           ;; Second flush — retry succeeds
           (publish-buffer/flush-publish-buffer!)
@@ -37,13 +37,13 @@
             (is (= [{:channel :queue/test :messages ["msg1" "msg2"]}] @published))
             (is (empty? @publish-buffer/*publish-retry-batches*))))))))
 
-(deftest flush-drops-messages-after-max-retries-test
-  (testing "A frozen batch is dropped after exceeding max retries"
+(deftest flush-drops-messages-after-max-attempts-test
+  (testing "A frozen batch is dropped after exceeding max attempts"
     (binding [publish-buffer/*publish-buffer*               (atom {})
               publish-buffer/*publish-retry-batches*        (atom [])
               publish-buffer/*publish-buffer-ms*            0
               publish-buffer/*publish-buffer-max-ms*        0
-              publish-buffer/*publish-buffer-max-retries*   3
+              publish-buffer/*publish-buffer-max-attempts*  3
               ;; zero backoff so each retry is eligible on the immediately-following flush
               publish-buffer/*publish-buffer-retry-base-ms* 0]
       (with-dynamic-fn-redefs [transport/publish! (fn [_channel _messages]
@@ -51,18 +51,18 @@
         ;; Populate accumulation buffer with messages past their deadline
         (reset! publish-buffer/*publish-buffer*
                 {:queue/test {:messages ["msg1" "msg2"] :deadline-ms 1 :created-ms 1}})
-        ;; Flush 1: accumulation fails -> retries=1, frozen
+        ;; Flush 1: accumulation fails -> attempts=1, frozen
         (publish-buffer/flush-publish-buffer!)
         (is (= 1 (count @publish-buffer/*publish-retry-batches*))
             "Batch frozen after first failure")
-        ;; Flush 2: retry fails -> retries=2, re-frozen
+        ;; Flush 2: retry fails -> attempts=2, re-frozen
         (publish-buffer/flush-publish-buffer!)
-        (is (= [2] (mapv :retries @publish-buffer/*publish-retry-batches*))
+        (is (= [2] (mapv :attempts @publish-buffer/*publish-retry-batches*))
             "Batch re-frozen with incremented attempt count after second failure")
-        ;; Flush 3: retries=3 >= max-retries=3, dropped
+        ;; Flush 3: attempts=3 >= max-attempts=3, dropped
         (publish-buffer/flush-publish-buffer!)
         (is (empty? @publish-buffer/*publish-retry-batches*)
-            "Batch dropped after reaching max retries")))))
+            "Batch dropped after reaching max attempts")))))
 
 (deftest flush-retry-backoff-grows-exponentially-test
   (testing "the backoff helper doubles each attempt and is capped"
@@ -91,12 +91,12 @@
                 (let [t0 (System/currentTimeMillis)]
                   (publish-buffer/flush-publish-buffer!)
                   (- (retry-deadline) t0)))]
-          (publish-buffer/flush-publish-buffer!) ; retries 1 -> ~1000ms
-          (let [d2 (flush-due!)                   ; retries 2 -> ~2000ms
-                d3 (flush-due!)]                  ; retries 3 -> ~4000ms
+          (publish-buffer/flush-publish-buffer!) ; attempts 1 -> ~1000ms
+          (let [d2 (flush-due!)                   ; attempts 2 -> ~2000ms
+                d3 (flush-due!)]                  ; attempts 3 -> ~4000ms
             (is (<= 2000 d2 2200) "second retry waits ~2x base")
             (is (<= 4000 d3 4200) "third retry waits ~4x base")
-            (is (= [3] (mapv :retries @publish-buffer/*publish-retry-batches*)))))))))
+            (is (= [3] (mapv :attempts @publish-buffer/*publish-retry-batches*)))))))))
 
 (deftest retry-batch-does-not-merge-with-fresh-accumulation-test
   (testing "Messages that arrive while a batch is retrying accumulate independently — they are NOT
@@ -132,7 +132,7 @@
                 ;; a frozen batch already retrying for this channel, far in the future
                 publish-buffer/*publish-retry-batches*        (atom [{:channel     :queue/test
                                                                       :messages    ["stuck"]
-                                                                      :retries     1
+                                                                      :attempts    1
                                                                       :deadline-ms (+ (System/currentTimeMillis) 1000000)}])
                 publish-buffer/*publish-buffer-ms*            100000   ; sliding window never fires on its own
                 publish-buffer/*publish-buffer-max-ms*        50]
