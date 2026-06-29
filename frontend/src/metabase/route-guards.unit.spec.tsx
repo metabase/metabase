@@ -5,9 +5,14 @@ import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { metabaseReduxContext } from "metabase/redux/context";
-import { createMockState } from "metabase/redux/store/mocks";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import {
+  CanAccessMonitor,
   IsAuthenticated,
   IsNotAuthenticated,
   isBackendOnlyPath,
@@ -72,12 +77,9 @@ describe("route-guards", () => {
 
   describe("redirect-after-login flow (UXW-3939)", () => {
     it("UserIsAuthenticated should preserve original path as ?redirect= when sending logged-out user to /auth/login", async () => {
-      const settings = {
-        "has-user-setup": true,
-      } as any;
       const state = createMockState({
         currentUser: undefined,
-        settings: { values: settings } as any,
+        settings: createMockSettingsState({ "has-user-setup": true }),
       });
 
       const Dashboard = () => <div>protected dashboard</div>;
@@ -108,6 +110,73 @@ describe("route-guards", () => {
         expect.objectContaining({ redirect: "/dashboard/123" }),
       );
       expect(location.search).toContain("redirect");
+    });
+  });
+
+  describe("CanAccessMonitor", () => {
+    interface SetupOpts {
+      currentUser?: ReturnType<typeof createMockUser>;
+    }
+
+    const setup = ({ currentUser }: SetupOpts = {}) => {
+      return renderWithProviders(
+        <>
+          <Route component={CanAccessMonitor}>
+            <Route path="/monitor" component={() => <div>monitor page</div>} />
+          </Route>
+          <Route path="/auth/login" component={() => <div>login page</div>} />
+          <Route
+            path="/unauthorized"
+            component={() => <div>unauthorized</div>}
+          />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser,
+            settings: createMockSettingsState({ "has-user-setup": true }),
+          }),
+          withRouter: true,
+          initialRoute: "/monitor",
+        },
+      );
+    };
+
+    it("redirects unauthenticated users to login with redirect back", async () => {
+      const { history } = setup({ currentUser: undefined });
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/auth/login");
+      });
+
+      expect(history?.getCurrentLocation().query).toEqual(
+        expect.objectContaining({ redirect: "/monitor" }),
+      );
+    });
+
+    it("redirects users without monitor access to unauthorized", async () => {
+      const { history } = setup({
+        currentUser: createMockUser({
+          is_data_analyst: false,
+          is_superuser: false,
+        }),
+      });
+
+      await waitFor(() => {
+        expect(history?.getCurrentLocation().pathname).toBe("/unauthorized");
+      });
+
+      expect(history?.getCurrentLocation().query).toEqual({});
+    });
+
+    it("renders for analysts", () => {
+      setup({
+        currentUser: createMockUser({
+          is_data_analyst: true,
+          is_superuser: false,
+        }),
+      });
+
+      expect(screen.getByText("monitor page")).toBeInTheDocument();
     });
   });
 

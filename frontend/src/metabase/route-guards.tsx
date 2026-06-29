@@ -172,11 +172,8 @@ export const CanAccessDataStudio = MetabaseIsSetup(
   ),
 );
 
-// Must be in sync with canAccessMonitor in frontend/src/metabase/common/monitor/selectors.ts
 export const CanAccessMonitor = MetabaseIsSetup(
-  UserIsAuthenticated(
-    UserCanAccessMonitor(AvailableInEmbedding(({ children }) => children)),
-  ),
+  UserIsAuthenticated(UserCanAccessMonitor(({ children }) => children)),
 );
 
 export const CanAccessDataModel = UserCanAccessDataModel(
