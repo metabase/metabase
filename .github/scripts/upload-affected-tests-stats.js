@@ -12,6 +12,8 @@ console.log("stats", s);
 
 const row = {
   Date: new Date().toISOString(),
+  // "pr_update" or "merge_to_master".
+  Trigger: process.env.TRIGGER,
   PR: Number(process.env.PR_NUMBER),
   "Head SHA": process.env.HEAD_SHA,
   "Base SHA": process.env.BASE_SHA,

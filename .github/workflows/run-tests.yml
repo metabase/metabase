@@ -54,7 +54,7 @@ jobs:
           filters: .github/file-paths.yaml
       - name: Create test plan
         id: compute
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
         uses: ./.github/actions/create-test-plan
         with:
           changed-files: ${{ steps.changes.outputs.all_changed_files }}
@@ -67,7 +67,7 @@ jobs:
   upload-affected-tests-stats:
     needs: create-test-plan
     # Only land rows for the upstream repo so forks don't pollute the table.
-    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && github.event.pull_request.head.repo.full_name == 'metabase/metabase' }}
+    if: ${{ !cancelled() && needs.create-test-plan.result == 'success' && (github.event.pull_request.head.repo.full_name == 'metabase/metabase' || (github.event_name == 'push' && github.repository == 'metabase/metabase')) }}
     # Stats upload is best-effort — a failure here shouldn't fail the PR run.
     continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -75,11 +75,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Upload affected tests stats
+        # On push (merge to master) there is no PR context, so fall back to the
+        # commit SHAs and a 0 PR number.
         env:
           STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          TRIGGER: ${{ github.event_name == 'pull_request' && 'pr_update' || 'merge_to_master' }}
+          PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || 0 }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           API_KEY: ${{ secrets.STATS_API_KEY }}
         run: node .github/scripts/upload-affected-tests-stats.js
 
