@@ -394,11 +394,14 @@
   "Cluster lock serializing the audit DB load/adjust/sync/reconcile across nodes (GHY-3974 1b)."
   ::audit-db-lock)
 
-(defn- lock-acquisition-failure?
-  "True for the exception `with-cluster-lock` throws when it could not acquire the lock (as opposed to an
-   error raised by the locked body)."
+(defn- audit-lock-contention?
+  "True only for the exception `with-cluster-lock` throws when it could not acquire *our* audit lock. A
+   different cluster lock's acquisition failure raised from inside the locked body (e.g. the permissions
+   lock taken when serdes inserts a Database) also carries `:lock-names`, but must propagate rather than be
+   swallowed as audit contention."
   [e]
-  (contains? (ex-data e) :lock-names))
+  (let [audit-lock-name (str (namespace audit-db-cluster-lock) "/" (name audit-db-cluster-lock))]
+    (boolean (some #{audit-lock-name} (:lock-names (ex-data e))))))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist, and loads audit
@@ -421,6 +424,6 @@
               ;; matches, so the load/sync above are skipped) still self-heal.
               (reconcile-audit-db-duplicates! (:id audit-db))))))
         (catch Throwable e
-          (if (lock-acquisition-failure? e)
+          (if (audit-lock-contention? e)
             (log/info "Another node holds the audit DB lock; skipping audit content load on this node.")
             (throw e)))))))
