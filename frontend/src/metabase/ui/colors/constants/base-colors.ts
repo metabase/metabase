@@ -246,6 +246,7 @@ const baseColors = {
 
 /**
  * These base colors are only for use in defining `light.ts` and `dark.ts` themes.
+ * One exemption are colors that are strictly non-theme dependent.
  *
  * Don't use it for anything else or you will be fired.
  */
