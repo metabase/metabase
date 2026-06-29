@@ -16,11 +16,11 @@
 }
 
 .inputField::placeholder {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .cmOperator {
-  color: var(--mb-color-syntax-parameters);
+  color: var(--mb-color-text-syntax-parameter);
 }
 
 .cmMetricToken {
@@ -78,7 +78,7 @@
     }
 
     .cm-placeholder {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
     }
 
     .cm-scroller {

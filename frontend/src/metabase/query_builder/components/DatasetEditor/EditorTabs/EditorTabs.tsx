@@ -26,9 +26,9 @@ export function EditorTabs({
       style={
         {
           // TODO: Re-write this component to use actual buttons and better semantic colors
-          "--active-tab-color": "var(--mb-color-text-hover)",
+          "--active-tab-color": "var(--mb-color-text-brand-hover)",
           "--inactive-tab-color":
-            "color-mix(in srgb, var(--mb-color-text-hover) 30%, transparent )",
+            "color-mix(in srgb, var(--mb-color-text-brand-hover) 30%, transparent )",
         } as CSSProperties
       }
     >
