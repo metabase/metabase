@@ -21,7 +21,6 @@
               :query   {:id "q1" :query query}
               :display "bar"}
              (:data part)))))
-
   (testing "omits :display when not provided"
     (let [part (streaming/viz-part {:entity-id "card-2"
                                     :query-id  "q2"
@@ -42,7 +41,6 @@
       (is (= {:type "dashboard" :url "/auto/dashboard/table/123" :title "Orders"}
              (:data part)))
       (is (not (contains? (:data part) :id)))))
-
   (testing "includes :id when provided"
     (let [part (streaming/dashboard-entity-part {:title "Orders" :url "/dashboard/9" :id 9})]
       (is (= {:type "dashboard" :url "/dashboard/9" :title "Orders" :id 9}
@@ -241,11 +239,9 @@
       (is (= :tool-output (:type (nth result 0))))
       (is (= "todo_list" (:data-type (nth result 1))))
       (is (re-find #"\[Link\]\(/question#" (:text (nth result 2))))))
-
   (testing "works with empty parts"
     (let [result (into [] (streaming/post-process-xf {} {} (atom {})) [])]
       (is (= [] result))))
-
   (testing "preserves order: tool-output, data-parts, text"
     (let [parts [{:type :tool-output
                   :id "t1"
