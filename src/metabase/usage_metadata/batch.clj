@@ -1,7 +1,6 @@
 (ns metabase.usage-metadata.batch
   (:require
    [java-time.api :as t]
-   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.models.source-dimension-daily]
@@ -283,10 +282,8 @@
                               (map t2.realize/realize)
                               (completing (partial process-query-row bucket-date hash->count))
                               stats
-                              (mdb/streaming-reducible
-                               (fn [conn]
-                                 (t2/reducible-select :conn conn [:model/Query :query_hash :query]
-                                                      :query_hash [:in hash-chunk])))))
+                              (t2/reducible-select [:model/Query :query_hash :query]
+                                                   :query_hash [:in hash-chunk])))
                            initial-stats
                            (partition-all hash-chunk-size raw-hashes))
          seen-hashes      (:seen-hashes after-stream)
