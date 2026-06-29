@@ -112,7 +112,9 @@
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (mt/with-temp [:model/Collection {coll-id :id} {}
-                       :model/Card {card-id :id} {:collection_id coll-id :name "Quarterly Revenue"}]
+                       :model/Card {card-id :id} {:collection_id coll-id
+                                                  :name          "Quarterly Revenue"
+                                                  :creator_id    (mt/user->id :rasta)}]
           (let [insert     (fn [scan threshold]
                              (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                               {:scan_id          scan
@@ -133,11 +135,18 @@
                 (is (not (contains? ids old-id)))
                 ;; total must exclude the older row even though it is stale=false: it isn't MAX(id) for the entity
                 (is (= 1 (:total resp)))))
-            (testing "the served finding is batch-hydrated with entity name + collection, and details round-trip"
+            (testing "the served finding has flat identity + a nested typed details (collection, description, owner, creator)"
               (let [row (first (filter #(= new-id (:id %)) (:data (serve))))]
-                (is (= "Quarterly Revenue" (:name row)))
-                (is (= coll-id (:collection_id row)))
-                (is (= 90 (:threshold_days (:details row))))))
+                (is (= "Quarterly Revenue" (:entity_display_name row)))
+                (testing "collection breadcrumb nested under details"
+                  (is (= coll-id (get-in row [:details :collection :id]))))
+                (testing "stored verdict (threshold_days) flows through details"
+                  (is (= 90 (get-in row [:details :threshold_days]))))
+                (testing "creator hydrated as a normalized user object"
+                  (is (= (mt/user->id :rasta) (get-in row [:details :creator :id])))
+                  (is (= "user" (get-in row [:details :creator :type]))))
+                (testing "card has no owner column → owner is null"
+                  (is (nil? (get-in row [:details :owner]))))))
             (testing "invalidating the latest hides the entity AND drops it from total; older row does NOT resurface"
               (t2/update! :model/ContentDiagnosticsFinding new-id {:stale true})
               (let [resp (serve)
