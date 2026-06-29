@@ -38,4 +38,4 @@ runs:
         CI_CONDUCTOR_TEST_SUITE: ${{ inputs.test-suite }}
       # Zero-runtime-dep (bun built-ins only), so it just runs the TS directly —
       # no `bun install`. See DEV-2224 / DEV-2235.
-      run: bun release/ci-conductor/src/report-junit.ts
+      run: bun release/ci-conductor/src/report-backend.ts

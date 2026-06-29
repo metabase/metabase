@@ -29,19 +29,23 @@ src/
 │                      (repo/run/job/sha/branch) and POSTs /webhooks/failed-tests
 │                      (quarantine fetch/gate joins this later)
 ├── util.ts            toNumber() / log()
-├── report-junit.ts    backend entrypoint (bun src/report-junit.ts)
+├── junit.ts           parseJunit(): shared JUnit XML parser (backend + frontend)
+├── report-backend.ts  backend entrypoint (bun src/report-backend.ts)
 └── adapters/
-    └── junit.ts       normalizeBackendJunit(): hawk JUnit XML → NormalizedTest[]
+    └── backend.ts     normalizeBackendJunit(): hawk JUnit → NormalizedTest[]
 ```
 
-The **jest** (frontend) and **cypress** (e2e) normalizers
-(`normalizeFrontendJunit` / `normalizeCypressFailure`) land in later rounds
-(DEV-2247 and the e2e port), reusing this same core.
+Adapters are named by **suite**, not format — both backend and frontend are
+JUnit, so the parser (`junit.ts`) is shared and each adapter owns only its own
+file discovery + field mapping. The **jest** (frontend) and **cypress** (e2e)
+adapters (`normalizeFrontendJunit` in `adapters/frontend.ts` reusing `junit.ts`;
+`normalizeCypressFailure` in `adapters/cypress.ts`, not JUnit) land in later
+rounds (DEV-2247 and the e2e port), reusing this same core.
 
 ## Run
 
 ```bash
-bun src/report-junit.ts   # parse target/junit and POST failures
+bun src/report-backend.ts   # parse target/junit and POST failures
 bun test                  # unit tests
 bun run type-check        # tsc --noEmit
 ```

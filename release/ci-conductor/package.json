@@ -5,7 +5,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "report:junit": "bun src/report-junit.ts",
+    "report:backend": "bun src/report-backend.ts",
     "test": "bun test",
     "type-check": "tsc --noEmit"
   },

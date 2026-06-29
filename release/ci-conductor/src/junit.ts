@@ -1,20 +1,13 @@
-// Backend (Clojure) adapter: hawk's JUnit XML → NormalizedTest[].
-//
-// The hawk test runner always writes JUnit XML to `target/junit/`, so the
-// backend "collector" is a post-run parse of that artifact (one runner, one
-// artifact, covers both the backend and driver CI paths). hawk's output is
-// simple, machine-generated XML, so we parse it ourselves rather than pull in a
-// dependency.
+// The shared JUnit XML parser: a JUnit `<testcase>`/`<failure>` document →
+// NormalizedTest[]. Format-level and producer-agnostic — both the backend
+// (hawk) and the frontend (jest-junit) adapters build on it. The per-suite
+// parts (where the XML lives, how fields map, the suite label) stay in
+// `adapters/`. JUnit XML is simple, machine-generated markup, so we parse it
+// ourselves rather than pull in a dependency.
 
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import type { NormalizedTest } from "./contract.ts";
 
-import type { NormalizedTest } from "../contract.ts";
-import { log } from "../util.ts";
-
-const JUNIT_DIR = process.env.JUNIT_DIR || "target/junit";
-
-/** Decode the XML entities hawk can emit in attribute values. */
+/** Decode the XML entities a JUnit producer can emit in attribute values. */
 function decodeEntities(value: string): string {
   return value
     .replace(/&lt;/g, "<")
@@ -40,25 +33,26 @@ function elementBody(inner: string): string {
 }
 
 /**
- * Parse one JUnit XML document into canonical entries — one per `<testcase>`
+ * Parse one JUnit XML document into normalized entries — one per `<testcase>`
  * that carries a `<failure>` or `<error>`. Multiple problems in a single
  * testcase are joined into one `stack`. Passing (self-closing or problem-free)
  * testcases are skipped. Never throws.
  *
- * Pure (string → normalized), so it's the unit-tested core of the adapter;
- * `normalizeBackendJunit` wraps it with the filesystem scan.
+ * Pure (string → normalized), so it's the unit-tested core that each suite's
+ * adapter wraps with its own file discovery / labeling.
  */
 export function parseJunit(xml: string): NormalizedTest[] {
   try {
     const tests: NormalizedTest[] = [];
-    // Machine-generated hawk output: <testcase ...>...</testcase> (failing) or
-    // <testcase .../> (passing, skipped). classname carries the namespace.
+    // <testcase ...>...</testcase> (failing) or <testcase .../> (passing,
+    // skipped). classname carries the namespace.
     //
     // Attribute blobs are matched as a run of quoted strings or non-quote chars
-    // (`ATTRS`) rather than `[^>]*`, because Clojure test names routinely contain
-    // an unescaped `>` (e.g. `cron-string->schedule-map-test`, `>=`), and XML
-    // doesn't require escaping `>` inside an attribute value. A naive `[^>]` stops
-    // at that `>` and silently drops the testcase (it parses with an empty name).
+    // (`ATTRS`) rather than `[^>]*`, because test names routinely contain an
+    // unescaped `>` (Clojure thread arrows `cron-string->schedule-map-test`,
+    // `>=`; a JS title like "renders > when open"), and XML doesn't require
+    // escaping `>` inside an attribute value. A naive `[^>]` stops at that `>`
+    // and silently drops the testcase (it parses with an empty name).
     const ATTRS = `(?:[^>"']|"[^"]*"|'[^']*')*`;
     const testcaseRe = new RegExp(
       `<testcase\\b(${ATTRS}?)(?:/>|>([\\s\\S]*?)</testcase>)`,
@@ -118,40 +112,4 @@ export function parseJunit(xml: string): NormalizedTest[] {
     console.error("[ci-conductor] failed to parse JUnit XML", error);
     return [];
   }
-}
-
-/** Recursively list `*_test.xml` files under `dir`. Returns [] on any error. */
-function findJunitFiles(dir: string): string[] {
-  try {
-    return readdirSync(dir, { recursive: true })
-      .map((entry) => String(entry))
-      .filter((entry) => entry.endsWith("_test.xml"))
-      .map((entry) => join(dir, entry));
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Backend adapter: normalize every JUnit file under `dir` into
- * `NormalizedTest[]`. The public entry point of this adapter — the source-
- * specific half of the pattern (hawk XML → the shared normalized shape).
- */
-export function normalizeBackendJunit(dir: string = JUNIT_DIR): NormalizedTest[] {
-  const files = findJunitFiles(dir);
-  const failures = files.flatMap((file) => {
-    try {
-      return parseJunit(readFileSync(file, "utf8"));
-    } catch (error) {
-      console.error(`[ci-conductor] failed to read ${file}`, error);
-      return [];
-    }
-  });
-  log(
-    `scanned ${dir}: ${files.length} JUnit file(s), ${failures.length} failing test(s)`,
-  );
-  for (const test of failures) {
-    log(`  failing: ${test.path || "(no namespace)"} / ${test.name}`);
-  }
-  return failures;
 }

@@ -26,11 +26,12 @@ expected: (= once (repair/repair trivial-mp once))
 </testcase>
 </testsuite>`;
 
-// Clojure test names routinely contain unescaped `>`/`<` (thread arrows `->`,
-// comparison preds `>=`). hawk emits them verbatim in the `name` attribute, and
-// XML allows an unescaped `>` inside an attribute value. The parser must not let
-// that `>` terminate the tag. Regression for DEV-2224 (these were silently
-// dropped: the testcase parsed with an empty name and got skipped).
+// Test names routinely contain unescaped `>`/`<` (Clojure thread arrows `->`,
+// comparison preds `>=`; a JS title like "renders > when open"). A JUnit
+// producer emits them verbatim in the `name` attribute, and XML allows an
+// unescaped `>` inside an attribute value. The parser must not let that `>`
+// terminate the tag. Regression for DEV-2224 (these were silently dropped: the
+// testcase parsed with an empty name and got skipped).
 const ANGLE_BRACKET_NAMES = `<?xml version='1.0' encoding='UTF-8'?>
 <testsuite name="metabase.util.cron-test" time="0.063" tests="2" errors="0" failures="2">
 <testcase classname="metabase.util.cron-test" name="cron-string->schedule-map-test" time="0.03" assertions="1">

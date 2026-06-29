@@ -5,9 +5,9 @@
 // the failures to ci-conductor. Best-effort — reporting must never break a test
 // run.
 //
-// Run directly with bun (no build step):  bun src/report-junit.ts
+// Run directly with bun (no build step):  bun src/report-backend.ts
 
-import { normalizeBackendJunit } from "./adapters/junit.ts";
+import { normalizeBackendJunit } from "./adapters/backend.ts";
 import { reportTestFailures } from "./transport.ts";
 import { log } from "./util.ts";
 
