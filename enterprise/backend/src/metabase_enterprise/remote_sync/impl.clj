@@ -256,7 +256,9 @@
                             :model_id     (:id instance)
                             :path         (or repo-path (:path fspec))
                             :content_hash (source/content-hash (:content fspec))})
-                         (catch Exception _ nil)))]
+                         (catch Exception e
+                           (log/warnf e "Skipping %s %s: failed to serialize for content hash" model-type (:id instance))
+                           nil)))]
     ;; One transduction over the model groups: stream each model's extract-query through `serialize` via an
     ;; eduction — extract-one runs while the ResultSet is open, with no intermediate per-model sequence.
     (into []
