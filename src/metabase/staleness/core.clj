@@ -17,8 +17,3 @@
   `id`, `model`, `name`, `last_used_at`."
   {:arglists '([model args])}
   (fn [model _args] model))
-
-;; OSS-safe fallback: a model with no registered staleness method contributes no candidates rather
-;; than throwing `IllegalArgumentException: No method in multimethod`. This is the multimethod analog
-;; of a `defenterprise` OSS-default body. Consumers drop `nil` queries when building the UNION.
-(defmethod find-stale-query :default [_model _args] nil)

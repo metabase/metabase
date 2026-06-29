@@ -405,9 +405,10 @@
                (rows (assoc base :models #{:model/Card}))))
         (is (= [{:id dash-id :model :model/Dashboard}]
                (rows (assoc base :models #{:model/Dashboard})))))
-      (testing "a model with no registered staleness method contributes nothing"
-        (is (= [{:id card-id :model :model/Card}]
-               (rows (assoc base :models #{:model/Card :model/Collection}))))))))
+      (testing "a model with no registered staleness method fails loud (no silent drop)"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"No staleness method registered for"
+                              (rows (assoc base :models #{:model/Card :model/Collection}))))))))
 
 (deftest things-that-are-already-archived-do-not-appear
   (mt/with-temp [:model/Collection {col-id :id} {}

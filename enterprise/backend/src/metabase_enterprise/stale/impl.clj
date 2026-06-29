@@ -25,9 +25,9 @@
   ;; Ensure each model's namespace is loaded so its `find-stale-query` method is registered before we
   ;; dispatch — passing the `:model/X` keyword alone does not trigger Toucan model resolution.
   (run! t2/resolve-model models)
-  ;; `keep` drops the core multimethod's `:default` `nil` for any model with no registered method, so
-  ;; an unsupported model contributes zero candidates instead of corrupting the UNION ALL.
-  (keep #(staleness/find-stale-query % args) models))
+  (when-let [unsupported (seq (remove #(get-method staleness/find-stale-query %) models))]
+    (throw (ex-info (str "No staleness method registered for: " (vec unsupported)) {})))
+  (map #(staleness/find-stale-query % args) models))
 
 (mu/defn ^:private rows-query [{:keys [limit offset] :as args} :- FindStaleContentArgs]
   (cond-> {:select [:id :model]
