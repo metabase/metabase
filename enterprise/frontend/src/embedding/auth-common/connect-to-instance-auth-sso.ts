@@ -1,5 +1,5 @@
-import * as MetabaseError from "embedding-sdk-bundle/errors";
 import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
+import * as MetabaseError from "embedding-sdk-shared/errors";
 
 export async function connectToInstanceAuthSso(
   url: string,
