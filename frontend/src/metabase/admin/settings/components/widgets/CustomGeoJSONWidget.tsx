@@ -259,7 +259,7 @@ interface GeoJsonPropertySelectProps {
 }
 
 const SampleValues = ({ values }: { values: string[] }) => (
-  <Ellipsified mt="sm" fz="0.75rem" fw="bold">
+  <Ellipsified fz="0.75rem" fw="bold">
     {t`Sample values:`} {values.join(", ")}
   </Ellipsified>
 );
@@ -290,7 +290,7 @@ const GeoJsonPropertySelect = ({
   const selectedValues = value !== null ? options[value] : undefined;
 
   return (
-    <div data-testid={dataTestId}>
+    <Stack gap="sm" data-testid={dataTestId}>
       <Select
         value={value}
         placeholder={t`Select…`}
@@ -311,7 +311,7 @@ const GeoJsonPropertySelect = ({
         }}
         renderOption={(item) => (
           <SelectItem selected={item.checked} w="100%">
-            <Stack gap={0} w="100%">
+            <Stack gap="sm" w="100%">
               <Ellipsified>{item.option.label}</Ellipsified>
               <SampleValues values={options[item.option.value] ?? []} />
             </Stack>
@@ -323,7 +323,7 @@ const GeoJsonPropertySelect = ({
           <SampleValues values={selectedValues} />
         </Box>
       )}
-    </div>
+    </Stack>
   );
 };
 
