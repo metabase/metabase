@@ -205,8 +205,6 @@ export const IncrementalTransformSettings = ({
   );
 };
 
-const UNIQUE_KEY_DESCRIPTION = t`Optional. Columns that uniquely identify a row. When set, matching rows are updated in place instead of appended.`;
-
 // Form value is a comma-separated string of physical column names; this adapter presents it as a
 // column multi-select. Labels use the column display name (matching the checkpoint field select),
 // while the stored value stays the physical name the merge SQL needs.
@@ -228,7 +226,7 @@ function UniqueKeyColumnSelect({
   return (
     <MultiSelect
       label={t`Unique key`}
-      description={UNIQUE_KEY_DESCRIPTION}
+      description={t`Optional. Columns that uniquely identify a row. When set, matching rows are updated in place instead of appended.`}
       placeholder={t`Pick columns`}
       data={options}
       value={value}
@@ -264,7 +262,7 @@ function UniqueKeyField({
     <FormTextInput
       name="uniqueKey"
       label={t`Unique key`}
-      description={UNIQUE_KEY_DESCRIPTION}
+      description={t`Optional. Columns that uniquely identify a row. When set, matching rows are updated in place instead of appended.`}
       placeholder={t`e.g. id`}
       disabled={readOnly}
     />
