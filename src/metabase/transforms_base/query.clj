@@ -49,13 +49,13 @@
 
 ;;; ------------------------------------------------- Helpers -------------------------------------------------
 
-(defn- transform-opts [{:keys [transform-type target-incremental-strategy transform-id]}]
+(defn- transform-opts [transform-type transform]
   (case transform-type
     :table {:overwrite? true}
     :table-incremental
-    (if (= "merge" (:type target-incremental-strategy))
-      {:merge {:unique-key (mapv :name (:unique-key target-incremental-strategy))
-               :columns    (transforms-base.u/target-column-names {:id transform-id})}}
+    (if (transforms-base.u/merge-target? transform)
+      {:merge {:unique-key (transforms-base.u/merge-target-unique-key transform)
+               :columns    (transforms-base.u/target-column-names transform)}}
       {})))
 
 ;;; ------------------------------------------------- Base Execution -------------------------------------------------
@@ -116,7 +116,6 @@
                              :database database
                              :transform-id   id
                              :transform-type effective-transform-type
-                             :target-incremental-strategy (:target-incremental-strategy target)
                              :conn-spec (driver/connection-spec driver database)
                              :query compiled-query
                              :output-schema (:schema target)
@@ -128,7 +127,7 @@
                              ;; `metabase.driver.sql.query-processor/compile-transform :sql`.
                              :output-db (:db target)
                              :output-table (transforms-base.u/qualified-table-name driver target)}
-          opts (transform-opts transform-details)
+          opts (transform-opts effective-transform-type transform)
           features (transforms-base.u/required-database-features transform)]
       (when-not (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
         (throw (ex-info "The database does not support the requested transform target type."
