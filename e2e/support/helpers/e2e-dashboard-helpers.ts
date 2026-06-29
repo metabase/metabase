@@ -67,18 +67,20 @@ export function getDashboardCardMenu(index = 0) {
  * grid has settled. Pass `count` to also assert the expected number of cards is
  * present, which guards against the check passing before the cards render.
  *
- * Uses a CSS selector rather than findByTestId for the grid so a dashboard with
- * no grid (empty, text-only, or an empty-state placeholder) is a no-op instead
- * of timing out on a missing element.
+ * Anchors on the dashboard body being visible before checking for spinners so
+ * the absence check can't pass mid-render, before any cards have started
+ * loading. The body container renders even for empty dashboards (which show no
+ * grid), so this stays a no-op rather than hanging when there is no grid.
  */
 export function waitForDashcardsToLoad({ count }: { count?: number } = {}) {
   cy.log("Wait for all dashcards to finish loading");
   if (count != null) {
     getDashboardCards().should("have.length", count);
   }
-  cy.get(
-    '[data-testid="dashboard-grid"] [data-testid="loading-indicator"]',
-  ).should("not.exist");
+  cy.findByTestId("dashboard-parameters-and-cards")
+    .should("be.visible")
+    .findAllByTestId("loading-indicator")
+    .should("not.exist");
 }
 
 export function showDashboardCardActions(index = 0) {
