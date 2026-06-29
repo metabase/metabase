@@ -103,9 +103,9 @@ function MetricQueryPageBody({
   };
 
   const handleSave = async () => {
-    const questionWithMetadata = question.setResultsMetadata({
-      columns: resultMetadata,
-    });
+    const questionWithMetadata = question.setResultsMetadata(
+      resultMetadata ? { columns: resultMetadata } : null,
+    );
     const { display, settings } = Lib.defaultDisplay(
       questionWithMetadata.query(),
     );
