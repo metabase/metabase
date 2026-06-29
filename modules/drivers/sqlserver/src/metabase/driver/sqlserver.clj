@@ -1182,9 +1182,14 @@
                            escaped-username quoted-user quoted-user)
                    (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA %s')"
                            escaped-schema quoted-schema)
-                   ;; CONTROL ON SCHEMA gives ALTER (needed for creating objects in schema)
-                   (format "GRANT CONTROL ON SCHEMA::%s TO %s" quoted-schema quoted-user)
-                   ;; CREATE TABLE at database level is also required in SQL Server
+                   ;; Least-privilege grant on the workspace's own schema (vs. the old GRANT
+                   ;; CONTROL, dropping EXECUTE, VIEW DEFINITION, REFERENCES, and re-grant rights):
+                   ;;   ALTER  - create/drop/sp_rename objects in the schema
+                   ;;   SELECT, INSERT, UPDATE, DELETE - full DML (SQL Server, unlike Postgres,
+                   ;;            does not confer DML from ALTER/ownership, so grant it explicitly)
+                   (format "GRANT ALTER, SELECT, INSERT, UPDATE, DELETE ON SCHEMA::%s TO %s"
+                           quoted-schema quoted-user)
+                   ;; db-level CREATE TABLE: SELECT INTO (transform materialization) needs it too
                    (format "GRANT CREATE TABLE TO %s" quoted-user)]]
         (jdbc/execute! conn-spec [sql]))
       (catch Throwable t
