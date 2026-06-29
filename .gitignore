@@ -193,3 +193,6 @@ __pycache__/
 .ci_reports/
 # roborev snapshots
 /.roborev/
+
+# dependency-cruiser output
+dependency-graph.json

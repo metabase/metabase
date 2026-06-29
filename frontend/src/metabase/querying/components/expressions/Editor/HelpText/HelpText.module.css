@@ -29,14 +29,14 @@
 }
 
 .arg {
-  color: var(--mb-color-syntax-parameters);
+  color: var(--mb-color-text-syntax-parameter);
   font-family: var(--mb-default-monospace-font-family);
   font-size: 0.75rem;
   line-height: 1.57em;
   border-radius: 2px;
 
   &.active {
-    background-color: var(--mb-color-syntax-parameters-active);
+    background-color: var(--mb-color-text-syntax-parameter-active);
   }
 }
 

@@ -305,6 +305,7 @@
     "cypress-real-events": "^1.15.0",
     "cypress-split": "^1.24.31",
     "cypress-terminal-report": "^7.3.3",
+    "dependency-cruiser": "^17.4.3",
     "dnd-core": "^16.0.1",
     "esbuild": "^0.25.0",
     "eslint": "^9.17.0",

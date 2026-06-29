@@ -17,8 +17,6 @@ import { SearchFilter } from "../../components/SearchFilter";
 import { ACTIVE_STATUS, type ActiveStatus } from "../../constants";
 import { usePeopleQuery } from "../../hooks/use-people-query";
 
-import S from "./PeopleListingApp.module.css";
-
 const PAGE_SIZE = 25;
 
 const DEFAULT_NO_RESULTS_MESSAGE = () => t`No results found`;
@@ -110,8 +108,13 @@ export function PeopleListingApp({
       </Group>
 
       {isAdmin && hasDeactivatedUsers && (
-        <Tabs value={status} onChange={handleTabChange} pl="md">
-          <Tabs.List className={S.tabs}>
+        <Tabs
+          value={status}
+          onChange={handleTabChange}
+          pl="md"
+          listBorder={false}
+        >
+          <Tabs.List>
             <Tabs.Tab value={ACTIVE_STATUS.active}>{t`Active`}</Tabs.Tab>
             <Tabs.Tab
               value={ACTIVE_STATUS.deactivated}
