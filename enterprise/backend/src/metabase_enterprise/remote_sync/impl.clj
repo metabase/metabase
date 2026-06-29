@@ -715,19 +715,12 @@
                        (not (t2/exists? :model/RemoteSyncObject :model_type model_type :model_id model_id)))))
         (export-closure model-type model-id)))
 
-(defn- resize-chunk
-  [{:keys [model_type rows]}]
-  (->> rows
-       (partition-all app-db-batch-size)
-       (map (fn [chunk-rows] {:model_type model_type :rows chunk-rows}))))
-
 (defn- ->sized-chunks
   "Builds chunks of maximum size based on model type."
   [rows]
-  (->> rows
-       (group-by :model_type)
-       (map (fn [[model-type rows]] {:model_type model-type :rows rows}))
-       (mapcat resize-chunk)))
+  (for [[model-type rows] (group-by :model_type rows)
+        chunk-rows (partition-all app-db-batch-size rows)]
+    {:model_type model-type :rows chunk-rows}))
 
 (defn- extract-chunk
   "Extract one chunk's entities in a single query.
