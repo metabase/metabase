@@ -1,29 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
-
-import type { ActionIconProps } from "metabase/ui";
-
-export type DashboardSubscriptionsButtonProps = ActionIconProps &
-  ButtonHTMLAttributes<HTMLButtonElement>;
-
-export type QuestionAlertsButtonProps = ActionIconProps &
-  ButtonHTMLAttributes<HTMLButtonElement>;
-
-function getDefaultPluginNotificationsSdk() {
-  return {
-    DashboardSubscriptionsButton: (
-      _props: DashboardSubscriptionsButtonProps,
-    ): JSX.Element | null => null,
-    QuestionAlertsButton: (
-      _props: QuestionAlertsButtonProps,
-    ): JSX.Element | null => null,
-  };
-}
-
-export const PLUGIN_NOTIFICATIONS_SDK = getDefaultPluginNotificationsSdk();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_NOTIFICATIONS_SDK, getDefaultPluginNotificationsSdk());
-}
+// The PLUGIN_NOTIFICATIONS_SDK slot moved to metabase/plugins/oss so the OSS
+// dashboard can read it without importing from the app-tier SDK bundle.
+// Re-exported here so existing bundle/EE imports keep working.
+export * from "metabase/plugins/oss/notifications-sdk";
