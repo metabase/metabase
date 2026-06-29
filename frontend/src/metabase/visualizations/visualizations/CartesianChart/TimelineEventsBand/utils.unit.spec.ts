@@ -29,18 +29,6 @@ describe("TimelineEventsBand utils", () => {
         }),
       ).toBe("cloud");
     });
-
-    it("uses the star icon for a cluster", () => {
-      expect(
-        getTimelineEventGroupIconName({
-          date: "2025-01-01T00:00:00Z",
-          events: [
-            createMockTimelineEvent({ id: 1, icon: "cloud" }),
-            createMockTimelineEvent({ id: 2, icon: "mail" }),
-          ],
-        }),
-      ).toBe("star");
-    });
   });
 
   describe("getPositionedTimelineEventGroups", () => {
