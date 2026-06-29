@@ -249,17 +249,17 @@
                    graph
                    (let [perm-map (finalize perm-map)]
                      (cond-> graph (seq perm-map) (assoc-in path perm-map)))))
-        [graph path perm-map]
-        (reduce (fn [[graph path perm-map] row]
+        [graph last-path perm-map]
+        (reduce (fn [[graph last-path perm-map] row]
                   (let [row-path [(:group-id row) (:db-id row)]]
-                    (if (= row-path path)
+                    (if (= row-path last-path)
                       ;; same (group, db) as the previous row: keep accumulating
-                      [graph path (add-perm perm-map row)]
+                      [graph last-path (add-perm perm-map row)]
                       ;; new (group, db): commit the finished group, then start the next one
-                      [(commit graph path perm-map) row-path (add-perm {} row)])))
+                      [(commit graph last-path perm-map) row-path (add-perm {} row)])))
                 [{} nil nil]
                 reducible)]
-    (commit graph path perm-map)))
+    (commit graph last-path perm-map)))
 
 (mu/defn data-permissions-graph :- ::graph
   "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
