@@ -238,15 +238,51 @@
       :else
       (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
 
+(defn- merge-delete-query
+  "DELETE the rows of `target` whose unique key matches a row staged in `temp`.
+   `EXISTS`/tuple-`IN` over a correlated join for portability."
+  [driver target temp unique-key]
+  (let [cols (mapv keyword unique-key)
+        lhs  (if (= 1 (count cols)) (first cols) (into [:composite] cols))]
+    (sql.qp/format-honeysql driver
+                            {:delete-from target
+                             :where       [:in lhs {:select cols, :from [temp]}]})))
+
+(defn- merge-insert-query
+  "INSERT every row staged in `temp` into `target`. Positional `SELECT *` — `temp` was built by the
+   same source query that created `target` via CTAS, so column order matches."
+  [driver target temp]
+  (sql.qp/format-honeysql driver
+                          {:insert-into target
+                           :select      [:*]
+                           :from        [temp]}))
+
 (mu/defmethod driver/run-transform! [:sql :table-incremental] :- ::driver/run-transform-result
-  [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
-  (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
-                                                           :name (name output-table)})
-                  (driver/compile-insert driver transform-details)
-                  (driver/compile-transform driver transform-details))]
-    (log/tracef "Executing incremental transform queries: %s" (pr-str queries))
-    ;; `execute-raw-queries!` already yields `{:rows-affected N}` maps; take the last as-is.
-    (last (driver/execute-raw-queries! driver conn-spec [queries]))))
+  [driver {:keys [conn-spec database output-table] :as transform-details} {merge-opts :merge}]
+  (let [table-exists? (driver/table-exists? driver database {:schema (namespace output-table)
+                                                             :name   (name output-table)})]
+    (cond
+      ;; First run — no target yet — create it.
+      (not table-exists?)
+      (last (driver/execute-raw-queries! driver conn-spec [(driver/compile-transform driver transform-details)]))
+
+      ;; Key-based upsert/restate: stage the source into a temp table, delete matching keys from the
+      ;; target, then insert the staged rows. The whole batch runs in one transaction (see
+      ;; `execute-raw-queries! :sql-jdbc`), so the target is never left half-updated.
+      merge-opts
+      (let [temp    (driver.u/temp-table-name driver output-table)
+            results (driver/execute-raw-queries!
+                     driver conn-spec
+                     [(driver/compile-transform driver (assoc transform-details :output-table temp))
+                      (merge-delete-query driver output-table temp (:unique-key merge-opts))
+                      (merge-insert-query driver output-table temp)
+                      (driver/compile-drop-table driver temp)])]
+        ;; rows-affected = the INSERT (index 2), not the trailing DROP.
+        (nth results 2))
+
+      ;; Append.
+      :else
+      (last (driver/execute-raw-queries! driver conn-spec [(driver/compile-insert driver transform-details)])))))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."

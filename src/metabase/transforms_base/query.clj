@@ -49,11 +49,15 @@
 
 ;;; ------------------------------------------------- Helpers -------------------------------------------------
 
-(defn- transform-opts [{:keys [transform-type]}]
+(defn- transform-opts [{:keys [transform-type target-incremental-strategy]}]
   (case transform-type
     :table {:overwrite? true}
-    ;; once we have more than just append, dispatch on :target-incremental-strategy
-    :table-incremental {}))
+    :table-incremental
+    (if (= "merge" (:type target-incremental-strategy))
+      ;; delete+insert (key-based upsert/restate). The driver only needs the key column names.
+      {:merge {:unique-key (mapv :name (:unique-key target-incremental-strategy))}}
+      ;; append
+      {})))
 
 ;;; ------------------------------------------------- Base Execution -------------------------------------------------
 
@@ -113,6 +117,7 @@
                              :database database
                              :transform-id   id
                              :transform-type effective-transform-type
+                             :target-incremental-strategy (:target-incremental-strategy target)
                              :conn-spec (driver/connection-spec driver database)
                              :query compiled-query
                              :output-schema (:schema target)

@@ -88,6 +88,7 @@
                               :schemas                        true
                               :split-part                     true
                               :transforms/index-ddl           true
+                              :transforms/merge               true
                               :transforms/python              true
                               :transforms/table               true
                               :uploads                        true
