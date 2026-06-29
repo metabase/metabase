@@ -1,5 +1,4 @@
 import { Skeleton, Stack } from "metabase/ui";
-import type { ExplorationQuery } from "metabase-types/api";
 
 import S from "./ExplorationChartSkeleton.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
@@ -9,19 +8,10 @@ import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader
  * `running`. The visual mimics a tiny chart card — title bar, y-axis ticks,
  * and a flat area-chart silhouette in the body.
  */
-export function ExplorationChartSkeleton({
-  name,
-  explorationQuery,
-}: {
-  name: string | null;
-  explorationQuery?: ExplorationQuery;
-}) {
+export function ExplorationChartSkeleton({ name }: { name: string | null }) {
   return (
-    <>
-      <ExplorationVisualizationHeader
-        name={name ?? ""}
-        explorationQuery={explorationQuery}
-      />
+    <Stack p="lg" h="100%">
+      <ExplorationVisualizationHeader name={name ?? ""} />
 
       <Stack gap="md" h="100%" className={S.root}>
         <Stack gap={6} className={S.titleBlock}>
@@ -51,6 +41,6 @@ export function ExplorationChartSkeleton({
           </svg>
         </div>
       </Stack>
-    </>
+    </Stack>
   );
 }

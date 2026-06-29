@@ -1,23 +1,29 @@
 import { skipToken, useListCommentsQuery } from "metabase/api";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
+import {
+  getListCommentsQuery,
+  getTargetChildCommentThreads,
+} from "metabase/comments/utils";
 import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
-import { getCurrentDocument } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { useSelector } from "metabase/redux";
+import type { CommentTarget } from "metabase-types/api";
 
-export function useUnresolvedCommentsCount(
-  targetId: string,
-  { skip = false }: { skip?: boolean } = {},
-) {
-  const document = useSelector(getCurrentDocument);
+interface UseUnresolvedCommentsCountOptions {
+  target?: CommentTarget;
+  childTargetId?: string;
+  skip?: boolean;
+}
 
-  const query = skip ? skipToken : getListCommentsQuery(document);
+export function useUnresolvedCommentsCount({
+  target,
+  childTargetId,
+  skip = false,
+}: UseUnresolvedCommentsCountOptions) {
+  const query = skip ? skipToken : getListCommentsQuery(target);
 
   const { unresolvedCommentsCount } = useListCommentsQuery(query, {
     selectFromResult: ({ data: commentsData }) => {
       const threads = getTargetChildCommentThreads(
         commentsData?.comments,
-        targetId,
+        childTargetId,
       );
       return {
         unresolvedCommentsCount: getUnresolvedComments(threads).length,

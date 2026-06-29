@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
+import { getListCommentsQuery } from "metabase/comments/utils";
 import {
   DateTime,
   getFormattedTime,
@@ -22,7 +23,6 @@ import { isWithinIframe } from "metabase/utils/iframe";
 import type { Document } from "metabase-types/api";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
-import { getListCommentsQuery } from "../utils/api";
 
 import S from "./DocumentHeader.module.css";
 import { DocumentMenu } from "./DocumentMenu";
@@ -66,11 +66,21 @@ export const DocumentHeader = ({
   onArchive,
   onShowHistory,
 }: DocumentHeaderProps) => {
-  const { hasComments } = useListCommentsQuery(getListCommentsQuery(document), {
-    selectFromResult: ({ data }) => ({
-      hasComments: !isNewDocument && !!data?.comments?.length,
-    }),
-  });
+  const { hasComments } = useListCommentsQuery(
+    getListCommentsQuery(
+      document
+        ? {
+            target_id: document?.id,
+            target_type: "document",
+          }
+        : null,
+    ),
+    {
+      selectFromResult: ({ data }) => ({
+        hasComments: !isNewDocument && !!data?.comments?.length,
+      }),
+    },
+  );
 
   return (
     <Flex

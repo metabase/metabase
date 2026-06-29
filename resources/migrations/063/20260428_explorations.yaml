@@ -1511,3 +1511,18 @@ databaseChangeLog:
                   value: "{}"
             where: data_access_token IS NULL
       rollback:
+
+  - changeSet:
+      id: v63.guiswezd
+      author: kevinkelleher12
+      comment: Add context column to comment table for storing comment context metadata
+      changes:
+        - addColumn:
+            tableName: comment
+            columns:
+              - column:
+                  name: context
+                  type: ${text.type}
+                  remarks: Optional context metadata about the comment (e.g., active timeline for exploration comments)
+                  constraints:
+                    nullable: true

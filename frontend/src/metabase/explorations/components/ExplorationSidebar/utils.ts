@@ -16,7 +16,6 @@ import type {
 import {
   getExplorationQueryGroupInterestingness,
   getExplorationQueryGroupStatus,
-  isSettledExplorationQueryStatus,
 } from "metabase-types/api";
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
@@ -49,7 +48,7 @@ export interface ExplorationTreeDocument {
   type: "document";
   id: DocumentId;
   status: ExplorationQueryStatus;
-  parent_id: string;
+  parent_id: string | number;
   isAiSummary: boolean;
 }
 
@@ -65,6 +64,11 @@ export function getExplorationSidebarTree(
   const tree: ITreeNodeItem<ExplorationTreeNode>[] = (
     exploration.threads ?? []
   ).map((thread, index) => {
+    const children = getExplorationQueryTree(thread);
+    const aiSummaryDocumentNode = getAISummaryDocumentNode(thread);
+    if (aiSummaryDocumentNode != null) {
+      children.push(aiSummaryDocumentNode);
+    }
     return {
       id: thread.id,
       name: getExplorationThreadName(thread, index),
@@ -78,24 +82,8 @@ export function getExplorationSidebarTree(
           (thread.queries ?? []).map((query) => query.finished_at),
         ),
       },
-      children: getExplorationQueryTree(thread),
+      children,
     };
-  });
-  const documentNodes = getExplorationDocumentTree(exploration);
-  tree.push({
-    id: "documents",
-    name: t`Findings`,
-    icon: "empty",
-    data: {
-      type: "heading",
-      status: getDocumentsHeadingStatus(documentNodes),
-      lastActivityAt: latestTimestamp(
-        (exploration.threads ?? []).flatMap((thread) =>
-          (thread.documents ?? []).map((document) => document.updated_at),
-        ),
-      ),
-    },
-    children: documentNodes,
   });
   return tree;
 }
@@ -140,24 +128,6 @@ export function getCompactRelativeTime(timestamp: string): string {
     return `${months}mo`;
   }
   return `${now.diff(then, "year")}y`;
-}
-
-function getDocumentsHeadingStatus(
-  documents: ITreeNodeItem<ExplorationTreeDocument>[],
-): ExplorationQueryStatus | undefined {
-  const statuses = documents
-    .map((doc) => doc.data?.status)
-    .filter((status): status is ExplorationQueryStatus => status != null);
-  if (statuses.length === 0) {
-    return undefined;
-  }
-  if (statuses.some((status) => !isSettledExplorationQueryStatus(status))) {
-    return "running";
-  }
-  if (statuses.some((status) => status === "canceled")) {
-    return "canceled";
-  }
-  return "done";
 }
 
 function getExplorationQueryTree(
@@ -295,38 +265,27 @@ function compareExplorationTreeHeadings(
   return diff;
 }
 
-function getExplorationDocumentTree(
-  exploration: Exploration,
-): ITreeNodeItem<ExplorationTreeDocument>[] {
-  return (exploration.threads ?? []).flatMap((thread) => {
-    const aiSummaryId = thread.ai_summary_document_id;
-    // sort the documents so the AI Summary document is first within each thread
-    const documents = [...(thread.documents ?? [])].sort((a, b) => {
-      if (aiSummaryId == null) {
-        return 0;
-      }
-      const aIsAuto = a.id === aiSummaryId;
-      const bIsAuto = b.id === aiSummaryId;
-      if (aIsAuto === bIsAuto) {
-        return 0;
-      }
-      return aIsAuto ? -1 : 1;
-    });
-    return documents.map((document) => {
-      return {
-        id: document.id,
-        name: document.name,
-        icon: "document",
-        data: {
-          type: "document",
-          id: document.id,
-          status: getExplorationDocumentStatus(document.id, thread),
-          parent_id: "documents",
-          isAiSummary: document.id === aiSummaryId,
-        },
-      };
-    });
-  });
+function getAISummaryDocumentNode(
+  thread: ExplorationThread,
+): ITreeNodeItem<ExplorationTreeDocument> | null {
+  const aiSummaryDocument = thread.documents?.find(
+    (document) => document.id === thread.ai_summary_document_id,
+  );
+  if (!aiSummaryDocument) {
+    return null;
+  }
+  return {
+    id: aiSummaryDocument.id,
+    name: aiSummaryDocument.name,
+    icon: "document",
+    data: {
+      type: "document",
+      id: aiSummaryDocument.id,
+      status: getExplorationDocumentStatus(aiSummaryDocument.id, thread),
+      parent_id: thread.id,
+      isAiSummary: true,
+    },
+  };
 }
 
 function getExplorationDocumentStatus(

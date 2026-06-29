@@ -7,6 +7,7 @@ import {
   useToggleReactionMutation,
   useUpdateCommentMutation,
 } from "metabase/api";
+import type { CommentExtraRenderer } from "metabase/comments/types";
 import { getCommentNodeId } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
 import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
@@ -32,6 +33,7 @@ export interface DiscussionProps {
   targetId: EntityId;
   targetType: CommentEntityType;
   enableHoverHighlight?: boolean;
+  renderExtra?: CommentExtraRenderer;
 }
 
 export const Discussion = ({
@@ -40,6 +42,7 @@ export const Discussion = ({
   targetId,
   targetType,
   enableHoverHighlight = false,
+  renderExtra,
 }: DiscussionProps) => {
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
@@ -211,6 +214,7 @@ export const Discussion = ({
             onCopyLink={handleCopyLink}
             onReaction={handleReaction}
             onReactionRemove={handleReactionRemove}
+            renderExtra={renderExtra}
           />
         ))}
         {!comments[0]?.is_resolved && currentUser && (
