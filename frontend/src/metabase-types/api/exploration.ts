@@ -29,6 +29,73 @@ export type GetExplorationDataResponse = {
   dimension_groups: ExplorationDimensionGroup[];
 };
 
+// One group Metabot authored via the `add_research_groups` tool: either a metric sliced by chosen
+// dimensions, or a dimension slicing a chosen set of (by default, all) related metrics.
+export type ResearchGroupSpec =
+  | {
+      anchor: "metric";
+      metric_id: number;
+      dimension_ids?: DimensionId[];
+      // When true, slice the metric by exactly `dimension_ids` instead of adding them on top of
+      // the automatically-selected interesting dimensions.
+      replace_default_dimensions?: boolean;
+    }
+  | {
+      anchor: "dimension";
+      dimension_id: DimensionId;
+      // When present, include only these metrics instead of every related metric.
+      metric_ids?: number[];
+    };
+
+// Result of the `add_research_groups` tool: the picker hydration for the referenced metrics, plus
+// the validated group specs the chat handler turns into picker blocks.
+export type AddResearchGroupsResponse = GetExplorationDataResponse & {
+  groups: ResearchGroupSpec[];
+};
+
+// The draft Research plan the front-end serializes into Metabot's chat context each turn, so the
+// agent can read what's currently in the plan and edit it. Plan-only: just the selected members,
+// not the unselected candidates (the agent gets those from `get_research_candidates`).
+export type ResearchPlanMetricRef = { id: number; name: string };
+export type ResearchPlanDimensionRef = { id: DimensionId; name: string };
+export type ResearchPlanTimelineRef = { id: TimelineId; name: string };
+
+export type ResearchPlanGroup =
+  | {
+      block_id: string;
+      anchor: "metric";
+      metric: ResearchPlanMetricRef;
+      dimensions: ResearchPlanDimensionRef[];
+    }
+  | {
+      block_id: string;
+      anchor: "dimension";
+      dimension: ResearchPlanDimensionRef;
+      metrics: ResearchPlanMetricRef[];
+    };
+
+export type ResearchPlanContext = {
+  name: string;
+  groups: ResearchPlanGroup[];
+  timelines: ResearchPlanTimelineRef[];
+};
+
+// Result of the `remove_from_research_plan` tool: the validated ids the front-end removes from the
+// draft plan. The tool is pure-echo (no DB), so this just mirrors what the agent asked to remove.
+// `block_ids` drop whole groups; `members` deselect metrics/dimensions within a group (emptying a
+// group drops it).
+export type RemoveFromResearchPlanMember = {
+  block_id: string;
+  metric_ids?: number[];
+  dimension_ids?: DimensionId[];
+};
+
+export type RemoveFromResearchPlanResponse = {
+  block_ids?: string[];
+  members?: RemoveFromResearchPlanMember[];
+  timeline_ids?: number[];
+};
+
 export type ExplorationId = number;
 export type ExplorationThreadId = number;
 export type ExplorationQueryId = number;

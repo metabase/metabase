@@ -6,7 +6,10 @@ import { t } from "ttag";
 import { useCreateExplorationMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { trackExplorationCreated } from "metabase/explorations/analytics";
+import {
+  trackExplorationCreated,
+  trackExplorationPlanEdited,
+} from "metabase/explorations/analytics";
 import type {
   ExplorationBlock,
   ExplorationSelection,
@@ -115,7 +118,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     removeBlock,
     toggleDimensionSelected,
     toggleMetricSelected,
-    toggleTimeline,
+    removeTimelinesById,
   } = selection;
   const dispatch = useDispatch();
   const [sendToast] = useToast();
@@ -226,7 +229,10 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
           <SelectedTimelinePills
             timelines={timelines}
             disabled={isManualDataPickingDisabled}
-            onRemoveTimeline={toggleTimeline}
+            onRemoveTimeline={(timeline) => {
+              removeTimelinesById([timeline.id]);
+              trackExplorationPlanEdited("manual", "timelines");
+            }}
             onShowMore={() => {
               if (isManualDataPickingDisabled) {
                 return;
@@ -266,10 +272,14 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
                   expanded={getIsExpanded(block.id)}
                   disabled={isManualDataPickingDisabled}
                   onToggleExpand={() => toggleExpanded(block.id)}
-                  onRemoveBlock={() => removeBlock(block.id)}
-                  onToggleDimension={(dimensionId) =>
-                    toggleDimensionSelected(block.id, dimensionId)
-                  }
+                  onRemoveBlock={() => {
+                    removeBlock(block.id);
+                    trackExplorationPlanEdited("manual", "metrics");
+                  }}
+                  onToggleDimension={(dimensionId) => {
+                    toggleDimensionSelected(block.id, dimensionId);
+                    trackExplorationPlanEdited("manual", "dimensions");
+                  }}
                 />
               ) : (
                 <DimensionBlockItem
@@ -278,10 +288,14 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
                   expanded={getIsExpanded(block.id)}
                   disabled={isManualDataPickingDisabled}
                   onToggleExpand={() => toggleExpanded(block.id)}
-                  onRemoveBlock={() => removeBlock(block.id)}
-                  onToggleMetric={(metricId) =>
-                    toggleMetricSelected(block.id, metricId)
-                  }
+                  onRemoveBlock={() => {
+                    removeBlock(block.id);
+                    trackExplorationPlanEdited("manual", "dimensions");
+                  }}
+                  onToggleMetric={(metricId) => {
+                    toggleMetricSelected(block.id, metricId);
+                    trackExplorationPlanEdited("manual", "metrics");
+                  }}
                 />
               ),
             )}
