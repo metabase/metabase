@@ -39,7 +39,7 @@ export function getMonitorRoutes(CanAccessMonitor: RouteComponent) {
 
 /**
  * Legacy redirects for the Dependency Diagnostics view, which moved from the
- * Data Studio space to the Monitor space. Mounted at the top level of the app
+ * Data Studio area to the Monitor area. Mounted at the top level of the app
  * route tree in `metabase/routes`.
  */
 export function getMonitorRedirects() {

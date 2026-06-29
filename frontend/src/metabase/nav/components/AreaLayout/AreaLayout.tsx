@@ -20,11 +20,11 @@ import {
 import { isMac } from "metabase/utils/browser";
 import type { IconName } from "metabase-types/api";
 
-import S from "./SpaceLayout.module.css";
+import S from "./AreaLayout.module.css";
 
 const TOOLTIP_OPEN_DELAY = 1000;
 
-type SpaceLayoutProps = {
+type AreaLayoutProps = {
   logo: ReactNode;
   testId: string;
   isLoading: boolean;
@@ -37,9 +37,9 @@ type SpaceLayoutProps = {
 };
 
 /**
- * Shared layout container for top-level "spaces" (Data Studio, Monitor, …).
+ * Shared layout container for top-level "areas" (Data Studio, Monitor, …).
  */
-export function SpaceLayout({
+export function AreaLayout({
   logo,
   testId,
   isLoading,
@@ -49,7 +49,7 @@ export function SpaceLayout({
   upperNav,
   lowerNav,
   children,
-}: SpaceLayoutProps) {
+}: AreaLayoutProps) {
   // Support both sidebar toggle shortcuts for parity with the main app.
   // `[` matches the global shortcut, while `$mod+.` matches the legacy
   // Data Studio shortcut.
@@ -77,7 +77,7 @@ export function SpaceLayout({
         data-testid={testId}
       >
         <Stack gap="0.75rem" flex={1} mih={0} className={S.upperGroup}>
-          <SpaceNavbarHeader
+          <AreaNavbarHeader
             logo={logo}
             headerControls={headerControls}
             isNavbarOpened={isNavbarOpened}
@@ -94,7 +94,7 @@ export function SpaceLayout({
   );
 }
 
-type SpaceTabProps = {
+type AreaTabProps = {
   label: string;
   icon: IconName;
   to: string;
@@ -104,7 +104,7 @@ type SpaceTabProps = {
   isGated?: boolean;
 };
 
-export function SpaceTab({
+export function AreaTab({
   label,
   icon,
   to,
@@ -112,7 +112,7 @@ export function SpaceTab({
   showLabel,
   rightSection,
   isGated,
-}: SpaceTabProps) {
+}: AreaTabProps) {
   const upsellGem = isGated ? <UpsellGem.New size={14} /> : null;
   const effectiveRightSection = rightSection ?? upsellGem;
 
@@ -149,19 +149,19 @@ export function SpaceTab({
   );
 }
 
-type SpaceNavbarHeaderProps = {
+type AreaNavbarHeaderProps = {
   logo: ReactNode;
   headerControls?: ReactNode;
   isNavbarOpened: boolean;
   onNavbarToggle: (isOpened: boolean) => void;
 };
 
-function SpaceNavbarHeader({
+function AreaNavbarHeader({
   logo,
   headerControls,
   isNavbarOpened,
   onNavbarToggle,
-}: SpaceNavbarHeaderProps) {
+}: AreaNavbarHeaderProps) {
   return (
     <Flex
       align="center"

@@ -149,7 +149,7 @@ export const globalShortcuts = {
     },
     // `shortcut` is what kbar binds (a single key, to avoid kbar treating a
     // multi-element array as a key sequence). `$mod+.` is handled separately
-    // (MainNavbar/SpaceLayout), so we surface both triggers via `shortcutDisplay`.
+    // (MainNavbar/AreaLayout), so we surface both triggers via `shortcutDisplay`.
     shortcut: ["["],
     shortcutDisplay: ["[", "$mod+."],
     shortcutGroup: "global" as const,

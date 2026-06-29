@@ -31,7 +31,7 @@ const REGULAR_ITEMS = [
 const ADMIN_ITEMS = [...REGULAR_ITEMS, "Main app", "Admin"];
 const HOSTED_ITEMS = [...ADMIN_ITEMS];
 
-const WITH_SPACES = [...ADMIN_ITEMS, "Data studio", "Monitor"];
+const WITH_AREAS = [...ADMIN_ITEMS, "Data studio", "Monitor"];
 
 const adminNavItem = {
   name: `People`,
@@ -190,11 +190,11 @@ describe("ProfileLink", () => {
     });
   });
 
-  describe("with spaces", () => {
+  describe("with areas", () => {
     it("should show data studio and monitor apps when appropriate", async () => {
       await setup({ isAdmin: true });
 
-      WITH_SPACES.forEach((title) => {
+      WITH_AREAS.forEach((title) => {
         expect(screen.getByText(title)).toBeInTheDocument();
       });
     });

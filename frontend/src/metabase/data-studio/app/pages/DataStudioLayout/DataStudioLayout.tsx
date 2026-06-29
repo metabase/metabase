@@ -4,7 +4,7 @@ import { t } from "ttag";
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { SpaceLayout, SpaceTab } from "metabase/nav/components/SpaceLayout";
+import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
@@ -54,7 +54,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
 
   const upperNav = (
     <>
-      <SpaceTab
+      <AreaTab
         label={t`Library`}
         icon="repository"
         to={Urls.dataStudioLibrary()}
@@ -68,7 +68,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         }
       />
       {canAccessDataModel && (
-        <SpaceTab
+        <AreaTab
           label={t`Tables`}
           icon="open_folder"
           to={Urls.dataStudioData()}
@@ -76,7 +76,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
           showLabel={isNavbarOpened}
         />
       )}
-      <SpaceTab
+      <AreaTab
         label={t`Schema viewer`}
         icon="network"
         to={Urls.dataStudioSchemaViewer()}
@@ -84,7 +84,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         showLabel={isNavbarOpened}
         isGated={!hasSchemaViewerFeature}
       />
-      <SpaceTab
+      <AreaTab
         label={t`Dependency graph`}
         icon="dependencies"
         to={Urls.dependencyGraph()}
@@ -93,7 +93,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         isGated={!hasDependenciesFeature}
       />
       {canAccessTransforms && (
-        <SpaceTab
+        <AreaTab
           label={t`Transforms`}
           icon="transform"
           to={Urls.transformList()}
@@ -107,7 +107,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
           }
         />
       )}
-      <SpaceTab
+      <AreaTab
         label={t`Glossary`}
         icon="glossary"
         to={Urls.dataStudioGlossary()}
@@ -131,7 +131,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
           />
         </>
       ) : (
-        <SpaceTab
+        <AreaTab
           label={t`Set up remote sync`}
           icon="gear"
           to={Urls.dataStudioGitSync()}
@@ -141,7 +141,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         />
       )}
       {canManageWorkspaces && (
-        <SpaceTab
+        <AreaTab
           label={t`Workspaces`}
           icon="workspace"
           to={Urls.workspaces()}
@@ -150,7 +150,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         />
       )}
       {canAccessTransforms && (
-        <SpaceTab
+        <AreaTab
           label={t`Jobs`}
           icon="clock"
           to={Urls.transformJobList()}
@@ -159,7 +159,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         />
       )}
       {canAccessTransforms && (
-        <SpaceTab
+        <AreaTab
           label={t`Runs`}
           icon="play_outlined"
           to={Urls.transformRunList()}
@@ -171,7 +171,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   );
 
   return (
-    <SpaceLayout
+    <AreaLayout
       logo={
         <img
           alt={t`Data Studio Logo`}
@@ -190,6 +190,6 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
       lowerNav={lowerNav}
     >
       {children}
-    </SpaceLayout>
+    </AreaLayout>
   );
 }

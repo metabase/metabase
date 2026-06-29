@@ -7,16 +7,10 @@ import { reinitialize } from "metabase/plugins";
 
 import { getMonitorRedirects, getMonitorRoutes } from "./routes";
 
-// Mock the enterprise premium-feature gate so setupEnterpriseOnlyPlugin can flip
-// PLUGIN_MONITOR on. The diagnostics initializer reads `hasPremiumFeature("dependencies")`.
 jest.mock("metabase-enterprise/settings", () => ({
   hasPremiumFeature: jest.fn().mockReturnValue(true),
 }));
 
-// Keep this a focused routing test: stub the space/section layouts to pass
-// children through, so we don't have to wire up their user-key-value/settings
-// endpoints. The routing under test (redirects, upsell vs. diagnostics) is what
-// we assert.
 jest.mock("./MonitorLayout", () => ({
   MonitorLayout: ({ children }: { children?: ReactNode }) => <>{children}</>,
 }));
@@ -31,9 +25,6 @@ jest.mock(
   }),
 );
 
-// Stub the heavy EE diagnostics pages so the enabled branch renders without
-// their data-fetching plumbing. The real route function (broken/unreferenced)
-// still gets invoked through PLUGIN_MONITOR.
 jest.mock("metabase-enterprise/monitor/dependency-diagnostics/pages", () => ({
   BrokenDependencyDiagnosticsPage: () => <div>{"Broken page"}</div>,
   UnreferencedDependencyDiagnosticsPage: () => <div>{"Unreferenced page"}</div>,
@@ -46,10 +37,11 @@ const CanAccessMonitor = ({ children }: { children?: ReactNode }) => (
 const UPSELL_TITLE =
   "Find and fix broken dependencies without hunting them down";
 
-// Render the real Monitor route tree together with the real legacy redirects, so
-// an old `/data-studio/...` URL is resolved by the actual definitions — not a
-// copy of them.
-const setup = (initialRoute: string) => {
+type SetupOpts = {
+  initialRoute: string;
+};
+
+const setup = ({ initialRoute }: SetupOpts) => {
   renderWithProviders(
     <Route path="/">
       {getMonitorRedirects()}
@@ -67,7 +59,7 @@ describe("monitor routes", () => {
   describe("getMonitorRoutes", () => {
     describe("OSS (Dependency Diagnostics disabled)", () => {
       it("renders the upsell at /monitor/dependency-diagnostics", async () => {
-        setup("/monitor/dependency-diagnostics");
+        setup({ initialRoute: "/monitor/dependency-diagnostics" });
 
         expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
         expect(
@@ -76,7 +68,7 @@ describe("monitor routes", () => {
       });
 
       it("renders the upsell for child paths (e.g. /broken)", async () => {
-        setup("/monitor/dependency-diagnostics/broken");
+        setup({ initialRoute: "/monitor/dependency-diagnostics/broken" });
 
         expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
         expect(screen.queryByText("Broken page")).not.toBeInTheDocument();
@@ -87,7 +79,7 @@ describe("monitor routes", () => {
       it("renders the diagnostics section and child routes instead of the upsell", async () => {
         setupEnterpriseOnlyPlugin("monitor_dependency_diagnostics");
 
-        setup("/monitor/dependency-diagnostics/broken");
+        setup({ initialRoute: "/monitor/dependency-diagnostics/broken" });
 
         expect(
           await screen.findByTestId("diagnostics-section"),
@@ -99,7 +91,7 @@ describe("monitor routes", () => {
       it("redirects the diagnostics index to the broken route", async () => {
         setupEnterpriseOnlyPlugin("monitor_dependency_diagnostics");
 
-        setup("/monitor/dependency-diagnostics");
+        setup({ initialRoute: "/monitor/dependency-diagnostics" });
 
         expect(await screen.findByText("Broken page")).toBeInTheDocument();
       });
@@ -107,14 +99,14 @@ describe("monitor routes", () => {
   });
 
   describe("getMonitorRedirects (legacy Data Studio URLs)", () => {
-    it("redirects the old base URL into the Monitor space", async () => {
-      setup("/data-studio/dependency-diagnostics");
+    it("redirects the old base URL into the Monitor area", async () => {
+      setup({ initialRoute: "/data-studio/dependency-diagnostics" });
 
       expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
     });
 
     it("redirects old child URLs (e.g. /broken) to the Monitor equivalent", async () => {
-      setup("/data-studio/dependency-diagnostics/broken");
+      setup({ initialRoute: "/data-studio/dependency-diagnostics/broken" });
 
       expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
     });

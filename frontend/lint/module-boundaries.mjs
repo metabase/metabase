@@ -289,7 +289,7 @@ const rules = [
     from: ["app/*"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
   },
-  // TEMP(content-optimizer): the Monitor space is mid-migration — source files are
+  // TEMP(content-optimizer): the Monitor area is mid-migration — source files are
   // being relocated here from admin/ and data-studio/ before their routes and
   // dependencies are moved, so monitor currently imports heavily from feature
   // modules (admin, etc.). We allow it to import from anywhere until the migration

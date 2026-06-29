@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { SpaceLayout, SpaceTab } from "metabase/nav/components/SpaceLayout";
+import { AreaLayout, AreaTab } from "metabase/nav/components/AreaLayout";
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { FixedSizeIcon } from "metabase/ui";
@@ -28,7 +28,7 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
 
   const upperNav = (
-    <SpaceTab
+    <AreaTab
       label={t`Dependency diagnostics`}
       icon="search_check"
       to={Urls.dependencyDiagnostics()}
@@ -39,7 +39,7 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
   );
 
   return (
-    <SpaceLayout
+    <AreaLayout
       logo={<FixedSizeIcon name="gauge" size={28} c="brand" />}
       testId="monitor-nav"
       isLoading={isLoadingNavbarKey}
@@ -48,6 +48,6 @@ export function MonitorLayout({ children }: MonitorLayoutProps) {
       upperNav={upperNav}
     >
       {children}
-    </SpaceLayout>
+    </AreaLayout>
   );
 }

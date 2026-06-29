@@ -3,7 +3,7 @@ import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { SpaceLayout, SpaceTab } from "./SpaceLayout";
+import { AreaLayout, AreaTab } from "./AreaLayout";
 
 interface SetupOpts {
   isNavbarOpened?: boolean;
@@ -13,16 +13,16 @@ const setup = ({ isNavbarOpened = true }: SetupOpts = {}) => {
   const onNavbarToggle = jest.fn();
 
   renderWithProviders(
-    <SpaceLayout
+    <AreaLayout
       logo={<div>{"Logo"}</div>}
-      testId="space-nav"
+      testId="area-nav"
       isLoading={false}
       isNavbarOpened={isNavbarOpened}
       onNavbarToggle={onNavbarToggle}
       upperNav={null}
     >
       <div data-testid="content">{"Content"}</div>
-    </SpaceLayout>,
+    </AreaLayout>,
   );
 
   return { onNavbarToggle };
@@ -33,14 +33,14 @@ const renderTab = ({ isSelected }: { isSelected: boolean }) =>
     <Route
       path="/"
       component={() => (
-        <SpaceLayout
+        <AreaLayout
           logo={<div>{"Logo"}</div>}
-          testId="space-nav"
+          testId="area-nav"
           isLoading={false}
           isNavbarOpened
           onNavbarToggle={jest.fn()}
           upperNav={
-            <SpaceTab
+            <AreaTab
               label="Dependency diagnostics"
               icon="search_check"
               to="/monitor/dependency-diagnostics"
@@ -50,14 +50,14 @@ const renderTab = ({ isSelected }: { isSelected: boolean }) =>
           }
         >
           <div data-testid="content">{"Content"}</div>
-        </SpaceLayout>
+        </AreaLayout>
       )}
     />,
     { withRouter: true },
   );
 
-describe("SpaceLayout", () => {
-  describe("SpaceTab", () => {
+describe("AreaLayout", () => {
+  describe("AreaTab", () => {
     it("marks the selected tab as the current page for assistive tech", () => {
       renderTab({ isSelected: true });
 
