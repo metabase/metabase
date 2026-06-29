@@ -66,15 +66,19 @@ export function getDashboardCardMenu(index = 0) {
  * from cache), but the absence of loading indicators is a stable signal that the
  * grid has settled. Pass `count` to also assert the expected number of cards is
  * present, which guards against the check passing before the cards render.
+ *
+ * Uses a CSS selector rather than findByTestId for the grid so a dashboard with
+ * no grid (empty, text-only, or an empty-state placeholder) is a no-op instead
+ * of timing out on a missing element.
  */
 export function waitForDashcardsToLoad({ count }: { count?: number } = {}) {
   cy.log("Wait for all dashcards to finish loading");
   if (count != null) {
     getDashboardCards().should("have.length", count);
   }
-  cy.findByTestId("dashboard-grid")
-    .findAllByTestId("loading-indicator")
-    .should("not.exist");
+  cy.get(
+    '[data-testid="dashboard-grid"] [data-testid="loading-indicator"]',
+  ).should("not.exist");
 }
 
 export function showDashboardCardActions(index = 0) {
