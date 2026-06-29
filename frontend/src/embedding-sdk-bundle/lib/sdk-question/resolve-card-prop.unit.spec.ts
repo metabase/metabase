@@ -55,6 +55,20 @@ describe("resolveCardProp", () => {
     });
   });
 
+  it("uses an unlocked table display when `visualization` is omitted", () => {
+    const input: MetabaseCard = {
+      query: DATASET_QUERY,
+    };
+
+    const card = resolveCardProp(input);
+
+    expect(card).toEqual({
+      dataset_query: DATASET_QUERY,
+      display: "table",
+      visualization_settings: {},
+    });
+  });
+
   it("respects an explicit `displayIsLocked: false`", () => {
     const card = resolveCardProp({
       query: DATASET_QUERY,

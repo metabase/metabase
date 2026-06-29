@@ -17,9 +17,20 @@ export interface MetabaseQuestion {
  * and typechecks against the chosen `visualization`. To surface another setting,
  * add its key to the relevant family. Custom visualizations (`custom:...`) are the
  * exception and accept any settings.
+ *
+ * Omit `visualization` when Metabase should infer a display from the query.
+ * Set `visualization` when the user or design asks for a specific chart type.
+ * Only set `visualizationSettings` when a user or design asks for a specific
+ * presentation detail, such as hiding an axis label, showing value labels,
+ * stacking bars, adding a goal line, ordering table columns, or showing pie
+ * totals.
  */
 
-/** Bar, line, area, combo, row. */
+/**
+ * Settings for bar, line, area, combo, and row charts. Use these to pin result
+ * columns, labels, scales, stacking, goal lines, trend lines, series order, or
+ * per-column formatting.
+ */
 export type CartesianVisualizationSettings = Pick<
   VisualizationSettings,
   | "graph.dimensions"
@@ -43,7 +54,11 @@ export type CartesianVisualizationSettings = Pick<
   | "column_settings"
 >;
 
-/** Scatter plot: cartesian axes plus a bubble-size column. */
+/**
+ * Settings for scatter plots. `graph.dimensions` selects the x-axis result
+ * column, `graph.metrics` selects the y-axis result column, and
+ * `scatter.bubble` optionally selects a numeric bubble-size column.
+ */
 export type ScatterVisualizationSettings = Pick<
   VisualizationSettings,
   | "graph.dimensions"
@@ -55,7 +70,11 @@ export type ScatterVisualizationSettings = Pick<
   | "column_settings"
 >;
 
-/** Waterfall chart. */
+/**
+ * Settings for waterfall charts. Use these to choose step/value result
+ * columns, show step labels, override waterfall colors, add a total bar, or
+ * format columns.
+ */
 export type WaterfallVisualizationSettings = Pick<
   VisualizationSettings,
   | "graph.dimensions"
@@ -68,7 +87,11 @@ export type WaterfallVisualizationSettings = Pick<
   | "column_settings"
 >;
 
-/** Table, pivot, object detail, list. */
+/**
+ * Settings for table, pivot, object detail, and list displays. Use these for
+ * visible column order, conditional formatting, pivot state, and per-column
+ * titles or number/currency formatting.
+ */
 export type TableVisualizationSettings = Pick<
   VisualizationSettings,
   | "table.columns"
@@ -78,7 +101,11 @@ export type TableVisualizationSettings = Pick<
   | "column_settings"
 >;
 
-/** Pie / donut. */
+/**
+ * Settings for pie and donut charts. Use these to pin slice/value result
+ * columns, sort slices, show legends, labels, totals, percentages, thresholds,
+ * colors, or column formatting.
+ */
 export type PieVisualizationSettings = Pick<
   VisualizationSettings,
   | "pie.dimension"
@@ -94,7 +121,11 @@ export type PieVisualizationSettings = Pick<
   | "column_settings"
 >;
 
-/** Scalar, smart scalar (trend), gauge, progress. */
+/**
+ * Settings for scalar, smart scalar, gauge, and progress displays. Use these to
+ * select the main value column, compact the number, reverse comparison meaning,
+ * configure smart-scalar comparisons, or format columns.
+ */
 export type ScalarVisualizationSettings = Pick<
   VisualizationSettings,
   | "scalar.field"
@@ -104,13 +135,20 @@ export type ScalarVisualizationSettings = Pick<
   | "column_settings"
 >;
 
-/** Funnel. */
+/**
+ * Settings for funnel charts. Use `funnel.rows` only when you know the exact
+ * row keys and need explicit step order, labels, colors, or enabled state.
+ */
 export type FunnelVisualizationSettings = Pick<
   VisualizationSettings,
   "funnel.rows" | "column_settings"
 >;
 
-/** Sankey. */
+/**
+ * Settings for Sankey charts. Use these to select source, target, and flow
+ * value result columns, control node alignment, show edge labels, or format
+ * columns.
+ */
 export type SankeyVisualizationSettings = Pick<
   VisualizationSettings,
   | "sankey.source"
@@ -121,7 +159,10 @@ export type SankeyVisualizationSettings = Pick<
   | "column_settings"
 >;
 
-/** Box plot. */
+/**
+ * Settings for box plots. Use these to choose whisker calculation, point
+ * visibility, mean marker visibility, value label mode, or column formatting.
+ */
 export type BoxplotVisualizationSettings = Pick<
   VisualizationSettings,
   | "boxplot.whisker_type"
@@ -131,7 +172,10 @@ export type BoxplotVisualizationSettings = Pick<
   | "column_settings"
 >;
 
-/** Map (pin/region). No map-specific keys are surfaced yet. */
+/**
+ * Settings for pin and region maps. No map-specific settings are surfaced yet;
+ * use `column_settings` for stable column formatting only.
+ */
 export type MapVisualizationSettings = Pick<
   VisualizationSettings,
   "column_settings"
@@ -143,6 +187,11 @@ interface MetabaseCardBase {
 }
 
 /**
+ * Ad-hoc card definition for SDK-rendered questions. Pass only `query` when
+ * Metabase should infer a display from the query result. Add `visualization`
+ * when the user or design asks for a specific chart type. Add
+ * `visualizationSettings` only for explicit setting-level presentation changes.
+ *
  * @notExported MetabaseCardBase
  * @notExported TableVisualizationSettings
  * @notExported CartesianVisualizationSettings
@@ -158,6 +207,10 @@ interface MetabaseCardBase {
  */
 export type MetabaseCard = MetabaseCardBase &
   (
+    | {
+        visualization?: never;
+        visualizationSettings?: never;
+      }
     | {
         visualization: "table" | "pivot" | "object" | "list";
         visualizationSettings?: TableVisualizationSettings;
