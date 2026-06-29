@@ -415,7 +415,7 @@
       ;; the lock for this reason. If another node already holds the lock it is doing this same work, so we skip
       ;; rather than fail the boot.
       (try
-        (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 30}
+        (cluster-lock/with-cluster-lock {:lock audit-db-cluster-lock :timeout-seconds 5 :retry-config {:max-retries 2}}
           ((sync-util/with-duplicate-ops-prevented
             :sync-database audit-db
             (fn []
