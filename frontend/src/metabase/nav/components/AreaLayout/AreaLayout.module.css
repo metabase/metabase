@@ -8,10 +8,12 @@
 }
 
 .logo {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 2rem;
-  transition: opacity 400ms ease;
   width: 2rem;
+  transition: opacity 400ms ease;
 }
 
 .icon {
@@ -61,7 +63,8 @@
   }
 
   &.navbarClosed {
-    &:hover {
+    &:hover,
+    &:focus-within {
       .toggle {
         opacity: 1;
       }
