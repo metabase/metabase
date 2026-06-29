@@ -1,19 +1,19 @@
 // Appends the test-plan stats row produced by create-test-plan.ts to the
 // "FE Affected Tests" table on stats.metabase.com.
-// Reads STATS_JSON, PR_NUMBER, HEAD_SHA, BASE_SHA, API_KEY from env.
+// Reads STATS_JSON, TRIGGERED_BY, PR_NUMBER, HEAD_SHA, BASE_SHA, API_KEY from env.
 
 const { uploadCsvToMb } = require("./csv-to-mb.js");
 
 // "FE Affected Tests" uploaded table on stats.metabase.com.
-const TABLE_ID = 79730;
+const TABLE_ID = 79841;
 
 const s = JSON.parse(process.env.STATS_JSON);
 console.log("stats", s);
 
 const row = {
   Date: new Date().toISOString(),
-  // "pr_update" or "merge_to_master".
-  Trigger: process.env.TRIGGER,
+  // "pr_update" or "merge_to_master". ("Trigger" is a reserved SQL word.)
+  "Triggered By": process.env.TRIGGERED_BY,
   PR: Number(process.env.PR_NUMBER),
   "Head SHA": process.env.HEAD_SHA,
   "Base SHA": process.env.BASE_SHA,
