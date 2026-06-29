@@ -20,10 +20,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:const detector-version
-  "Bump when a checker's logic/threshold changes so the next scan supersedes older-version findings."
-  1)
-
 (def entity-type->model
   "Content Diagnostics entity-types → their Toucan models. Single source of truth: the API's display
   hydration and the scan's candidate→finding mapping both derive from this (inverse below)."
@@ -90,6 +86,27 @@
   (+ (t2/count :model/Card :archived false)
      (t2/count :model/Dashboard :archived false)))
 
+(defn- scope-collection-id-lookup
+  "Batched `{[entity-type entity-id] → collection_id}` for the findings' entities — **one** query per
+  entity-type (over just the flagged entities, F ≪ N). Entity types whose model has no `collection_id`
+  contribute nothing; an entity at the root maps to nil."
+  [findings]
+  (into {}
+        (for [[etype fs] (group-by :entity-type findings)
+              :let       [model (entity-type->model etype)]
+              :when      model
+              :let       [id->coll (t2/select-pk->fn :collection_id [model :id :collection_id]
+                                                     :id [:in (set (map :entity-id fs))])]
+              {:keys [entity-id]} fs]
+          [[etype entity-id] (get id->coll entity-id)])))
+
+(defn- attach-scope-collection-ids
+  "Stamp each finding with `:scope-collection-id` — the collection the entity lived in at scan time.
+  Forward-compatible substrate for serve-time collection scoping; cheap (see [[scope-collection-id-lookup]])."
+  [findings]
+  (let [lookup (scope-collection-id-lookup findings)]
+    (mapv #(assoc % :scope-collection-id (get lookup [(:entity-type %) (:entity-id %)])) findings)))
+
 (def ^:private insert-batch-size
   "Rows per INSERT. Postgres caps a prepared statement at 65,535 bind parameters; at ~6 columns/row a
   single all-rows insert overflows past ~10k findings (observed on the stats DB). 1000 keeps us well
@@ -106,13 +123,13 @@
   (doseq [chunk (partition-all insert-batch-size findings)]
     (t2/with-transaction [_conn]
       (t2/insert! :model/ContentDiagnosticsFinding
-                  (for [{:keys [entity-type entity-id finding-type details]} chunk]
-                    {:scan_id          scan-id
-                     :entity_type      entity-type
-                     :entity_id        entity-id
-                     :finding_type     finding-type
-                     :detector_version detector-version
-                     :details          details})))))
+                  (for [{:keys [entity-type entity-id finding-type details scope-collection-id]} chunk]
+                    {:scan_id             scan-id
+                     :entity_type         entity-type
+                     :entity_id           entity-id
+                     :finding_type        finding-type
+                     :scope_collection_id scope-collection-id
+                     :details             details})))))
 
 (defn scan!
   "Run a full scan synchronously: every checker → one `scan_id` batch → persisted. Emits scan o11y
@@ -122,7 +139,7 @@
   (let [timer (u/start-timer)]
     (try
       (let [scan-id  (str (random-uuid))
-            findings (detect)
+            findings (attach-scope-collection-ids (detect))
             entities (count-scannable)]
         (insert-findings! scan-id findings)
         ;; write-side resolution: supersede prior-scan findings the new batch didn't re-emit. Runs after
