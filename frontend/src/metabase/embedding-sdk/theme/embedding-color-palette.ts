@@ -34,7 +34,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   summarize: ["summarize", "core-summarize"],
   "text-primary": ["text-primary"],
   "text-secondary": ["text-secondary"],
-  "text-tertiary": ["text-tertiary"],
+  "text-tertiary": ["text-tertiary", "text-disabled"],
   background: ["background-primary", "background_page-primary"],
   "background-secondary": [
     "background-secondary",
@@ -51,7 +51,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "text-white": ["text-primary-inverse", "white"],
   error: ["error"],
   "background-error": ["background-error", "background_surface-error"],
-  "text-hover": ["text-hover"],
+  "text-hover": ["text-hover", "text-brand-hover"],
   focus: ["focus"],
 };
 

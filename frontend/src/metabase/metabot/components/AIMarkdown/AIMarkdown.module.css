@@ -84,7 +84,7 @@
 }
 
 .aiMarkdown pre::-webkit-scrollbar-thumb:hover {
-  background: var(--mb-color-text-tertiary);
+  background: var(--mb-color-text-disabled);
 }
 
 .aiMarkdown code {

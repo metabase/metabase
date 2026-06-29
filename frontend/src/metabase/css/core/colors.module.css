@@ -49,11 +49,11 @@
 }
 
 .textSlateLight {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .textLight {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .textMedium,
@@ -75,7 +75,7 @@
 }
 
 .textTertiary {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .bgBrandHover:hover {

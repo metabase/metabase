@@ -48,6 +48,7 @@
    [metabase.channel.render.pdf.typeset :as typeset]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.util :as render.util]
+   [metabase.channel.shared :as channel.shared]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.shared :as shared.params]
@@ -423,7 +424,11 @@
                  (seq inline) (assoc :inline-params inline))]
     (cond
       (:card_id dashcard)
-      (when-let [part (notification.payload/execute-dashboard-subscription-card dashcard parameters)]
+      ;; Large card results are streamed to disk as a StreamingTempFileStorage (see
+      ;; [[metabase.notification.payload.temp-storage]]); realize them here -- exactly as the email/Slack/HTTP
+      ;; channels do -- so the renderer sees an ordinary `:rows` collection rather than the disk-backed handle.
+      (when-let [part (some-> (notification.payload/execute-dashboard-subscription-card dashcard parameters)
+                              channel.shared/maybe-realize-data-rows)]
         (assoc geom
                :kind :card
                :part (cond-> part
@@ -929,6 +934,20 @@
     (draw-line! cs (font/face :regular) label-pt label-x label-baseline label)
     (.setNonStrokingColor cs Color/BLACK)))
 
+(defn- draw-too-large!
+  "Draw a centered message when a card's result was too large to load into memory: the disk-spilled result exceeded
+  [[metabase.notification.settings/notification-temp-file-size-max-bytes]], so `maybe-realize-data-rows` skipped the
+  load and marked the part `:render/too-large?` (carrying a localized `:error` string) instead of handing back rows.
+  Drawn as centered native text -- mirroring [[draw-no-results!]] -- so the card reads as a clear explanation rather
+  than the misleading empty state it would otherwise fall through to."
+  [^PDPageContentStream cs x body-top cell-w body-h message]
+  (let [pt      common/text-card-pt
+        text    (str message)
+        ;; wrap to the body width, then vertically center the resulting block in the body band
+        block-h (typeset/text-block-height (font/face :regular) pt cell-w body-h text)
+        top-y   (common/v-center body-top body-h block-h)]
+    (draw-text-block! cs (font/face :regular) pt common/body-color x top-y cell-w body-h text)))
+
 (defn- render-card-cell!
   "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level (crisp text) and
   the space it consumes is reserved before the body is rendered. Card descriptions are intentionally omitted -- they
@@ -964,7 +983,10 @@
         ;; rows (e.g. filtered out) detects as :empty regardless of display, and gets the no-results placeholder.
         chart-type (render.card/detect-pulse-chart-type card dashcard data)
         table?     (= :table chart-type)
-        empty?     (= :empty chart-type)]
+        empty?     (= :empty chart-type)
+        ;; the result was too big to load into memory (see [[draw-too-large!]]); show its message instead of a chart.
+        ;; carries no :data, so it would otherwise detect as :empty and show a misleading no-results placeholder.
+        too-large? (get-in part [:result :render/too-large?])]
     ;; Debug overlays (drawn first, so content sits on top): the full title box (blue) and the full
     ;; chart-body box (red) -- the *allocated* space, regardless of how much the content fills.
     (when *debug-boxes*
@@ -981,6 +1003,12 @@
       (binding [js.svg/*svg-background-color* (when-not *debug-boxes*
                                                 js.svg/*svg-background-color*)]
         (b/cond
+          ;; result too large to load: show its explanatory message rather than attempting (and failing) to draw a chart
+          too-large?
+          (draw-too-large! cs x body-top cell-w body-h
+                           (or (get-in part [:result :error])
+                               (tru "Results too large to display.")))
+
           ;; no rows: show the centered no-results placeholder instead of attempting (and failing) to draw a chart
           empty?
           (draw-no-results! doc cs x body-top cell-w body-h)

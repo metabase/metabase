@@ -24,7 +24,7 @@ export function MetricDimensionSelect({
             {row.metricName}
           </Text>
           {showOccurrenceCount && (
-            <Badge circle c="text-hover">
+            <Badge circle c="text-brand-hover">
               {row.occurrenceCount}
             </Badge>
           )}
