@@ -92,7 +92,7 @@
 (defmethod sql.tx/create-db-sql :snowflake
   [driver dbdef]
   (let [db (sql.tx/qualify-and-quote driver (qualified-db-name dbdef))]
-    (format "CREATE DATABASE IF NOT EXISTS %s;" db)))
+    (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
 
 (defn- no-db-connection-spec
   "Connection spec for connecting to our Snowflake instance without specifying a DB."
@@ -333,6 +333,8 @@
 
 (defmethod tx/destroy-db! :snowflake
   [_driver dbdef]
+  (when (= "test-data" (:database-name dbdef))
+    (throw (Exception. "tried to delete test-data dataset.")))
   (let [database-name (qualified-db-name dbdef)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
     (log/infof "[Snowflake] %s" sql)
@@ -403,6 +405,25 @@
               ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
     (some-> rs resultset-seq first)))
 
+(defn- dataset-rows-ok?! [conn {:keys [table-definitions] :as dataset}]
+  ;; sometimes for unknown reasons we get datasets double- or triple-inserted
+  ;; and we have not been able to determine why. if a dataset has too many rows,
+  ;; treat it as if it hasn't been loaded and force it to be reloaded.
+  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
+                                       :snowflake conn
+                                       (format "SHOW TABLES IN DATABASE \"%s\""
+                                               (qualified-db-name dataset)) [])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! :snowflake stmt)]
+    (let [table-names (set (map :table-name table-definitions))
+          db-tables (->> (resultset-seq rs)
+                         ;; there are some other tables of unknown source in there
+                         ;; like "g_inspector_ji_f9f65557_e249_4543_ab34_9e"
+                         (filter #(table-names (:name %))))
+          db-row-counts (zipmap (map :name db-tables) (map :rows db-tables))
+          dataset-row-counts (zipmap (map :table-name table-definitions)
+                                     (map (comp count :rows) table-definitions))]
+      (= db-row-counts dataset-row-counts))))
+
 (defmethod tx/dataset-already-loaded? :snowflake
   [driver db-def]
   ;; check and see if ANY tables are loaded for the current catalog
@@ -414,7 +435,8 @@
      (setup-tracking-db! conn driver)
      (and
       (dataset-tracked?! conn driver db-def)
-      (database-exists?! conn driver db-def)))))
+      (database-exists?! conn driver db-def)
+      (dataset-rows-ok?! conn db-def)))))
 
 (defmethod tx/track-dataset :snowflake
   [driver db-def]
