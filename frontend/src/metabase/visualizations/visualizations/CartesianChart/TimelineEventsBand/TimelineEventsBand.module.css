@@ -52,8 +52,7 @@
 }
 
 .chip:hover {
-  border-color: transparent;
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-primary-hover);
 }
 
 .count {
