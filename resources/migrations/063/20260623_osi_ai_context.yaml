@@ -142,10 +142,13 @@ databaseChangeLog:
             tableName: osi_ai_context
             constraintName: uq_osi_ai_context_entity
 
+  ## Coalesce card-flavor ai_context rows (question/metric/model/card) into one canonical "card" row per entity.
+  ## Split across two change sets because the strict migration linter allows only one change per change set
+  ## (unless each is DBMS-qualified).
   - changeSet:
       id: v63.2026-06-25T00:00:02
       author: christruter
-      comment: Coalesce card-flavor ai_context rows (question/metric/model/card) into one canonical "card" row per entity
+      comment: Keep only the newest card-flavor ai_context row per entity
       changes:
         # Keep only the newest card-flavor row per entity (a derived table so MySQL allows deleting from the
         # table referenced in the subquery), so the type-normalizing UPDATE below can't hit the unique constraint.
@@ -157,6 +160,13 @@ databaseChangeLog:
                   (SELECT MAX(id) AS keep_id FROM osi_ai_context
                    WHERE entity_type IN ('question', 'metric', 'model', 'card')
                    GROUP BY entity_local_id) AS newest);
+      rollback:
+
+  - changeSet:
+      id: v63.2026-06-25T00:00:03
+      author: christruter
+      comment: Normalize card-flavor entity_type values to canonical "card"
+      changes:
         - sql:
             sql: >-
               UPDATE osi_ai_context SET entity_type = 'card'
