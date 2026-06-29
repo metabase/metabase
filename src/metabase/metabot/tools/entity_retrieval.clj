@@ -76,10 +76,11 @@
   [results]
   (->> results
        (reduce (fn [[seen acc] r]
-                 ;; normalize the model so "card" and "question" (aliases for the same Card) dedupe
-                 ;; together — both hydrate to one record, so distinct keys would return it twice.
+                 ;; collapse every card flavor (question/metric/model) to one class so aliases of the same
+                 ;; Card dedupe together — they all hydrate to one record, so distinct keys would return it
+                 ;; twice. Same equivalence the membership/instructions lookups use below.
                  (let [{:keys [model id]} (:entity r)
-                       k                   [(tools.search/ref-model->entity-type model) id]]
+                       k                   (entity-retrieval/entity-class model id)]
                    (if (seen k) [seen acc] [(conj seen k) (conj acc r)])))
                [#{} []])
        second))
@@ -191,5 +192,10 @@
                            :total_count (count matches)
                            :weak_match  (boolean (:weak? (first matches)))}})
     (catch Exception e
+      ;; A failure here is the search subsystem being down (typically the embedding service), not "the
+      ;; library is empty" — say so in :output (the only channel the agent reads) so it doesn't confidently
+      ;; tell the user nothing matches. No :structured-output: that feeds the FE a result payload, and there's
+      ;; no successful search to render.
       (log/error e "Error in retrieve_library_entities")
-      {:output (str "retrieve_library_entities failed: " (or (ex-message e) "Unknown error"))})))
+      {:output (str "The library search is temporarily unavailable (" (or (ex-message e) "unknown error")
+                    "). This does not mean the library is empty; the search could not be run.")})))

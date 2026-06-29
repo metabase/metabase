@@ -262,14 +262,21 @@
     (embedding/process-embeddings-streaming embedding-model (map :doc_text docs)
                                             (fn [m] (vswap! text->embedding merge m) nil)
                                             :type :index :record-tokens? true)
-    (let [records (map #(doc->record % (@text->embedding (:doc_text %))) docs)]
-      (jdbc/execute! conn
-                     (-> (sql.helpers/insert-into (keyword index-table/*vectors-table*))
-                         (sql.helpers/values (vec records))
-                         (sql.helpers/on-conflict :doc_id)
-                         (sql.helpers/do-nothing)
-                         (sql/format {:quoted true}))))
-    (count docs)))
+    ;; Skip any doc that came back without an embedding — e.g. a single value over the provider's
+    ;; per-item token limit. Inserting a nil-embedding record would otherwise blow up the batch (and a
+    ;; failed batch loses the good docs alongside the bad), so drop the offenders and keep the rest.
+    (let [records (keep (fn [doc]
+                          (when-let [embedding (@text->embedding (:doc_text doc))]
+                            (doc->record doc embedding)))
+                        docs)]
+      (when (seq records)
+        (jdbc/execute! conn
+                       (-> (sql.helpers/insert-into (keyword index-table/*vectors-table*))
+                           (sql.helpers/values (vec records))
+                           (sql.helpers/on-conflict :doc_id)
+                           (sql.helpers/do-nothing)
+                           (sql/format {:quoted true}))))
+      (count records))))
 
 (defn- delete-rows! [conn doc-ids]
   (when (seq doc-ids)

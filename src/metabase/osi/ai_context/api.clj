@@ -16,12 +16,26 @@
   measures/segments keep their type. A plain question never matches an index doc, so it's rejected."
   [:enum "table" "metric" "model" "measure" "segment"])
 
+(def ^:private max-instructions-len
+  "Cap on the free-form instructions string — room for a short guidance paragraph, bounded so one value
+  can't bloat the index document or blow an embedding's token budget."
+  5000)
+
+(def ^:private max-item-len
+  "Cap on each synonym/example string — these are short phrases or questions, not prose."
+  1000)
+
+(def ^:private max-list-len
+  "Cap on the synonyms/examples list length — a curated entity needs a handful, not hundreds."
+  50)
+
 (def ^:private AiContext
-  "OSI ai_context blob. All fields optional; extra keys tolerated for forward-compat with the OSI spec."
+  "OSI ai_context blob. All fields optional; extra keys tolerated for forward-compat with the OSI spec.
+  String and list lengths are capped so a single curated entity can't bloat the index or its embeddings."
   [:map
-   [:instructions {:optional true} [:maybe :string]]
-   [:synonyms     {:optional true} [:sequential :string]]
-   [:examples     {:optional true} [:sequential :string]]])
+   [:instructions {:optional true} [:maybe [:string {:max max-instructions-len}]]]
+   [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
+   [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
 
 (def ^:private Entry
   "An ai_context row as returned on reads. `entity_type` is any string: a row can predate a type's

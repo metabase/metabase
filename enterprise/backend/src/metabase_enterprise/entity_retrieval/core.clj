@@ -275,6 +275,9 @@
                         ;; The index, not the agent, is at fault and the next reconcile heals it, so degrade
                         ;; to no results. 42P01 during boot is the expected not-yet-created state, so it
                         ;; stays quiet; anything else is worth a warning + metric.
+                        ;; A live dependency outage (e.g. the embedding service) is *not* caught here — it
+                        ;; propagates so the tool can tell the agent the search is unavailable rather than
+                        ;; reporting an empty library.
                         (when-not (= "42P01" (.getSQLState e))
                           (analytics/inc! :metabase-entity-retrieval/search-failed)
                           (log/warnf e "library entity index query failed (sqlstate %s); returning no results"
