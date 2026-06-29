@@ -44,7 +44,13 @@
     (not (:no-custom-viz-plugins opts))
     (conj "CustomVizPlugin")
 
-    (not (:no-osi-ai-context opts))
+    ;; OsiAiContext is a top-level model that *depends on* its entity, with no reverse-dependency export yet
+    ;; (see the metabase.osi.models.osi-ai-context TODO). A targeted/selective export extracts it unfiltered,
+    ;; so it would pull in every ai_context row in the instance — leaking curator text and creating dangling
+    ;; deps that fail import. Until reverse-dependency export lands, only include it on a full (untargeted)
+    ;; export, where all its referenced entities are present anyway.
+    (and (not (:no-osi-ai-context opts))
+         (empty? (:targets opts)))
     (conj "OsiAiContext")))
 
 (defn make-targets-of-type

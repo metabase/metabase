@@ -32,3 +32,13 @@
                (entity-retrieval/ai-context-instructions [{:model "model" :id 4242}]))))
       (testing "a non-card ref of the same id matches exactly, so it finds nothing"
         (is (= {} (entity-retrieval/ai-context-instructions [{:model "table" :id 4242}])))))))
+
+(deftest ai-context-instructions-truncates-oversized-text-test
+  (testing "instructions that bypassed the API cap (direct write/serdes/pre-cap row) are truncated on read"
+    (let [long-instr (apply str (repeat (* 2 entity-retrieval/max-instructions-len) \x))]
+      (mt/with-temp [:model/OsiAiContext _ {:entity_type     "table"
+                                            :entity_local_id 5151
+                                            :ai_context      {:instructions long-instr}}]
+        (is (= entity-retrieval/max-instructions-len
+               (count (get (entity-retrieval/ai-context-instructions [{:model "table" :id 5151}])
+                           ["table" 5151]))))))))

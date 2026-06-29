@@ -16,11 +16,6 @@
   measures/segments keep their type. A plain question never matches an index doc, so it's rejected."
   [:enum "table" "metric" "model" "measure" "segment"])
 
-(def ^:private max-instructions-len
-  "Cap on the free-form instructions string — room for a short guidance paragraph. Instructions aren't
-  embedded; this bounds the DB row and the text injected into the agent prompt as `usage_instructions`."
-  5000)
-
 (def ^:private max-item-len
   "Cap on each synonym/example string — these are short phrases or questions, not prose. They become
   embedded index docs, so this also keeps a single value under the embedding provider's token limit."
@@ -35,7 +30,7 @@
   String and list lengths are capped so a single curated entity can't bloat the index, its embeddings, or
   the agent prompt."
   [:map
-   [:instructions {:optional true} [:maybe [:string {:max max-instructions-len}]]]
+   [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
    [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
    [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
 

@@ -154,6 +154,14 @@
         ;; delete by natural key so the row doesn't leak into other tests' view of the fully-scanned table.
         (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)))))
 
+(deftest osi-ai-context-export-scope-test
+  (testing "OsiAiContext exports only on a full (untargeted) export"
+    ;; a targeted/selective export extracts it unfiltered, pulling every ai_context row in the instance
+    ;; (leaked curator text + dangling deps), so it's gated to full exports until reverse-dep export lands.
+    (is (contains? (#'extract/model-set {}) "OsiAiContext"))
+    (is (not (contains? (#'extract/model-set {:targets [["Collection" 1]]}) "OsiAiContext")))
+    (is (not (contains? (#'extract/model-set {:no-osi-ai-context true}) "OsiAiContext")))))
+
 (deftest import-repoints-row-to-a-different-entity-test
   (testing "an import whose portable ref resolves to a different entity repairs the binding instead of aborting"
     ;; The immutable-binding before-update hook rejects a changed entity_local_id (right for the CRUD API), but

@@ -45,10 +45,18 @@
   [entity-type entity-local-id]
   [(normalize-entity-type entity-type) entity-local-id])
 
+(def max-instructions-len
+  "Cap on a curator `instructions` string. Instructions aren't embedded; this bounds the appdb row (enforced
+  by the write API) and — since [[ai-context-instructions]] truncates to it — the text injected into the
+  retrieve_library_entities agent prompt, so a row that bypassed the API schema (serdes, direct write, or a
+  pre-cap row) can't bloat the prompt."
+  5000)
+
 (defn ai-context-instructions
   "Map of `[entity-type entity-local-id] -> instructions` for the given entity refs (search-result shape
   `{:model :id}`, where `:model` is the entity_type), read live from `osi_ai_context`.
-  Refs with no row, or with blank instructions, are omitted.
+  Refs with no row, or with blank instructions, are omitted; each instruction is truncated to
+  [[max-instructions-len]] so an oversized row can't bloat the agent prompt.
   Reading here (rather than storing in the index) means the agent always sees the current text.
   The lookup matches by entity class, so a card's instructions are found even when its current type (the
   ref's) differs from the type it was curated under (a card-flavor relabel)."
@@ -67,5 +75,8 @@
                                            (comp :instructions :ai_context)
                                            :model/OsiAiContext {:where clause}))]
       ;; key the result back by the caller's original [type id] ref
-      (into {} (keep (fn [[t id]] (when-let [instr (by-class (entity-class t id))] [[t id] instr]))) wanted))
+      (into {} (keep (fn [[t id]]
+                       (when-let [instr (by-class (entity-class t id))]
+                         [[t id] (cond-> instr (> (count instr) max-instructions-len) (subs 0 max-instructions-len))])))
+            wanted))
     {}))
