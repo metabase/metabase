@@ -10,7 +10,7 @@ import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader
  */
 export function ExplorationChartSkeleton({ name }: { name: string | null }) {
   return (
-    <>
+    <Stack p="lg" h="100%">
       <ExplorationVisualizationHeader name={name ?? ""} />
 
       <Stack gap="md" h="100%" className={S.root}>
@@ -41,6 +41,6 @@ export function ExplorationChartSkeleton({ name }: { name: string | null }) {
           </svg>
         </div>
       </Stack>
-    </>
+    </Stack>
   );
 }

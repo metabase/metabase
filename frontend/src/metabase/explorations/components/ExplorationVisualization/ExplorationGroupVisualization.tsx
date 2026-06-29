@@ -53,8 +53,7 @@ interface ExplorationGroupVisualizationProps {
   wasCommentsSidebarOpen: boolean;
 }
 
-interface ExplorationGroupVisualizationWithGroupNameProps
-  extends ExplorationGroupVisualizationProps {
+interface ExplorationGroupVisualizationWithGroupNameProps extends ExplorationGroupVisualizationProps {
   groupName: string;
 }
 
@@ -243,6 +242,16 @@ function ExplorationGroupVisualizationChart({
   }
 
   const { series, stackCount, legendItems } = seriesGroup;
+
+  if (series.length === 0) {
+    return (
+      <Message
+        groupName={groupName}
+        message={t`We couldn't find any data to display.`}
+        iconProps={{ name: "warning", c: "error" }}
+      />
+    );
+  }
 
   return (
     <Group flex={1} gap={0} h="100%">
