@@ -11,6 +11,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
   cancel-in-progress: true
 
+# Exposed to the test jobs so they can report failures to ci-conductor
+# (secrets: inherit is already set on the backend call in run-tests.yml).
+# See DEV-2224.
+env:
+  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+
 jobs:
   be-linter-clj-kondo:
     if: ${{ !inputs.skip }}
@@ -179,6 +186,11 @@ jobs:
         env:
           MB_EDITION: ${{ matrix.job.edition }}
 
+      - name: Resolve current job id
+        # Resolve JOB_ID before the long test step so the ci-conductor reporter
+        # below can link failures to this exact job. Best-effort.
+        uses: ./.github/actions/resolve-job-id
+
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests
         run: >-
@@ -189,6 +201,18 @@ jobs:
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
         # whether to fail or to pass the whole job, based on the quarantine list.
         continue-on-error: true
+
+      - name: Report failed tests to ci-conductor
+        # Positioned between the test run and "Upload Test Results" so it reads
+        # pristine JUnit (before Trunk quarantine processing). Gated to non-clean
+        # runs + continue-on-error so it can never change the job outcome — Trunk
+        # Quarantine remains the sole arbiter. See DEV-2224 / DEV-2235.
+        if: ${{ always() && steps.run-java-tests.outcome != 'success' }}
+        continue-on-error: true
+        uses: ./.github/actions/report-failures-to-ci-conductor
+        with:
+          test-suite: be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
+          entrypoint: release/ci-conductor/src/report-backend.ts
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results

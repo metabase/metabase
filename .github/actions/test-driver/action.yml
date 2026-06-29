@@ -27,6 +27,10 @@ runs:
   steps:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+    - name: Resolve current job id
+      # Resolve JOB_ID early (before the long test step) so the ci-conductor
+      # reporter below can link failures to this exact job. Best-effort.
+      uses: ./.github/actions/resolve-job-id
     - name: Prepare front-end environment
       if: ${{ inputs.build-static-viz == 'true' }}
       uses: ./.github/actions/prepare-frontend
@@ -44,6 +48,19 @@ runs:
       # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
       # whether to fail or to pass the whole job, based on the quarantine list.
       continue-on-error: true
+    - name: Report failed tests to ci-conductor
+      # Positioned right after the test run (before the report/upload steps) so it
+      # reads pristine JUnit. Gated to non-clean runs + continue-on-error so it can
+      # never change the job outcome — Trunk Quarantine remains the sole arbiter.
+      # junit-name is the per-job identity label (e.g. be-tests-postgres-ee); only
+      # workflows that also set CI_CONDUCTOR_BASE_URL actually POST. See DEV-2224 /
+      # DEV-2235.
+      if: ${{ always() && steps.run-test.outcome != 'success' }}
+      continue-on-error: true
+      uses: ./.github/actions/report-failures-to-ci-conductor
+      with:
+        test-suite: ${{ inputs.junit-name }}
+        entrypoint: release/ci-conductor/src/report-backend.ts
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
       # As per the documentation: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context
