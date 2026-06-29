@@ -1000,7 +1000,8 @@
                               :transforms/python                true
                               :transforms/table                 true
                               ;; Workspace isolation using service account impersonation
-                              :workspace                        true}]
+                              ;; Tearing down workspaces is not working right currently
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
