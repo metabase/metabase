@@ -141,8 +141,7 @@ type PaneHeaderTabsProps = {
 /**
  * Mantine's `Tabs.Tab` is built with the non-polymorphic `factory`, so
  * `component`/`to` aren't in its prop types. However it still accepts the
- * prop and it works as expected. Cast once so each tab renders can be rendered
- * as a real `<Link>`.
+ * prop and it works as expected, thus type casting.
  */
 const LinkTab = Tabs.Tab as FC<
   TabsTabProps & { component: typeof Link; to: string }
