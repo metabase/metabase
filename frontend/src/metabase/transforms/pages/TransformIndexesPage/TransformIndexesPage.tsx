@@ -6,14 +6,15 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
-import { Card, Center, Stack, Text } from "metabase/ui";
+import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
-import type { TableIndexEntry, TransformId } from "metabase-types/api";
+import type { TransformId } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
 import { NoIndexes } from "./NoIndexes";
+import { TransformIndexTable } from "./TransformIndexTable";
 
 type TransformIndexesPageProps = {
   params: {
@@ -72,28 +73,5 @@ function TransformIndexesContent({
     return <NoIndexes />;
   }
 
-  return (
-    <Card flex={1} withBorder>
-      <Stack gap="md">
-        {indexes.map((index, indexPosition) => (
-          <TransformIndexRow
-            key={index.request?.id ?? index.name ?? indexPosition}
-            index={index}
-          />
-        ))}
-      </Stack>
-    </Card>
-  );
-}
-
-function TransformIndexRow({ index }: { index: TableIndexEntry }) {
-  const status = index.request?.status;
-  return (
-    <Stack gap={0}>
-      <Text fw="bold">{index.name ?? index.kind}</Text>
-      <Text c="text-secondary" size="sm">
-        {status ? `${index.kind} · ${status}` : index.kind}
-      </Text>
-    </Stack>
-  );
+  return <TransformIndexTable indexes={indexes} />;
 }
