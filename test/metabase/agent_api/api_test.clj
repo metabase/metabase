@@ -1188,9 +1188,11 @@
 ;;; ------------------------------------------------- Read Resource Tests -----------------------------------------
 
 (deftest read-resource-test
+  ;; read-resource is a GET (pure read); :uris rides as repeated query params.
+  ;; A vector value is encoded as repeated `uris=` query params by build-url.
   (testing "Dispatches a top-level URI through the shared resolver"
-    (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
-                                     {:uris ["metabase://databases"]})]
+    (let [resp (mt/user-http-request :crowberto :get 200 "agent/v1/read-resource"
+                                     :uris ["metabase://databases"])]
       (is (=? {:resources [(fn [r] (and (= "metabase://databases" (:uri r))
                                         (some? (:content r))))]
                :output    string?}
@@ -1199,17 +1201,20 @@
       (is (str/includes? (:output resp) "<resources>"))
       (is (str/includes? (:output resp) "metabase://databases"))))
   (testing "Fetches a single-entity URI"
-    (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
-                                     {:uris [(str "metabase://table/" (mt/id :orders))]})]
+    (let [resp (mt/user-http-request :crowberto :get 200 "agent/v1/read-resource"
+                                     :uris [(str "metabase://table/" (mt/id :orders))])]
       (is (= 1 (count (:resources resp))))
       (is (some? (-> resp :resources first :content)))))
+  (testing "Accepts multiple URIs"
+    (let [resp (mt/user-http-request :crowberto :get 200 "agent/v1/read-resource"
+                                     :uris ["metabase://databases" "metabase://collections"])]
+      (is (= 2 (count (:resources resp))))))
   (testing "Returns 400 when too many URIs"
-    (let [uris (vec (repeat 10 "metabase://databases"))]
-      (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
-                            {:uris uris})))
+    (mt/user-http-request :crowberto :get 400 "agent/v1/read-resource"
+                          :uris (vec (repeat 10 "metabase://databases"))))
   (testing "Reports a per-URI error rather than failing the whole call"
-    (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
-                                     {:uris ["metabase://nonsense/path"]})]
+    (let [resp (mt/user-http-request :crowberto :get 200 "agent/v1/read-resource"
+                                     :uris ["metabase://nonsense/path"])]
       (is (= 1 (count (:resources resp))))
       (is (nil? (-> resp :resources first :content)))
       (is (some? (-> resp :resources first :error))))))

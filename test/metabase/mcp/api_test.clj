@@ -303,9 +303,9 @@
 
 (deftest read-resource-is-read-only-test
   (testing "read_resource declares readOnlyHint=true so MCP clients don't bucket it under Write/delete tools"
-    ;; POST endpoints default to readOnlyHint=false; a read-only POST must set
-    ;; :read-only? true explicitly (like search/query/execute_query). read_resource
-    ;; omitted it and showed up under \"Write/delete tools\" in the Claude UI.
+    ;; read_resource is a GET, so MCP clients infer readOnlyHint=true from the
+    ;; method (POST would default to false and bucket it under "Write/delete",
+    ;; which is how this surfaced in the Claude UI). No explicit annotation needed.
     (let [[session-id _] (initialize!)
           response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
           tools          (get-in response [:body :result :tools])
