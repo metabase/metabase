@@ -152,7 +152,7 @@
             (str "SQL must contain schema; got: " sql))
         (is (str/includes? sql "mb_transform_temp_table_test_abc123_aabbccdd_out")
             (str "SQL must contain table; got: " sql))
-        ;; Must NOT contain a spurious third segment (nil catalog should not inject anything)
+        ;; Must not contain a spurious third segment (nil catalog should not inject anything)
         (is (not (str/includes? sql "nil"))
             "nil catalog must not appear as a literal string in SQL")))))
 

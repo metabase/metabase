@@ -407,21 +407,21 @@
             db     (mt/db)
             schema "public"
 
-            ;; 1. Young test table (timestamp = now) — must NOT be dropped
+            ;; 1. Young test table (timestamp = now) — must not be dropped
             young-nonce  (scratch/new-nonce)
             young-name   (scratch/scratch-table-name young-nonce "in_1")
 
-            ;; 2. Old test table (timestamp = 2h ago) — MUST be dropped
+            ;; 2. Old test table (timestamp = 2h ago) — must be dropped
             two-hours-ago-secs (- (quot (System/currentTimeMillis) 1000) 7200)
             old-epoch36  (Long/toString two-hours-ago-secs 36)
             old-nonce    (scratch/new-nonce)
             old-name     (str transforms-base.u/transform-temp-table-prefix
                               "_test_" old-epoch36 "_" old-nonce "_in_2")
 
-            ;; 3. Production-prefix table (no _test_ segment) — must NOT be dropped
+            ;; 3. Production-prefix table (no _test_ segment) — must not be dropped
             prod-name    (str transforms-base.u/transform-temp-table-prefix "_1781129582000")
 
-            ;; 4. Ordinary table — must NOT be dropped
+            ;; 4. Ordinary table — must not be dropped
             ordinary-name "janitor_test_ordinary_tbl"
 
             ;; Helper: create a table with a minimal schema.
@@ -493,7 +493,7 @@
             (scratch/cleanup! db-id db mapping nil)))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; Regression: list-tables-in-schema must NOT interpolate schema
+;;; Regression: list-tables-in-schema must not interpolate schema
 ;;; ---------------------------------------------------------------------------
 
 (deftest list-tables-in-schema-uses-parameterized-query-test
@@ -522,10 +522,10 @@
           "exactly one query should have been submitted")
       (let [q (first @captured-queries)
             native (:native q)]
-        ;; The schema must appear in :params, NOT embedded in the :query string
+        ;; The schema must appear in :params, not embedded in the :query string
         (is (= ["pub'lic"] (:params native))
             "schema string must be a parameter, not interpolated into SQL")
         (is (not (str/includes? (:query native) "pub'lic"))
-            "the schema value must NOT appear literally in the query string")
+            "the schema value must not appear literally in the query string")
         (is (str/includes? (:query native) "?")
             "the query must use a ? placeholder for the schema parameter")))))

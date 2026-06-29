@@ -166,32 +166,9 @@
 
 (deftest required-input-tables-table-id-not-synced-throws-test
   (testing "A {:table id} dep whose id doesn't match any synced Table throws a typed error"
-    ;; Build a transform using mt/with-temp so we get a real DB with a known table,
-    ;; then use a hand-crafted transform that references a nonexistent table id.
-    ;; We need the transforms-base.i/table-dependencies multimethod to return the bad id.
-    ;; Easiest: use mt/with-temp to create a table, capture its id, delete it,
-    ;; then build a transform referencing that (now-gone) id.
-    ;; Simpler: directly test resolve-dep-spec via a transform that returns a hard-coded
-    ;; {:table id} dep that doesn't exist in the DB.
-    ;; Since table-dependencies is a multimethod, we test at the inputs level by
-    ;; building a transform whose preprocess returns a dep on a nonexistent id.
-    ;; The easiest controlled path: use an MBQL transform with a nonexistent table id.
-    ;; With no real table row, the resolve step (not the extraction) should fail.
-    (let [;; Use an obviously-bogus table id in an MBQL transform.
-          ;; preprocess will blow up trying to resolve this table id.
-          ;; So the error comes during extraction, not resolution.
-          ;; To test resolution failure specifically: create a table, extract its
-          ;; real dep (id), then delete the table, and resolve.
-          ;; This is awkward in a unit test without a real DB — so we test the
-          ;; exposed resolution error path via a stub transform with a known id gap.
-          ;; Strategy: use mt/with-temp Table to get a real id, record it, then
-          ;; manually test the resolution fn (white-box), OR test end-to-end by
-          ;; building an MBQL query under a stub metadata-provider.
-          ;; Simplest: just assert the error type via a controlled path.
-          ;; We expose resolve-dep-spec for testing:
-          bogus-id 9999999
-          ;; Test the internal resolution fn directly, since triggering a missing-id from
-          ;; a real MBQL query requires a stub metadata provider.
+    ;; Test resolve-table-dep directly with a bogus id — exercises the resolution
+    ;; failure without building a real MBQL query under a stub metadata provider.
+    (let [bogus-id 9999999
           e        (is (thrown? clojure.lang.ExceptionInfo
                                 (inputs/resolve-table-dep {:table bogus-id})))]
       (is (= ::inputs/table-not-found (-> e ex-data :error-type)))
@@ -245,7 +222,7 @@
           e      (is (thrown? clojure.lang.ExceptionInfo
                               (inputs/match-fixtures tables keys)))]
       (is (= ::inputs/missing-fixtures (-> e ex-data :error-type)))
-      ;; Missing tables should be described by id AND schema.name for the caller
+      ;; Missing tables should be described by id and schema.name for the caller
       (let [missing (-> e ex-data :missing-tables)]
         (is (= 1 (count missing)))
         (is (= 20 (:id (first missing))))
@@ -255,7 +232,7 @@
 (deftest match-fixtures-unknown-fixture-key-throws-test
   (testing "Fixture key with no matching required table throws a typed error"
     (let [tables [{:id 10 :schema "public" :name "orders" :columns []}]
-          ;; Provide the correct key PLUS an unknown key
+          ;; Provide the correct key plus an unknown key
           keys   #{10 99}
           e      (is (thrown? clojure.lang.ExceptionInfo
                               (inputs/match-fixtures tables keys)))]
@@ -264,7 +241,7 @@
 
 (deftest match-fixtures-both-missing-and-unknown-throws-test
   (testing "When both missing and unknown keys occur, both errors are reported"
-    ;; We throw whichever is checked first; either missing-fixtures OR unknown-keys.
+    ;; We throw whichever is checked first; either missing-fixtures or unknown-keys.
     ;; The contract: at least one of these two errors fires; both have typed ex-data.
     (let [tables [{:id 10 :schema "public" :name "orders" :columns []}]
           ;; Missing: 10 (no fixture for orders)
@@ -276,7 +253,7 @@
            (-> e ex-data :error-type))))))
 
 ;;; ---------------------------------------------------------------------------
-;;; match-fixtures — missing AND unknown together (separate check)
+;;; match-fixtures — missing and unknown together (separate check)
 ;;; ---------------------------------------------------------------------------
 
 (deftest match-fixtures-missing-fixture-error-has-full-table-info-test

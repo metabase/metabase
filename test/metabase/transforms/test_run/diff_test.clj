@@ -123,7 +123,7 @@
 ;; ---------------------------------------------------------------------------
 
 (deftest date-column-qp-string-vs-localdate-test
-  (testing "QP :type/Date returns midnight-UTC string; expected CSV parses to LocalDate → EQUAL"
+  (testing "QP :type/Date returns midnight-UTC string; expected CSV parses to LocalDate → equal"
     ;; QP actual: "2024-03-15T00:00:00Z"
     ;; parse-fixture(:type/Date) produces: LocalDate/of 2024 3 15
     (let [actual-cols [(col "d" :type/Date)]
@@ -134,7 +134,7 @@
       (is (= :passed (:status report))))))
 
 (deftest datetime-column-qp-string-vs-localdatetime-test
-  (testing "QP :type/DateTime returns Z-suffixed string; expected parses to LocalDateTime → EQUAL"
+  (testing "QP :type/DateTime returns Z-suffixed string; expected parses to LocalDateTime → equal"
     ;; QP actual: "2024-01-15T10:30:00Z"
     ;; parse-fixture(:type/DateTime): LocalDateTime/of 2024 1 15 10 30 0
     (let [actual-cols [(col "dt" :type/DateTime)]
@@ -181,7 +181,7 @@
               (seq (:cell-mismatches report)))))))
 
 (deftest null-temporal-passes-test
-  (testing "NULL temporal on both sides → EQUAL"
+  (testing "NULL temporal on both sides → equal"
     (let [actual-cols [(col "d" :type/Date)]
           actual-rows [[nil]]
           expected    (fixture [(schema-col "d" :type/Date)]
@@ -501,7 +501,7 @@
       (is (= :passed (:status report))))))
 
 ;; ---------------------------------------------------------------------------
-;; 14. Regression: cell-mismatch entries must NOT have :actual-raw/:expected-raw
+;; 14. Regression: cell-mismatch entries must not have :actual-raw/:expected-raw
 ;; ---------------------------------------------------------------------------
 
 (deftest cell-mismatch-keys-no-raw-fields-test

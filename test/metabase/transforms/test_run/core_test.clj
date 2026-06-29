@@ -88,7 +88,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- native-transform
-  "Build a native-SQL transform via lib/native-query (NEVER raw legacy map)."
+  "Build a native-SQL transform via lib/native-query (never a raw legacy map)."
   [mp sql target-schema]
   {:source {:type :query :query (lib/native-query mp sql)}
    :target {:schema target-schema :type "table"}})
@@ -433,7 +433,7 @@
   ;; Regression: read-back-output was building SELECT * FROM <schema>.<table>
   ;; by string interpolation: (str "SELECT * FROM " schema "." table).
   ;; A schema with a single quote (e.g. "pub'lic") produces malformed SQL.
-  ;; Since schema and table are IDENTIFIERS (not values), the fix must use driver-level
+  ;; Since schema and table are identifiers (not values), the fix must use driver-level
   ;; identifier quoting (sql.u/quote-name), not ? parameterization.
   ;;
   ;; We intercept qp/process-query and inspect the submitted SQL to verify it uses
@@ -454,7 +454,7 @@
       (is (= 1 (count @captured-queries))
           "exactly one query submitted")
       (let [sql (get-in (first @captured-queries) [:native :query])]
-        ;; The query must NOT contain the raw single-quote character inside the schema/table identifiers
+        ;; The query must not contain the raw single-quote character inside the schema/table identifiers
         (is (not (re-find #"FROM pub'lic" sql))
             "raw interpolation of schema with quote must not appear in SQL")
         ;; The query must use double-quote quoting (Postgres style) around the identifiers

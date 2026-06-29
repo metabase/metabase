@@ -129,7 +129,7 @@
          ::resolve/rewrite))))
 
 (deftest case-10-unmapped-table-survives-in-from-test
-  (testing "case 10: a referenced table with NO scratch mapping survives in FROM (guard 2)"
+  (testing "case 10: a referenced table with no scratch mapping survives in FROM (guard 2)"
     ;; orders is mapped, widgets is not -> widgets passes through replace-names untouched
     ;; and survives in FROM -> guard 2 (refs not subset of scratch) fires.
     (is (cannot-test-run?
@@ -139,10 +139,10 @@
 
 (deftest case-11-dangling-qualifier-caught-by-guard-3-not-guard-2-test
   (testing "case 11: MBQL-style fully-qualified SQL with a dangling schema.table.column
-            qualifier is caught by guard 3 (token-survival), NOT guard 2 (refs subset)"
+            qualifier is caught by guard 3 (token-survival), not guard 2 (refs subset)"
     ;; Construct the broken rewrite directly: FROM points at scratch, but a column
     ;; qualifier still names the real `orders` table (the FROM-only-rewrite hazard).
-    ;; referenced-tables-raw reports only FROM/JOIN sources -> [scratch_orders] -> guard 2 PASSES;
+    ;; referenced-tables-raw reports only FROM/JOIN sources -> [scratch_orders] -> guard 2 passes;
     ;; guard 3 must catch the surviving `orders` token.
     (let [broken "SELECT \"public\".\"orders\".\"user_id\" FROM \"public\".\"scratch_orders\""]
       ;; sanity: guard 2 alone would pass (the only FROM source is scratch_orders)
@@ -159,14 +159,14 @@
     ;; `WITH orders AS (...) SELECT * FROM orders` — the only `orders` is the CTE.
     ;; On sqlglot, replace-names mis-rewrites the final CTE-ref to scratch_orders.
     ;; referenced-tables-raw correctly excludes CTE names, so guard 1 sees [] -> fails
-    ;; (non-empty-refs guard). The surviving `WITH orders AS` token is ALSO caught by
+    ;; (non-empty-refs guard). The surviving `WITH orders AS` token is also caught by
     ;; guard 3. Either way it fails closed. We assert it fails with the typed error.
     (let [rw (rewrite "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders" orders->scratch)]
       ;; Whatever the precise shape, verify must reject it (it cannot be safely test-run).
       (is (cannot-test-run? #(resolve/verify :postgres orders->scratch rw))))))
 
 (deftest case-13-empty-refs-vacuous-pass-blocked-test
-  (testing "case 13: empty refs (parse error -> []) must FAIL guard 1, not pass vacuously"
+  (testing "case 13: empty refs (parse error -> []) must fail guard 1, not pass vacuously"
     ;; referenced-tables-raw returns [] on a parse error. Feed verify a string that
     ;; parses to zero table refs; guard 1 must fire.
     (is (cannot-test-run?
@@ -200,19 +200,19 @@
 
 ;;; ===========================================================================
 ;;; Token-survival edge: a mapped table whose name is a substring of a surviving
-;;; COLUMN identifier must PASS (orders mapped away, orders_total column remains).
+;;; column identifier must pass (orders mapped away, orders_total column remains).
 ;;; ===========================================================================
 
 (deftest token-survival-substring-column-passes-test
   (testing "a legitimate column `orders_total` does not trip guard 3 when `orders` is mapped away"
     ;; FROM is scratch_orders; orders_total is a column (identifier boundary: the `_`
-    ;; after `orders` means `orders` is NOT a whole-identifier match). Must pass.
+    ;; after `orders` means `orders` is not a whole-identifier match). Must pass.
     (let [sql "SELECT orders_total FROM scratch_orders"]
       (is (string? (resolve/verify :postgres orders->scratch sql))))))
 
 (deftest token-survival-orders-old-does-not-match-orders-test
   (testing "guard 3 is identifier-boundary-aware: `orders_old` is not `orders`"
-    ;; This is purely about the matching predicate: a DIFFERENT table orders_old must
+    ;; This is purely about the matching predicate: a different table orders_old must
     ;; not be flagged as the surviving `orders` token. (It would trip guard 2 as an
     ;; unmapped table, but here we map orders_old too so only the substring concern is tested.)
     (let [mapping {{:schema "public" :table "orders"}     {:schema "public" :table "scratch_orders"}
@@ -221,9 +221,9 @@
       (is (string? (resolve/verify :postgres mapping sql))))))
 
 (deftest token-survival-case-different-quoted-alias-passes-test
-  (testing "a case-different quoted alias of a mapped table must NOT trip guard 3"
-    ;; THE false positive that motivated the two-pronged guard-3 design: the lib
-    ;; derives join aliases from table DISPLAY names, so joining `products` compiles
+  (testing "a case-different quoted alias of a mapped table must not trip guard 3"
+    ;; The false positive that motivated the two-pronged guard-3 design: the lib
+    ;; derives join aliases from table display names, so joining `products` compiles
     ;; to `... AS "Products"` — a legitimate alias over a scratch table. The original
     ;; single case-insensitive regex spec flagged that alias as the forbidden token
     ;; `products`, rejecting every MBQL join. This unit test pins the requirement
@@ -250,13 +250,13 @@
            ::resolve/token-survival)))))
 
 (deftest string-literal-check-is-case-sensitive-by-design-test
-  (testing "the string-literal scan is deliberately CASE-SENSITIVE — pinning both sides"
+  (testing "the string-literal scan is deliberately case-sensitive — pinning both sides"
     ;; The asymmetry is a design decision, not an oversight: the scan must never
     ;; collide with case-different quoted identifiers (the lib derives join aliases
     ;; from display names — `AS "Products"` for table `products` — and a
     ;; case-insensitive scan would reject every MBQL join; see
     ;; token-survival-case-different-quoted-alias-passes-test). The cost is that a
-    ;; case-different string LITERAL slips through — harmless, since string literals
+    ;; case-different string literal slips through — harmless, since string literals
     ;; were never the correctness hazard (dangling qualifiers are, and the
     ;; parser-based check catches those in any case). If you are about to make this
     ;; scan case-insensitive: don't.
@@ -397,7 +397,7 @@
               q         (-> (lib/query mp orders)
                             (lib/join (lib/join-clause products [(lib/= opid pid)])))
               transform (mbql-transform q)
-              ;; only orders is provided in input-tables AND mapping; products is left real
+              ;; only orders is provided in input-tables and mapping; products is left real
               inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}]
               mapping   {{:schema "public" :table "orders"}
                          {:schema "public" :table "scratch_orders_inc"}}
@@ -427,18 +427,18 @@
 (deftest guard-1-passes-zero-table-transform-test
   ;; Regression: the old Guard 1 fired whenever refs was empty, regardless
   ;; of whether mapping was also empty.  A zero-table transform (SELECT 1 AS x, no
-  ;; real input tables) has an empty mapping AND yields empty refs from
-  ;; referenced-tables-raw.  Guard 1 must only fire when mapping is non-empty AND
+  ;; real input tables) has an empty mapping and yields empty refs from
+  ;; referenced-tables-raw.  Guard 1 must only fire when mapping is non-empty and
   ;; refs is empty (that pattern implies a parse failure lost references that existed).
-  ;; When mapping is empty AND refs is empty it is vacuously safe — there is nothing
+  ;; When mapping is empty and refs is empty it is vacuously safe — there is nothing
   ;; to protect, and Guard 2 still catches any stray refs.
   (testing "SELECT 1 AS x with empty mapping → verify returns the SQL (not ::non-empty-refs)"
-    ;; This FAILS before the fix (throws ::non-empty-refs).
+    ;; This fails before the fix (throws ::non-empty-refs).
     (let [sql "SELECT 1 AS x"]
       (is (= sql (resolve/verify :postgres {} sql))
           "zero-table transform with empty mapping must pass Guard 1")))
   (testing "SELECT 1 AS x with non-empty mapping → verify throws ::non-empty-refs"
-    ;; Guard 1 DOES fire when mapping is non-empty and refs is empty — that means the
+    ;; Guard 1 does fire when mapping is non-empty and refs is empty — that means the
     ;; parser lost references from a non-trivial SQL (a real safety concern).
     (is (cannot-test-run?
          #(resolve/verify :postgres orders->scratch "SELECT 1 AS x")
@@ -447,7 +447,7 @@
   (testing "non-empty mapping + non-empty unmapped refs → Guard 2 fires (not Guard 1)"
     ;; Confirm Guard 2 still covers the complementary case: mapping non-empty but
     ;; the ref isn't in the scratch set.  If Guard 1 were to swallow this, Guard 2
-    ;; wouldn't reach it — but since refs IS non-empty here, Guard 1 passes, Guard 2
+    ;; wouldn't reach it — but since refs is non-empty here, Guard 1 passes, Guard 2
     ;; fires.  This verifies we haven't broken Guard 2 by fixing Guard 1.
     (is (cannot-test-run?
          #(resolve/verify :postgres orders->scratch "SELECT * FROM widgets")
