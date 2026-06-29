@@ -9,23 +9,31 @@
 /** The app entry the IIFE is built from. */
 export const DATA_APP_ENTRY = "src/index.tsx";
 
-/** The IIFE assigns the app factory to this global; the sandbox captures it. */
-export const DATA_APP_FACTORY_GLOBAL = "__dataAppFactory__";
-
 /**
- * Each externalized import mapped to the global the sandbox endows it as. These
- * global names MUST match the endowments in the host's `createDataAppSandbox`
- * (`enterprise/.../metabase-enterprise/data_apps/sandbox.ts`) — that's the
- * cross-package contract that lets the bundle share the host's single React/SDK.
- * `react/jsx-dev-runtime` is only referenced by a development-mode build (jsxDEV);
- * it's harmless in production.
+ * The single source of truth for the globals the data-app bundle is built
+ * against. The SDK build externalizes its imports to these names, and the host's
+ * `createDataAppSandbox` (`metabase-enterprise/data_apps/sandbox.ts`) endows
+ * exactly these names — both sides import this map so the build-time and runtime
+ * contracts can't drift.
  */
-export const DATA_APP_GLOBALS: Record<string, string> = {
+export const DATA_APP_GLOBAL_NAMES = {
   react: "React",
-  "react/jsx-runtime": "__react_jsx_runtime__",
-  "react/jsx-dev-runtime": "__react_jsx_dev_runtime__",
-  "@metabase/embedding-sdk-react": "__metabase_sdk__",
-  "@metabase/embedding-sdk-react/data-app": "__metabase_data_app__",
+  reactJsxRuntime: "__react_jsx_runtime__",
+  reactJsxDevRuntime: "__react_jsx_dev_runtime__",
+  sdk: "__metabase_sdk__",
+  dataApp: "__metabase_data_app__",
+  factory: "__dataAppFactory__",
+} as const;
+
+export const DATA_APP_FACTORY_GLOBAL = DATA_APP_GLOBAL_NAMES.factory;
+
+/** Each externalized import mapped to the global the sandbox endows it as. */
+export const DATA_APP_GLOBALS: Record<string, string> = {
+  react: DATA_APP_GLOBAL_NAMES.react,
+  "react/jsx-runtime": DATA_APP_GLOBAL_NAMES.reactJsxRuntime,
+  "react/jsx-dev-runtime": DATA_APP_GLOBAL_NAMES.reactJsxDevRuntime,
+  "@metabase/embedding-sdk-react": DATA_APP_GLOBAL_NAMES.sdk,
+  "@metabase/embedding-sdk-react/data-app": DATA_APP_GLOBAL_NAMES.dataApp,
 };
 
 /** The imports kept external, derived from `DATA_APP_GLOBALS` so the two can't drift. */
