@@ -253,9 +253,7 @@
    same source query that created `target` via CTAS, so column order matches."
   [driver target temp]
   (sql.qp/format-honeysql driver
-                          {:insert-into target
-                           :select      [:*]
-                           :from        [temp]}))
+                          {:insert-into [target {:select [:*] :from [temp]}]}))
 
 (mu/defmethod driver/run-transform! [:sql :table-incremental] :- ::driver/run-transform-result
   [driver {:keys [conn-spec database output-table] :as transform-details} {merge-opts :merge}]
