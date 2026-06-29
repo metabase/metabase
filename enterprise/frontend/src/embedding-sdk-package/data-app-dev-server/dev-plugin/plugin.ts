@@ -7,13 +7,13 @@ import { DATA_APP_BUNDLE_URL, DATA_APP_REBUILT_EVENT } from "../bundle";
 import { dataAppBuildPlugins, dataAppLibBuild } from "../config/build-config";
 
 // Virtual modules the dev server provides. The template's `index.html` imports
-// the harness; the harness imports the config (the app's allowed hosts + the
-// bundle URL/event). The harness is served verbatim from `harness.ts` — shipped
-// next to this bundle in `dist` — so it runs in the consumer's app, resolving
-// its React + `@metabase/embedding-sdk-react`, and is never compiled here.
-const HARNESS_VIRTUAL_ID = "virtual:metabase-data-app-dev-harness";
+// the dev entry; the dev entry imports the config (the app's allowed hosts + the
+// bundle URL/event). The dev entry is served verbatim from `dev-entry.ts` —
+// shipped next to this bundle in `dist` — so it runs in the consumer's app,
+// resolving its React + `@metabase/embedding-sdk-react`, and is never compiled here.
+const DEV_ENTRY_VIRTUAL_ID = "virtual:metabase-data-app-dev-entry";
 const CONFIG_VIRTUAL_ID = "virtual:metabase-data-app-dev-config";
-const HARNESS_SOURCE_PATH = path.join(__dirname, "data-app-dev-harness.ts");
+const DEV_ENTRY_SOURCE_PATH = path.join(__dirname, "data-app-dev-entry.ts");
 
 // Rollup/Vite's virtual-module marker: a leading NUL byte tells Rollup core and
 // other plugins that an id is synthetic, so they don't try to resolve/load it
@@ -29,7 +29,7 @@ const RESOLVED_PREFIX = "\0";
  * The membrane evaluates a code string, not Vite's module graph, so the app is
  * built in-memory as the production IIFE on server start and on every `src/`
  * change, served at `DATA_APP_BUNDLE_URL`. Instead of a full page reload it emits
- * `DATA_APP_REBUILT_EVENT`, and the harness re-evaluates the new bundle in the
+ * `DATA_APP_REBUILT_EVENT`, and the dev entry re-evaluates the new bundle in the
  * live sandbox and re-renders in place — preserving the loaded SDK + auth (a
  * soft reload; component state still resets, since the app is an opaque bundle).
  */
@@ -64,14 +64,14 @@ export function dataAppSandboxDevPlugin(allowedHosts: string[]): Plugin {
     apply: "serve",
 
     resolveId(id) {
-      if (id === HARNESS_VIRTUAL_ID || id === CONFIG_VIRTUAL_ID) {
+      if (id === DEV_ENTRY_VIRTUAL_ID || id === CONFIG_VIRTUAL_ID) {
         return RESOLVED_PREFIX + id;
       }
     },
 
     load(id) {
-      if (id === RESOLVED_PREFIX + HARNESS_VIRTUAL_ID) {
-        return fs.readFileSync(HARNESS_SOURCE_PATH, "utf8");
+      if (id === RESOLVED_PREFIX + DEV_ENTRY_VIRTUAL_ID) {
+        return fs.readFileSync(DEV_ENTRY_SOURCE_PATH, "utf8");
       }
 
       if (id === RESOLVED_PREFIX + CONFIG_VIRTUAL_ID) {

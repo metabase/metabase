@@ -39,8 +39,8 @@ export const DATA_APP_GLOBALS: Record<string, string> = {
 /** The imports kept external, derived from `DATA_APP_GLOBALS` so the two can't drift. */
 export const DATA_APP_EXTERNALS: string[] = Object.keys(DATA_APP_GLOBALS);
 
-/** Dev-only URL the harness fetches the freshly-built IIFE bundle from. */
+/** Dev-only URL the dev entry fetches the freshly-built IIFE bundle from. */
 export const DATA_APP_BUNDLE_URL = "/@data-app-bundle.js";
 
-/** Custom HMR event the dev plugin emits on rebuild so the harness soft-reloads. */
+/** Custom HMR event the dev plugin emits on rebuild so the dev entry soft-reloads. */
 export const DATA_APP_REBUILT_EVENT = "data-app:rebuilt";

@@ -76,14 +76,14 @@ export * from "./data-app-dev-server.esm.js";
 writeToFile("data-app-dev-server.cjs", dataAppDevServer_cjs);
 writeToFile("data-app-dev-server.js", dataAppDevServer_js);
 
-// Ship the dev harness source verbatim next to the preset bundle; the dev plugin
+// Ship the dev entry source verbatim next to the preset bundle; the dev plugin
 // reads it at runtime and serves it as a virtual module (it runs in the
 // consumer's app, so it isn't compiled here).
-const dataAppDevHarness = fs.readFileSync(
-  path.resolve(__dirname, "../data-app-dev-server/harness.ts"),
+const dataAppDevEntry = fs.readFileSync(
+  path.resolve(__dirname, "../data-app-dev-server/dev-entry.ts"),
   "utf8",
 );
-writeToFile("data-app-dev-harness.ts", dataAppDevHarness);
+writeToFile("data-app-dev-entry.ts", dataAppDevEntry);
 
 // Development mode entry point.
 // When the host app bundler resolves the "development" exports condition,

@@ -1,11 +1,11 @@
 {
-  // Scoped config so the IDE (and `tsc -p` here) type-checks the dev harness,
+  // Scoped config so the IDE (and `tsc -p` here) type-checks the dev entry,
   // which imports the *published* package paths + `import.meta`. We map those
   // names to the SDK's built type rollups (`resources/embedding-sdk/dist`) so the
-  // harness is checked against the real public API a consumer sees — and so we
+  // dev entry is checked against the real public API a consumer sees — and so we
   // don't drag the whole SDK source into this subset program. Build the SDK
   // (`build-embedding-sdk-package`, or just the dts) once for these to resolve.
-  // The root tsconfig excludes `harness.ts` (it can't resolve these paths there).
+  // The root tsconfig excludes `dev-entry.ts` (it can't resolve these paths there).
   "extends": "../../../../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,

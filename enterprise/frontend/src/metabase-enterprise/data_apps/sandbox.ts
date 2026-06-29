@@ -36,7 +36,7 @@ export type DataAppFactory = () => {
  *
  * These are injected by the caller rather than imported here so the sandbox
  * stays decoupled from any single SDK instance: the host passes its own realm's
- * React/SDK, and the data-app template's dev harness passes the React/SDK from
+ * React/SDK, and the data-app template's dev entry passes the React/SDK from
  * its installed `@metabase/embedding-sdk-react` — in both cases the bundle runs
  * against exactly one SDK instance. (Importing them here would bundle a second
  * SDK copy into the published `data-app-dev` entry.)

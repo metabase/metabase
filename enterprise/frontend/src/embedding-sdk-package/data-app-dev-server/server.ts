@@ -27,7 +27,7 @@ import { dataAppSandboxDevPlugin } from "./dev-plugin/plugin";
  *
  * It bundles the React plugin, inlines imported CSS, runs `npm run dev` through
  * the real Near-Membrane sandbox (so dev behaves like production), and serves the
- * dev harness. The bundle contract — the IIFE entry/format + the React/SDK
+ * dev entry. The bundle contract — the IIFE entry/format + the React/SDK
  * externals/globals — is applied through its `config` hook, which Vite merges
  * *over* your config, so it can't be accidentally overridden. Returns an array of
  * plugins (Vite flattens nested plugin arrays).

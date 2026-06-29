@@ -79,7 +79,7 @@ const serverConfig = {
   context: SDK_PACKAGE_SRC_PATH,
   externals: SERVER_EXTERNALS,
   // Keep the real Node `__dirname` at runtime so the dev plugin can read the
-  // harness source it ships next to this bundle in `dist`.
+  // dev entry source it ships next to this bundle in `dist`.
   node: { __dirname: false, __filename: false },
   output: {
     path: SDK_DIST_PATH,
@@ -101,7 +101,7 @@ const serverEsmConfig = {
     library: { type: "module" },
   },
   experiments: { outputModule: true },
-  // ESM has no `__dirname`; the dev plugin needs it to read the harness it ships
+  // ESM has no `__dirname`; the dev plugin needs it to read the dev entry it ships
   // in `dist`. Shim it from `import.meta.url` at the top of the bundle.
   plugins: [
     new rspack.BannerPlugin({
