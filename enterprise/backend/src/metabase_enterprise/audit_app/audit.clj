@@ -251,11 +251,14 @@
       [last-checksum (analytics-checksum)])))
 
 (defn- audit-db-in-source-state?
-  "True when audit tables are stuck at the postgres \"source\" schema (`public`) on a non-postgres host —
-   the half-applied state left by an interrupted `adjust-audit-db-to-host!`."
+  "True when *active* audit tables are stuck at the postgres \"source\" schema (`public`) on a non-postgres
+   host — the half-applied state left by an interrupted `adjust-audit-db-to-host!`. Only active rows count:
+   an inactive `public` row is a retired Mode A orphan (cleaned up by `reconcile-audit-db-duplicates!`), not
+   a stuck source state, and forcing a reload for it would make `adjust-audit-db-to-source!` collide with the
+   orphan on the `(db_id, schema, name)` unique index."
   [audit-db-id]
   (and (not= :postgres (mdb/db-type))
-       (t2/exists? :model/Table :db_id audit-db-id :schema "public")))
+       (t2/exists? :model/Table :db_id audit-db-id :schema "public" :active true)))
 
 (defn- maybe-load-analytics-content!
   "Loads serialized audit content from the classpath if its checksum has changed.
