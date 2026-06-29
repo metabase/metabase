@@ -82,6 +82,7 @@ export {
   type LegacyStaticEmbeddingModalProps,
 } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
+export { PLUGIN_NOTIFICATIONS_SDK } from "./oss/notifications-sdk";
 export {
   PLUGIN_LIBRARY,
   type CollectionPermissionsModalProps,
@@ -180,8 +181,6 @@ export type {
 } from "./types";
 
 // Export a single reinitialize function that calls all individual reinitialize functions
-import { reinitialize as reinitializeNotificationsSdk } from "../../embedding-sdk-bundle/components/public/notifications";
-
 import { reinitialize as reinitializeAiControls } from "./oss/ai-controls";
 import { reinitialize as reinitializeApi } from "./oss/api";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
@@ -202,6 +201,7 @@ import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
+import { reinitialize as reinitializeNotificationsSdk } from "./oss/notifications-sdk";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeReplacement } from "./oss/replacement";
