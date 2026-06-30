@@ -8,7 +8,7 @@
       fix the originals in Crowdin.
 
   The pure predicates live in `metabase.util.i18n.validation` so they can be shared with the
-  macro-time call-site check (`metabase.util.i18n/validate-number-of-args`) and the regression-
+  macro-time call-site check (`metabase.util.i18n.validation/validate-number-of-args`) and the regression-
   guard test (`metabase.util.i18n.validation-test`) without pulling in jgettext."
   (:require
    [clojure.string :as str]

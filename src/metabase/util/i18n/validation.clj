@@ -2,8 +2,8 @@
   "Pure helpers for validating `java.text.MessageFormat` patterns. These primitives are shared by
   three callers:
 
-    - `metabase.util.i18n/validate-number-of-args` — macro-expansion-time check on `(deferred-tru
-      …)` / `(deferred-trs …)` call sites in our own Clojure code.
+    - `metabase.util.i18n.validation/validate-number-of-args` — macro-expansion-time check on
+      `(deferred-tru …)` / `(deferred-trs …)` call sites in our own Clojure code.
     - `i18n.validation` (in `bin/build/src`) — build-time `.po`-file scanner that catches broken
       Crowdin translations before they ship.
     - `metabase.util.i18n.validation-test` — regression guard on the built `.edn` artifacts.
@@ -50,7 +50,7 @@
   {2}\"` either renders literally as `{2}` (if caller passes 2 args) or silently inflates the
   expected arg count past what callers supply. Both are bugs.
 
-  This is the same check `metabase.util.i18n/validate-number-of-args` enforces against developer
+  This is the same check `metabase.util.i18n.validation/validate-number-of-args` enforces against developer
   call sites at macro-expansion time; centralizing it here lets the build-time `.po` scanner reuse
   the exact same primitive against translated strings."
   [^String s]
