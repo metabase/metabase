@@ -276,9 +276,13 @@ function getFallbackDisplay(series: SingleSeries[]): VisualizationDisplay {
   let numRows: number;
   if (cols.length === 3) {
     // time-facet - here we'll consider the number of "rows" the number of unique dates
+    const dateColIndex = cols.findIndex(isDate);
+    if (dateColIndex === -1) {
+      return display;
+    }
     const dates = new Set<RowValue>();
     for (const row of rows) {
-      dates.add(row[1]);
+      dates.add(row[dateColIndex]);
     }
     numRows = dates.size;
   } else {

@@ -76,7 +76,7 @@ export function ExplorationSidebar({
     selectedId: selectedEntityId?.id,
     freezeAutoExpandOnManualToggle: true,
   });
-  const pendingKeyboardSelectionRef = useRef(false);
+  const shouldScrollSelectionRef = useRef(true); // initially true to scroll selection from URL into view
 
   const flatItems = useMemo(() => flattenTree(tree), [tree]);
 
@@ -140,7 +140,7 @@ export function ExplorationSidebar({
           trackExplorationAISummaryOpened(exploration.id);
         }
         event.preventDefault();
-        pendingKeyboardSelectionRef.current = true;
+        shouldScrollSelectionRef.current = true;
         setExpandedIds(
           (prev) =>
             new Set([...prev, ...getInitialExpandedIds(nextItem.id, tree)]),
@@ -187,7 +187,7 @@ export function ExplorationSidebar({
         explorationId={exploration.id}
         canWrite={exploration.can_write}
         handlePrefetch={handlePrefetch}
-        pendingKeyboardSelectionRef={pendingKeyboardSelectionRef}
+        shouldScrollSelectionRef={shouldScrollSelectionRef}
         getSelectedEntityIdUrl={getSelectedEntityIdUrl}
       />
     ),
@@ -223,7 +223,7 @@ interface ExplorationTreeNodeProps extends TreeNodeProps<ExplorationTreeNode> {
   explorationId: ExplorationId;
   canWrite: boolean;
   handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
-  pendingKeyboardSelectionRef: React.MutableRefObject<boolean>;
+  shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   getSelectedEntityIdUrl: (entityId: SelectedEntityId) => string;
 }
 
@@ -404,19 +404,19 @@ function ExplorationTreeItem({
   depth,
   explorationId,
   handlePrefetch,
-  pendingKeyboardSelectionRef,
+  shouldScrollSelectionRef,
   getSelectedEntityIdUrl,
 }: ExplorationTreeItemProps) {
   const itemRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
-    if (isSelected && pendingKeyboardSelectionRef.current) {
+    if (isSelected && shouldScrollSelectionRef.current) {
       itemRef.current?.scrollIntoView({
         block: "nearest",
       });
-      pendingKeyboardSelectionRef.current = false;
+      shouldScrollSelectionRef.current = false;
     }
-  }, [isSelected, pendingKeyboardSelectionRef]);
+  }, [isSelected, shouldScrollSelectionRef]);
 
   const handleClick = useCallback(() => {
     if (!isSelected) {
