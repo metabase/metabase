@@ -30,15 +30,17 @@
   (:require
    [clojure.java.io :as io]
    [clojure.tools.cli :as cli]
+   [metabase-enterprise.data-complexity-score.appdb-source :as appdb-source]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
-   [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
    [metabase-enterprise.data-complexity-score.representation :as representation]
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
-   ;; Loaded for side-effect: derives setting :on-change event topics from :metabase/event.
-   ;; metabase.core.core/entrypoint normally does this, but the standalone CLI bypasses it.
+   ;; Required for side-effects so setting `:on-change` watchers (e.g. `report-timezone`) have
+   ;; their event topics derived from `:metabase/event` before the settings cache is restored
+   ;; from the appdb. Both `run-appdb-mode!` and `run-representation-mode! --write-to-appdb`
+   ;; call `setup-db-without-migrations!`, so the load must precede both — not just appdb-mode.
    [metabase.driver.init]
    [metabase.util.json :as json]))
 
@@ -127,31 +129,51 @@
                         {:cli-validation true})))
       (validate-dir! representation-dir))))
 
+(defn- stamp-degraded-signals
+  "Add `[:meta :degraded-signals]` to `result` when any read fell back during scoring. Lets
+  operators distinguish a real `0` score from a `\"schema too old to score this signal\"` result.
+  No-op when nothing degraded."
+  [result degraded]
+  (cond-> result
+    (seq @degraded) (assoc-in [:meta :degraded-signals] (vec (sort (map name @degraded))))))
+
 (defn- run-appdb-mode!
-  "Score against the live appdb; optionally persist the row.
-  Snowplow is off here, so we don't advance `data-complexity-scoring-last-fingerprint` — leave that to the cron."
+  "Score against the live appdb. The read path uses the same Toucan models as the cron, wrapped
+  by [[appdb-source/*tolerate-missing-relations?*]] so tables or columns introduced after the
+  appdb's Metabase version degrade gracefully (e.g. `metabot`, `measure`) instead of crashing
+  the run. The write step is `appdb-source/record-score!` — a single raw `INSERT INTO
+  data_complexity_score`, no transforms, no fingerprint setting advance, no Snowplow event."
   [write?]
   (mdb/setup-db-without-migrations!)
-  (let [result (complexity/complexity-scores
-                (assoc (synonym-source/complexity-scores-opts)
-                       :metabot-scope (metabot-scope/internal-metabot-scope)
-                       :emit-snowplow? false))]
-    (when write?
-      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
-    result))
+  (when write?
+    (appdb-source/verify-write-target-shape!))
+  (let [degraded (atom #{})]
+    (binding [appdb-source/*tolerate-missing-relations?* true
+              appdb-source/*degraded-signals*            degraded]
+      (let [result (stamp-degraded-signals
+                    (complexity/complexity-scores
+                     (assoc (synonym-source/complexity-scores-opts)
+                            :metabot-scope (metabot-scope/internal-metabot-scope)
+                            :emit-snowplow? false))
+                    degraded)]
+        (when write?
+          (appdb-source/record-score! (task.complexity-score/current-fingerprint) "appdb" result))
+        result))))
 
 (defn- run-representation-mode!
-  "Score against an on-disk serdes export; optionally persist with `source` = `representation:<digest>`."
+  "Score an on-disk serdes export; optionally persist via the same raw-JDBC writer the appdb path
+  uses, stamped `\"representation:<digest>\"`."
   [{:keys [representation-dir embeddings]} write?]
   (when write?
-    (mdb/setup-db-without-migrations!))
+    (mdb/setup-db-without-migrations!)
+    (appdb-source/verify-write-target-shape!))
   (let [{:keys [library universe embedder digest]} (representation/load-dir representation-dir
                                                                             :embeddings-path embeddings)
         result                                     (complexity/score-from-entities library universe embedder {})]
     (when write?
-      (data-complexity-score/record-score! (task.complexity-score/current-fingerprint)
-                                           (str "representation:" digest)
-                                           result))
+      (appdb-source/record-score! (task.complexity-score/current-fingerprint)
+                                  (str "representation:" digest)
+                                  result))
     result))
 
 (defn- with-defaults

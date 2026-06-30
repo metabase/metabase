@@ -3032,13 +3032,11 @@
            util
            enterprise/embeddings
            enterprise/semantic-search}
-   :model-imports #{:model/Card
-                    :model/Collection
+   :model-imports #{:model/Collection
                     :model/Database
                     :model/Measure
                     :model/Metabot
-                    :model/ModerationReview
-                    :model/Table}}
+                    :model/ModerationReview}}
 
   enterprise/data-studio
   {:team "UX West"
