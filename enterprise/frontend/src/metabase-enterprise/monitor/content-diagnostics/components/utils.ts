@@ -225,9 +225,8 @@ export function filterFindingsByEntityTypes(
   findings: ContentDiagnosticsFinding[],
   entityTypes: ContentDiagnosticsFilterType[],
 ): ContentDiagnosticsFinding[] {
-  // No-op when every type is selected. `includePersonalCollections` has no
-  // client-side signal on a finding (the backend doesn't expose it yet), so it
-  // is tracked in state but not applied here.
+  // No-op when every type is selected. `includePersonalCollections` is applied
+  // server-side (a /stale query param), not here.
   if (entityTypes.length === ALL_FILTER_TYPES.length) {
     return findings;
   }

@@ -59,6 +59,7 @@ export function ContentDiagnostics({
   const [selectedFindingId, setSelectedFindingId] = useState<number>();
   const { page = 0, query } = params;
   const dispatch = useDispatch();
+  const filterOptions = getFilterOptions(params);
 
   const {
     data,
@@ -69,6 +70,7 @@ export function ContentDiagnostics({
     {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
+      "include-personal-collections": filterOptions.includePersonalCollections,
     },
     {
       skip: isLoadingParams,
@@ -97,14 +99,14 @@ export function ContentDiagnostics({
 
   const findings = data?.data ?? [];
   const totalCount = data?.total ?? 0;
-  const filterOptions = getFilterOptions(params);
   const hasDefaultFilterOptions = areFilterOptionsEqual(
     filterOptions,
     getDefaultFilterOptions(),
   );
-  // The /stale endpoint has no server-side search/filtering yet, so the query
-  // and entity-type filter narrow the current page client-side; pagination
-  // still reflects the full server set.
+  // Personal-collections filtering is applied server-side (a query param). The
+  // /stale endpoint has no server-side text search or entity-type filter yet,
+  // so those still narrow the current page client-side; pagination reflects the
+  // full (personal-collections-filtered) server set.
   const visibleFindings = filterFindingsByEntityTypes(
     filterFindingsByName(findings, query),
     filterOptions.entityTypes,
@@ -210,11 +212,6 @@ export function ContentDiagnostics({
             getTypeLabel={getFilterTypeLabel}
             isDisabled={isLoading}
             hasDefaultOptions={hasDefaultFilterOptions}
-            // The /stale endpoint can't filter by personal collections yet and
-            // there's no per-finding signal to do it client-side, so hide the
-            // Location toggle here (kept for Dependency diagnostics, which sends
-            // it server-side) until the backend supports it.
-            showLocationFilter={false}
             buttonTestId="content-diagnostics-filter-button"
             onChange={({ types, includePersonalCollections }) =>
               handleFilterOptionsChange({

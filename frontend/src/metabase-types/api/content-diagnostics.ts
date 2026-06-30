@@ -82,7 +82,11 @@ export type ContentDiagnosticsScanResult = {
   duration_ms: number;
 };
 
-export type ListStaleFindingsRequest = PaginationRequest;
+export type ListStaleFindingsRequest = {
+  // When false (default), findings whose entity lives in a personal collection
+  // are excluded. Results are always permission-filtered for the current user.
+  "include-personal-collections"?: boolean;
+} & PaginationRequest;
 
 export type ListStaleFindingsResponse = {
   data: ContentDiagnosticsFinding[];

@@ -252,6 +252,45 @@ describe("StaleContentPage", () => {
     });
   });
 
+  it("filters by personal collections server-side via the Location toggle", async () => {
+    const { history } = setup({ findings: FINDINGS });
+    await waitForListToLoad();
+
+    const getLastRequestUrl = () =>
+      new URL(
+        String(
+          fetchMock.callHistory.lastCall(
+            "path:/api/ee/content-diagnostics/stale",
+          )?.url,
+        ),
+        "http://localhost",
+      );
+
+    // Default request includes personal collections.
+    expect(
+      getLastRequestUrl().searchParams.get("include-personal-collections"),
+    ).toBe("true");
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+    const popover = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(popover).getByRole("checkbox", {
+        name: "Include items in personal collections",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(history?.getCurrentLocation().query).toEqual({
+        "include-personal-collections": "false",
+      });
+    });
+    expect(
+      getLastRequestUrl().searchParams.get("include-personal-collections"),
+    ).toBe("false");
+  });
+
   it("restores the last-used filter when the URL has no params", async () => {
     const { history } = setup({
       findings: FINDINGS,
