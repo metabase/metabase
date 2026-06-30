@@ -13,6 +13,7 @@
    [metabase-enterprise.content-diagnostics.detect :as detect]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.models.collection :as collection]
    [metabase.request.core :as request]
    [toucan2.core :as t2]))
 
@@ -39,6 +40,57 @@
    [:= :stale false]
    [:= :finding_type finding-type]
    [:in :id (latest-per-entity-ids)]])
+
+;;; ------------------------------ per-caller serve filters (shared) ------------------------------------
+;;; The scan is user-less, so the findings table is a permission-agnostic substrate — every per-caller
+;;; concern is resolved **live at serve time** against each finding entity's *current* collection (never the
+;;; scan-time `scope_collection_id`), mirroring Dependency Diagnostics' live filtering over its async graph.
+;;; Two filters compose, both built per entity-type from `detect/entity-type->model`:
+;;;   1. visibility — `visible-findings-where`, ALWAYS applied (a user sees only content they can read).
+;;;   2. personal collections — `exclude-personal-collections-where`, gated by `include-personal-collections`.
+;;; These are the shared filters every per-finding-type endpoint reuses.
+
+(defn- visible-findings-where
+  "Keep only findings whose entity is in a collection the **current user** can read — per-caller, live, and
+  unconditional (the served page is permission-filtered like Dependency Diagnostics). Resolved per
+  entity-type against the entity's current `collection_id` via `collection/visible-collection-filter-clause`,
+  which reads `api/*current-user-id*` / `api/*is-superuser?*`. A finding whose `entity_type` has no
+  collection model is **not** kept (fail-closed — nothing to gate on; all current stale types are
+  collection-bound card/dashboard)."
+  []
+  (into [:or]
+        (for [[etype model] detect/entity-type->model]
+          [:and
+           [:= :entity_type (name etype)]
+           [:in :entity_id {:select [:id]
+                            :from   [(t2/table-name model)]
+                            :where  (collection/visible-collection-filter-clause :collection_id)}]])))
+
+(defn- personal-collection-ids
+  "Live set of every collection id that **is**, or is **nested under**, a personal collection — the same
+  rule `:is_personal` uses (`collection.clj`): a personal root (`personal_owner_id` set) plus any descendant
+  (`location` under a personal root). Empty set when the instance has no personal collections."
+  []
+  (if-let [roots (not-empty (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil]))]
+    (t2/select-pks-set :model/Collection
+                       {:where (into [:or [:in :id roots]]
+                                     (map (fn [pid] [:like :location (str "/" pid "/%")]))
+                                     roots)})
+    #{}))
+
+(defn- exclude-personal-collections-where
+  "WHERE fragment dropping findings whose entity **currently** lives in a personal collection. Resolved live
+  per entity-type (`detect/entity-type->model`) against the entity's current `collection_id`, so root items
+  (`collection_id` nil) and entities in regular collections are kept. Nil when there is nothing to exclude."
+  []
+  (when-let [pids (seq (personal-collection-ids))]
+    (into [:and]
+          (for [[etype model] detect/entity-type->model]
+            [:not [:and
+                   [:= :entity_type (name etype)]
+                   [:in :entity_id {:select [:id]
+                                    :from   [(t2/table-name model)]
+                                    :where  [:in :collection_id pids]}]]]))))
 
 ;;; ----------------------------------- display hydration (shared layer) --------------------------------
 ;;; Every finding's display context — entity name, collection breadcrumb, description, owner, creator —
@@ -173,9 +225,19 @@
   "List active **stale** findings — the latest non-invalidated `stale` finding per entity. Each item is
   flat identity + a nested typed `details` (collection breadcrumb, `description`, `owner`, `creator`,
   `threshold_days`), all batch-hydrated live. Paginated via the standard `limit`/`offset` query params;
-  `total` is the full active count."
-  []
-  (let [where (active-where "stale")
+  `total` is the full active count.
+
+  Results are always **permission-filtered** for the current user (a user sees only findings for content
+  they can read). `include-personal-collections` (default **false**, deps-parity): when false, findings
+  whose entity currently lives in a personal collection are also excluded. Both are resolved live at serve
+  time, instance-wide."
+  [_route-params
+   {:keys [include-personal-collections]
+    :or   {include-personal-collections false}} :- [:map
+                                                    [:include-personal-collections {:optional true} :boolean]]]
+  (let [pers  (when-not include-personal-collections (exclude-personal-collections-where))
+        where (cond-> [:and (active-where "stale") (visible-findings-where)]
+                pers (conj pers))
         page  (t2/select :model/ContentDiagnosticsFinding
                          (cond-> {:where    where
                                   :order-by [[:id :asc]]}

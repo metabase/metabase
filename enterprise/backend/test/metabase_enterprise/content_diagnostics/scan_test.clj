@@ -7,6 +7,8 @@
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.detect :as detect]
    [metabase-enterprise.content-diagnostics.settings :as cd.settings]
+   [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -111,70 +113,155 @@
 (deftest serve-latest-per-entity-and-hydration-test
   (testing "GET /finding serves the latest non-invalidated finding per entity, batch-hydrated"
     (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-        (mt/with-temp [:model/Collection {coll-id :id} {}
-                       :model/Card {card-id :id} {:collection_id coll-id
-                                                  :name          "Quarterly Revenue"
-                                                  :creator_id    (mt/user->id :rasta)}]
-          (let [insert     (fn [scan threshold]
-                             (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
-                                                              {:scan_id      scan
-                                                               :entity_type  :card
-                                                               :entity_id    card-id
-                                                               :finding_type :stale
-                                                               :details      {:threshold_days threshold}})))
-                old-id     (insert "scan-old" 30)
-                new-id     (insert "scan-new" 90)
-                serve      #(mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale")
-                served-ids (fn [resp] (set (map :id (:data resp))))]
-            ;; membership assertions (robust to other rows / pagination), not absolute page counts
-            (testing "the latest finding is served, the superseded older one is not — and `total` counts only the latest"
-              (let [resp (serve)
-                    ids  (served-ids resp)]
-                (is (contains? ids new-id))
-                (is (not (contains? ids old-id)))
-                ;; total must exclude the older row even though it is stale=false: it isn't MAX(id) for the entity
-                (is (= 1 (:total resp)))))
-            (testing "the served finding has flat identity + a nested typed details (collection, description, owner, creator)"
-              (let [row (first (filter #(= new-id (:id %)) (:data (serve))))]
-                (is (= "Quarterly Revenue" (:entity_display_name row)))
-                (testing "collection breadcrumb nested under details"
-                  (is (= coll-id (get-in row [:details :collection :id]))))
-                (testing "stored verdict (threshold_days) flows through details"
-                  (is (= 90 (get-in row [:details :threshold_days]))))
-                (testing "creator hydrated as a normalized user object"
-                  (is (= (mt/user->id :rasta) (get-in row [:details :creator :id])))
-                  (is (= "user" (get-in row [:details :creator :type]))))
-                (testing "card has no owner column → owner is null"
-                  (is (nil? (get-in row [:details :owner]))))))
-            (testing "invalidating the latest hides the entity AND drops it from total; older row does NOT resurface"
-              (t2/update! :model/ContentDiagnosticsFinding new-id {:stale true})
-              (let [resp (serve)
-                    ids  (served-ids resp)]
-                (is (not (contains? ids new-id)))
-                (is (not (contains? ids old-id)))
-                ;; total excludes the invalidated latest (stale=true), and does not fall back to the older row
-                (is (= 0 (:total resp)))))))))))
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {card-id :id} {:collection_id coll-id
+                                                    :name          "Quarterly Revenue"
+                                                    :creator_id    (mt/user->id :rasta)}]
+            ;; rasta reads this collection → the visibility filter scopes `total` to this card's findings
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [insert     (fn [scan threshold]
+                               (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                                {:scan_id      scan
+                                                                 :entity_type  :card
+                                                                 :entity_id    card-id
+                                                                 :finding_type :stale
+                                                                 :details      {:threshold_days threshold}})))
+                  old-id     (insert "scan-old" 30)
+                  new-id     (insert "scan-new" 90)
+                  serve      #(mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale")
+                  served-ids (fn [resp] (set (map :id (:data resp))))]
+              ;; membership assertions (robust to other rows / pagination), not absolute page counts
+              (testing "the latest finding is served, the superseded older one is not — and `total` counts only the latest"
+                (let [resp (serve)
+                      ids  (served-ids resp)]
+                  (is (contains? ids new-id))
+                  (is (not (contains? ids old-id)))
+                  ;; total must exclude the older row even though it is stale=false: it isn't MAX(id) for the entity
+                  (is (= 1 (:total resp)))))
+              (testing "the served finding has flat identity + a nested typed details (collection, description, owner, creator)"
+                (let [row (first (filter #(= new-id (:id %)) (:data (serve))))]
+                  (is (= "Quarterly Revenue" (:entity_display_name row)))
+                  (testing "collection breadcrumb nested under details"
+                    (is (= coll-id (get-in row [:details :collection :id]))))
+                  (testing "stored verdict (threshold_days) flows through details"
+                    (is (= 90 (get-in row [:details :threshold_days]))))
+                  (testing "creator hydrated as a normalized user object"
+                    (is (= (mt/user->id :rasta) (get-in row [:details :creator :id])))
+                    (is (= "user" (get-in row [:details :creator :type]))))
+                  (testing "card has no owner column → owner is null"
+                    (is (nil? (get-in row [:details :owner]))))))
+              (testing "invalidating the latest hides the entity AND drops it from total; older row does NOT resurface"
+                (t2/update! :model/ContentDiagnosticsFinding new-id {:stale true})
+                (let [resp (serve)
+                      ids  (served-ids resp)]
+                  (is (not (contains? ids new-id)))
+                  (is (not (contains? ids old-id)))
+                  ;; total excludes the invalidated latest (stale=true), and does not fall back to the older row
+                  (is (= 0 (:total resp))))))))))))
+
+(deftest serve-include-personal-collections-test
+  (testing "GET /stale excludes personal-collection findings by default; includes them with the param"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          ;; rasta's permanent personal collection — never with-temp (a personal collection can't be deleted)
+          (let [pers-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
+            (mt/with-temp [:model/Collection {reg-id :id}     {}
+                           :model/Card       {reg-card :id}   {:collection_id reg-id}
+                           :model/Card       {pers-card :id}  {:collection_id pers-id}]
+              ;; rasta can read the regular collection; their own personal collection is always self-visible
+              (perms/grant-collection-read-permissions! (perms/all-users-group) reg-id)
+              (let [insert     (fn [card]
+                                 (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                                  {:scan_id      "p-scan"
+                                                                   :entity_type  :card
+                                                                   :entity_id    card
+                                                                   :finding_type :stale
+                                                                   :details      {}})))
+                    reg-fid    (insert reg-card)
+                    pers-fid   (insert pers-card)
+                    serve      (fn [& kvs] (apply mt/user-http-request :rasta :get 200
+                                                  "ee/content-diagnostics/stale" kvs))
+                    served-ids (fn [resp] (set (map :id (:data resp))))]
+                (testing "default (param omitted) → personal-collection finding excluded, regular one served"
+                  (let [resp (serve)]
+                    (is (contains? (served-ids resp) reg-fid))
+                    (is (not (contains? (served-ids resp) pers-fid)))
+                    ;; total honors the live filter — only the regular finding counts
+                    (is (= 1 (:total resp)))))
+                (testing "include-personal-collections=false → identical to default"
+                  (let [ids (served-ids (serve :include-personal-collections false))]
+                    (is (contains? ids reg-fid))
+                    (is (not (contains? ids pers-fid)))))
+                (testing "include-personal-collections=true → both served, total counts both"
+                  (let [resp (serve :include-personal-collections true)]
+                    (is (contains? (served-ids resp) reg-fid))
+                    (is (contains? (served-ids resp) pers-fid))
+                    (is (= 2 (:total resp)))))
+                (testing "exclusion is live: moving the card out of the personal collection re-surfaces it"
+                  (t2/update! :model/Card pers-card {:collection_id reg-id})
+                  (let [ids (served-ids (serve))]                  ; default (exclude personal)
+                    (is (contains? ids pers-fid))))))))))))        ; now in a regular collection → served
 
 (deftest serve-paginates-test
   (testing "GET /finding honors limit/offset and reports the full active total"
     (mt/with-premium-features #{:content-diagnostics}
-      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
-        (doseq [eid [970001 970002 970003]]
-          (t2/insert! :model/ContentDiagnosticsFinding
-                      {:scan_id "p" :entity_type :card :entity_id eid
-                       :finding_type :stale :details {}}))
-        (let [page (fn [limit offset]
-                     (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale"
-                                           :limit limit :offset offset))]
-          (testing "limit caps the page; total reflects the full active set; limit/offset echoed back"
-            (let [r (page 2 0)]
-              (is (= 2 (count (:data r))))
-              (is (= 3 (:total r)))
-              (is (= 2 (:limit r)))
-              (is (= 0 (:offset r)))))
-          (testing "offset advances to the remainder"
-            (is (= 1 (count (:data (page 2 2)))))))))))
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          ;; real cards in a real collection — the serve layer permission-filters against live entities
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {c1 :id} {:collection_id coll-id}
+                         :model/Card {c2 :id} {:collection_id coll-id}
+                         :model/Card {c3 :id} {:collection_id coll-id}]
+            ;; grant read so the visibility filter scopes the served set to exactly these 3 (robust on shared CI)
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (doseq [cid [c1 c2 c3]]
+              (t2/insert! :model/ContentDiagnosticsFinding
+                          {:scan_id "p" :entity_type :card :entity_id cid
+                           :finding_type :stale :details {}}))
+            (let [page (fn [limit offset]
+                         (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/stale"
+                                               :limit limit :offset offset))]
+              (testing "limit caps the page; total reflects the full active set; limit/offset echoed back"
+                (let [r (page 2 0)]
+                  (is (= 2 (count (:data r))))
+                  (is (= 3 (:total r)))
+                  (is (= 2 (:limit r)))
+                  (is (= 0 (:offset r)))))
+              (testing "offset advances to the remainder"
+                (is (= 1 (count (:data (page 2 2)))))))))))))
+
+(deftest serve-permission-filtered-test
+  (testing "GET /stale returns only findings whose entity the current user can read"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {readable :id}   {}
+                         :model/Collection {unreadable :id} {}
+                         :model/Card {r-card :id} {:collection_id readable}
+                         :model/Card {u-card :id} {:collection_id unreadable}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) readable)
+            (let [insert  (fn [card]
+                            (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                             {:scan_id      "perm"
+                                                              :entity_type  :card
+                                                              :entity_id    card
+                                                              :finding_type :stale
+                                                              :details      {}})))
+                  r-fid   (insert r-card)
+                  u-fid   (insert u-card)
+                  ids-for (fn [user] (set (map :id (:data (mt/user-http-request
+                                                           user :get 200 "ee/content-diagnostics/stale")))))]
+              (testing "non-admin sees only the finding in the readable collection"
+                (let [ids (ids-for :rasta)]
+                  (is (contains? ids r-fid))
+                  (is (not (contains? ids u-fid)))))
+              (testing "superuser sees findings in every collection"
+                (let [ids (ids-for :crowberto)]
+                  (is (contains? ids r-fid))
+                  (is (contains? ids u-fid)))))))))))
 
 (deftest scan-endpoint-is-feature-gated-test
   (testing "POST /scan runs synchronously for a licensed instance"
