@@ -177,8 +177,22 @@ export function useAutoLoadCustomVizPlugin(
   const { sandboxMode = "hosted" } = options;
   const { plugins, disabled } = useCustomVizPlugins();
   const [sendToast] = useToast();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoadingState] = useState(false);
   const loadingRef = useRef<string | null>(null);
+
+  // Refcount in-flight loads. The visualization is refreshed by unmounting while
+  // loading and remounting (which re-reads the registry) when loading clears;
+  // with overlapping reloads just a boolean would clear after the *first* load
+  // resolves and remount on a stale bundle. Counting keeps `loading` true
+  // until the last (newest) load settles, so the remount reads the freshest registered bundle.
+  const loadingCountRef = useRef(0);
+  const setLoading = useCallback((isLoading: boolean) => {
+    loadingCountRef.current = Math.max(
+      0,
+      loadingCountRef.current + (isLoading ? 1 : -1),
+    );
+    setLoadingState(loadingCountRef.current > 0);
+  }, []);
 
   const onInfo = useCallback(
     (message: string) => {
@@ -213,7 +227,7 @@ export function useAutoLoadCustomVizPlugin(
         setLoading(false);
       }
     },
-    [onInfo, sandboxMode],
+    [onInfo, sandboxMode, setLoading],
   );
 
   useEffect(() => {
@@ -335,10 +349,12 @@ export async function loadCustomVizPlugin(
         cache: "no-store",
       });
     const maxAttempts = plugin.dev_bundle_url ? 5 : 1;
+    const isLatest = () => loadStartedSeq.get(plugin.id) === loadSeq;
+
     let res = await fetchBundle();
     for (
       let attempt = 2;
-      attempt <= maxAttempts && !res.ok && res.status >= 500;
+      attempt <= maxAttempts && !res.ok && res.status >= 500 && isLatest();
       attempt++
     ) {
       await new Promise((resolve) => setTimeout(resolve, 300));
