@@ -134,7 +134,13 @@
                                                                  :id    id})))))
            :analytics-card-ids escaped-in-analytics})))))
 
-(defn- log-escape-report! [escaped]
+(defn- handle-escapees!
+  "Reports cards that are referenced from inside the requested collections but saved outside them.
+
+  Always logs a per-entity warning for each escapee, and unless `continue-on-error?` is set, aborts the
+  export by throwing: the escaped references would otherwise be dropped, silently producing an incomplete
+  archive. With `continue-on-error?` the export proceeds and the escaped entities are skipped instead."
+  [escaped continue-on-error?]
   (let [dashboards (group-by #(get % "Dashboard") escaped)]
     (doseq [[dash-id escapes] (dissoc dashboards nil)]
       (log/warnf "Failed to export Dashboard %d (%s) containing Card saved outside requested collections: %s"
@@ -148,7 +154,14 @@
                                           (if (get item "Card")
                                             (entity-label {:model :model/Card :id (get item "Card")})
                                             (dissoc item :escapee))
-                                          (entity-label (:escapee item)))))))))
+                                          (entity-label (:escapee item))))))))
+  (when-not continue-on-error?
+    (throw (ex-info (format (str "Serialization failed: %d card(s) referenced by the requested collections "
+                                 "are saved outside them, which would produce an incomplete export. See the "
+                                 "warnings above for the affected entities. Pass continue-on-error to export "
+                                 "anyway, skipping the affected dashboards and cards.")
+                            (count (distinct (map (comp :id :escapee) escaped))))
+                    {:status-code 400}))))
 
 (defn- resolve-targets
   "Returns all targets (for either supplied initial `targets` or for supplied `user-id`)."
@@ -188,21 +201,13 @@
         ;; cards referenced by dashboards live outside the target collections.
         {:keys [reportable-escaped analytics-card-ids]} (when has-content?
                                                           (escape-analysis by-model nodes))]
-    (when (seq reportable-escaped)
-      (log-escape-report! reportable-escaped))
     ;; A card referenced from inside the requested collections but living outside them would produce an
-    ;; incomplete export (the referencing dashboards/cards get dropped), so by default we abort loudly
-    ;; instead of silently emitting an empty archive. With continue-on-error we don't abort: the escaped
-    ;; cards are outside the collection set so they're filtered out of extraction anyway, and the
-    ;; dashboards/cards that reference them are skipped on import (which also honors continue-on-error).
-    (when (and (seq reportable-escaped)
-               (not (:continue-on-error opts)))
-      (throw (ex-info (format (str "Serialization failed: %d card(s) referenced by the requested collections "
-                                   "are saved outside them, which would produce an incomplete export. See the "
-                                   "warnings above for the affected entities. Pass continue-on-error to export "
-                                   "anyway, skipping the affected dashboards and cards.")
-                              (count (distinct (map (comp :id :escapee) reportable-escaped))))
-                      {:status-code 400})))
+    ;; incomplete export (the referencing dashboards/cards get dropped), so by default handle-escapees!
+    ;; aborts loudly instead of silently emitting an empty archive. With continue-on-error we don't abort:
+    ;; the escaped cards are outside the collection set so they're filtered out of extraction anyway, and
+    ;; the dashboards/cards that reference them are skipped on import (which also honors continue-on-error).
+    (when (seq reportable-escaped)
+      (handle-escapees! reportable-escaped (:continue-on-error opts)))
     (let [coll-set        (get by-model "Collection")
           ;; When targets are specified, also include Tables found via descendants
           ;; (published tables in target collections). These are extracted by ID, not all.
@@ -250,4 +255,5 @@
                 (u/traverse colls #(serdes/ascendants (first %) (second %)))
                 (u/traverse colls #(serdes/descendants (first %) (second %) {})))))
   (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
-  (log-escape-report! escaped))
+  ;; continue-on-error? true so this just logs in the REPL instead of throwing
+  (handle-escapees! (:reportable-escaped escaped) true))
