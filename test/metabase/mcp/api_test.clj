@@ -1351,6 +1351,15 @@
               uris    (set (map :uri (get-in response [:result :resources])))]
           (is (contains? uris scoped-test-uri)))))))
 
+(deftest resources-templates-list-test
+  (testing "resources/templates/list returns an empty list of resource templates"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/templates/list")
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (= {:resourceTemplates []}
+             (get-in response [:body :result]))))))
+
 ;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
 
 (deftest tools-list-scope-filtering-test
