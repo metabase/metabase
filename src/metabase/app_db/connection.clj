@@ -152,27 +152,36 @@
     (do (swap! callbacks conj thunk) nil)
     (thunk)))
 
-(defn- run-after-commit-callbacks! []
-  (when-let [callbacks *after-commit-callbacks*]
+(defn- run-after-commit-callbacks! [callbacks]
+  (binding [t2.conn/*current-connectable* nil
+            *transaction-depth*           0
+            *after-commit-callbacks*      nil]
     (doseq [thunk @callbacks]
       ;; the transaction already committed; a failing callback must not unwind it
       (try (thunk) (catch Throwable t (log/error t "after-commit callback failed"))))
     (reset! callbacks [])))
 
+(defn- discard-after-commit-callbacks-after! [callback-count]
+  (when-let [callbacks *after-commit-callbacks*]
+    (swap! callbacks
+           (fn [callbacks]
+             (subvec callbacks 0 (min callback-count (count callbacks)))))))
+
 (defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []
-            (let [savepoint (.setSavepoint connection)]
+            (let [savepoint      (.setSavepoint connection)
+                  callback-count (some-> *after-commit-callbacks* deref count)]
               (try
                 (let [result (f connection)]
                   (when (= *transaction-depth* 1)
-                    ;; top-level transaction, commit
-                    (.commit connection)
-                    ;; ...then fire post-commit side effects (only here, so they never run on rollback)
-                    (run-after-commit-callbacks!))
+                    ;; top-level transaction; post-commit side effects run after the transaction bindings unwind
+                    (.commit connection))
                   result)
                 (catch Throwable txn-e
                   (try
                     (.rollback connection savepoint)
+                    (when callback-count
+                      (discard-after-commit-callbacks-after! callback-count))
                     (catch Exception rollback-e
                       (throw (ex-info
                               (str "Error rolling back after previous error: " (ex-message txn-e))
@@ -223,10 +232,15 @@
                     {:options options}))
 
     :else
-    (binding [*transaction-depth*      (inc *transaction-depth*)
-              ;; one accumulator for the whole tree, created when the outermost transaction starts
-              *after-commit-callbacks* (if (zero? *transaction-depth*) (atom []) *after-commit-callbacks*)]
-      (do-transaction connection f))))
+    (let [outermost? (zero? *transaction-depth*)
+          callbacks  (if outermost? (atom []) *after-commit-callbacks*)
+          result     (binding [*transaction-depth*      (inc *transaction-depth*)
+                               ;; one accumulator for the whole tree, created when the outermost transaction starts
+                               *after-commit-callbacks* callbacks]
+                       (do-transaction connection f))]
+      (when outermost?
+        (run-after-commit-callbacks! callbacks))
+      result)))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
   "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively

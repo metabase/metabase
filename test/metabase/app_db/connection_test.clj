@@ -135,6 +135,31 @@
       (is (= java.sql.Connection/TRANSACTION_READ_COMMITTED
              (.getTransactionIsolation conn))))))
 
+(deftest after-commit-callback-runs-outside-transaction-bindings-test
+  (let [callback-state (promise)]
+    (t2/with-transaction [_conn]
+      (mdb.connection/do-after-commit
+       #(deliver callback-state
+                 {:current-connectable t2.connection/*current-connectable*
+                  :in-transaction?    (mdb.connection/in-transaction?)})))
+    (is (= {:current-connectable nil
+            :in-transaction?    false}
+           (deref callback-state 1000 ::timed-out)))))
+
+(deftest after-commit-callbacks-from-rolled-back-nested-transaction-are-discarded-test
+  (let [calls         (atom [])
+        rollback-ex   (ex-info "Rollback nested transaction" {})
+        register-call #(mdb.connection/do-after-commit (fn [] (swap! calls conj %)))]
+    (t2/with-transaction [conn]
+      (register-call :outer-before)
+      (is (thrown?
+           Exception
+           (t2/with-transaction [_ conn]
+             (register-call :nested)
+             (throw rollback-ex))))
+      (register-call :outer-after))
+    (is (= [:outer-before :outer-after] @calls))))
+
 (deftest rollback-error-handling
   (testing "rollback error handling"
     (let [mock-conn (reify Connection
