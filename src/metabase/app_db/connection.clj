@@ -152,21 +152,18 @@
     (do (swap! callbacks conj thunk) nil)
     (thunk)))
 
-(defn- run-after-commit-callbacks! [^java.sql.Connection connection callbacks]
-  ;; Reuse the just-committed connection (now back in autocommit) so callbacks don't check out a second
-  ;; pooled connection while this one is still held. Keep *after-commit-callbacks* bound to the same
-  ;; accumulator so a callback that itself calls do-after-commit queues the new thunk for the next drain
-  ;; pass (FIFO) rather than running it re-entrantly mid-loop.
-  (binding [t2.conn/*current-connectable* connection
+(defn- run-after-commit-callbacks! [callbacks]
+  ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work
+  ;; (e.g. a reconcile `future`) a callback may start: that work must acquire its own connection rather than
+  ;; reuse this transaction's connection after it returns to the pool, and a do-after-commit it makes must run
+  ;; immediately rather than enqueue into this now-drained accumulator.
+  (binding [t2.conn/*current-connectable* nil
             *transaction-depth*           0
-            *after-commit-callbacks*      callbacks]
-    (loop []
-      (let [batch (first (reset-vals! callbacks []))]
-        (when (seq batch)
-          (doseq [thunk batch]
-            ;; the transaction already committed; a failing callback must not unwind it
-            (try (thunk) (catch Throwable t (log/error t "after-commit callback failed"))))
-          (recur))))))
+            *after-commit-callbacks*      nil]
+    (doseq [thunk @callbacks]
+      ;; the transaction already committed; a failing callback must not unwind it
+      (try (thunk) (catch Throwable t (log/error t "after-commit callback failed"))))
+    (reset! callbacks [])))
 
 (defn- discard-after-commit-callbacks-after! [callback-count]
   (when-let [callbacks *after-commit-callbacks*]
@@ -251,7 +248,7 @@
                                *after-commit-callbacks* callbacks]
                        (do-transaction connection f))]
       (when outermost?
-        (run-after-commit-callbacks! connection callbacks))
+        (run-after-commit-callbacks! callbacks))
       result)))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
