@@ -1347,8 +1347,8 @@
   (let [name+cols [driver.common/index-name-field driver.common/index-columns-field]]
     ;; btree is the only method where column order direction matters, so it opts into the asc/desc picker.
     {:btree {:lifecycle :standalone :fields [driver.common/index-name-field
-                                             (assoc driver.common/index-columns-field :directions true)
-                                             driver.common/index-unique-field]}
+                                             driver.common/index-unique-field
+                                             (assoc driver.common/index-columns-field :directions true)]}
      :gin   {:lifecycle :standalone :fields name+cols}
      :gist  {:lifecycle :standalone :fields name+cols}
      :brin  {:lifecycle :standalone :fields name+cols}}))

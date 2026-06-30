@@ -168,4 +168,4 @@ export type IndexMethod = {
   fields: IndexField[];
 };
 
-export type RequestableIndexes = Record<ClassicalIndexKind, IndexMethod>;
+export type RequestableIndexes = Record<string, IndexMethod>;

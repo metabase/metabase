@@ -157,7 +157,7 @@
 
 (def index-name-field
   "Descriptor for the index name."
-  {:name "name" :display-name (deferred-tru "Index name") :type :string :required true})
+  {:name "name" :display-name (deferred-tru "Give your index a name") :type :string :required true})
 
 (def index-columns-field
   "Descriptor for the indexed columns."
@@ -166,7 +166,7 @@
 
 (def index-unique-field
   "Descriptor for the btree unique toggle."
-  {:name "unique" :display-name (deferred-tru "Unique") :type :boolean})
+  {:name "unique" :display-name (deferred-tru "Enforce uniqueness across rows for indexed columns.") :type :boolean})
 
 (def index-granularity-field
   "Descriptor for a ClickHouse skip-index granularity."

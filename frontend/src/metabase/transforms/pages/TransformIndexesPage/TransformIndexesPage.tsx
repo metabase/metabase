@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -12,10 +13,11 @@ import { useTransformPermissions } from "metabase/transforms/hooks/use-transform
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isNullOrUndefined } from "metabase/utils/types";
-import type { Transform } from "metabase-types/api";
+import type { TableIndexEntry, Transform } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
+import { IndexEditorModal } from "./IndexEditorModal/IndexEditorModal";
 import { IndexPageActions } from "./IndexPageActions";
 import { NoIndexes } from "./NoIndexes";
 import { TransformIndexTable } from "./TransformIndexTable";
@@ -70,6 +72,11 @@ function TransformIndexesContent({
   const hasRequestableIndexes =
     Object.keys(transform.requestable_indexes ?? {}).length > 0;
   const canCreate = targetTableExists && hasRequestableIndexes && !readOnly;
+  const [editorState, setEditorState] = useState<{
+    index?: TableIndexEntry;
+  } | null>(null);
+
+  const handleCreate = () => setEditorState({});
 
   if (isLoading || !isNullOrUndefined(error)) {
     return (
@@ -80,22 +87,31 @@ function TransformIndexesContent({
   }
 
   return (
-    <TitleSection
-      label={t`Indexes`}
-      actions={
-        <IndexPageActions
-          readOnly={readOnly}
-          targetTableExists={targetTableExists}
-          handleCreate={() => undefined}
-          canCreate={canCreate}
+    <>
+      <TitleSection
+        label={t`Indexes`}
+        actions={
+          <IndexPageActions
+            readOnly={readOnly}
+            targetTableExists={targetTableExists}
+            handleCreate={handleCreate}
+            canCreate={canCreate}
+          />
+        }
+      >
+        {indexes.length === 0 ? (
+          <NoIndexes />
+        ) : (
+          <TransformIndexTable indexes={indexes} />
+        )}
+      </TitleSection>
+      {editorState != null && (
+        <IndexEditorModal
+          transform={transform}
+          index={editorState.index}
+          onClose={() => setEditorState(null)}
         />
-      }
-    >
-      {indexes.length === 0 ? (
-        <NoIndexes />
-      ) : (
-        <TransformIndexTable indexes={indexes} />
       )}
-    </TitleSection>
+    </>
   );
 }
