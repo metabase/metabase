@@ -57,10 +57,16 @@ Two identifier conventions:
 - **User content** (Card, Dashboard, Collection, Metric, Transform): `metabase://{type}/{entity_id}`. The canonical type
   is `card`; `model` and `question` are accepted aliases that route to the same handler. Numeric ids work for backcompat
   but emit a deprecation log — prefer entity_id.
-- **Sync metadata** (Database, Table, Field): path-form natural keys, mirroring MBR FK tuples. URL-encode each segment.
+- **Sync metadata** (Database, Table, Field): path-form natural keys, mirroring MBR FK tuples.
   - `metabase://database/{db_name}`
   - `metabase://database/{db_name}/schema/{schema}/table/{table_name}`
   - `metabase://database/{db_name}/schema/{schema}/table/{table_name}/field/{field_name}`
+  - **Use the name, not the id.** The database segment resolves by name first, so always address a database by
+    its name — that is the canonical, unambiguous form. A database whose name happens to be all digits (e.g. `42`)
+    is still reachable this way; addressing databases by numeric id is a deprecated legacy fallback.
+  - **URL-encode each segment.** A name with a space, slash, or other reserved character must be percent-encoded:
+    a space becomes `%20`, a `/` becomes `%2F`, etc. e.g. a schema named `weird/name` →
+    `.../schema/weird%2Fname/...`, a database named `Q1 Sales` → `metabase://database/Q1%20Sales`.
 
 The legacy `metabase://table/{id}` form (numeric) still works for backcompat.
 

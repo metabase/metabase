@@ -74,17 +74,19 @@
         (t2/select-one toucan-model n)))))
 
 (defn resolve-database
-  "Look up a Database by name (preferred, MBR path-form) or numeric id (legacy).
+  "Look up a Database for a `metabase://database/{seg}` URI segment.
 
-   Numeric-looking strings are treated as ids; everything else as a name. This
-   means a literal database named e.g. \"42\" cannot be addressed by name —
-   not a real concern since Metabase routes the database name through the UI
-   anyway."
+   Name is the canonical, unambiguous form ([[database-uri]] always emits it), so we resolve
+   **by name first** and fall back to numeric id only when no database has that name. This keeps
+   an all-numeric database name (e.g. `\"42\"`) reachable — the previous numeric-first order
+   silently shadowed it with the id lookup. Numeric id remains a best-effort legacy fallback; in
+   the (astronomically rare) case where both a database *named* `\"42\"` and a database with *id*
+   42 exist, the name wins, matching the canonical scheme."
   [id-str]
   (when id-str
-    (if-let [n (parse-long id-str)]
-      (t2/select-one :model/Database n)
-      (t2/select-one :model/Database :name id-str))))
+    (or (t2/select-one :model/Database :name id-str)
+        (when-let [n (parse-long id-str)]
+          (t2/select-one :model/Database n)))))
 
 (defn resolve-table
   "Look up a Table by `[db-name schema table-name]` (MBR path-form). Schemaless

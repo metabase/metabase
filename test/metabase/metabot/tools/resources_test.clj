@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.shared.mbr :as mbr]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -502,6 +503,20 @@
               (is (= (- total cap) (count (:items p2))))
               (is (= 2 (:page p2)))
               (is (false? (:truncated p2))))))))))
+
+(deftest resolve-database-prefers-name-test
+  (testing "resolve-database resolves the canonical name form first, so an all-numeric database name
+           stays reachable (the numeric-first order used to shadow it with an id lookup)"
+    (mt/with-temp [:model/Database {named-42-id :id} {:name "42"}
+                   :model/Database {real-id :id}     {:name "Sales"}]
+      (testing "a database literally named \"42\" resolves by name, not as id 42"
+        (is (= named-42-id (:id (mbr/resolve-database "42")))))
+      (testing "a non-numeric name still resolves by name"
+        (is (= real-id (:id (mbr/resolve-database "Sales")))))
+      (testing "a numeric segment with no name match falls back to id lookup (legacy backcompat)"
+        (is (= real-id (:id (mbr/resolve-database (str real-id))))))
+      (testing "an unknown segment resolves to nil"
+        (is (nil? (mbr/resolve-database "no-such-db-name")))))))
 
 (deftest tables-with-duplicate-names-across-schemas-test
   (testing "two tables sharing a name in different schemas both appear (no serdes-path collision)"
