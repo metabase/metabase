@@ -9,6 +9,7 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.lib.core :as lib]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.core :as sync]
@@ -379,22 +380,23 @@
                     [id survivor-field-id])))
           (t2/select [:model/Field :id :name] :table_id orphan-table-id))))
 
+(defn- field-ref?
+  "True for an MBQL `:field` ref clause (the form the Card model hydrates field references to)."
+  [x]
+  (and (vector? x) (= :field (first x)) (map? (second x))))
+
 (defn- repoint-refs
   "Rewrite an MBQL / result-metadata form, moving references off the orphan table onto the survivor:
-   `:source-table orphan-table-id` becomes `survivor-table-id`, and field ids are remapped via `field-id-remap`.
-   Handles both pMBQL field refs (`[:field {opts} id]`, id last) and legacy refs (`[:field id {opts}]`,
-   `[:field-id id]`, id second)."
+   `:source-table orphan-table-id` becomes `survivor-table-id`, and id-based `:field` refs are remapped onto the
+   survivor's fields via `field-id-remap`."
   [form orphan-table-id survivor-table-id field-id-remap]
   (walk/postwalk
    (fn [x]
      (cond
-       ;; pMBQL field ref: [:field {opts} id]
-       (and (vector? x) (= :field (first x)) (map? (second x)) (contains? field-id-remap (nth x 2 nil)))
-       (assoc x 2 (field-id-remap (nth x 2)))
-
-       ;; legacy field ref: [:field id {opts}] or [:field-id id]
-       (and (vector? x) (#{:field :field-id} (first x)) (contains? field-id-remap (second x)))
-       (assoc x 1 (field-id-remap (second x)))
+       (field-ref? x)
+       (if-let [survivor-field-id (some-> (lib/field-ref-id x) field-id-remap)]
+         (lib/with-field-ref-id x survivor-field-id)
+         x)
 
        (and (map? x) (= orphan-table-id (:source-table x)))
        (assoc x :source-table survivor-table-id)

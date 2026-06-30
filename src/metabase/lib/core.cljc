@@ -1579,7 +1579,8 @@
  [lib.ref
   field-ref-id
   field-ref-name
-  ref]
+  ref
+  with-field-ref-id]
  [lib.referenced-columns
   referenced-columns]
  [lib.remove-replace
