@@ -515,7 +515,7 @@ import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
 import table_index_component from "./table_index.svg?component";
-import table_index_source from "./table_index.svg?source  ";
+import table_index_source from "./table_index.svg?source";
 import test_tube_component from "./test_tube.svg?component";
 import test_tube_source from "./test_tube.svg?source";
 import text_bold_component from "./text_bold.svg?component";

@@ -9,8 +9,9 @@ import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { TableIndexEntry, UserId } from "metabase-types/api";
 
+import { getColumns } from "./columns";
 import type { IndexRow } from "./types";
-import { getColumns, getIndexKey } from "./utils";
+import { getIndexKey } from "./utils";
 
 type TransformIndexTableProps = {
   indexes: TableIndexEntry[];
