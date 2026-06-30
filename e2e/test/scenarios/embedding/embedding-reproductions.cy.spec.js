@@ -326,16 +326,11 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     });
 
     H.modal().within(() => {
-      // select the dropdown next to the Text parameter so that we can set the value to "Locked"
-      cy.findByText("Text")
-        .parent()
-        .within(() => {
-          cy.findByText("Disabled").click();
-        });
+      // open the visibility dropdown for the Text parameter so that we can set the value to "Locked"
+      cy.findByLabelText("Text").click();
     });
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Locked").click();
+    cy.findByRole("listbox").findByText("Locked").click();
 
     H.modal().within(() => {
       // set a parameter value

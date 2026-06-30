@@ -94,7 +94,7 @@ function TextDiff({ before, after }: FieldDiff) {
             span
             fw={part.added ? 600 : undefined}
             td={part.removed ? "line-through" : undefined}
-            c={part.removed ? "text-tertiary" : undefined}
+            c={part.removed ? "text-disabled" : undefined}
           >
             {part.value}
           </Text>
@@ -105,7 +105,7 @@ function TextDiff({ before, after }: FieldDiff) {
 
   if (beforeStr != null) {
     return (
-      <Text size="sm" td="line-through" c="text-tertiary">
+      <Text size="sm" td="line-through" c="text-disabled">
         {beforeStr}
       </Text>
     );

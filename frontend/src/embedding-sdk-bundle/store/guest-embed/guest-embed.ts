@@ -1,9 +1,9 @@
 import { merge } from "icepick";
 
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { isJWT } from "metabase/utils/jwt";

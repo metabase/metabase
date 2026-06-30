@@ -1329,8 +1329,14 @@
           (doseq [sql [;; Create the isolated database
                        (format "CREATE DATABASE IF NOT EXISTS %s" quoted-db)
                        user-sql
-                       ;; Grant all privileges on the isolated database
-                       (format "GRANT ALL PRIVILEGES ON %s.* TO %s@'%%'" quoted-db quoted-user)]]
+                       ;; Least-privilege grant on the workspace's own DB (vs. ALL PRIVILEGES,
+                       ;; dropping GRANT OPTION, CREATE VIEW/ROUTINE, TRIGGER, etc.):
+                       ;;   SELECT, INSERT, UPDATE, DELETE - full DML on its own tables
+                       ;;   CREATE - transform target / CTAS
+                       ;;   DROP   - swap/cleanup
+                       ;;   ALTER  - required (with DROP/CREATE) for RENAME TABLE swaps
+                       (format "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER ON %s.* TO %s@'%%'"
+                               quoted-db quoted-user)]]
             (.addBatch ^Statement stmt ^String sql))
           (try
             (.executeBatch ^Statement stmt)

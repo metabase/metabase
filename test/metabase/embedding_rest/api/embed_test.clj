@@ -131,7 +131,7 @@
 
      "/csv"
      (is (= "Count\n100\n"
-            actual))
+            (u/strip-bom actual)))
 
      "/xlsx"
      (let [actual (->> (ByteArrayInputStream. actual)
@@ -545,7 +545,7 @@
       (with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card card (card-with-date-field-filter)]
           (is (= "count\n107\n"
-                 (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014")))))))))
+                 (u/strip-bom (client/client :get 200 (str (card-query-url card "/csv") "&date=Q1-2014"))))))))))
 
 (deftest csv-forward-url-test
   (mt/test-helpers-set-global-values!
@@ -555,7 +555,7 @@
         (binding [client/*url-prefix* ""]
           (mt/with-temporary-setting-values [site-url (str "http://localhost:" (server.instance/server-port) client/*url-prefix*)]
             (is (= "count\n107\n"
-                   (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))))))
+                   (u/strip-bom (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))))
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
 
@@ -844,10 +844,10 @@
                                                     {:name "PRICE" :fieldRef [:field (mt/id :venues :price) nil] :enabled true}]}}}]
           (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
             (is (= ["Name" "ID" "Category ID" "Price"]
-                   (first (csv/read-csv results)))))
+                   (first (csv/read-csv (u/strip-bom results))))))
           (let [eid-results (client/client :get 200 (str (dashcard-url dashcard {} (dashcard->dash-eid dashcard)) "/csv"))]
             (is (= ["Name" "ID" "Category ID" "Price"]
-                   (first (csv/read-csv eid-results))))))))))
+                   (first (csv/read-csv (u/strip-bom eid-results)))))))))))
 
 (deftest generic-query-failed-exception-test
   (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" exception "

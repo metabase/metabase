@@ -22,7 +22,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { ActionIcon, Icon, Popover } from "metabase/ui";
 
 import type { TabContextType } from "../Tab";
