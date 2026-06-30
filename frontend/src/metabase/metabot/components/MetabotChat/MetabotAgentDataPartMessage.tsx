@@ -73,7 +73,7 @@ export const AgentDataPartMessage = ({
       ({ part }) => (
         <Stack gap="md">
           {debug && <DataPartJsonCard type={part.type} value={part.data} />}
-          <MetabotInlineChart value={part.data} />
+          <MetabotInlineChart value={part.data} readonly={readonly} />
         </Stack>
       ),
     )
