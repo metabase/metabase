@@ -1928,19 +1928,28 @@
   those joined tables is reachable even without a foreign key from the stage's `source-table`, and
   the implicit-join pass must DEFER (not throw `:no-fk-path`) for it.
 
+  We only defer for metrics the construct pipeline will actually inherit: single-stage metrics
+  defined on this stage's own `source-table-id`. This keeps the deferral set in lockstep with
+  [[metabase.metabot.tools.construct/inherit-metric-joins]] - a multi-stage or cross-base-table
+  metric is NOT inherited there, so deferring here would leave a bare foreign field unattributed
+  and trade the clean `:no-fk-path` error for an opaque execution failure.
+
   Portable metric clause shape: `[\"metric\" {} \"<entity-id>\"]`. Best-effort: any metric that
   can't be resolved contributes no tables (returns an empty set), so unrelated failures still
   surface their normal errors downstream."
-  [stage mp import-resolver]
+  [stage mp import-resolver source-table-id]
   (into #{}
         (comp
          (filter (fn [agg]
                    (and (vector? agg) (= "metric" (nth agg 0 nil)) (string? (nth agg 2 nil)))))
          (keep (fn [agg]
                  (try
-                   (some-> (resolve/import-fk import-resolver (nth agg 2) 'Card)
-                           (->> (repr.metric-joins/metric-definition-query mp))
-                           (lib/joins -1))
+                   (when-let [card-id (resolve/import-fk import-resolver (nth agg 2) 'Card)]
+                     (when-let [mq (repr.metric-joins/metric-definition-query mp card-id)]
+                       ;; lockstep with construct/inherit-metric-joins: single-stage, same base table
+                       (when (and (= 1 (lib/stage-count mq))
+                                  (= source-table-id (lib/primary-source-table-id mq)))
+                         (lib/joins mq -1))))
                    (catch Exception _ nil))))
          cat
          ;; target table of a table-based join lives at stages[0].source-table; card-based joins
@@ -2042,7 +2051,7 @@
       stage
       (let [outbound  (resolve.mp/outbound-fks-from-table mp source-table-id)
             by-target (group-by :target-table-id outbound)
-            metric-join-target-tables (metric-join-target-table-ids stage mp import-resolver)
+            metric-join-target-tables (metric-join-target-table-ids stage mp import-resolver source-table-id)
             joins     (get stage "joins")
             stage'    (cond-> stage (contains? stage "joins") (dissoc "joins"))
             walked    (walk/postwalk

@@ -1148,3 +1148,82 @@
                                      "aggregation"  [["metric" {} metric-entity-id]]}]}))
               q      (:query (:structured-output result))]
           (is (empty? (get-in q [:stages 0 :joins]))))))))
+
+;;; ============================================================
+;;; Lockstep: the repair deferral must match what construct actually inherits.
+;;;
+;;; A metric defined on a DIFFERENT base table (PRODUCTS) than the consumer query's source
+;;; (ORDERS), joining CAMPAIGNS. `construct/inherit-metric-joins` declines to inherit such a metric
+;;; (base-table mismatch), so the repair pass must NOT defer the joined-table breakout - otherwise
+;;; the field would survive resolution unattributed and trade the clean `:no-fk-path` agent error
+;;; for an opaque execution failure. (Same predicate gates multi-stage metrics.)
+;;; ============================================================
+
+(def ^:private cross-base-metric-entity-id
+  "Valid 21-char NanoID for a metric whose base table differs from the consumer's source."
+  "Cross123_456DefGhI78X")
+
+(def ^:private mp-cross-base-metric-base
+  "ORDERS(10) [consumer source], PRODUCTS(40) [metric base], CAMPAIGNS(30) [metric's joined dim].
+  No foreign key from ORDERS to CAMPAIGNS."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 1}
+               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id 1}
+               {:id 40 :name "PRODUCTS"  :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"          :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"       :table-id 10 :base-type :type/Float}
+               {:id 300 :name "ID"          :table-id 30 :base-type :type/Integer}
+               {:id 301 :name "NAME"        :table-id 30 :base-type :type/Text}
+               {:id 400 :name "ID"          :table-id 40 :base-type :type/Integer}
+               {:id 402 :name "CAMPAIGN_ID" :table-id 40 :base-type :type/Integer}]})) ;; NO :fk-target-field-id
+
+(def ^:private cross-base-metric-definition
+  "Count of PRODUCTS with an EXPLICIT (no-FK) join to CAMPAIGNS, as legacy MBQL for storage."
+  (-> (lib/query mp-cross-base-metric-base (lib.metadata/table mp-cross-base-metric-base 40))
+      (lib/join (lib/join-clause (lib.metadata/table mp-cross-base-metric-base 30)
+                                 [(lib/= (lib.metadata/field mp-cross-base-metric-base 402)
+                                         (lib.metadata/field mp-cross-base-metric-base 300))]))
+      (lib/aggregate (lib/count))
+      lib.convert/->legacy-MBQL))
+
+(def ^:private mp-cross-base-metric
+  (lib.tu/mock-metadata-provider
+   mp-cross-base-metric-base
+   {:cards [{:id            701
+             :name          "Product Count by Campaign"
+             :type          :metric
+             :database-id   1
+             :table-id      40
+             :entity-id     cross-base-metric-entity-id
+             :dataset-query cross-base-metric-definition}]}))
+
+(defn- with-cross-base-metric-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-cross-base-metric)
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                serdes/lookup-by-id                            (fn [model eid]
+                                                                 (when (and (or (= model 'Card) (= model :model/Card))
+                                                                            (= eid cross-base-metric-entity-id))
+                                                                   {:id 701 :database_id 1 :entity_id eid}))
+                api/read-check                                 allow-read-check
+                api/query-check                                allow-read-check]
+    (f)))
+
+(deftest cross-base-table-metric-joined-breakout-errors-test
+  (testing (str "A breakout on a metric's joined dimension errors :no-fk-path when the metric's base "
+                "table differs from the consumer source (construct won't inherit it, so repair must "
+                "not defer it)")
+    (with-cross-base-metric-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-data
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["metric" {} cross-base-metric-entity-id]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (is (= :no-fk-path (:error (ex-data e))))))))))
