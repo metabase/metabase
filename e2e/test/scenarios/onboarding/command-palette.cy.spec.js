@@ -519,10 +519,18 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     H.commandPalette().findByRole("option", { name: "New dashboard" }).click();
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
-    // Wait for the modal to fully close before the next keyboard shortcut:
-    // shortcuts are suppressed while a modal is open, so firing "c d" before
-    // this dialog is removed from the DOM would be swallowed.
+    // This modal was opened from the command palette, whose search input held
+    // focus. kbar ignores keyboard shortcuts while a text input is focused, so
+    // once the dialog is gone, blur whatever the closing modal restored focus
+    // to — otherwise the "c" of the "c d" shortcut below is dropped and the
+    // dashboard modal never opens.
     cy.findByRole("dialog", { name: /dashboard/i }).should("not.exist");
+    cy.document().then((doc) => {
+      const activeElement = doc.activeElement;
+      if (activeElement instanceof HTMLElement) {
+        activeElement.blur();
+      }
+    });
 
     // Using a command palette action registered as a shortcut should only
     // emit snowplow events when using keyboard shortcuts, not command palette
