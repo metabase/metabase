@@ -73,6 +73,38 @@
             (is (= "update" (:status entry))
                 "Transform should have 'update' status after modification")))))))
 
+(deftest transform-noop-update-does-not-redirty-test
+  (testing "A transform-update event whose serialized form is unchanged must not re-dirty a synced transform (GHY-3933)"
+    ;; Repro for the \"yellow dot with no changes\" report: editing a non-serialized aspect of a transform
+    ;; (e.g. its schedule/run_trigger) — or any no-op re-save — fires :event/transform-update and flips the
+    ;; RemoteSyncObject to \"update\", lighting the dirty indicator. But the serialized YAML is identical, so a
+    ;; subsequent push produces a commit with no files. The dirty state should track the serialized form, not
+    ;; the mere occurrence of an update event.
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                         remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+            (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns :entity_id "transforms-coll-xxxxx" :location "/"}
+                           :model/Transform transform {:name "Synced Transform" :collection_id coll-id}
+                           :model/RemoteSyncObject _rso1 {:model_type "Collection" :model_id coll-id :model_name "Transforms Collection" :status "create" :status_changed_at (t/offset-date-time)}
+                           :model/RemoteSyncObject _rso2 {:model_type "Transform" :model_id (:id transform) :model_name "Synced Transform" :model_collection_id coll-id :status "create" :status_changed_at (t/offset-date-time)}]
+              ;; Establish a synced baseline by exporting to the mock remote.
+              (let [mock-source (test-helpers/create-mock-source)
+                    result (impl/export! (source.p/snapshot mock-source) task-id "Initial export")]
+                (is (= :success (:status result))
+                    (str "Export should succeed. Result: " result))
+                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Transform" :model_id (:id transform))))
+                    "Transform should be synced after export"))
+              ;; Re-publish an update event for the unchanged transform — the serialized form is identical to
+              ;; what was just exported, so this must NOT re-dirty it.
+              (events/publish-event! :event/transform-update {:object (t2/select-one :model/Transform :id (:id transform))})
+              (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Transform" :model_id (:id transform))))
+                  "A no-op update must leave the transform synced (GHY-3933)")
+              (is (not (sync-object/dirty?))
+                  "Instance must not report dirty state after a no-op transform update (GHY-3933)"))))))))
+
 (deftest transform-tag-event-creates-sync-object-test
   (testing "Creating a transform tag creates a RemoteSyncObject entry when transform sync is enabled"
     (mt/with-premium-features #{:transforms-basic}
