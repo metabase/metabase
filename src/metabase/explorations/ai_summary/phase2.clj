@@ -132,12 +132,12 @@
   "Phase-2 LLM settings. Analysis composes a research-paper-style document,
   correlates timeline events with data inflections, judges evidence strength,
   and structures the argument — the most reasoning-intensive step in the
-  pipeline, run with high-effort extended thinking when possible."
+  pipeline AND the one with the largest output (a full ProseMirror doc)."
   []
   {:model           (metabot.settings/llm-metabot-provider)
    :temperature     1.0
-   :max-tokens      16000
-   :thinking-config {:type "adaptive" :effort "high"}})
+   :max-tokens      32000
+   :thinking-config {:type "enabled" :budget_tokens 12000}})
 
 (defn slim-block
   "Awareness-tier rendering: title + (optional) chart description + (optional) metric
