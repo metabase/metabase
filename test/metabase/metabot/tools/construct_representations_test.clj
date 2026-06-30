@@ -11,7 +11,9 @@
    [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
    [metabase.models.serialization :as serdes]))
@@ -1013,3 +1015,136 @@
               opts      (nth field-ref 1)]
           (is (= "TOTAL" (nth field-ref 2)))
           (is (= "type/Float" (get opts "base-type"))))))))
+
+;;; ============================================================
+;;; Metric join inheritance
+;;;
+;;; A metric defined on ORDERS that explicitly joins CAMPAIGNS (a table with NO foreign key from
+;;; ORDERS) to expose CAMPAIGNS.NAME. When the LLM references the metric on ORDERS and breaks out
+;;; by CAMPAIGNS.NAME, the consumer query carries no join — construction must inherit the metric's
+;;; join (rather than reject the breakout with `:no-fk-path`).
+;;; ============================================================
+
+(def ^:private metric-entity-id
+  "Valid 21-char NanoID so `import-mbql` picks up the `[:metric …]` branch."
+  "Metric123_456DefGhI78")
+
+(def ^:private mp-with-metric-base
+  "ORDERS(10) and CAMPAIGNS(30) with NO foreign key between them."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"    :schema "PUBLIC" :db-id 1}
+               {:id 30 :name "CAMPAIGNS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"          :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"       :table-id 10 :base-type :type/Float}
+               {:id 102 :name "CAMPAIGN_ID" :table-id 10 :base-type :type/Integer} ;; NO :fk-target-field-id
+               {:id 300 :name "ID"          :table-id 30 :base-type :type/Integer}
+               {:id 301 :name "NAME"        :table-id 30 :base-type :type/Text}]}))
+
+(def ^:private metric-definition
+  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, as legacy MBQL for storage."
+  (-> (lib/query mp-with-metric-base (lib.metadata/table mp-with-metric-base 10))
+      (lib/join (lib/join-clause (lib.metadata/table mp-with-metric-base 30)
+                                 [(lib/= (lib.metadata/field mp-with-metric-base 102)
+                                         (lib.metadata/field mp-with-metric-base 300))]))
+      (lib/aggregate (lib/count))
+      lib.convert/->legacy-MBQL))
+
+(def ^:private mp-with-metric
+  (lib.tu/mock-metadata-provider
+   mp-with-metric-base
+   {:cards [{:id            700
+             :name          "Order Count by Campaign"
+             :type          :metric
+             :database-id   1
+             :table-id      10
+             :entity-id     metric-entity-id
+             :dataset-query metric-definition}]}))
+
+(defn- lookup-metric-stub [model eid]
+  (when (and (or (= model 'Card) (= model :model/Card))
+             (= eid metric-entity-id))
+    {:id 700 :database_id 1 :entity_id eid}))
+
+(defn- with-metric-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-metric)
+                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                serdes/lookup-by-id                             lookup-metric-stub
+                api/read-check                                  allow-read-check
+                api/query-check                                 allow-read-check]
+    (f)))
+
+(defn- metric-query-with-joined-breakout []
+  (query-data
+   {"lib/type" "mbql/query"
+    "database" "Sample"
+    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                 "aggregation"  [["metric" {} metric-entity-id]]
+                 ;; Breakout by a column on the metric's JOINED table, referenced as a bare field.
+                 "breakout"     [["field" {} ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]]}]}))
+
+(deftest metric-join-inheritance-happy-path-test
+  (testing (str "A breakout on a metric's joined dimension (no FK from the source table) inherits "
+                "the metric's join instead of failing with :no-fk-path")
+    (with-metric-mp-and-stubs!
+      (fn []
+        (let [result     (construct/execute-representations-query (metric-query-with-joined-breakout))
+              structured (:structured-output result)
+              q          (:query structured)
+              joins      (get-in q [:stages 0 :joins])
+              breakout   (get-in q [:stages 0 :breakout 0])]
+          (testing "the metric's join was materialized into the consumer stage"
+            (is (= 1 (count joins)))
+            (is (= 30 (get-in (first joins) [:stages 0 :source-table])) "join targets CAMPAIGNS"))
+          (testing "the breakout field is stamped with the inherited join's alias"
+            (let [join-alias (:alias (first joins))]
+              (is (some? join-alias))
+              (is (= join-alias (get-in breakout [1 :join-alias])))))
+          (testing "the joined column resolves into the result columns"
+            (is (some #(= 301 (:field_id %)) (:result-columns structured))
+                "CAMPAIGNS.NAME (field 301) is a result column")
+            (is (some #(= ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"] (:portable_fk %))
+                      (:result-columns structured)))))))))
+
+(deftest metric-join-inheritance-idempotency-test
+  (testing "re-feeding the exported query-json produces an identical export (no duplicate joins)"
+    (with-metric-mp-and-stubs!
+      (fn []
+        (let [exported (get-in (construct/execute-representations-query (metric-query-with-joined-breakout))
+                               [:structured-output :query-json])
+              redo     (construct/execute-representations-query (walk/keywordize-keys exported))
+              redo-q   (:query (:structured-output redo))]
+          (is (= exported (get-in redo [:structured-output :query-json])))
+          (is (= 1 (count (get-in redo-q [:stages 0 :joins]))) "still exactly one join after round-trip"))))))
+
+(deftest joined-breakout-without-metric-still-errors-test
+  (testing "metric-join deferral is metric-gated: a joined-table breakout without a metric still errors :no-fk-path"
+    (with-metric-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-data
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "CAMPAIGNS" "NAME"]]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (is (= :no-fk-path (:error (ex-data e))))))))))
+
+(deftest metric-without-joined-breakout-adds-no-join-test
+  (testing "referencing a metric WITHOUT a joined-dimension breakout inherits nothing"
+    (with-metric-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["metric" {} metric-entity-id]]}]}))
+              q      (:query (:structured-output result))]
+          (is (empty? (get-in q [:stages 0 :joins]))))))))

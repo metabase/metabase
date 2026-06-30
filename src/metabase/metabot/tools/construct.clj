@@ -1,15 +1,19 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
+   [clojure.walk :as walk]
    [malli.error :as me]
    [metabase.agent-lib.representations :as repr]
+   [metabase.agent-lib.representations.metric-joins :as repr.metric-joins]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.util :as lib.util]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
@@ -266,6 +270,124 @@
         cols  (lib/returned-columns query)]
     (mapv #(tools.u/->result-column query %) cols)))
 
+;;; ------------------------------------ Metric join inheritance ------------------------------------
+;;;
+;;; A metric is an aggregation defined on a base table whose definition may include explicit joins
+;;; (e.g. to a dimension table without a DB-level FK) so the metric can be grouped/filtered by
+;;; columns on the joined table. When the LLM references the metric as an aggregation on its base
+;;; table and breaks out / filters by such a joined column, the consumer query carries no join, so
+;;; the column is unreachable. We inherit the metric's joins into the consumer query (reusing the
+;;; same helper the query processor uses at execution time, which dedupes so re-expansion is a
+;;; no-op) and stamp the matching `:join-alias` onto the bare field refs the LLM authored.
+
+(defn- aggregation-metric-ids
+  "Numeric metric ids referenced directly as aggregation clauses (`[:metric {} id]`) in `aggs`."
+  [aggs]
+  (keep (fn [agg]
+          (when (and (vector? agg) (= :metric (first agg)) (pos-int? (nth agg 2 nil)))
+            (nth agg 2)))
+        aggs))
+
+(defn- metric-base-query
+  "Resolve `metric-id` to its definition query, but only when it is a single-stage, table-sourced
+  metric whose explicit joins we can inherit. Returns nil to skip (multi-stage, model-/card-sourced,
+  or missing) — those degrade gracefully to the existing behavior/errors."
+  [mp metric-id]
+  (when-let [mq (repr.metric-joins/metric-definition-query mp metric-id)]
+    (when (and (= 1 (lib/stage-count mq))
+               (lib/primary-source-table-id mq))
+      mq)))
+
+(defn- join-target-table-id
+  "Target table id of a table-based join (its `stages[0].source-table`), or nil for card joins."
+  [a-join]
+  (get-in a-join [:stages 0 :source-table]))
+
+(defn- bare-field-ref?
+  "True when `node` is a bare numeric field ref — a `[:field opts id]` clause with a positive
+  integer field id and no `:join-alias`/`:source-field` (i.e. not yet attributed to any join).
+  These are the fields metric-join inheritance attributes to (or routes through) a join."
+  [node]
+  (and (lib.util/field-clause? node)
+       (pos-int? (nth node 2))
+       (let [opts (second node)]
+         (and (not (:join-alias opts)) (not (:source-field opts))))))
+
+(defn- field-table-id
+  "Table id of the field a bare numeric field ref `node` points at, or nil on lookup failure."
+  [mp node]
+  (try (:table-id (lib.metadata/field mp (nth node 2))) (catch Exception _ nil)))
+
+(defn- stamp-metric-join-aliases
+  "Stamp `:join-alias` onto bare field refs (no `:join-alias`/`:source-field`) in `stage-index`
+  whose field's table matches exactly one inherited join's target table. 0 or >1 matches → leave
+  the field alone (let lib/QP surface any ambiguity)."
+  [query mp stage-index added-joins]
+  (let [target->aliases (reduce (fn [m j]
+                                  (if-let [t (join-target-table-id j)]
+                                    (update m t (fnil conj []) (:alias j))
+                                    m))
+                                {}
+                                added-joins)]
+    (if (empty? target->aliases)
+      query
+      (lib/update-query-stage
+       query stage-index
+       (fn [stage]
+         (walk/postwalk
+          (fn [node]
+            (if (bare-field-ref? node)
+              (let [tid     (field-table-id mp node)
+                    aliases (get target->aliases tid)]
+                (if (= 1 (count aliases))
+                  (assoc-in node [1 :join-alias] (first aliases))
+                  node))
+              node))
+          stage))))))
+
+(defn- bare-foreign-field-table-ids
+  "Table ids referenced by bare field clauses (no `:join-alias`/`:source-field`) in `stage-index`
+  that are not the stage's `source-table-id`. These are the dimensions the consumer query wants to
+  group/filter by but cannot reach without a join."
+  [query mp stage-index source-table-id]
+  (let [acc (volatile! #{})]
+    (walk/postwalk
+     (fn [node]
+       (when (bare-field-ref? node)
+         (when-let [tid (field-table-id mp node)]
+           (when (not= tid source-table-id)
+             (vswap! acc conj tid))))
+       node)
+     (get-in query [:stages stage-index]))
+    @acc))
+
+(defn- inherit-metric-joins
+  "Post-resolve: when the first stage references a metric AND has a bare field on a table reachable
+  only through that metric's joins, materialize the metric's joins into the stage (reusing the
+  query processor's inheritance helper, which dedupes so re-expansion at execution is a no-op) and
+  stamp the matching `:join-alias` onto the field. Only fires when the consumer query actually
+  references a foreign table — a plain metric aggregation inherits nothing. Best-effort: metrics
+  that can't be inherited (multi-stage, model-sourced, base-table mismatch) are skipped."
+  [query mp]
+  (let [stage-index        0
+        query-source-table (lib/primary-source-table-id query)
+        needed-tables      (when query-source-table
+                             (bare-foreign-field-table-ids query mp stage-index query-source-table))]
+    (if (empty? needed-tables)
+      query
+      (reduce
+       (fn [q metric-id]
+         (if-let [mq (metric-base-query mp metric-id)]
+           (if (= (lib/primary-source-table-id mq) query-source-table)
+             (let [before-aliases (into #{} (map :alias) (lib/joins q stage-index))
+                   q'             (repr.metric-joins/include-implicit-joins q stage-index mq)
+                   added-joins    (remove (comp before-aliases :alias) (lib/joins q' stage-index))]
+               (stamp-metric-join-aliases q' mp stage-index added-joins))
+             q)
+           q))
+       query
+       (aggregation-metric-ids (lib/aggregations query stage-index))))))
+
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
 (defn- as-agent-input-error
@@ -356,7 +478,8 @@
     (try
       (let [repaired      (repr.repair/repair mp parsed permission-aware-content-store)
             _validated    (repr/validate-query repaired)
-            pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
+            pmbql-query   (-> (repr.resolve/resolve-query mp repaired permission-aware-content-store)
+                              (inherit-metric-joins mp))
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
                             (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. This usually means a field reference is missing its type or names a column that does not exist, or an aggregation/window function (e.g. `offset`) was placed in `expressions:` (custom columns) where it is not allowed - move it to `aggregation:` or `order-by:`. Schema validation details: {0}"
                                                  (pr-str why))
