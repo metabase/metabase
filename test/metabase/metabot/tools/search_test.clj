@@ -444,6 +444,20 @@
               (is (not (str/includes? rasta-path "Secret Parent"))
                   "the unreadable ancestor's name must not leak into collection_path"))))))))
 
+(deftest broaden-query-test
+  (testing "zero-hit fallback OR-joins meaningful tokens, skipping queries where broadening doesn't apply"
+    (are [in out] (= out (#'search/broaden-query in))
+      "hard bounce rate campaign" "hard or bounce or rate or campaign"  ; every word ANDed -> OR-join
+      "the rate of churn"         "rate or churn"                        ; stopwords dropped
+      "Rate OF Churn"             "Rate or Churn"                        ; stopword match is case-insensitive
+      "revenue"                   nil                                    ; single token, nothing to broaden
+      "a or b"                    nil                                    ; already an OR query
+      "Orders OR Revenue"         nil                                    ; `or` match is case-insensitive too
+      "\"monthly revenue\""       nil                                    ; quoted = deliberate exact match
+      "the of for"                nil                                    ; collapses to <2 tokens after stopwords
+      ""                          nil
+      nil                         nil)))
+
 (deftest enrich-with-portable-entity-ids-test
   (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
     (mt/with-test-user :crowberto
