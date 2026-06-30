@@ -161,11 +161,7 @@ describe("document comments", () => {
         .should("have.length", 2)
         .last()
         .should("not.contain.text", "1")
-        // scrollBehavior:false: the node button is revealed by hovering the
-        // paragraph, so a click-time scroll would move the paragraph out from
-        // under the real cursor, drop the hover, and hide the button before the
-        // sidebar opens.
-        .click({ scrollBehavior: false });
+        .click();
 
       Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
