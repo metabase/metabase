@@ -15,6 +15,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.request.core :as request]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -203,6 +204,16 @@
      ;; frozen scan-time activity anchor (ISO string); nil ⇒ never used/ran
      [:last_active_at {:optional true} [:maybe :string]]]]])
 
+(def ^:private sort-directions
+  "Valid sort directions for the stale list."
+  #{:asc :desc})
+
+(def ^:private sort-column->field
+  "Sortable stale-list params → their `content_diagnostics_finding` column. **Native columns only** (no
+  join): `name`/`location` need a join, so they stay display-only and are never sortable (api-design.md)."
+  {:detected-at :detected_at
+   :entity-type :entity_type})
+
 ;;; ------------------------------------------------ endpoints ------------------------------------------
 
 (api.macros/defendpoint :post "/scan"
@@ -232,17 +243,24 @@
   Results are always **permission-filtered** for the current user (a user sees only findings for content
   they can read). `include-personal-collections` (default **false**, deps-parity): when false, findings
   whose entity currently lives in a personal collection are also excluded. Both are resolved live at serve
-  time, instance-wide."
+  time, instance-wide. Sortable by `sort-column` (`detected-at`|`entity-type`, native columns only; default
+  `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
   [_route-params
-   {:keys [include-personal-collections]
-    :or   {include-personal-collections false}} :- [:map
-                                                    [:include-personal-collections {:optional true} :boolean]]]
+   {:keys [include-personal-collections sort-column sort-direction]
+    :or   {include-personal-collections false
+           sort-column                   :detected-at
+           sort-direction                :asc}}
+   :- [:map
+       [:include-personal-collections {:optional true} :boolean]
+       [:sort-column    {:optional true} (ms/enum-decode-keyword (keys sort-column->field))]
+       [:sort-direction {:optional true} (ms/enum-decode-keyword sort-directions)]]]
   (let [pers  (when-not include-personal-collections (exclude-personal-collections-where))
         where (cond-> [:and (active-where "stale") (visible-findings-where)]
                 pers (conj pers))
         page  (t2/select :model/ContentDiagnosticsFinding
                          (cond-> {:where    where
-                                  :order-by [[:id :asc]]}
+                                  :order-by [[(sort-column->field sort-column) sort-direction]
+                                             [:id sort-direction]]}
                            (request/limit)  (assoc :limit (request/limit))
                            (request/offset) (assoc :offset (request/offset))))]
     {:data         (hydrate-findings page)

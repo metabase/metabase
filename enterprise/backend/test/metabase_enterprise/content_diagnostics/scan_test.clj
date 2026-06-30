@@ -272,6 +272,35 @@
                   (is (contains? ids r-fid))
                   (is (contains? ids u-fid)))))))))))
 
+(deftest serve-sort-test
+  (testing "GET /stale honors sort-column + sort-direction (native columns only)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {card-id :id} {:collection_id coll-id}
+                         :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            ;; card flagged later than the dashboard → detected-at order ≠ entity-type order (each isolable)
+            (let [card-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                            {:scan_id "s" :entity_type :card :entity_id card-id
+                                                             :finding_type :stale :details {}
+                                                             :detected_at (t/offset-date-time 2025 6 1)}))
+                  dash-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                            {:scan_id "s" :entity_type :dashboard :entity_id dash-id
+                                                             :finding_type :stale :details {}
+                                                             :detected_at (t/offset-date-time 2025 1 1)}))
+                  order    (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
+                                                               "ee/content-diagnostics/stale" kvs))))]
+              (testing "sort-column=entity-type — lexical card < dashboard"
+                (is (= [card-fid dash-fid] (order :sort-column "entity-type" :sort-direction "asc")))
+                (is (= [dash-fid card-fid] (order :sort-column "entity-type" :sort-direction "desc"))))
+              (testing "sort-column=detected-at — dashboard (Jan) before card (Jun)"
+                (is (= [dash-fid card-fid] (order :sort-column "detected-at" :sort-direction "asc")))
+                (is (= [card-fid dash-fid] (order :sort-column "detected-at" :sort-direction "desc"))))
+              (testing "default sort = detected-at asc"
+                (is (= [dash-fid card-fid] (order)))))))))))
+
 (deftest scan-endpoint-is-feature-gated-test
   (testing "POST /scan runs synchronously for a licensed instance"
     (mt/with-premium-features #{:content-diagnostics}
