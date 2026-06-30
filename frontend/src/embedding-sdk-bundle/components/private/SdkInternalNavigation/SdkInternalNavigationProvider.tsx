@@ -35,6 +35,23 @@ import {
   type SdkInternalNavigationEntry,
 } from "./context";
 
+/**
+ * Strip root-dashboard-specific controller props before forwarding to a
+ * drill-through target. Display props (withDownloads, withTitle, etc.) pass
+ * through unchanged so UI features remain consistent across the stack.
+ *
+ * - parameters / onParametersChange: scoped to the root dashboard the host
+ *   controls. The drill-through target is seeded from click-behavior
+ *   initialParameters instead.
+ */
+function getDrillThroughDashboardProps({
+  parameters: _parameters,
+  onParametersChange: _onParametersChange,
+  ...props
+}: Partial<SdkDashboardInnerProps> = {}): Partial<SdkDashboardInnerProps> {
+  return props;
+}
+
 type Props = {
   children: ReactNode;
   dashboardProps?: Partial<Omit<SdkDashboardInnerProps, "dashboardId">>;
@@ -183,7 +200,7 @@ const SdkInternalNavigationProviderInner = ({
   const content = match({ activeEntry: entryToRender })
     .with({ activeEntry: { type: "dashboard" } }, ({ activeEntry }) => (
       <InteractiveDashboardContent
-        {...dashboardProps}
+        {...getDrillThroughDashboardProps(dashboardProps)}
         dashboardId={activeEntry.id}
         initialParameters={activeEntry.parameters}
         enableEntityNavigation

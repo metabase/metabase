@@ -666,6 +666,136 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
     });
   });
 
+  describe("controlled parameters do not leak into drill-through target (EMB-1946)", () => {
+    const DASHBOARD_A_UNRELATED_FILTER: Parameter = createMockActionParameter({
+      id: "dashboard-a-unrelated",
+      name: "City Filter",
+      slug: "city-filter",
+      type: "string/=",
+      sectionId: "string",
+    });
+
+    beforeEach(() => {
+      signInAsAdminAndEnableEmbeddingSdk();
+
+      H.createDashboard({
+        name: "Dashboard B (EMB-1946)",
+        parameters: [DASHBOARD_B_FILTER],
+      }).then(({ body: dashboardB }) => {
+        cy.wrap(dashboardB.id).as("dashboardBId");
+
+        H.createQuestion({
+          name: "Orders for Dashboard B (EMB-1946)",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        }).then(({ body: questionB }) => {
+          H.addOrUpdateDashboardCard({
+            card_id: questionB.id,
+            dashboard_id: dashboardB.id,
+            card: {
+              row: 0,
+              col: 0,
+              size_x: 24,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: DASHBOARD_B_FILTER.id,
+                  card_id: questionB.id,
+                  target: ["dimension", ["field", ORDERS.ID, null]],
+                },
+              ],
+            },
+          });
+        });
+      });
+
+      cy.get<number>("@dashboardBId").then((dashboardBId) => {
+        H.createDashboard({
+          name: "Dashboard A (EMB-1946)",
+          parameters: [DASHBOARD_A_UNRELATED_FILTER],
+        }).then(({ body: dashboardA }) => {
+          cy.wrap(dashboardA.id).as("dashboardAId");
+
+          H.createQuestion({
+            name: "Orders for Dashboard A (EMB-1946)",
+            query: { "source-table": ORDERS_ID, limit: 5 },
+          }).then(({ body: questionA }) => {
+            H.addOrUpdateDashboardCard({
+              card_id: questionA.id,
+              dashboard_id: dashboardA.id,
+              card: {
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 8,
+                visualization_settings: {
+                  column_settings: {
+                    [`["ref",["field",${ORDERS.ID},null]]`]: {
+                      click_behavior: {
+                        type: "link",
+                        linkType: "dashboard",
+                        linkTextTemplate: "Go to Dashboard B",
+                        targetId: dashboardBId,
+                        parameterMapping: {
+                          [DASHBOARD_B_FILTER.id]: {
+                            source: { type: "column", id: "ID", name: "ID" },
+                            target: {
+                              type: "parameter",
+                              id: DASHBOARD_B_FILTER.id,
+                            },
+                            id: DASHBOARD_B_FILTER.id,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            });
+          });
+        });
+      });
+
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+
+      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
+    });
+
+    it("should not forward root controlled parameters to the drill-through target dashboard", () => {
+      cy.get<number>("@dashboardAId").then((dashboardAId) => {
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardAId}
+            enableEntityNavigation
+            parameters={{ "city-filter": "new-york" }}
+          />,
+        );
+      });
+
+      cy.wait("@getDashboard");
+      cy.wait("@dashcardQuery");
+
+      getSdkRoot().within(() => {
+        cy.findByText("Dashboard A (EMB-1946)").should("be.visible");
+
+        H.getDashboardCard().findAllByText("Go to Dashboard B").first().click();
+
+        cy.wait("@getDashboard");
+
+        cy.findByText("Dashboard B (EMB-1946)").should("be.visible");
+
+        // The ID filter must show the click-behavior-mapped value from the clicked row,
+        // not be suppressed by the root dashboard's controlled `parameters` prop.
+        // Before the fix, controlled `parameters` overwrites `initialParameters` entirely,
+        // leaving `id-filter` absent and the widget empty.
+        H.filterWidget({ name: "ID Filter" }).should("contain.text", "1");
+      });
+    });
+  });
+
   describe("same-dashboard navigation (EMB-1714)", () => {
     beforeEach(() => {
       signInAsAdminAndEnableEmbeddingSdk();
