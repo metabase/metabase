@@ -305,7 +305,7 @@
  "ui://metabase/visualize-query.html"
  "agent:viz:mcp-ui:query"
  {:name          "Visualize Query"
-  :description   "Interactive Metabase SDK visualization for a query"
+  :description   "Lightweight MCP Apps visualization for a query"
   :prefersBorder true
   :render-fn     (visualize-query-render-fn "visualize-query")})
 
@@ -314,7 +314,7 @@
  "ui://metabase/render-drill-through.html"
  "agent:viz:mcp-ui:drill-through"
  {:name          "Render Drill Through"
-  :description   "Interactive Metabase SDK visualization for a drill-through follow-up"
+  :description   "Lightweight MCP Apps visualization for a drill-through follow-up"
   :prefersBorder true
   :render-fn     (visualize-query-render-fn "render-drill-through")})
 
@@ -322,6 +322,10 @@
  :visualize-query
  {:name        "visualize_query"
   :description (str "Visualize a previously constructed query as an interactive chart or table. "
+                    "This renders a lightweight MCP Apps visualization, not the full Metabase "
+                    "query builder or standard Metabase UI. Do not tell the user to switch "
+                    "display types, use visualization settings, or use a Metabase panel, "
+                    "sidebar, or right-hand panel. "
                     "Use this for prompts that ask to show, display, visualize, plot, chart, "
                     "or present results, for example: `Show me customers in Metabase`, "
                     "`Show me orders by month`, `Display revenue by region`, or "
@@ -379,6 +383,10 @@
  :render-drill-through
  {:name        "render_drill_through"
   :description (str "Render the drill-through visualization the user just navigated into. "
+                    "This renders a lightweight MCP Apps visualization, not the full Metabase "
+                    "query builder or standard Metabase UI. Do not tell the user to switch "
+                    "display types, use visualization settings, or use a Metabase panel, "
+                    "sidebar, or right-hand panel. "
                     "Use this tool, not execute_query, when the user asks to show the result and "
                     "their message includes a `handle` UUID. This is the exact follow-up for the "
                     "phrase `Show me the result`. Do not execute the query yourself; pass the "

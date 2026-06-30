@@ -98,6 +98,22 @@
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestTable"]}))))))))
 
+(deftest search-content-types-test
+  (testing "search surfaces saved questions, dashboards, and collections (not just tables/metrics/models)"
+    (binding [search.ingestion/*force-sync* true]
+      (search.tu/with-new-search-if-available-otherwise-legacy
+        (mt/with-temp [:model/Card      _ {:name "AgentSearchAcmeQuestion"}
+                       :model/Dashboard _ {:name "AgentSearchAcmeDashboard"}
+                       :model/Collection _ {:name "AgentSearchAcmeCollection"}]
+          (let [results (->> (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                                   {:term_queries ["AgentSearchAcme"]})
+                             :data
+                             (map (juxt :name :type))
+                             set)]
+            (is (contains? results ["AgentSearchAcmeQuestion" "question"]))
+            (is (contains? results ["AgentSearchAcmeDashboard" "dashboard"]))
+            (is (contains? results ["AgentSearchAcmeCollection" "collection"]))))))))
+
 (deftest coerce-query-list-test
   (let [coerce #'agent-api.api/coerce-query-list]
     (testing "arrays pass through unchanged"
@@ -399,7 +415,23 @@
     (is (=? {:status    "completed"
              :row_count (fn [n] (<= n 200))}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
-                                  {:query (orders-query :limit 1000)})))))
+                                  {:query (orders-query :limit 1000)}))))
+  (testing "No explicit :limit defaults to a 2000-row budget, emitting a continuation token for large tables"
+    ;; Regression: previously the default budget equalled the page size (both 200), so the first
+    ;; page exhausted the budget and no continuation token was ever emitted, causing agents to
+    ;; report a false \"200-row hard cap\". The default budget is now 2000.
+    (let [page1 (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                      {:query (orders-query :order-by [["asc" {} (orders-field-ref "ID")]])})]
+      (is (=? {:status             "completed"
+               :row_count          200
+               :continuation_token string?}
+              page1)
+          "first page should include a continuation token when more data exists within the 2000-row budget")
+      (is (=? {:status "completed"
+               :data   {:rows sequential?}}
+              (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                    {:continuation_token (:continuation_token page1)}))
+          "continuation token should successfully fetch the next page"))))
 
 (deftest combined-query-accepts-resolved-handle-test
   (testing "`/v2/query` executes a base64 `:query` string (a resolved query_handle) directly,
@@ -528,6 +560,19 @@
                   (mt/user-http-request :rasta :post 200 "agent/v1/search"
                                         {:term_queries ["AgentSearchTestMetric"]}))))))))
 
+(deftest search-finds-models-test
+  (binding [search.ingestion/*force-sync* true]
+    (search.tu/with-new-search-if-available-otherwise-legacy
+      (mt/with-temp [:model/Card _model {:name          "AgentSearchTestModel"
+                                         :type          :model
+                                         :database_id   (mt/id)
+                                         :dataset_query (orders-count-query)}]
+        (testing "Returns models in search results"
+          (is (=? {:data        [{:type "model" :name "AgentSearchTestModel"}]
+                   :total_count 1}
+                  (mt/user-http-request :rasta :post 200 "agent/v1/search"
+                                        {:term_queries ["AgentSearchTestModel"]}))))))))
+
 ;;; ------------------------------------------------ Create Question Tests -------------------------------------------
 
 (deftest create-question-test
@@ -590,6 +635,19 @@
                                 {:name          "Should Not Save"
                                  :query         (:query construct-resp)
                                  :collection_id locked-id}))))))
+
+(deftest create-question-explicit-null-collection-test
+  (testing "An explicit null collection_id saves to the root collection, not the personal default"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query :limit 10)})
+          create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                               {:name          "Agent Root Question"
+                                                :query         (:query construct-resp)
+                                                :collection_id nil})]
+      (is (=? {:collection_id   nil
+               :collection_path "Our analytics"}
+              create-resp))
+      (t2/delete! :model/Card :id (:id create-resp)))))
 
 (deftest create-question-collection-path-test
   (testing "collection_path is the full breadcrumb, mirroring the app's location"
@@ -685,6 +743,16 @@
     (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
                           {:name         "Bad Dashboard"
                            :question_ids [999999]})))
+
+(deftest create-dashboard-explicit-null-collection-test
+  (testing "An explicit null collection_id saves to the root collection, not the personal default"
+    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                     {:name          "Agent Root Dashboard"
+                                      :collection_id nil})]
+      (is (=? {:collection_id   nil
+               :collection_path "Our analytics"}
+              resp))
+      (t2/delete! :model/Dashboard :id (:id resp)))))
 
 (deftest create-entity-url-test
   (testing "create question/dashboard return a frontend URL"

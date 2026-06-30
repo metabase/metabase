@@ -228,6 +228,18 @@
       (str (upper-case-en (subs s 0 1))
            (lower-case-en (subs s 1))))))
 
+(def ^String utf8-bom
+  "The UTF-8 byte-order mark"
+  "\ufeff")
+
+(defn strip-bom
+  "Strip a leading UTF-8 BOM from string `s`, if present. `clojure.data.csv` and many other parsers do not strip it
+  automatically, so it can leak into the first cell. Returns `s` unchanged when there is no BOM (or `s` is nil)."
+  ^String [^String s]
+  (if (and s (str/starts-with? s utf8-bom))
+    (subs s 1)
+    s))
+
 (defn truncate
   "Truncate a string to `n` characters."
   [s n]
@@ -1035,16 +1047,16 @@
   [nodes traverse-fn]
   (loop [to-traverse (zipmap nodes (repeat nil))
          traversed   {}]
-    (let [item        (first to-traverse)
-          found       (traverse-fn (key item))
-          traversed   (conj traversed item)
-          ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
-          ;; locations
-          to-traverse (merge-with into
-                                  (dissoc to-traverse (key item))
-                                  (apply dissoc found (keys traversed)))]
-      (if (empty? to-traverse)
-        traversed
+    (if (empty? to-traverse)
+      traversed
+      (let [item (first to-traverse)
+            found (traverse-fn (key item))
+            traversed (conj traversed item)
+            ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
+            ;; locations
+            to-traverse (merge-with into
+                                    (dissoc to-traverse (key item))
+                                    (apply dissoc found (keys traversed)))]
         (recur to-traverse traversed)))))
 
 (defn reverse-compare

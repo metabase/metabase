@@ -1,5 +1,5 @@
 .page {
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   position: relative;
 }
 
@@ -24,17 +24,17 @@
 .control:not([data-css-specificity-hack="🪗"]) {
   background: linear-gradient(
     to right,
-    var(--mb-color-background-hover) 3rem,
+    var(--mb-color-background_surface-hover) 3rem,
     transparent 3rem
   );
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   color: var(--mb-color-text-primary);
   padding-left: 0;
   height: 3rem;
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
     color: var(--mb-color-core-brand);
 
     .label,
@@ -54,7 +54,7 @@
       background: linear-gradient(
         to right,
         var(--mb-color-core-brand) 3rem,
-        var(--mb-color-background-hover) 3rem
+        var(--mb-color-background_surface-hover) 3rem
       );
 
       .label,
@@ -102,7 +102,7 @@
 
 .support {
   align-items: center;
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
   border-radius: 0.5rem;
   display: flex;
   flex-wrap: wrap;
@@ -115,12 +115,12 @@
 
 .video {
   aspect-ratio: 16 / 9;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   width: 100%;
 }
 
 .image {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
 }

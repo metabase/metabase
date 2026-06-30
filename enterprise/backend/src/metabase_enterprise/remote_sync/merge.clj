@@ -147,3 +147,29 @@
            (update acc :conflicts conj {:key k :base bv :ours ov :theirs tv}))))
      {:merged [] :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
      all-keys)))
+
+(defn force-push-casualties
+  "Remote content that a force push would discard. A force export rewrites every managed file from `ours`,
+  so any change the remote made since the merge `base` is lost. Returns `{:deleted :overwritten}`, each a
+  sequence of human-readable labels (see [[conflict-label]]):
+  - `:deleted`     - entities present on the remote (`theirs`) but absent from `ours` (removed entirely)
+  - `:overwritten` - entities present in both whose remote content, changed since `base`, differs from
+                     what `ours` would write (the remote edit is replaced)
+
+  Entities the remote hasn't touched since `base`, or whose remote content already equals `ours`, are not
+  casualties — that's a routine push, not a loss. `base`, `ours`, `theirs` are sequences of
+  `{:path :content}` specs."
+  [base ours theirs]
+  (let [b (index-by-key base)
+        o (index-by-key ours)]
+    (reduce-kv
+     (fn [acc k tv]
+       (let [ov (get o k)
+             bv (get b k)]
+         (cond
+           ;; remote unchanged since base, or already matches ours -> nothing lost
+           (or (same? tv bv) (same? tv ov)) acc
+           (nil? ov) (update acc :deleted conj (conflict-label {:key k :theirs tv}))
+           :else     (update acc :overwritten conj (conflict-label {:key k :ours ov :theirs tv})))))
+     {:deleted [] :overwritten []}
+     (index-by-key theirs))))

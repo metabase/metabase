@@ -25,17 +25,17 @@ import {
   parseStringValue,
 } from "metabase/common/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
   fetchParameterValues,
 } from "metabase/parameters/actions";
 import { connect, useDispatch } from "metabase/redux";
-import { addRemappings } from "metabase/redux/metadata";
+import { addRemappings } from "metabase/redux/remappings";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -277,7 +277,11 @@ export const FieldValuesWidgetInner = forwardRef<
   // ? this may rely on field mutations
   const updateRemappings = (options: FieldValue[]) => {
     if (Field.remappedField(fields) != null) {
-      fields.forEach((field) => dispatch(addRemappings(field.id, options)));
+      fields.forEach((field) => {
+        if (typeof field.id === "number") {
+          dispatch(addRemappings(field.id, options));
+        }
+      });
     }
   };
 

@@ -400,6 +400,19 @@
    (prometheus/counter :metabase-search/semantic-db-query-ms
                        {:description "Total number of ms spent querying the search index"
                         :labels [:embedding-model]})
+   ;; the four semantic-vector-* diagnostics are emitted only while the semantic-search-explain setting is on
+   (prometheus/counter :metabase-search/semantic-vector-inner-ms
+                       {:description "Total ms spent in the inner vector subquery (diagnostic, off by default)"
+                        :labels [:strategy]})
+   (prometheus/counter :metabase-search/semantic-vector-tuples-scanned
+                       {:description "Total tuples the vector scan visited, returned plus filter-removed (diagnostic, off by default)"
+                        :labels [:strategy]})
+   (prometheus/counter :metabase-search/semantic-prefilter-pool-size
+                       {:description "Total rows a filter-first (brute-force) scan would have computed distances over (diagnostic, off by default)"
+                        :labels [:strategy]})
+   (prometheus/counter :metabase-search/semantic-vector-scan-used-index
+                       {:description "Count of vector searches by strategy and the plan node chosen for the index-table scan (diagnostic, off by default)"
+                        :labels [:strategy :plan-node]})
    (prometheus/counter :metabase-search/semantic-appdb-scores-ms
                        {:description "Total number of ms spent adding appdb-based scores"})
    (prometheus/counter :metabase-search/semantic-fallback-triggered
@@ -773,7 +786,10 @@
    ;; metaplow analytics metrics
    (prometheus/counter :metabase-metaplow/errors
                        {:description "Metaplow event pipeline errors by stage."
-                        :labels [:stage]})])
+                        :labels [:stage]})
+   (prometheus/gauge :metabase-memoize/cache-size
+                     {:description "Number of entries currently held in a monitored in-memory memoization cache."
+                      :labels [:cache]})])
 
 (defn- quartz-collectors
   []

@@ -16,10 +16,10 @@ import _ from "underscore";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { VisualizationRunningState } from "metabase/querying/components/QueryVisualization";
 import { connect } from "metabase/redux";
@@ -40,6 +40,7 @@ import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
+import { prefetchEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer/lazy";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
   ChartSettingsError,
@@ -179,9 +180,9 @@ type VisualizationOwnProps = {
   }) => void;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
   onBrush?: ((range: { start: number; end: number }) => void) | null;
-  onHeaderColumnReorder?: (columnName: string) => void;
+  onHeaderColumnReorder?: (columnIndex: number) => void;
   onChangeLocation?: (location: Location) => void;
-  onUpdateQuestion?: () => void;
+  onUpdateQuestion?: (question: Question) => void;
   onUpdateVisualizationSettings?: (
     settings: VisualizationSettings,
     question?: Question,
@@ -353,10 +354,24 @@ class Visualization extends PureComponent<
     ) {
       this.updateWarnings();
     }
+    if (prevState.visualization !== this.state.visualization) {
+      this.maybePrefetchEChartsRenderer();
+    }
   }
 
   componentDidMount() {
     this.updateWarnings();
+    this.maybePrefetchEChartsRenderer();
+  }
+
+  // Kick off loading the (lazy) echarts chunk as soon as an echarts-based chart
+  // mounts — typically while its data query is still in flight — so the library
+  // downloads in parallel with the data rather than only once the chart is
+  // ready to render.
+  maybePrefetchEChartsRenderer() {
+    if (this.state.visualization?.usesEChartsRenderer) {
+      prefetchEChartsRenderer();
+    }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {

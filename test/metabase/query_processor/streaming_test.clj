@@ -393,7 +393,7 @@
   [results]
   (if (map? results)
     (throw (ex-info "Error in CSV export" results))
-    (csv/read-csv results)))
+    (csv/read-csv (u/strip-bom results))))
 
 (deftest basic-export-test
   (do-test!

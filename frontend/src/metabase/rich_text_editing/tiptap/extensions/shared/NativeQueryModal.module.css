@@ -4,7 +4,7 @@
 
 .editorContainer {
   flex-shrink: 0;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   overflow: hidden;
 }
 
@@ -26,12 +26,12 @@
 
 .dataReferenceSidebar {
   flex-shrink: 0;
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
   overflow: auto;
 }
 
 .footer {
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
   flex-shrink: 0;
   z-index: 10;
 }

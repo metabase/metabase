@@ -69,7 +69,7 @@ If you'd like to share your data with the good people of the internet, admins ca
 | Export results\*                                                                                                     | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
 | [Locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters)         | ❌                                   | ❌                                    | ✅                                    | ❌                                  | ❌                                     |
 | [Data segregation](../permissions/embedding.md)                                                                      | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
-| [Drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
+| [Drill-through menu](../questions/visualizations/drill-through.md) | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
 | [Query builder](../questions/query-builder/editor.md)                                                                | ✅                                   | ✅                                    | ❌                                    | ✅                                  | ❌                                     |
 | [Basic appearance customization](../configuring-metabase/appearance.md)\*\*                                          | ✅                                   | ✅                                    | ✅                                    | ✅                                  | ✅                                     |
 | [Advanced theming](./appearance.md)                                                                                  | ✅                                   | ✅                                    | ❌                                    | ❌                                  | ❌                                     |
@@ -99,6 +99,8 @@ If you're using an AI agent to help you embed Metabase in your app, check out [A
 {% include plans-blockquote.html feature="Tracking embed usage" %}
 
 [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) tracks embed usage, including embedding context, authentication methods, hostname, and other metadata. Check out the [Embedding usage dashboard](../usage-and-performance-tools/usage-analytics-reference.md#embedding-usage).
+
+For information about the anonymous usage data Metabase collects from embedded components, see [Embedding telemetry](../installation-and-operation/information-collection.md#embedding-telemetry).
 
 ## Further reading
 

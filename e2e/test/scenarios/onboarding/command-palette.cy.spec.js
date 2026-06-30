@@ -160,6 +160,8 @@ describe("command palette", () => {
       .should("not.exist");
     H.commandPalette().findByText("No results for “New”").should("be.visible");
 
+    // Every "New …" action matches "New" equally, so the default order applies
+    // and "New question" is first and selected by default.
     H.commandPalette()
       .findByRole("option", { name: "New question" })
       .should("have.attr", "aria-selected", "true");
@@ -167,7 +169,7 @@ describe("command palette", () => {
     cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
     H.commandPalette()
-      .findByRole("option", { name: "New collection" })
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
@@ -177,7 +179,7 @@ describe("command palette", () => {
 
     H.pressPageUp();
     H.commandPalette()
-      .findByRole("option", { name: "New collection" })
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();
@@ -314,7 +316,7 @@ describe("command palette", () => {
 
         H.saveChangesToPermissions();
 
-        cy.findByRole("radiogroup").findByText("Data").click();
+        cy.findByRole("tab", { name: "Data" }).click();
         cy.findByRole("menuitem", { name: "All Users" }).click();
 
         const TABLE_METADATA_INDEX = 3;

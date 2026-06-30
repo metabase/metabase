@@ -51,6 +51,7 @@ import type { ChartSettingTableColumnsProps } from "../components/settings/Chart
 import type { LegacySeriesSettingsObjectKey } from "../echarts/cartesian/model/types";
 import type { DimensionsWidgetProps } from "../visualizations/PieChart/DimensionsWidget";
 import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
+import type { TreemapGroupsPickerProps } from "../visualizations/TreemapChart/TreemapGroupsPicker";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
@@ -136,6 +137,9 @@ export interface StaticVisualizationProps {
   renderingContext: RenderingContext;
   isStorybook?: boolean;
   hasDevWatermark?: boolean;
+  width?: number;
+  height?: number;
+  fitWithinBounds?: boolean;
 }
 
 export interface VisualizationProps {
@@ -242,7 +246,7 @@ export type VisualizationPassThroughProps = {
   tableHeaderHeight?: number;
   scrollToColumn?: number;
   renderTableHeader?: (
-    column: number,
+    column: DatasetColumn,
     index: number,
     theme: unknown,
   ) => ReactNode;
@@ -259,7 +263,7 @@ export type VisualizationPassThroughProps = {
 
   showAllLegendItems?: boolean;
 
-  onHeaderColumnReorder?: (columnName: string) => void;
+  onHeaderColumnReorder?: (columnIndex: number) => void;
 
   /**
    * Items that will be shown in a menu when the title is clicked.
@@ -582,6 +586,18 @@ export type VisualizationSettingsDefinitions = {
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
+  "treemap._groups_widget"?: SeriesSettingDefinition<
+    Value,
+    TreemapGroupsPickerProps
+  >;
+  "treemap.grouping"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.rows"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.show_leaf_labels"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.show_leaf_values"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.show_parent_labels"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.show_parent_values"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.sub_grouping"?: SeriesSettingDefinition<Value, Props>;
+  "treemap.value"?: SeriesSettingDefinition<Value, Props>;
   view_as?: SeriesSettingDefinition<Value, Props>;
   "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
   "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;
@@ -637,6 +653,10 @@ export type VisualizationDefinition = {
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
   noHeader?: boolean;
+  // True for visualizations that render through the (lazily loaded)
+  // EChartsRenderer. Used to prefetch the echarts chunk while the chart's data
+  // is still loading. See prefetchEChartsRenderer.
+  usesEChartsRenderer?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;

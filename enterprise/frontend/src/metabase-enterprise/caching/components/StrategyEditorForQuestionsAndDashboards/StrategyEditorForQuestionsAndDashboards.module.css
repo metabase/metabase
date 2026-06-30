@@ -23,16 +23,16 @@
   }
 
   tbody > tr:hover {
-    background-color: var(--mb-color-background-hover) !important;
+    background-color: var(--mb-color-background_surface-hover) !important;
   }
 
   tbody > tr.currentTarget {
-    background-color: var(--mb-color-background-highlight) !important;
+    background-color: var(--mb-color-background_page-highlighted) !important;
   }
 }
 
 .StrategyFormPanel {
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
   position: relative;
   max-width: 30rem;
 

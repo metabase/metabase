@@ -4,7 +4,7 @@ import { DropTarget } from "react-dnd";
 import {
   canonicalCollectionId,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { DropArea } from "./DropArea";

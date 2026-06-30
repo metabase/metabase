@@ -1,6 +1,6 @@
 .todoContainer {
   border: 1px solid var(--mb-color-core-brand);
-  background-color: var(--mb-color-background-highlight);
+  background-color: var(--mb-color-background_page-highlighted);
 }
 
 .todoHeader {

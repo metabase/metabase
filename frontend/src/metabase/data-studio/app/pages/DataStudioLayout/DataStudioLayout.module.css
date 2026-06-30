@@ -1,5 +1,5 @@
 .nav {
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-neutral);
   overflow: auto;
 }
 
@@ -25,11 +25,11 @@
   width: 100%;
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &.selected {
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
   }
 }
 

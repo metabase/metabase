@@ -9,6 +9,7 @@
   text-transform: none;
 
   &[data-variant="light"] {
+    /* background-color: var(--mb-color-background_surface-brand-subtle); */
     background-color: var(--mb-color-background-disabled);
     color: var(--mb-color-text-primary);
 

@@ -80,28 +80,20 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       cy.get("@allParameters").within(() => {
         // verify that all the parameters on the dashboard are defaulted to disabled
-        cy.findAllByText("Disabled").should(
+        cy.findAllByDisplayValue("Disabled").should(
           "have.length",
           dashboardDetails.parameters.length,
         );
 
-        // select the dropdown next to the Name parameter so that we can set it to editable
-        cy.findByText("Name")
-          .parent()
-          .within(() => {
-            cy.findByText("Disabled").click();
-          });
+        // open the dropdown next to the Name parameter so that we can set it to editable
+        cy.findByLabelText("Name").click();
       });
 
-      H.popover().findByText("Editable").click();
+      cy.findByRole("listbox").findByText("Editable").click();
 
-      cy.get("@allParameters")
-        .findByText("Id")
-        .parent()
-        .findByText("Disabled")
-        .click();
+      cy.get("@allParameters").findByLabelText("Id").click();
 
-      H.popover().findByText("Locked").click();
+      cy.findByRole("listbox").findByText("Locked").click();
 
       H.modal().within(() => {
         // set the locked parameter's value
@@ -167,11 +159,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
           unpublishBeforeOpen: false,
         });
       });
-      cy.get("@allParameters").findByText("Locked").click();
-      H.popover().contains("Disabled").click();
+      cy.get("@allParameters").findByDisplayValue("Locked").click();
+      cy.findByRole("listbox").findByText("Disabled").click();
 
-      cy.get("@allParameters").findByText("Editable").click();
-      H.popover().contains("Disabled").click();
+      cy.get("@allParameters").findByDisplayValue("Editable").click();
+      cy.findByRole("listbox").findByText("Disabled").click();
 
       H.publishChanges("dashboard", ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {

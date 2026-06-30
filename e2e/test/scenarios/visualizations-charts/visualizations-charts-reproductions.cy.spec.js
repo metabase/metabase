@@ -399,7 +399,7 @@ describe("issue 18063", () => {
 
     cy.get(".leaflet-marker-icon").trigger("mousemove");
 
-    H.popover().within(() => {
+    H.tooltip().within(() => {
       H.testPairedTooltipValues("LATITUDE", "55.68");
       H.testPairedTooltipValues("LONGITUDE", "12.57");
       H.testPairedTooltipValues("COUNT", "1");

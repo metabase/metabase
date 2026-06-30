@@ -198,7 +198,12 @@ function FeedbackCard({
           />
           <Text fw={700}>{feedback.positive ? t`Positive` : t`Negative`}</Text>
           {!feedback.positive && feedback.issue_type && (
-            <Badge variant="filled" bg="error" ml="xs" size="xs">
+            <Badge
+              variant="filled"
+              bg="background_surface-error"
+              ml="xs"
+              size="xs"
+            >
               {getIssueTypeLabel(feedback.issue_type)}
             </Badge>
           )}
@@ -216,10 +221,10 @@ function FeedbackCard({
             hideActions
             getCopyText={noopGetCopyText}
             submittedFeedback={undefined}
-            bg="background-secondary"
+            bg="background_page-secondary"
             p="md"
             pb="0"
-            bd="1px solid var(--mb-color-border)"
+            bd="1px solid var(--mb-color-border-neutral)"
             bdrs="1rem"
           />
         )}

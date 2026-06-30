@@ -13,7 +13,7 @@
   &[data-disabled] {
     &,
     &:hover {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
     }
   }
 
@@ -27,7 +27,7 @@
 
 .SegmentedControl_Control {
   &:not(:first-of-type) {
-    border-color: var(--mb-color-border);
+    border-color: var(--mb-color-border-neutral);
   }
 }
 
@@ -35,7 +35,7 @@
   &:disabled + label {
     &,
     &:hover {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
     }
   }
 }

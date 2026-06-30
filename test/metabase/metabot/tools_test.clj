@@ -67,12 +67,17 @@
     (is (contains? tools "read_resource"))
     (is (contains? tools "ask_for_sql_clarification"))))
 
-(deftest ^:parallel get-tools-for-nlq-profile-test
-  (let [tools (tools-for-profile :nlq)]
-    (is (map? tools))
-    (is (contains? tools "search"))
-    (is (contains? tools "construct_notebook_query"))
-    (is (contains? tools "create_chart"))))
+(deftest get-tools-for-nlq-profile-test
+  (testing "the general search is always available; the curated search tool only with the semantic-search feature"
+    (mt/with-premium-features #{}
+      (let [tools (tools-for-profile :nlq)]
+        (is (map? tools))
+        (is (contains? tools "search"))
+        (is (contains? tools "construct_notebook_query"))
+        (is (contains? tools "create_chart"))
+        (is (not (contains? tools "search_curated")))))
+    (mt/with-premium-features #{:semantic-search}
+      (is (contains? (tools-for-profile :nlq) "search_curated")))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
   (let [tools (tools-for-profile :document-generate-content)]
